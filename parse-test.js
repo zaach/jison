@@ -20,12 +20,20 @@ assert.equal(2,Parser._nonterms['E'].length);
 assert.equal("S",Parser.startSymbol);
 assert.equal("ENDOFFILE",Parser.EOF);
 
-Parser.parse(tokenStream);
+//print(Parser.terminals('S'));
+//print(Parser.first());
+
+//Parser.test();
+
+//Parser.parse(tokenStream);
 
 var grammer2 = {
-  tokens: [ 'X', 'ENDOFFILE' ],
+  tokens: [ 'x', "y", 'ENDOFFILE' ],
   bnf: {
-          "S" :[ 'A ENDOFFILE' ],
+          "S" :[ 'B ENDOFFILE' ],
+          "B" :[ "A",
+                 "y"
+               ],
           "A" :[ 'A x',
                  ''      ]
         }
@@ -35,9 +43,27 @@ var tokenStream2 = ['x','x','x', 'ENDOFFILE'];
 
 var Parser2 = new JSParse.Parser(grammer2);
 
-assert.equal(3,Parser2.rules.size());
+assert.equal(5,Parser2.rules.size());
 assert.equal(2,Parser2._nonterms['A'].length);
 
-Parser2.parse(tokenStream2);
+//Parser2.test();
+
+//Parser2.parse(tokenStream2);
+print(Parser2.nullableSets());
+print(Parser2.firstSets());
+print(Parser2.followSets());
+
+var grammer3 = {
+  tokens: [ 'a', "b", "c", 'ENDOFFILE' ],
+  bnf: {
+          "S" :[ 'T ENDOFFILE' ],
+          "T" :[ "R",
+                 "aTc"
+               ],
+          "R" :[ '',
+                 'RbR'      ]
+        }
+};
+
 
 assert.done();

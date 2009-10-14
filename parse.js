@@ -4,6 +4,7 @@ var JSParse = (function (){
 function Rule(sym, handle) {
   this.sym = sym;
   this.handle = handle;
+  this.first = [];
 }
   Rule.prototype.toString = function(){
     return this.sym+" -> "+this.handle.join(' ');
@@ -59,6 +60,8 @@ function Set(set, raw) {
   });
 
 var Parser = function JSParse_Parser(grammer){
+  this.terms = {};
+
   proccessGrammerDef.call(this, grammer);
 
   this.startSymbol = this.rules.first().sym;
@@ -78,10 +81,14 @@ function proccessGrammerDef(grammer){
       if(symbols.indexOf(sym) === -1)
         symbols.push(sym);
       _nonterms[sym].push(rules.size());
+      _nonterms[sym].first = [];
+      _nonterms[sym].follows = [];
       rules.push(new Rule(sym, handle.split(' ')));
     });
   }
   [].push.apply(symbols, tokens); // concat tokens
+
+  //this.firstSets();
 }
 
 function closureOperation(itemSet /*, closureSet*/){
@@ -184,32 +191,33 @@ function allItems(){
   var allItems = new Set();
   this.rules.forEach(function(prod, k){
     for(var i=0;i<=prod.handle.length;i++)
-      allItems.push(new Item(prod, i));
+      if(prod.handle[i-1] !== '') // not for empty rules
+        allItems.push(new Item(prod, i));
   });
   print(allItems.join('\n'));
 }
 
 function test(){
-  print(rules.join('\n'));
-  print(rules.item(0));
+  print(this.rules.join('\n'));
+  print(this.rules.item(0));
 
-  for(var i in _nonterms){
-    print(_nonterms[i]);
+  for(var i in this._nonterms){
+    print(this._nonterms[i]);
   }
 
-  var items = closureOperation(new Set([new Item(rules.item(0), 0)]));
+  var items = this.closureOperation(new Set([new Item(this.rules.item(0), 0)]));
 
   print(items.join('\n'));
 
-  print(grammerSymbols);
+  print(this._grammerSymbols);
 
   var sets = new Set();
   sets.push(items);
   print('Canonical sets');
-  var itemSets = canonicalCollection(sets);
+  var itemSets = this.canonicalCollection(sets);
   print(itemSets.join('\n'));
 
-  var table = actionTable(itemSets);
+  var table = this.actionTable(itemSets);
 
   table.forEach(function (state, k){
     for(var sym in state){
@@ -217,8 +225,187 @@ function test(){
     }
   });
 
-  allItems();
+  this.allItems();
 }
+
+function followSets(){
+  var rules = this.rules;
+  var nonterms = this._nonterms;
+  var that = this;
+  var cont = true;
+
+  // add follow $ to start symbol
+  nonterms[rules.item(nonterms[this.startSymbol][0]).handle[0]].follows.push(this.EOF);
+
+  // loop until no further changes have been made
+  while(cont){
+    cont = false;
+
+    rules.forEach(function(rule, k){
+      print(rule.sym,nonterms[rule.sym].follows);
+      var set = [];
+      for(var i=0,n=0,t;t=rule.handle[i];++i){
+        if(nonterms[t]){
+          if(i === rule.handle.length+1){
+            set = nonterms[rule.sym].follows
+          } else {
+            var part = rule.handle.slice(i+1);
+            set = that.first(part);
+            if(that.nullable(part))
+              set.push.apply(set, nonterms[rule.sym]);
+          }
+          set.forEach(function(e){
+            if(nonterms[t].follows.indexOf(e)===-1){
+              nonterms[t].follows.push(e);
+              cont = true;
+            }
+          });
+        }
+      }
+    });
+  }
+}
+
+function first(symbol){
+  if(symbol === '')
+    return [];
+  else if(Object.prototype.toString.apply(symbol) === '[object Array]'){
+    var firsts = [];
+    for(var i=0,n=0,t;t=symbol[i];++i){
+      this.first(t).forEach(function(e){
+        if(firsts.indexOf(e)===-1)
+          firsts.push(e);
+      });
+      if(!this.nullable(t))
+        break;
+    }
+    return firsts;
+  } else if(!this._nonterms[symbol])
+    return [symbol];
+  else
+    return this._nonterms[symbol].first;
+}
+
+// fixed-point calculation of FIRST sets
+function firstSets(){
+  var rules = this.rules;
+  var nonterms = this._nonterms;
+  var that = this;
+  var cont = true;
+  var sym,firsts;
+
+  // loop until no further changes have been made
+  while(cont){
+    cont = false;
+
+    rules.forEach(function(rule, k){
+      print(rule, rule.first);
+      var firsts = that.first(rule.handle);
+      if(firsts.length!==rule.first.length) {
+        rule.first = firsts;
+        cont=true;
+      }
+      print(rule, rule.first);
+    });
+
+    for(sym in nonterms){
+      print(sym, nonterms[sym].first);
+      firsts = [];
+      for(var i=0,rule;rule=rules.item(nonterms[sym][i]);i++){
+        firsts.push.apply(firsts, rule.first);
+      }
+      if(firsts.length!==nonterms[sym].first.length) {
+        nonterms[sym].first = firsts;
+        cont=true;
+      }
+      print(sym, nonterms[sym].first);
+    }
+  }
+}
+
+// fixed-point calculation of nullables
+function nullableSets(){
+  var rules = this.rules;
+  var firsts = this.firsts = {};
+  var nonterms = this._nonterms;
+  var that = this;
+  var cont = true;
+
+  // loop until no further changes have been made
+  while(cont){
+    cont = false;
+
+    // check if each rule is nullable
+    rules.forEach(function(rule, k){
+      print(rule, rule.nullable);
+      if(!rule.nullable){
+        for(var i=0,n=0,t;t=rule.handle[i];++i){
+          if(that.nullable(t)){
+            n++;
+          }
+        }
+        if(n===i) { // rule is nullable if all tokens are nullable
+          rule.nullable = cont = true;
+        }
+      }
+      print(rule, rule.nullable);
+    });
+
+    //check if each symbol is nullable
+    for(var sym in nonterms){
+      print(sym, nonterms[sym].nullable);
+      if(!this.nullable(sym)){
+        for(var i=0,rule;rule=rules.item(nonterms[sym][i]);i++){
+          if(rule.nullable)
+            nonterms[sym].nullable = cont = true;
+        }
+      }
+      print(sym, nonterms[sym].nullable);
+    }
+  }
+}
+
+function nullable(symbol){
+  if(symbol === '')
+    return true
+  else if(Object.prototype.toString.apply(symbol) === '[object Array]'){
+    for(var i=0,t;t=symbol[i];++i){
+      if(!this.nullable(t))
+        return false;
+    }
+    return true;
+  } else if(!this._nonterms[symbol])
+    return false;
+  else
+    return !!this._nonterms[symbol].nullable;
+}
+
+function terminals(symbol){
+  var terms = this.terms;
+  var that = this;
+
+  if(!terms[symbol])
+    terms[symbol] = [];
+
+  if(terms[symbol].length)
+    return terms[symbol];
+
+  if(!this._nonterms[symbol])
+    return [symbol];
+  else {
+    this._nonterms[symbol].forEach(function(ri, i){
+      var rule = that.rules.item(ri);
+      rule.handle.forEach(function(sym, i){
+        if(sym!==symbol){
+          terms[symbol].push.apply(terms[symbol], that.terminals(sym));
+        }
+      });
+    });
+  }
+
+  return terms[symbol];
+}
+
 
 function parse(input){
   var that = this;
@@ -273,7 +460,14 @@ function parse(input){
     canonicalCollection: canonicalCollection,
     actionTable: actionTable,
     allItems: allItems,
-    parse: parse
+    parse: parse,
+    terminals: terminals,
+    first: first,
+    firstSets: firstSets,
+    followSets: followSets,
+    nullableSets: nullableSets,
+    nullable: nullable,
+    test:test
   };
 
   return {
