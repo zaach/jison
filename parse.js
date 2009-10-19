@@ -10,21 +10,24 @@ function Rule(sym, handle) {
     return this.sym+" -> "+this.handle.join(' ');
   };
 
-function Item(rule, dot) {
+function Item(rule, dot, f) {
   this.rule = rule;
   this.dotPosition = dot;
-  this.follows = new Set();
+  this.follows = f || new Set(); 
 }
   Item.prototype.currentToken = function(){
     return this.rule.handle[this.dotPosition];
-  }
+  };
+  Item.prototype.remainingHandle = function(){
+    return this.rule.handle.slice(this.dotPosition+1);
+  };
   Item.prototype.eq = function(e){
     return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition;
-  }
+  };
   Item.prototype.toString = function(){
     var temp = this.rule.handle.slice(0);
     temp[this.dotPosition] = '.'+(temp[this.dotPosition]||'');
-    return this.rule.sym+" -> "+temp.join(' ');
+    return this.rule.sym+" -> "+temp.join(' ')+", "+this.follows.join('/');
   };
 
 function Set(set, raw) {
@@ -150,10 +153,12 @@ function closureOperation(itemSet /*, closureSet*/){
   itemSet.forEach(function (item){
     var token = item.currentToken();
 
+    var b = that.first(item.remainingHandle());
+    if(b.empty()) b = item.follows;
     // if token is a non-terminal, recursively add closures
     if(token && that._nonterms[token]) {
       that._nonterms[token].rules.forEach(function(rule){
-          that.closureOperation(new Set([new Item(rule, 0)]), closureSet);
+          that.closureOperation(new Set([new Item(rule, 0, b)]), closureSet);
       });
     }
   });
@@ -166,7 +171,7 @@ function gotoOperation(itemSet, symbol) {
   var EOF = this.EOF;
   itemSet.forEach(function (item){
     if(item.currentToken() == symbol && symbol != EOF){
-      gotoSet.push(new Item(item.rule, item.dotPosition+1));
+      gotoSet.push(new Item(item.rule, item.dotPosition+1, item.follows));
     }
   });
 
