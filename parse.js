@@ -1,10 +1,16 @@
 
-var JSParse = (function (){
+var JSParse = exports.JSParse = (function (){
 
-function Rule(sym, handle) {
+function log(){
+  if(JSParse.DEBUG)
+    print.apply(null,arguments);
+}
+
+function Rule(sym, handle, action) {
   this.sym = sym;
   this.handle = handle;
   this.first = new Set();
+  this.action = action;
 }
   Rule.prototype.toString = function(){
     return this.sym+" -> "+this.handle.join(' ');
@@ -22,16 +28,16 @@ function Item(rule, dot, f) {
     return this.rule.handle.slice(this.dotPosition+1);
   };
   Item.prototype.eq = function(e){
-    return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition;
+    return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition && this.follows.toString()==e.follows.toString();
   };
   Item.prototype.toString = function(){
     var temp = this.rule.handle.slice(0);
     temp[this.dotPosition] = '.'+(temp[this.dotPosition]||'');
-    return this.rule.sym+" -> "+temp.join(' ')+", "+this.follows.join('/');
+    return '['+this.rule.sym+" -> "+temp.join(' ')+", "+this.follows.join('/')+']';
   };
 
 function Set(set, raw) {
-  if(Object.prototype.toString.apply(set) === '[object Array]')
+  if(set && set.constructor === Array)
     this._items = set && (raw ? set : set.slice(0)) || [];
   else 
     this._items = [].slice.call(arguments,0);
@@ -44,10 +50,10 @@ function Set(set, raw) {
     concat : function (setB){ 
                try{
                return [].push.apply(this._items, setB._items), this; 
-               }catch(e){print(e.stack);return this;}
+               }catch(e){log(e.stack);return this;}
              },
-    eq : function (setB){
-            return this.toString() == setB.toString();
+    eq : function (set){
+            return this.size() === set.size() && this.subset(set); //this.toString() == setB.toString();
           },
     indexOf : function (item){
             if(item.eq) {
@@ -84,7 +90,7 @@ function Set(set, raw) {
     toString : function (){ return this._items.toString(); }
   };
 
-  "push shift forEach some filter join".split(' ').forEach(function(e,i){
+  "push shift forEach some filter every join".split(' ').forEach(function(e,i){
     Set.prototype[e] = function(){ return Array.prototype[e].apply(this._items, arguments); };
   });
   "filter slice".split(' ').forEach(function(e,i){
@@ -114,27 +120,34 @@ var Parser = function JSParse_Parser(grammer){
   this._grammerSymbols.unshift("$end");
   this._grammerSymbols.unshift("$accept");
 
-  this._nonterms["$accept"] = new NonTerminal("$accept");
+  this.nonterms["$accept"] = new NonTerminal("$accept");
 
   this.nullableSets();
   this.firstSets();
   this.followSets();
+
+  this.itemSets = this.canonicalCollection();
+  this.table = this.actionTable(this.itemSets);
 };
 
 function proccessGrammerDef(grammer){
   var bnf = grammer.bnf;
   var tokens = grammer.tokens;
   var symbols = this._grammerSymbols = [];
-  var _nonterms = this._nonterms = {};// { nonterm1: [ruleNo1, ...], ... }
+  var nonterms = this.nonterms = {};// { nonterm1: [ruleNo1, ...], ... }
   var rules = this.rules;
 
   for(var sym in bnf) {
-    _nonterms[sym] = new NonTerminal(sym);
+    nonterms[sym] = new NonTerminal(sym);
     bnf[sym].forEach(function (handle){
       if(symbols.indexOf(sym) === -1)
         symbols.push(sym);
-      rules.push(new Rule(sym, handle.split(' ')));
-      _nonterms[sym].rules.push(rules.last());
+      if(handle.constructor === Array)
+        // semantic action specified
+        rules.push(new Rule(sym, handle[0].split(' '), handle[1]));
+      else
+        rules.push(new Rule(sym, handle.split(' ')));
+      nonterms[sym].rules.push(rules.last());
     });
   }
   [].push.apply(symbols, tokens); // concat tokens
@@ -153,11 +166,11 @@ function closureOperation(itemSet /*, closureSet*/){
   itemSet.forEach(function (item){
     var token = item.currentToken();
 
-    var b = that.first(item.remainingHandle());
-    if(b.empty()) b = item.follows;
     // if token is a non-terminal, recursively add closures
-    if(token && that._nonterms[token]) {
-      that._nonterms[token].rules.forEach(function(rule){
+    if(token && that.nonterms[token]) {
+      var b = that.first(item.remainingHandle());
+      if(b.isEmpty()) b = item.follows;
+      that.nonterms[token].rules.forEach(function(rule){
           that.closureOperation(new Set([new Item(rule, 0, b)]), closureSet);
       });
     }
@@ -180,8 +193,9 @@ function gotoOperation(itemSet, symbol) {
 
 /* Create unique set of item sets
  * */
-function canonicalCollection(itemSets){
-  var sets = itemSets.copy();
+function canonicalCollection(){
+  var items = this.closureOperation(new Set(new Item(this.rules.first(), 0, new Set(this.EOF))));
+  var sets = new Set(items);
   var done = new Set();
   var that = this;
   var itemSet;
@@ -189,6 +203,8 @@ function canonicalCollection(itemSets){
   while(!sets.isEmpty()){
     itemSet = sets.shift();
     done.push(itemSet);
+    // TODO: itemSet could cache the possible next symbols instead of
+    // us looping through all
     this._grammerSymbols.forEach(function (sym) {
       var g = that.gotoOperation(itemSet, sym);
       // add g to que if not empty or duplicate
@@ -208,34 +224,34 @@ function allItems(){
       if(prod.handle[i-1] !== '') // not for empty rules
         allItems.push(new Item(prod, i));
   });
-  print(allItems.join('\n'));
+  log(allItems.join('\n'));
 }
 
 function test(){
-  print(this.rules.join('\n'));
-  print(this.rules.item(0));
+  log(this.rules.join('\n'));
+  log(this.rules.item(0));
 
-  for(var i in this._nonterms){
-    print(this._nonterms[i].rules);
+  for(var i in this.nonterms){
+    log(this.nonterms[i].rules);
   }
 
   var items = this.closureOperation(new Set([new Item(this.rules.item(0), 0)]));
 
-  print(items.join('\n'));
+  log(items.join('\n'));
 
-  print(this._grammerSymbols);
+  log(this._grammerSymbols);
 
   var sets = new Set();
   sets.push(items);
-  print('Canonical sets');
+  log('Canonical sets');
   var itemSets = this.canonicalCollection(sets);
-  print(itemSets.join('\n'));
+  log(itemSets.join('\n'));
 
   var table = this.actionTable(itemSets);
 
   table.forEach(function (state, k){
     for(var sym in state){
-      print('state['+k+','+sym+'] =',state[sym]);
+      log('state['+k+','+sym+'] =',state[sym]);
     }
   });
 
@@ -244,21 +260,21 @@ function test(){
 
 function followSets(){
   var rules = this.rules;
-  var nonterms = this._nonterms;
+  var nonterms = this.nonterms;
   var that = this;
   var cont = true;
 
   // add follow $ to start symbol
   nonterms[this.startSymbol].follows.push(this.EOF);
 
-  print('Follow sets');
+  log('Follow sets');
 
   // loop until no further changes have been made
   while(cont){
     cont = false;
 
     rules.forEach(function(rule, k){
-      //print(rule.sym,nonterms[rule.sym].follows);
+      //log(rule.sym,nonterms[rule.sym].follows);
       var set = [];
       for(var i=0,n=0,t;t=rule.handle[i];++i){
         if(nonterms[t]){
@@ -300,39 +316,39 @@ function first(symbol){
     }
     return firsts;
   // terminal
-  } else if(!this._nonterms[symbol])
+  } else if(!this.nonterms[symbol])
     return new Set([symbol]);
   // non-terminal
   else
-    return this._nonterms[symbol].first;
+    return this.nonterms[symbol].first;
 }
 
 // fixed-point calculation of FIRST sets
 function firstSets(){
   var rules = this.rules;
-  var nonterms = this._nonterms;
+  var nonterms = this.nonterms;
   var that = this;
   var cont = true;
   var sym,firsts;
 
-  print('First sets');
+  log('First sets');
 
   // loop until no further changes have been made
   while(cont){
     cont = false;
 
     rules.forEach(function(rule, k){
-      print(rule, rule.first);
+      log(rule, rule.first);
       var firsts = that.first(rule.handle);
       if(firsts.size() != rule.first.size()) {
         rule.first = firsts;
         cont=true;
       }
-      print(rule, rule.first);
+      log(rule, rule.first);
     });
 
     for(sym in nonterms){
-      //print(sym, nonterms[sym].first);
+      //log(sym, nonterms[sym].first);
       firsts = new Set();
       nonterms[sym].rules.forEach(function(rule){
         firsts.concat(rule.first);
@@ -341,7 +357,7 @@ function firstSets(){
         nonterms[sym].first = firsts;
         cont=true;
       }
-      //print(sym, nonterms[sym].first);
+      //log(sym, nonterms[sym].first);
     }
   }
 }
@@ -350,11 +366,11 @@ function firstSets(){
 function nullableSets(){
   var rules = this.rules;
   var firsts = this.firsts = {};
-  var nonterms = this._nonterms;
+  var nonterms = this.nonterms;
   var that = this;
   var cont = true;
 
-  print('Nullables');
+  log('Nullables');
 
   // loop until no further changes have been made
   while(cont){
@@ -362,7 +378,7 @@ function nullableSets(){
 
     // check if each rule is nullable
     rules.forEach(function(rule, k){
-      //print(rule, rule.nullable);
+      //log(rule, rule.nullable);
       if(!rule.nullable){
         for(var i=0,n=0,t;t=rule.handle[i];++i){
           if(that.nullable(t)){
@@ -373,19 +389,19 @@ function nullableSets(){
           rule.nullable = cont = true;
         }
       }
-      //print(rule, rule.nullable);
+      //log(rule, rule.nullable);
     });
 
     //check if each symbol is nullable
     for(var sym in nonterms){
-      print(sym, nonterms[sym].nullable);
+      log(sym, nonterms[sym].nullable);
       if(!this.nullable(sym)){
         for(var i=0,rule;rule=rules.item(nonterms[sym][i]);i++){
           if(rule.nullable)
             nonterms[sym].nullable = cont = true;
         }
       }
-      //print(sym, nonterms[sym].nullable);
+      //log(sym, nonterms[sym].nullable);
     }
   }
 }
@@ -403,17 +419,17 @@ function nullable(symbol){
     }
     return true;
   // terminal
-  } else if(!this._nonterms[symbol])
+  } else if(!this.nonterms[symbol])
     return false;
   // Non terminal
   else
-    return !!this._nonterms[symbol].nullable;
+    return !!this.nonterms[symbol].nullable;
 }
 
 function actionTable(itemSets){
   var states = [];
   var symbols = this._grammerSymbols.slice(0);
-  var _nonterms = this._nonterms;
+  var nonterms = this.nonterms;
   var EOF = this.EOF;
   symbols.shift(); // exclude start symbol
   var that = this;
@@ -429,19 +445,22 @@ function actionTable(itemSets){
         // find shift and goto actions
         if(item.currentToken() == stackSymbol){
           var gotoState = itemSets.indexOf(that.gotoOperation(itemSet, stackSymbol));
-          if(_nonterms[stackSymbol]){
+          if(nonterms[stackSymbol]){
             action = gotoState; // store state to go to after a reduce
           } else if(gotoState !== -1) {
-            action = ['s'+gotoState]; // store shift to state
+            action = [['s',gotoState]]; // store shift to state
           } else if(stackSymbol == EOF){
-            action = ['a']; //accept
+            action = [['a']]; //accept
           }
         }
       if(gotoState)
-      print('action table:', itemSets.item(gotoState), action);
-        if(!item.currentToken() && !_nonterms[stackSymbol]
-          && _nonterms[item.rule.sym].follows.indexOf(stackSymbol)!== -1){
-          action.push('r'+that.rules.indexOf(item.rule));
+      log('action table:', itemSets.item(gotoState), action);
+        if(!item.currentToken() && !nonterms[stackSymbol]
+          && item.follows.contains(stackSymbol) // LR(1)
+          //&& nonterms[item.rule.sym].follows.indexOf(stackSymbol)!== -1 // SLR
+          ){
+          action.push(['r',that.rules.indexOf(item.rule)]);
+          log('reduction:',item);
         }
       });
       state[stackSymbol] = action;
@@ -457,13 +476,20 @@ function parse(input){
   input.push(this.EOF);
   var stack = [0];
 
-  var items = this.closureOperation(new Set([new Item(this.rules.first(), 0)]));
-  var itemSets = this.canonicalCollection(new Set([items]));
-  var table = this.actionTable(itemSets);
+  var table = this.table;
 
-  var sym, output, state, action;
+  log(this.itemSets.join('\n'));
+
+  table.forEach(function (state, k){
+    for(var sym in state){
+      log('state['+k+','+sym+'] =',state[sym]);
+    }
+  });
+
+
+  var sym, output, state, action, a;
   while(input){
-    print('stack:',stack, '\n\t\t\tinput:', input);
+    log('stack:',stack, '\n\t\t\tinput:', input);
     // set first input
     sym = input[0]; 
     state = stack[stack.length-1];
@@ -473,27 +499,31 @@ function parse(input){
       throw 'Parse error. stack:'+stack+', input:'+input;
 
     if(action.length > 1)
-      print('Warning: multiple actions possible');
+      log('Warning: multiple actions possible');
 
-    print('action:',action);
+    log('action:',action);
 
-    switch(action[0].charAt(0)){
+    a = action[0]; // TODO: precedence rules for multiple actions
+
+    switch(a[0]){
       case 's': // shift
         stack.push(input.shift());
-        stack.push(parseInt(action[0].charAt(1))); // push state
+        stack.push(action[0][1]); // push state
         break;
       case 'r': // reduce
-        var p = that.rules.item(action[0].charAt(1));
+        var p = that.rules.item(action[0][1]);
         if(p.handle[0] != '') //if RHS is not epsilon, pop off stack
           stack = stack.slice(0,-1*p.handle.length*2);
         stack.push(p.sym);    // push nonterminal (reduce)
         // goto new state = table[STATE][NONTERMINAL]
         newState = table[stack[stack.length-2]][stack[stack.length-1]];
         stack.push(newState);
-        print('reduced by: ',p);
+        if(p.action)
+          print(p, p.action);
+        log('reduced by: ',p);
         break;
       case 'a':
-        print('stack:',stack, '\n\tinput:', input);
+        log('stack:',stack, '\n\tinput:', input);
         return true;
     }
       
