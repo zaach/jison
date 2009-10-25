@@ -86,3 +86,18 @@ test("Semantic actions", function(){
 
   equals(Parser.parse(['y','x','x']), 0, "semantic action");
 });
+
+test("LALR parse", function(){
+  var grammer = {
+    tokens: [ "ZERO", "PLUS"],
+    startSymbol: "E",
+    bnf: {
+            "E" :[ "E PLUS T",
+                   "T"      ],
+            "T" :[ "ZERO" ]
+          }
+  };
+  var Parser = new JSParse.Parser(grammer, {type: "lalr", debug:true});
+
+  ok(Parser.parse(["ZERO", "PLUS", "ZERO", "PLUS", "ZERO"]), "parse");
+});

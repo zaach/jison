@@ -28,12 +28,22 @@ function Item(rule, dot, f) {
     return this.rule.handle.slice(this.dotPosition+1);
   };
   Item.prototype.eq = function(e){
-    return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition && this.follows.toString()==e.follows.toString();
+    return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition;
   };
   Item.prototype.toString = function(){
     var temp = this.rule.handle.slice(0);
     temp[this.dotPosition] = '.'+(temp[this.dotPosition]||'');
     return '['+this.rule.sym+" -> "+temp.join(' ')+", "+this.follows.join('/')+']';
+  };
+
+function LRItem(rule, dot, f) {
+  this.rule = rule;
+  this.dotPosition = dot;
+  this.follows = f || new Set(); 
+}
+  LRItem.prototype = new Item();
+  LRItem.prototype.eq = function(e){
+    return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition && this.follows.toString()==e.follows.toString();
   };
 
 function Set(set, raw) {
@@ -48,12 +58,10 @@ function Set(set, raw) {
 }
   Set.prototype = {
     concat : function (setB){ 
-               try{
                return [].push.apply(this._items, setB._items), this; 
-               }catch(e){log(e.stack);return this;}
              },
     eq : function (set){
-            return this.size() === set.size() && this.subset(set); //this.toString() == setB.toString();
+            return this.size() === set.size() && this.subset(set); 
           },
     indexOf : function (item){
             if(item.eq) {
@@ -64,11 +72,17 @@ function Set(set, raw) {
             return this._items.indexOf(item);
           },
     union : function(set){
-              return (new Set()).concat(this).concat(set);
+              return (new Set(this._items)).concat(this.complement(set));
             },
     intersection : function(set){
               return this.filter(function(elm){
                     return set.contains(elm);
+                    });
+            },
+    complement : function(set){
+              var that = this;
+              return set.filter(function(elm){
+                    return !that.contains(elm);
                     });
             },
     subset : function(set){
@@ -78,6 +92,9 @@ function Set(set, raw) {
             },
     superset : function(set){
               return set.subset(this);
+            },
+    joinSet : function(set){
+              return this.concat(this.complement(set));
             },
     contains : function (item){ return this.indexOf(item) !== -1; },
     item : function (v, val){ return this._items[v]; },
@@ -90,7 +107,7 @@ function Set(set, raw) {
     toString : function (){ return this._items.toString(); }
   };
 
-  "push shift forEach some filter every join".split(' ').forEach(function(e,i){
+  "push shift forEach some every join".split(' ').forEach(function(e,i){
     Set.prototype[e] = function(){ return Array.prototype[e].apply(this._items, arguments); };
   });
   "filter slice".split(' ').forEach(function(e,i){
@@ -105,11 +122,15 @@ function NonTerminal(sym){
   this.nullable = false;
 }
 
-var Parser = function JSParse_Parser(grammer){
+var Parser = function JSParse_Parser(grammer, options){
+  var options = options || {};
   this.terms = {};
   this.rules = new Set();// [ {sym: nonterm, handle: handle }, ... ]
   // augment the grammer
   this.rules.push(new Rule('$accept', [grammer.startSymbol, '$end']));
+
+  this.DEBUG = options.debug || false;
+  this.type = options.type || "lalr";
 
   proccessGrammerDef.call(this, grammer);
 
@@ -157,9 +178,16 @@ function closureOperation(itemSet /*, closureSet*/){
   var closureSet = arguments[1] || new Set();
   var that = this;
 
-  itemSet = itemSet.filter(function (e){
-      return !closureSet.contains(e);
-  });
+  if(this.type === "lalr"){
+    itemSet = itemSet.filter(function (e){
+        var r = closureSet.contains(e);
+        // add any additional follows if the item is already in the set
+        if(r) closureSet.item(closureSet.indexOf(e)).follows.joinSet(e.follows);
+        return !r;
+    });
+  } else {
+    itemSet = itemSet.complement(closureSet);
+  }
 
   closureSet.concat(itemSet);
 
@@ -216,16 +244,6 @@ function canonicalCollection(){
   return done;
 }
 
-
-function allItems(){
-  var allItems = new Set();
-  this.rules.forEach(function(prod, k){
-    for(var i=0;i<=prod.handle.length;i++)
-      if(prod.handle[i-1] !== '') // not for empty rules
-        allItems.push(new Item(prod, i));
-  });
-  log(allItems.join('\n'));
-}
 
 function test(){
   log(this.rules.join('\n'));
@@ -304,7 +322,7 @@ function first(symbol){
   if(symbol === '')
     return new Set();
   // RHS
-  else if(Object.prototype.toString.apply(symbol) === '[object Array]'){
+  else if(symbol.constructor === Array){
     var firsts = new Set();
     for(var i=0,n=0,t;t=symbol[i];++i){
       this.first(t).forEach(function(e){
@@ -538,7 +556,6 @@ function parse(input){
     gotoOperation: gotoOperation,
     canonicalCollection: canonicalCollection,
     actionTable: actionTable,
-    allItems: allItems,
     parse: parse,
     first: first,
     firstSets: firstSets,
