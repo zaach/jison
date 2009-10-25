@@ -18,7 +18,7 @@ function Rule(sym, handle, action) {
 
 function Item(rule, dot, f) {
   this.rule = rule;
-  this.dotPosition = dot;
+  this.dotPosition = dot || 0;
   this.follows = f || new Set(); 
 }
   Item.prototype.currentToken = function(){
@@ -38,7 +38,7 @@ function Item(rule, dot, f) {
 
 function LRItem(rule, dot, f) {
   this.rule = rule;
-  this.dotPosition = dot;
+  this.dotPosition = dot || 0;
   this.follows = f || new Set(); 
 }
   LRItem.prototype = new Item();
@@ -122,15 +122,36 @@ function NonTerminal(sym){
   this.nullable = false;
 }
 
+// Filter method to use in closure operation
+// declare these functions here for cachability
+var _cfs = {
+  lalr: function(itemSet, closureSet){
+    return itemSet.filter(function (e){
+        var r = closureSet.indexOf(e);
+        // add any additional follows if the item is already in the set
+        if(r != -1) closureSet.item(closureSet.indexOf(e)).follows.joinSet(e.follows);
+        return !(r != -1);
+    });
+  },
+  lr: function(itemSet, closureSet){
+    return closureSet.complement(itemSet);
+  }
+};
+_cfs.slr = _cfs.lr0 = _cfs.lr;
+
 var Parser = function JSParse_Parser(grammer, options){
   var options = options || {};
   this.terms = {};
-  this.rules = new Set();// [ {sym: nonterm, handle: handle }, ... ]
+  this.rules = new Set();
   // augment the grammer
   this.rules.push(new Rule('$accept', [grammer.startSymbol, '$end']));
 
   this.DEBUG = options.debug || false;
   this.type = options.type || "lalr";
+
+  // tweak algorithms based on parser type
+  this._closureFilter = _cfs[this.type];
+  this._Item = this.type === "lr" ? LRItem : Item;
 
   proccessGrammerDef.call(this, grammer);
 
@@ -178,28 +199,20 @@ function closureOperation(itemSet /*, closureSet*/){
   var closureSet = arguments[1] || new Set();
   var that = this;
 
-  if(this.type === "lalr"){
-    itemSet = itemSet.filter(function (e){
-        var r = closureSet.contains(e);
-        // add any additional follows if the item is already in the set
-        if(r) closureSet.item(closureSet.indexOf(e)).follows.joinSet(e.follows);
-        return !r;
-    });
-  } else {
-    itemSet = itemSet.complement(closureSet);
-  }
+  itemSet = this._closureFilter(itemSet, closureSet);
 
   closureSet.concat(itemSet);
 
   itemSet.forEach(function (item){
     var token = item.currentToken();
+    var b;
 
     // if token is a non-terminal, recursively add closures
     if(token && that.nonterms[token]) {
-      var b = that.first(item.remainingHandle());
+      b = that.first(item.remainingHandle());
       if(b.isEmpty()) b = item.follows;
       that.nonterms[token].rules.forEach(function(rule){
-          that.closureOperation(new Set([new Item(rule, 0, b)]), closureSet);
+          that.closureOperation(new Set([new that._Item(rule, 0, b)]), closureSet);
       });
     }
   });
@@ -210,9 +223,10 @@ function closureOperation(itemSet /*, closureSet*/){
 function gotoOperation(itemSet, symbol) {
   var gotoSet = new Set();
   var EOF = this.EOF;
+  var that = this;
   itemSet.forEach(function (item){
     if(item.currentToken() == symbol && symbol != EOF){
-      gotoSet.push(new Item(item.rule, item.dotPosition+1, item.follows));
+      gotoSet.push(new that._Item(item.rule, item.dotPosition+1, item.follows));
     }
   });
 
@@ -222,7 +236,7 @@ function gotoOperation(itemSet, symbol) {
 /* Create unique set of item sets
  * */
 function canonicalCollection(){
-  var items = this.closureOperation(new Set(new Item(this.rules.first(), 0, new Set(this.EOF))));
+  var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF))));
   var sets = new Set(items);
   var done = new Set();
   var that = this;
@@ -253,7 +267,7 @@ function test(){
     log(this.nonterms[i].rules);
   }
 
-  var items = this.closureOperation(new Set([new Item(this.rules.item(0), 0)]));
+  var items = this.closureOperation(new Set([new this._Item(this.rules.item(0), 0)]));
 
   log(items.join('\n'));
 
