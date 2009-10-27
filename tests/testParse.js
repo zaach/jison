@@ -70,21 +70,41 @@ test("xx nullable grammer", function(){
   ok(thrown, "throws parse error on invalid");
 });
 
-test("Semantic actions", function(){
+test("Semantic action basic return", function(){
 
   var grammer = {
     tokens: [ "x", "y" ],
     startSymbol: "pgm",
     bnf: {
             "pgm" :[ ["E", "return 0"] ],
-            "E"   :[ "E x",
+            "E"   :[ ["E x", "return 1"],
                      "y" ]
           }
   };
 
   var Parser = new JSParse.Parser(grammer);
 
-  equals(Parser.parse(['y','x','x']), 0, "semantic action");
+  equals(Parser.parse(['y']), 0, "semantic action");
+  equals(Parser.parse(['y','x']), 1, "semantic action");
+});
+
+test("Semantic action stack lookup", function(){
+
+  var grammer = {
+    tokens: [ "x", "y" ],
+    startSymbol: "pgm",
+    bnf: {
+            "pgm" :[ ["E", "return $1"] ],
+            "E"   :[ ["B E", "return $1+$2"],
+                      ["x", "$$ = 'EX'"] ],
+            "B"   :[ ["y", "$$ = 'BY'"] ]
+          }
+  };
+
+  var Parser = new JSParse.Parser(grammer);
+
+  equals(Parser.parse(['x']), "EX", "return first token");
+  equals(Parser.parse(['y','x']), "BYEX", "return first after reduction");
 });
 
 test("LR parse", function(){

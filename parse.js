@@ -14,11 +14,13 @@ function Rule(sym, handle, action) {
   this.sym = sym;
   this.handle = handle;
   this.first = new Set();
+  var l = this.handle.length;
   if(action){
-    var a = action.replace(/\$(?:0|\$)/g, "yyval")
-                  .replace(/\$(\d)/g, "stack[stack.length-$1]");
-    this.action = Function("yyval", a);
-  }
+    var a = action.replace(/\$(?:0|\$)/g, "this.yyval")
+                  .replace(/\$(\d)/g, "stack[stack.length-"+l+"+$1-1]");
+    this.action = Function("yyval", "stack", a);
+  } 
+  //else this.action = function(yyval, stack){yyval = stack[stack.length-l];};
 }
   Rule.prototype.toString = function(){
     return this.sym+" -> "+this.handle.join(' ');
@@ -447,7 +449,10 @@ function parse(input){
   input = input.slice(0);
   input.push(this.EOF);
   var stack = [0];
-  var vstack = []; // semantic value stack
+  var vstack = [null]; // semantic value stack
+
+  var yytext = ''; // TODO
+  var yylineno = 0; // TODO
 
   var table = this.table;
 
@@ -460,9 +465,10 @@ function parse(input){
   });
 
 
-  var sym, output, state, action, a, r, yyval;
+  var sym, output, state, action, a, r, yyval={},p,len;
   while(input){
     log('stack:',stack, '\n\t\t\tinput:', input);
+    log('vstack:',vstack);
     // set first input
     sym = input[0]; 
     state = stack[stack.length-1];
@@ -481,23 +487,37 @@ function parse(input){
     switch(a[0]){
       case 's': // shift
         stack.push(input.shift());
+        vstack.push(null); // semantic values or junk only, no terminals
+        //vstack.push(stack[stack.length-1]); // but if we did store terminals...
         stack.push(action[0][1]); // push state
         break;
       case 'r': // reduce
-        var p = that.rules.item(action[0][1]);
-        if(p.handle[0] != '') //if RHS is not epsilon, pop off stack
-          stack = stack.slice(0,-1*p.handle.length*2);
+        p = that.rules.item(action[0][1]);
+        len = p.handle[0] == '' ? 0 : p.handle.length;
+        if(p.action){
+          log('semantic action:',p.action);
+          if((r = p.action.call(yyval,null,vstack)) != undefined ){
+            return r;
+          }
+        } else { 
+          yyval.yyval = vstack[vstack.length-len]; // default to $$ = $1
+        }
+
+        log('yyval=',yyval.yyval);
+        if(len){
+          stack = stack.slice(0,-1*len*2);
+          vstack = vstack.slice(0, -1*len);
+        }
         stack.push(p.sym);    // push nonterminal (reduce)
+        vstack.push(yyval.yyval);
         // goto new state = table[STATE][NONTERMINAL]
         newState = table[stack[stack.length-2]][stack[stack.length-1]];
         stack.push(newState);
-        if(p.action && (r = p.action(yyval, vstack)) != undefined ){
-          return r;
-        }
         log('reduced by: ',p);
         break;
       case 'a':
         log('stack:',stack, '\n\tinput:', input);
+        log('vstack:',vstack);
         return true;
     }
       
@@ -526,4 +546,4 @@ function parse(input){
   };
 })()
 
-// test cases, refactor, Semantic actions, generator, LALR
+// LR0/SLR mode, refactor, Semantic actions, generator
