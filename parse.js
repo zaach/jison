@@ -85,6 +85,7 @@ var Parser = function JSParse_Parser(grammer, options){
   var options = options || {};
   this.terms = {};
   this.rules = new Set();
+  this.conflicts = 0;
   // augment the grammer
   this.rules.push(new Rule('$accept', [grammer.startSymbol, '$end']));
 
@@ -97,6 +98,10 @@ var Parser = function JSParse_Parser(grammer, options){
 
   proccessGrammerDef.call(this, grammer);
 
+  if(!this.nonterms[grammer.startSymbol]){
+    throw new Error("Grammer error: startSymbol must be a non-terminal.");
+  }
+
   this.startSymbol = grammer.startSymbol;
   this.EOF = "$end";
 
@@ -106,9 +111,11 @@ var Parser = function JSParse_Parser(grammer, options){
 
   this.nonterms["$accept"] = new NonTerminal("$accept");
 
-  this.nullableSets();
-  this.firstSets();
-  this.followSets();
+  if(this.type !== 'lr0'){
+    this.nullableSets();
+    this.firstSets();
+    this.followSets();
+  }
 
   this.itemSets = this.canonicalCollection();
   this.table = this.actionTable(this.itemSets);
@@ -117,12 +124,16 @@ var Parser = function JSParse_Parser(grammer, options){
 function proccessGrammerDef(grammer){
   var bnf = grammer.bnf;
   var tokens = grammer.tokens;
-  var symbols = this._grammerSymbols = [];
-  var nonterms = this.nonterms = {};// { nonterm1: [ruleNo1, ...], ... }
+  if(typeof tokens === 'string')
+    tokens = tokens.split(' ');
+  var symbols = this._grammerSymbols = tokens;
+  var nonterms = this.nonterms = {};
   var rules = this.rules;
 
   for(var sym in bnf) {
     nonterms[sym] = new NonTerminal(sym);
+    if(typeof bnf[sym] === 'string') bnf[sym] = bnf[sym].split(/\s*\|\s*/g);
+    print('bnf=',bnf[sym]);
     bnf[sym].forEach(function (handle){
       if(symbols.indexOf(sym) === -1)
         symbols.push(sym);
@@ -134,7 +145,6 @@ function proccessGrammerDef(grammer){
       nonterms[sym].rules.push(rules.last());
     });
   }
-  [].push.apply(symbols, tokens); // concat tokens
 }
 
 function closureOperation(itemSet /*, closureSet*/){
@@ -407,6 +417,8 @@ function actionTable(itemSets){
   var EOF = this.EOF;
   symbols.shift(); // exclude start symbol
   var that = this;
+  var lookahead = this.type === 'lr' || this.type === 'lalr';
+  var simpleLookahead = this.type === 'slr';
 
   // for each item set
   itemSets.forEach(function(itemSet, k){
@@ -422,17 +434,18 @@ function actionTable(itemSets){
           if(nonterms[stackSymbol]){
             action = gotoState; // store state to go to after a reduce
           } else if(gotoState !== -1) {
-            action = [['s',gotoState]]; // store shift to state
+            action.push(['s',gotoState]); // store shift to state
           } else if(stackSymbol == EOF){
-            action = [['a']]; //accept
+            action.push(['a']); // store shift to state
           }
         }
       if(gotoState)
       log('action table:', itemSets.item(gotoState), action);
         if(!item.currentToken() && !nonterms[stackSymbol]
-          && item.follows.contains(stackSymbol) // LR(1)
-          //&& nonterms[item.rule.sym].follows.indexOf(stackSymbol)!== -1 // SLR
+          && (!lookahead || item.follows.contains(stackSymbol)) // LR(1) LALR
+          && (!simpleLookahead || nonterms[item.rule.sym].follows.contains(stackSymbol)) // SLR
           ){
+          if(action.length) that.conflicts++;
           action.push(['r',that.rules.indexOf(item.rule)]);
           log('reduction:',item);
         }
@@ -488,7 +501,6 @@ function parse(input){
       case 's': // shift
         stack.push(input.shift());
         vstack.push(null); // semantic values or junk only, no terminals
-        //vstack.push(stack[stack.length-1]); // but if we did store terminals...
         stack.push(action[0][1]); // push state
         break;
       case 'r': // reduce
@@ -499,7 +511,7 @@ function parse(input){
           if((r = p.action.call(yyval,null,vstack)) != undefined ){
             return r;
           }
-        } else { 
+        } else {
           yyval.yyval = vstack[vstack.length-len]; // default to $$ = $1
         }
 
@@ -546,4 +558,4 @@ function parse(input){
   };
 })()
 
-// LR0/SLR mode, refactor, Semantic actions, generator
+// refactor, generator, lexer input

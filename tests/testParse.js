@@ -1,20 +1,11 @@
 #!/usr/bin/env narwhal
 
-var JSParse = require("../parse").JSParse;
+var JSParse = require("./setup").JSParse;
+var QUnit = require("./setup").QUnit;
 
-var QUnit = require("qunit").QUnit;
-var test = require("qunit").test;
-var ok = require("qunit").ok;
-var equals = require("qunit").equals;
-
-QUnit.log = function (r, msg){
-  print('  ',r, msg);
-};
-QUnit.done = function (fails, total){
-  print('failures:',fails,', total:', total);
-};
-QUnit.moduleStart = print;
-QUnit.testStart = print;
+var test = QUnit.test;
+var ok = QUnit.ok;
+var equals = QUnit.equals;
 
 QUnit.module("LR parsing", {
   setup: function(){
@@ -105,6 +96,23 @@ test("Semantic action stack lookup", function(){
 
   equals(Parser.parse(['x']), "EX", "return first token");
   equals(Parser.parse(['y','x']), "BYEX", "return first after reduction");
+});
+
+test("Semantic actions on nullable grammer", function(){
+
+  var grammer = {
+    tokens: [ 'x' ],
+    startSymbol: "S",
+    bnf: {
+            "S" :[ ["A", "return $1"] ],
+            "A" :[ ['A x', "$$ = $1+'x'" ],
+                   ['', "$$ = '->'" ] ]
+          }
+  };
+
+  var Parser = new JSParse.Parser(grammer);
+
+  equals(Parser.parse(['x','x']), "->xx", "return first after reduction");
 });
 
 test("LR parse", function(){
