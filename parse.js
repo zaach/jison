@@ -1,4 +1,4 @@
-// LARL(1), LR(1) Parser
+// LR0, SLR, LARL(1), LR(1) Parser
 // Zachary Carter <zcarter@mail.usf.edu> (http://zaa.ch)
 
 load("set.js");
@@ -19,8 +19,7 @@ function Rule(sym, handle, action) {
     var a = action.replace(/\$(?:0|\$)/g, "this.yyval")
                   .replace(/\$(\d)/g, "arguments[1][arguments[1].length-"+l+"+$1-1]");
     this.action = Function("yyval", a);
-  } 
-  //else this.action = function(yyval, stack){yyval = stack[stack.length-l];};
+  }
 }
   Rule.prototype.toString = function(){
     return this.sym+" -> "+this.handle.join(' ');
@@ -65,20 +64,22 @@ function NonTerminal(sym){
 }
 
 // Filter method to use in closure operation
-// declare these functions here for cachability
-var _cfs = {
-  lalr: function(itemSet, closureSet){
-    return itemSet.filter(function (e){
-        var r = closureSet.indexOf(e);
-        // add any additional follows if the item is already in the set
-        if(r != -1) closureSet.item(closureSet.indexOf(e)).follows.joinSet(e.follows);
-        return !(r != -1);
-    });
-  },
-  lr: function(itemSet, closureSet){
-    return closureSet.complement(itemSet);
-  }
+// declared here for cachability
+var _cfs = {};
+
+_cfs.lalr = function(itemSet, closureSet){
+  return itemSet.filter(function (e){
+      var r = closureSet.indexOf(e);
+      // add any additional follows if the item is already in the set
+      if(r != -1) closureSet.item(closureSet.indexOf(e)).follows.joinSet(e.follows);
+      return !(r != -1);
+  });
 };
+
+_cfs.lr = function(itemSet, closureSet){
+  return closureSet.complement(itemSet);
+};
+
 _cfs.slr = _cfs.lr0 = _cfs.lr;
 
 var Parser = function JSParse_Parser(grammer, options){
@@ -99,7 +100,7 @@ var Parser = function JSParse_Parser(grammer, options){
   proccessGrammerDef.call(this, grammer);
 
   if(!this.nonterms[grammer.startSymbol]){
-    throw new Error("Grammer error: startSymbol must be a non-terminal.");
+    throw new Error("Grammer error: startSymbol must be a non-terminal found in your grammer.");
   }
 
   this.startSymbol = grammer.startSymbol;
@@ -148,7 +149,7 @@ function proccessGrammerDef(grammer){
 
 function closureOperation(itemSet /*, closureSet*/){
   var closureSet = arguments[1] || new Set();
-  var that = this;
+  var self = this;
 
   itemSet = this._closureFilter(itemSet, closureSet);
 
@@ -159,11 +160,11 @@ function closureOperation(itemSet /*, closureSet*/){
     var b;
 
     // if token is a non-terminal, recursively add closures
-    if(token && that.nonterms[token]) {
-      b = that.first(item.remainingHandle());
+    if(token && self.nonterms[token]) {
+      b = self.first(item.remainingHandle());
       if(b.isEmpty()) b = item.follows;
-      that.nonterms[token].rules.forEach(function(rule){
-          that.closureOperation(new Set([new that._Item(rule, 0, b)]), closureSet);
+      self.nonterms[token].rules.forEach(function(rule){
+          self.closureOperation(new Set([new self._Item(rule, 0, b)]), closureSet);
       });
     }
   });
@@ -174,10 +175,10 @@ function closureOperation(itemSet /*, closureSet*/){
 function gotoOperation(itemSet, symbol) {
   var gotoSet = new Set();
   var EOF = this.EOF;
-  var that = this;
+  var self = this;
   itemSet.forEach(function (item){
     if(item.currentToken() == symbol && symbol != EOF){
-      gotoSet.push(new that._Item(item.rule, item.dotPosition+1, item.follows));
+      gotoSet.push(new self._Item(item.rule, item.dotPosition+1, item.follows));
     }
   });
 
@@ -190,7 +191,7 @@ function canonicalCollection(){
   var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF))));
   var sets = new Set(items);
   var done = new Set();
-  var that = this;
+  var self = this;
   var itemSet;
 
   while(!sets.isEmpty()){
@@ -199,7 +200,7 @@ function canonicalCollection(){
     // TODO: itemSet could cache the possible next symbols instead of
     // us looping through all
     this._grammerSymbols.forEach(function (sym) {
-      var g = that.gotoOperation(itemSet, sym);
+      var g = self.gotoOperation(itemSet, sym);
       // add g to que if not empty or duplicate
       if(g.size() && !done.contains(g))
         sets.push(g); 
@@ -209,42 +210,10 @@ function canonicalCollection(){
   return done;
 }
 
-
-function test(){
-  log(this.rules.join('\n'));
-  log(this.rules.item(0));
-
-  for(var i in this.nonterms){
-    log(this.nonterms[i].rules);
-  }
-
-  var items = this.closureOperation(new Set([new this._Item(this.rules.item(0), 0)]));
-
-  log(items.join('\n'));
-
-  log(this._grammerSymbols);
-
-  var sets = new Set();
-  sets.push(items);
-  log('Canonical sets');
-  var itemSets = this.canonicalCollection(sets);
-  log(itemSets.join('\n'));
-
-  var table = this.actionTable(itemSets);
-
-  table.forEach(function (state, k){
-    for(var sym in state){
-      log('state['+k+','+sym+'] =',state[sym]);
-    }
-  });
-
-  this.allItems();
-}
-
 function followSets(){
   var rules = this.rules;
   var nonterms = this.nonterms;
-  var that = this;
+  var self = this;
   var cont = true;
 
   // add follow $ to start symbol
@@ -265,12 +234,12 @@ function followSets(){
             set = nonterms[rule.sym].follows
           } else {
             var part = rule.handle.slice(i+1);
-            set = that.first(part);
-            if(that.nullable(part))
+            set = self.first(part);
+            if(self.nullable(part))
               set.concat(nonterms[rule.sym].follows);
           }
           set.forEach(function(e){
-            if(nonterms[t].follows.indexOf(e)===-1){
+            if(!nonterms[t].follows.contains(e)){
               nonterms[t].follows.push(e);
               cont = true;
             }
@@ -310,7 +279,7 @@ function first(symbol){
 function firstSets(){
   var rules = this.rules;
   var nonterms = this.nonterms;
-  var that = this;
+  var self = this;
   var cont = true;
   var sym,firsts;
 
@@ -322,7 +291,7 @@ function firstSets(){
 
     rules.forEach(function(rule, k){
       log(rule, rule.first);
-      var firsts = that.first(rule.handle);
+      var firsts = self.first(rule.handle);
       if(firsts.size() != rule.first.size()) {
         rule.first = firsts;
         cont=true;
@@ -350,7 +319,7 @@ function nullableSets(){
   var rules = this.rules;
   var firsts = this.firsts = {};
   var nonterms = this.nonterms;
-  var that = this;
+  var self = this;
   var cont = true;
 
   log('Nullables');
@@ -364,7 +333,7 @@ function nullableSets(){
       //log(rule, rule.nullable);
       if(!rule.nullable){
         for(var i=0,n=0,t;t=rule.handle[i];++i){
-          if(that.nullable(t)){
+          if(self.nullable(t)){
             n++;
           }
         }
@@ -377,7 +346,7 @@ function nullableSets(){
 
     //check if each symbol is nullable
     for(var sym in nonterms){
-      log(sym, nonterms[sym].nullable);
+      //log(sym, nonterms[sym].nullable);
       if(!this.nullable(sym)){
         for(var i=0,rule;rule=rules.item(nonterms[sym][i]);i++){
           if(rule.nullable)
@@ -415,7 +384,7 @@ function actionTable(itemSets){
   var nonterms = this.nonterms;
   var EOF = this.EOF;
   symbols.shift(); // exclude start symbol
-  var that = this;
+  var self = this;
   var lookahead = this.type === 'lr' || this.type === 'lalr';
   var simpleLookahead = this.type === 'slr';
 
@@ -429,11 +398,11 @@ function actionTable(itemSets){
         //action = [];
         // find shift and goto actions
         if(item.currentToken() == stackSymbol){
-          var gotoState = itemSets.indexOf(that.gotoOperation(itemSet, stackSymbol));
+          var gotoState = itemSets.indexOf(self.gotoOperation(itemSet, stackSymbol));
           if(nonterms[stackSymbol]){
             action = gotoState; // store state to go to after a reduce
           } else if(gotoState !== -1) {
-            if(action.length) that.conflicts++;
+            if(action.length) self.conflicts++;
             action.push(['s',gotoState]); // store shift to state
           } else if(stackSymbol == EOF){
             action.push(['a']); // store shift to state
@@ -445,8 +414,8 @@ function actionTable(itemSets){
           && (!lookahead || item.follows.contains(stackSymbol)) // LR(1) LALR
           && (!simpleLookahead || nonterms[item.rule.sym].follows.contains(stackSymbol)) // SLR
           ){
-          if(action.length) that.conflicts++;
-          action.push(['r',that.rules.indexOf(item.rule)]);
+          if(action.length) self.conflicts++;
+          action.push(['r',self.rules.indexOf(item.rule)]);
           log('reduction:',item);
         }
       });
@@ -458,7 +427,7 @@ function actionTable(itemSets){
 }
 
 function parse(input){
-  var that = this;
+  var self = this;
   input = input.slice(0);
   input.push(this.EOF);
   var stack = [0];
@@ -488,7 +457,7 @@ function parse(input){
     // read action for current state and first input
     action = table[state][sym];
     if(!action || !action.length)
-      throw 'Parse error. stack:'+stack+', input:'+input;
+      throw new Error('Parse error. Unexpected symbol: '+sym+'+.\n stack:'+stack+', input:'+input);
 
     if(action.length > 1)
       log('Warning: multiple actions possible');
@@ -504,7 +473,7 @@ function parse(input){
         stack.push(action[0][1]); // push state
         break;
       case 'r': // reduce
-        p = that.rules.item(action[0][1]);
+        p = self.rules.item(action[0][1]);
         len = p.handle[0] == '' ? 0 : p.handle.length;
         if(p.action){
           log('semantic action:',p.action);
@@ -550,7 +519,6 @@ function parse(input){
     followSets: followSets,
     nullableSets: nullableSets,
     nullable: nullable,
-    test:test
   };
 
   return {
