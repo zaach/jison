@@ -17,8 +17,8 @@ function Rule(sym, handle, action) {
   var l = this.handle.length;
   if(action){
     var a = action.replace(/\$(?:0|\$)/g, "this.yyval")
-                  .replace(/\$(\d)/g, "stack[stack.length-"+l+"+$1-1]");
-    this.action = Function("yyval", "stack", a);
+                  .replace(/\$(\d)/g, "arguments[1][arguments[1].length-"+l+"+$1-1]");
+    this.action = Function("yyval", a);
   } 
   //else this.action = function(yyval, stack){yyval = stack[stack.length-l];};
 }
@@ -133,7 +133,6 @@ function proccessGrammerDef(grammer){
   for(var sym in bnf) {
     nonterms[sym] = new NonTerminal(sym);
     if(typeof bnf[sym] === 'string') bnf[sym] = bnf[sym].split(/\s*\|\s*/g);
-    print('bnf=',bnf[sym]);
     bnf[sym].forEach(function (handle){
       if(symbols.indexOf(sym) === -1)
         symbols.push(sym);
@@ -434,6 +433,7 @@ function actionTable(itemSets){
           if(nonterms[stackSymbol]){
             action = gotoState; // store state to go to after a reduce
           } else if(gotoState !== -1) {
+            if(action.length) that.conflicts++;
             action.push(['s',gotoState]); // store shift to state
           } else if(stackSymbol == EOF){
             action.push(['a']); // store shift to state

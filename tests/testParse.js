@@ -65,18 +65,18 @@ test("Semantic action basic return", function(){
 
   var grammer = {
     tokens: [ "x", "y" ],
-    startSymbol: "pgm",
+    startSymbol: "E",
     bnf: {
-            "pgm" :[ ["E", "return 0"] ],
-            "E"   :[ ["E x", "return 1"],
-                     "y" ]
+            "E"   :[ ["E x", "return 0"],
+                     ["E y", "return 1"],
+                     "" ]
           }
   };
 
   var Parser = new JSParse.Parser(grammer);
 
-  equals(Parser.parse(['y']), 0, "semantic action");
-  equals(Parser.parse(['y','x']), 1, "semantic action");
+  equals(Parser.parse(['x']), 0, "semantic action");
+  equals(Parser.parse(['y']), 1, "semantic action");
 });
 
 test("Semantic action stack lookup", function(){
@@ -105,7 +105,7 @@ test("Semantic actions on nullable grammer", function(){
     startSymbol: "S",
     bnf: {
             "S" :[ ["A", "return $1"] ],
-            "A" :[ ['A x', "$$ = $1+'x'" ],
+            "A" :[ ['x A', "$$ = $2+'x'" ],
                    ['', "$$ = '->'" ] ]
           }
   };
