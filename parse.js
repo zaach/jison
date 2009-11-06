@@ -91,6 +91,8 @@ var Parser = function JSParse_Parser(grammer, options){
   this.terms = {};
   this.rules = new Set();
   this.conflicts = 0;
+    var self = this;
+
   // augment the grammer
   var acceptRule = new Rule('$accept', [grammer.startSymbol, '$end'], null, 0);
   this.rules.push(acceptRule);
@@ -118,15 +120,20 @@ var Parser = function JSParse_Parser(grammer, options){
   this.nonterms["$accept"] = new NonTerminal("$accept");
   this.nonterms["$accept"].rules.push(acceptRule);
 
+  this.terminals = this._grammerSymbols.filter(function(el){ return !self.nonterms[el]; });
+
   if(this.type !== 'lr0'){
     this.nullableSets();
     this.firstSets();
     this.followSets();
   }
 
-  this.itemSets = this.canonicalCollection();
-  this.table = this.actionTable(this.itemSets);
-  this.llTable = this.llParseTable(this.rules);
+  if(this.type === 'll'){
+      this.table = this.llParseTable(this.rules);
+  } else {
+      this.itemSets = this.canonicalCollection();
+      this.table = this.actionTable(this.itemSets);
+  }
 };
 
 function proccessGrammerDef(grammer){
@@ -385,6 +392,14 @@ function nullable(symbol){
     return this.nonterms[symbol].nullable;
 }
 
+function containsArray(a,b){
+    return a.some(function(el){
+        return el.length === b.length && el.every(function(e,i){
+            return b[i] == e;
+        });
+    });
+}
+
 function actionTable(itemSets){
   var states = [];
   var symbols = this._grammerSymbols.slice(0);
@@ -407,12 +422,14 @@ function actionTable(itemSets){
         if(item.currentToken() == stackSymbol){
           var gotoState = itemSets.indexOf(self.gotoOperation(itemSet, stackSymbol));
           if(nonterms[stackSymbol]){
-            action = gotoState; // store state to go to after a reduce
-          } else if(gotoState !== -1) {
+            // store state to go to after a reduce
+            action = gotoState; 
+          } else if(gotoState !== -1 && !containsArray(action, ['s', gotoState]) ) {
+            // store shift to state
             if(action.length) self.conflicts++;
-            action.push(['s',gotoState]); // store shift to state
+            action.push(['s',gotoState]);
           } else if(stackSymbol == EOF){
-            action.push(['a']); // store shift to state
+            action.push(['a']); 
           }
         }
       if(gotoState)
@@ -439,10 +456,12 @@ function llParseTable(rules){
     rules.forEach(function(rule, i){
         var row = table[rule.sym] || {};
         (rule.nullable ? self.nonterms[rule.sym].follows : rule.first).forEach(function(token){
-            if(row[token])
+            if(row[token]){
                 row[token].push(i);
-            else
+                self.conflicts++;
+            } else {
                 row[token] = [i];
+            }
         });
         table[rule.sym] = row;
     });

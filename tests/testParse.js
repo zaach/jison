@@ -75,3 +75,4 @@ test("LR parse", function(){
 
   ok(Parser.parse(["ZERO", "PLUS", "ZERO", "PLUS", "ZERO"]), "parse");
 });
+

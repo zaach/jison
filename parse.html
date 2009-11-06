@@ -17,9 +17,10 @@
 
       function runParser() {
         var cfg = JSON.parse(document.getElementById("source").value);
-        var parser = new JSParse.Parser(cfg);
+        var parser = new JSParse.Parser(cfg, {type: 'll'});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
+        rules(parser);
         llTable(parser);
       }
       function nonterminalInfo(p){
@@ -30,10 +31,42 @@
         }
         document.getElementById("out").value += out.join("\n\n");
       }
+
+      function rules(p){
+        var out = ['<ol start="0">','<li>'];
+        out.push(p.rules.join('</li><li>'));
+        out.push('</li>','</ol>');
+        document.getElementById("rules").innerHTML = out.join("");
+      }
+
       function llTable(p){
-        document.getElementById("out").value += uneval(p.llTable);
+        var out = ['<table border="1">','<tr>'];
+        out.push('<td>','</td>');
+        p.terminals.forEach(function(t){
+          out.push('<td>',t,'</td>');
+        });
+        out.push('</tr>');
+
+        for(var nt in  p.table){
+          out.push('<tr><td>',nt,'</td>');
+          p.terminals.forEach(function(t){
+            if(p.table[nt][t])
+              out.push('<td>',p.table[nt][t].toString(),'</td>');
+            else
+              out.push('<td>&nbsp;</td>');
+          });
+          out.push('</tr>');
+        }
+
+        out.push('</table>');
+        document.getElementById("table").innerHTML = out.join("");
       }
     </script>
+    <style>
+      #table, #rules {
+        display: inline;
+      }
+    </style>
 
   </head>
 
@@ -43,7 +76,7 @@
     <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
     <textarea id="source" rows="20" cols="80">
 {
-    "tokens": [ "ZERO PLUS"],
+    "tokens": "ZERO PLUS",
     "startSymbol": "E",
     "bnf": {
              "E" :[ "E PLUS T",
@@ -56,7 +89,8 @@
     <button onclick="runParser()">Process CFG</button>
     <h2>Output</h2>
     <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
-    <!--<div id="out"></div>-->
+    <div id="rules"></div>
+    <div id="table"></div>
     <p><small><em>By Zach Carter (zcarter@mail.usf.edu)</em></small></p>
   </body>
 </head>

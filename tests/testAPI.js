@@ -6,6 +6,7 @@ var QUnit = require("./setup").QUnit;
 var test = QUnit.test;
 var ok = QUnit.ok;
 var equals = QUnit.equals;
+var same = QUnit.same;
 
 QUnit.module("Test API", {
   setup: function(){
@@ -62,3 +63,18 @@ test("start symbol should be nonterminal", function(){
   }
   ok(thrown, "throws error");
 });
+
+test("Test terminal list", function(){
+
+  var grammer = {
+    tokens: "x y",
+    startSymbol: "A",
+    bnf: {
+            "A" :"A x | A y | "
+          }
+  };
+
+    var Parser = new JSParse.Parser(grammer);
+    same(Parser.terminals, ["$end", "x", "y"]);
+});
+
