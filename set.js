@@ -1,5 +1,89 @@
 // Basic set operations
 
+// For IE/JScript
+if (!Array.prototype.forEach) {
+  Array.prototype.forEach = function(fun /*, thisp*/) {
+    var len = this.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var thisp = arguments[1];
+    for (var i = 0; i < len; i++)
+    {
+      if (i in this)
+        fun.call(thisp, this[i], i, this);
+    }
+  };
+}
+if(!Array.prototype.indexOf){
+  Array.prototype.indexOf = function(obj){
+   for(var i=0; i<this.length; i++){
+    if(this[i]==obj){
+     return i;
+    }
+   }
+   return -1;
+  }
+}
+
+if (!Array.prototype.every) {
+  Array.prototype.every = function(fun /*, thisp*/) {
+    var len = this.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var thisp = arguments[1];
+    for (var i = 0; i < len; i++)
+    {
+      if (i in this &&
+          !fun.call(thisp, this[i], i, this))
+        return false;
+    }
+
+    return true;
+  };
+}
+if (!Array.prototype.some) {
+  Array.prototype.some = function(fun /*, thisp*/) {
+    var i = 0,
+        len = this.length >>> 0;
+
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var thisp = arguments[1];
+    for (; i < len; i++)
+    {
+      if (i in this &&
+          fun.call(thisp, this[i], i, this))
+        return true;
+    }
+
+    return false;
+  };
+}
+if (!Array.prototype.filter) {
+  Array.prototype.filter = function(fun /*, thisp*/) {
+    var len = this.length >>> 0;
+    if (typeof fun != "function")
+      throw new TypeError();
+
+    var res = new Array();
+    var thisp = arguments[1];
+    for (var i = 0; i < len; i++)
+    {
+      if (i in this)
+      {
+        var val = this[i]; // in case fun mutates this
+        if (fun.call(thisp, val, i, this))
+          res.push(val);
+      }
+    }
+
+    return res;
+  };
+}
+
 function Set(set, raw) {
   if(set && set.constructor === Array)
     this._items = set && (raw ? set : set.slice(0)) || [];
@@ -61,9 +145,11 @@ function Set(set, raw) {
     toString : function (){ return this._items.toString(); }
   };
 
-  "push shift forEach some every join".split(' ').forEach(function(e,i){
-    Set.prototype[e] = function(){ return Array.prototype[e].apply(this._items, arguments); };
-  });
-  "filter slice".split(' ').forEach(function(e,i){
-    Set.prototype[e] = function(){ return new Set(Array.prototype[e].apply(this._items, arguments), true); };
-  });
+    "push shift forEach some every join".split(' ').forEach(function(e,i){
+        Set.prototype[e] = function(){ return Array.prototype[e].apply(this._items, arguments); };
+    });
+    "filter slice".split(' ').forEach(function(e,i){
+        Set.prototype[e] = function(){ return new Set(Array.prototype[e].apply(this._items, arguments), true); };
+    });
+
+

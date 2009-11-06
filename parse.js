@@ -1,18 +1,22 @@
 // LR0, SLR, LARL(1), LR(1) Parser
 // Zachary Carter <zcarter@mail.usf.edu> (http://zaa.ch)
+// http://www.gnu.org/licenses/gpl-3.0.html
 
-load("set.js");
+if(typeof load !== 'undefined')
+    load("set.js");
 
-var JSParse = exports.JSParse = (function (){
+var JSParse = (function (){
 
 function log(){
   if(JSParse.DEBUG)
     print.apply(null,arguments);
 }
 
-function Rule(sym, handle, action) {
+function Rule(sym, handle, action, num) {
   this.sym = sym;
   this.handle = handle;
+  this.nullable = false;
+  this.number = num;
   this.first = new Set();
   var l = this.handle.length;
   if(action){
@@ -88,10 +92,11 @@ var Parser = function JSParse_Parser(grammer, options){
   this.rules = new Set();
   this.conflicts = 0;
   // augment the grammer
-  this.rules.push(new Rule('$accept', [grammer.startSymbol, '$end']));
+  var acceptRule = new Rule('$accept', [grammer.startSymbol, '$end'], null, 0);
+  this.rules.push(acceptRule);
 
   this.DEBUG = options.debug || false;
-  this.type = options.type || "lalr";
+  this.type = options.type || "lalr"; // LALR by default
 
   // tweak algorithms based on parser type
   this._closureFilter = _cfs[this.type];
@@ -111,6 +116,7 @@ var Parser = function JSParse_Parser(grammer, options){
   this._grammerSymbols.unshift("$accept");
 
   this.nonterms["$accept"] = new NonTerminal("$accept");
+  this.nonterms["$accept"].rules.push(acceptRule);
 
   if(this.type !== 'lr0'){
     this.nullableSets();
@@ -120,6 +126,7 @@ var Parser = function JSParse_Parser(grammer, options){
 
   this.itemSets = this.canonicalCollection();
   this.table = this.actionTable(this.itemSets);
+  this.llTable = this.llParseTable(this.rules);
 };
 
 function proccessGrammerDef(grammer){
@@ -139,9 +146,9 @@ function proccessGrammerDef(grammer){
         symbols.push(sym);
       if(handle.constructor === Array)
         // semantic action specified
-        rules.push(new Rule(sym, handle[0].split(' '), handle[1]));
+        rules.push(new Rule(sym, handle[0].split(' '), handle[1], rules.length));
       else
-        rules.push(new Rule(sym, handle.split(' ')));
+        rules.push(new Rule(sym, handle.split(' '), null, rules.length));
       nonterms[sym].rules.push(rules.last());
     });
   }
@@ -300,16 +307,16 @@ function firstSets(){
     });
 
     for(sym in nonterms){
-      //log(sym, nonterms[sym].first);
+      log(sym, nonterms[sym].first);
       firsts = new Set();
       nonterms[sym].rules.forEach(function(rule){
-        firsts.concat(rule.first);
+        firsts.joinSet(rule.first);
       });
       if(firsts.size()!=nonterms[sym].first.size()) {
         nonterms[sym].first = firsts;
         cont=true;
       }
-      //log(sym, nonterms[sym].first);
+      log(sym, nonterms[sym].first);
     }
   }
 }
@@ -330,7 +337,7 @@ function nullableSets(){
 
     // check if each rule is nullable
     rules.forEach(function(rule, k){
-      //log(rule, rule.nullable);
+      log(rule, rule.nullable);
       if(!rule.nullable){
         for(var i=0,n=0,t;t=rule.handle[i];++i){
           if(self.nullable(t)){
@@ -341,19 +348,19 @@ function nullableSets(){
           rule.nullable = cont = true;
         }
       }
-      //log(rule, rule.nullable);
+      log(rule, rule.nullable);
     });
 
     //check if each symbol is nullable
     for(var sym in nonterms){
-      //log(sym, nonterms[sym].nullable);
+      log(sym, nonterms[sym].nullable);
       if(!this.nullable(sym)){
-        for(var i=0,rule;rule=rules.item(nonterms[sym][i]);i++){
+        for(var i=0,rule;rule=nonterms[sym].rules.item(i);i++){
           if(rule.nullable)
             nonterms[sym].nullable = cont = true;
         }
       }
-      //log(sym, nonterms[sym].nullable);
+      log(sym, nonterms[sym].nullable);
     }
   }
 }
@@ -375,7 +382,7 @@ function nullable(symbol){
     return false;
   // Non terminal
   else
-    return !!this.nonterms[symbol].nullable;
+    return this.nonterms[symbol].nullable;
 }
 
 function actionTable(itemSets){
@@ -424,6 +431,23 @@ function actionTable(itemSets){
   });
 
   return states;
+}
+
+function llParseTable(rules){
+    var table = {};
+    var self = this;
+    rules.forEach(function(rule, i){
+        var row = table[rule.sym] || {};
+        (rule.nullable ? self.nonterms[rule.sym].follows : rule.first).forEach(function(token){
+            if(row[token])
+                row[token].push(i);
+            else
+                row[token] = [i];
+        });
+        table[rule.sym] = row;
+    });
+
+    return table;
 }
 
 function parse(input){
@@ -513,17 +537,20 @@ function parse(input){
     gotoOperation: gotoOperation,
     canonicalCollection: canonicalCollection,
     actionTable: actionTable,
+    llParseTable: llParseTable,
     parse: parse,
     first: first,
     firstSets: firstSets,
     followSets: followSets,
     nullableSets: nullableSets,
-    nullable: nullable,
+    nullable: nullable
   };
 
   return {
-    Parser: Parser,
+    Parser: Parser
   };
 })()
 
-// refactor, generator, lexer input
+if(typeof exports !== 'undefined')
+    exports.JSParse = JSParse;
+// refactor, generator, lexer input, precedence rules

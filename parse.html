@@ -1,0 +1,62 @@
+<html>
+  <head>
+    <title>JS Parser</title>
+    
+    <script>
+      if(typeof console === 'undefined'){
+      console = {};
+      console.log = function(str){document.getElementById('out').value+=str;};
+    }
+    </script>
+    <script src="http://www.json.org/json2.js"></script>
+    <script src="jslex.js"></script>
+    <script src="set.js"></script>
+    <script src="parse.js"></script>
+    <script>
+      // var scanner = JSLex.lex(djLex);
+
+      function runParser() {
+        var cfg = JSON.parse(document.getElementById("source").value);
+        var parser = new JSParse.Parser(cfg);
+        document.getElementById("out").value = '';
+        nonterminalInfo(parser);
+        llTable(parser);
+      }
+      function nonterminalInfo(p){
+        var out = ["Non-terminals"];
+        for(var nt in p.nonterms){
+          out.push(nt+"\n\tnullable: "+(p.nonterms[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterms[nt].first+"\n\tfollows: "+p.nonterms[nt].follows);
+          out.push("\t"+p.nonterms[nt].rules.join("\n\t"));
+        }
+        document.getElementById("out").value += out.join("\n\n");
+      }
+      function llTable(p){
+        document.getElementById("out").value += uneval(p.llTable);
+      }
+    </script>
+
+  </head>
+
+  <body>
+    <h1>Parse</h1>
+    <p>Sneek peek edition. No interface for parsing programs yet.</p>
+    <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
+    <textarea id="source" rows="20" cols="80">
+{
+    "tokens": [ "ZERO PLUS"],
+    "startSymbol": "E",
+    "bnf": {
+             "E" :[ "E PLUS T",
+                    "T"
+                  ],
+             "T" :[ "ZERO" ]
+           }
+}
+    </textarea><br/>
+    <button onclick="runParser()">Process CFG</button>
+    <h2>Output</h2>
+    <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
+    <!--<div id="out"></div>-->
+    <p><small><em>By Zach Carter (zcarter@mail.usf.edu)</em></small></p>
+  </body>
+</head>
