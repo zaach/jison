@@ -135,19 +135,20 @@ var Parser = function JSParse_Parser(grammer, options){
       this.table = this.llParseTable(this.rules);
   } else {
       this.itemSets = this.canonicalCollection();
-      this.table = this.actionTable(this.itemSets);
+      this.table = this.parseTable(this.itemSets);
   }
 };
 
 function proccessGrammerDef(grammer){
-  var bnf = grammer.bnf;
-  var tokens = grammer.tokens;
-  var operators = this.operators;
+    var bnf = grammer.bnf,
+        tokens = grammer.tokens,
+        operators = this.operators,
+        nonterms = this.nonterms = {},
+        rules = this.rules;
+
   if(typeof tokens === 'string')
     tokens = tokens.split(' ');
   var symbols = this._grammerSymbols = tokens;
-  var nonterms = this.nonterms = {};
-  var rules = this.rules;
 
     // set precedence and associativity of operators
     if(grammer.operators){
@@ -184,74 +185,12 @@ function proccessGrammerDef(grammer){
   }
 }
 
-function closureOperation(itemSet /*, closureSet*/){
-  var closureSet = arguments[1] || new Set();
-  var self = this;
-
-  itemSet = this._closureFilter(itemSet, closureSet);
-
-  closureSet.concat(itemSet);
-
-  itemSet.forEach(function (item){
-    var token = item.currentToken();
-    var b;
-
-    // if token is a non-terminal, recursively add closures
-    if(token && self.nonterms[token]) {
-      b = self.first(item.remainingHandle());
-      if(b.isEmpty()) b = item.follows;
-      self.nonterms[token].rules.forEach(function(rule){
-          self.closureOperation(new Set([new self._Item(rule, 0, b)]), closureSet);
-      });
-    }
-  });
-
-  return closureSet;
-}
-
-function gotoOperation(itemSet, symbol) {
-  var gotoSet = new Set();
-  var EOF = this.EOF;
-  var self = this;
-  itemSet.forEach(function (item){
-    if(item.currentToken() == symbol && symbol != EOF){
-      gotoSet.push(new self._Item(item.rule, item.dotPosition+1, item.follows));
-    }
-  });
-
-  return this.closureOperation(gotoSet);
-}
-
-/* Create unique set of item sets
- * */
-function canonicalCollection(){
-  var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF))));
-  var sets = new Set(items);
-  var done = new Set();
-  var self = this;
-  var itemSet;
-
-  while(!sets.isEmpty()){
-    itemSet = sets.shift();
-    done.push(itemSet);
-    // TODO: itemSet could cache the possible next symbols instead of
-    // us looping through all
-    this._grammerSymbols.forEach(function (sym) {
-      var g = self.gotoOperation(itemSet, sym);
-      // add g to que if not empty or duplicate
-      if(g.size() && !done.contains(g))
-        sets.push(g); 
-    });
-  }
-
-  return done;
-}
 
 function followSets(){
-  var rules = this.rules;
-  var nonterms = this.nonterms;
-  var self = this;
-  var cont = true;
+  var rules = this.rules,
+    nonterms = this.nonterms,
+    self = this,
+    cont = true;
 
   // add follow $ to start symbol
   nonterms[this.startSymbol].follows.push(this.EOF);
@@ -416,6 +355,73 @@ function nullable(symbol){
     }
 }
 
+
+function closureOperation(itemSet /*, closureSet*/){
+  var closureSet = arguments[1] || new Set();
+  var self = this;
+
+  itemSet = this._closureFilter(itemSet, closureSet);
+
+  closureSet.concat(itemSet);
+
+  itemSet.forEach(function (item){
+    var token = item.currentToken();
+    var b;
+
+    // if token is a non-terminal, recursively add closures
+    if(token && self.nonterms[token]) {
+      b = self.first(item.remainingHandle());
+      if(b.isEmpty()) b = item.follows;
+      self.nonterms[token].rules.forEach(function(rule){
+          self.closureOperation(new Set([new self._Item(rule, 0, b)]), closureSet);
+      });
+    }
+  });
+
+  return closureSet;
+}
+
+function gotoOperation(itemSet, symbol) {
+  var gotoSet = new Set();
+  var EOF = this.EOF;
+  var self = this;
+  itemSet.forEach(function (item){
+    if(item.currentToken() == symbol && symbol != EOF){
+      gotoSet.push(new self._Item(item.rule, item.dotPosition+1, item.follows));
+    }
+  });
+
+  return this.closureOperation(gotoSet);
+}
+
+/* Create unique set of item sets
+ * */
+function canonicalCollection(){
+  var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF))));
+  var sets = new Set(items);
+  var done = new Set();
+  var self = this;
+  var itemSet;
+
+  while(!sets.isEmpty()){
+    itemSet = sets.shift();
+    itemSet._goto = {}; // used to optmize trans. later
+    done.push(itemSet);
+    // TODO: itemSet could cache the possible next symbols instead of
+    // us looping through all
+    this._grammerSymbols.forEach(function (sym) {
+      var g = self.gotoOperation(itemSet, sym);
+      // add g to que if not empty or duplicate
+      if(g.size() && !done.contains(g)){
+          itemSet._goto[sym] = g;
+        sets.push(g); 
+        }
+    });
+  }
+
+  return done;
+}
+
 // a is an array that conatins a 2nd order array b
 function hasArray(a,b){
     return a.some(function(el){
@@ -434,16 +440,16 @@ function hasArrayMixed(a,b){
     });
 }
 
-function actionTable(itemSets){
-  var states = [];
-  var symbols = this._grammerSymbols.slice(0);
-  var nonterms = this.nonterms;
-  var operators = this.operators;
-  var EOF = this.EOF;
+function parseTable(itemSets){
+  var states = [],
+      symbols = this._grammerSymbols.slice(0),
+      nonterms = this.nonterms,
+      operators = this.operators,
+      self = this,
+      lookahead = this.type === 'lr' || this.type === 'lalr',
+      simpleLookahead = this.type === 'slr';
+
   symbols.shift(); // exclude start symbol
-  var self = this;
-  var lookahead = this.type === 'lr' || this.type === 'lalr';
-  var simpleLookahead = this.type === 'slr';
 
   // for each item set
   itemSets.forEach(function(itemSet, k){
@@ -456,11 +462,12 @@ function actionTable(itemSets){
           var r;
         // find shift and goto actions
         if(item.currentToken() == stackSymbol){
+            // TODO cache the transition information
           var gotoState = itemSets.indexOf(self.gotoOperation(itemSet, stackSymbol));
           if(nonterms[stackSymbol]){
             // store state to go to after a reduce
             action = gotoState; 
-          } else if(gotoState !== -1 && !containsArray(action, ['s', gotoState]) ) {
+          } else if(gotoState !== -1 && !hasArray(action, ['s', gotoState]) ) {
             // store shift to state
             if(action.length){
                 self.conflicts++;
@@ -469,7 +476,7 @@ function actionTable(itemSets){
                 action = [r.action];
             } else
                 action.push(['s',gotoState]);
-          } else if(stackSymbol == EOF){
+          } else if(stackSymbol == self.EOF){
             action.push(['a']); 
           }
         }
@@ -482,7 +489,6 @@ function actionTable(itemSets){
             self.conflicts++;
             r = resolveConflict(item.rule, op, ['r',item.rule.id], action[0]);
             self.resolutions.push([k,stackSymbol,r]);
-            print(stackSymbol);
             action = [r.action];
           } else 
               action.push(['r',item.rule.id]);
@@ -498,36 +504,39 @@ function actionTable(itemSets){
 
 function resolveConflict(rule, op, reduce, shift){
     var sln = {rule: rule, operator: op, r: reduce, s: shift};
-    if(shift[0] === 'r')
-        throw 'Reduce-reduce conflict!';
+
+    if(shift[0] === 'r'){
+        sln.msg = "Resolve R/R conflict (use first rule declared in grammer.)";
+        sln.action = shift[1] < reduce[1] ? shift : reduce;
+        return sln;
+    }
 
     if(rule.precedence === 0 || !op){
-        sln.msg = "Resolve conflict (shift by default.)";
+        sln.msg = "Resolve S/R conflict (shift by default.)";
         sln.action = shift;
     } else if(rule.precedence < op.precedence ) {
-        sln.msg = "Resolve conflict (shift for higher precedent operator.)";
+        sln.msg = "Resolve S/R conflict (shift for higher precedent operator.)";
         sln.action = shift;
     } else if(rule.precedence === op.precedence) {
         if(op.assoc === "right" ) {
-            sln.msg = "Resolve conflict (shift for right associative operator.)";
+            sln.msg = "Resolve S/R conflict (shift for right associative operator.)";
             sln.action = shift;
         } else if(op.assoc === "left" ){
-            sln.msg = "Resolve conflict (reduce for left associative operator.)";
+            sln.msg = "Resolve S/R conflict (reduce for left associative operator.)";
             sln.action = reduce;
         }
     } else {
         sln.msg = "Resolve conflict (reduce for higher precedent rule.)";
         sln.action = reduce;
     }
-    print(sln.msg);
-    print(rule, rule.precedence, '|', op.precedence);
+    log(sln.msg);
 
     return sln;
 }
 
 function llParseTable(rules){
-    var table = {};
-    var self = this;
+    var table = {},
+        self = this;
     rules.forEach(function(rule, i){
         var row = table[rule.sym] || {};
         (rule.nullable ? self.nonterms[rule.sym].follows : rule.first).forEach(function(token){
@@ -630,7 +639,7 @@ function parse(input){
     closureOperation: closureOperation,
     gotoOperation: gotoOperation,
     canonicalCollection: canonicalCollection,
-    actionTable: actionTable,
+    parseTable: parseTable,
     llParseTable: llParseTable,
     parse: parse,
     first: first,
