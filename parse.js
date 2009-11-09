@@ -12,12 +12,13 @@ function log(){
     print.apply(null,arguments);
 }
 
-function Rule(sym, handle, action, num) {
+function Rule(sym, handle, action, id) {
   this.sym = sym;
   this.handle = handle;
   this.nullable = false;
-  this.number = num;
+  this.id = id;
   this.first = new Set();
+  this.precedence = 0;
   var l = this.handle.length;
   if(action){
     var a = action.replace(/\$(?:0|\$)/g, "this.yyval")
@@ -89,8 +90,10 @@ _cfs.slr = _cfs.lr0 = _cfs.lr;
 var Parser = function JSParse_Parser(grammer, options){
   var options = options || {};
   this.terms = {};
+  this.operators = {};
   this.rules = new Set();
   this.conflicts = 0;
+  this.resolutions = [];
     var self = this;
 
   // augment the grammer
@@ -139,24 +142,44 @@ var Parser = function JSParse_Parser(grammer, options){
 function proccessGrammerDef(grammer){
   var bnf = grammer.bnf;
   var tokens = grammer.tokens;
+  var operators = this.operators;
   if(typeof tokens === 'string')
     tokens = tokens.split(' ');
   var symbols = this._grammerSymbols = tokens;
   var nonterms = this.nonterms = {};
   var rules = this.rules;
 
+    // set precedence and associativity of operators
+    if(grammer.operators){
+        for(var i=0,k,prec;prec=grammer.operators[i]; i++){
+            for(k=1;k < prec.length;k++)
+                operators[prec[k]] = {precedence: i+1, assoc: prec[0]};
+        }
+    }
+
   for(var sym in bnf) {
     nonterms[sym] = new NonTerminal(sym);
     if(typeof bnf[sym] === 'string') bnf[sym] = bnf[sym].split(/\s*\|\s*/g);
     bnf[sym].forEach(function (handle){
-      if(symbols.indexOf(sym) === -1)
-        symbols.push(sym);
-      if(handle.constructor === Array)
-        // semantic action specified
-        rules.push(new Rule(sym, handle[0].split(' '), handle[1], rules.length));
-      else
-        rules.push(new Rule(sym, handle.split(' '), null, rules.length));
-      nonterms[sym].rules.push(rules.last());
+        var r;
+        if(symbols.indexOf(sym) === -1){
+            symbols.push(sym);
+        }
+        if(handle.constructor === Array){
+            // semantic action specified
+            r = new Rule(sym, handle[0].split(' '), handle[1], rules.size());
+        } else {
+            r = new Rule(sym, handle.split(' '), null, rules.size());
+        }
+        // set precedence
+        for(var i=r.handle.length-1;i>=0;i--){
+            if(!(r.handle[i] in nonterms) && r.handle[i] in operators){
+                r.precedence = operators[r.handle[i]].precedence;
+            }
+        }
+
+        rules.push(r);
+        nonterms[sym].rules.push(r);
     });
   }
 }
@@ -375,27 +398,38 @@ function nullableSets(){
 // check if a token or series of tokens is nullable
 function nullable(symbol){
   // epsilon
-  if(symbol === '')
+  if(symbol === '') {
     return true
   // RHS
-  else if(Object.prototype.toString.apply(symbol) === '[object Array]'){
+  } else if(Object.prototype.toString.apply(symbol) === '[object Array]'){
     for(var i=0,t;t=symbol[i];++i){
       if(!this.nullable(t))
         return false;
     }
     return true;
   // terminal
-  } else if(!this.nonterms[symbol])
+  } else if(!this.nonterms[symbol]) {
     return false;
   // Non terminal
-  else
-    return this.nonterms[symbol].nullable;
+    } else {
+        return this.nonterms[symbol].nullable;
+    }
 }
 
-function containsArray(a,b){
+// a is an array that conatins a 2nd order array b
+function hasArray(a,b){
     return a.some(function(el){
         return el.length === b.length && el.every(function(e,i){
             return b[i] == e;
+        });
+    });
+}
+
+// a is an array that conatins a 2nd order array with elements of b
+function hasArrayMixed(a,b){
+    return a.some(function(el){
+        return el.length === b.length && el.every(function(e,i){
+            return b.indexOf(e) !== -1;
         });
     });
 }
@@ -404,6 +438,7 @@ function actionTable(itemSets){
   var states = [];
   var symbols = this._grammerSymbols.slice(0);
   var nonterms = this.nonterms;
+  var operators = this.operators;
   var EOF = this.EOF;
   symbols.shift(); // exclude start symbol
   var self = this;
@@ -416,8 +451,9 @@ function actionTable(itemSets){
     // if contains a set where symbol is in front
     symbols.forEach(function (stackSymbol) {
       var action = [];
+      var op = operators[stackSymbol];
       itemSet.forEach(function(item, j){
-        //action = [];
+          var r;
         // find shift and goto actions
         if(item.currentToken() == stackSymbol){
           var gotoState = itemSets.indexOf(self.gotoOperation(itemSet, stackSymbol));
@@ -426,20 +462,30 @@ function actionTable(itemSets){
             action = gotoState; 
           } else if(gotoState !== -1 && !containsArray(action, ['s', gotoState]) ) {
             // store shift to state
-            if(action.length) self.conflicts++;
-            action.push(['s',gotoState]);
+            if(action.length){
+                self.conflicts++;
+                r = resolveConflict(self.rules.item(action[0][1]), op, action[0], ['s', gotoState]);
+                self.resolutions.push([k,stackSymbol,r]);
+                action = [r.action];
+            } else
+                action.push(['s',gotoState]);
           } else if(stackSymbol == EOF){
             action.push(['a']); 
           }
         }
-      if(gotoState)
-      log('action table:', itemSets.item(gotoState), action);
+        // Current position is at the end of a production, try to reduce
         if(!item.currentToken() && !nonterms[stackSymbol]
           && (!lookahead || item.follows.contains(stackSymbol)) // LR(1) LALR
           && (!simpleLookahead || nonterms[item.rule.sym].follows.contains(stackSymbol)) // SLR
           ){
-          if(action.length) self.conflicts++;
-          action.push(['r',self.rules.indexOf(item.rule)]);
+          if(action.length){
+            self.conflicts++;
+            r = resolveConflict(item.rule, op, ['r',item.rule.id], action[0]);
+            self.resolutions.push([k,stackSymbol,r]);
+            print(stackSymbol);
+            action = [r.action];
+          } else 
+              action.push(['r',item.rule.id]);
           log('reduction:',item);
         }
       });
@@ -448,6 +494,35 @@ function actionTable(itemSets){
   });
 
   return states;
+}
+
+function resolveConflict(rule, op, reduce, shift){
+    var sln = {rule: rule, operator: op, r: reduce, s: shift};
+    if(shift[0] === 'r')
+        throw 'Reduce-reduce conflict!';
+
+    if(rule.precedence === 0 || !op){
+        sln.msg = "Resolve conflict (shift by default.)";
+        sln.action = shift;
+    } else if(rule.precedence < op.precedence ) {
+        sln.msg = "Resolve conflict (shift for higher precedent operator.)";
+        sln.action = shift;
+    } else if(rule.precedence === op.precedence) {
+        if(op.assoc === "right" ) {
+            sln.msg = "Resolve conflict (shift for right associative operator.)";
+            sln.action = shift;
+        } else if(op.assoc === "left" ){
+            sln.msg = "Resolve conflict (reduce for left associative operator.)";
+            sln.action = reduce;
+        }
+    } else {
+        sln.msg = "Resolve conflict (reduce for higher precedent rule.)";
+        sln.action = reduce;
+    }
+    print(sln.msg);
+    print(rule, rule.precedence, '|', op.precedence);
+
+    return sln;
 }
 
 function llParseTable(rules){
@@ -493,7 +568,7 @@ function parse(input){
   var sym, output, state, action, a, r, yyval={},p,len;
   while(input){
     log('stack:',stack, '\n\t\t\tinput:', input);
-    log('vstack:',vstack);
+    log('vstack:',uneval(vstack));
     // set first input
     sym = input[0]; 
     state = stack[stack.length-1];
@@ -572,4 +647,4 @@ function parse(input){
 
 if(typeof exports !== 'undefined')
     exports.JSParse = JSParse;
-// refactor, generator, lexer input, precedence rules
+// refactor, generator, lexer input, nonassoc precedence, context-precedence

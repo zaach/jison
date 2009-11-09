@@ -90,3 +90,21 @@ test("Build AST", function(){
   same(r, expectedAST);
 });
 
+test("0+0 grammer", function(){
+
+  var grammer = {
+    tokens: [ "ZERO", "PLUS", "EOF"],
+    startSymbol: "S",
+    bnf: {
+            "S" :[ [ "E EOF",    "return $1" ]],
+            "E" :[ [ "E PLUS T", "$$ = ['+',$1,$3]"  ],
+                   [ "T",        "$$ = $1" ]  ],
+            "T" :[ [ "ZERO",     "$$ = [0]" ] ]
+          }
+  };
+
+  var Parser = new JSParse.Parser(grammer);
+  var expectedAST = ["+", ["+", [0], [0]], [0]];
+
+  same(Parser.parse(["ZERO", "PLUS", "ZERO", "PLUS", "ZERO", "EOF"]), expectedAST);
+});
