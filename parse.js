@@ -253,11 +253,11 @@ function first(symbol){
 
 // fixed-point calculation of FIRST sets
 function firstSets(){
-  var rules = this.rules;
-  var nonterms = this.nonterms;
-  var self = this;
-  var cont = true;
-  var sym,firsts;
+    var rules = this.rules,
+        nonterms = this.nonterms,
+        self = this,
+        cont = true,
+        sym,firsts;
 
   log('First sets');
 
@@ -292,11 +292,10 @@ function firstSets(){
 
 // fixed-point calculation of NULLABLE
 function nullableSets(){
-  var rules = this.rules;
-  var firsts = this.firsts = {};
-  var nonterms = this.nonterms;
-  var self = this;
-  var cont = true;
+    var firsts = this.firsts = {},
+        nonterms = this.nonterms,
+        self = this,
+        cont = true;
 
   log('Nullables');
 
@@ -305,7 +304,7 @@ function nullableSets(){
     cont = false;
 
     // check if each rule is nullable
-    rules.forEach(function(rule, k){
+    this.rules.forEach(function(rule, k){
       log(rule, rule.nullable);
       if(!rule.nullable){
         for(var i=0,n=0,t;t=rule.handle[i];++i){
@@ -382,26 +381,26 @@ function closureOperation(itemSet /*, closureSet*/){
 }
 
 function gotoOperation(itemSet, symbol) {
-  var gotoSet = new Set();
-  var EOF = this.EOF;
-  var self = this;
+    var gotoSet = new Set(),
+        EOF = this.EOF,
+        self = this;
   itemSet.forEach(function (item){
     if(item.currentToken() == symbol && symbol != EOF){
       gotoSet.push(new self._Item(item.rule, item.dotPosition+1, item.follows));
     }
   });
 
-  return this.closureOperation(gotoSet);
+  return gotoSet.isEmpty() ? gotoSet : this.closureOperation(gotoSet);
 }
 
 /* Create unique set of item sets
  * */
 function canonicalCollection(){
-  var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF))));
-  var sets = new Set(items);
-  var done = new Set();
-  var self = this;
-  var itemSet;
+    var items = this.closureOperation(new Set(new this._Item(this.rules.first(), 0, new Set(this.EOF)))),
+        sets = new Set(items),
+        done = new Set(),
+        self = this,
+        itemSet;
 
   while(!sets.isEmpty()){
     itemSet = sets.shift();
@@ -412,9 +411,10 @@ function canonicalCollection(){
     this._grammerSymbols.forEach(function (sym) {
       var g = self.gotoOperation(itemSet, sym);
       // add g to que if not empty or duplicate
-      if(g.size() && !done.contains(g)){
+      if(!g.isEmpty()){
           itemSet._goto[sym] = g;
-        sets.push(g); 
+          if(!done.contains(g))
+            sets.push(g); 
         }
     });
   }
@@ -462,8 +462,7 @@ function parseTable(itemSets){
           var r;
         // find shift and goto actions
         if(item.currentToken() == stackSymbol){
-            // TODO cache the transition information
-          var gotoState = itemSets.indexOf(self.gotoOperation(itemSet, stackSymbol));
+          var gotoState = itemSets.indexOf(itemSet._goto[stackSymbol]);
           if(nonterms[stackSymbol]){
             // store state to go to after a reduce
             action = gotoState; 
@@ -524,6 +523,9 @@ function resolveConflict(rule, op, reduce, shift){
         } else if(op.assoc === "left" ){
             sln.msg = "Resolve S/R conflict (reduce for left associative operator.)";
             sln.action = reduce;
+        } else if(op.assoc === "nonassoc" ){
+            sln.msg = "Resolve S/R conflict (no action for non-associative operator.)";
+            sln.action = null;
         }
     } else {
         sln.msg = "Resolve conflict (reduce for higher precedent rule.)";
@@ -555,8 +557,6 @@ function llParseTable(rules){
 
 function parse(input){
   var self = this;
-  input = input.slice(0);
-  input.push(this.EOF);
   var stack = [0];
   var vstack = [null]; // semantic value stack
 
@@ -574,28 +574,29 @@ function parse(input){
   });
 
 
-  var sym, output, state, action, a, r, yyval={},p,len;
-  while(input){
+  var sym, state, action, a, r, yyval={},p,len,ip=0;
+    sym = input[ip] || this.EOF; 
+  while(true){
     log('stack:',stack, '\n\t\t\tinput:', input);
     log('vstack:',uneval(vstack));
     // set first input
-    sym = input[0]; 
     state = stack[stack.length-1];
     // read action for current state and first input
     action = table[state][sym];
-    if(!action || !action.length)
-      throw new Error('Parse error. Unexpected symbol: '+sym+'+.\n stack:'+stack+', input:'+input);
+    if(!action || !action[0])
+      throw new Error('Parse error. Unexpected symbol: '+sym+"+.\n stack:"+stack+', input:'+input);
 
     if(action.length > 1)
       log('Warning: multiple actions possible');
 
     log('action:',action);
 
-    a = action[0]; // TODO: precedence rules for multiple actions
+    a = action[0]; 
 
     switch(a[0]){
       case 's': // shift
-        stack.push(input.shift());
+        stack.push(sym);
+        sym = input[++ip] || this.EOF; 
         vstack.push(null); // semantic values or junk only, no terminals
         stack.push(action[0][1]); // push state
         break;
@@ -656,4 +657,4 @@ function parse(input){
 
 if(typeof exports !== 'undefined')
     exports.JSParse = JSParse;
-// refactor, generator, lexer input, nonassoc precedence, context-precedence
+// refactor, generator, lexer input, context-precedence

@@ -102,7 +102,7 @@ function Set(set, raw) {
             return this.size() === set.size() && this.subset(set); 
           },
     indexOf : function (item){
-            if(item.eq) {
+            if(item && item.eq) {
               for(var k=0; k<this._items.length;k++)
                 if(item.eq(this._items[k]))
                   return k;

@@ -62,3 +62,13 @@ function scanned(token, yytext) {
     default: print(token); return Token(token);
   }
 }
+
+load('jslex.js');
+
+var input = "  // hihi \n main { var forever; var boo = stuf(788); var mainer; } ";
+//var input = "main for ";
+var lexer = new JSLex.RegExpLexer(djLex, input);
+
+while(lexer.next() != '');
+
+//JSLex.lex(djLex, input);

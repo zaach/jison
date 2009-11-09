@@ -104,3 +104,30 @@ test("Multiple precedence operators", function(){
   var r = Parser.parse(['x','+','x','*','x','EOF']);
   same(r, expectedAST);
 });
+
+test("Non-associative operator", function(){
+
+  var grammer = {
+    tokens: [ "x", "=", "EOF" ],
+    startSymbol: "S",
+    operators: [
+                ["nonassoc", "="]
+                ],
+    bnf: {
+            "S" :[ "E EOF" ],
+            "E" :[ "E = E",
+                   "x" ]
+          }
+  };
+
+  var Parser = new JSParse.Parser(grammer);
+
+  var thrown = false;
+  try{
+      Parser.parse(['x','=','x','=','x','EOF']);
+  }catch(e){
+    thrown = true;
+  }
+  ok(thrown, "throws parse error when operator used twice.");
+  ok(Parser.parse(['x','=','x','EOF']), "normal use is okay.");
+});

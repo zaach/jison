@@ -1,4 +1,5 @@
 var JSParse = exports.JSParse = require("../parse").JSParse;
+var JSLex = exports.JSLex = require("../parse").JSLex;
 
 var QUnit = exports.QUnit = require("qunit").QUnit;
 

@@ -36,9 +36,6 @@ function lex(dict, input) {
       match = input.match(rules[i][0]);
       if(match) {
         token = rules[i][1].call({yytext: match[0]});
-        //print("\nindex: "+match.index);
-        //print("match: "+match[0]);
-        //print("token: "+token);
         input = input.slice(match[0].length);
         if(token)
           tokens.push([token, match[0]]);
@@ -52,29 +49,67 @@ function lex(dict, input) {
   return tokens;
 }
 
-var Lexer = function (dict, input) {
+var RegExpLexer = function (dict, input) {
   dict = dict || {};
-  this.rules = dict.rules;
+  this.rules = prepareRules(dict.rules, dict.macros);
   this.input = input || dict.input;
-  this.macros = dict.macros;
 
   return this;
 };
 
-Lexer.prototype = {
-  lex: function (dict, input) {
-         dict = dict || {rules: this.rules, macros:this.macros};
+RegExpLexer.prototype = {
+    chars: 0,
+    tokens: 0,
+    done: false,
+    yytext: '',
+    yylineno: 0,
+    lex: function (input) {
          return lex.call(this,
-             rules || this.rules,
+             this.rules,
              input || this.input);
        }
 };
 
+// return next match in input
+RegExpLexer.prototype.next = function(){
+    if(this.done) return '';
+    if(!this.input) this.done = true;
+
+    var token,
+        match;
+    var chars = this.chars;
+    this.yytext = '';
+    for(i=0;i < this.rules.length; i++) {
+      match = this.input.match(this.rules[i][0]);
+      if(match) {
+          this.yytext = match[0];
+        if(this.rules[i][1])
+            token = this.rules[i][1].call(this);
+        this.chars += match[0].length;
+        this.input = this.input.slice(match[0].length);
+        if(token)
+            return token;
+        else return;
+      }
+    }
+};
+
+// return next match that has a token
+RegExpLexer.prototype.nextToken = function(){
+    var r;
+    if((r = this.next()) != 'undefined')
+        return r;
+    else
+        return this.nextToken();
+}
+
 return {
     lex: lex,
-    Lexer: Lexer,
+    RegExpLexer: RegExpLexer,
     EOF: $EOF
   };
 
 })()
 
+if(typeof exports !== 'undefined')
+    exports.JSLex = JSLex;
