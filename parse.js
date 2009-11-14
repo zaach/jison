@@ -2,8 +2,12 @@
 // Zachary Carter <zcarter@mail.usf.edu> (http://zaa.ch)
 // http://www.gnu.org/licenses/gpl-3.0.html
 
-if(typeof load !== 'undefined')
+if(typeof load !== 'undefined'){
     load("set.js");
+    //load("jslex.js");
+}
+
+var JSLex = require('./jslex.js').JSLex;
 
 var JSParse = (function (){
 
@@ -100,6 +104,7 @@ var Parser = function JSParse_Parser(grammer, options){
   this.rules = new Set();
   this.conflicts = 0;
   this.resolutions = [];
+  this.lexData = grammer.lexer || {};
     var self = this;
 
   // augment the grammer
@@ -179,8 +184,6 @@ function proccessGrammerDef(grammer){
                 // precedence specified also
                 if(handle[2]){
                     r.precedence = operators[handle[2].prec].precedence;
-                    r.precedence = operators[handle[2].prec].precedence;
-                    print(handle[2].prec, operators[handle[2].prec].precedence);
                 }
             } else {
                 // only precedence specified
@@ -575,6 +578,12 @@ function llParseTable(rules){
     return table;
 }
 
+var lex = function lex_func(){
+    var token;
+    token = this.lexer.nextToken();
+    return token || this.EOF;
+};
+
 function parse(input){
   var self = this;
   var stack = [0];
@@ -585,6 +594,8 @@ function parse(input){
 
   var table = this.table;
 
+  this.lexer = new JSLex.ArrayLexer(this.lexData, input);
+
   log(this.itemSets.join('\n'));
 
   table.forEach(function (state, k){
@@ -593,9 +604,8 @@ function parse(input){
     }
   });
 
-
   var sym, state, action, a, r, yyval={},p,len,ip=0;
-    sym = input[ip] || this.EOF; 
+    sym = this.lex(); 
   while(true){
     log('stack:',stack, '\n\t\t\tinput:', input);
     log('vstack:',uneval(vstack));
@@ -604,7 +614,7 @@ function parse(input){
     // read action for current state and first input
     action = table[state][sym];
     if(!action || !action[0])
-      throw new Error('Parse error. Unexpected symbol: '+sym+"+.\n stack:"+stack+', input:'+input);
+      throw new Error('Parse error. Unexpected symbol: '+sym+"+.\n stack:"+stack+', input:'+this.lexer.input);
 
     if(action.length > 1)
       log('Warning: multiple actions possible');
@@ -615,8 +625,8 @@ function parse(input){
 
     switch(a[0]){
       case 's': // shift
-        stack.push(sym);
-        sym = input[++ip] || this.EOF; 
+        stack.push(sym);++ip;
+        sym = this.lex(); 
         vstack.push(null); // semantic values or junk only, no terminals
         stack.push(action[0][1]); // push state
         break;
@@ -645,7 +655,7 @@ function parse(input){
         log('reduced by: ',p);
         break;
       case 'a':
-        log('stack:',stack, '\n\tinput:', input);
+        log('stack:',stack, '\n\tinput:', this.lexer.input);
         log('vstack:',vstack);
         return true;
     }
@@ -664,6 +674,7 @@ function parse(input){
     llParseTable: llParseTable,
     parse: parse,
     first: first,
+    lex: lex,
     firstSets: firstSets,
     followSets: followSets,
     nullableSets: nullableSets,
