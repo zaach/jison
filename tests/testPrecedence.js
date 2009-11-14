@@ -131,3 +131,30 @@ test("Non-associative operator", function(){
   ok(thrown, "throws parse error when operator used twice.");
   ok(Parser.parse(['x','=','x','EOF']), "normal use is okay.");
 });
+
+test("Context-dependent precedence", function(){
+
+  var grammer = {
+    tokens: [ "x", "-", "+", "*", "EOF" ],
+    startSymbol: "S",
+    operators: [
+                ["left", "-", "+"],
+                ["left", "*"],
+                ["left", "UMINUS"]
+                ],
+    bnf: {
+            "S" :[ [ "E EOF",   "return $1;"       ] ],
+            "E" :[ [ "E - E",   "$$ = [$1,'-', $3];" ],
+                   [ "E + E",   "$$ = [$1,'+', $3];" ],
+                   [ "E * E",   "$$ = [$1,'*', $3];" ],
+                   [ "- E",     "$$ = ['#', $2];", {prec: "UMINUS"} ],
+                   [ "x",       "$$ = ['x'];"         ] ]
+          }
+  };
+
+  var Parser = new JSParse.Parser(grammer);
+  var expectedAST = [[[["#", ["x"]], "*", ["#", ["x"]]], "*", ["x"]], "-", ["x"]];
+
+  var r = Parser.parse(['-','x','*','-','x','*','x','-','x','EOF']);
+  same(r, expectedAST);
+});

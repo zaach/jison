@@ -12,6 +12,14 @@ function log(){
     print.apply(null,arguments);
 }
 
+function NonTerminal(sym){
+  this.sym = sym;
+  this.rules = new Set();
+  this.first = new Set();
+  this.follows = new Set();
+  this.nullable = false;
+}
+
 function Rule(sym, handle, action, id) {
   this.sym = sym;
   this.handle = handle;
@@ -60,13 +68,11 @@ function LRItem(rule, dot, f) {
     return e.rule && e.dotPosition !=null && this.rule===e.rule && this.dotPosition === e.dotPosition && this.follows.toString()==e.follows.toString();
   };
 
-function NonTerminal(sym){
-  this.sym = sym;
-  this.rules = new Set();
-  this.first = new Set();
-  this.follows = new Set();
-  this.nullable = false;
+function ItemSet(set, raw){
+    Set.apply(this, arguments);
 }
+    ItemSet.prototype = Set.prototype;
+
 
 // Filter method to use in closure operation
 // declared here for cachability
@@ -167,15 +173,29 @@ function proccessGrammerDef(grammer){
             symbols.push(sym);
         }
         if(handle.constructor === Array){
-            // semantic action specified
-            r = new Rule(sym, handle[0].split(' '), handle[1], rules.size());
+            if(typeof handle[1] === 'string' || handle.length == 3){
+                // semantic action specified
+                r = new Rule(sym, handle[0].split(' '), handle[1], rules.size());
+                // precedence specified also
+                if(handle[2]){
+                    r.precedence = operators[handle[2].prec].precedence;
+                    r.precedence = operators[handle[2].prec].precedence;
+                    print(handle[2].prec, operators[handle[2].prec].precedence);
+                }
+            } else {
+                // only precedence specified
+                r = new Rule(sym, handle[0].split(' '), null, rules.size());
+                r.precedence = operators[handle[1].prec].precedence;
+            }
         } else {
             r = new Rule(sym, handle.split(' '), null, rules.size());
         }
-        // set precedence
-        for(var i=r.handle.length-1;i>=0;i--){
-            if(!(r.handle[i] in nonterms) && r.handle[i] in operators){
-                r.precedence = operators[r.handle[i]].precedence;
+        if(r.precedence === 0){
+            // set precedence
+            for(var i=r.handle.length-1;i>=0;i--){
+                if(!(r.handle[i] in nonterms) && r.handle[i] in operators){
+                    r.precedence = operators[r.handle[i]].precedence;
+                }
             }
         }
 
@@ -657,4 +677,4 @@ function parse(input){
 
 if(typeof exports !== 'undefined')
     exports.JSParse = JSParse;
-// refactor, generator, lexer input, context-precedence
+//TODO: refactor, generator, lexer input, lump semantic actions
