@@ -16,12 +16,16 @@
       // var scanner = JSLex.lex(djLex);
 
       function runParser() {
+        var type = "lr";
         var cfg = JSON.parse(document.getElementById("source").value);
-        var parser = new JSParse.Parser(cfg, {type: 'll'});
+        var parser = new JSParse.Parser(cfg, {type: type});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
         rules(parser);
-        llTable(parser);
+        if(type === 'll')
+          llTable(parser);
+        else
+          lrTable(parser);
       }
       function nonterminalInfo(p){
         var out = ["Non-terminals"];
@@ -61,10 +65,48 @@
         out.push('</table>');
         document.getElementById("table").innerHTML = out.join("");
       }
+
+      function lrTable(p){
+        var gs = p._grammerSymbols.slice(0).sort();
+        var out = ['<table border="1">','<tr>'];
+        out.push('<td>','</td>');
+        var ntout = [];
+        gs.shift();
+        gs.forEach(function(t){
+          if(p.nonterms[t])
+            ntout.push('<td class="nonterm nt-'+t+'"">',t,'</td>');
+          else
+            out.push('<td>',t,'</td>');
+        });
+        out.push.apply(out, ntout);
+        out.push('</tr>');
+
+        for(var i=0,state;state=p.table[i];i++){
+          ntout = [];
+          out.push('<tr><td>',i,'</td>');
+          gs.forEach(function(t){
+            if(state[t]){
+              if(p.nonterms[t])
+                ntout.push('<td class="nonterm nt-'+t+'">',state[t].toString(),'</td>');
+              else
+                out.push('<td>',state[t].toString(),'</td>');
+            }else
+              out.push('<td>&nbsp;</td>');
+          });
+          out.push.apply(out, ntout);
+          out.push('</tr>');
+        }
+
+        out.push('</table>');
+        document.getElementById("table").innerHTML = out.join("");
+      }
     </script>
     <style>
       #table, #rules {
         display: inline;
+      }
+      .nonterm {
+        background-color: #ffeeee;
       }
     </style>
 

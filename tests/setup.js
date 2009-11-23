@@ -1,14 +1,3 @@
-var JSParse = exports.JSParse = require("../parse").JSParse;
-var JSLex = exports.JSLex = require("../parse").JSLex;
-
-var QUnit = exports.QUnit = require("qunit").QUnit;
-
-QUnit.log = function (r, msg){
-  print('  ',r, msg);
-};
-QUnit.done = function (fails, total){
-  print('failures:',fails,', total:', total);
-};
-QUnit.moduleStart = print;
-QUnit.testStart = print;
+var Jison = exports.Jison = require("../lib/jison").Jison;
+var Lex = exports.Lex = require("../lib/jison/lex").Lex;
 
