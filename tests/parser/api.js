@@ -1,17 +1,6 @@
-#!/usr/bin/env narwhal
-
-var JSParse = require("./setup").JSParse;
-var QUnit = require("./setup").QUnit;
-
-var test = QUnit.test;
-var ok = QUnit.ok;
-var equals = QUnit.equals;
-var same = QUnit.same;
-
-QUnit.module("Test API", {
-  setup: function(){
-  }
-});
+var Jison = require("../setup").Jison,
+    Lex = require("../setup").Lex,
+    assert = require("assert");
 
 test("tokens as a string", function(){
 
@@ -25,7 +14,7 @@ test("tokens as a string", function(){
           }
   };
 
-  var Parser = new JSParse.Parser(grammer);
+  var Parser = new Jison.Parser(grammer);
 
   ok(Parser.parse(['x','y','x']), "parse 3 x's");
 });
@@ -40,7 +29,7 @@ test(" | seperated rules", function(){
           }
   };
 
-  var Parser = new JSParse.Parser(grammer);
+  var Parser = new Jison.Parser(grammer);
 
   ok(Parser.parse(['x','y','x']), "parse 3 x's");
 });
@@ -56,7 +45,7 @@ test("start symbol optional", function(){
 
   var thrown = false;
   try{
-    var Parser = new JSParse.Parser(grammer);
+    var Parser = new Jison.Parser(grammer);
   }catch(e){
     thrown = true;
   }
@@ -75,7 +64,7 @@ test("start symbol should be nonterminal", function(){
 
   var thrown = false;
   try{
-    var Parser = new JSParse.Parser(grammer);
+    var Parser = new Jison.Parser(grammer);
   }catch(e){
     thrown = true;
   }
@@ -92,7 +81,7 @@ test("Test terminal list", function(){
           }
   };
 
-    var Parser = new JSParse.Parser(grammer);
+    var Parser = new Jison.Parser(grammer);
     same(Parser.terminals, ["$end", "x", "y"]);
 });
 
