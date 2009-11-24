@@ -21,6 +21,27 @@ exports["test basic matchers"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test set input after"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer = new Lex.RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test unrecognized char"] = function() {
     var dict = {
         rules: [

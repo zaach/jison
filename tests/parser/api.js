@@ -2,86 +2,83 @@ var Jison = require("../setup").Jison,
     Lex = require("../setup").Lex,
     assert = require("assert");
 
-test("tokens as a string", function(){
+var lexData = {
+    rules: [
+       ["x", "return 'x';"],
+       ["y", "return 'y';"]
+    ]
+};
 
-  var grammer = {
-    tokens: "x y",
-    startSymbol: "A",
-    bnf: {
+exports["test tokens as a string"] = function () {
+
+    var grammer = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
             "A" :[ 'A x',
                    'A y',
                    ''      ]
-          }
-  };
+        }
+    };
 
-  var Parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammer);
+    parser.lexer = new Lex.Lexer_(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+};
 
-  ok(Parser.parse(['x','y','x']), "parse 3 x's");
-});
+exports["test | seperated rules"] = function () {
 
-test(" | seperated rules", function(){
-
-  var grammer = {
-    tokens: "x y",
-    startSymbol: "A",
-    bnf: {
+    var grammer = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
             "A" :"A x | A y | "
-          }
-  };
+        }
+    };
 
-  var Parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammer);
+    parser.lexer = new Lex.Lexer_(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+};
 
-  ok(Parser.parse(['x','y','x']), "parse 3 x's");
-});
+exports["test start symbol optional"] = function () {
 
-test("start symbol optional", function(){
-
-  var grammer = {
-    tokens: "x y",
-    bnf: {
+    var grammer = {
+        tokens: "x y",
+        bnf: {
             "A" :"A x | A y | "
-          }
-  };
+        }
+    };
 
-  var thrown = false;
-  try{
-    var Parser = new Jison.Parser(grammer);
-  }catch(e){
-    thrown = true;
-  }
-  ok(!thrown, "no error");
-});
+    var parser = new Jison.Parser(grammer);
+    var ok = true;
+    assert.ok(ok, "no error");
+};
 
-test("start symbol should be nonterminal", function(){
+exports["test start symbol should be nonterminal"] = function () {
 
-  var grammer = {
-    tokens: "x y",
-    startSymbol: "x",
-    bnf: {
+    var grammer = {
+        tokens: "x y",
+        startSymbol: "x",
+        bnf: {
             "A" :"A x | A y | "
-          }
-  };
+        }
+    };
 
-  var thrown = false;
-  try{
-    var Parser = new Jison.Parser(grammer);
-  }catch(e){
-    thrown = true;
-  }
-  ok(thrown, "throws error");
-});
+    assert.throws(function(){new Jison.Parser(grammer);}, "throws error");
+};
 
-test("Test terminal list", function(){
+exports["test token list as string"] = function () {
 
-  var grammer = {
-    tokens: "x y",
-    startSymbol: "A",
-    bnf: {
+    var grammer = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
             "A" :"A x | A y | "
-          }
-  };
+        }
+    };
 
-    var Parser = new Jison.Parser(grammer);
-    same(Parser.terminals, ["$end", "x", "y"]);
-});
+    var parser = new Jison.Parser(grammer);
+    assert.deepEqual(parser.terminals, ["$end", "x", "y"]);
+};
 
