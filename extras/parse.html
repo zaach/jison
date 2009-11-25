@@ -9,16 +9,18 @@
     }
     </script>
     <script src="http://www.json.org/json2.js"></script>
-    <script src="jslex.js"></script>
-    <script src="set.js"></script>
-    <script src="parse.js"></script>
+    <script src="es.js"></script>
+    <script src="../lib/jison/lex.js"></script>
+    <script src="../lib/jison/util/base.js"></script>
+    <script src="../lib/jison/util/set.js"></script>
+    <script src="../lib/jison.js"></script>
     <script>
       // var scanner = JSLex.lex(djLex);
 
       function runParser() {
-        var type = "lr";
+        var type = "lalr";
         var cfg = JSON.parse(document.getElementById("source").value);
-        var parser = new JSParse.Parser(cfg, {type: type});
+        var parser = new Jison.Parser(cfg, {type: type});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
         rules(parser);

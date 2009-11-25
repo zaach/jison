@@ -4,7 +4,7 @@
 
 var Jison = require("./setup").Jison;
 
-var i = 100;
+var i = 1;
 
 var grammer = {
     tokens: [ "x", "+", "*", "EOF" ],
@@ -22,6 +22,6 @@ var grammer = {
 };
 
 for (var j=0;j<i;j++) {
-  var parser = new Jison.Parser(grammer);
+  var parser = new Jison.Parser(grammer, {type: 'slr'});
   //var r = parser.parse(['x','*','x','+','x','EOF']);
 }
