@@ -18,15 +18,18 @@
 
       function runParser() {
         var type = "lalr";
-        var cfg = JSON.parse(document.getElementById("source").value);
+        var cfg = JSON.parse(document.getElementById("grammer").value);
+        var source = document.getElementById("source").value;
         var parser = new Jison.Parser(cfg, {type: type});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
         rules(parser);
         if(type === 'll')
           llTable(parser);
-        else
+        else {
           lrTable(parser);
+          console.log(parser.parse(source));
+        }
       }
       function nonterminalInfo(p){
         var out = ["Non-terminals"];
@@ -132,8 +135,15 @@
     <h1>Jison</h1>
     <p>Sneek peek edition. No interface for parsing programs yet.</p>
     <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
-    <textarea id="source" rows="20" cols="80">
+    <textarea id="grammer" rows="20" cols="80">
 {
+    "lex": {
+        "rules": [
+           ["0", "return 'ZERO';" ],
+           ["\\+", "return 'PLUS';" ]
+       ]
+    },
+
     "tokens": "ZERO PLUS",
     "startSymbol": "E",
     "bnf": {
@@ -144,6 +154,7 @@
            }
 }
     </textarea><br/>
+    <textarea id="source">0+0+0</textarea>
     <button onclick="runParser()">Process CFG</button>
     <h2>Output</h2>
     <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
