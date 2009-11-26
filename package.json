@@ -1,0 +1,17 @@
+{
+  "name": "jison",
+  "author": "Zach Carter (http://zaa.ch)",
+  "email": "zach@carter.name",
+  "keywords": [
+      "jison",
+      "parser",
+      "lexer",
+      "compiler"
+  ],
+  "dependencies": [
+      "narwhal"
+  ],
+  "githubName": "jison",
+  "type": "zip",
+  "location": "http://github.com/zaach/jison/zipball/master"
+}

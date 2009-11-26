@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>JS Parser</title>
+    <title>Jison, JavaScript Bottom-up Parser</title>
     
     <script>
       if(typeof console === 'undefined'){
@@ -15,7 +15,6 @@
     <script src="../lib/jison/util/set.js"></script>
     <script src="../lib/jison.js"></script>
     <script>
-      // var scanner = JSLex.lex(djLex);
 
       function runParser() {
         var type = "lalr";
@@ -56,8 +55,9 @@
         for(var nt in  p.table){
           out.push('<tr><td>',nt,'</td>');
           p.terminals.forEach(function(t){
-            if(p.table[nt][t])
-              out.push('<td>',p.table[nt][t].toString(),'</td>');
+            var cell = p.table[nt][t];
+            if(cell)
+              out.push((cell.length>1?'<td class="conflict">':'<td>'),cell.toString(),'</td>');
             else
               out.push('<td>&nbsp;</td>');
           });
@@ -91,7 +91,7 @@
               if(p.nonterms[t])
                 ntout.push('<td class="nonterm nt-'+t+'">',state[t].toString(),'</td>');
               else
-                out.push('<td>',state[t].toString(),'</td>');
+                out.push('<td id="act'+i+'-'+t+'">',state[t].toString(),'</td>');
             }else
               out.push('<td>&nbsp;</td>');
           });
@@ -100,7 +100,18 @@
         }
 
         out.push('</table>');
+
         document.getElementById("table").innerHTML = out.join("");
+
+        p.resolutions.forEach(function (res){
+          var r = res[2];
+          if (r.bydefault) {
+            var el = document.getElementById('act'+res[0]+'-'+res[1]);
+            el.className = 'conflict';
+          }
+          el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
+        });
+
       }
     </script>
     <style>
@@ -108,14 +119,17 @@
         display: inline;
       }
       .nonterm {
-        background-color: #ffeeee;
+        background-color: #eef;
+      }
+      .conflict {
+        background-color: #fee;
       }
     </style>
 
   </head>
 
   <body>
-    <h1>Parse</h1>
+    <h1>Jison</h1>
     <p>Sneek peek edition. No interface for parsing programs yet.</p>
     <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
     <textarea id="source" rows="20" cols="80">
