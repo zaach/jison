@@ -118,3 +118,39 @@ exports["test 0+0 grammer"] = function() {
 
     assert.deepEqual(parser.parse("0+0+0"), expectedAST);
 };
+
+exports["test yytext"] = function() {
+
+    var grammer = {
+        tokens: [ "x" ],
+        startSymbol: "pgm",
+        bnf: {
+            "pgm" :[ ["Xexpr", "return $1;"] ],
+            "Xexpr"   :[ ["x", "$$ = yytext;"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammer);
+    parser.lexer = new Lex.Lexer_(lexData);
+
+    assert.equal(parser.parse('x'), "x", "return first token");
+};
+
+exports["test yytext more"] = function() {
+
+    var grammer = {
+        tokens: [ "x", "y" ],
+        startSymbol: "pgm",
+        bnf: {
+            "pgm" :[ ["expr expr", "return $1+$2;"] ],
+            "expr"   :[ ["x", "$$ = yytext;"],
+                         ["y", "$$ = yytext;"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammer);
+    parser.lexer = new Lex.Lexer_(lexData);
+
+    assert.equal(parser.parse('xy'), "xy", "return first token");
+};
+
