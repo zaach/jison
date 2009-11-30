@@ -45,9 +45,9 @@ exports["test set input after"] = function() {
 exports["test unrecognized char"] = function() {
     var dict = {
         rules: [
-           ["x", function(){ return "X" } ],
-           ["y", function(){ return "Y" } ],
-           ["$", function(){return "EOF"} ]
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
        ]
     };
 
@@ -64,10 +64,10 @@ exports["test macro"] = function() {
             "digit": "[0-9]"
         },
         rules: [
-           ["x", function(){ return "X" } ],
-           ["y", function(){ return "Y" } ],
-           ["{digit}+", function(){ return "NAT" } ],
-           ["$", function(){ return "EOF"} ]
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["{digit}+", "return 'NAT';" ],
+           ["$", "return 'EOF';" ]
        ]
     };
 
@@ -84,10 +84,10 @@ exports["test macro"] = function() {
 exports["test ignored"] = function() {
     var dict = {
         rules: [
-           ["x", function(){ return "X" } ],
-           ["y", function(){ return "Y" } ],
-           ["\\s+", function (){ /* skip whitespace */ }],
-           ["$", function(){return "EOF"} ]
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["\\s+", "/* skip whitespace */" ],
+           ["$", "return 'EOF';" ]
        ]
     };
 
@@ -104,11 +104,11 @@ exports["test ignored"] = function() {
 exports["test dissambiguate"] = function() {
     var dict = {
         rules: [
-           ["for\\b", function(){ return "FOR" } ],
-           ["if\\b", function(){ return "IF" } ],
-           ["[a-z]+", function(){ return "IDENTIFIER" } ],
-           ["\\s+", function (){ /* skip whitespace */ }],
-           ["$", function(){ return "EOF"} ]
+           ["for\\b", "return 'FOR';" ],
+           ["if\\b", "return 'IF';" ],
+           ["[a-z]+", "return 'IDENTIFIER';" ],
+           ["\\s+", "/* skip whitespace */" ],
+           ["$", "return 'EOF';" ]
        ]
     };
 
@@ -125,7 +125,7 @@ exports["test dissambiguate"] = function() {
 exports["test more()"] = function() {
     var dict = {
         rules: [
-           ["x", function(){ return "X" } ],
+           ["x", "return 'X';" ],
            ['"[^"]*', function(){
                if(this.yytext.charAt(this.yyleng-1) == '\\') {
                    this.more();
@@ -134,7 +134,7 @@ exports["test more()"] = function() {
                    return "STRING";
                }
             } ],
-           ["$", function(){return "EOF"} ]
+           ["$", "return 'EOF';" ]
        ]
     };
 
