@@ -2,22 +2,13 @@ var Jison = require("../setup").Jison,
     Lex = require("../setup").Lex,
     assert = require("assert");
 
-var lexData = {
-    rules: [
-       ["x", "return 'x';"],
-       ["y", "return 'y';"]
-    ]
-};
-var lexData2 = {
-    rules: [
-       ["0", "return 'ZERO';"],
-       ["\\+", "return 'PLUS';"],
-       ["$", "return 'EOF';"]
-    ]
-};
-
 exports["test Semantic action basic return"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ "x", "y" ],
         startSymbol: "E",
@@ -36,7 +27,12 @@ exports["test Semantic action basic return"] = function() {
 };
 
 exports["test Semantic action stack lookup"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ "x", "y" ],
         startSymbol: "pgm",
@@ -56,7 +52,12 @@ exports["test Semantic action stack lookup"] = function() {
 };
 
 exports["test Semantic actions on nullable grammer"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ 'x' ],
         startSymbol: "S",
@@ -74,7 +75,12 @@ exports["test Semantic actions on nullable grammer"] = function() {
 };
 
 exports["test Build AST"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ 'x' ],
         startSymbol: "S",
@@ -83,8 +89,8 @@ exports["test Build AST"] = function() {
             "A" :[ ['x A', "$2.push(['ID',{value:'x'}]);\
                             $$ = $2;"],
                    ['', "$$ = ['A',{}];"] ]
-          }
-  };
+        }
+    };
 
     var parser = new Jison.Parser(grammer);
     parser.lexer = new Lex.Lexer_(lexData);
@@ -99,7 +105,13 @@ exports["test Build AST"] = function() {
 };
 
 exports["test 0+0 grammer"] = function() {
-
+    var lexData2 = {
+        rules: [
+           ["0", "return 'ZERO';"],
+           ["\\+", "return 'PLUS';"],
+           ["$", "return 'EOF';"]
+        ]
+    };
     var grammer = {
         tokens: [ "ZERO", "PLUS", "EOF"],
         startSymbol: "S",
@@ -120,7 +132,12 @@ exports["test 0+0 grammer"] = function() {
 };
 
 exports["test yytext"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ "x" ],
         startSymbol: "pgm",
@@ -137,7 +154,12 @@ exports["test yytext"] = function() {
 };
 
 exports["test yytext more"] = function() {
-
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
     var grammer = {
         tokens: [ "x", "y" ],
         startSymbol: "pgm",
