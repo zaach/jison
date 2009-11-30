@@ -1,5 +1,5 @@
 var Jison = require("../setup").Jison,
-    Lex = require("../setup").Lex,
+    Lexer = require("../setup").Lexer,
     assert = require("assert");
 
 var lexData = {
@@ -21,7 +21,7 @@ exports["test left-recursive nullable grammer"] = function () {
     };
 
     var parser = new Jison.Parser(grammer, {type: "lr0"});
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");

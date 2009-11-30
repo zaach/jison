@@ -1,5 +1,5 @@
 var Jison = require("../setup").Jison,
-    Lex = require("../setup").Lex,
+    Lexer = require("../setup").Lexer,
     assert = require("assert");
 
 var lexData = {
@@ -22,7 +22,7 @@ exports["test tokens as a string"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
@@ -37,7 +37,7 @@ exports["test | seperated rules"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 

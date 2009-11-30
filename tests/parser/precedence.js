@@ -1,5 +1,5 @@
 var Jison = require("../setup").Jison,
-    Lex = require("../setup").Lex,
+    RegExpLexer = require("../setup").RegExpLexer,
     assert = require("assert");
 
 var lexData = {
@@ -32,7 +32,7 @@ exports["test Left associative rule"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["+", ["x"], ["x"]], ["x"]];
 
@@ -62,7 +62,7 @@ exports["test Right associative rule"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["x"], ["+", ["x"], ["x"]]];
 
@@ -95,7 +95,7 @@ exports["test Multiple precedence operators"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["*", ["x"], ["x"]], ["x"]];
 
@@ -128,7 +128,7 @@ exports["test Multiple precedence operators"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = [["x"], "+", [["x"], "*", ["x"]]];
 
@@ -158,7 +158,7 @@ exports["test Non-associative operator"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var thrown = false;
     try{
@@ -199,7 +199,7 @@ exports["test Context-dependent precedence"] = function () {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = [[[["#", ["x"]], "*", ["#", ["x"]]], "*", ["x"]], "-", ["x"]];
 

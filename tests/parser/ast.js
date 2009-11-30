@@ -1,5 +1,5 @@
 var Jison = require("../setup").Jison,
-    Lex = require("../setup").Lex,
+    RegExpLexer = require("../setup").RegExpLexer,
     assert = require("assert");
 
 exports["test Semantic action basic return"] = function() {
@@ -20,7 +20,7 @@ exports["test Semantic action basic return"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), 0, "semantic action");
     assert.equal(parser.parse('y'), 1, "semantic action");
@@ -45,7 +45,7 @@ exports["test Semantic action stack lookup"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), "EX", "return first token");
     assert.equal(parser.parse('yx'), "BYEX", "return first after reduction");
@@ -69,7 +69,7 @@ exports["test Semantic actions on nullable grammer"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
 };
@@ -93,7 +93,7 @@ exports["test Build AST"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ['A',{},
         ['ID',{value:'x'}],
@@ -124,7 +124,7 @@ exports["test 0+0 grammer"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData2);
+    parser.lexer = new RegExpLexer(lexData2);
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
@@ -148,7 +148,7 @@ exports["test yytext"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), "x", "return first token");
 };
@@ -171,7 +171,7 @@ exports["test yytext more"] = function() {
     };
 
     var parser = new Jison.Parser(grammer);
-    parser.lexer = new Lex.Lexer_(lexData);
+    parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('xy'), "xy", "return first token");
 };
