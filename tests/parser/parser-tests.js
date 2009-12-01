@@ -9,5 +9,5 @@ exports.testTables = require("./tables");
 exports.testPrecedence = require("./precedence");
 exports.testGenerator = require("./generator");
 
-if (require.main === module.id)
+if (require.main === module)
     require("os").exit(require("test").run(exports)); 
