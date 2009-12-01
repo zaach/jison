@@ -86,8 +86,7 @@ exports["test Build AST"] = function() {
         startSymbol: "S",
         bnf: {
             "S" :[ ['A', "return $1;" ] ],
-            "A" :[ ['x A', "$2.push(['ID',{value:'x'}]);\
-                            $$ = $2;"],
+            "A" :[ ['x A', "$2.push(['ID',{value:'x'}]); $$ = $2;"],
                    ['', "$$ = ['A',{}];"] ]
         }
     };
@@ -174,5 +173,31 @@ exports["test yytext more"] = function() {
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('xy'), "xy", "return first token");
+};
+
+exports["test action include"] = function() {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammer = {
+        tokens: [ "y" ],
+        startSymbol: "E",
+        bnf: {
+            "E"   :[ ["E y", "return test();"],
+                     "" ]
+        },
+        actionInclude: function () {
+            function test(val) {
+                return 1;
+            }
+        }
+    };
+
+    var parser = new Jison.Parser(grammer);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('y'), 1, "semantic action");
 };
 
