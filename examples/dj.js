@@ -1,74 +1,118 @@
-var DEBUG = 1;
+// DJ - Diminished Java Language Grammer
+// DJ is a contrived language used in my compilers class
+// - Zach
 
-if(typeof console != 'undefined' && console.log)
-  print = function(str){console.log(str);};
+var Jison = require("jison").Jison,
+    RegExpLexer= require("jison/lex").RegExpLexer;
 
-function Token(str) { return str; }
+if(typeof alert != 'undefined')
+  print = alert;
 
-// utility function
-//function encodeRE(s) { return s.replace(/[.*+?^${}()|[\]\/\\]/g, '\\$0'); }
+var grammer = {
+    "lex": {
+        "macros": {
+            "digit": "[0-9]",
+            "id": "[a-zA-Z][a-zA-Z0-9]*" 
+        },
 
-var djLex = {
-  macros: {
-    "digit": "[0-9]",
-    "id": "[a-zA-Z][a-zA-Z0-9]*" 
-  },
+        "rules": [
+            ["//.*",       "/* ignore comment */"],
+            ["main\\b",     "return 'MAIN';"],
+            ["class\\b",    "return 'CLASS';"],
+            ["extends\\b",  "return 'EXTENDS';"],
+            ["nat\\b",      "return 'NATTYPE';"],
+            ["if\\b",       "return 'IF';"],
+            ["else\\b",     "return 'ELSE';"],
+            ["for\\b",      "return 'FOR';"],
+            ["printNat\\b", "return 'PRINTNAT';"],
+            ["readNat\\b",  "return 'READNAT';"],
+            ["this\\b",     "return 'THIS';"],
+            ["new\\b",      "return 'NEW';"],
+            ["var\\b",      "return 'VAR';"],
+            ["null\\b",     "return 'NUL';"],
+            ["{digit}+",   "return 'NATLITERAL';"],
+            ["{id}",       "return 'ID';"],
+            ["==",         "return 'EQUALITY';"],
+            ["=",          "return 'ASSIGN';"],
+            ["\\+",        "return 'PLUS';"],
+            ["-",          "return 'MINUS';"],
+            ["\\*",        "return 'TIMES';"],
+            [">",          "return 'GREATER';"],
+            ["\\|\\|",     "return 'OR';"],
+            ["!",          "return 'NOT';"],
+            ["\\.",        "return 'DOT';"],
+            ["\\{",        "return 'LBRACE';"],
+            ["\\}",        "return 'RBRACE';"],
+            ["\\(",        "return 'LPAREN';"],
+            ["\\)",        "return 'RPAREN';"],
+            [";",          "return 'SEMICOLON';"],
+            ["\\s+",       "/* skip whitespace */"],
+            [".",          "print('Illegal character');throw 'Illegal character';"],
+            ["$",          "return 'ENDOFFILE';"]
+        ]
+    },
 
-  rules: [
-    ["//.*",       function (){ }],
-    ["main\b",       function (){ return scanned("MAIN")}],
-    ["class\b",      function (){ return scanned("CLASS")}],
-    ["extends\b",    function (){ return scanned("EXTENDS")}],
-    ["nat\b",        function (){ return scanned("NAT")}],
-    ["if\b",         function (){ return scanned("IF")}],
-    ["else\b",       function (){ return scanned("ELSE")}],
-    ["for\b",        function (){ return scanned("FOR")}],
-    ["printNat\b",   function (){ return scanned("PRINTNAT")}],
-    ["readNat\b",    function (){ return scanned("READNAT")}],
-    ["this\b",       function (){ return scanned("THIS")}],
-    ["new\b",        function (){ return scanned("NEW")}],
-    ["var\b",        function (){ return scanned("VAR")}],
-    ["null\b",       function (){ return scanned("NUL")}],
-    ["{digit}+",   function (){ return scanned("NATLITERAL", this.yytext)}],
-    ["{id}",       function (){ return scanned("ID", this.yytext)}],
-    ["==",         function (){ return scanned("EQUALITY")}],
-    ["=",          function (){ return scanned("ASSIGN")}],
-    ["\\+",        function (){ return scanned("PLUS")}],
-    ["-",          function (){ return scanned("MINUS")}],
-    ["\\*",        function (){ return scanned("TIMES")}],
-    [">",          function (){ return scanned("GREATER")}],
-    ["\\|\\|",     function (){ return scanned("OR")}],
-    ["!",          function (){ return scanned("NOT")}],
-    ["\\.",        function (){ return scanned("DOT")}],
-    ["\\{",        function (){ return scanned("LBRACE")}],
-    ["\\}",        function (){ return scanned("RBRACE")}],
-    ["\\(",        function (){ return scanned("LPAREN")}],
-    ["\\)",        function (){ return scanned("RPAREN")}],
-    [";",          function (){ return scanned("SEMICOLON")}],
-    ["\\s+",       function (){ /* skip whitespace */ }],
-    [".",          function (){ print('Illegal character');
-                                throw 'Illegal character'; 
-                              }],
-    ["$",          function (){ return scanned("ENDOFFILE")}],
-  ]
+    "tokens": "MAIN CLASS EXTENDS NATTYPE IF ELSE FOR PRINTNAT READNAT THIS NEW VAR NUL NATLITERAL ID ASSIGN PLUS MINUS TIMES EQUALITY GREATER OR NOT DOT SEMICOLON LBRACE RBRACE LPAREN RPAREN ENDOFFILE",
+    "operators": [
+        ["right", "ASSIGN"],
+        ["left", "OR"],
+        ["nonassoc", "EQUALITY", "GREATER"],
+        ["left", "PLUS", "MINUS"],
+        ["left", "TIMES"],
+        ["right", "NOT"],
+        ["left", "DOT"]
+    ],
+
+    "bnf": {
+        "pgm": ["cdl MAIN LBRACE vdl el RBRACE ENDOFFILE"],
+
+        "cdl": ["c cdl",
+                ""],
+
+        "c": ["CLASS id EXTENDS id LBRACE vdl mdl RBRACE"],
+
+        "vdl": ["VAR t id SEMICOLON vdl",
+                ""],
+
+        "mdl": ["t id LPAREN t id RPAREN LBRACE vdl el RBRACE mdl",
+                ""],
+
+        "t": ["NATTYPE",
+              "id"],
+
+        "id": ["ID"],
+
+        "el": ["e SEMICOLON el",
+               "e SEMICOLON"],
+
+        "e": ["NATLITERAL",
+              "NUL",
+              "id",
+              "NEW id",
+              "THIS", 
+              "IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE ",
+              "FOR LPAREN e SEMICOLON e SEMICOLON e RPAREN LBRACE el RBRACE",
+              "READNAT LPAREN RPAREN",
+              "PRINTNAT LPAREN e RPAREN",
+              "e PLUS e",
+              "e MINUS e",
+              "e TIMES e",
+              "e EQUALITY e",
+              "e GREATER e",
+              "NOT e",
+              "e OR e",
+              "e DOT id",
+              "id ASSIGN e",
+              "e DOT id ASSIGN e",
+              "id LPAREN e RPAREN",
+              "e DOT id LPAREN e RPAREN",
+              "LPAREN e RPAREN"]
+    }
 };
 
-function scanned(token, yytext) {
-  switch(token) {
-    case "NATLITERAL": print(token+"("+yytext+")"); return Token(token);
-      break;
-    case "ID": print(token+"("+yytext+")"); return Token(token);
-      break;
-    default: print(token); return Token(token);
-  }
-}
 
-load('jslex.js');
+var input = "class A extends Object{}\nclass B extends Object{}\n\nmain { var nat n; n = 4; }";
 
-var input = "  // hihi \n main { var forever; var boo = stuf(788); var mainer; } ";
-//var input = "main for ";
-var lexer = new JSLex.RegExpLexer(djLex, input);
+var parser = new Jison.Parser(grammer, {type: 'slr'});
 
-while(lexer.next() != '');
-
-//JSLex.lex(djLex, input);
+parser.parse(input);
