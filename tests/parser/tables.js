@@ -15,7 +15,7 @@ exports["test right-recursive nullable grammer"] = function () {
     var parser = new Jison.Parser(grammer, {type: "slr"});
 
     assert.equal(parser.table.length, 4, "table has 4 states");
-    assert.equal(parser.nonterms['A'].nullable, true, "A is nullable");
+    assert.equal(parser.nullable('A'), true, "A is nullable");
     assert.equal(parser.conflicts, 0, "should have no conflict");
 };
 
