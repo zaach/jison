@@ -5,8 +5,9 @@
     <script>
       if(typeof console === 'undefined'){
       console = {};
-      console.log = function(str){document.getElementById('out').value+=str;};
+      console.log = function(str){document.getElementById("out").value = uneval(str)};
     }
+    var out = function(str){document.getElementById("out").value = uneval(str)};
     </script>
     <script src="http://www.json.org/json2.js"></script>
     <script src="es.js"></script>
@@ -16,36 +17,40 @@
     <script src="../lib/jison.js"></script>
     <script>
 
-      function runParser() {
-        var type = "lalr";
+      var parser;
+      function processGrammer() {
+        var type = document.getElementById("type").options[document.getElementById("type").selectedIndex].value || "lalr";
         var cfg = JSON.parse(document.getElementById("grammer").value);
-        var source = document.getElementById("source").value;
-        var parser = new Jison.Parser(cfg, {type: type});
+        parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
-        rules(parser);
+        productions(parser);
         if(type === 'll')
           llTable(parser);
         else {
           lrTable(parser);
-          console.log(parser.parse(source));
         }
+      }
+      function runParser() {
+        var source = document.getElementById("source").value;
+        out(parser.parse(source));
       }
       function nonterminalInfo(p){
         var out = ["Non-terminals"];
-        for(var nt in p.nonterms){
-          out.push(nt+"\n\tnullable: "+(p.nonterms[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterms[nt].first+"\n\tfollows: "+p.nonterms[nt].follows);
-          out.push("\t"+p.nonterms[nt].rules.join("\n\t"));
+        for(var nt in p.nonterminals){
+          out.push(nt+"\n\tnullable: "+(p.nonterminals[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterminals[nt].first+"\n\tfollows: "+p.nonterminals[nt].follows);
+          out.push("\t"+p.nonterminals[nt].productions.join("\n\t"));
         }
         document.getElementById("out").value += out.join("\n\n");
       }
 
-      function rules(p){
+      function productions(p){
         var out = ['<ol start="0">','<li>'];
-        out.push(p.rules.join('</li><li>'));
+        out.push(p.productions.join('</li><li>'));
         out.push('</li>','</ol>');
-        document.getElementById("rules").innerHTML = out.join("");
+        document.getElementById("productions").innerHTML = out.join("");
       }
+
 
       function llTable(p){
         var out = ['<table border="1">','<tr>'];
@@ -71,14 +76,21 @@
         document.getElementById("table").innerHTML = out.join("");
       }
 
+      function printAction(a){
+        if(!a[0]) return '';
+        var str = [];
+        for(var i=0;i<a.length;i++)
+          str.push(a[i].join(''));
+        return str.join(',');
+      }
       function lrTable(p){
-        var gs = p.grammerSymbols.slice(0).sort();
+        var gs = p.symbols.slice(0).sort();
         var out = ['<table border="1">','<tr>'];
         out.push('<td>','</td>');
         var ntout = [];
         gs.shift();
         gs.forEach(function(t){
-          if(p.nonterms[t])
+          if(p.nonterminals[t])
             ntout.push('<td class="nonterm nt-'+t+'"">',t,'</td>');
           else
             out.push('<td>',t,'</td>');
@@ -91,12 +103,12 @@
           out.push('<tr><td>',i,'</td>');
           gs.forEach(function(t){
             if(state[t]){
-              if(p.nonterms[t])
+              if(p.nonterminals[t])
                 ntout.push('<td class="nonterm nt-'+t+'">',state[t].toString(),'</td>');
               else
-                out.push('<td id="act'+i+'-'+t+'">',state[t].toString(),'</td>');
+                out.push('<td id="act'+i+'-'+t+'">',printAction(state[t]),'</td>');
             }else
-              out.push('<td>&nbsp;</td>');
+            out.push('<td>&nbsp;</td>');
           });
           out.push.apply(out, ntout);
           out.push('</tr>');
@@ -108,24 +120,25 @@
 
         p.resolutions.forEach(function (res){
           var r = res[2];
+          var el = document.getElementById('act'+res[0]+'-'+res[1]);
           if (r.bydefault) {
-            var el = document.getElementById('act'+res[0]+'-'+res[1]);
             el.className = 'conflict';
           }
-          el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
+          if(el)
+            el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
         });
 
       }
     </script>
     <style>
-      #table, #rules {
+      #table, #productions {
         display: inline;
       }
       .nonterm {
         background-color: #eef;
       }
       .conflict {
-        background-color: #fee;
+        background-color: #ffa;
       }
     </style>
 
@@ -133,32 +146,44 @@
 
   <body>
     <h1>Jison</h1>
-    <p>Sneek peek edition. No interface for parsing programs yet.</p>
     <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
     <textarea id="grammer" rows="20" cols="80">
 {
-    "lex": {
-        "rules": [
-           ["0", "return 'ZERO';" ],
-           ["\\+", "return 'PLUS';" ]
-       ]
-    },
-
-    "tokens": "ZERO PLUS",
-    "startSymbol": "E",
-    "bnf": {
-             "E" :[ "E PLUS T",
-                    "T"
-                  ],
-             "T" :[ "ZERO" ]
-           }
+        "lex": {
+            "rules": [
+               ["\\s+", ""],
+               ["[0-9]+", "return 'NAT';"],
+               ["\\+", "return '+';"],
+               ["\\*", "return '*';"],
+               ["$", "return 'EOF';"]
+            ]
+        },
+        "tokens": "NAT + * EOF",
+        "operators": [
+            ["left", "+"],
+            ["left", "*"]
+        ],
+        "bnf": {
+            "S" :[ [ "e EOF",   "return $1;"          ] ],
+            "e" :[ [ "e + e",   "$$ = [$1,'+', $3];" ],
+                   [ "e * e",   "$$ = [$1, '*', $3];" ],
+                   [ "NAT",       "$$ = parseInt(yytext);"         ] ]
+        }
 }
     </textarea><br/>
-    <textarea id="source">0+0+0</textarea>
-    <button onclick="runParser()">Process CFG</button>
+    <select id="type"><option>lalr</option>
+      <option>lr</option>
+      <option>slr</option>
+      <option>lr0</option>
+      <option>ll</option>
+    </select>
+    <button onclick="processGrammer()">Process CFG</button><br/>
+    <p>source</p>
+    <textarea id="source" rows="20" cols="80">1 + 2 * 3 + 4</textarea><br/>
+    <button onclick="runParser()">Parse source</button>
     <h2>Output</h2>
     <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
-    <div id="rules"></div>
+    <div id="productions"></div>
     <div id="table"></div>
     <p><small><em>By Zach Carter (zcarter@mail.usf.edu)</em></small></p>
   </body>

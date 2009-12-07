@@ -46,5 +46,5 @@ exports["test right-recursive nullable grammer"] = function () {
     assert.ok(parser.parse('xxx'), "parse 3 x's");
     assert.ok(parser.table.length == 4, "table has 4 states");
     assert.ok(parser.conflicts == 0, "no conflicts");
-    assert.equal(parser.nonterms['A'].nullable, true, "A is nullable");
+    assert.equal(parser.nullable('A'), true, "A is nullable");
 };
