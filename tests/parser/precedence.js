@@ -206,3 +206,39 @@ exports["test Context-dependent precedence"] = function () {
     var r = parser.parse("-x*-x*x-x");
     assert.deepEqual(r, expectedAST);
 };
+
+exports["test multi-operator rules"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'ID';"],
+           ["\\.", "return 'DOT';"],
+           ["=", "return 'ASSIGN';"],
+           ["\\(", "return 'LPAREN';"],
+           ["\\)", "return 'RPAREN';"],
+           ["$", "return 'EOF';"]
+        ]
+    };
+    var grammer = {
+        tokens: "ID DOT ASSIGN LPAREN RPAREN EOF",
+        startSymbol: "S",
+        operators: [
+            ["right", "ASSIGN"],
+            ["left", "DOT"]
+        ],
+        bnf: {
+            "S" :[ [ "e EOF",   "return $1;"       ] ],
+            "id":[ [ "ID", "$$ = ['ID'];"] ],
+            "e" :[ [ "e DOT id",   "$$ = [$1,'-', $3];" ],
+                   [ "e DOT id ASSIGN e",   "$$ = [$1,'=', $3];" ],
+                   [ "e DOT id LPAREN e RPAREN",   "$$ = [$1,'+', $3];" ],
+                   [ "id ASSIGN e",   "$$ = [$1,'+', $3];" ],
+                   [ "id LPAREN E RPAREN",   "$$ = [$1,'+', $3];" ],
+                   [ "id",       "$$ = $1;"         ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammer, {type: 'slr', debug:false});
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.conflicts, 0);
+};

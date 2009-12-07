@@ -24,7 +24,7 @@
         parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
-        rules(parser);
+        productions(parser);
         if(type === 'll')
           llTable(parser);
         else {
@@ -37,18 +37,18 @@
       }
       function nonterminalInfo(p){
         var out = ["Non-terminals"];
-        for(var nt in p.nonterms){
-          out.push(nt+"\n\tnullable: "+(p.nonterms[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterms[nt].first+"\n\tfollows: "+p.nonterms[nt].follows);
-          out.push("\t"+p.nonterms[nt].rules.join("\n\t"));
+        for(var nt in p.nonterminals){
+          out.push(nt+"\n\tnullable: "+(p.nonterminals[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterminals[nt].first+"\n\tfollows: "+p.nonterminals[nt].follows);
+          out.push("\t"+p.nonterminals[nt].productions.join("\n\t"));
         }
         document.getElementById("out").value += out.join("\n\n");
       }
 
-      function rules(p){
+      function productions(p){
         var out = ['<ol start="0">','<li>'];
-        out.push(p.rules.join('</li><li>'));
+        out.push(p.productions.join('</li><li>'));
         out.push('</li>','</ol>');
-        document.getElementById("rules").innerHTML = out.join("");
+        document.getElementById("productions").innerHTML = out.join("");
       }
 
 
@@ -84,13 +84,13 @@
         return str.join(',');
       }
       function lrTable(p){
-        var gs = p.grammerSymbols.slice(0).sort();
+        var gs = p.symbols.slice(0).sort();
         var out = ['<table border="1">','<tr>'];
         out.push('<td>','</td>');
         var ntout = [];
         gs.shift();
         gs.forEach(function(t){
-          if(p.nonterms[t])
+          if(p.nonterminals[t])
             ntout.push('<td class="nonterm nt-'+t+'"">',t,'</td>');
           else
             out.push('<td>',t,'</td>');
@@ -103,12 +103,12 @@
           out.push('<tr><td>',i,'</td>');
           gs.forEach(function(t){
             if(state[t]){
-              if(p.nonterms[t])
+              if(p.nonterminals[t])
                 ntout.push('<td class="nonterm nt-'+t+'">',state[t].toString(),'</td>');
               else
                 out.push('<td id="act'+i+'-'+t+'">',printAction(state[t]),'</td>');
             }else
-            out.push('<td>..&nbsp;</td>');
+            out.push('<td>&nbsp;</td>');
           });
           out.push.apply(out, ntout);
           out.push('</tr>');
@@ -123,7 +123,6 @@
           var el = document.getElementById('act'+res[0]+'-'+res[1]);
           if (r.bydefault) {
             el.className = 'conflict';
-            document.getElementById("out").value += "\nResolutions\n\n"+p.resolutions.join("\n");
           }
           if(el)
             el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
@@ -132,7 +131,7 @@
       }
     </script>
     <style>
-      #table, #rules {
+      #table, #productions {
         display: inline;
       }
       .nonterm {
@@ -184,7 +183,7 @@
     <button onclick="runParser()">Parse source</button>
     <h2>Output</h2>
     <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
-    <div id="rules"></div>
+    <div id="productions"></div>
     <div id="table"></div>
     <p><small><em>By Zach Carter (zcarter@mail.usf.edu)</em></small></p>
   </body>
