@@ -160,13 +160,7 @@ exports["test Non-associative operator"] = function () {
     var parser = new Jison.Parser(grammer);
     parser.lexer = new RegExpLexer(lexData);
 
-    var thrown = false;
-    try{
-        parser.parse("x=x=x");
-    }catch(e) {
-        thrown = true;
-    }
-    assert.ok(thrown, "throws parse error when operator used twice.");
+    assert.throws(function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
     assert.ok(parser.parse("x=x"), "normal use is okay.");
 };
 
@@ -198,7 +192,7 @@ exports["test Context-dependent precedence"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammer, {type: "slr"});
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = [[[["#", ["x"]], "*", ["#", ["x"]]], "*", ["x"]], "-", ["x"]];

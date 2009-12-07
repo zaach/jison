@@ -13,10 +13,31 @@ exports["test right-recursive nullable grammer"] = function () {
     };
 
     var parser = new Jison.Parser(grammer, {type: "slr"});
+    var parser2 = new Jison.Parser(grammer, {type: "lalr"});
 
     assert.equal(parser.table.length, 4, "table has 4 states");
     assert.equal(parser.nullable('A'), true, "A is nullable");
     assert.equal(parser.conflicts, 0, "should have no conflict");
+    assert.deepEqual(parser.table, parser2.table, "should have identical tables");
+};
+
+exports["test slr lalr lr tables are equal"] = function () {
+    var grammer = {
+        tokens: [ "ZERO", "PLUS"],
+        startSymbol: "E",
+        bnf: {
+            "E" :[ "E PLUS T",
+                   "T"      ],
+            "T" :[ "ZERO" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammer, {type: "slr"});
+    var parser2 = new Jison.Parser(grammer, {type: "lalr"});
+    var parser3 = new Jison.Parser(grammer, {type: "lr"});
+
+    assert.deepEqual(parser.table, parser2.table, "slr lalr should have identical tables");
+    assert.deepEqual(parser2.table, parser3.table, "lalr lr should have identical tables");
 };
 
 exports["test LL prase table"] = function () {
