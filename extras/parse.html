@@ -5,8 +5,9 @@
     <script>
       if(typeof console === 'undefined'){
       console = {};
-      console.log = function(str){document.getElementById('out').value+=str;};
+      console.log = function(str){document.getElementById("out").value = uneval(str)};
     }
+    var out = function(str){document.getElementById("out").value = uneval(str)};
     </script>
     <script src="http://www.json.org/json2.js"></script>
     <script src="es.js"></script>
@@ -16,11 +17,11 @@
     <script src="../lib/jison.js"></script>
     <script>
 
-      function runParser() {
-        var type = "lalr";
+      var parser;
+      function processGrammer() {
+        var type = document.getElementById("type").options[document.getElementById("type").selectedIndex].value || "lalr";
         var cfg = JSON.parse(document.getElementById("grammer").value);
-        var source = document.getElementById("source").value;
-        var parser = new Jison.Parser(cfg, {type: type});
+        parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
         document.getElementById("out").value = '';
         nonterminalInfo(parser);
         rules(parser);
@@ -28,8 +29,11 @@
           llTable(parser);
         else {
           lrTable(parser);
-          console.log(parser.parse(source));
         }
+      }
+      function runParser() {
+        var source = document.getElementById("source").value;
+        out(parser.parse(source));
       }
       function nonterminalInfo(p){
         var out = ["Non-terminals"];
@@ -46,6 +50,7 @@
         out.push('</li>','</ol>');
         document.getElementById("rules").innerHTML = out.join("");
       }
+
 
       function llTable(p){
         var out = ['<table border="1">','<tr>'];
@@ -71,6 +76,13 @@
         document.getElementById("table").innerHTML = out.join("");
       }
 
+      function printAction(a){
+        if(!a[0]) return '';
+        var str = [];
+        for(var i=0;i<a.length;i++)
+          str.push(a[i].join(''));
+        return str.join(',');
+      }
       function lrTable(p){
         var gs = p.grammerSymbols.slice(0).sort();
         var out = ['<table border="1">','<tr>'];
@@ -94,9 +106,9 @@
               if(p.nonterms[t])
                 ntout.push('<td class="nonterm nt-'+t+'">',state[t].toString(),'</td>');
               else
-                out.push('<td id="act'+i+'-'+t+'">',state[t].toString(),'</td>');
+                out.push('<td id="act'+i+'-'+t+'">',printAction(state[t]),'</td>');
             }else
-              out.push('<td>&nbsp;</td>');
+            out.push('<td>..&nbsp;</td>');
           });
           out.push.apply(out, ntout);
           out.push('</tr>');
@@ -108,11 +120,13 @@
 
         p.resolutions.forEach(function (res){
           var r = res[2];
+          var el = document.getElementById('act'+res[0]+'-'+res[1]);
           if (r.bydefault) {
-            var el = document.getElementById('act'+res[0]+'-'+res[1]);
             el.className = 'conflict';
+            document.getElementById("out").value += "\nResolutions\n\n"+p.resolutions.join("\n");
           }
-          el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
+          if(el)
+            el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
         });
 
       }
@@ -125,7 +139,7 @@
         background-color: #eef;
       }
       .conflict {
-        background-color: #fee;
+        background-color: #ffa;
       }
     </style>
 
@@ -133,29 +147,41 @@
 
   <body>
     <h1>Jison</h1>
-    <p>Sneek peek edition. No interface for parsing programs yet.</p>
     <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
     <textarea id="grammer" rows="20" cols="80">
 {
-    "lex": {
-        "rules": [
-           ["0", "return 'ZERO';" ],
-           ["\\+", "return 'PLUS';" ]
-       ]
-    },
-
-    "tokens": "ZERO PLUS",
-    "startSymbol": "E",
-    "bnf": {
-             "E" :[ "E PLUS T",
-                    "T"
-                  ],
-             "T" :[ "ZERO" ]
-           }
+        "lex": {
+            "rules": [
+               ["\\s+", ""],
+               ["[0-9]+", "return 'NAT';"],
+               ["\\+", "return '+';"],
+               ["\\*", "return '*';"],
+               ["$", "return 'EOF';"]
+            ]
+        },
+        "tokens": "NAT + * EOF",
+        "operators": [
+            ["left", "+"],
+            ["left", "*"]
+        ],
+        "bnf": {
+            "S" :[ [ "e EOF",   "return $1;"          ] ],
+            "e" :[ [ "e + e",   "$$ = [$1,'+', $3];" ],
+                   [ "e * e",   "$$ = [$1, '*', $3];" ],
+                   [ "NAT",       "$$ = parseInt(yytext);"         ] ]
+        }
 }
     </textarea><br/>
-    <textarea id="source">0+0+0</textarea>
-    <button onclick="runParser()">Process CFG</button>
+    <select id="type"><option>lalr</option>
+      <option>lr</option>
+      <option>slr</option>
+      <option>lr0</option>
+      <option>ll</option>
+    </select>
+    <button onclick="processGrammer()">Process CFG</button><br/>
+    <p>source</p>
+    <textarea id="source" rows="20" cols="80">1 + 2 * 3 + 4</textarea><br/>
+    <button onclick="runParser()">Parse source</button>
     <h2>Output</h2>
     <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
     <div id="rules"></div>
