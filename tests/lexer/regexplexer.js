@@ -222,3 +222,111 @@ exports["test commonjs module generator"] = function() {
     assert.equal(exports.lex(), "X");
     assert.equal(exports.lex(), "EOF");
 };
+
+exports["test DJ lexer"] = function() {
+    var dict = {
+    "lex": {
+        "macros": {
+            "digit": "[0-9]",
+            "id": "[a-zA-Z][a-zA-Z0-9]*" 
+        },
+
+        "rules": [
+            ["//.*",       "/* ignore comment */"],
+            ["main\\b",     "return 'MAIN';"],
+            ["class\\b",    "return 'CLASS';"],
+            ["extends\\b",  "return 'EXTENDS';"],
+            ["nat\\b",      "return 'NATTYPE';"],
+            ["if\\b",       "return 'IF';"],
+            ["else\\b",     "return 'ELSE';"],
+            ["for\\b",      "return 'FOR';"],
+            ["printNat\\b", "return 'PRINTNAT';"],
+            ["readNat\\b",  "return 'READNAT';"],
+            ["this\\b",     "return 'THIS';"],
+            ["new\\b",      "return 'NEW';"],
+            ["var\\b",      "return 'VAR';"],
+            ["null\\b",     "return 'NUL';"],
+            ["{digit}+",   "return 'NATLITERAL';"],
+            ["{id}",       "return 'ID';"],
+            ["==",         "return 'EQUALITY';"],
+            ["=",          "return 'ASSIGN';"],
+            ["\\+",        "return 'PLUS';"],
+            ["-",          "return 'MINUS';"],
+            ["\\*",        "return 'TIMES';"],
+            [">",          "return 'GREATER';"],
+            ["\\|\\|",     "return 'OR';"],
+            ["!",          "return 'NOT';"],
+            ["\\.",        "return 'DOT';"],
+            ["\\{",        "return 'LBRACE';"],
+            ["\\}",        "return 'RBRACE';"],
+            ["\\(",        "return 'LPAREN';"],
+            ["\\)",        "return 'RPAREN';"],
+            [";",          "return 'SEMICOLON';"],
+            ["\\s+",       "/* skip whitespace */"],
+            [".",          "print('Illegal character');throw 'Illegal character';"],
+            ["$",          "return 'ENDOFFILE';"]
+        ]
+    }
+};
+
+    var input = "class Node extends Object { \
+                      var nat value    var nat value;\
+                      var Node next;\
+                      var nat index;\
+                    }\
+\
+                    class List extends Object {\
+                      var Node start;\
+\
+                      Node prepend(Node startNode) {\
+                        startNode.next = start;\
+                        start = startNode;\
+                      }\
+\
+                      nat find(nat index) {\
+                        var nat value;\
+                        var Node node;\
+\
+                        for(node = start;!(node == null);node = node.next){\
+                          if(node.index == index){\
+                            value = node.value;\
+                          } else { 0; };\
+                        };\
+\
+                        value;\
+                      }\
+                    }\
+\
+                    main {\
+                      var nat index;\
+                      var nat value;\
+                      var List list;\
+                      var Node startNode;\
+\
+                      index = readNat();\
+                      list = new List;\
+\
+                      for(0;!(index==0);0){\
+                        value = readNat();\
+                        startNode = new Node;\
+                        startNode.index = index;\
+                        startNode.value = value;\
+                        list.prepend(startNode);\
+                        index = readNat();\
+                      };\
+\
+                      index = readNat();\
+\
+                      for(0;!(index==0);0){\
+                        printNat(list.find(index));\
+                        index = readNat();\
+                      };\
+                    }";
+
+    var lexer = new RegExpLexer(dict.lex);
+    lexer.setInput(input);
+    var tok;
+    while (tok = lexer.lex()) {
+        assert.equal(typeof tok, "string");
+    }
+};
