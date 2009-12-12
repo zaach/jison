@@ -1,17 +1,18 @@
-// Parses JSON
-// Based on Dave Dolan's grammer http://davedolan.com/Blog 
+var Jison = require("jison").Jison;
+var system = require("system");
 
-var jison = require("jison").Jison,
-    RegExpLexer= require("jison/lex").RegExpLexer;
+exports.grammar = {
+    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
+    "author": "Zach Carter",
 
-var grammer = {
     "lex": {
         "macros": {
-            "digit": "[0-9]"
+            "digit": "[0-9]",
+            "exp": "([eE][-+]?{digit}+)"
         },
         "rules": [
             ["\\s+", "/* skip whitespace */"],
-            ["{digit}+(\\.{digit}+)?", "return 'NUMBER';"],
+            ["-?{digit}+(\\.{digit}+)?{exp}?", "return 'NUMBER';"],
             ["\"[^\"]*", function(){
                 if(this.yytext.charAt(this.yyleng-1) == '\\') {
                     // remove escape
@@ -32,43 +33,52 @@ var grammer = {
             ["true\\b", "return 'TRUE'"],
             ["false\\b", "return 'FALSE'"],
             ["null\\b", "return 'NULL'"]
-            //["$", "return 'EOF';"]
         ]
     },
+
     "tokens": "STRING NUMBER { } [ ] , : TRUE FALSE NULL",
+    "start": "JSONText",
+
     "bnf": {
-        "JsonThing": [ "JsonObject",
-                       "JsonArray" ],
+        "JSONString": [ "STRING" ],
 
-        "JsonObject": [ "{ JsonPropertyList }" ],
+        "JSONNumber": [ "NUMBER" ],
 
-        "JsonPropertyList": [ "JsonProperty",
+        "JSONBooleanLiteral": [ "TRUE", "FALSE" ],
+
+
+        "JSONText": [ "JSONValue" ],
+
+        "JSONValue": [ "JSONNullLiteral",
+                       "JSONBooleanLiteral",
+                       "JSONString",
+                       "JSONNumber",
+                       "JSONObject",
+                       "JSONArray" ],
+
+        "JSONObject": [ "{ }",
+                        "{ JSONMemberList }" ],
+
+        "JSONMember": [ "JSONString : JSONValue" ],
+
+        "JSONMemberList": [ "JsonProperty",
                               "JsonPropertyList , JsonProperty" ],
 
-        "JsonProperty": [ "StringLiteral : JsonValue" ],
+        "JSONArray": [ "[ ]",
+                       "[ JSONElementList ]" ],
 
-        "JsonArray": [ "[ JsonValueList ]" ],
-
-        "JsonValueList": [ "JsonValue",
-                           "JsonValueList , JsonValue" ],
-
-        "JsonValue": [ "StringLiteral",
-                       "NumericalLiteral",
-                       "JsonObject",
-                       "JsonArray",
-                       "TRUE",
-                       "FALSE",
-                       "NULL" ],
-
-        "StringLiteral": [ "STRING" ],
-
-        "NumericalLiteral": [ "NUMBER" ]
-    },
+        "JSONElementList": [ "JSONValue",
+                             "JSONElementList , JSONValue" ]
+    }
 };
 
-var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
+var options = {type: "slr", moduleType: "commonjs"};
 
-var parser = new jison.Parser(grammer, {type: 'lalr'});
+exports.main = function main (args) {
+    var source = new Jison.Parser(exports.grammar, options).generate();
+    print(source);
+};
 
-parser.parse(source);
+if (require.main === module)
+    exports.main(system.args);
 

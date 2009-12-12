@@ -1,14 +1,7 @@
-// DJ - Diminished Java Language Grammer
-// DJ is a contrived language used in my compilers class
-// - Zach
+{
+    "comment": "ClassyLang grammar. Very classy.",
+    "author": "Zach Carter",
 
-var Jison = require("jison").Jison,
-    RegExpLexer= require("jison/lex").RegExpLexer;
-
-if(typeof alert != 'undefined')
-  print = alert;
-
-var grammer = {
     "lex": {
         "macros": {
             "digit": "[0-9]",
@@ -47,7 +40,7 @@ var grammer = {
             ["\\)",        "return 'RPAREN';"],
             [";",          "return 'SEMICOLON';"],
             ["\\s+",       "/* skip whitespace */"],
-            [".",          "print('Illegal character');throw 'Illegal character';"],
+            [".",          "throw 'Illegal character: '+yytext;"],
             ["$",          "return 'ENDOFFILE';"]
         ]
     },
@@ -90,7 +83,7 @@ var grammer = {
               "id",
               "NEW id",
               "THIS", 
-              "IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE ",
+              "IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE",
               "FOR LPAREN e SEMICOLON e SEMICOLON e RPAREN LBRACE el RBRACE",
               "READNAT LPAREN RPAREN",
               "PRINTNAT LPAREN e RPAREN",
@@ -108,11 +101,5 @@ var grammer = {
               "e DOT id LPAREN e RPAREN",
               "LPAREN e RPAREN"]
     }
-};
+}
 
-
-var input = "class A extends Object{}\nclass B extends Object{}\n\nmain { var nat n; n = 4; }";
-
-var parser = new Jison.Parser(grammer, {type: 'slr'});
-
-parser.parse(input);

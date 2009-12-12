@@ -1,17 +1,18 @@
-// Parses and reconstructs JSON
-// Based on Dave Dolan's grammer http://davedolan.com/Blog 
+var Jison = require("jison").Jison;
+var system = require("system");
 
-var jison = require("jison").Jison,
-    RegExpLexer= require("jison/lex").RegExpLexer;
+exports.grammar = {
+    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
+    "author": "Zach Carter",
 
-var grammer = {
     "lex": {
         "macros": {
-            "digit": "[0-9]"
+            "digit": "[0-9]",
+            "exp": "([eE][-+]?{digit}+)"
         },
         "rules": [
             ["\\s+", "/* skip whitespace */"],
-            ["{digit}+(\\.{digit}+)?", "return 'NUMBER';"],
+            ["-?{digit}+(\\.{digit}+)?{exp}?", "return 'NUMBER';"],
             ["\"[^\"]*", function(){
                 if(this.yytext.charAt(this.yyleng-1) == '\\') {
                     // remove escape
@@ -31,46 +32,56 @@ var grammer = {
             [":", "return ':'"],
             ["true\\b", "return 'TRUE'"],
             ["false\\b", "return 'FALSE'"],
-            ["null\\b", "return 'NULL'"],
-            ["$", "return 'EOF';"]
+            ["null\\b", "return 'NULL'"]
         ]
     },
-    "tokens": "STRING NUMBER { } [ ] , : TRUE FALSE NULL EOF",
+
+    "tokens": "STRING NUMBER { } [ ] , : TRUE FALSE NULL",
+    "start": "JSONText",
+
     "bnf": {
-        "Json": [ ["JsonThing EOF", "return $1;"] ],
+        "JSONString": [[ "STRING", "$$ = yytext;" ]],
 
-        "JsonThing": [ ["JsonObject", "$$ = $1"],
-                       ["JsonArray", "$$ = $1"] ],
+        "JSONNumber": [[ "NUMBER", "$$ = Number(yytext);" ]],
 
-        "JsonObject": [ ["{ JsonPropertyList }", "$$ = $2"] ],
+        "JSONNullLiteral": [[ "NULL", "$$ = null;" ]],
 
-        "JsonPropertyList": [ ["JsonProperty", "$$ = {};$$[$1[0]] = $1[1];"],
-                              ["JsonPropertyList , JsonProperty", "$$ = $1; $1[$3[0]] = $3[1];"] ],
+        "JSONBooleanLiteral": [[ "TRUE", "$$ = true;" ],
+                               [ "FALSE", "$$ = false;" ]],
 
-        "JsonProperty": [ ["StringLiteral : JsonValue", "$$ = [$1, $3];"] ],
 
-        "JsonArray": [ ["[ JsonValueList ]", "$$ = $2;"] ],
+        "JSONText": [[ "JSONValue", "$$ = $1" ]],
 
-        "JsonValueList": [ ["JsonValue", "$$ = [$1];"],
-                           ["JsonValueList , JsonValue", "$$ = $1; $1.push($3);"] ],
+        "JSONValue": [[ "JSONNullLiteral",    "$$ = $1;" ],
+                      [ "JSONBooleanLiteral", "$$ = $1;" ],
+                      [ "JSONString",         "$$ = $1;" ],
+                      [ "JSONNumber",         "$$ = $1;" ],
+                      [ "JSONObject",         "$$ = $1;" ],
+                      [ "JSONArray",          "$$ = $1;" ]],
 
-        "JsonValue": [ ["StringLiteral", "$$ = $1;"],
-                       ["NumericalLiteral", "$$ = $1;"],
-                       ["JsonObject", "$$ = $1;"],
-                       ["JsonArray", "$$ = $1;"],
-                       ["TRUE", "$$ = true;"],
-                       ["FALSE", "$$ = false;"],
-                       ["NULL", "$$ = null;"] ],
+        "JSONObject": [[ "{ }", "$$ = {};" ],
+                       [ "{ JSONMemberList }", "$$ = $2;" ]],
 
-        "StringLiteral": [ ["STRING", "$$ = yytext;" ] ],
+        "JSONMember": [[ "JSONString : JSONValue", "$$ = [$1, $3];" ]],
 
-        "NumericalLiteral": [ ["NUMBER", "$$ = Number(yytext);" ] ]
-    },
+        "JSONMemberList": [[ "JsonProperty", "$$ = {}; $$[$1[0]] = $1[1];" ],
+                           [ "JsonPropertyList , JsonProperty", "$$ = $1; $1[$3[0]] = $3[1];" ]],
+
+        "JSONArray": [[ "[ ]", "$$ = [];" ],
+                      [ "[ JSONElementList ]", "$$ = $1;" ]],
+
+        "JSONElementList": [[ "JSONValue", "$$ = [$1];" ],
+                            [ "JSONElementList , JSONValue", "$$ = $1; $1.push($3);" ]]
+    }
 };
 
-var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
+var options = {type: "slr", moduleType: "commonjs"};
 
-var parser = new jison.Parser(grammer, {type: 'lalr'});
+exports.main = function main (args) {
+    var source = new Jison.Parser(exports.grammar, options).generate();
+    print(source);
+};
 
-var result = parser.parse(source);
+if (require.main === module)
+    exports.main(system.args);
 

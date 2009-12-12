@@ -1,11 +1,6 @@
-// DJ - Diminished Java Language Grammer
-// DJ is a contrived language used in my compilers class
-// - Zach
-
-var Jison = require("jison").Jison,
-    RegExpLexer= require("jison/lex").RegExpLexer;
-
-var grammer = {
+{
+    "comment": "ClassyLang grammar with AST-building actions. Very classy.",
+    "author": "Zach Carter",
     "lex": {
         "macros": {
             "digit": "[0-9]",
@@ -44,7 +39,7 @@ var grammer = {
             ["\\)",        "return 'RPAREN';"],
             [";",          "return 'SEMICOLON';"],
             ["\\s+",       "/* skip whitespace */"],
-            [".",          "print('Illegal character');throw 'Illegal character';"],
+            [".",          "throw 'Illegal character: '+yytext;"],
             ["$",          "return 'ENDOFFILE';"]
         ]
     },
@@ -99,7 +94,7 @@ var grammer = {
               ["id",           "$$ = ['ID_EXPR',{},$1];"],
               ["NEW id",       "$$ = ['NEW_EXPR',{},$2];"],
               ["THIS",         "$$ = ['THIS_EXPR',{}];"],
-              ["IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE ",
+              ["IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE",
                                "$$ = ['IF_THEN_ELSE_EXPR',{},$3,$6,$10];"],
               ["FOR LPAREN e SEMICOLON e SEMICOLON e RPAREN LBRACE el RBRACE",
                                "$$ = ['FOR_EXPR',{},$3,$5,$7,$10];"],
@@ -125,17 +120,7 @@ var grammer = {
               ["LPAREN e RPAREN",
                                "$$ = $2;"]]
     },
-    "actionInclude": function () {
-        function prependChild(node, child){
-            node.splice(2,0,child);
-            return node;
-        }
-    }
-};
 
+    "actionInclude": "function prependChild(node, child){ node.splice(2,0,child); return node; }"
+}
 
-var input = "class A extends Object{}\nclass B extends Object{}\n\nmain { var nat n; n = 4; }";
-
-var parser = new Jison.Parser(grammer, {type: 'slr'});
-
-parser.parse(input);

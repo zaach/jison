@@ -1,15 +1,17 @@
 <html>
   <head>
-    <title>Jison, JavaScript Bottom-up Parser</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+    <title>Jison, parse table visualation page</title>
     
     <script>
       if(typeof console === 'undefined'){
       console = {};
       console.log = function(str){document.getElementById("out").value = uneval(str)};
     }
-    var out = function(str){document.getElementById("out").value = uneval(str)};
+    var printOut = function(str){document.getElementById("out").value = JSON.stringify(str)};
     </script>
-    <script src="http://www.json.org/json2.js"></script>
+    <script src="json2.js"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
     <script src="es.js"></script>
     <script src="../lib/jison/lex.js"></script>
@@ -17,47 +19,46 @@
     <script src="../lib/jison/util/set.js"></script>
     <script src="../lib/jison.js"></script>
     <script>
-
       var parser;
       $(function(){
 
-        $(".state").live("click", function (ev){
-          var split = this.id.split("_");
-          var state = parser.states.item(split[1]);
-          $(this).children(".details").toggleClass("open")
-            .html(state.join('<br />'))
-            .append("<br/>");
-        });
-
-        $(".action").live("click", function (ev){
-          var split = this.id.split("-");
-          var table = parser.table[split[1]];
-          var actions = table[split[2]];
-          var details = $(this).children(".details");
-          details.html("").addClass("open");
-          for (var i in actions) {
-            if (actions[i][0] == 's') {
-              var link = "<a href='#state_"+actions[i][1]+"'>Go to state "+actions[i][1]+"</a>";
-              details.append("- Shift "+split[2]+" then "+link).append("<br />");
-            }
-            else if (actions[i][0] == 'r') {
-              var text = "- Reduce by "+actions[i][1]+") "+parser.productions[actions[i][1]];
-              details.append(text).append("<br />");
-            }
-          }
-        });
-
-        $(".details").live("click", function (ev){
-          $(this).html("").removeClass("open");
+        $(".action, .state").live("click", function (ev){
           if(!$(ev.target).is("a"))
+            $(this).toggleClass("open");
+        });
+        $(".action, .state").live("dblclick", function (ev){
+            var row = this.className.match(/(row_[0-9]+)/)[1];
+            $(this).hasClass("open") ?
+              $("."+row).removeClass("open") :
+              $("."+row).addClass("open");
             return false;
         });
+
+        $("#examples").change(function(ev) {
+          var file = this.options[this.selectedIndex].value;
+          $(document.body).addClass("loading");
+          $.get("../examples/"+file+".json", function (data) {
+            $("#grammar").val(data);
+            $(document.body).removeClass("loading");
+          });
+        });
+
       });
-      function processGrammer() {
-        var type = document.getElementById("type").options[document.getElementById("type").selectedIndex].value || "lalr";
-        var cfg = JSON.parse(document.getElementById("grammer").value);
+      function processGrammar() {
+        var type = document.getElementById("type").options[document.getElementById("type").selectedIndex].value || "slr";
+
+        try{
+        var cfg = JSON.parse($("#grammar").val());
+        }catch(e){ return alert("Oops. Make sure your JSON is correct.\n"+e); }
+
+        if(cfg.lex) $("#parsing").show();
+        else $("#parsing").hide();
+
         parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
-        document.getElementById("out").value = '';
+        if (parser.computeLookAheads)
+          parser.computeLookAheads();
+
+        $("#out").val('');
         nonterminalInfo(parser);
         productions(parser);
         if(type === 'll')
@@ -68,27 +69,51 @@
       }
 
       function runParser() {
-        var source = document.getElementById("source").value;
-        out(parser.parse(source));
+        if(!parser) processGrammer();
+        printOut("Parsing...");
+        var source = $("#source").val();
+        try{
+          printOut(parser.parse(source));
+        }catch(e){
+          printOut(e.message || e);
+        }
       }
 
       function nonterminalInfo(p){
-        var out = ["Non-terminals"];
+        var out = ["<h3>Non-terminals</h3><dl>"];
         for(var nt in p.nonterminals){
-          out.push(nt+"\n\tnullable: "+(p.nonterminals[nt].nullable ? 'Yes':'No')+"\n\tfirsts: "+p.nonterminals[nt].first+"\n\tfollows: "+p.nonterminals[nt].follows);
-          out.push("\t"+p.nonterminals[nt].productions.join("\n\t"));
+          out.push("<dt>",nt,"</dt>");
+          out.push("<dd>", "nullable: "+(p.nonterminals[nt].nullable ? 'Yes':'No')+"<br/>firsts: "+p.nonterminals[nt].first+"<br/>follows: "+p.nonterminals[nt].follows);
+          out.push("<p>Productions: ");
+          p.nonterminals[nt].productions.forEach(function (prod) {
+            out.push('<a href="#prod_'+prod.id+'">'+prod.id+'</a>');
+          });
+          out.push("</p></dd>");
         }
-        document.getElementById("out").value += out.join("\n\n");
+        out.push("</dl>");
+        $("#nonterminals").html(out.join("\n"));
       }
 
       function productions(p){
-        var out = ['<ol start="0">','<li>'];
-        out.push(p.productions.join('</li><li>'));
-        out.push('</li>','</ol>');
-      document.getElementById("productions").innerHTML = "<h2>Productions</h2>"+out.join("");
+        var out = ['<ol start="0">'];
+          p.productions.forEach(function (prod) {
+            out.push("<li id='prod_"+prod.id+"'>", prod, "</li>");
+          });
+        out.push('</ol>');
+        document.getElementById("productions").innerHTML = "<h3>Productions</h3>"+out.join("");
       }
 
 
+      function printCell(cell){
+        var out = cell.join(",");
+
+        out += "<div class='details'>";
+        for(var i=0;i<cell.length;i++)
+          out += parser.productions[cell[i]]+"<br />"; 
+        out += "</div>";
+
+        return out;
+      }
       function llTable(p){
         var out = ['<table border="1">','<tr>'];
         out.push('<td>','</td>');
@@ -102,7 +127,7 @@
           p.terminals.forEach(function(t){
             var cell = p.table[nt][t];
             if(cell)
-              out.push((cell.length>1?'<td class="conflict">':'<td>'),cell.toString(),'</td>');
+              out.push('<td id="cell_'+nt+'_'+t+'" class="cell_'+nt+' '+(cell.length>1? 'conflict':'')+' action">',printCell(cell),'</td>');
             else
               out.push('<td>&nbsp;</td>');
           });
@@ -110,20 +135,40 @@
         }
 
         out.push('</table>');
-        document.getElementById("table").innerHTML = "<h2>Parse Table</h2>"+out.join("");
+        document.getElementById("table").innerHTML = "<h3>LL(1) Parse Table</h3>"+out.join("");
       }
 
+      function printActionDetails(a, token) {
+          var out = "<div class='details'>";
+
+          for (var i=0;i<a.length;i++) {
+            if (a[i][0] == 's') {
+              var link = "<a href='#state_"+a[i][1]+"'>Go to state "+a[i][1]+"</a>";
+              out += "- Shift "+token+" then "+link+"<br />";
+            }
+            else if (a[i][0] == 'r') {
+              var text = "- Reduce by "+a[i][1]+") "+parser.productions[a[i][1]];
+              out += text+"<br />";
+            }
+          }
+          return out+"</div>";
+      }
       function printAction(a){
-        if(!a[0]) return '';
-        var str = [];
-        for(var i=0;i<a.length;i++)
-          str.push(a[i].join(''));
-        return str.join(', ');
+          if(!a[0]) return '';
+          var out = '',
+              ary = [];
+
+          for(var i=0;i<a.length;i++)
+            ary.push('<span class="action_'+(a[i][0])+'">'+a[i].join('')+'</span>');
+
+          out += ary.join(',');
+
+          return out;
       }
       function lrTable(p){
         var gs = p.symbols.slice(0).sort();
         var out = ['<table border="1">','<thead>','<tr>'];
-        out.push('<th>','</th>');
+        out.push('<th>&#8595;states','</th>');
         var ntout = [];
         gs.shift();
         gs.forEach(function(t){
@@ -135,25 +180,30 @@
         out.push.apply(out, ntout);
         out.push('</tr>','</thead>');
 
-        for(var i=0,state;state=p.table[i];i++){
+        for(var i=0,state;i < p.table.length;i++){
+          state=p.table[i];
+          if (!state) continue;
           ntout = [];
-          out.push('<tr><td class="state" id="state_'+i+'">',i,'<div class="details"></div></td>');
+          out.push('<tr><td class="row_'+i+' state" id="state_'+i+'">',i,'<div class="details">'+parser.states.item(i).join('<br />')+'</div></td>');
           gs.forEach(function(t){
-            if(state[t]){
-              if(p.nonterminals[t])
+            if(p.nonterminals[t]){
+              if(typeof state[t] === 'number')
                 ntout.push('<td class="nonterm nt-'+t+'"><a href="#state_'+state[t]+'">',state[t],'</a></td>');
-              else
-              out.push('<td id="act-'+i+'-'+t+'" class="action">',printAction(state[t]),'<div class="details"></div></td>');
-            }else
-            out.push('<td>&nbsp;</td>');
+              else 
+                ntout.push('<td class="nonterm">&nbsp;</td>');
+            } else if (state[t])
+              out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t][0] == 'a' ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
+            else
+              out.push('<td>&nbsp;</td>');
           });
           out.push.apply(out, ntout);
           out.push('</tr>');
         }
 
         out.push('</table>');
+    alert(p.table.length);
 
-        document.getElementById("table").innerHTML = "<h2>Parse Table</h2>"+out.join("");
+      $("#table").html("<h3>"+parser.type+" Parse Table</h3><p>Click cells to show details</p>"+out.join(""));
 
         p.resolutions.forEach(function (res){
           var r = res[2];
@@ -168,153 +218,157 @@
       }
     </script>
     <style>
-      #table, #productions {
-        display: inline;
+      body {
+        font-family: Georgia, serif;
+        color: #222;
+      }
+      a img { border: 0px; }
+      #table table, #productions li, #nonterminals dl {
         font-family: monospace;
       }
-      .nonterm {
-        background-color: #eef;
+      #usf_logo {
+        position: absolute;
+        top: 10px;
+        right: 10px;
       }
-      .conflict {
-        background-color: #ffa;
+      #loading {
+        position: fixed;
+        top: 0px;
+        right: 100px;
+        z-index: 10;
+        width: 16px;
+        height: 16px;
       }
-      .action, .state {
+      #parsing {
+        display: none;
+      }
+      #nonterminals dl {
+        font-size: 90%;
+      }
+      body.loading #loading {
+        background: url(spin.gif) no-repeat;
+      }
+      h1 {
+        font-size: 2.8em;
+      }
+      h2 {
+        font-size: 2.2em;
+      }
+      h3 {
+        font-size: 1.8em;
+      }
+      dt { font-weight: bold; }
+
+      .nonterm { background-color: #eef; }
+      .action_s { color: #940; }
+      .action_r { color: #707; }
+      .accept { background-color: #dfd !important; }
+      .conflict { background-color: #ffa !important; }
+      .action, .state, .llaction {
         cursor: pointer;
       }
       .action:hover {
       }
+      .open .details{
+        white-space:nowrap;
+        display: block;
+      }
       .details {
-        background-color: #f0f0f0;
+        background-color: #eee;
         font-size: 90%;
+        display: none;
       }
       .details.open {
         white-space:nowrap;
       }
+      button, select {
+      }
+      table tr:hover td {
+        background-color: #eee;
+      }
+      #table table {
+        border: 1px #6699CC solid;
+        border-collapse: collapse;
+        border-spacing: 0px;
+      }
+      #table table tr td, #table table th { padding: 3px; }
     </style>
 
   </head>
 
   <body>
+
     <h1>Jison</h1>
-    <p>Input a grammer, along with token list and start symbol, in <a href="http://json.org/">JSON</a> format. Example below.</p>
-    <textarea id="grammer" rows="20" cols="80">
+
+    <div id="intro">
+      <p><em>By Zach Carter (zcarter@mail.usf.edu)</em><br />
+      Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br />
+      <a href="http://www.cse.usf.edu" id="usf_logo"><img src="usf.jpg" alt="USF" /></a>
+      </p>
+      <p>This page can be used to display parse tables and other useful information about your CFG. Currently doesn't work in IE.</p>
+    </div>
+
+    <h2>Input</h2>
+
+    <p>Input a <a href="http://en.wikipedia.org/wiki/Backus%E2%80%93Naur_Form">BNF</a> grammar along with a token list and optional start symbol, in <a href="http://json.org/">JSON</a> format. 
+    </p>
+    <p>
+    Load an example:
+    <select id="examples">
+      <option value="basic" selected="true">Basic</option>
+      <option value="basic_lex">Basic w/ lex</option>
+      <option value="basic2">Basic #2</option>
+      <option value="basic2_lex">Basic #2 w/ lex</option>
+      <option value="reduce_conflict">Reduce conflict</option>
+      <option value="dism">DISM</option>
+      <option value="dism_lr0">DISM in LR(0)</option>
+      <option value="precedence">Advanced</option>
+    </select>
+    </p>
+
+    <textarea id="grammar" rows="20" cols="80">
 {
-    "lex": {
-        "macros": {
-            "digit": "[0-9]",
-            "id": "[a-zA-Z][a-zA-Z0-9]*" 
-        },
-
-        "rules": [
-            ["//.*",       "/* ignore comment */"],
-            ["main\\b",     "return 'MAIN';"],
-            ["class\\b",    "return 'CLASS';"],
-            ["extends\\b",  "return 'EXTENDS';"],
-            ["nat\\b",      "return 'NATTYPE';"],
-            ["if\\b",       "return 'IF';"],
-            ["else\\b",     "return 'ELSE';"],
-            ["for\\b",      "return 'FOR';"],
-            ["printNat\\b", "return 'PRINTNAT';"],
-            ["readNat\\b",  "return 'READNAT';"],
-            ["this\\b",     "return 'THIS';"],
-            ["new\\b",      "return 'NEW';"],
-            ["var\\b",      "return 'VAR';"],
-            ["null\\b",     "return 'NUL';"],
-            ["{digit}+",   "return 'NATLITERAL';"],
-            ["{id}",       "return 'ID';"],
-            ["==",         "return 'EQUALITY';"],
-            ["=",          "return 'ASSIGN';"],
-            ["\\+",        "return 'PLUS';"],
-            ["-",          "return 'MINUS';"],
-            ["\\*",        "return 'TIMES';"],
-            [">",          "return 'GREATER';"],
-            ["\\|\\|",     "return 'OR';"],
-            ["!",          "return 'NOT';"],
-            ["\\.",        "return 'DOT';"],
-            ["\\{",        "return 'LBRACE';"],
-            ["\\}",        "return 'RBRACE';"],
-            ["\\(",        "return 'LPAREN';"],
-            ["\\)",        "return 'RPAREN';"],
-            [";",          "return 'SEMICOLON';"],
-            ["\\s+",       "/* skip whitespace */"],
-            [".",          "print('Illegal character');throw 'Illegal character';"],
-            ["$",          "return 'ENDOFFILE';"]
-        ]
-    },
-
-    "tokens": "MAIN CLASS EXTENDS NATTYPE IF ELSE FOR PRINTNAT READNAT THIS NEW VAR NUL NATLITERAL ID ASSIGN PLUS MINUS TIMES EQUALITY GREATER OR NOT DOT SEMICOLON LBRACE RBRACE LPAREN RPAREN ENDOFFILE",
-    "operators": [
-        ["right", "ASSIGN"],
-        ["left", "OR"],
-        ["nonassoc", "EQUALITY", "GREATER"],
-        ["left", "PLUS", "MINUS"],
-        ["left", "TIMES"],
-        ["right", "NOT"],
-        ["left", "DOT"]
-    ],
-
+    "tokens": "ZERO PLUS",
     "bnf": {
-        "pgm": ["cdl MAIN LBRACE vdl el RBRACE ENDOFFILE"],
-
-        "cdl": ["c cdl",
-                ""],
-
-        "c": ["CLASS id EXTENDS id LBRACE vdl mdl RBRACE"],
-
-        "vdl": ["VAR t id SEMICOLON vdl",
-                ""],
-
-        "mdl": ["t id LPAREN t id RPAREN LBRACE vdl el RBRACE mdl",
-                ""],
-
-        "t": ["NATTYPE",
-              "id"],
-
-        "id": ["ID"],
-
-        "el": ["e SEMICOLON el",
-               "e SEMICOLON"],
-
-        "e": ["NATLITERAL",
-              "NUL",
-              "id",
-              "NEW id",
-              "THIS", 
-              "IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE ",
-              "FOR LPAREN e SEMICOLON e SEMICOLON e RPAREN LBRACE el RBRACE",
-              "READNAT LPAREN RPAREN",
-              "PRINTNAT LPAREN e RPAREN",
-              "e PLUS e",
-              "e MINUS e",
-              "e TIMES e",
-              "e EQUALITY e",
-              "e GREATER e",
-              "NOT e",
-              "e OR e",
-              "e DOT id",
-              "id ASSIGN e",
-              "e DOT id ASSIGN e",
-              "id LPAREN e RPAREN",
-              "e DOT id LPAREN e RPAREN",
-              "LPAREN e RPAREN"]
+        "E" :[ "E PLUS T",
+               "T" ],
+        "T" :[ "ZERO" ]
     }
 }
-    </textarea><br/>
-    <select id="type">
-      <option value="lr0">LR(0)</option>
-      <option value="slr" selected="true">SLR(1)</option>
-      <option value="lalr">LALR(1)</option>
-      <option value="lr">LR(1)</option>
-      <option value="ll">LL(1)</option>
-    </select>
-    <button onclick="processGrammer()">Process CFG</button><br/>
-    <p>source</p>
-    <textarea id="source" rows="6" cols="80"></textarea><br/>
-    <button onclick="runParser()">Parse source</button>
+</textarea>
+
+    <p>
+      <select id="type">
+        <option value="lr0">LR(0)</option>
+        <option value="slr" selected="true">SLR(1)</option>
+        <option value="lalr">LALR(1)</option>
+        <option value="lr">LR(1)</option>
+        <option value="ll">LL(1)</option>
+      </select>
+      <small>* WARNING: LR(1) and LALR(1) take considerable time to execute for large/ambigous grammars.</small>
+      </p>
+      <p><button onclick="processGrammar()">Process Grammar</button>
+    </p>
+
+
     <h2>Output</h2>
-    <textarea id="out" readonly="true" rows="20" cols="80"/></textarea>
+    <div id="nonterminals">Process your grammar to see the result.</div>
     <div id="productions"></div>
     <div id="table"></div>
-    <p><small><em>By Zach Carter (zcarter@mail.usf.edu)</em></small></p>
+
+
+    <div id="parsing">
+      <h2>Parse a program</h2>
+      <p>Grammars with lexing information allow for parsing. Use the form below to parse a program using your grammar.</p>
+      <textarea id="source" rows="8" cols="80"></textarea><br/>
+      <button onclick="runParser()">Parse source</button>
+      <h3>Result</h3>
+      <textarea id="out" readonly="true" rows="5" cols="80"/></textarea>
+    </div>
+
+    <div id="loading"></div>
+    <p>
+      <small><i>Zach Carter (zcarter@mail.usf.edu) 2009</i><small>
+    </p>
   </body>
 </head>
