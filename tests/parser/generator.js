@@ -11,7 +11,7 @@ exports["test commonjs module generator"] = function () {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -22,7 +22,7 @@ exports["test commonjs module generator"] = function () {
     };
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammer);
+    var parser_ = new Jison.Parser(grammar);
     parser_.lexer = new Lexer(lexData);
 
     var parserSource = parser_.generateCommonJSModule();
@@ -39,7 +39,7 @@ exports["test module generator"] = function () {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -50,8 +50,91 @@ exports["test module generator"] = function () {
     };
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammer);
+    var parser_ = new Jison.Parser(grammar);
     parser_.lexer = new Lexer(lexData);
+
+    var parserSource = parser_.generateModule();
+    eval(parserSource);
+
+    assert.ok(parser.parse(input));
+};
+
+exports["test module generator on JSON parser"] = function () {
+    var grammar = {
+    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
+    "author": "Zach Carter",
+
+    "lex": {
+        "macros": {
+            "digit": "[0-9]",
+            "exp": "([eE][-+]?{digit}+)"
+        },
+        "rules": [
+            ["\\s+", "/* skip whitespace */"],
+            ["-?{digit}+(\\.{digit}+)?{exp}?", "return 'NUMBER';"],
+            ["\"[^\"]*", function(){
+                if(this.yytext.charAt(this.yyleng-1) == '\\') {
+                    // remove escape
+                    this.yytext = this.yytext.substr(0,this.yyleng-2);
+                    this.more();
+                } else {
+                    this.yytext = this.yytext.substr(1); // swallow start quote
+                    this.input(); // swallow end quote
+                    return "STRING";
+                }
+            }],
+            ["\\{", "return '{'"],
+            ["\\}", "return '}'"],
+            ["\\[", "return '['"],
+            ["\\]", "return ']'"],
+            [",", "return ','"],
+            [":", "return ':'"],
+            ["true\\b", "return 'TRUE'"],
+            ["false\\b", "return 'FALSE'"],
+            ["null\\b", "return 'NULL'"]
+        ]
+    },
+
+    "tokens": "STRING NUMBER { } [ ] , : TRUE FALSE NULL",
+    "start": "JSONText",
+
+    "bnf": {
+        "JSONString": [ "STRING" ],
+
+        "JSONNumber": [ "NUMBER" ],
+
+        "JSONBooleanLiteral": [ "TRUE", "FALSE" ],
+
+
+        "JSONText": [ "JSONValue" ],
+
+        "JSONValue": [ "JSONNullLiteral",
+                       "JSONBooleanLiteral",
+                       "JSONString",
+                       "JSONNumber",
+                       "JSONObject",
+                       "JSONArray" ],
+
+        "JSONObject": [ "{ }",
+                        "{ JSONMemberList }" ],
+
+        "JSONMember": [ "JSONString : JSONValue" ],
+
+        "JSONMemberList": [ "JsonProperty",
+                              "JsonPropertyList , JsonProperty" ],
+
+        "JSONArray": [ "[ ]",
+                       "[ JSONElementList ]" ],
+
+        "JSONElementList": [ "JSONValue",
+                             "JSONElementList , JSONValue" ]
+    }
+};
+
+
+
+    var input = "[1,2,3]";
+    var parser_ = new Jison.Parser(grammar);
 
     var parserSource = parser_.generateModule();
     eval(parserSource);

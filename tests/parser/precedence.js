@@ -18,7 +18,7 @@ exports["test Left associative rule"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "+", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -31,7 +31,7 @@ exports["test Left associative rule"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["+", ["x"], ["x"]], ["x"]];
@@ -48,7 +48,7 @@ exports["test Right associative rule"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "+", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -61,7 +61,7 @@ exports["test Right associative rule"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["x"], ["+", ["x"], ["x"]]];
@@ -79,7 +79,7 @@ exports["test Multiple precedence operators"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "+", "*", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -94,7 +94,7 @@ exports["test Multiple precedence operators"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ["+", ["*", ["x"], ["x"]], ["x"]];
@@ -112,7 +112,7 @@ exports["test Multiple precedence operators"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "+", "*", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -127,7 +127,7 @@ exports["test Multiple precedence operators"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = [["x"], "+", [["x"], "*", ["x"]]];
@@ -144,7 +144,7 @@ exports["test Non-associative operator"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "=", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -157,7 +157,7 @@ exports["test Non-associative operator"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.throws(function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
@@ -174,7 +174,7 @@ exports["test Context-dependent precedence"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "-", "+", "*", "EOF" ],
         startSymbol: "S",
         operators: [
@@ -192,7 +192,7 @@ exports["test Context-dependent precedence"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer, {type: "slr"});
+    var parser = new Jison.Parser(grammar, {type: "slr"});
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = [[[["#", ["x"]], "*", ["#", ["x"]]], "*", ["x"]], "-", ["x"]];
@@ -212,7 +212,7 @@ exports["test multi-operator rules"] = function () {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: "ID DOT ASSIGN LPAREN RPAREN EOF",
         startSymbol: "S",
         operators: [
@@ -231,7 +231,7 @@ exports["test multi-operator rules"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer, {type: 'slr', debug:false});
+    var parser = new Jison.Parser(grammar, {type: 'slr', debug:false});
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.conflicts, 0);

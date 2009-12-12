@@ -9,9 +9,9 @@ var lexData = {
     ]
 };
 
-exports["test left-recursive nullable grammer"] = function () {
+exports["test left-recursive nullable grammar"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
         bnf: {
@@ -20,7 +20,7 @@ exports["test left-recursive nullable grammer"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer, {type: "slr"});
+    var parser = new Jison.Parser(grammar, {type: "slr"});
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");
@@ -29,9 +29,9 @@ exports["test left-recursive nullable grammer"] = function () {
     assert.ok(parser.conflicts == 0, "no conflicts");
 };
 
-exports["test right-recursive nullable grammer"] = function () {
+exports["test right-recursive nullable grammar"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
         bnf: {
@@ -40,7 +40,7 @@ exports["test right-recursive nullable grammer"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer, {type: "slr"});
+    var parser = new Jison.Parser(grammar, {type: "slr"});
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");

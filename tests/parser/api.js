@@ -11,7 +11,7 @@ var lexData = {
 
 exports["test tokens as a string"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -21,14 +21,14 @@ exports["test tokens as a string"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
 exports["test extra spaces in productions"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -38,14 +38,14 @@ exports["test extra spaces in productions"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
 exports["test | seperated rules"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -53,28 +53,28 @@ exports["test | seperated rules"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
 exports["test start symbol optional"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         bnf: {
             "A" :"A x | A y | "
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     var ok = true;
     assert.ok(ok, "no error");
 };
 
 exports["test start symbol should be nonterminal"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "x",
         bnf: {
@@ -82,12 +82,12 @@ exports["test start symbol should be nonterminal"] = function () {
         }
     };
 
-    assert.throws(function(){new Jison.Parser(grammer);}, "throws error");
+    assert.throws(function(){new Jison.Parser(grammar);}, "throws error");
 };
 
 exports["test token list as string"] = function () {
 
-    var grammer = {
+    var grammar = {
         tokens: "x y",
         startSymbol: "A",
         bnf: {
@@ -95,7 +95,7 @@ exports["test token list as string"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     assert.deepEqual(parser.terminals, ["$end", "x", "y"]);
 };
 

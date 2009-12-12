@@ -9,7 +9,7 @@ exports["test Semantic action basic return"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "y" ],
         startSymbol: "E",
         bnf: {
@@ -19,7 +19,7 @@ exports["test Semantic action basic return"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), 0, "semantic action");
@@ -33,7 +33,7 @@ exports["test Semantic action stack lookup"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "y" ],
         startSymbol: "pgm",
         bnf: {
@@ -44,21 +44,21 @@ exports["test Semantic action stack lookup"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), "EX", "return first token");
     assert.equal(parser.parse('yx'), "BYEX", "return first after reduction");
 };
 
-exports["test Semantic actions on nullable grammer"] = function() {
+exports["test Semantic actions on nullable grammar"] = function() {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ 'x' ],
         startSymbol: "S",
         bnf: {
@@ -68,7 +68,7 @@ exports["test Semantic actions on nullable grammer"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
@@ -81,7 +81,7 @@ exports["test Build AST"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ 'x' ],
         startSymbol: "S",
         bnf: {
@@ -91,7 +91,7 @@ exports["test Build AST"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     var expectedAST = ['A',{},
@@ -103,7 +103,7 @@ exports["test Build AST"] = function() {
     assert.deepEqual(r, expectedAST);
 };
 
-exports["test 0+0 grammer"] = function() {
+exports["test 0+0 grammar"] = function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -111,7 +111,7 @@ exports["test 0+0 grammer"] = function() {
            ["$", "return 'EOF';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "ZERO", "PLUS", "EOF"],
         startSymbol: "S",
         bnf: {
@@ -122,7 +122,7 @@ exports["test 0+0 grammer"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData2);
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
@@ -137,7 +137,7 @@ exports["test yytext"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x" ],
         startSymbol: "pgm",
         bnf: {
@@ -146,7 +146,7 @@ exports["test yytext"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('x'), "x", "return first token");
@@ -159,7 +159,7 @@ exports["test yytext more"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "x", "y" ],
         startSymbol: "pgm",
         bnf: {
@@ -169,7 +169,7 @@ exports["test yytext more"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('xy'), "xy", "return first token");
@@ -181,7 +181,7 @@ exports["test action include"] = function() {
            ["y", "return 'y';"]
         ]
     };
-    var grammer = {
+    var grammar = {
         tokens: [ "y" ],
         startSymbol: "E",
         bnf: {
@@ -195,7 +195,7 @@ exports["test action include"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammer);
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.parse('y'), 1, "semantic action");

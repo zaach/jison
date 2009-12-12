@@ -2,32 +2,6 @@ var Jison = require("../setup").Jison,
     Lexer = require("../setup").Lexer,
     assert = require("assert");
 
-exports["test 0+0 grammar"] = function () {
-    var lexData2 = {
-        rules: [
-           ["0", "return 'ZERO';"],
-           ["\\+", "return 'PLUS';"]
-        ]
-    };
-    var grammar = {
-        tokens: [ "ZERO", "PLUS"],
-        startSymbol: "E",
-        bnf: {
-            "E" :[ "E PLUS T",
-                   "T"      ],
-            "T" :[ "ZERO" ]
-        }
-    };
-
-    var parser = new Jison.Parser(grammar);
-    parser.lexer = new Lexer(lexData2);
-
-    assert.ok(parser.parse("0+0+0"), "parse");
-    assert.ok(parser.parse("0"), "parse single 0");
-
-    assert.throws(function () {parser.parse("+")}, "throws parse error on invalid");
-};
-
 exports["test xx nullable grammar"] = function () {
     var lexData = {
         rules: [
@@ -44,7 +18,7 @@ exports["test xx nullable grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lr"});
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse("xxx"), "parse");
@@ -139,7 +113,7 @@ exports["test basic JSON grammar"] = function () {
 
     var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lr"});
     assert.ok(parser.parse(source));
 }
 
