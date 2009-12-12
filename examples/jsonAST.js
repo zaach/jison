@@ -50,7 +50,7 @@ exports.grammar = {
                                [ "FALSE", "$$ = false;" ]],
 
 
-        "JSONText": [[ "JSONValue", "$$ = $1" ]],
+        "JSONText": [[ "JSONValue", "return $$ = $1;" ]],
 
         "JSONValue": [[ "JSONNullLiteral",    "$$ = $1;" ],
                       [ "JSONBooleanLiteral", "$$ = $1;" ],
@@ -64,11 +64,11 @@ exports.grammar = {
 
         "JSONMember": [[ "JSONString : JSONValue", "$$ = [$1, $3];" ]],
 
-        "JSONMemberList": [[ "JsonProperty", "$$ = {}; $$[$1[0]] = $1[1];" ],
-                           [ "JsonPropertyList , JsonProperty", "$$ = $1; $1[$3[0]] = $3[1];" ]],
+        "JSONMemberList": [[ "JSONMember", "$$ = {}; $$[$1[0]] = $1[1];" ],
+                           [ "JSONMemberList , JSONMember", "$$ = $1; $1[$3[0]] = $3[1];" ]],
 
         "JSONArray": [[ "[ ]", "$$ = [];" ],
-                      [ "[ JSONElementList ]", "$$ = $1;" ]],
+                      [ "[ JSONElementList ]", "$$ = $2;" ]],
 
         "JSONElementList": [[ "JSONValue", "$$ = [$1];" ],
                             [ "JSONElementList , JSONValue", "$$ = $1; $1.push($3);" ]]

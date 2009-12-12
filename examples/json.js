@@ -61,8 +61,8 @@ exports.grammar = {
 
         "JSONMember": [ "JSONString : JSONValue" ],
 
-        "JSONMemberList": [ "JsonProperty",
-                              "JsonPropertyList , JsonProperty" ],
+        "JSONMemberList": [ "JSONMember",
+                              "JSONMemberList , JSONMember" ],
 
         "JSONArray": [ "[ ]",
                        "[ JSONElementList ]" ],

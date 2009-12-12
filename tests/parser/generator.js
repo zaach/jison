@@ -120,8 +120,8 @@ exports["test module generator on JSON parser"] = function () {
 
         "JSONMember": [ "JSONString : JSONValue" ],
 
-        "JSONMemberList": [ "JsonProperty",
-                              "JsonPropertyList , JsonProperty" ],
+        "JSONMemberList": [ "JSONMember",
+                              "JSONMemberList , JSONMember" ],
 
         "JSONArray": [ "[ ]",
                        "[ JSONElementList ]" ],
@@ -133,11 +133,10 @@ exports["test module generator on JSON parser"] = function () {
 
 
 
-    var input = "[1,2,3]";
     var parser_ = new Jison.Parser(grammar);
 
     var parserSource = parser_.generateModule();
     eval(parserSource);
 
-    assert.ok(parser.parse(input));
+    assert.ok(parser.parse(JSON.stringify(grammar.bnf)));
 };
