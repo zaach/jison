@@ -19,7 +19,7 @@ exports["test 0+0 grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0+0"), "parse");
@@ -31,8 +31,7 @@ exports["test 0+0 grammar"] = function () {
 exports["test xx nullable grammar"] = function () {
     var lexData = {
         rules: [
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
+           ["x", "return 'x';"]
         ]
     };
     var grammar = {
@@ -44,7 +43,7 @@ exports["test xx nullable grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse("xxx"), "parse");
@@ -52,26 +51,32 @@ exports["test xx nullable grammar"] = function () {
     assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
 };
 
-exports["test LR parse"] = function () {
-    var lexData2 = {
+exports["test xx nullable grammar slalr"] = function () {
+    var lexData = {
         rules: [
-           ["0", "return 'ZERO';"],
-           ["\\+", "return 'PLUS';"]
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+           ["d", "return 'd';"],
+           ["g", "return 'g';"]
         ]
     };
     var grammar = {
-        tokens: [ "ZERO", "PLUS"],
-        startSymbol: "E",
-        bnf: {
-            "E" :[ "E PLUS T",
-                   "T"      ],
-            "T" :[ "ZERO" ]
+        "tokens": "a b c d g",
+        "startSymbol": "S",
+        "bnf": {
+            "S" :[ "a g d",
+                   "a A c",
+                   "b A d",
+                   "b g c" ],
+            "A" :[ "B" ],
+            "B" :[ "g" ]
         }
     };
-    var parser = new Jison.Parser(grammar, {type: "lr"});
-    parser.lexer = new Lexer(lexData2);
 
-    assert.ok(parser.parse("0+0+0"), "parse");
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse("agd"), "parse");
 };
 
 exports["test basic JSON grammar"] = function () {
@@ -139,7 +144,27 @@ exports["test basic JSON grammar"] = function () {
 
     var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    var parser2 = new Jison.Parser(grammar, {type: "slr"});
+    assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
     assert.ok(parser.parse(source));
 }
 
+exports["test LR(1) grammar"] = function () {
+    var grammar = {
+        "comment": "Produces a reduce-reduce conflict unless using LR(1).",
+        "tokens": "z d b c a",
+        "start": "S",
+        "bnf": {
+            "S" :[ "a A c",
+                   "a B d",
+                   "b A d",
+                   "b B c"],
+            "A" :[ "z" ],
+            "B" :[ "z" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    assert.equal(parser.conflicts, 2);
+}

@@ -55,8 +55,8 @@
         else $("#parsing").hide();
 
         parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
-        if (parser.computeLookAheads)
-          parser.computeLookAheads();
+        if (parser.computeLookaheads)
+          parser.computeLookaheads();
 
         $("#out").val('');
         nonterminalInfo(parser);
@@ -304,7 +304,7 @@
       Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br />
       <a href="http://www.cse.usf.edu" id="usf_logo"><img src="usf.jpg" alt="USF" /></a>
       </p>
-      <p>This page can be used to display parse tables and other useful information about your CFG. Currently doesn't work in IE.</p>
+      <p>This page can be used to display parse tables and other useful information about your CFG.</p>
     </div>
 
     <h2>Input</h2>
@@ -315,8 +315,8 @@
     Load an example:
     <select id="examples">
       <option value="basic" selected="true">Basic</option>
-      <option value="basic_lex">Basic w/ lex</option>
       <option value="basic2">Basic #2</option>
+      <option value="basic_lex">Basic w/ lex</option>
       <option value="basic2_lex">Basic #2 w/ lex</option>
       <option value="reduce_conflict">Reduce conflict</option>
       <option value="dism">DISM</option>
@@ -339,12 +339,12 @@
     <p>
       <select id="type">
         <option value="lr0">LR(0)</option>
-        <option value="slr" selected="true">SLR(1)</option>
+        <option value="slr">SLR(1)</option>
         <option value="lalr">LALR(1)</option>
         <option value="lr">LR(1)</option>
         <option value="ll">LL(1)</option>
       </select>
-      <small>* WARNING: LR(1) and LALR(1) take considerable time to execute for large/ambigous grammars.</small>
+      <small>* WARNING: LR(1) may take considerable time to execute for large/ambigous grammars.</small>
       </p>
       <p><button onclick="processGrammar()">Process Grammar</button>
     </p>
