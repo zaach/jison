@@ -58,12 +58,12 @@ exports["test basic JSON grammar"] = function () {
                 ["\\s+", "/* skip whitespace */"],
                 ["{digit}+(\\.{digit}+)?", "return 'NUMBER';"],
                 ["\"[^\"]*", function(){
-                    if(this.yytext.charAt(this.yyleng-1) == '\\') {
+                    if(yytext.charAt(yyleng-1) == '\\') {
                         // remove escape
-                        this.yytext = this.yytext.substr(0,this.yyleng-2);
+                        yytext = yytext.substr(0,yyleng-2);
                         this.more();
                     } else {
-                        this.yytext = this.yytext.substr(1); // swallow start quote
+                        yytext = yytext.substr(1); // swallow start quote
                         this.input(); // swallow end quote
                         return "STRING";
                     }

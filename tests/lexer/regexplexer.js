@@ -122,15 +122,29 @@ exports["test dissambiguate"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test yytext overwrite"] = function() {
+    var dict = {
+        rules: [
+           ["x", "yytext = 'hi der'; return 'X';" ]
+       ]
+    };
+
+    var input = "x";
+
+    var lexer = new RegExpLexer(dict, input);
+    lexer.lex();
+    assert.equal(lexer.yytext, "hi der");
+};
+
 exports["test more()"] = function() {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
            ['"[^"]*', function(){
-               if(this.yytext.charAt(this.yyleng-1) == '\\') {
+               if(yytext.charAt(yyleng-1) == '\\') {
                    this.more();
                } else {
-                   this.yytext += this.input(); // swallow end quote
+                   yytext += this.input(); // swallow end quote
                    return "STRING";
                }
             } ],
@@ -175,10 +189,10 @@ exports["test generator with more complex lexer"] = function() {
         rules: [
            ["x", "return 'X';" ],
            ['"[^"]*', function(){
-               if(this.yytext.charAt(this.yyleng-1) == '\\') {
+               if(yytext.charAt(yyleng-1) == '\\') {
                    this.more();
                } else {
-                   this.yytext += this.input(); // swallow end quote
+                   yytext += this.input(); // swallow end quote
                    return "STRING";
                }
             } ],
