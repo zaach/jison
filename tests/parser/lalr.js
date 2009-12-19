@@ -51,7 +51,7 @@ exports["test xx nullable grammar"] = function () {
     assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
 };
 
-exports["test xx nullable grammar slalr"] = function () {
+exports["test LALR algorithm from Bermudez, Logothetis"] = function () {
     var lexData = {
         rules: [
            ["a", "return 'a';"],
@@ -76,7 +76,10 @@ exports["test xx nullable grammar slalr"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new Lexer(lexData);
-    assert.ok(parser.parse("agd"), "parse");
+    assert.ok(parser.parse("agd"));
+    assert.ok(parser.parse("agc"));
+    assert.ok(parser.parse("bgd"));
+    assert.ok(parser.parse("bgc"));
 };
 
 exports["test basic JSON grammar"] = function () {
@@ -145,8 +148,8 @@ exports["test basic JSON grammar"] = function () {
     var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
-    var parser2 = new Jison.Parser(grammar, {type: "slr"});
-    assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
+    //var parser2 = new Jison.Parser(grammar, {type: "slr"});
+    //assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
     assert.ok(parser.parse(source));
 }
 
