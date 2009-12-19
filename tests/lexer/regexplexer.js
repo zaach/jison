@@ -136,6 +136,28 @@ exports["test yytext overwrite"] = function() {
     assert.equal(lexer.yytext, "hi der");
 };
 
+exports["test yylineno"] = function() {
+    var dict = {
+        rules: [
+           ["\\s+", "/* skip whitespace */" ],
+           ["x", "return 'x';" ],
+           ["y", "return 'y';" ]
+       ]
+    };
+
+    var input = "x\nxy\nx";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.yylineno, 0);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yylineno, 1);
+    assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yylineno, 1);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yylineno, 2);
+};
+
 exports["test more()"] = function() {
     var dict = {
         rules: [
