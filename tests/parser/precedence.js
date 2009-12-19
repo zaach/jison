@@ -157,7 +157,7 @@ exports["test Non-associative operator"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new RegExpLexer(lexData);
 
     assert.throws(function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
@@ -231,7 +231,7 @@ exports["test multi-operator rules"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: 'slr', debug:false});
+    var parser = new Jison.Parser(grammar, {type: 'slr'});
     parser.lexer = new RegExpLexer(lexData);
 
     assert.equal(parser.conflicts, 0);

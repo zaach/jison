@@ -44,3 +44,29 @@ exports["test right-recursive nullable grammar"] = function () {
     assert.ok(parser.table.length == 4, "table has 4 states");
     assert.ok(parser.conflicts == 2, "encountered 2 conflicts");
 };
+
+exports["test 0+0 grammar"] = function () {
+    var lexData2 = {
+        rules: [
+           ["0", "return 'ZERO';"],
+           ["\\+", "return 'PLUS';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ "ZERO", "PLUS"],
+        startSymbol: "E",
+        bnf: {
+            "E" :[ "E PLUS T",
+                   "T"      ],
+            "T" :[ "ZERO" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    parser.lexer = new Lexer(lexData2);
+
+    assert.ok(parser.parse("0+0+0"), "parse");
+    assert.ok(parser.parse("0"), "parse single 0");
+
+    assert.throws(function () {parser.parse("+")}, "throws parse error on invalid");
+};
