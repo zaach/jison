@@ -1,8 +1,9 @@
-var Jison = require("jison").Jison;
+var Parser = require("jison").Parser;
 var system = require("system");
+var fs = require("file");
 
 exports.grammar = {
-    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
+    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar.",
     "author": "Zach Carter",
 
     "lex": {
@@ -72,11 +73,13 @@ exports.grammar = {
     }
 };
 
-var options = {type: "slr", moduleType: "commonjs"};
+var options = {type: "slr", moduleType: "commonjs", moduleName: "jsoncheck"};
 
 exports.main = function main (args) {
-    var source = new Jison.Parser(exports.grammar, options).generate();
-    print(source);
+    var cwd = fs.path(fs.cwd()),
+        code = new Parser(exports.grammar, options).generate(),
+        stream = cwd.join(options.moduleName+".js").open("w");
+    stream.print(code).close();
 };
 
 if (require.main === module)
