@@ -145,7 +145,7 @@ exports["test yylineno"] = function() {
        ]
     };
 
-    var input = "x\nxy\nx";
+    var input = "x\nxy\n\n\nx";
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.yylineno, 0);
@@ -155,7 +155,7 @@ exports["test yylineno"] = function() {
     assert.equal(lexer.lex(), "y");
     assert.equal(lexer.yylineno, 1);
     assert.equal(lexer.lex(), "x");
-    assert.equal(lexer.yylineno, 2);
+    assert.equal(lexer.yylineno, 4);
 };
 
 exports["test more()"] = function() {
