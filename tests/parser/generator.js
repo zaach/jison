@@ -59,7 +59,7 @@ exports["test module generator"] = function () {
     assert.ok(parser.parse(input));
 };
 
-exports["test module generator on JSON parser"] = function () {
+exports["test module include"] = function () {
     var grammar = {
     "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
     "author": "Zach Carter",
