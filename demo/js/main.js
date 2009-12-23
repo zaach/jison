@@ -201,7 +201,7 @@ function lrTable (p){
 
     p.resolutions.forEach(function (res){
       var r = res[2];
-      var el = $('#act-'+res[0]+'-'+res[1])[0];
+      var el = document.getElementById('act-'+res[0]+'-'+res[1]);
       if (r.bydefault) {
         el.className += ' conflict';
       }
