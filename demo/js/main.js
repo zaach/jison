@@ -92,7 +92,7 @@ function productions (p){
             out.push("<li id='prod_"+prod.id+"'>", prod, "</li>");
             });
     out.push('</ol>');
-    $("#productions").innerHTML = "<h3>Productions</h3>"+out.join("");
+    $("#productions").html("<h3>Productions</h3>"+out.join(""));
 }
 
 
@@ -128,7 +128,7 @@ function llTable (p){
     }
 
     out.push('</table>');
-    $("#table").innerHTML = "<h3>LL(1) Parse Table</h3>"+out.join("");
+    $("#table").html("<h3>LL(1) Parse Table</h3>"+out.join(""));
 }
 
 function printActionDetails (a, token) {
