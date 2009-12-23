@@ -1,8 +1,20 @@
 body {
   font-family: DroidSans, Helvetica, Arial, sans-serif;
-  color: #222;
+  color: #444;
+  background: #fff;
+  margin: 0em;
+  padding: 1em;
 }
 a img { border: 0px; }
+a { color: #546373; }
+
+#intro {
+  font-size: 2em;
+  -moz-border-radius: 8px;
+  background-color: #eee;
+}
+#intro p { margin: 1em 1em; padding: 1em 0em; }
+
 #table table, #productions li, #nonterminals dl {
   font-family: monospace;
 }
@@ -31,12 +43,15 @@ body.loading #loading {
 h1 {
   font-family: Georgia, serif;
   font-size: 2.8em;
+  color: #546373;
 }
 h2 {
   font-family: Georgia, serif;
   font-size: 2.2em;
+  color: #546373;
 }
 h3 {
+  color: #546373;
   font-family: Georgia, serif;
   font-size: 1.8em;
 }

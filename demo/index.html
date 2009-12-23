@@ -23,17 +23,15 @@
   </head>
 
   <body>
+  <div id="container">
 
     <h1>Jison</h1>
-    <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript, similar to Bison for C. This page uses Jison to display interactive parsing tables.</p>
+      <p><em>By Zach Carter (zcarter@mail.usf.edu)</em></p>
 
     <div id="intro">
-      <p><em>By Zach Carter (zcarter@mail.usf.edu)</em</p>
-        <p>
-      Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br />
-      <a href="http://www.cse.usf.edu" id="usf_logo"><img src="style/usf.jpg" alt="USF" /></a>
-      </p>
+      <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript; similar to Bison for C. This page uses Jison to display interactive parsing tables.</p>
     </div>
+    <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br /> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="style/usf.jpg" alt="USF" /></a> </p>
 
     <h2>Input</h2>
 
@@ -66,7 +64,7 @@
 </textarea>
 
     <p>
-      <select id="type">
+      Parser type: <select id="type">
         <option value="lr0">LR(0)</option>
         <option value="slr">SLR(1)</option>
         <option value="lalr">LALR(1)</option>
@@ -80,14 +78,14 @@
 
 
     <h2>Output</h2>
-    <div id="nonterminals">Process your grammar to see the result.</div>
+    <div id="nonterminals"><p>Process your grammar to see the result here.</p></div>
     <div id="productions"></div>
     <div id="table"></div>
 
 
     <div id="parsing">
       <h2>Parse a program</h2>
-      <p>Grammars with lexing information allow for parsing. Use the form below to parse a program using your grammar.</p>
+      <p>Grammars with lexing information allow for parsing. Use the form below to parse a program using your grammar:</p>
       <textarea id="source" rows="8" cols="80"></textarea><br/>
       <button id="parse_btn">Parse source</button>
       <h3>Result</h3>
@@ -100,5 +98,6 @@
       <small><i>Zach Carter (zcarter@mail.usf.edu) 2009</i><small>
     </p>
 
+  </div>
   </body>
 </head>
