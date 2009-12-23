@@ -82,6 +82,6 @@ exports.main = function main (args) {
     stream.print(code).close();
 };
 
-if (require.main === module)
+if (require.main === module.id)
     exports.main(system.args);
 
