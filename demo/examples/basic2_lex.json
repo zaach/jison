@@ -1,0 +1,15 @@
+{
+    "comment": "Basic grammar that contains a nullable A nonterminal.",
+
+    "lex": {
+        "rules": [
+           ["x", "return 'x';"]
+        ]
+    },
+
+    "tokens": "x",
+    "bnf": {
+        "A" :[ "A x",
+               "" ]
+    }
+}
