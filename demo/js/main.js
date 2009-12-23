@@ -27,7 +27,7 @@ $(function () {
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
-      $.get("../examples/"+file+".json", function (data) {
+      $.get("examples/"+file+".json", function (data) {
         $("#grammar").val(data);
         $(document.body).removeClass("loading");
       });
