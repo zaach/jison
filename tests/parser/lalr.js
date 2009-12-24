@@ -86,22 +86,16 @@ exports["test basic JSON grammar"] = function () {
     var grammar = {
         "lex": {
             "macros": {
-                "digit": "[0-9]"
+                "digit": "[0-9]",
+                "esc": "\\\\",
+                "int": "-?(?:[0-9]|[1-9][0-9]+)",
+                "exp": "(?:[eE][-+]?[0-9]+)",
+                "frac": "(?:\\.[0-9]+)"
             },
             "rules": [
                 ["\\s+", "/* skip whitespace */"],
-                ["{digit}+(\\.{digit}+)?", "return 'NUMBER';"],
-                ["\"[^\"]*", function(){
-                    if(yytext.charAt(yyleng-1) == '\\') {
-                        // remove escape
-                        yytext = yytext.substr(0,yyleng-2);
-                        this.more();
-                    } else {
-                        yytext = yytext.substr(1); // swallow start quote
-                        this.input(); // swallow end quote
-                        return "STRING";
-                    }
-                }],
+                ["{int}{frac}?{exp}?\\b", "return 'NUMBER';"],
+                ["\"(?:{esc}[\"bfnrt/{esc}]|{esc}u[a-fA-F0-9]{4}|[^\"{esc}])*\"", "yytext = yytext.substr(1,yyleng-2); return 'STRING';"],
                 ["\\{", "return '{'"],
                 ["\\}", "return '}'"],
                 ["\\[", "return '['"],
@@ -145,13 +139,13 @@ exports["test basic JSON grammar"] = function () {
         },
     };
 
-    var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004,4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "string\\"sgfg" }';
+    var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004, -4.04e-4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "str\\ting\\"sgfg" }';
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
-    //var parser2 = new Jison.Parser(grammar, {type: "slr"});
-    //assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
+    var parser2 = new Jison.Parser(grammar, {type: "slr"});
+    assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
     assert.ok(parser.parse(source));
-}
+};
 
 exports["test LR(1) grammar"] = function () {
     var grammar = {
@@ -170,4 +164,4 @@ exports["test LR(1) grammar"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
     assert.equal(parser.conflicts, 2);
-}
+};

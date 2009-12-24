@@ -3,28 +3,21 @@ var system = require("system");
 var fs = require("file");
 
 exports.grammar = {
-    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",
+    "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. Parses JSON strings into objects.",
     "author": "Zach Carter",
 
     "lex": {
         "macros": {
             "digit": "[0-9]",
-            "exp": "([eE][-+]?{digit}+)"
+            "esc": "\\\\",
+            "int": "-?(?:[0-9]|[1-9][0-9]+)",
+            "exp": "(?:[eE][-+]?[0-9]+)",
+            "frac": "(?:\\.[0-9]+)"
         },
         "rules": [
             ["\\s+", "/* skip whitespace */"],
-            ["-?{digit}+(\\.{digit}+)?{exp}?", "return 'NUMBER';"],
-            ["\"[^\"]*", function () {
-                if (yytext.charAt(yyleng-1) == '\\') {
-                    // remove escape
-                    yytext = yytext.substr(0,yyleng-2);
-                    this.more();
-                } else {
-                    yytext = yytext.substr(1); // swallow start quote
-                    this.input(); // swallow end quote
-                    return "STRING";
-                }
-            }],
+            ["{int}{frac}?{exp}?\\b", "return 'NUMBER';"],
+            ["\"(?:{esc}[\"bfnrt/{esc}]|{esc}u[a-fA-F0-9]{4}|[^\"{esc}])*\"", "yytext = yytext.substr(1,yyleng-2); return 'STRING';"],
             ["\\{", "return '{'"],
             ["\\}", "return '}'"],
             ["\\[", "return '['"],
