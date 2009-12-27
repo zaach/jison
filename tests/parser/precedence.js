@@ -226,7 +226,7 @@ exports["test multi-operator rules"] = function () {
                    [ "e DOT id ASSIGN e",   "$$ = [$1,'=', $3];" ],
                    [ "e DOT id LPAREN e RPAREN",   "$$ = [$1,'+', $3];" ],
                    [ "id ASSIGN e",   "$$ = [$1,'+', $3];" ],
-                   [ "id LPAREN E RPAREN",   "$$ = [$1,'+', $3];" ],
+                   [ "id LPAREN e RPAREN",   "$$ = [$1,'+', $3];" ],
                    [ "id",       "$$ = $1;"         ] ]
         }
     };

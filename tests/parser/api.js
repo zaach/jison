@@ -156,3 +156,19 @@ exports["test yy shared scope"] = function () {
     assert.equal(parser.parse('y'), "bar", "should return bar");
     assert.equal(parser.parse('xxy'), "foo", "should return foo");
 };
+
+
+exports["test optional token declaration"] = function () {
+
+    var grammar = {
+        options: {type: "slr"},
+        bnf: {
+            "A" :[ 'A x',
+                   'A y',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    assert.equal(parser.constructor, Jison.LR0Parser);
+};
