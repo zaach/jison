@@ -1,15 +1,15 @@
 {
     "lex": {
         "rules": [
-           ["0", "return 'ZERO';"],
-           ["\\+", "return 'PLUS';"]
+           ["\\s+", "/* skip whitespace */"],
+           ["[0-9]+", "return 'NAT';"],
+           ["\\+", "return '+';"]
         ]
     },
 
-    "tokens": "ZERO PLUS",
     "bnf": {
-        "E" :[ "E PLUS T",
+        "E" :[ "E + T",
                "T" ],
-        "T" :[ "ZERO" ]
+        "T" :[ "NAT" ]
     }
 }

@@ -3,6 +3,7 @@
 
     "lex": {
         "rules": [
+           ["\\s+", "/* skip whitespace */"],
            ["x", "return 'x';"]
         ]
     },
