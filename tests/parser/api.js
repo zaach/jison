@@ -172,3 +172,40 @@ exports["test optional token declaration"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     assert.equal(parser.constructor, Jison.LR0Parser);
 };
+
+
+exports["test custom parse error method"] = function () {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+           ["d", "return 'd';"],
+           ["g", "return 'g';"]
+        ]
+    };
+    var grammar = {
+        "tokens": "a b c d g",
+        "startSymbol": "S",
+        "bnf": {
+            "S" :[ "a g d",
+                   "a A c",
+                   "b A d",
+                   "b g c" ],
+            "A" :[ "B" ],
+            "B" :[ "g" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    parser.lexer = new Lexer(lexData);
+    var result={};
+    parser.yy.parseError = function (str, hash) {
+        result = hash;
+        throw str;
+    };
+    assert["throws"](function () {parser.parse("agb")});
+    assert.equal(result.text, "b", "parse error text should equal b");
+    assert["throws"](function () {parser.parse("agz")});
+    assert.equal(result.line, 0, "lexical error should have correct line");
+};
