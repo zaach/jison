@@ -82,7 +82,7 @@ exports["test start symbol should be nonterminal"] = function () {
         }
     };
 
-    assert.throws(function(){new Jison.Parser(grammar);}, "throws error");
+    assert["throws"](function(){new Jison.Parser(grammar);}, "throws error");
 };
 
 exports["test token list as string"] = function () {

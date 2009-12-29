@@ -25,7 +25,7 @@ exports["test left-recursive nullable grammar"] = function () {
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");
     assert.ok(parser.parse("x"), "parse single x");
-    assert.throws(function(){parser.parse("y")}, "throws parse error on invalid token");
+    assert["throws"](function(){parser.parse("y")}, "throws parse error on invalid token");
     assert.ok(parser.conflicts == 0, "no conflicts");
 };
 

@@ -160,7 +160,7 @@ exports["test Non-associative operator"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new RegExpLexer(lexData);
 
-    assert.throws(function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
+    assert["throws"](function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
     assert.ok(parser.parse("x=x"), "normal use is okay.");
 };
 
