@@ -1,0 +1,23 @@
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" /> 
+    <title>Test parser from web</title>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script> 
+    <script src="calc.js"></script>
+    <script>
+      $(function () {
+        console.log(calc);
+        $("button").click(function () {
+          var result = calc.parse($("input").val())
+          $("span").html(result);
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <p>
+      <input type="text" /><button>=</button> <span></span>
+    </p>
+
+  </body>
+</html>
