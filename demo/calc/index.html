@@ -8,8 +8,12 @@
       $(function () {
         console.log(calc);
         $("button").click(function () {
-          var result = calc.parse($("input").val())
-          $("span").html(result);
+          try {
+            var result = calc.parse($("input").val())
+            $("span").html(result);
+          } catch (e) {
+            $("span").html(String(e));
+          }
         });
       });
     </script>
