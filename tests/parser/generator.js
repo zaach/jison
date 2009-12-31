@@ -59,6 +59,62 @@ exports["test module generator"] = function () {
     assert.ok(parser.parse(input));
 };
 
+exports["test module generator with module name"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'A x',
+                   'A y',
+                   ''      ]
+        }
+    };
+
+    var input = "xyxxxy";
+    var parser_ = new Jison.Parser(grammar);
+    parser_.lexer = new Lexer(lexData);
+
+    var parserSource = parser_.generate({moduleType: "js", moduleName: "parsey"});
+    eval(parserSource);
+
+    assert.ok(parsey.parse(input));
+};
+
+exports["test module generator with namespaced module name"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'A x',
+                   'A y',
+                   ''      ]
+        }
+    };
+
+    var compiler = {};
+
+    var input = "xyxxxy";
+    var parser_ = new Jison.Parser(grammar);
+    parser_.lexer = new Lexer(lexData);
+
+    var parserSource = parser_.generateModule({moduleName: "compiler.parser"});
+    eval(parserSource);
+
+    assert.ok(compiler.parser.parse(input));
+};
+
 exports["test module include"] = function () {
     var grammar = {
     "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. (Incomplete implementation)",

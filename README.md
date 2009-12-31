@@ -96,6 +96,50 @@ Or more succinctly:
     
     var twenty = exec("4 * 5");
 
+Using the parser in a web page
+----------------------------
+
+The generated parser script may be included in a web page without any need for a CommonJS loading environment. It's as simple as pointing to it via a scipt tag:
+
+    <script src="calc.js"></script>
+
+When you generate the parser, you can specify the variable name it will be declared as:
+
+    // mygenerator.js
+    var parserSource = parser.generate({moduleName: "calc"});
+    // then write parserSource to a file called, say, calc.js
+
+Whatever `moduleName` you specified will be the the variable you can access the parser from in your web page:
+
+    <!-- mypage.html -->
+    ...
+    <script src="calc.js"></script>
+    <script>
+      calc.parse("42 / 0");
+    </script>
+    ...
+
+The moduleName you specify can also include a namespace, e.g:
+    // mygenerator.js
+    var parserSource = parser.generate({moduleName: "myCalculator.parser"});
+
+And could be used like so:
+
+    <!-- mypage.html -->
+    ...
+    <script>
+      var myCalculator = {};
+    </script>
+    <script src="calc.js"></script>
+    <script>
+      myCalculator.parser.parse("42 / 0");
+    </script>
+    ...
+
+Or something like that -- you get the picture.
+
+A demo of the calculator script used in a web page is [here](http://zaach.github.com/jison/demo/calc.html) and the source of the page and the narwhal script to generate the parser are [here](http://gist.github.com/265842).
+
 Specifying a language
 ---------------------
 The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Both lexing and parsing information can be included in the Jison grammar specification for a language.
@@ -147,7 +191,7 @@ For example here is `calculator.json`:
 
 This is all that is needed for Jison to generate a parser capable of recognizing the language and executing the semantic actions.
 
-More examples can be found in the examples/ directory.
+More examples can be found in the `examples/` and `tests/parser/` directories.
 
 *JSON isn't so bad, but a more author friendly format is in the works. It will be similar to Bison's .y files.*
 

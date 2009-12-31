@@ -55,7 +55,7 @@ exports["test unrecognized char"] = function() {
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
-    assert.throws(function(){lexer.lex()}, "bad char");
+    assert["throws"](function(){lexer.lex()}, "bad char");
 };
 
 exports["test macro"] = function() {
