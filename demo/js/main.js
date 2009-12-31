@@ -135,11 +135,11 @@ function printActionDetails (a, token) {
   var out = "<div class='details'>";
 
   for (var i=0;i<a.length;i++) {
-    if (a[i][0] == 's') {
+    if (a[i][0] == 1) {
       var link = "<a href='#state_"+a[i][1]+"'>Go to state "+a[i][1]+"</a>";
       out += "- Shift "+token+" then "+link+"<br />";
     }
-    else if (a[i][0] == 'r') {
+    else if (a[i][0] == 2) {
       var text = "- Reduce by "+a[i][1]+") "+parser.productions[a[i][1]];
       out += text+"<br />";
     }
@@ -148,19 +148,23 @@ function printActionDetails (a, token) {
 }
 
 function printAction (a){
+    var actions = {"1":"s", "2":"r","3":"a"};
     if (!a[0]) return '';
     var out = '',
       ary = [];
 
     for(var i=0;i<a.length;i++)
-        ary.push('<span class="action_'+(a[i][0])+'">'+a[i].join('')+'</span>');
+        ary.push('<span class="action_'+(actions[a[i][0]])+'">'+(actions[a[i][0]])+(a[i][1]||'')+'</span>');
 
     out += ary.join(',');
 
     return out;
 }
 
+function sym2int (sym){ return parser.symbols_[sym]; }
+
 function lrTable (p){
+    var actions = {"1":"s", "2":"r","3":"a"};
     var gs = p.symbols.slice(0).sort();
     var out = ['<table border="1">','<thead>','<tr>'];
     out.push('<th>&#8595;states','</th>');
@@ -180,14 +184,17 @@ function lrTable (p){
       if (!state) continue;
       ntout = [];
       out.push('<tr><td class="row_'+i+' state" id="state_'+i+'">',i,'<div class="details">'+parser.states.item(i).join('<br />')+'</div></td>');
-      gs.forEach(function(t){
-        if (p.nonterminals[t]){
+      gs.forEach(function(ts){
+        var t = sym2int(ts);
+        console.log(ts, t, state[t], state);
+
+        if (p.nonterminals[ts]){
           if (typeof state[t] === 'number')
             ntout.push('<td class="nonterm nt-'+t+'"><a href="#state_'+state[t]+'">',state[t],'</a></td>');
           else 
             ntout.push('<td class="nonterm">&nbsp;</td>');
         } else if (state[t])
-          out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t][0] == 'a' ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
+          out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t][0] == 3 ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
         else
           out.push('<td>&nbsp;</td>');
       });
@@ -201,7 +208,7 @@ function lrTable (p){
 
     p.resolutions.forEach(function (res){
       var r = res[2];
-      var el = document.getElementById('act-'+res[0]+'-'+res[1]);
+      var el = document.getElementById('act-'+res[0]+'-'+p.symbols_[res[1]]);
       if (r.bydefault) {
         el.className += ' conflict';
       }
