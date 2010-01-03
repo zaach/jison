@@ -4,6 +4,13 @@ var FILE = require("file"),
     OS = require("os"),
     jake = require("jake");
 
+jake.task("build", ["build:bnf"]);
+
+jake.task("build:bnf", function () {
+    OS.system(['./bin/jison', 'src/bnf.jison', 'src/bnf.lex.json']);
+    OS.system(['mv', 'bnf.js', 'lib/jison/util/bnf-parser.js']);
+});
+
 jake.task("test", function () {
     OS.system(['narwhal', 'tests/all-tests.js']);
 });

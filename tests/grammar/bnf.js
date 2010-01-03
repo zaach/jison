@@ -25,7 +25,7 @@ exports["test BNF parser"] = function () {
             ]
         },
         "bnf": {
-            "spec" :[[ "declaration_list %% grammar EOF", "$$ = $1; $$.bnf = $3;" ]],
+            "spec" :[[ "declaration_list %% grammar EOF", "$$ = $1; $$.bnf = $3; return $$;" ]],
 
             "declaration_list" :[[ "declaration_list declaration", "$$ = $1; yy.addDeclaration($$, $2);" ],
                                  [ "", "$$ = {};" ]],
@@ -52,7 +52,7 @@ exports["test BNF parser"] = function () {
             "handle_list" :[[ "handle_list | handle_action", "$$ = $1; $$.push($3);" ],
                             [ "handle_action", "$$ = [$1];" ]],
 
-            "handle_action" :[[ "handle action prec", "$$ = [($1.length ? $1.join(' ') : '')]; if($2) $$.push($2); if($3) $$.push($3);" ]],
+            "handle_action" :[[ "handle action prec", "$$ = [($1.length ? $1.join(' ') : '')]; if($2) $$.push($2); if($3) $$.push($3); if ($$.length === 1) $$ = $$[0];" ]],
 
             "handle" :[[ "handle symbol", "$$ = $1; $$.push($2)" ],
                        [ "", "$$ = [];" ]],
@@ -85,6 +85,7 @@ exports["test BNF parser"] = function () {
 
     };
 
-    assert.ok(parser.parse('%start foo %left "+" "-" %right "*" "/" %nonassoc "=" STUFF %left UMINUS %% foo : bar baz blitz { stuff } %prec GEMINI | bar %prec UMINUS | ;\nbar: { things };\nbaz: | foo ;'), "parse bnf production");
+    var result = parser.parse('%start foo %left "+" "-" %right "*" "/" %nonassoc "=" STUFF %left UMINUS %% foo : bar baz blitz { stuff } %prec GEMINI | bar %prec UMINUS | ;\nbar: { things };\nbaz: | foo ;');
+    assert.ok(result, "parse bnf production");
 };
 
