@@ -1,0 +1,15 @@
+{
+    "lex": {
+        "rules": [
+           ["0", "return 'ZERO';"],
+           ["\\+", "return 'PLUS';"]
+        ]
+    },
+
+    "tokens": "ZERO PLUS",
+    "bnf": {
+        "E" :[ "E PLUS T",
+               "T" ],
+        "T" :[ "ZERO" ]
+    }
+}

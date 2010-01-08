@@ -1,0 +1,38 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="utf-8" /> 
+    <title>Orderly.js</title> 
+    <script src="../js/json2.js"></script>
+    <script src="orderly.js"></script>
+    <script>
+      // welcome back... to an era before jQuery
+      window.onload = function () {
+        document.getElementById("button").onclick = function () {
+          try {
+            var result = orderly.compile(document.getElementById("orderly").value);
+            document.getElementById("jsonschema").value = result;
+          } catch(e) {
+            document.getElementById("jsonschema").value = e;
+          }
+        };
+      }
+    </script>
+</head> 
+<body> 
+  <h1>Orderly to JSON Schema Compiler</h1> 
+  <textarea id="orderly" rows="20" cols="50">
+object {
+  string name;
+  string description?;
+  string homepage /^http:/;
+  integer {1500,3000} invented;
+}*;
+  </textarea>
+  <textarea id="jsonschema" rows="20" cols="50"></textarea>
+  <p>
+  <button id="button">convert</button>
+  </p>
+  <p><a href="http://github.com/zaach/orderly.js">project</a></p> 
+</body> 
+</html> 
