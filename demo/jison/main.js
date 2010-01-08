@@ -38,9 +38,16 @@ $(function () {
 function processGrammar () {
     var type = $("#type")[0].options[$("#type")[0].selectedIndex].value || "slr";
 
+    var grammar = $("#grammar").val();
     try {
-        var cfg = JSON.parse($("#grammar").val());
-    } catch(e) { return alert("Oops. Make sure your JSON is correct.\n"+e); }
+        var cfg = JSON.parse(grammar);
+    } catch(e) {
+        try {
+            var cfg = bnf.parse(grammar);
+        } catch (e) {
+            return alert("Oops. Make sure your grammar is in the correct format.\n"+e); 
+        }
+    }
 
     if (cfg.lex) $("#parsing").show();
     else $("#parsing").hide();
@@ -186,7 +193,6 @@ function lrTable (p){
       out.push('<tr><td class="row_'+i+' state" id="state_'+i+'">',i,'<div class="details">'+parser.states.item(i).join('<br />')+'</div></td>');
       gs.forEach(function(ts){
         var t = sym2int(ts);
-        console.log(ts, t, state[t], state);
 
         if (p.nonterminals[ts]){
           if (typeof state[t] === 'number')
