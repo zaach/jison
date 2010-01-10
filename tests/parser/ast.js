@@ -26,6 +26,49 @@ exports["test Semantic action basic return"] = function() {
     assert.equal(parser.parse('y'), 1, "semantic action");
 };
 
+exports["test return null"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E x", "return null;"],
+                     "" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), null, "semantic action");
+};
+
+exports["test terminal semantic values are null"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ "x", "y" ],
+        startSymbol: "E",
+        bnf: {
+            "E"   :[ ["E x", "return [$2 === null]"],
+                     ["E y", "return [$2]"],
+                     "" ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.deepEqual(parser.parse('x'), [true], "semantic action");
+    assert.deepEqual(parser.parse('y'), [null], "semantic action");
+};
+
 exports["test Semantic action stack lookup"] = function() {
     var lexData = {
         rules: [
@@ -118,6 +161,33 @@ exports["test 0+0 grammar"] = function() {
             "S" :[ [ "E EOF",    "return $1" ]],
             "E" :[ [ "E PLUS T", "$$ = ['+',$1,$3]"  ],
                    [ "T",        "$$ = $1" ]  ],
+            "T" :[ [ "ZERO",     "$$ = [0]" ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData2);
+
+    var expectedAST = ["+", ["+", [0], [0]], [0]];
+
+    assert.deepEqual(parser.parse("0+0+0"), expectedAST);
+};
+
+exports["test implicit $$ = $1 action"] = function() {
+    var lexData2 = {
+        rules: [
+           ["0", "return 'ZERO';"],
+           ["\\+", "return 'PLUS';"],
+           ["$", "return 'EOF';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ "ZERO", "PLUS", "EOF"],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ [ "E EOF",    "return $1" ]],
+            "E" :[ [ "E PLUS T", "$$ = ['+',$1,$3]"  ],
+                   "T" ],
             "T" :[ [ "ZERO",     "$$ = [0]" ] ]
         }
     };
