@@ -81,6 +81,22 @@ exports["test macro"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test action include"] = function() {
+    var dict = {
+        rules: [
+           ["x", "return included ? 'Y' : 'N';" ],
+           ["$", "return 'EOF';" ]
+       ],
+       actionInclude: "var included = true;"
+    };
+
+    var input = "x";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test ignored"] = function() {
     var dict = {
         rules: [
