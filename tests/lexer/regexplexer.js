@@ -199,6 +199,27 @@ exports["test more()"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test defined token returns"] = function() {
+    var tokens = {"2":"X", "3":"Y", "4":"EOF"};
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer = new RegExpLexer(dict, input, tokens);
+
+    assert.equal(lexer.lex(), 2);
+    assert.equal(lexer.lex(), 2);
+    assert.equal(lexer.lex(), 3);
+    assert.equal(lexer.lex(), 2);
+    assert.equal(lexer.lex(), 4);
+};
+
 exports["test module generator"] = function() {
     var dict = {
         rules: [
