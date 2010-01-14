@@ -117,6 +117,52 @@ exports["test Semantic actions on nullable grammar"] = function() {
     assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
 };
 
+exports["test named semantic value"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ ["A", "return $A"] ],
+            "A" :[ ['x A', "$$ = $A+'x'" ],
+                   ['', "$$ = '->'" ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
+};
+
+exports["test ambiguous named semantic value"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        operators: [["left", "y"]],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ ["A", "return $A"] ],
+            "A" :[ ['A y A', "$$ = $A2+'y'+$A1" ],
+                   ['x', "$$ = 'x'" ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xyx'), "xyx", "return first after reduction");
+};
+
 exports["test Build AST"] = function() {
     var lexData = {
         rules: [
