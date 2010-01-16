@@ -1,5 +1,5 @@
 var assert = require("assert"),
-    bnf = require("../../lib/jison/bnf");
+    bnf = require("../../lib/jison/bnf"),
     json2jison = require("../../lib/jison/json2jison");
 
 exports["test basic grammar"] = function () {
