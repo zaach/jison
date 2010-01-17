@@ -1,11 +1,11 @@
 
 %%
 \n+    	{yy.freshLine = true;}
-\s+    	{yy.freshLine = false;}
+\s+    	{if (yy.ruleSection) yy.freshLine = false;}
 "y{"[^}]*"}"    	{yytext = yytext.substr(2, yytext.length-3);return 'ACTION';}
 [a-zA-Z_][a-zA-Z0-9_-]*    	{return 'NAME';}
 '"'([^"]|'\"')*'"'    	{return 'STRING_LIT';}
-"'"([^']|"\'")*"'"    	{return 'STRING_LIT';}
+"'"("\'"|[^'])*"'"    	{yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';}
 "|"    	{return '|';}
 "["("\]"|[^\]])*"]"    	{return 'ANY_GROUP_REGEX';}
 "("    	{return '(';}
@@ -19,11 +19,11 @@
 "$"    	{return '$';}
 "<<EOF>>"    	{return '$';}
 "."    	{return '.';}
-"%%"    	{return '%%';}
+"%%"    	{yy.ruleSection = true; return '%%';}
 "{"\d+(","\s?\d+|",")?"}"    	{return 'RANGE_REGEX';}
-/"{"    	%{if(yy.freshLine){this.input('{');return '{';} else this.unput('y');}%
-"}"    	%{return '}';}%
-"%{"(.|\n)*?"}%"    	{yytext = yytext.substr(2, yytext.length-4);return 'ACTION';}
+/"{"    	%{if (yy.freshLine) {this.input('{');return '{';} else this.unput('y');%}
+"}"    	%{return '}';%}
+"%{"(.|\n)*?"%}"    	{yytext = yytext.substr(2, yytext.length-4);return 'ACTION';}
 .    	{/* ignore bad characters */}
 <<EOF>>    	{return 'EOF';}
 

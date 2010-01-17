@@ -42,10 +42,36 @@ exports["test advanced"] = function () {
 };
 
 exports["test [^\]]"] = function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n';
+    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n\'fo"o\\\'bar\'  {return \'baz\';}\n';
     var expected = {
         rules: [
-            ["\\[[^\\]]\\]", "return true;"]
+            ["\\[[^\\]]\\]", "return true;"],
+            ["f\"oo'bar\\b", "return 'baz2';"],
+            ["fo\"o'bar\\b", "return 'baz';"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test multiline action"] = function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
+    var expected = {
+        rules: [
+            ["\\[[^\\]]\\]", "\nreturn true;\n"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test include"] = function () {
+    var lexgrammar = '\nRULE [0-9]\n\n%{\n hi <stuff> \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
+    var expected = {
+        macros: [["RULE", "[0-9]"]],
+        actionInclude: "\n hi <stuff> \n",
+        rules: [
+            ["\\[[^\\]]\\]", "\nreturn true;\n"]
         ]
     };
 
@@ -78,4 +104,14 @@ exports["test lex grammar bootstrap"] = function () {
             .read({charset: "utf-8"}));
 
     assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
+};
+
+exports["test ANSI C lexical grammar"] = function () {
+    var fs = require("file");
+
+    var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
+            .join('lex', 'ansic.jilex')
+            .read({charset: "utf-8"}));
+
+    assert.ok(lexgrammar, "grammar should be parsed correctly");
 };

@@ -21,8 +21,8 @@
 "."    	{return '.';}
 "%%"    	{return '%%';}
 "{"\d+(","\s?\d+|",")?"}"    	{return 'RANGE_REGEX';}
-/"{"    	%{if(yy.freshLine){this.input('{');return '{';} else this.unput('y');}%
-"}"    	%{return '}';}%
+/"{"    	%{if(yy.freshLine){this.input('{');return '{';} else this.unput('y');%}
+"}"    	%{return '}';%}
 "%{"(.|\n)*?"}%"    	{yytext = yytext.substr(2, yytext.length-4);return 'ACTION';}
 .    	{/* ignore bad characters */}
 <<EOF>>    	{return 'EOF';}
