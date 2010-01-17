@@ -1,7 +1,5 @@
 /* Jison lexer file format grammar */
 
-%left '/'
-
 %nonassoc '/'
 
 %left '*' '+' '?' RANGE_REGEX
