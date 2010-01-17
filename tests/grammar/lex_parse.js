@@ -42,12 +42,12 @@ exports["test advanced"] = function () {
 };
 
 exports["test [^\]]"] = function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n\'fo"o\\\'bar\'  {return \'baz\';}\n';
+    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
     var expected = {
         rules: [
             ["\\[[^\\]]\\]", "return true;"],
             ["f\"oo'bar\\b", "return 'baz2';"],
-            ["fo\"o'bar\\b", "return 'baz';"]
+            ['fo"obar\\b', "return 'baz';"]
         ]
     };
 

@@ -85,7 +85,7 @@ void count();
 "!="			{ count(); return(NE_OP); }
 ";"			{ count(); return(';'); }
 ("{"|"<%")		{ count(); return('{'); }
-("}"|"%>")		{ count(); return('}'); }
+("}"|"%>")		%{ count(); return('}'); %}
 ","			{ count(); return(','); }
 ":"			{ count(); return(':'); }
 "="			{ count(); return('='); }
