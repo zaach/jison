@@ -15,10 +15,11 @@ exports["test lex grammar with macros"] = function () {
 };
 
 exports["test excaped chars"] = function () {
-    var lexgrammar = '%%\n"\\n"+ {return \'NL\';}\n"\\s"+ {/* skip */}';
+    var lexgrammar = '%%\n"\\n"+ {return \'NL\';}\n\\n+ {return \'NL2\';}\n\\s+ {/* skip */}';
     var expected = {
         rules: [
-            ["\\n+", "return 'NL';"],
+            ["\\\\n+", "return 'NL';"],
+            ["\\n+", "return 'NL2';"],
             ["\\s+", "/* skip */"]
         ]
     };
@@ -40,15 +41,40 @@ exports["test advanced"] = function () {
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
 
+exports["test [^\]]"] = function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n';
+    var expected = {
+        rules: [
+            ["\\[[^\\]]\\]", "return true;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
+
 exports["test bnf lex grammar"] = function () {
     var fs = require("file");
 
     var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('bnf.jilex')
+            .join('lex', 'bnf.jilex')
             .read({charset: "utf-8"}));
 
     var expected = JSON.parse(fs.path(fs.dirname(module.id))
-            .join('bnf.lex.json')
+            .join('lex', 'bnf.lex.json')
+            .read({charset: "utf-8"}));
+
+    assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
+};
+
+exports["test lex grammar bootstrap"] = function () {
+    var fs = require("file");
+
+    var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
+            .join('lex', 'lex_grammar.jilex')
+            .read({charset: "utf-8"}));
+
+    var expected = JSON.parse(fs.path(fs.dirname(module.id))
+            .join('lex', 'lex_grammar.lex.json')
             .read({charset: "utf-8"}));
 
     assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");

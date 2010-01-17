@@ -102,6 +102,7 @@ regex_base
     | '$'
         { $$ = '$'; }
     | string
+    | escape_char
     ;
 
 name_expansion
@@ -111,6 +112,11 @@ name_expansion
 
 any_group_regex
     : ANY_GROUP_REGEX
+        { $$ = yytext; }
+    ;
+
+escape_char
+    : ESCAPE_CHAR
         { $$ = yytext; }
     ;
 
