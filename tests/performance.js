@@ -106,5 +106,5 @@ var grammar = {
     }
 };
 
-var parser = new Jison.Parser(grammar, {type: 'lr'});
+var parser = new Jison.Parser(grammar, {type: 'lalr'});
 

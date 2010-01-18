@@ -10,8 +10,6 @@ exports["test Semantic action basic return"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "x", "y" ],
-        startSymbol: "E",
         bnf: {
             "E"   :[ ["E x", "return 0"],
                      ["E y", "return 1"],
@@ -53,8 +51,6 @@ exports["test terminal semantic values are null"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "x", "y" ],
-        startSymbol: "E",
         bnf: {
             "E"   :[ ["E x", "return [$2 === null]"],
                      ["E y", "return [$2]"],
@@ -77,8 +73,6 @@ exports["test Semantic action stack lookup"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "x", "y" ],
-        startSymbol: "pgm",
         bnf: {
             "pgm" :[ ["E", "return $1"] ],
             "E"   :[ ["B E", "return $1+$2"],
@@ -97,13 +91,10 @@ exports["test Semantic action stack lookup"] = function() {
 exports["test Semantic actions on nullable grammar"] = function() {
     var lexData = {
         rules: [
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
+           ["x", "return 'x';"]
         ]
     };
     var grammar = {
-        tokens: [ 'x' ],
-        startSymbol: "S",
         bnf: {
             "S" :[ ["A", "return $1"] ],
             "A" :[ ['x A', "$$ = $2+'x'" ],
@@ -120,13 +111,10 @@ exports["test Semantic actions on nullable grammar"] = function() {
 exports["test named semantic value"] = function() {
     var lexData = {
         rules: [
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
+           ["x", "return 'x';"]
         ]
     };
     var grammar = {
-        tokens: [ 'x' ],
-        startSymbol: "S",
         bnf: {
             "S" :[ ["A", "return $A"] ],
             "A" :[ ['x A', "$$ = $A+'x'" ],
@@ -149,7 +137,6 @@ exports["test ambiguous named semantic value"] = function() {
     };
     var grammar = {
         operators: [["left", "y"]],
-        startSymbol: "S",
         bnf: {
             "S" :[ ["A", "return $A"] ],
             "A" :[ ['A y A', "$$ = $A2+'y'+$A1" ],
@@ -166,13 +153,10 @@ exports["test ambiguous named semantic value"] = function() {
 exports["test Build AST"] = function() {
     var lexData = {
         rules: [
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
+           ["x", "return 'x';"]
         ]
     };
     var grammar = {
-        tokens: [ 'x' ],
-        startSymbol: "S",
         bnf: {
             "S" :[ ['A', "return $1;" ] ],
             "A" :[ ['x A', "$2.push(['ID',{value:'x'}]); $$ = $2;"],
@@ -201,8 +185,6 @@ exports["test 0+0 grammar"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "ZERO", "PLUS", "EOF"],
-        startSymbol: "S",
         bnf: {
             "S" :[ [ "E EOF",    "return $1" ]],
             "E" :[ [ "E PLUS T", "$$ = ['+',$1,$3]"  ],
@@ -228,8 +210,6 @@ exports["test implicit $$ = $1 action"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "ZERO", "PLUS", "EOF"],
-        startSymbol: "S",
         bnf: {
             "S" :[ [ "E EOF",    "return $1" ]],
             "E" :[ [ "E PLUS T", "$$ = ['+',$1,$3]"  ],
@@ -249,13 +229,10 @@ exports["test implicit $$ = $1 action"] = function() {
 exports["test yytext"] = function() {
     var lexData = {
         rules: [
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
+           ["x", "return 'x';"]
         ]
     };
     var grammar = {
-        tokens: [ "x" ],
-        startSymbol: "pgm",
         bnf: {
             "pgm" :[ ["Xexpr", "return $1;"] ],
             "Xexpr"   :[ ["x", "$$ = yytext;"] ]
@@ -268,6 +245,25 @@ exports["test yytext"] = function() {
     assert.equal(parser.parse('x'), "x", "return first token");
 };
 
+exports["test yyleng"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["Xexpr", "return $1;"] ],
+            "Xexpr"   :[ ["x", "$$ = yyleng;"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), 1, "return first token");
+};
+
 exports["test yytext more"] = function() {
     var lexData = {
         rules: [
@@ -276,8 +272,6 @@ exports["test yytext more"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "x", "y" ],
-        startSymbol: "pgm",
         bnf: {
             "pgm" :[ ["expr expr", "return $1+$2;"] ],
             "expr"   :[ ["x", "$$ = yytext;"],
@@ -298,8 +292,6 @@ exports["test action include"] = function() {
         ]
     };
     var grammar = {
-        tokens: [ "y" ],
-        startSymbol: "E",
         bnf: {
             "E"   :[ ["E y", "return test();"],
                      "" ]
