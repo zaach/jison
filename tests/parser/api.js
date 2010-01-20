@@ -26,6 +26,21 @@ exports["test tokens as a string"] = function () {
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
+exports["test generator"] = function () {
+
+    var grammar = {
+        bnf: {
+            "A" :[ 'A x',
+                   'A y',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Generator(grammar).createParser();
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+};
+
 exports["test extra spaces in productions"] = function () {
 
     var grammar = {
