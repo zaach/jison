@@ -224,3 +224,12 @@ exports["test custom parse error method"] = function () {
     assert["throws"](function () {parser.parse("agz")});
     assert.equal(result.line, 0, "lexical error should have correct line");
 };
+
+exports["test jison grammar as string"] = function () {
+
+    var grammar = "%% A : A x | A y | ;"
+
+    var parser = new Jison.Generator(grammar).createParser();
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+};
