@@ -24,7 +24,7 @@ Usage from the command line
 Now you're ready to generate some parsers:
 
     cd jison
-    narwhal bin/jison examples/calculator.json
+    narwhal bin/jison examples/calculator.jison examples/calculator.jisonlex
 
 This will generate a `calculator.js` file in your current working directory. This file can be used to parse an input file, like so:
 
@@ -106,7 +106,7 @@ The generated parser script may be included in a web page without any need for a
 When you generate the parser, you can specify the variable name it will be declared as:
 
     // mygenerator.js
-    var parserSource = parser.generate({moduleName: "calc"});
+    var parserSource = generator.generate({moduleName: "calc"});
     // then write parserSource to a file called, say, calc.js
 
 Whatever `moduleName` you specified will be the the variable you can access the parser from in your web page:
@@ -142,13 +142,68 @@ A demo of the calculator script used in a web page is [here](http://zaach.github
 
 Specifying a language
 ---------------------
-The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Both lexing and parsing information can be included in the Jison grammar specification for a language.
+The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar. 
 
-For example here is `calculator.json`:
+For example, here is the calculator parser:
+
+calc.jisonlex, tokenization rules
+
+    %%
+    \s+                   {/* skip whitespace */}
+    [0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
+    "*"                   {return '*';}
+    "/"                   {return '/';}
+    "-"                   {return '-';}
+    "+"                   {return '+';}
+    "^"                   {return '^';}
+    "("                   {return '(';}
+    ")"                   {return ')';}
+    "PI"                  {return 'PI';}
+    "E"                   {return 'E';}
+    <<EOF>>               {return 'EOF';}
+
+and calc.jison, language grammar
+
+    /* description: Grammar for a parser that parses and executes mathematical expressions. */
+
+    %left '+' '-'
+    %left '*' '/'
+    %left '^'
+    %left UMINUS
+
+    %%
+
+    S
+        : e EOF
+            {print($1); return $1;}
+        ;
+
+    e
+        : e '+' e
+            {$$ = $1+$3;}
+        | e '-' e
+            {$$ = $1-$3;}
+        | e '*' e
+            {$$ = $1*$3;}
+        | e '/' e
+            {$$ = $1/$3;}
+        | e '^' e
+            {$$ = Math.pow($1, $3);}
+        | '-' e
+            {$$ = -$2;} %prec UMINUS
+        | '(' e ')'
+            {$$ = $2;}
+        | NUMBER
+            {$$ = Number(yytext);}
+        | E
+            {$$ = Math.E;}
+        | PI
+            {$$ = Math.PI;}
+        ;
+
+which compiles down to this JSON:
 
     {
-        "comment": "Parses end executes mathematical expressions.",
-
         "lex": {
             "rules": [
                ["\\s+",                    "/* skip whitespace */"],
@@ -189,11 +244,13 @@ For example here is `calculator.json`:
         }
     }
 
-This is all that is needed for Jison to generate a parser capable of recognizing the language and executing the semantic actions.
+Jison accepts both the Bison/Flex style formats, or the raw JSON format, e.g:
+
+    narwhal bin/jison examples/calculator.jison examples/calculator.jisonlex
+or
+    narwhal bin/jison examples/calculator.json
 
 More examples can be found in the `examples/` and `tests/parser/` directories.
-
-*JSON isn't so bad, but a more author friendly format is in the works. It will be similar to Bison's .y files.*
 
 Sharing scope
 ------------

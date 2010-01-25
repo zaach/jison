@@ -22,10 +22,10 @@ exports["test commonjs module generator"] = function () {
     };
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammar);
-    parser_.lexer = new Lexer(lexData);
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
 
-    var parserSource = parser_.generateCommonJSModule();
+    var parserSource = gen.generateCommonJSModule();
     var exports = {};
     eval(parserSource);
 
@@ -50,10 +50,10 @@ exports["test module generator"] = function () {
     };
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammar);
-    parser_.lexer = new Lexer(lexData);
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
 
-    var parserSource = parser_.generateModule();
+    var parserSource = gen.generateModule();
     eval(parserSource);
 
     assert.ok(parser.parse(input));
@@ -77,10 +77,10 @@ exports["test module generator with module name"] = function () {
     };
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammar);
-    parser_.lexer = new Lexer(lexData);
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
 
-    var parserSource = parser_.generate({moduleType: "js", moduleName: "parsey"});
+    var parserSource = gen.generate({moduleType: "js", moduleName: "parsey"});
     eval(parserSource);
 
     assert.ok(parsey.parse(input));
@@ -106,10 +106,10 @@ exports["test module generator with namespaced module name"] = function () {
     var compiler = {};
 
     var input = "xyxxxy";
-    var parser_ = new Jison.Parser(grammar);
-    parser_.lexer = new Lexer(lexData);
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
 
-    var parserSource = parser_.generateModule({moduleName: "compiler.parser"});
+    var parserSource = gen.generateModule({moduleName: "compiler.parser"});
     eval(parserSource);
 
     assert.ok(compiler.parser.parse(input));
@@ -187,11 +187,9 @@ exports["test module include"] = function () {
     }
 };
 
+    var gen = new Jison.Generator(grammar);
 
-
-    var parser_ = new Jison.Parser(grammar);
-
-    var parserSource = parser_.generateModule();
+    var parserSource = gen.generateModule();
     eval(parserSource);
 
     assert.ok(parser.parse(JSON.stringify(grammar.bnf)));

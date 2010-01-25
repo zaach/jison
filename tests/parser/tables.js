@@ -12,13 +12,13 @@ exports["test right-recursive nullable grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "slr"});
-    var parser2 = new Jison.Parser(grammar, {type: "lalr"});
+    var gen = new Jison.Generator(grammar, {type: "slr"});
+    var gen2 = new Jison.Generator(grammar, {type: "lalr"});
 
-    assert.equal(parser.table.length, 4, "table has 4 states");
-    assert.equal(parser.nullable('A'), true, "A is nullable");
-    assert.equal(parser.conflicts, 0, "should have no conflict");
-    assert.deepEqual(parser.table, parser2.table, "should have identical tables");
+    assert.equal(gen.table.length, 4, "table has 4 states");
+    assert.equal(gen.nullable('A'), true, "A is nullable");
+    assert.equal(gen.conflicts, 0, "should have no conflict");
+    assert.deepEqual(gen.table, gen2.table, "should have identical tables");
 };
 
 exports["test slr lalr lr tables are equal"] = function () {
@@ -32,15 +32,15 @@ exports["test slr lalr lr tables are equal"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "slr"});
-    var parser2 = new Jison.Parser(grammar, {type: "lalr"});
-    var parser3 = new Jison.Parser(grammar, {type: "lr"});
+    var gen = new Jison.Generator(grammar, {type: "slr"});
+    var gen2 = new Jison.Generator(grammar, {type: "lalr"});
+    var gen3 = new Jison.Generator(grammar, {type: "lr"});
 
-    assert.deepEqual(parser.table, parser2.table, "slr lalr should have identical tables");
-    assert.deepEqual(parser2.table, parser3.table, "lalr lr should have identical tables");
+    assert.deepEqual(gen.table, gen2.table, "slr lalr should have identical tables");
+    assert.deepEqual(gen2.table, gen3.table, "lalr lr should have identical tables");
 };
 
-exports["test LL prase table"] = function () {
+exports["test LL parse table"] = function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -51,12 +51,12 @@ exports["test LL prase table"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "ll"});
+    var gen = new Jison.Generator(grammar, {type: "ll"});
 
-    assert.deepEqual(parser.table, {$accept:{x:[0], $end:[0]}, A:{x:[1], $end:[2]}}, "ll table has 2 states");
+    assert.deepEqual(gen.table, {$accept:{x:[0], $end:[0]}, A:{x:[1], $end:[2]}}, "ll table has 2 states");
 };
 
-exports["test LL prase table with conflict"] = function () {
+exports["test LL parse table with conflict"] = function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -68,8 +68,8 @@ exports["test LL prase table with conflict"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "ll"});
-    assert.equal(parser.conflicts, 1, "should have 1 conflict");
+    var gen = new Jison.Generator(grammar, {type: "ll"});
+    assert.equal(gen.conflicts, 1, "should have 1 conflict");
 };
 
 exports["test Ambigous grammar"] = function () {
@@ -85,8 +85,8 @@ exports["test Ambigous grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lr"});
-    assert.equal(parser.conflicts, 2, "should have 2 conflict");
+    var gen = new Jison.Generator(grammar, {type: "lr"});
+    assert.equal(gen.conflicts, 2, "should have 2 conflict");
 };
 
 // for Minimal LR testing. Not there yet.
@@ -105,8 +105,8 @@ exports["test Ambigous grammar"] = function () {
         //}
     //};
 
-    //var parser = new Jison.Parser(grammar, {type: "mlr", debug:true});
-    //assert.strictEqual(parser.conflicts, 0, "should have no conflict");
+    //var gen = new Jison.Generator(grammar, {type: "mlr", debug:true});
+    //assert.strictEqual(gen.conflicts, 0, "should have no conflict");
 //};
 
 //exports["test De Remer G4"] = function () {
@@ -121,6 +121,6 @@ exports["test Ambigous grammar"] = function () {
         //}
     //};
 
-    //var parser = new Jison.Parser(grammar, {type: "mlr", debug:true});
-    //assert.strictEqual(parser.conflicts, 0, "should have no conflict");
+    //var gen = new Jison.Generator(grammar, {type: "mlr", debug:true});
+    //assert.strictEqual(gen.conflicts, 0, "should have no conflict");
 /*};*/

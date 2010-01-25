@@ -36,7 +36,7 @@ exports["test generator"] = function () {
         }
     };
 
-    var parser = new Jison.Generator(grammar).createParser();
+    var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
@@ -97,7 +97,7 @@ exports["test start symbol should be nonterminal"] = function () {
         }
     };
 
-    assert["throws"](function(){new Jison.Parser(grammar);}, "throws error");
+    assert["throws"](function(){new Jison.Generator(grammar);}, "throws error");
 };
 
 exports["test token list as string"] = function () {
@@ -110,8 +110,8 @@ exports["test token list as string"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
-    assert.deepEqual(parser.terminals, ["$end", "x", "y"]);
+    var gen = new Jison.Generator(grammar);
+    assert.deepEqual(gen.terminals, ["$end", "x", "y"]);
 };
 
 exports["test grammar options"] = function () {
@@ -127,8 +127,8 @@ exports["test grammar options"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
-    assert.equal(parser.constructor, Jison.SLRParser);
+    var gen = new Jison.Generator(grammar);
+    assert.ok(gen);
 };
 
 exports["test overwrite grammar options"] = function () {
@@ -144,8 +144,8 @@ exports["test overwrite grammar options"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lr0"});
-    assert.equal(parser.constructor, Jison.LR0Parser);
+    var gen = new Jison.Generator(grammar, {type: "lr0"});
+    assert.equal(gen.constructor, Jison.LR0Generator);
 };
 
 exports["test yy shared scope"] = function () {
@@ -184,8 +184,8 @@ exports["test optional token declaration"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lr0"});
-    assert.equal(parser.constructor, Jison.LR0Parser);
+    var gen = new Jison.Generator(grammar, {type: "lr0"});
+    assert.equal(gen.constructor, Jison.LR0Generator);
 };
 
 

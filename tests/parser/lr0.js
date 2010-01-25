@@ -39,10 +39,10 @@ exports["test right-recursive nullable grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    var gen = new Jison.Generator(grammar, {type: "lr0"});
 
-    assert.ok(parser.table.length == 4, "table has 4 states");
-    assert.ok(parser.conflicts == 2, "encountered 2 conflicts");
+    assert.ok(gen.table.length == 4, "table has 4 states");
+    assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
 };
 
 exports["test 0+0 grammar"] = function () {

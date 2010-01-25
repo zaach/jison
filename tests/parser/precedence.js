@@ -231,8 +231,7 @@ exports["test multi-operator rules"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: 'slr'});
-    parser.lexer = new RegExpLexer(lexData);
+    var gen = new Jison.Generator(grammar, {type: 'slr'});
 
-    assert.equal(parser.conflicts, 0);
+    assert.equal(gen.conflicts, 0);
 };

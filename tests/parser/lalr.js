@@ -141,9 +141,11 @@ exports["test basic JSON grammar"] = function () {
 
     var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004, -4.04e-4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "str\\ting\\"sgfg" }';
 
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
-    var parser2 = new Jison.Parser(grammar, {type: "slr"});
-    assert.deepEqual(parser.table, parser2.table, "SLR(1) and LALR(1) tables should be equal");
+    var gen = new Jison.Generator(grammar, {type: "lalr"});
+    var parser = gen.createParser();
+    var gen2 = new Jison.Generator(grammar, {type: "slr"});
+    var parser2 = gen2.createParser();
+    assert.deepEqual(gen.table, gen2.table, "SLR(1) and LALR(1) tables should be equal");
     assert.ok(parser.parse(source));
 };
 
@@ -162,6 +164,6 @@ exports["test LR(1) grammar"] = function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
-    assert.equal(parser.conflicts, 2);
+    var gen = new Jison.Generator(grammar, {type: "lalr"});
+    assert.equal(gen.conflicts, 2);
 };

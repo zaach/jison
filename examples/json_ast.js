@@ -1,4 +1,4 @@
-var Parser = require("jison").Parser;
+var Generator = require("jison").Generator;
 var system = require("system");
 var fs = require("file");
 
@@ -73,11 +73,11 @@ var options = {type: "slr", moduleType: "commonjs", moduleName: "jsonparse"};
 
 exports.main = function main (args) {
     var cwd = fs.path(fs.cwd()),
-        code = new Parser(exports.grammar, options).generate(),
+        code = new Generator(exports.grammar, options).generate(),
         stream = cwd.join(options.moduleName+".js").open("w");
     stream.print(code).close();
 };
 
-if (require.main === module.id)
+if (require.main === module)
     exports.main(system.args);
 
