@@ -1,5 +1,5 @@
 var assert = require("assert"),
-    lex = require("../../lib/jison/jilex");
+    lex = require("../../lib/jison/jisonlex");
 
 exports["test lex grammar with macros"] = function () {
     var lexgrammar = 'D [0-9]\nID [a-zA-Z][a-zA-Z0-9]+\n%%\n\n{D}"ohhai" {print(9);}\n"{" {return \'{\';}';
@@ -82,7 +82,7 @@ exports["test bnf lex grammar"] = function () {
     var fs = require("file");
 
     var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'bnf.jilex')
+            .join('lex', 'bnf.jisonlex')
             .read({charset: "utf-8"}));
 
     var expected = JSON.parse(fs.path(fs.dirname(module.id))
@@ -96,7 +96,7 @@ exports["test lex grammar bootstrap"] = function () {
     var fs = require("file");
 
     var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'lex_grammar.jilex')
+            .join('lex', 'lex_grammar.jisonlex')
             .read({charset: "utf-8"}));
 
     var expected = JSON.parse(fs.path(fs.dirname(module.id))
@@ -110,7 +110,7 @@ exports["test ANSI C lexical grammar"] = function () {
     var fs = require("file");
 
     var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'ansic.jilex')
+            .join('lex', 'ansic.jisonlex')
             .read({charset: "utf-8"}));
 
     assert.ok(lexgrammar, "grammar should be parsed correctly");

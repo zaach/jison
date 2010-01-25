@@ -7,13 +7,13 @@ var FILE = require("file"),
 jake.task("build", ["build:bnf", "build:lex"]);
 
 jake.task("build:bnf", function () {
-    OS.system(['./bin/jison', 'src/bnf.jison', 'src/bnf.jilex']);
+    OS.system(['./bin/jison', 'src/bnf.jison', 'src/bnf.jisonlex']);
     OS.system(['mv', 'bnf.js', 'lib/jison/util/bnf-parser.js']);
 });
 
 jake.task("build:lex", function () {
-    OS.system(['./bin/jison', 'src/jilex.jison', 'src/jilex.jilex']);
-    OS.system(['mv', 'jilex.js', 'lib/jison/util/lex-parser.js']);
+    OS.system(['./bin/jison', 'src/jisonlex.jison', 'src/jisonlex.jisonlex']);
+    OS.system(['mv', 'jisonlex.js', 'lib/jison/util/lex-parser.js']);
 });
 
 
