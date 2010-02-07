@@ -1,4 +1,5 @@
-var parser;
+var parser,
+    parser2;
 
 if(typeof console === 'undefined'){
     console = {};
@@ -52,7 +53,7 @@ function processGrammar () {
     if (cfg.lex) $("#parsing").show();
     else $("#parsing").hide();
 
-    parser = new Jison.Parser(cfg, {type: type,noDefaultResolve:true});
+    parser = new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
     if (parser.computeLookaheads)
       parser.computeLookaheads();
 
@@ -69,10 +70,11 @@ function processGrammar () {
 
 function runParser () {
     if (!parser) processGrammer();
+    if (!parser2) parser2 = parser.createParser();
     printOut("Parsing...");
     var source = $("#source").val();
     try {
-        printOut(parser.parse(source));
+        printOut(parser2.parse(source));
     } catch(e) {
         printOut(e.message || e);
     }
@@ -144,7 +146,7 @@ function printActionDetails (a, token) {
   for (var i=0;i<a.length;i++) {
     if (a[i][0] == 1) {
       var link = "<a href='#state_"+a[i][1]+"'>Go to state "+a[i][1]+"</a>";
-      out += "- Shift "+token+" then "+link+"<br />";
+      out += "- Shift "+parser.symbols[token]+" then "+link+"<br />";
     }
     else if (a[i][0] == 2) {
       var text = "- Reduce by "+a[i][1]+") "+parser.productions[a[i][1]];
