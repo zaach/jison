@@ -12,12 +12,12 @@
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
     <script src="../js/json2.js"></script>
     <script src="../js/es5.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/lexer.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/typal.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/set.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/bnf-parser.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/bnf.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison.js"></script>
+    <script src="../js/lib/jison/lexer.js"></script>
+    <script src="../js/lib/jison/util/typal.js"></script>
+    <script src="../js/lib/jison/util/set.js"></script>
+    <script src="../js/lib/jison/util/bnf-parser.js"></script>
+    <script src="../js/lib/jison/bnf.js"></script>
+    <script src="../js/lib/jison.js"></script>
     <script src="main.js"></script>
 
     <link href="../style/main.css" type="text/css" rel="stylesheet" media="screen" />
@@ -39,14 +39,15 @@
     <p>
     Load an example:
     <select id="examples">
-      <option value="basic" selected="true">Basic</option>
-      <option value="basic2">Basic #2</option>
-      <option value="basic_lex">Basic w/ lex</option>
-      <option value="basic2_lex">Basic #2 w/ lex</option>
-      <option value="reduce_conflict">Reduce conflict</option>
-      <option value="dism">DISM</option>
-      <option value="dism_lr0">DISM in LR(0)</option>
-      <option value="precedence">Advanced</option>
+      <option value="basic.json" selected="true">Basic</option>
+      <option value="basic2.json">Basic #2</option>
+      <option value="basic_lex.json">Basic w/ lex</option>
+      <option value="basic2_lex.json">Basic #2 w/ lex</option>
+      <option value="reduce_conflict.json">Reduce conflict</option>
+      <option value="dism.json">DISM</option>
+      <option value="dism_lr0.json">DISM in LR(0)</option>
+      <option value="precedence.json">Advanced</option>
+      <option value="ansic.jison">ANSI C</option>
     </select>
     </p>
 

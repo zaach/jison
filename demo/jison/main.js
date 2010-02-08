@@ -28,7 +28,7 @@ $(function () {
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
-      $.get("examples/"+file+".json", function (data) {
+      $.get("examples/"+file, function (data) {
         $("#grammar").val(data);
         $(document.body).removeClass("loading");
       });
@@ -53,6 +53,7 @@ function processGrammar () {
     if (cfg.lex) $("#parsing").show();
     else $("#parsing").hide();
 
+    Jison.print = function () {};
     parser = new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
     if (parser.computeLookaheads)
       parser.computeLookaheads();
@@ -117,12 +118,12 @@ function printCell (cell){
 }
 
 function llTable (p){
-    var out = ['<table border="1">','<tr>'];
-    out.push('<td>','</td>');
+    var out = ['<table border="1">','<thead>','<tr>'];
+    out.push('<th>','</th>');
     p.terminals.forEach(function(t){
-      out.push('<td>',t,'</td>');
+      out.push('<th>',t,'</th>');
     });
-    out.push('</tr>');
+    out.push('</tr>', '</thead>');
 
     for (var nt in  p.table){
       out.push('<tr><td>',nt,'</td>');
@@ -192,7 +193,11 @@ function lrTable (p){
       state=p.table[i];
       if (!state) continue;
       ntout = [];
-      out.push('<tr><td class="row_'+i+' state" id="state_'+i+'">',i,'<div class="details">'+parser.states.item(i).join('<br />')+'</div></td>');
+      out.push('<tr><td class="row_'+i+' state" id="state_'+i+'">',i,'<div class="details">');
+      parser.states.item(i).forEach(function (item, k) {
+          out.push(item,'<br />');
+      });
+      out.push('</div></td>');
       gs.forEach(function(ts){
         var t = sym2int(ts);
 
