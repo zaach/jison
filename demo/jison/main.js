@@ -144,6 +144,7 @@ function llTable (p){
 function printActionDetails (a, token) {
   var out = "<div class='details'>";
 
+  try{
   for (var i=0;i<a.length;i++) {
     if (a[i][0] == 1) {
       var link = "<a href='#state_"+a[i][1]+"'>Go to state "+a[i][1]+"</a>";
@@ -153,6 +154,9 @@ function printActionDetails (a, token) {
       var text = "- Reduce by "+a[i][1]+") "+parser.productions[a[i][1]];
       out += text+"<br />";
     }
+  }
+  } catch(e) {
+      console.log(a, token)
   }
   return out+"</div>";
 }
