@@ -1,7 +1,7 @@
 Jison
 =====
 * [issues](http://github.com/zaach/jison/issues)
-* [discuss](jison@librelist.org)
+* [discuss](mailto:jison@librelist.com)
 
 An API for creating parsers in JavaScript
 -----------------------------------------
