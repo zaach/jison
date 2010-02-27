@@ -17,7 +17,7 @@ exports["test classy grammar"] = function () {
 };
 
 exports["test advanced grammar"] = function () {
-    var grammar = "%% test: foo bar {action} | baz ; hello: world %prec UMINUS ;extra: foo {action} %prec '-' ;";
+    var grammar = "%% test: foo bar {action} | baz ; hello: world %prec UMINUS ;extra: foo %prec '-' {action} ;";
     var expected = {bnf: {test: [["foo bar", "action" ], "baz"], hello: [[ "world", {prec:"UMINUS"} ]], extra: [[ "foo", "action", {prec: "-"} ]]}};
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");

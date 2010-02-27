@@ -67,10 +67,10 @@ handle_list
     ;
 
 handle_action
-    : handle action prec
+    : handle prec action 
         {$$ = [($1.length ? $1.join(' ') : '')];
-            if($2) $$.push($2);
             if($3) $$.push($3);
+            if($2) $$.push($2);
             if ($$.length === 1) $$ = $$[0];
         }
     ;

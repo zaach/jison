@@ -191,8 +191,8 @@ and calc.jison, language grammar
             {$$ = $1/$3;}
         | e '^' e
             {$$ = Math.pow($1, $3);}
-        | '-' e
-            {$$ = -$2;} %prec UMINUS
+        | '-' e %prec UMINUS
+            {$$ = -$2;}
         | '(' e ')'
             {$$ = $2;}
         | NUMBER
