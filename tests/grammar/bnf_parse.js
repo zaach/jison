@@ -57,6 +57,14 @@ exports["test comment"] = function () {
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test single line comment"] = function () {
+    var grammar = "//comment \n %% hello: world ;";
+    var expected = {bnf: {hello: ["world"]}};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parse comment");
+};
+
 exports["test comment with nested *"] = function () {
     var grammar = "/* comment * not done */ %% hello: /* oh hai */ world ;";
     var expected = {bnf: {hello: ["world"]}};

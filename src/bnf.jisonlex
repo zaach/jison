@@ -1,6 +1,7 @@
 
 %%
 \s+    	{/* skip whitespace */}
+"//".*    	{/* skip comment */}
 "/*"[^*]*"*"    	{return yy.lexComment(this);}
 [a-zA-Z][a-zA-Z0-9_-]*    	{return 'ID';}
 '"'[^"]+'"'    	{yytext = yytext.substr(1, yyleng-2); return 'STRING';}
