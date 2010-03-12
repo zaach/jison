@@ -9,12 +9,12 @@
 lex 
     : definitions include '%%' rules '%%' EOF
         {{ $$ = {rules: $4};
-          if ($1.length) $$.macros = $1;
+          if ($1) $$.macros = $1;
           if ($2) $$.actionInclude = $2;
           return $$; }}
     | definitions include '%%' rules EOF
         {{ $$ = {rules: $4};
-          if ($1.length) $$.macros = $1;
+          if ($1) $$.macros = $1;
           if ($2) $$.actionInclude = $2;
           return $$; }}
     ;
@@ -26,9 +26,9 @@ include
 
 definitions
     : definitions definition
-        { $$ = $1; $$.push($2); }
+        %{ $$ = $1 || {}; $$[$2[0]] = $2[1]; %}
     | 
-        { $$ = []; }
+        { $$ = null; }
     ;
 
 definition
