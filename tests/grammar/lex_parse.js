@@ -4,7 +4,7 @@ var assert = require("assert"),
 exports["test lex grammar with macros"] = function () {
     var lexgrammar = 'D [0-9]\nID [a-zA-Z][a-zA-Z0-9]+\n%%\n\n{D}"ohhai" {print(9);}\n"{" {return \'{\';}';
     var expected = {
-        macros: [["D", "[0-9]"], ["ID", "[a-zA-Z][a-zA-Z0-9]+"]],
+        macros: {"D": "[0-9]", "ID": "[a-zA-Z][a-zA-Z0-9]+"},
         rules: [
             ["{D}ohhai\\b", "print(9);"],
             ["\\{", "return '{';"]
@@ -68,7 +68,7 @@ exports["test multiline action"] = function () {
 exports["test include"] = function () {
     var lexgrammar = '\nRULE [0-9]\n\n%{\n hi <stuff> \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
     var expected = {
-        macros: [["RULE", "[0-9]"]],
+        macros: {"RULE": "[0-9]"},
         actionInclude: "\n hi <stuff> \n",
         rules: [
             ["\\[[^\\]]\\]", "\nreturn true;\n"]
