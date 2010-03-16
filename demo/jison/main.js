@@ -143,22 +143,28 @@ function llTable (p){
 
 function printActionDetails (a, token) {
   var out = "<div class='details'>";
+  if (!a || !a[0]) return '';
 
-  try{
-  for (var i=0;i<a.length;i++) {
-    if (a[i][0] == 1) {
-      var link = "<a href='#state_"+a[i][1]+"'>Go to state "+a[i][1]+"</a>";
+  if (a[0] instanceof Array) {
+    a.forEach(function (ar) { out += printActionDetails_(ar, token); });
+  } else {
+      out += printActionDetails_(a, token);
+  }
+
+  return out+"</div>";
+}
+
+function printActionDetails_ (a, token) {
+    var out = '';
+    if (a[0] == 1) {
+      var link = "<a href='#state_"+a[1]+"'>Go to state "+a[1]+"</a>";
       out += "- Shift "+parser.symbols[token]+" then "+link+"<br />";
     }
-    else if (a[i][0] == 2) {
-      var text = "- Reduce by "+a[i][1]+") "+parser.productions[a[i][1]];
+    else if (a[0] == 2) {
+      var text = "- Reduce by "+a[1]+") "+parser.productions[a[1]];
       out += text+"<br />";
     }
-  }
-  } catch(e) {
-      console.log(a, token)
-  }
-  return out+"</div>";
+    return out;
 }
 
 function printAction (a){
@@ -167,8 +173,12 @@ function printAction (a){
     var out = '',
       ary = [];
 
-    for(var i=0;i<a.length;i++)
-        ary.push('<span class="action_'+(actions[a[i][0]])+'">'+(actions[a[i][0]])+(a[i][1]||'')+'</span>');
+    if (a[0] instanceof Array) {
+        for(var i=0;i<a.length;i++)
+            ary.push('<span class="action_'+(actions[a[i][0]])+'">'+(actions[a[i][0]])+(a[i][1]||'')+'</span>');
+    } else {
+        ary.push('<span class="action_'+(actions[a[0]])+'">'+(actions[a[0]])+(a[1]||'')+'</span>');
+    }
 
     out += ary.join(',');
 
@@ -210,9 +220,9 @@ function lrTable (p){
             ntout.push('<td class="nonterm nt-'+t+'"><a href="#state_'+state[t]+'">',state[t],'</a></td>');
           else 
             ntout.push('<td class="nonterm">&nbsp;</td>');
-        } else if (state[t])
-          out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t][0] == 3 ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
-        else
+        } else if (state[t]) {
+          out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t] == 3 ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
+        } else
           out.push('<td>&nbsp;</td>');
       });
       out.push.apply(out, ntout);
