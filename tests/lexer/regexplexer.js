@@ -81,6 +81,35 @@ exports["test macro"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test imbedded macro"] = function () {
+    var dict = {
+        macros: {
+            "digit": "[0-9]",
+            "2digit": "{digit}{digit}",
+            "3digit": "{2digit}{digit}"
+        },
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["{3digit}", "return 'NNN';" ],
+           ["{2digit}", "return 'NN';" ],
+           ["{digit}", "return 'N';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "x1y42y123";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "N");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "NN");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "NNN");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test action include"] = function() {
     var dict = {
         rules: [
