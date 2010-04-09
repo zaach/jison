@@ -197,7 +197,7 @@ function lrTable (p){
     gs.forEach(function(t){
       if (p.nonterminals[t])
       ntout.push('<th class="nonterm nt-'+t+'"">',t,'</th>');
-      else
+      else if (t != 'error' || p.hasErrorRecovery)
         out.push('<th>',t,'</th>');
     });
     out.push.apply(out, ntout);
@@ -213,6 +213,8 @@ function lrTable (p){
       });
       out.push('</div></td>');
       gs.forEach(function(ts){
+        if (ts == 'error' && !p.hasErrorRecovery)
+            return;
         var t = sym2int(ts);
 
         if (p.nonterminals[ts]){
