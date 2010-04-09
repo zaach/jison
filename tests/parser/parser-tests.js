@@ -9,6 +9,7 @@ exports.testAST = require("./actions");
 exports.testTables = require("./tables");
 exports.testPrecedence = require("./precedence");
 exports.testGenerator = require("./generator");
+exports.testErrorLab = require("./errorlab");
 
 if (require.main === module)
     require("os").exit(require("test").run(exports)); 
