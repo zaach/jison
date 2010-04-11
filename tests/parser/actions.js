@@ -43,7 +43,7 @@ exports["test return null"] = function() {
     assert.equal(parser.parse('x'), null, "semantic action");
 };
 
-exports["test terminal semantic values are null"] = function() {
+exports["test terminal semantic values are not null"] = function() {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -52,7 +52,7 @@ exports["test terminal semantic values are null"] = function() {
     };
     var grammar = {
         bnf: {
-            "E"   :[ ["E x", "return [$2 === null]"],
+            "E"   :[ ["E x", "return [$2 === 'x']"],
                      ["E y", "return [$2]"],
                      "" ]
         }
@@ -62,7 +62,7 @@ exports["test terminal semantic values are null"] = function() {
     parser.lexer = new RegExpLexer(lexData);
 
     assert.deepEqual(parser.parse('x'), [true], "semantic action");
-    assert.deepEqual(parser.parse('y'), [null], "semantic action");
+    assert.deepEqual(parser.parse('y'), ['y'], "semantic action");
 };
 
 exports["test Semantic action stack lookup"] = function() {
