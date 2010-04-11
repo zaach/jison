@@ -1,5 +1,5 @@
 {
-    "comment": "Parses end executes mathematical expressions.",
+    "comment": "JSON version. Jison understands both formats.",
 
     "lex": {
         "rules": [

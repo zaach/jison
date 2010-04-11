@@ -1,6 +1,4 @@
 var Generator = require("jison").Generator;
-var system = require("system");
-var fs = require("file");
 
 exports.grammar = {
     "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar. Parses JSON strings into objects.",
@@ -72,12 +70,13 @@ exports.grammar = {
 var options = {type: "slr", moduleType: "commonjs", moduleName: "jsonparse"};
 
 exports.main = function main (args) {
-    var cwd = fs.path(fs.cwd()),
+    var fs = require("file"),
+        cwd = fs.path(fs.cwd()),
         code = new Generator(exports.grammar, options).generate(),
         stream = cwd.join(options.moduleName+".js").open("w");
     stream.print(code).close();
 };
 
 if (require.main === module)
-    exports.main(system.args);
+    exports.main(require("system").args);
 
