@@ -15,6 +15,7 @@
 "%left"    	{return 'LEFT';}
 "%right"    	{return 'RIGHT';}
 "%nonassoc"    	{return 'NONASSOC';}
+"%lex"[ \t]*"{".*?"}"[ \t]*"lex%"    	{return 'LEX_BLOCK';}
 "%"[a-zA-Z]+[^\n]*    	{/* ignore unrecognized decl */}
 "<"[a-zA-Z]*">"    	{ /* ignore type */}
 "{{"[^}]*"}"    	{return yy.lexAction(this);}

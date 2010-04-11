@@ -17,6 +17,8 @@ declaration_list
 declaration
     : START id
         {{$$ = {start: $2};}}
+    | LEX_BLOCK
+        {{$$ = {lex: $1};}}
     | operator
         {{$$ = {operator: $1};}}
     ;
