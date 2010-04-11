@@ -26,7 +26,7 @@ Usage from the command line
 Now you're ready to generate some parsers:
 
     cd jison
-    narwhal bin/jison examples/calculator.jison examples/calculator.jisonlex
+    narwhal bin/jison examples/calculator.jison
 
 This will generate a `calculator.js` file in your current working directory. This file can be used to parse an input file, like so:
 
@@ -144,11 +144,14 @@ A demo of the calculator script used in a web page is [here](http://zaach.github
 
 Specifying a language
 ---------------------
-The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar. 
+The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar. 
 
-For example, here is the calculator parser:
+For example, here is the grammar for the calculator parser:
 
-calc.jisonlex, tokenization rules
+    /* description: Parses end executes mathematical expressions. */
+
+    /* lexical grammar */
+    %lex
 
     %%
     \s+                   {/* skip whitespace */}
@@ -164,18 +167,20 @@ calc.jisonlex, tokenization rules
     "E"                   {return 'E';}
     <<EOF>>               {return 'EOF';}
 
-and calc.jison, language grammar
+    /lex
 
-    /* description: Grammar for a parser that parses and executes mathematical expressions. */
+    /* operator associations and precedence */
 
     %left '+' '-'
     %left '*' '/'
     %left '^'
     %left UMINUS
 
-    %%
+    %start expressions
 
-    S
+    %% /* language grammar */
+
+    expressions
         : e EOF
             {print($1); return $1;}
         ;
@@ -203,7 +208,8 @@ and calc.jison, language grammar
             {$$ = Math.PI;}
         ;
 
-which compiles down to this JSON:
+
+which compiles down to this JSON representation used directly by Jison:
 
     {
         "lex": {
@@ -231,7 +237,7 @@ which compiles down to this JSON:
         ],
     
         "bnf": {
-            "S" :[[ "e EOF",   "print($1); return $1;"  ]],
+            "expressions" :[[ "e EOF",   "print($1); return $1;"  ]],
     
             "e" :[[ "e + e",   "$$ = $1+$3;" ],
                   [ "e - e",   "$$ = $1-$3;" ],
@@ -248,9 +254,12 @@ which compiles down to this JSON:
 
 Jison accepts both the Bison/Flex style formats, or the raw JSON format, e.g:
 
-    narwhal bin/jison examples/calculator.jison examples/calculator.jisonlex
+    narwhal bin/jison examples/calculator.jison
 or
     narwhal bin/jison examples/calculator.json
+
+When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:
+    narwhal bin/jison examples/classy.jison examples/classy.jisonlex
 
 More examples can be found in the `examples/` and `tests/parser/` directories.
 
