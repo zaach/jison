@@ -87,13 +87,13 @@ exports["test token with type"] = function () {
 };
 
 exports["test embedded lexical block"] = function () {
-    var grammar = "%lex{  \
+    var grammar = "%lex  \
                    %%\
                    'foo' {return 'foo';}\
                    'bar' {return 'bar';}\
                    'baz' {return 'baz';}\
                    'world' {return 'world';}\
-                   }lex%\
+                   /lex\
                    %% test: foo bar | baz ; hello: world ;";
     var expected = {
                         lex: {
