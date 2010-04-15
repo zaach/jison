@@ -62,11 +62,12 @@ function processGrammar () {
         if (!r.bydefault) return;
         $("#gen_out").append(r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action);
     });
+    
+    parser2 = parser.createParser();
 }
 
 function runParser () {
     if (!parser) processGrammer();
-    if (!parser2) parser2 = parser.createParser();
     printOut("Parsing...");
     var source = $("#source").val();
     try {
