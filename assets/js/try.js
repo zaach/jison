@@ -59,7 +59,7 @@ function processGrammar () {
 
     parser.resolutions.forEach(function (res) {
         var r = res[2];
-        if (!r.bydefault) continue;
+        if (!r.bydefault) return;
         $("#gen_out").append(r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action);
     });
 }
