@@ -1,0 +1,429 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  	<title>Jison / Documentation</title>
+  	<link rel="stylesheet" href="/assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+  </head>
+  <body>
+  	<div id="header">
+  		<h1><a href="/">Jison</a></h1>
+  	</div>
+  	<ul id="nav">
+  	  <li><a href="/docs/">docs</a></li>
+  	  <li><a href="/demos/">demos</a></li>
+  	  <li><a href="/try/">try</a></li>
+  	  <li><a href="/docs/#installation">install</a></li>
+  	  <li><a href="/community/">community</a></li>
+    </ul>
+    <div id="content">
+      <h1 id="documentation">Documentation</h1>
+
+<p>(I want to do some guides, too – not there yet.)</p>
+
+<p>Basically, Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you&rsquo;re familiar with Bison or Yacc, or other clones, you&rsquo;re almost ready to roll.</p>
+
+<ul>
+  <li><a href="#installation">Installation</a></li>
+  <li><a href="#usage-from-the-command-line">Usage from the command line</a></li>
+  <li><a href="#usage-from-a-commonjs-module">Usage from a CommonJS Module</a></li>
+  <li><a href="#using-the-generated-parser">Using the Generated Parser</a></li>
+  <li><a href="#using-the-parser-from-the-web">Using the Parser from the Web</a></li>
+  <li><a href="#the-concepts-of-jison">The Concepts of Jison</a></li>
+  <li><a href="#specifying-a-language">Specifying a Language</a></li>
+  <li><a href="#custom-scanners">Custom Scanners</a></li>
+  <li><a href="#sharing-scope">Sharing Scope</a></li>
+  <li><a href="#parsing-algorithms">Parsing algorithms</a></li>
+  <li><a href="#real-world-examples">Real world examples</a></li>
+  <li><a href="#contributors">Contributors</a></li>
+  <li><a href="#license">License</a></li>
+</ul>
+
+<h2 id="installation">Installation</h2>
+<p>To run Jison from the <em>command line</em>, you&rsquo;ll need to have <a href="http://github.com/280north/narwhal">Narwhal</a> installed and available from your <code>PATH</code>. To use it as a module, any CommonJS compatible environment should be fine.</p>
+
+<p>Clone the github repository:</p>
+
+<pre><code>git clone git://github.com/zaach/jison.git
+</code></pre>
+
+<h2 id="usage-from-the-command-line">Usage from the Command Line</h2>
+
+<p>Now, you&rsquo;re ready to generate some parsers:</p>
+
+<pre><code>cd jison
+narwhal bin/jison examples/calculator.jison
+</code></pre>
+
+<p>This will generate <code>calculator.js</code> in your current working directory. This script can be used to parse an input file, like so:</p>
+
+<pre><code>echo &quot;2^32 / 1024&quot; &gt; testcalc
+narwhal calculator.js testcalc
+</code></pre>
+
+<p>This will print out <code>4194304</code>.</p>
+
+<h2 id="usage-from-a-commonjs-module">Usage from a CommonJS Module</h2>
+
+<p>You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment&rsquo;s load path:</p>
+
+<pre><code>// mygenerator.js
+var Parser = require(&quot;jison&quot;).Parser;
+
+var grammar = {
+    &quot;lex&quot;: {
+        &quot;rules&quot;: [
+           [&quot;\\s+&quot;, &quot;/* skip whitespace */&quot;],
+           [&quot;[a-f0-9]+&quot;, &quot;return 'HEX';&quot;]
+        ]
+    },
+
+    &quot;bnf&quot;: {
+        &quot;hex_strings&quot; :[ &quot;hex_strings HEX&quot;,
+                         &quot;HEX&quot; ]
+    }
+};
+
+var parser = new Parser(grammar);
+
+// generate source, ready to be written to disk
+var parserSource = parser.generate();
+
+// you can also use the parser directly from memory
+
+parser.parse(&quot;adfe34bc e82a&quot;);
+// returns true
+
+parser.parse(&quot;adfe34bc zxg&quot;);
+// throws lexical error
+</code></pre>
+
+<h2 id="using-the-generated-parser">Using the Generated Parser</h2>
+<p>Once you have generated the parser and saved it, you no longer need Jison or any other dependencies.</p>
+
+<p>As demonstrated before, the parser can be used from the command line:    </p>
+
+<pre><code>narwhal calculator.js testcalc
+</code></pre>
+
+<p>Though, more ideally, the parser will be a dependency of another module. You can require it from another module like so:</p>
+
+<pre><code>// mymodule.js
+var parser = require(&quot;./calculator&quot;).parser;
+
+function exec (input) {
+    return parser.parse(input);
+}
+
+var twenty = exec(&quot;4 * 5&quot;);
+</code></pre>
+
+<p>Or more succinctly:</p>
+
+<pre><code>// mymodule.js
+function exec (input) {
+    return require(&quot;./calculator&quot;).parse(input);
+}
+
+var twenty = exec(&quot;4 * 5&quot;);
+</code></pre>
+
+<h2 id="using-the-parser-from-the-web">Using the Parser from the Web</h2>
+
+<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It&rsquo;s as simple as pointing to it via a scipt tag:</p>
+
+<pre><code>&lt;script src=&quot;calculator.js&quot;&gt;&lt;/script&gt;
+</code></pre>
+
+<p>When you generate the parser, you can specify the variable name it will be declared as:</p>
+
+<pre><code>// mygenerator.js
+var parserSource = generator.generate({moduleName: &quot;calc&quot;});
+// then write parserSource to a file called, say, calc.js
+</code></pre>
+
+<p>Whatever <code>moduleName</code> you specified will be the the variable you can access the parser from in your web page:</p>
+
+<pre><code>&lt;script src=&quot;calc.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+  calc.parse(&quot;42 / 0&quot;);
+&lt;/script&gt;
+</code></pre>
+
+<p>The moduleName you specify can also include a namespace, e.g:</p>
+<pre><code>// mygenerator.js
+var parserSource = parser.generate({moduleName: &quot;myCalculator.parser&quot;});
+</code></pre>
+
+<p>And could be used like so:</p>
+
+<pre><code>&lt;script&gt;
+  var myCalculator = {};
+&lt;/script&gt;
+
+&lt;script src=&quot;calc.js&quot;&gt;&lt;/script&gt;
+
+&lt;script&gt;
+  myCalculator.parser.parse(&quot;42 / 0&quot;);
+&lt;/script&gt;
+</code></pre>
+
+<p>Or something like that &ndash; you get the picture.</p>
+
+<p>A demo of the calculator script used in a web page is <a href="/demos/calc/">here</a>.</p>
+
+<h2 id="the-concepts-of-jison">The Concepts of Jison</h2>
+
+<p>Until the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">Bison guide</a> is properly ported for Jison, you can refer to it for the major concepts, which are equivalent (except for the bits about static typing of semantic values, and other obvious C artifacts.)</p>
+
+<p>Other helpful sections:</p>
+
+<ul>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_6.html#SEC34">Bison Grammar Files</a></li>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_8.html#SEC68">The Bison Parser Algorithm</a></li>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_9.html#SEC81">Error Recovery</a> (alpha support, at this point)</li>
+</ul>
+
+<h2 id="specifying-a-language">Specifying a Language</h2>
+<p>The process of parsing a language involves two phases: <strong>lexical analysis</strong> (tokenizing) and <strong>parsing</strong>, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar. </p>
+
+<p>For example, here is the grammar for the calculator parser:</p>
+
+<pre><code>/* description: Parses end executes mathematical expressions. */
+
+/* lexical grammar */
+%lex
+
+%%
+\s+                   {/* skip whitespace */}
+[0-9]+(&quot;.&quot;[0-9]+)?\b  {return 'NUMBER';}
+&quot;*&quot;                   {return '*';}
+&quot;/&quot;                   {return '/';}
+&quot;-&quot;                   {return '-';}
+&quot;+&quot;                   {return '+';}
+&quot;^&quot;                   {return '^';}
+&quot;(&quot;                   {return '(';}
+&quot;)&quot;                   {return ')';}
+&quot;PI&quot;                  {return 'PI';}
+&quot;E&quot;                   {return 'E';}
+&lt;&lt;EOF&gt;&gt;               {return 'EOF';}
+
+/lex
+
+/* operator associations and precedence */
+
+%left '+' '-'
+%left '*' '/'
+%left '^'
+%left UMINUS
+
+%start expressions
+
+%% /* language grammar */
+
+expressions
+    : e EOF
+        {print($1); return $1;}
+    ;
+
+e
+    : e '+' e
+        {$$ = $1+$3;}
+    | e '-' e
+        {$$ = $1-$3;}
+    | e '*' e
+        {$$ = $1*$3;}
+    | e '/' e
+        {$$ = $1/$3;}
+    | e '^' e
+        {$$ = Math.pow($1, $3);}
+    | '-' e %prec UMINUS
+        {$$ = -$2;}
+    | '(' e ')'
+        {$$ = $2;}
+    | NUMBER
+        {$$ = Number(yytext);}
+    | E
+        {$$ = Math.E;}
+    | PI
+        {$$ = Math.PI;}
+    ;
+</code></pre>
+
+<p>which compiles down to this JSON representation used directly by Jison:</p>
+
+<pre><code>{
+    &quot;lex&quot;: {
+        &quot;rules&quot;: [
+           [&quot;\\s+&quot;,                    &quot;/* skip whitespace */&quot;],
+           [&quot;[0-9]+(?:\\.[0-9]+)?\\b&quot;, &quot;return 'NUMBER';&quot;],
+           [&quot;\\*&quot;,                     &quot;return '*';&quot;],
+           [&quot;\\/&quot;,                     &quot;return '/';&quot;],
+           [&quot;-&quot;,                       &quot;return '-';&quot;],
+           [&quot;\\+&quot;,                     &quot;return '+';&quot;],
+           [&quot;\\^&quot;,                     &quot;return '^';&quot;],
+           [&quot;\\(&quot;,                     &quot;return '(';&quot;],
+           [&quot;\\)&quot;,                     &quot;return ')';&quot;],
+           [&quot;PI\\b&quot;,                   &quot;return 'PI';&quot;],
+           [&quot;E\\b&quot;,                    &quot;return 'E';&quot;],
+           [&quot;$&quot;,                       &quot;return 'EOF';&quot;]
+        ]
+    },
+
+    &quot;operators&quot;: [
+        [&quot;left&quot;, &quot;+&quot;, &quot;-&quot;],
+        [&quot;left&quot;, &quot;*&quot;, &quot;/&quot;],
+        [&quot;left&quot;, &quot;^&quot;],
+        [&quot;left&quot;, &quot;UMINUS&quot;]
+    ],
+
+    &quot;bnf&quot;: {
+        &quot;expressions&quot; :[[ &quot;e EOF&quot;,   &quot;print($1); return $1;&quot;  ]],
+
+        &quot;e&quot; :[[ &quot;e + e&quot;,   &quot;$$ = $1 + $3;&quot; ],
+              [ &quot;e - e&quot;,   &quot;$$ = $1 - $3;&quot; ],
+              [ &quot;e * e&quot;,   &quot;$$ = $1 * $3;&quot; ],
+              [ &quot;e / e&quot;,   &quot;$$ = $1 / $3;&quot; ],
+              [ &quot;e ^ e&quot;,   &quot;$$ = Math.pow($1, $3);&quot; ],
+              [ &quot;- e&quot;,     &quot;$$ = -$2;&quot;, {&quot;prec&quot;: &quot;UMINUS&quot;} ],
+              [ &quot;( e )&quot;,   &quot;$$ = $2;&quot; ],
+              [ &quot;NUMBER&quot;,  &quot;$$ = Number(yytext);&quot; ],
+              [ &quot;E&quot;,       &quot;$$ = Math.E;&quot; ],
+              [ &quot;PI&quot;,      &quot;$$ = Math.PI;&quot; ]]
+    }
+}
+</code></pre>
+
+<p>Jison accepts both the Bison/Flex style format, or the raw JSON format, e.g:</p>
+
+<pre><code>narwhal bin/jison examples/calculator.jison
+</code></pre>
+<p>or</p>
+<pre><code>narwhal bin/jison examples/calculator.json
+</code></pre>
+
+<p>When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:</p>
+<pre><code>narwhal bin/jison examples/classy.jison examples/classy.jisonlex
+</code></pre>
+
+<p>More examples can be found in the <a href="http://github.com/zaach/jison/tree/master/examples/"><code>examples/</code></a> and <a href="http://github.com/zaach/jison/tree/master/tests/parser/"><code>tests/parser/</code></a> directories.</p>
+
+<h2 id="lexical-analysis">Lexical Analysis</h2>
+<p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place. </p>
+
+<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes and actions must be contained within brackets (<code>{</code>, <code>}</code>), e.g.:</p>
+
+<p>Bad:</p>
+
+<pre><code>[0-9]+zomg    print(yytext)
+</code></pre>
+
+<p>Good:</p>
+
+<pre><code>[0-9]+&quot;zomg&quot;    { print(yytext); }
+</code></pre>
+
+<h2 id="custom-scanners">Custom Scanners</h2>
+
+<p><em>TODO</em></p>
+
+<h2 id="sharing-scope">Sharing Scope</h2>
+
+<p>In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.</p>
+
+<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can&rsquo;t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
+
+<p>An example from orderly.js:</p>
+
+<pre><code>var parser = require(&quot;./orderly/parse&quot;).parser;
+
+// set parser's shared scope
+parser.yy = require(&quot;./orderly/scope&quot;);
+
+// returns the JSON object
+var parse = exports.parse = function (input) {
+    return parser.parse(input);
+};
+...
+</code></pre>
+
+<p>The <code>scope</code> module contains logic for building data structures, which is used within the semantic actions.</p>
+
+<p><em>TODO: More on this.</em></p>
+
+<h2 id="parsing-algorithms">Parsing algorithms</h2>
+<p>Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.</p>
+
+<p><em>*LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.</em></p>
+
+<h2 id="real-world-examples">Real world examples</h2>
+
+<ul>
+  <li><a href="http://github.com/jashkenas/coffee-script">CoffeeScript</a> uses Jison in its self-compiler.</li>
+  <li><a href="http://github.com/zaach/orderly.js">Orderly.js</a> uses Jison for compilation.</li>
+</ul>
+
+<h2 id="contributors">Contributors</h2>
+<ul>
+  <li>Zach Carter</li>
+  <li>Jarred Ligatti</li>
+  <li>Manuel E. Bermúdez </li>
+</ul>
+
+<h2 id="license">License</h2>
+
+<blockquote>
+  <p>Copyright (c) 2009 Zachary Carter</p>
+
+  <p>Permission is hereby granted, free of
+charge, to any person  obtaining a
+copy of this software and associated
+documentation  files (the &ldquo;Software&rdquo;),
+to deal in the Software without 
+restriction, including without
+limitation the rights to use,  copy,
+modify, merge, publish, distribute,
+sublicense, and/or sell  copies of the
+Software, and to permit persons to
+whom the  Software is furnished to do
+so, subject to the following 
+conditions:</p>
+
+  <p>The above copyright notice and this
+permission notice shall be  included
+in all copies or substantial portions
+of the Software.</p>
+
+  <p>THE SOFTWARE IS PROVIDED &ldquo;AS IS&rdquo;,
+WITHOUT WARRANTY OF ANY KIND,  EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES  OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT  HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY,  WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR  OTHER DEALINGS
+IN THE SOFTWARE.</p>
+</blockquote>
+
+
+    </div>
+  	<p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2010. MIT Licensed.</p>
+  	
+    <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-3555129-4']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+  </body>
+</html>
