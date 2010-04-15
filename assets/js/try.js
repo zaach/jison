@@ -20,7 +20,7 @@ $(document).ready(function () {
     $("#examples").change(function(ev) {
         var file = this.options[this.selectedIndex].value;
         $(document.body).addClass("loading");
-        $.get("/examples/"+file, function (data) {
+        $.get("/jison/examples/"+file, function (data) {
                 $("#grammar").val(data);
                 $(document.body).removeClass("loading");
             });

@@ -4,6 +4,7 @@
 /* lexical grammar */
 %lex
 %%
+
 \s+                   {/* skip whitespace */}
 [0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
 "*"                   {return '*';}
