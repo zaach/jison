@@ -62,7 +62,7 @@ function processGrammar () {
         if (!r.bydefault) return;
         $("#gen_out").append(r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action);
     });
-    
+
     parser2 = parser.createParser();
 }
 
@@ -72,7 +72,7 @@ function runParser () {
     var source = $("#source").val();
     try {
         $("#out").addClass('good');
-        printOut(parser2.parse(source));
+        printOut(JSON.stringify(parser2.parse(source)));
     } catch(e) {
         $("#out").addClass('bad');
         printOut(e.message || e);
