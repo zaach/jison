@@ -46,7 +46,8 @@ function processGrammar () {
     Jison.print = function () {};
     parser = new Jison.Generator(cfg, {type: type});
 
-    $("#out").html('').removeClass("good, bad");
+    $("#out").removeClass("good").removeClass("bad").html('');
+    $("#gen_out").removeClass("good").removeClass("bad");
     if (!parser.conflicts) {
         $("#gen_out").html('Generated successfully!').addClass('good');
     } else {
@@ -71,10 +72,10 @@ function runParser () {
     printOut("Parsing...");
     var source = $("#source").val();
     try {
-        $("#out").addClass('good');
+        $("#out").removeClass("bad").addClass('good');
         printOut(JSON.stringify(parser2.parse(source)));
     } catch(e) {
-        $("#out").addClass('bad');
+        $("#out").removeClass("good").addClass('bad');
         printOut(e.message || e);
     }
 }
