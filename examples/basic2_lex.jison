@@ -3,8 +3,9 @@
 
 %lex
 %%
+
 \s+         {/* skip whitespace */}
-x         {return 'x';}
+"x"         {return 'x';}
 
 /lex
 
