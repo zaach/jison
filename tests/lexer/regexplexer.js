@@ -81,7 +81,7 @@ exports["test macro"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
-exports["test imbedded macro"] = function () {
+exports["test nested macros"] = function () {
     var dict = {
         macros: {
             "digit": "[0-9]",
