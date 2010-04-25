@@ -309,3 +309,24 @@ exports["test action include"] = function() {
     assert.equal(parser.parse('y'), 1, "semantic action");
 };
 
+exports["test next token not shifted if only one action"] = function () {
+    var lexData = {
+        rules: [
+           ["\\(", "return '(';"],
+           ["\\)", "return ')';"],
+           ["y", "return yy.xed ? 'yfoo' : 'ybar';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "prog" :[ 'e ybar' ],
+            "esub" :[[ '(', "yy.xed = true;" ]],
+            "e" :[[ 'esub yfoo )', "yy.xed = false;" ]]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.ok(parser.parse('(y)y'), "should parse correctly");
+};
+
