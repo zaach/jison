@@ -51,6 +51,13 @@ exports["test nullable rule with {{ }} delimited action"] = function () {
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
 };
 
+exports["test rule with {{ }} delimited action"] = function () {
+    var grammar = "%% test: foo bar {{ node({}, node({})); }}; hello: world ;";
+    var expected = {bnf: {test: [["foo bar"," node({}, node({})); " ]], hello: ["world"]}};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};
+
 exports["test comment"] = function () {
     var grammar = "/* comment */ %% hello: world ;";
     var expected = {bnf: {hello: ["world"]}};

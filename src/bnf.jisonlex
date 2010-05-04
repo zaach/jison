@@ -18,7 +18,7 @@
 "%lex"[\w\W]*?"/lex"    	{return 'LEX_BLOCK';}
 "%"[a-zA-Z]+[^\n]*    	{/* ignore unrecognized decl */}
 "<"[a-zA-Z]*">"    	{ /* ignore type */}
-"{{"[^}]*"}"    	{return yy.lexAction(this);}
+"{{"[\w\W]*?"}}"    	{yytext = yytext.substr(2, yyleng-4); return 'ACTION';}
 "{"[^}]*"}"    	{yytext = yytext.substr(1, yyleng-2); return 'ACTION';}
 "%{"(.|\n)*?"%}"    	{yytext = yytext.substr(2, yytext.length-4);return 'ACTION';}
 .    	{/* ignore bad characters */}
