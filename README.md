@@ -308,9 +308,9 @@ Real world examples
 
 Contributors
 ------------
- - Zach Carter
- - Jarred Ligatti
- - Manuel E. Bermúdez 
+[Githubbers](http://github.com/zaach/jison/contributors)
+
+Special thanks to Jarred Ligatti, Manuel E. Bermúdez 
 
 License
 -------
