@@ -1,6 +1,7 @@
 // Set class to wrap arrays
 
-var typal = require("./typal").typal;
+if (typeof require !== 'undefined')
+    var typal = require("./typal").typal;
 
 var setMixin = {
     constructor: function Set_constructor (set, raw) {

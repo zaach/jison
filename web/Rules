@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+
+# A few helpful tips about the Rules file:
+#
+# * The order of rules is important: for each item, only the first matching
+#   rule is applied.
+#
+# * Item identifiers start and end with a slash (e.g. “/about/” for the file
+#   “content/about.html”). To select all children, grandchildren, … of an
+#   item, use the pattern “/about/*/”; “/about/*” will also select the parent,
+#   because “*” matches zero or more characters.
+
+
+compile '/jison/assets/*' do
+  # do nothing
+end
+
+
+compile '/jison/demos/*/' do
+  layout 'default'
+end
+
+compile '/jison/try/' do
+  filter :erb
+  layout 'default'
+end
+
+compile '/jison/try/*' do
+  # do nothing
+end
+
+compile '/jison/' do
+  filter :erb
+end
+
+compile '*' do
+  filter :kramdown
+  layout 'default'
+end
+
+### Routing #########################################################
+
+route '/jison/assets/styles/*' do
+  item.identifier.gsub(/\/$/, '') + '.css'
+end
+
+route '/jison/assets/js/*' do
+  item.identifier.gsub(/\/$/, '') + '.js'
+end
+
+route '/jison/assets/pngs/*' do
+  item.identifier.gsub('/pngs/', '/images/').gsub(/\/$/, '') + '.png'
+end
+
+
+route '/jison/assets/*' do
+  dir = File.join('content', item.identifier)
+  puts dir
+  base = File.basename(dir)
+  regexp = /^#{base}\.(?!yaml)(.*)/
+
+  file_name = Dir.entries(dir).sort.find do |d|
+    d.match(regexp)
+  end
+
+  if file_name
+    ext = file_name.match(regexp)[1]
+    File.join(File.dirname(item.identifier), "#{base}.#{ext}")
+  else
+    nil
+  end
+end
+
+route '*' do
+  item.identifier + 'index.html'
+end
+
+layout '*', :erb

@@ -1,4 +1,8 @@
-var jisonlex = require("./util/lex-parser").parser;
+if (typeof require !== 'undefined') {
+    var jisonlex = require("./util/lex-parser").parser;
+} else {
+    var exports = jisonlex;
+}
 
 var parse_ = jisonlex.parse;
 jisonlex.parse = exports.parse = function parse () {

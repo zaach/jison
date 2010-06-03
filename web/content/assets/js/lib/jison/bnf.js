@@ -1,7 +1,8 @@
-var bnf = require("./util/bnf-parser").parser,
-    jisonlex = require("./jisonlex");
-
-exports.parse = function parse () { return bnf.parse.apply(bnf, arguments) };
+if (typeof require !== 'undefined') {
+    var bnf = require("./util/bnf-parser").parser;
+    var jisonlex = require("./jisonlex");
+    exports.parse = function parse () { return bnf.parse.apply(bnf, arguments) };
+}
 
 // adds a declaration to the grammar
 bnf.yy.addDeclaration = function (grammar, decl) {
@@ -28,6 +29,18 @@ bnf.yy.lexComment = function (lexer) {
         return;
     } else {
         lexer.unput('/*');
+        lexer.more();
+    }
+}
+
+// helps tokenize actions
+bnf.yy.lexAction = function (lexer) {
+    var ch = lexer.input();
+    if (ch === '}') {
+        lexer.yytext = lexer.yytext.substr(2, lexer.yyleng-4).replace(/\}(.|\s)\{\{/, '}$1');
+        return 'ACTION';
+    } else {
+        lexer.unput('{{');
         lexer.more();
     }
 }

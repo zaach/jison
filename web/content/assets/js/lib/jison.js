@@ -2,9 +2,15 @@
 // Zachary Carter <zach@carter.name>
 // MIT X Licensed
 
-var typal = require('./jison/util/typal').typal,
-    Set = require('./jison/util/set').Set,
-    RegExpLexer = require('./jison/lexer').RegExpLexer;
+if (typeof exports === 'undefined') {
+    exports = {};
+} else if (typeof require !== 'undefined') {
+    // assume we're in commonjs land
+    //var system = require("system");
+    var typal = require('./jison/util/typal').typal;
+    var Set = require('./jison/util/set').Set;
+    var RegExpLexer = require('./jison/lexer').RegExpLexer;
+}
 
 var Jison = exports.Jison = exports;
 
@@ -300,8 +306,7 @@ generator.createParser = function createParser () {
 generator.trace = function trace () { };
 
 generator.warn = function warn () {
-    var args = Array.prototype.slice.call(arguments,0);
-    Jison.print.call(null,args.join(""));
+    Jison.print.apply(null,arguments);
 };
 
 generator.error = function error (msg) {
@@ -534,7 +539,6 @@ lrGeneratorMixin.buildTable = function buildTable () {
 
     this.states = this.canonicalCollection();
     this.table = this.parseTable(this.states);
-    this.defaultActions = findDefaults(this.table);
 };
 
 lrGeneratorMixin.Item = typal.construct({
@@ -779,24 +783,6 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
     return states;
 };
 
-// find states with only one action, a reduction
-function findDefaults (states) {
-    var defaults = {};
-    states.forEach(function (state, k) {
-        var i = 0;
-        for (var act in state) {
-             if ({}.hasOwnProperty.call(state, act)) i++;
-        }
-
-        if (i === 1 && state[act][0] === 2) {
-        // only one action in state and it's a reduction
-            defaults[k] = state[act];
-        }
-    });
-
-    return defaults;
-}
-
 // resolves shift-reduce and reduce-reduce conflicts
 function resolveConflict (production, op, reduce, shift) {
     var sln = {production: production, operator: op, r: reduce, s: shift},
@@ -891,7 +877,6 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
         "productions_: " + JSON.stringify(this.productions_),
         "performAction: " + String(this.performAction),
         "table: " + JSON.stringify(this.table),
-        "defaultActions: " + JSON.stringify(this.defaultActions),
         "parseError: " + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
         "parse: " + String(parser.parse)
         ].join(",\n");
@@ -953,7 +938,6 @@ lrGeneratorMixin.createParser = function createParser () {
 
     p.init({
         table: this.table, 
-        defaultActions: this.defaultActions,
         productions_: this.productions_,
         symbols_: this.symbols_,
         terminals_: this.terminals_,
@@ -1017,6 +1001,7 @@ parser.parse = function parse (input) {
 
     function checkRecover (st) {
         for (var p in table[st]) if (p == TERROR) {
+            //print('RECOVER!!');
             return true;
         }
         return false;
@@ -1033,19 +1018,12 @@ parser.parse = function parse (input) {
     };
 
     var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected, recovered = false;
+    symbol = lex(); 
     while (true) {
-        // retreive state number from top of stack
+        // set first input
         state = stack[stack.length-1];
-
-        // use default actions if available
-        if (this.defaultActions[state]) {
-            action = this.defaultActions[state];
-        } else {
-            if (symbol == null)
-                symbol = lex();
-            // read action for current state and first input
-            action = table[state] && table[state][symbol];
-        }
+        // read action for current state and first input
+        action = table[state] && table[state][symbol];
 
         // handle parse error
         if (typeof action === 'undefined' || !action.length || !action[0]) {
@@ -1075,7 +1053,7 @@ parser.parse = function parse (input) {
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
-                symbol = lex();
+                symbol = lex(); 
             }
 
             // try to recover from error
@@ -1113,11 +1091,11 @@ parser.parse = function parse (input) {
                 stack.push(symbol);
                 vstack.push(this.lexer.yytext); // semantic values or junk only, no terminals
                 stack.push(a[1]); // push state
-                symbol = null;
                 if (!preErrorSymbol) { // normal execution/no error
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
+                    symbol = lex(); 
                     if (recovering > 0)
                         recovering--;
                 } else { // error just occurred, resume old lookahead f/ before error
@@ -1166,7 +1144,6 @@ parser.parse = function parse (input) {
 
 parser.init = function parser_init (dict) {
     this.table = dict.table;
-    this.defaultActions = dict.defaultActions;
     this.performAction = dict.performAction;
     this.productions_ = dict.productions_;
     this.symbols_ = dict.symbols_;
@@ -1225,7 +1202,6 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
         this.unionLookaheads();
 
         this.table = this.parseTable(this.states);
-        this.defaultActions = findDefaults(this.table);
     },
 
     lookAheads: function LALR_lookaheads (state, item) {
@@ -1469,16 +1445,12 @@ return function Parser (g, options) {
         switch (opt.type) {
             case 'lr0':
                 gen = new LR0Generator(g, opt);
-                break;
             case 'slr':
                 gen = new SLRGenerator(g, opt);
-                break;
             case 'lr':
                 gen = new LR1Generator(g, opt);
-                break;
             case 'll':
                 gen = new LLGenerator(g, opt);
-                break;
             case 'lalr':
             default:
                 gen = new LALRGenerator(g, opt);

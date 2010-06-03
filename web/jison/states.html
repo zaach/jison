@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Jison, parse table visualation page</title>
+    
+    <script src="../js/excanvas.compiled.js"></script>
+    <script src="../js/jquery-1.4.2.min.js"></script>
+    <script src="../js/jquery-ui-1.7.2.min.js"></script>
+    <script src="../js/jsPlumb-0.0.3-min.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/json2.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/es5.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison/lexer.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/typal.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/set.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/bnf-parser.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison/bnf.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/lib/jison.js"></script>
+    <script>
+      function run () {
+        var parser = buildGrammar($("#grammar").val());
+        console.log(parser);
+        parser.states.forEach(addState);
+        parser.states.forEach(linkNodes);
+      }
+
+      function buildGrammar (val) {
+        var type = $("#type")[0].options[$("#type")[0].selectedIndex].value || "slr";
+
+        var grammar = val,
+            cfg;
+        try {
+            cfg = JSON.parse(grammar);
+        } catch(e) {
+            try {
+                cfg = bnf.parse(grammar);
+            } catch (e) {
+                return alert("Oops. Make sure your grammar is in the correct format.\n"+e); 
+            }
+        }
+
+        Jison.print = function () {};
+        return new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
+      }
+
+      function linkNodes (state, i) {
+        var node = $("#state_"+i);
+        for (var edge in state.edges) if (state.edges.hasOwnProperty(edge)) {
+          node.plumb({target: "state_"+state.edges[edge]});
+        }
+      }
+
+      function addState (state, i) {
+        var node = $("<div class='state'>").attr("id", "state_"+i).css({'top': i*270, left: i*250}).html(state.join('<br />'));
+        $("#states").append(node);
+      }
+
+      $(document).ready(function () {
+        jsPlumb.DEFAULT_DRAG_OPTIONS = { cursor: 'pointer', zIndex:2000 };
+        jsPlumb.DEFAULT_PAINT_STYLE = {lineWidth:10, strokeStyle:'rgba(0, 0, 200, 0.5)'};
+        $("#process_btn").click(run);
+      });
+    </script>
+
+    <style>
+      #states {
+        position: relative;
+      }
+      .state {
+        font-size: 13px;
+        font-family: monospace;
+        position: absolute;
+        z-index: 20;
+        opacity: 0.8;
+        background: #ddd;
+        width: 200px;
+        height: 200px;
+        overflow: auto;
+        padding: 1em;
+      }
+    </style>
+  </head>
+
+  <body>
+<textarea id="grammar" rows="20" cols="80">
+{
+    "tokens": "ZERO PLUS",
+    "bnf": {
+        "E" :[ "E PLUS T",
+               "T" ],
+        "T" :[ "ZERO" ]
+    }
+}
+</textarea>
+    <p>
+      Algorithm: <select id="type">
+        <option value="lr0">LR(0)</option>
+        <option value="slr">SLR(1)</option>
+        <option value="lr">LR(1)</option>
+      </select>
+      <small>* WARNING: LR(1) may take considerable time to execute for large/ambigous grammars.</small>
+      </p>
+      <p><button id="process_btn">Process Grammar</button>
+    </p>
+
+    <div id="states">
+
+    </div>
+  </body>
+</head>
