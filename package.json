@@ -1,5 +1,6 @@
 {
   "name": "jison",
+  "version": "0.1.17",
   "author": "Zach Carter",
   "email": "zach@carter.name",
   "keywords": [
@@ -10,5 +11,9 @@
   ],
   "githubName": "jison",
   "type": "zip",
-  "location": "http://github.com/zaach/jison/zipball/master"
+  "location": "http://github.com/zaach/jison/zipball/master",
+  "main" : "lib/jison",
+  "bin" : { "jison" : "lib/jison/cli-wrapper.js" },
+  "engines" : { "node" : ">=0.1.90" },
+  "directories" : { "lib" : "lib" }
 }
