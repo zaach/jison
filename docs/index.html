@@ -19,9 +19,7 @@
     <div id="content">
       <h1 id="documentation">Documentation</h1>
 
-<p>(I want to do some guides, too – not there yet.)</p>
-
-<p>Basically, Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you&rsquo;re familiar with Bison or Yacc, or other clones, you&rsquo;re almost ready to roll.</p>
+<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you&rsquo;re familiar with Bison or Yacc, or other clones, you&rsquo;re almost ready to roll.</p>
 
 <ul>
   <li><a href="#installation">Installation</a></li>
@@ -40,19 +38,29 @@
 </ul>
 
 <h2 id="installation">Installation</h2>
-<p>To run Jison from the <em>command line</em>, you&rsquo;ll need to have <a href="http://github.com/280north/narwhal">Narwhal</a> installed and available from your <code>PATH</code>. To use it as a module, any CommonJS compatible environment should be fine.</p>
+<p>Jison can be installed for <a href="http://github.com/280north/narwhal">Narwhal</a> using its bundled <code>tusk</code> command or for <a href="http://nodejs.org">Node</a> using <a href="http://github.com/isaacs/npm/"><code>npm</code></a></p>
 
-<p>Clone the github repository:</p>
+<p>Using npm:</p>
 
-<pre><code>git clone git://github.com/zaach/jison.git
+<pre><code>sudo npm install jison
 </code></pre>
 
-<h2 id="usage-from-the-command-line">Usage from the Command Line</h2>
+<p>Using tusk:</p>
 
-<p>Now, you&rsquo;re ready to generate some parsers:</p>
+<pre><code>tusk install jison
+</code></pre>
 
-<pre><code>cd jison
-narwhal bin/jison examples/calculator.jison
+<h2 id="usage-from-the-command-line">Usage from the command line</h2>
+
+<p>Clone the github repository for examples:</p>
+
+<pre><code>git clone git://github.com/zaach/jison.git
+cd jison/examples
+</code></pre>
+
+<p>Now you&rsquo;re ready to generate some parsers:</p>
+
+<pre><code>jison calculator.jison
 </code></pre>
 
 <p>This will generate <code>calculator.js</code> in your current working directory. This script can be used to parse an input file, like so:</p>
