@@ -1,5 +1,8 @@
 (function ($) {
 
+var Jison = require('jison'),
+    bnf = require('jison/bnf');
+
 var parser,
     parser2;
 
