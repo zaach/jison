@@ -4,9 +4,7 @@ title: Documentation
 Documentation
 =============
 
-(I want to do some guides, too – not there yet.)
-
-Basically, Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you're familiar with Bison or Yacc, or other clones, you're almost ready to roll.
+Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you're familiar with Bison or Yacc, or other clones, you're almost ready to roll.
 
 * [Installation](#installation)
 * [Usage from the command line](#usage-from-the-command-line)
@@ -24,19 +22,27 @@ Basically, Jison takes a context-free grammar as input and outputs a JavaScript 
  
 Installation
 ------------
-To run Jison from the *command line*, you'll need to have [Narwhal](http://github.com/280north/narwhal) installed and available from your `PATH`. To use it as a module, any CommonJS compatible environment should be fine.
+Jison can be installed for [Narwhal](http://github.com/280north/narwhal) using its bundled `tusk` command or for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
 
-Clone the github repository:
+Using npm:
 
-    git clone git://github.com/zaach/jison.git
+    sudo npm install jison
 
-Usage from the Command Line
+Using tusk:
+
+    tusk install jison
+
+Usage from the command line
 -----------------------
 
-Now, you're ready to generate some parsers:
+Clone the github repository for examples:
 
-    cd jison
-    narwhal bin/jison examples/calculator.jison
+    git clone git://github.com/zaach/jison.git
+    cd jison/examples
+
+Now you're ready to generate some parsers:
+
+    jison calculator.jison
 
 This will generate `calculator.js` in your current working directory. This script can be used to parse an input file, like so:
 
