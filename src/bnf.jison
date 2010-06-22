@@ -51,7 +51,9 @@ grammar
 
 production_list
     : production_list production
-        {$$ = $1; $$[$2[0]] = $2[1];}
+        {{$$ = $1;
+          if($2[0] in $$) $$[$2[0]] = $$[$2[0]].concat($2[1]);
+          else  $$[$2[0]] = $2[1];}}
     | production
         {{$$ = {}; $$[$1[0]] = $1[1];}}
     ;

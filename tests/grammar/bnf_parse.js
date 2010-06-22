@@ -9,6 +9,13 @@ exports["test basic grammar"] = function () {
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
 };
 
+exports["test multiple same rule"] = function () {
+    var grammar = "%% test: foo bar | baz ; test: world ;";
+    var expected = {bnf: {test: ["foo bar", "baz", "world"]}};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};
+
 exports["test classy grammar"] = function () {
     var grammar = "%%\n\npgm \n: cdl MAIN LBRACE vdl el RBRACE ENDOFFILE \n; cdl \n: c cdl \n| \n;";
     var expected = {bnf: {pgm: ["cdl MAIN LBRACE vdl el RBRACE ENDOFFILE"], cdl: ["c cdl", ""]}};
