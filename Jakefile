@@ -2,7 +2,6 @@
  
 var FILE = require("file"),
     OS = require("os"),
-    bundler = require("cjs-bundler"),
     jake = require("jake");
 
 jake.task("build", ["build:bnf", "build:lex"]);
@@ -34,7 +33,8 @@ jake.task("test:grammar", function () {
 var path = FILE.path(FILE.cwd());
 
 jake.task("build:web", function() {
-    var script = bundler.bundle([
+    var bundler = require("cjs-bundler"),
+        script = bundler.bundle([
         { id : "jison", path : path.join("lib", "jison.js") },
         { id : "jison/lexer", path : path.join("lib", "jison", "lexer.js") },
         { id : "jison/bnf", path : path.join("lib", "jison", "bnf.js") },
