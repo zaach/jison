@@ -12,6 +12,8 @@
 "-"                   {return '-';}
 "+"                   {return '+';}
 "^"                   {return '^';}
+"!"                   {return '!';}
+"%"                   {return '%';}
 "("                   {return '(';}
 ")"                   {return ')';}
 "PI"                  {return 'PI';}
@@ -26,6 +28,8 @@
 %left '+' '-'
 %left '*' '/'
 %left '^'
+%right '!'
+%right '%'
 %left UMINUS
 
 %start expressions
@@ -48,6 +52,10 @@ e
         {$$ = $1/$3;}
     | e '^' e
         {$$ = Math.pow($1, $3);}
+    | e '!'
+        {$$ = (function(n) {if(n==0) return 1; return arguments.callee(n-1) * n})($1)}
+    | e '%'
+        {$$ = $1/100;}
     | '-' e %prec UMINUS
         {$$ = -$2;}
     | '(' e ')'
