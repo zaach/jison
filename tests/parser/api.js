@@ -255,3 +255,22 @@ exports["test no default resolve"] = function () {
 };
 
 
+exports["test EOF in 'Unexpected token' error message"] = function () {
+
+    var grammar = {
+        bnf: {
+            "A" :[ 'x x y' ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    parser.lexer.showPosition = null; // needed for "Unexpected" message
+    parser.yy.parseError = function (str, hash) {
+        assert.ok(str.match("end of input"));
+    };
+
+    assert['throws'](function () {parser.parse("xx"); });
+
+};
+
