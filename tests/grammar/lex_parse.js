@@ -115,3 +115,14 @@ exports["test ANSI C lexical grammar"] = function () {
 
     assert.ok(lexgrammar, "grammar should be parsed correctly");
 };
+
+exports["test advanced"] = function () {
+    var lexgrammar = '%%\n"stuff"*/!("{"|";") {/* ok */}\n';
+    var expected = {
+        rules: [
+            ["stuff*(?!(\\{|;))", "/* ok */"],
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};

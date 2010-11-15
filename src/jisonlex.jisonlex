@@ -14,6 +14,7 @@
 "*"    	{return '*';}
 "?"    	{return '?';}
 "^"    	{return '^';}
+"/!"    	{return '/!';}
 "/"    	{return '/';}
 "\\"[a-zA-Z0]    	{return 'ESCAPE_CHAR';}
 "$"    	{return '$';}

@@ -1,6 +1,6 @@
 /* Jison lexer file format grammar */
 
-%nonassoc '/'
+%nonassoc '/' '/!'
 
 %left '*' '+' '?' RANGE_REGEX
 
@@ -89,6 +89,8 @@ regex_base
         { $$ = $1+'?'; }
     | '/' regex_base
         { $$ = '(?='+$2+')'; }
+    | '/!' regex_base
+        { $$ = '(?!'+$2+')'; }
     | name_expansion
     | regex_base range_regex
         { $$ = $1+$2; }
