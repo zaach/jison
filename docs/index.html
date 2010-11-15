@@ -19,7 +19,7 @@
     <div id="content">
       <h1 id="documentation">Documentation</h1>
 
-<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you&rsquo;re familiar with Bison or Yacc, or other clones, you&rsquo;re almost ready to roll.</p>
+<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you’re familiar with Bison or Yacc, or other clones, you’re almost ready to roll.</p>
 
 <ul>
   <li><a href="#installation">Installation</a></li>
@@ -58,14 +58,14 @@
 cd jison/examples
 </code></pre>
 
-<p>Now you&rsquo;re ready to generate some parsers:</p>
+<p>Now you’re ready to generate some parsers:</p>
 
 <pre><code>jison calculator.jison
 </code></pre>
 
 <p>This will generate <code>calculator.js</code> in your current working directory. This script can be used to parse an input file, like so:</p>
 
-<pre><code>echo &quot;2^32 / 1024&quot; &gt; testcalc
+<pre><code>echo "2^32 / 1024" &gt; testcalc
 narwhal calculator.js testcalc
 </code></pre>
 
@@ -73,22 +73,22 @@ narwhal calculator.js testcalc
 
 <h2 id="usage-from-a-commonjs-module">Usage from a CommonJS Module</h2>
 
-<p>You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment&rsquo;s load path:</p>
+<p>You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment’s load path:</p>
 
 <pre><code>// mygenerator.js
-var Parser = require(&quot;jison&quot;).Parser;
+var Parser = require("jison").Parser;
 
 var grammar = {
-    &quot;lex&quot;: {
-        &quot;rules&quot;: [
-           [&quot;\\s+&quot;, &quot;/* skip whitespace */&quot;],
-           [&quot;[a-f0-9]+&quot;, &quot;return 'HEX';&quot;]
+    "lex": {
+        "rules": [
+           ["\\s+", "/* skip whitespace */"],
+           ["[a-f0-9]+", "return 'HEX';"]
         ]
     },
 
-    &quot;bnf&quot;: {
-        &quot;hex_strings&quot; :[ &quot;hex_strings HEX&quot;,
-                         &quot;HEX&quot; ]
+    "bnf": {
+        "hex_strings" :[ "hex_strings HEX",
+                         "HEX" ]
     }
 };
 
@@ -99,10 +99,10 @@ var parserSource = parser.generate();
 
 // you can also use the parser directly from memory
 
-parser.parse(&quot;adfe34bc e82a&quot;);
+parser.parse("adfe34bc e82a");
 // returns true
 
-parser.parse(&quot;adfe34bc zxg&quot;);
+parser.parse("adfe34bc zxg");
 // throws lexical error
 </code></pre>
 
@@ -117,50 +117,51 @@ parser.parse(&quot;adfe34bc zxg&quot;);
 <p>Though, more ideally, the parser will be a dependency of another module. You can require it from another module like so:</p>
 
 <pre><code>// mymodule.js
-var parser = require(&quot;./calculator&quot;).parser;
+var parser = require("./calculator").parser;
 
 function exec (input) {
     return parser.parse(input);
 }
 
-var twenty = exec(&quot;4 * 5&quot;);
+var twenty = exec("4 * 5");
 </code></pre>
 
 <p>Or more succinctly:</p>
 
 <pre><code>// mymodule.js
 function exec (input) {
-    return require(&quot;./calculator&quot;).parse(input);
+    return require("./calculator").parse(input);
 }
 
-var twenty = exec(&quot;4 * 5&quot;);
+var twenty = exec("4 * 5");
 </code></pre>
 
 <h2 id="using-the-parser-from-the-web">Using the Parser from the Web</h2>
 
-<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It&rsquo;s as simple as pointing to it via a script tag:</p>
+<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It’s as simple as pointing to it via a script tag:</p>
 
-<pre><code>&lt;script src=&quot;calculator.js&quot;&gt;&lt;/script&gt;
+<pre><code>&lt;script src="calculator.js"&gt;&lt;/script&gt;
 </code></pre>
 
 <p>When you generate the parser, you can specify the variable name it will be declared as:</p>
 
 <pre><code>// mygenerator.js
-var parserSource = generator.generate({moduleName: &quot;calc&quot;});
+var parserSource = generator.generate({moduleName: "calc"});
 // then write parserSource to a file called, say, calc.js
 </code></pre>
 
 <p>Whatever <code>moduleName</code> you specified will be the the variable you can access the parser from in your web page:</p>
 
-<pre><code>&lt;script src=&quot;calc.js&quot;&gt;&lt;/script&gt;
+<pre><code>&lt;script src="calc.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-  calc.parse(&quot;42 / 0&quot;);
+  calc.parse("42 / 0");
 &lt;/script&gt;
 </code></pre>
 
 <p>The moduleName you specify can also include a namespace, e.g:</p>
+
 <pre><code>// mygenerator.js
-var parserSource = parser.generate({moduleName: &quot;myCalculator.parser&quot;});
+var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 </code></pre>
 
 <p>And could be used like so:</p>
@@ -169,14 +170,14 @@ var parserSource = parser.generate({moduleName: &quot;myCalculator.parser&quot;}
   var myCalculator = {};
 &lt;/script&gt;
 
-&lt;script src=&quot;calc.js&quot;&gt;&lt;/script&gt;
+&lt;script src="calc.js"&gt;&lt;/script&gt;
 
 &lt;script&gt;
-  myCalculator.parser.parse(&quot;42 / 0&quot;);
+  myCalculator.parser.parse("42 / 0");
 &lt;/script&gt;
 </code></pre>
 
-<p>Or something like that &ndash; you get the picture.</p>
+<p>Or something like that – you get the picture.</p>
 
 <p>A demo of the calculator script used in a web page is <a href="/jison/demos/calc/">here</a>.</p>
 
@@ -204,16 +205,16 @@ var parserSource = parser.generate({moduleName: &quot;myCalculator.parser&quot;}
 
 %%
 \s+                   {/* skip whitespace */}
-[0-9]+(&quot;.&quot;[0-9]+)?\b  {return 'NUMBER';}
-&quot;*&quot;                   {return '*';}
-&quot;/&quot;                   {return '/';}
-&quot;-&quot;                   {return '-';}
-&quot;+&quot;                   {return '+';}
-&quot;^&quot;                   {return '^';}
-&quot;(&quot;                   {return '(';}
-&quot;)&quot;                   {return ')';}
-&quot;PI&quot;                  {return 'PI';}
-&quot;E&quot;                   {return 'E';}
+[0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
+"*"                   {return '*';}
+"/"                   {return '/';}
+"-"                   {return '-';}
+"+"                   {return '+';}
+"^"                   {return '^';}
+"("                   {return '(';}
+")"                   {return ')';}
+"PI"                  {return 'PI';}
+"E"                   {return 'E';}
 &lt;&lt;EOF&gt;&gt;               {return 'EOF';}
 
 /lex
@@ -261,43 +262,43 @@ e
 <p>which compiles down to this JSON representation used directly by Jison:</p>
 
 <pre><code>{
-    &quot;lex&quot;: {
-        &quot;rules&quot;: [
-           [&quot;\\s+&quot;,                    &quot;/* skip whitespace */&quot;],
-           [&quot;[0-9]+(?:\\.[0-9]+)?\\b&quot;, &quot;return 'NUMBER';&quot;],
-           [&quot;\\*&quot;,                     &quot;return '*';&quot;],
-           [&quot;\\/&quot;,                     &quot;return '/';&quot;],
-           [&quot;-&quot;,                       &quot;return '-';&quot;],
-           [&quot;\\+&quot;,                     &quot;return '+';&quot;],
-           [&quot;\\^&quot;,                     &quot;return '^';&quot;],
-           [&quot;\\(&quot;,                     &quot;return '(';&quot;],
-           [&quot;\\)&quot;,                     &quot;return ')';&quot;],
-           [&quot;PI\\b&quot;,                   &quot;return 'PI';&quot;],
-           [&quot;E\\b&quot;,                    &quot;return 'E';&quot;],
-           [&quot;$&quot;,                       &quot;return 'EOF';&quot;]
+    "lex": {
+        "rules": [
+           ["\\s+",                    "/* skip whitespace */"],
+           ["[0-9]+(?:\\.[0-9]+)?\\b", "return 'NUMBER';"],
+           ["\\*",                     "return '*';"],
+           ["\\/",                     "return '/';"],
+           ["-",                       "return '-';"],
+           ["\\+",                     "return '+';"],
+           ["\\^",                     "return '^';"],
+           ["\\(",                     "return '(';"],
+           ["\\)",                     "return ')';"],
+           ["PI\\b",                   "return 'PI';"],
+           ["E\\b",                    "return 'E';"],
+           ["$",                       "return 'EOF';"]
         ]
     },
 
-    &quot;operators&quot;: [
-        [&quot;left&quot;, &quot;+&quot;, &quot;-&quot;],
-        [&quot;left&quot;, &quot;*&quot;, &quot;/&quot;],
-        [&quot;left&quot;, &quot;^&quot;],
-        [&quot;left&quot;, &quot;UMINUS&quot;]
+    "operators": [
+        ["left", "+", "-"],
+        ["left", "*", "/"],
+        ["left", "^"],
+        ["left", "UMINUS"]
     ],
 
-    &quot;bnf&quot;: {
-        &quot;expressions&quot; :[[ &quot;e EOF&quot;,   &quot;print($1); return $1;&quot;  ]],
+    "bnf": {
+        "expressions" :[[ "e EOF",   "print($1); return $1;"  ]],
 
-        &quot;e&quot; :[[ &quot;e + e&quot;,   &quot;$$ = $1 + $3;&quot; ],
-              [ &quot;e - e&quot;,   &quot;$$ = $1 - $3;&quot; ],
-              [ &quot;e * e&quot;,   &quot;$$ = $1 * $3;&quot; ],
-              [ &quot;e / e&quot;,   &quot;$$ = $1 / $3;&quot; ],
-              [ &quot;e ^ e&quot;,   &quot;$$ = Math.pow($1, $3);&quot; ],
-              [ &quot;- e&quot;,     &quot;$$ = -$2;&quot;, {&quot;prec&quot;: &quot;UMINUS&quot;} ],
-              [ &quot;( e )&quot;,   &quot;$$ = $2;&quot; ],
-              [ &quot;NUMBER&quot;,  &quot;$$ = Number(yytext);&quot; ],
-              [ &quot;E&quot;,       &quot;$$ = Math.E;&quot; ],
-              [ &quot;PI&quot;,      &quot;$$ = Math.PI;&quot; ]]
+        "e" :[[ "e + e",   "$$ = $1 + $3;" ],
+              [ "e - e",   "$$ = $1 - $3;" ],
+              [ "e * e",   "$$ = $1 * $3;" ],
+              [ "e / e",   "$$ = $1 / $3;" ],
+              [ "e ^ e",   "$$ = Math.pow($1, $3);" ],
+              [ "- e",     "$$ = -$2;", {"prec": "UMINUS"} ],
+              [ "( e )",   "$$ = $2;" ],
+              [ "NUMBER",  "$$ = Number(yytext);" ],
+              [ "E",       "$$ = Math.E;" ],
+              [ "PI",      "$$ = Math.PI;" ]]
     }
 }
 </code></pre>
@@ -306,11 +307,14 @@ e
 
 <pre><code>narwhal bin/jison examples/calculator.jison
 </code></pre>
+
 <p>or</p>
+
 <pre><code>narwhal bin/jison examples/calculator.json
 </code></pre>
 
 <p>When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:</p>
+
 <pre><code>narwhal bin/jison examples/classy.jison examples/classy.jisonlex
 </code></pre>
 
@@ -328,7 +332,7 @@ e
 
 <p>Good:</p>
 
-<pre><code>[0-9]+&quot;zomg&quot;    { print(yytext); }
+<pre><code>[0-9]+"zomg"    { print(yytext); }
 </code></pre>
 
 <h2 id="custom-scanners">Custom Scanners</h2>
@@ -339,14 +343,14 @@ e
 
 <p>In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.</p>
 
-<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can&rsquo;t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
+<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can’t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
 
 <p>An example from orderly.js:</p>
 
-<pre><code>var parser = require(&quot;./orderly/parse&quot;).parser;
+<pre><code>var parser = require("./orderly/parse").parser;
 
 // set parser's shared scope
-parser.yy = require(&quot;./orderly/scope&quot;);
+parser.yy = require("./orderly/scope");
 
 // returns the JSON object
 var parse = exports.parse = function (input) {
@@ -386,7 +390,7 @@ var parse = exports.parse = function (input) {
   <p>Permission is hereby granted, free of
 charge, to any person  obtaining a
 copy of this software and associated
-documentation  files (the &ldquo;Software&rdquo;),
+documentation  files (the “Software”),
 to deal in the Software without 
 restriction, including without
 limitation the rights to use,  copy,
@@ -402,7 +406,7 @@ permission notice shall be  included
 in all copies or substantial portions
 of the Software.</p>
 
-  <p>THE SOFTWARE IS PROVIDED &ldquo;AS IS&rdquo;,
+  <p>THE SOFTWARE IS PROVIDED “AS IS”,
 WITHOUT WARRANTY OF ANY KIND,  EXPRESS
 OR IMPLIED, INCLUDING BUT NOT LIMITED
 TO THE WARRANTIES  OF MERCHANTABILITY,
