@@ -135,6 +135,7 @@ Whatever `moduleName` you specified will be the the variable you can access the 
     </script>
 
 The moduleName you specify can also include a namespace, e.g:
+
     // mygenerator.js
     var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 
@@ -278,10 +279,13 @@ which compiles down to this JSON representation used directly by Jison:
 Jison accepts both the Bison/Flex style format, or the raw JSON format, e.g:
 
     narwhal bin/jison examples/calculator.jison
+
 or
+
     narwhal bin/jison examples/calculator.json
 
 When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:
+
     narwhal bin/jison examples/classy.jison examples/classy.jisonlex
 
 More examples can be found in the [`examples/`](http://github.com/zaach/jison/tree/master/examples/) and [`tests/parser/`](http://github.com/zaach/jison/tree/master/tests/parser/) directories.
