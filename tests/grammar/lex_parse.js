@@ -1,6 +1,17 @@
 var assert = require("assert"),
     lex = require("../../lib/jison/jisonlex");
 
+function read () {
+    var IO = require('../../lib/jison/util/io');
+    try {
+        return IO.read(IO.join.apply(IO,[__dirname].concat([].slice.call(arguments,0))));
+    } catch(e) {
+        var fs = require("file");
+        return fs.path(fs.dirname(module.id)).join.apply(fs.path(fs.dirname(module.id)),arguments)
+            .read({charset: "utf-8"});
+    }
+}
+
 exports["test lex grammar with macros"] = function () {
     var lexgrammar = 'D [0-9]\nID [a-zA-Z][a-zA-Z0-9]+\n%%\n\n{D}"ohhai" {print(9);}\n"{" {return \'{\';}';
     var expected = {
@@ -79,39 +90,21 @@ exports["test include"] = function () {
 };
 
 exports["test bnf lex grammar"] = function () {
-    var fs = require("file");
-
-    var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'bnf.jisonlex')
-            .read({charset: "utf-8"}));
-
-    var expected = JSON.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'bnf.lex.json')
-            .read({charset: "utf-8"}));
+    var lexgrammar = lex.parse(read('lex', 'bnf.jisonlex'));
+    var expected = JSON.parse(read('lex', 'bnf.lex.json'));
 
     assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
 };
 
 exports["test lex grammar bootstrap"] = function () {
-    var fs = require("file");
-
-    var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'lex_grammar.jisonlex')
-            .read({charset: "utf-8"}));
-
-    var expected = JSON.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'lex_grammar.lex.json')
-            .read({charset: "utf-8"}));
+    var lexgrammar = lex.parse(read('lex', 'lex_grammar.jisonlex'));
+    var expected = JSON.parse(read('lex', 'lex_grammar.lex.json'));
 
     assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
 };
 
 exports["test ANSI C lexical grammar"] = function () {
-    var fs = require("file");
-
-    var lexgrammar = lex.parse(fs.path(fs.dirname(module.id))
-            .join('lex', 'ansic.jisonlex')
-            .read({charset: "utf-8"}));
+    var lexgrammar = lex.parse(read('lex','ansic.jisonlex'));
 
     assert.ok(lexgrammar, "grammar should be parsed correctly");
 };

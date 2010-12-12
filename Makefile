@@ -24,4 +24,7 @@ build_lex:
 	mv jisonlex.js lib/jison/util/lex-parser.js
 
 test:
+	node tests/all-tests.js
+testn:
 	narwhal tests/all-tests.js
+

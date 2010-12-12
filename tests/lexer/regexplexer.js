@@ -1,6 +1,5 @@
 var RegExpLexer = require("../setup").RegExpLexer,
-    assert = require("assert"),
-    jsDump = require("test/jsdump").jsDump;
+    assert = require("assert");
 
 exports["test basic matchers"] = function() {
     var dict = {
