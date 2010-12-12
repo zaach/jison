@@ -14,12 +14,17 @@
 "*"    	{return '*';}
 "?"    	{return '?';}
 "^"    	{return '^';}
+","    	{return ',';}
+"<<EOF>>"    	{return '$';}
+"<"    	{return '<';}
+">"    	{return '>';}
 "/!"    	{return '/!';}
 "/"    	{return '/';}
 "\\"[a-zA-Z0]    	{return 'ESCAPE_CHAR';}
 "$"    	{return '$';}
-"<<EOF>>"    	{return '$';}
 "."    	{return '.';}
+"%s"    	{return 'START_INC';}
+"%x"    	{return 'START_EXC';}
 "%%"    	{yy.ruleSection = true; return '%%';}
 "{"\d+(","\s?\d+|",")?"}"    	{return 'RANGE_REGEX';}
 /"{"    	%{if (yy.freshLine) {this.input('{');return '{';} else this.unput('y');%}

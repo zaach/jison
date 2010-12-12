@@ -444,3 +444,80 @@ exports["test instantiation from string"] = function() {
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
 };
+
+exports["test inclusive start conditions"] = function() {
+    var dict = {
+        startConditions: {
+            "TEST": 0,
+        },
+        rules: [
+            ["enter-test", "this.begin('TEST');" ],
+            [["TEST"], "x", "return 'T';" ],
+            [["TEST"], "y", "this.begin('INITIAL'); return 'TY';" ],
+            ["x", "return 'X';" ],
+            ["y", "return 'Y';" ],
+            ["$", "return 'EOF';" ]
+        ]
+    };
+    var input = "xenter-testxyy";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "T");
+    assert.equal(lexer.lex(), "TY");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "EOF");
+};
+
+exports["test exclusive start conditions"] = function() {
+    var dict = {
+        startConditions: {
+            "EAT": 1,
+        },
+        rules: [
+            ["//", "this.begin('EAT');" ],
+            [["EAT"], ".", "" ],
+            [["EAT"], "\\n", "this.begin('INITIAL');" ],
+            ["x", "return 'X';" ],
+            ["y", "return 'Y';" ],
+            ["$", "return 'EOF';" ]
+        ]
+    };
+    var input = "xy//yxteadh//ste\ny";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "EOF");
+};
+
+exports["test pop start condition stack"] = function() {
+    var dict = {
+        startConditions: {
+            "EAT": 1,
+        },
+        rules: [
+            ["//", "this.begin('EAT');" ],
+            [["EAT"], ".", "" ],
+            [["EAT"], "\\n", "this.popState();" ],
+            ["x", "return 'X';" ],
+            ["y", "return 'Y';" ],
+            ["$", "return 'EOF';" ]
+        ]
+    };
+    var input = "xy//yxteadh//ste\ny";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "EOF");
+};
+

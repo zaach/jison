@@ -126,3 +126,24 @@ exports["test advanced"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test start conditions"] = function () {
+    var lexgrammar = '%s TEST TEST2\n%x EAT\n%%\n'+
+                     '"enter-test" {this.begin(\'TEST\');}\n'+
+                     '<TEST,EAT>"x" {return \'T\';}\n'+
+                     '<TEST>"y" {this.begin(\'INITIAL\'); return \'TY\';}';
+    var expected = {
+        startConditions: {
+            "TEST": 0,
+            "TEST2": 0,
+            "EAT": 1,
+        },
+        rules: [
+            ["enter-test\\b", "this.begin('TEST');" ],
+            [["TEST","EAT"], "x\\b", "return 'T';" ],
+            [["TEST"], "y\\b", "this.begin('INITIAL'); return 'TY';" ]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};

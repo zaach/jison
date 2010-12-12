@@ -7,16 +7,17 @@
 %% 
 
 lex 
-    : definitions include '%%' rules '%%' EOF
+    : definitions include '%%' rules epilogue
         {{ $$ = {rules: $4};
-          if ($1) $$.macros = $1;
+          if ($1[0]) $$.macros = $1[0];
+          if ($1[1]) $$.startConditions = $1[1];
           if ($2) $$.actionInclude = $2;
           return $$; }}
-    | definitions include '%%' rules EOF
-        {{ $$ = {rules: $4};
-          if ($1) $$.macros = $1;
-          if ($2) $$.actionInclude = $2;
-          return $$; }}
+    ;
+
+epilogue
+    : EOF
+    | '%%' EOF
     ;
 
 include
@@ -26,14 +27,43 @@ include
 
 definitions
     : definitions definition
-        %{ $$ = $1 || {}; $$[$2[0]] = $2[1]; %}
+        {{ 
+          $$ = $1;
+          if ('length' in $2) {
+            $$[0] = $$[0] || {};
+            $$[0][$2[0]] = $2[1];
+          } else {
+            $$[1] = $$[1] || {};
+            for (var name in $2) {
+              $$[1][name] = $2[name];
+            }
+          }
+        }}
     | 
-        { $$ = null; }
+        { $$ = [null,null]; }
     ;
 
 definition
     : name regex
         { $$ = [$1, $2]; }
+    | START_INC names_inclusive
+        { $$ = $2; }
+    | START_EXC names_exclusive
+        { $$ = $2; }
+    ;
+
+names_inclusive
+    : NAME
+        {{ $$ = {}; $$[$1] = 0; }}
+    | names_inclusive NAME
+        { $$ = $1; $$[$2] = 0; }
+    ;
+
+names_exclusive
+    : NAME
+        {{ $$ = {}; $$[$1] = 1; }}
+    | names_exclusive NAME
+        { $$ = $1; $$[$2] = 1; }
     ;
 
 name
@@ -49,8 +79,21 @@ rules
     ;
 
 rule
-    : regex action
-        { $$ = [$1, $2]; }
+    : start_conditions regex action
+        { $$ = $1 ? [$1, $2, $3] : [$2,$3]; }
+    ;
+
+start_conditions
+    : '<' name_list '>'
+        { $$ = $2; }
+    |
+    ;
+
+name_list
+    : NAME
+        { $$ = [$1]; }
+    | name_list ',' NAME
+        { $$ = $1; $$.push($3); }
     ;
 
 action
