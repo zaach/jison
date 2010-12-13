@@ -18,7 +18,7 @@ Jison can be installed for [Narwhal](http://github.com/280north/narwhal) using i
 
 Using npm:
 
-    sudo npm install jison
+    npm install jison
 
 Using tusk:
 
@@ -84,11 +84,23 @@ More Documentation
 ------------------
 For more information on creating grammars and using the generated parsers, read the [documentation](http://jison.org/docs).
 
-Real world examples
+How to contribute
+-----------------
+Fork the integration branch, make your changes, run tests and/or add tests then send a pull request.
+
+Run tests with:
+
+    make test
+
+Projects using Jison
 ------------------
 
-* [CoffeeScript](http://github.com/jashkenas/coffee-script) uses Jison in its self-compiler.
-* [Orderly.js](http://github.com/zaach/orderly.js) uses Jison for compilation.
+* [CoffeeScript](http://github.com/jashkenas/coffee-script)
+* [handlebars.js](https://github.com/wycats/handlebars.js)
+* [jQuery.sheet](http://visop-dev.com/Project+jQuery.sheet)
+* [cafe](http://github.com/zaach/cafe)
+* [jsonlint](http://github.com/zaach/jsonlint)
+* [Orderly.js](http://github.com/zaach/orderly.js)
 
 
 Contributors

@@ -13,6 +13,7 @@ Jison takes a context-free grammar as input and outputs a JavaScript file capabl
 * [Using the Parser from the Web](#using-the-parser-from-the-web)
 * [The Concepts of Jison](#the-concepts-of-jison)
 * [Specifying a Language](#specifying-a-language)
+* [Lexical Analysis](#lexical-analysis)
 * [Custom Scanners](#custom-scanners)
 * [Sharing Scope](#sharing-scope)
 * [Parsing algorithms](#parsing-algorithms)
@@ -26,7 +27,7 @@ Jison can be installed for [Narwhal](http://github.com/280north/narwhal) using i
 
 Using npm:
 
-    sudo npm install jison
+    npm install jison
 
 Using tusk:
 
@@ -47,7 +48,7 @@ Now you're ready to generate some parsers:
 This will generate `calculator.js` in your current working directory. This script can be used to parse an input file, like so:
 
     echo "2^32 / 1024" > testcalc
-    narwhal calculator.js testcalc
+    node calculator.js testcalc
 
 This will print out `4194304`.
 
@@ -304,10 +305,37 @@ Good:
 
     [0-9]+"zomg"    { print(yytext); }
 
+Recently added are **[start conditions](http://dinosaur.compilertools.net/flex/flex_11.html)**, which allow certain rules to only match in certain states. If the lexer is not in that state, then the rule is ignored. The lexer starts in the `INITIAL` state, but can move to new states specified by you. Read that link for the run-down. An example below shows where Jison differs, namely `this.begin('state')` instead of `BEGIN(STATE)` for changing states:
+
+    %s expect
+
+    %%
+    expect-floats        { this.begin('expect'); }
+
+    <expect>[0-9]+"."[0-9]+      {
+                console.log( "found a float, = " + yytext );
+                }
+    <expect>\n           {
+                /* that's the end of the line, so
+                 * we need another "expect-number"
+                 * before we'll recognize any more
+                 * numbers
+                 */
+                this.begin('INITIAL');
+                }
+
+    [0-9]+      { console.log( "found an integer, = " + yytext ); }
+
+    "."         { console.log( "found a dot" ); }
+
+Additionaly, use `this.popState()` within an action to revert to the previous state.
+
 Custom Scanners
 ---------------
 
-*TODO*
+You don't have to use the builtin Jison lexical scanner. handlebar.js uses its own [scanner](https://github.com/wycats/handlebars.js/blob/master/lib/handlebars/handlebars_lexer.js), as does CoffeeScript.
+
+*TODO: more examples*
 
 Sharing Scope
 ------------
@@ -339,12 +367,15 @@ Like Bison, Jison can recognize languages described by LALR(1) grammars, though 
 
 **LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.*
 
-Real world examples
+Projects using Jison
 ------------------
 
-* [CoffeeScript](http://github.com/jashkenas/coffee-script) uses Jison in its self-compiler.
-* [Orderly.js][3] uses Jison for compilation.
-
+* [CoffeeScript](http://github.com/jashkenas/coffee-script)
+* [handlebars.js](https://github.com/wycats/handlebars.js)
+* [jQuery.sheet](http://visop-dev.com/Project+jQuery.sheet)
+* [cafe](http://github.com/zaach/cafe)
+* [jsonlint](http://github.com/zaach/jsonlint)
+* [Orderly.js](http://github.com/zaach/orderly.js)
 
 Contributors
 ------------
@@ -393,4 +424,3 @@ License
 
   [1]: http://dinosaur.compilertools.net/bison/bison_4.html
   [2]: http://github.com/280north/narwhal
-  [3]: http://github.com/zaach/orderly.js
