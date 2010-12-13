@@ -427,7 +427,7 @@ exports["test DJ lexer"] = function() {
     var lexer = new RegExpLexer(dict.lex);
     lexer.setInput(input);
     var tok;
-    while (tok = lexer.lex()) {
+    while (tok = lexer.lex(), tok!==1) {
         assert.equal(typeof tok, "string");
     }
 };
