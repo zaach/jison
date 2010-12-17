@@ -86,6 +86,8 @@ rule
 start_conditions
     : '<' name_list '>'
         { $$ = $2; }
+    | '<' '*' '>'
+        { $$ = ['*']; }
     |
     ;
 

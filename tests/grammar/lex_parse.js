@@ -124,6 +124,7 @@ exports["test start conditions"] = function () {
     var lexgrammar = '%s TEST TEST2\n%x EAT\n%%\n'+
                      '"enter-test" {this.begin(\'TEST\');}\n'+
                      '<TEST,EAT>"x" {return \'T\';}\n'+
+                     '<*>"z" {return \'Z\';}\n'+
                      '<TEST>"y" {this.begin(\'INITIAL\'); return \'TY\';}';
     var expected = {
         startConditions: {
@@ -134,6 +135,7 @@ exports["test start conditions"] = function () {
         rules: [
             ["enter-test\\b", "this.begin('TEST');" ],
             [["TEST","EAT"], "x\\b", "return 'T';" ],
+            [["*"], "z\\b", "return 'Z';" ],
             [["TEST"], "y\\b", "this.begin('INITIAL'); return 'TY';" ]
         ]
     };

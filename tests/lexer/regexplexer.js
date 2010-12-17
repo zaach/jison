@@ -520,3 +520,26 @@ exports["test pop start condition stack"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+
+exports["test star start condition"] = function() {
+    var dict = {
+        startConditions: {
+            "EAT": 1,
+        },
+        rules: [
+            ["//", "this.begin('EAT');" ],
+            [["EAT"], ".", "" ],
+            ["x", "return 'X';" ],
+            ["y", "return 'Y';" ],
+            [["*"],"$", "return 'EOF';" ]
+        ]
+    };
+    var input = "xy//yxteadh//stey";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "Y");
+    assert.equal(lexer.lex(), "EOF");
+};
