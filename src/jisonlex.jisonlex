@@ -9,8 +9,8 @@
 \n+                             this.begin('INITIAL')
 \s+                             if (yy.ruleSection) this.begin('indented')
 [a-zA-Z_][a-zA-Z0-9_-]*         return 'NAME'
-'"'("\\\\"|'\"'|[^"])*'"'       {yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT';}
-"'"("\\\\"|"\'"|[^'])*"'"       {yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';}
+\"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT';
+"'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';
 "|"                             return '|'
 "["("\]"|[^\]])*"]"             return 'ANY_GROUP_REGEX'
 "("                             return '('
@@ -25,7 +25,7 @@
 ">"                             return '>'
 "/!"                            return '/!'
 "/"                             return '/'
-"\\"[a-zA-Z0]                   return 'ESCAPE_CHAR'
+"\\"[a-zA-Z0"]                  yytext = yytext.replace(/\\"/g,'"'); return 'ESCAPE_CHAR'
 "$"                             return '$'
 "."                             return '.'
 "%s"                            return 'START_INC'

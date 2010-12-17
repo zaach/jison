@@ -154,3 +154,14 @@ exports["test no brace action"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test quote escape"] = function () {
+    var lexgrammar = '%%\n\\""x" return 1;';
+    var expected = {
+        rules: [
+            ["\"x\\b", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
