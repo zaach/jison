@@ -142,3 +142,15 @@ exports["test start conditions"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test no brace action"] = function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" return true;\n"x" return 1;';
+    var expected = {
+        rules: [
+            ["\\[[^\\]]\\]", "return true;"],
+            ["x\\b", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};

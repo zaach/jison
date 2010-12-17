@@ -24,13 +24,7 @@ exports["test actions"] = function () {
 };
 
 exports["test embedded lexical block"] = function () {
-    var grammar = "%lex  \
-                   %%\
-                   'foo' {return 'foo';}\
-                   'bar' {return 'bar';}\
-                   'baz' {return 'baz';}\
-                   'world' {return 'world';}\
-                   /lex\
+    var grammar = "%lex \n%%\n'foo' return 'foo';\n'bar' {return 'bar';}\n'baz' {return 'baz';}\n'world' {return 'world';}\n/lex\
                    %% test: foo bar | baz ; hello: world ;";
     var expected = {
                         lex: {
