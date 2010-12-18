@@ -29,6 +29,10 @@ pre {
     text-indent: -100000px;
 }
 
+textarea {
+  font-family: monospace;
+}
+
 #header h1 a {
     display: block;
     width: 586px;

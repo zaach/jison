@@ -179,18 +179,18 @@ For example, here is the grammar for the calculator parser:
     %lex
 
     %%
-    \s+                   {/* skip whitespace */}
-    [0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
-    "*"                   {return '*';}
-    "/"                   {return '/';}
-    "-"                   {return '-';}
-    "+"                   {return '+';}
-    "^"                   {return '^';}
-    "("                   {return '(';}
-    ")"                   {return ')';}
-    "PI"                  {return 'PI';}
-    "E"                   {return 'E';}
-    <<EOF>>               {return 'EOF';}
+    \s+                   /* skip whitespace */
+    [0-9]+("."[0-9]+)?\b  return 'NUMBER';
+    "*"                   return '*';
+    "/"                   return '/';
+    "-"                   return '-';
+    "+"                   return '+';
+    "^"                   return '^';
+    "("                   return '(';
+    ")"                   return ')';
+    "PI"                  return 'PI';
+    "E"                   return 'E';
+    <<EOF>>               return 'EOF';
 
     /lex
 
@@ -295,7 +295,7 @@ Lexical Analysis
 ----------------
 Jison includes a rather rudimentary scanner generator, though **any module that supports the basic scanner API could be used** in its place. 
 
-The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes and actions must be contained within brackets (`{`, `}`), e.g.:
+The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes e.g.:
 
 Bad:
 
@@ -303,37 +303,46 @@ Bad:
 
 Good:
 
-    [0-9]+"zomg"    { print(yytext); }
+    [0-9]+"zomg"    print(yytext);
 
-Recently added are **[start conditions](http://dinosaur.compilertools.net/flex/flex_11.html)**, which allow certain rules to only match in certain states. If the lexer is not in that state, then the rule is ignored. The lexer starts in the `INITIAL` state, but can move to new states specified by you. Read that link for the run-down. An example below shows where Jison differs, namely `this.begin('state')` instead of `BEGIN(STATE)` for changing states:
+Actions that span multiple lines should be surrounded by braces:
+
+    [0-9]+"zomg"    %{ print(yytext);
+                       return 'ZOMG'; %}
+
+A recently added feature are **[start conditions](http://dinosaur.compilertools.net/flex/flex_11.html)**, which allow certain rules to only match in certain states. If the lexer is not in that state, then the rule is ignored. The lexer starts in the `INITIAL` state, but can move to new states specified by you. Read that link for the run-down. An example below shows where Jison differs, namely `this.begin('state')` instead of `BEGIN(STATE)` for changing states within an action:
 
     %s expect
 
     %%
-    expect-floats        { this.begin('expect'); }
+    expect-floats        this.begin('expect');
 
     <expect>[0-9]+"."[0-9]+      {
                 console.log( "found a float, = " + yytext );
                 }
-    <expect>\n           {
+    <expect>\n           %{
                 /* that's the end of the line, so
                  * we need another "expect-number"
                  * before we'll recognize any more
                  * numbers
                  */
                 this.begin('INITIAL');
-                }
+                %}
 
-    [0-9]+      { console.log( "found an integer, = " + yytext ); }
+    [0-9]+      console.log( "found an integer, = " + yytext );
 
-    "."         { console.log( "found a dot" ); }
+    "."         console.log( "found a dot" );
 
 Additionaly, use `this.popState()` within an action to revert to the previous state.
 
 Custom Scanners
 ---------------
 
-You don't have to use the builtin Jison lexical scanner. handlebar.js uses its own [scanner](https://github.com/wycats/handlebars.js/blob/master/lib/handlebars/handlebars_lexer.js), as does CoffeeScript.
+You don't have to use the builtin Jison lexical scanner. An object with a `lex` and a `setInput` function would suffice, e.g.:
+
+    parser.lexer = {lex: function () { return 'NIL'; }, setInput: function (str) {} }
+
+This lexer would simply return `NIL` tokens *ad infinitum*.
 
 *TODO: more examples*
 
