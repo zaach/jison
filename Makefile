@@ -1,5 +1,5 @@
 
-all: web preview
+all: build test
 
 site:
 	node script/web-bundle.js > web/content/assets/js/jison.js 
@@ -17,11 +17,11 @@ deploy:
 build: build_bnf build_lex
 
 build_bnf:
-	./bin/jison src/bnf.jison src/bnf.jisonlex
+	node lib/jison/cli-wrapper.js src/bnf.jison src/bnf.jisonlex
 	mv bnf.js lib/jison/util/bnf-parser.js
 
 build_lex:
-	./bin/jison src/jisonlex.jison src/jisonlex.jisonlex
+	node lib/jison/cli-wrapper.js src/jisonlex.jison src/jisonlex.jisonlex
 	mv jisonlex.js lib/jison/util/lex-parser.js
 
 test:
