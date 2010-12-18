@@ -2,8 +2,9 @@
 all: web preview
 
 site:
+	node script/web-bundle.js > web/content/assets/js/jison.js 
 	cd web/ && nanoc compile
-	cp -r examples web/output/jison/ 
+	cp -r examples web/output/jison/
 
 preview:
 	cd web/ && nanoc view
