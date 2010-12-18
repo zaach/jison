@@ -5,8 +5,13 @@
   "email": "zach@carter.name",
   "keywords": [
       "jison",
+      "bison",
+      "yacc",
       "parser",
+      "generator",
       "lexer",
+      "flex",
+      "tokenizer",
       "compiler"
   ],
   "githubName": "jison",
