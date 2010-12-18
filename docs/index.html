@@ -29,6 +29,7 @@
   <li><a href="#using-the-parser-from-the-web">Using the Parser from the Web</a></li>
   <li><a href="#the-concepts-of-jison">The Concepts of Jison</a></li>
   <li><a href="#specifying-a-language">Specifying a Language</a></li>
+  <li><a href="#lexical-analysis">Lexical Analysis</a></li>
   <li><a href="#custom-scanners">Custom Scanners</a></li>
   <li><a href="#sharing-scope">Sharing Scope</a></li>
   <li><a href="#parsing-algorithms">Parsing algorithms</a></li>
@@ -42,7 +43,7 @@
 
 <p>Using npm:</p>
 
-<pre><code>sudo npm install jison
+<pre><code>npm install jison
 </code></pre>
 
 <p>Using tusk:</p>
@@ -66,7 +67,7 @@ cd jison/examples
 <p>This will generate <code>calculator.js</code> in your current working directory. This script can be used to parse an input file, like so:</p>
 
 <pre><code>echo "2^32 / 1024" &gt; testcalc
-narwhal calculator.js testcalc
+node calculator.js testcalc
 </code></pre>
 
 <p>This will print out <code>4194304</code>.</p>
@@ -204,18 +205,18 @@ var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 %lex
 
 %%
-\s+                   {/* skip whitespace */}
-[0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
-"*"                   {return '*';}
-"/"                   {return '/';}
-"-"                   {return '-';}
-"+"                   {return '+';}
-"^"                   {return '^';}
-"("                   {return '(';}
-")"                   {return ')';}
-"PI"                  {return 'PI';}
-"E"                   {return 'E';}
-&lt;&lt;EOF&gt;&gt;               {return 'EOF';}
+\s+                   /* skip whitespace */
+[0-9]+("."[0-9]+)?\b  return 'NUMBER';
+"*"                   return '*';
+"/"                   return '/';
+"-"                   return '-';
+"+"                   return '+';
+"^"                   return '^';
+"("                   return '(';
+")"                   return ')';
+"PI"                  return 'PI';
+"E"                   return 'E';
+&lt;&lt;EOF&gt;&gt;               return 'EOF';
 
 /lex
 
@@ -323,7 +324,7 @@ e
 <h2 id="lexical-analysis">Lexical Analysis</h2>
 <p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place. </p>
 
-<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes and actions must be contained within brackets (<code>{</code>, <code>}</code>), e.g.:</p>
+<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes e.g.:</p>
 
 <p>Bad:</p>
 
@@ -332,12 +333,51 @@ e
 
 <p>Good:</p>
 
-<pre><code>[0-9]+"zomg"    { print(yytext); }
+<pre><code>[0-9]+"zomg"    print(yytext);
 </code></pre>
+
+<p>Actions that span multiple lines should be surrounded by braces:</p>
+
+<pre><code>[0-9]+"zomg"    %{ print(yytext);
+                   return 'ZOMG'; %}
+</code></pre>
+
+<p>A recently added feature are <strong><a href="http://dinosaur.compilertools.net/flex/flex_11.html">start conditions</a></strong>, which allow certain rules to only match in certain states. If the lexer is not in that state, then the rule is ignored. The lexer starts in the <code>INITIAL</code> state, but can move to new states specified by you. Read that link for the run-down. An example below shows where Jison differs, namely <code>this.begin('state')</code> instead of <code>BEGIN(STATE)</code> for changing states within an action:</p>
+
+<pre><code>%s expect
+
+%%
+expect-floats        this.begin('expect');
+
+&lt;expect&gt;[0-9]+"."[0-9]+      {
+            console.log( "found a float, = " + yytext );
+            }
+&lt;expect&gt;\n           %{
+            /* that's the end of the line, so
+             * we need another "expect-number"
+             * before we'll recognize any more
+             * numbers
+             */
+            this.begin('INITIAL');
+            %}
+
+[0-9]+      console.log( "found an integer, = " + yytext );
+
+"."         console.log( "found a dot" );
+</code></pre>
+
+<p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
 
 <h2 id="custom-scanners">Custom Scanners</h2>
 
-<p><em>TODO</em></p>
+<p>You don’t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
+
+<pre><code>parser.lexer = {lex: function () { return 'NIL'; }, setInput: function (str) {} }
+</code></pre>
+
+<p>This lexer would simply return <code>NIL</code> tokens <em>ad infinitum</em>.</p>
+
+<p><em>TODO: more examples</em></p>
 
 <h2 id="sharing-scope">Sharing Scope</h2>
 
@@ -368,11 +408,15 @@ var parse = exports.parse = function (input) {
 
 <p><em>*LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.</em></p>
 
-<h2 id="real-world-examples">Real world examples</h2>
+<h2 id="projects-using-jison">Projects using Jison</h2>
 
 <ul>
-  <li><a href="http://github.com/jashkenas/coffee-script">CoffeeScript</a> uses Jison in its self-compiler.</li>
-  <li><a href="http://github.com/zaach/orderly.js">Orderly.js</a> uses Jison for compilation.</li>
+  <li><a href="http://github.com/jashkenas/coffee-script">CoffeeScript</a></li>
+  <li><a href="https://github.com/wycats/handlebars.js">handlebars.js</a></li>
+  <li><a href="http://visop-dev.com/Project+jQuery.sheet">jQuery.sheet</a></li>
+  <li><a href="http://github.com/zaach/cafe">cafe</a></li>
+  <li><a href="http://github.com/zaach/jsonlint">jsonlint</a></li>
+  <li><a href="http://github.com/zaach/orderly.js">Orderly.js</a></li>
 </ul>
 
 <h2 id="contributors">Contributors</h2>
