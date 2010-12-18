@@ -1,24 +1,30 @@
 {
   "name": "jison",
-  "version": "0.1.27",
+  "version": "0.2.0",
   "author": "Zach Carter",
   "email": "zach@carter.name",
   "keywords": [
-      "jison",
-      "bison",
-      "yacc",
-      "parser",
-      "generator",
-      "lexer",
-      "flex",
-      "tokenizer",
-      "compiler"
+    "jison",
+    "bison",
+    "yacc",
+    "parser",
+    "generator",
+    "lexer",
+    "flex",
+    "tokenizer",
+    "compiler"
   ],
   "githubName": "jison",
   "type": "zip",
   "location": "http://github.com/zaach/jison/zipball/master",
-  "main" : "lib/jison",
-  "bin" : { "jison" : "lib/jison/cli-wrapper.js" },
-  "engines" : { "node" : ">=0.1.90" },
-  "directories" : { "lib" : "lib" }
+  "main": "lib/jison",
+  "bin": {
+    "jison": "lib/jison/cli-wrapper.js"
+  },
+  "engines": {
+    "node": ">=0.1.90"
+  },
+  "directories": {
+    "lib": "lib"
+  }
 }
