@@ -5,21 +5,21 @@
 %lex
 %%
 
-\s+                   {/* skip whitespace */}
-[0-9]+("."[0-9]+)?\b  {return 'NUMBER';}
-"*"                   {return '*';}
-"/"                   {return '/';}
-"-"                   {return '-';}
-"+"                   {return '+';}
-"^"                   {return '^';}
-"!"                   {return '!';}
-"%"                   {return '%';}
-"("                   {return '(';}
-")"                   {return ')';}
-"PI"                  {return 'PI';}
-"E"                   {return 'E';}
-<<EOF>>               {return 'EOF';}
-.                     {return 'INVALID';}
+\s+                   /* skip whitespace */
+[0-9]+("."[0-9]+)?\b  return 'NUMBER'
+"*"                   return '*'
+"/"                   return '/'
+"-"                   return '-'
+"+"                   return '+'
+"^"                   return '^'
+"!"                   return '!'
+"%"                   return '%'
+"("                   return '('
+")"                   return ')'
+"PI"                  return 'PI'
+"E"                   return 'E'
+<<EOF>>               return 'EOF'
+.                     return 'INVALID'
 
 /lex
 
@@ -38,7 +38,8 @@
 
 expressions
     : e EOF
-        {console.log($1); return $1;}
+        { typeof console !== 'undefined' ? console.log($1) : print($1);
+          return $1; }
     ;
 
 e
@@ -54,7 +55,7 @@ e
         {$$ = Math.pow($1, $3);}
     | e '!'
         {{
-          $$ = (function(n) {if(n==0) return 1; return arguments.callee(n-1) * n})($1)
+          $$ = (function fact (n) { return n==0 ? 1 : fact(n-1) * n })($1);
         }}
     | e '%'
         {$$ = $1/100;}
