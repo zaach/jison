@@ -882,7 +882,7 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
     var out = this.generateModule(opt)
-        + "\nif (typeof require !== 'undefined') {"
+        + "\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
         + "\nexports.parser = "+moduleName+";"
         + "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); }"
         + "\nexports.main = "+ String(opt.moduleMain || commonjsMain)
@@ -1612,7 +1612,7 @@ function prepareStartConditions (conditions) {
 }
 
 function buildActions (dict, tokens) {
-    var actions = [dict.actionInclude || '', "YYSTATE=YY_START"];
+    var actions = [dict.actionInclude || '', "var YYSTATE=YY_START"];
     var tok;
     var toks = {};
 
@@ -2430,7 +2430,7 @@ _currentRules:function _currentRules() {
     }});
 lexer.performAction = function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
-YYSTATE=YY_START
+var YYSTATE=YY_START
 switch($avoiding_name_collisions) {
 case 0:/* skip whitespace */
 break;
@@ -2485,7 +2485,7 @@ lexer.conditions = {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
 parser.lexer = lexer;
 return parser;
 })();
-if (typeof require !== 'undefined') {
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = bnf;
 exports.parse = function () { return bnf.parse.apply(bnf, arguments); }
 exports.main = function commonjsMain(args) {
@@ -2890,7 +2890,7 @@ _currentRules:function _currentRules() {
     }});
 lexer.performAction = function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
-YYSTATE=YY_START
+var YYSTATE=YY_START
 switch($avoiding_name_collisions) {
 case 0:this.begin('INITIAL')
 break;
@@ -2967,7 +2967,7 @@ lexer.conditions = {"indented":{"rules":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 parser.lexer = lexer;
 return parser;
 })();
-if (typeof require !== 'undefined') {
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = jisonlex;
 exports.parse = function () { return jisonlex.parse.apply(jisonlex, arguments); }
 exports.main = function commonjsMain(args) {
