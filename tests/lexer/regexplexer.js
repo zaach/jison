@@ -202,6 +202,38 @@ exports["test yylineno"] = function() {
     assert.equal(lexer.yylineno, 4);
 };
 
+exports["test yylloc"] = function() {
+    var dict = {
+        rules: [
+           ["\\s+", "/* skip whitespace */" ],
+           ["x", "return 'x';" ],
+           ["y", "return 'y';" ]
+       ]
+    };
+
+    var input = "x\nxy\n\n\nx";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yylloc.first_line, 2);
+    assert.equal(lexer.yylloc.last_line, 2);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+    assert.equal(lexer.lex(), "y");
+    assert.equal(lexer.yylloc.first_line, 2);
+    assert.equal(lexer.yylloc.last_line, 2);
+    assert.equal(lexer.yylloc.first_column, 1);
+    assert.equal(lexer.yylloc.last_column, 2);
+    assert.equal(lexer.lex(), "x");
+    assert.equal(lexer.yylloc.first_line, 5);
+    assert.equal(lexer.yylloc.last_line, 5);
+    assert.equal(lexer.yylloc.first_column, 0);
+    assert.equal(lexer.yylloc.last_column, 1);
+};
+
 exports["test more()"] = function() {
     var dict = {
         rules: [

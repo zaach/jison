@@ -274,3 +274,91 @@ exports["test EOF in 'Unexpected token' error message"] = function () {
 
 };
 
+exports["test locations"] = function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                   ['y', 'return @1'],
+            ''      ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var loc = parser.parse('xx\nxy');
+
+    assert.equal(loc.first_line, 2, 'first line correct');
+    assert.equal(loc.last_line, 2, 'last line correct');
+    assert.equal(loc.first_column, 1, 'first column correct');
+    assert.equal(loc.last_column, 2, 'last column correct');
+};
+
+exports["test default location action"] = function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                  ['y', 'return @$'],
+            ''      ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var loc = parser.parse('xx\nxy');
+
+    assert.equal(loc.first_line, 2, 'first line correct');
+    assert.equal(loc.last_line, 2, 'last line correct');
+    assert.equal(loc.first_column, 1, 'first column correct');
+    assert.equal(loc.last_column, 2, 'last column correct');
+};
+
+exports["test locations by term name in action"] = function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                  ['B', 'return @B'],
+            ''      ],
+            "B" :[ 'y' ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var loc = parser.parse('xx\nxy');
+
+    assert.equal(loc.first_line, 2, 'first line correct');
+    assert.equal(loc.last_line, 2, 'last line correct');
+    assert.equal(loc.first_column, 1, 'first column correct');
+    assert.equal(loc.last_column, 2, 'last column correct');
+};
+
