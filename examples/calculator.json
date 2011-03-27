@@ -24,8 +24,8 @@
       ["left", "+", "-"],
       ["left", "*", "/"],
       ["left", "^"],
-      ["right", '!'],
-      ["right", '%'],
+      ["right", "!"],
+      ["right", "%"],
       ["left", "UMINUS"]
    ],
 
@@ -44,7 +44,7 @@
          ["( e )",  "$$ = $2"],
          ["NUMBER", "$$ = Number(yytext)"],
          ["E",      "$$ = Math.E"],
-         ["PI",     "$$ = Math.PI"],
+         ["PI",     "$$ = Math.PI"]
       ]
    }
 }
