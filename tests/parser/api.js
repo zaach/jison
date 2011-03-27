@@ -362,3 +362,34 @@ exports["test locations by term name in action"] = function () {
     assert.equal(loc.last_column, 2, 'last column correct');
 };
 
+exports["test lexer with no location support"] = function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                  ['B', 'return @B'],
+            ''      ],
+            "B" :[ 'y' ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = {
+      toks: ['x','x','x','y'],
+      lex: function () {
+        return this.toks.shift();
+      },
+      setInput: function (){}
+    };
+    var loc = parser.parse('xx\nxy');
+};
+
