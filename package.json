@@ -19,7 +19,9 @@
   "location": "http://github.com/zaach/jison/zipball/master",
   "main": "lib/jison",
   "bin": {
-    "jison": "lib/jison/cli-wrapper.js"
+    "jison": "lib/jison/cli-wrapper.js",
+    "jison2json": "lib/jison/jison2json.js",
+    "json2jison": "lib/jison/json2jison.js"
   },
   "engines": {
     "node": ">=0.1.90"
