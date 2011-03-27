@@ -244,7 +244,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     var action = 'case '+(productions.length+1)+':'+handle[1]+'\nbreak;';
 
                     // replace named semantic values ($nonterminal)
-                    if (action.match(/\$[a-zA-Z][a-zA-Z0-9_]*/)) {
+                    if (action.match(/[$@][a-zA-Z][a-zA-Z0-9_]*/)) {
                         var count = {},
                             names = {};
                         for (i=0;i<rhs.length;i++) {
@@ -258,11 +258,17 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                         }
                         action = action.replace(/\$([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
                                 return names[pl] ? '$'+names[pl] : pl;
-                        });
+                            }).replace(/@([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
+                                return names[pl] ? '@'+names[pl] : pl;
+                            });
                     }
-                    action = action.replace(/\$[0$]/g, "this.$").replace(/\$(\d+)/g, function (_, n) {
-                        return "$$[$0" + (n - rhs.length || '') + "]";
-                    });
+                    action = action.replace(/\$[0$]/g, "this.$").replace(/@[0$]/g, "this._$")
+                        .replace(/\$(\d+)/g, function (_, n) {
+                            return "$$[$0" + (n - rhs.length || '') + "]";
+                        })
+                        .replace(/@(\d+)/g, function (_, n) {
+                            return "_$[$0" + (n - rhs.length || '') + "]";
+                        });
                     actions.push(action);
 
                     r = new Production(symbol, rhs, productions.length+1);
@@ -315,7 +321,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     this.productions_ = productions_;
     actions.push('}');
-    this.performAction = Function("yytext,yyleng,yylineno,yy,yystate,$$", actions.join("\n"));
+    this.performAction = Function("yytext,yyleng,yylineno,yy,yystate,$$,_$", actions.join("\n"));
 };
 
 generator.createParser = function createParser () {
@@ -1025,6 +1031,7 @@ parser.parse = function parse (input) {
     var self = this,
         stack = [0],
         vstack = [null], // semantic value stack
+        lstack = [], // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
@@ -1038,6 +1045,10 @@ parser.parse = function parse (input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    if (typeof this.lexer.yylloc == 'undefined')
+        this.lexer.yylloc = {};
+    var yyloc = this.lexer.yylloc;
+    lstack.push(yyloc);
 
     if (typeof this.yy.parseError === 'function')
         this.parseError = this.yy.parseError;
@@ -1045,6 +1056,7 @@ parser.parse = function parse (input) {
     function popStack (n) {
         stack.length = stack.length - 2*n;
         vstack.length = vstack.length - n;
+        lstack.length = lstack.length - n;
     }
 
     function lex() {
@@ -1090,7 +1102,7 @@ parser.parse = function parse (input) {
                                               ("'"+(this.terminals_[symbol] || symbol)+"'"));
                 }
                 this.parseError(errStr,
-                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, expected: expected});
+                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
             }
 
             // just recovered from another error
@@ -1103,6 +1115,7 @@ parser.parse = function parse (input) {
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
+                yyloc = this.lexer.yylloc;
                 symbol = lex();
             }
 
@@ -1138,12 +1151,14 @@ parser.parse = function parse (input) {
 
                 stack.push(symbol);
                 vstack.push(this.lexer.yytext);
+                lstack.push(this.lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution/no error
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
+                    yyloc = this.lexer.yylloc;
                     if (recovering > 0)
                         recovering--;
                 } else { // error just occurred, resume old lookahead f/ before error
@@ -1159,7 +1174,14 @@ parser.parse = function parse (input) {
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length-len]; // default to $$ = $1
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack);
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack.length-(len||1)].first_line,
+                    last_line: lstack[lstack.length-1].last_line,
+                    first_column: lstack[lstack.length-(len||1)].first_column,
+                    last_column: lstack[lstack.length-1].last_column,
+                };
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
                 if (typeof r !== 'undefined') {
                     return r;
@@ -1169,10 +1191,12 @@ parser.parse = function parse (input) {
                 if (len) {
                     stack = stack.slice(0,-1*len*2);
                     vstack = vstack.slice(0, -1*len);
+                    lstack = lstack.slice(0, -1*len);
                 }
 
                 stack.push(this.productions_[action[1]][0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
+                lstack.push(yyval._$);
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length-2]][stack[stack.length-1]];
                 stack.push(newState);
@@ -1663,6 +1687,7 @@ RegExpLexer.prototype = {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
+        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
         return this;
     },
     // consumes and returns one char from the input
@@ -1716,6 +1741,7 @@ RegExpLexer.prototype = {
 
         var token,
             match,
+            col,
             lines;
         if (!this._more) {
             this.yytext = '';
@@ -1725,8 +1751,12 @@ RegExpLexer.prototype = {
         for (var i=0;i < rules.length; i++) {
             match = this._input.match(this.rules[rules[i]]);
             if (match) {
-                lines = match[0].match(/\n/g);
+                lines = match[0].match(/\n.*/g);
                 if (lines) this.yylineno += lines.length;
+                this.yylloc = {first_line: this.yylloc.last_line,
+                               last_line: this.yylineno+1,
+                               first_column: this.yylloc.last_column,
+                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match.length}
                 this.yytext += match[0];
                 this.match += match[0];
                 this.matches = match;
@@ -2082,7 +2112,7 @@ yy: {},
 symbols_: {"error":2,"spec":3,"declaration_list":4,"%%":5,"grammar":6,"EOF":7,"declaration":8,"START":9,"id":10,"LEX_BLOCK":11,"operator":12,"associativity":13,"token_list":14,"LEFT":15,"RIGHT":16,"NONASSOC":17,"symbol":18,"production_list":19,"production":20,":":21,"handle_list":22,";":23,"|":24,"handle_action":25,"handle":26,"prec":27,"action":28,"PREC":29,"STRING":30,"ID":31,"ACTION":32,"$accept":0,"$end":1},
 terminals_: {2:"error",5:"%%",7:"EOF",9:"START",11:"LEX_BLOCK",15:"LEFT",16:"RIGHT",17:"NONASSOC",21:":",23:";",24:"|",29:"PREC",30:"STRING",31:"ID",32:"ACTION"},
 productions_: [0,[3,4],[3,5],[4,2],[4,0],[8,2],[8,1],[8,1],[12,2],[13,1],[13,1],[13,1],[14,2],[14,1],[6,1],[19,2],[19,1],[20,4],[22,3],[22,1],[25,3],[26,2],[26,0],[27,2],[27,0],[18,1],[18,1],[10,1],[28,1],[28,0]],
-performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$) {
+performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
 
 var $0 = $$.length - 1;
 switch (yystate) {
@@ -2161,6 +2191,7 @@ parse: function parse(input) {
     var self = this,
         stack = [0],
         vstack = [null], // semantic value stack
+        lstack = [], // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
@@ -2174,6 +2205,8 @@ parse: function parse(input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    var yyloc = this.lexer.yylloc;
+    lstack.push(yyloc);
 
     if (typeof this.yy.parseError === 'function')
         this.parseError = this.yy.parseError;
@@ -2181,6 +2214,7 @@ parse: function parse(input) {
     function popStack (n) {
         stack.length = stack.length - 2*n;
         vstack.length = vstack.length - n;
+        lstack.length = lstack.length - n;
     }
 
     function lex() {
@@ -2226,7 +2260,7 @@ parse: function parse(input) {
                                               ("'"+(this.terminals_[symbol] || symbol)+"'"));
                 }
                 this.parseError(errStr,
-                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, expected: expected});
+                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
             }
 
             // just recovered from another error
@@ -2239,6 +2273,7 @@ parse: function parse(input) {
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
+                yyloc = this.lexer.yylloc;
                 symbol = lex();
             }
 
@@ -2274,12 +2309,14 @@ parse: function parse(input) {
 
                 stack.push(symbol);
                 vstack.push(this.lexer.yytext);
+                lstack.push(this.lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution/no error
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
+                    yyloc = this.lexer.yylloc;
                     if (recovering > 0)
                         recovering--;
                 } else { // error just occurred, resume old lookahead f/ before error
@@ -2295,7 +2332,14 @@ parse: function parse(input) {
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length-len]; // default to $$ = $1
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack);
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack.length-(len||1)].first_line,
+                    last_line: lstack[lstack.length-1].last_line,
+                    first_column: lstack[lstack.length-(len||1)].first_column,
+                    last_column: lstack[lstack.length-1].last_column,
+                };
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
                 if (typeof r !== 'undefined') {
                     return r;
@@ -2305,10 +2349,12 @@ parse: function parse(input) {
                 if (len) {
                     stack = stack.slice(0,-1*len*2);
                     vstack = vstack.slice(0, -1*len);
+                    lstack = lstack.slice(0, -1*len);
                 }
 
                 stack.push(this.productions_[action[1]][0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
+                lstack.push(yyval._$);
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length-2]][stack[stack.length-1]];
                 stack.push(newState);
@@ -2336,6 +2382,7 @@ setInput:function (input) {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
+        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
         return this;
     },
 input:function () {
@@ -2381,6 +2428,7 @@ next:function () {
 
         var token,
             match,
+            col,
             lines;
         if (!this._more) {
             this.yytext = '';
@@ -2390,8 +2438,12 @@ next:function () {
         for (var i=0;i < rules.length; i++) {
             match = this._input.match(this.rules[rules[i]]);
             if (match) {
-                lines = match[0].match(/\n/g);
+                lines = match[0].match(/\n.*/g);
                 if (lines) this.yylineno += lines.length;
+                this.yylloc = {first_line: this.yylloc.last_line,
+                               last_line: this.yylineno+1,
+                               first_column: this.yylloc.last_column,
+                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match.length}
                 this.yytext += match[0];
                 this.match += match[0];
                 this.matches = match;
@@ -2514,7 +2566,7 @@ yy: {},
 symbols_: {"error":2,"lex":3,"definitions":4,"include":5,"%%":6,"rules":7,"epilogue":8,"EOF":9,"action":10,"definition":11,"name":12,"regex":13,"START_INC":14,"names_inclusive":15,"START_EXC":16,"names_exclusive":17,"NAME":18,"rule":19,"start_conditions":20,"<":21,"name_list":22,">":23,"*":24,",":25,"ACTION":26,"regex_list":27,"|":28,"regex_concat":29,"regex_base":30,"(":31,")":32,"+":33,"?":34,"/":35,"/!":36,"name_expansion":37,"range_regex":38,"any_group_regex":39,".":40,"^":41,"$":42,"string":43,"escape_char":44,"{":45,"}":46,"ANY_GROUP_REGEX":47,"ESCAPE_CHAR":48,"RANGE_REGEX":49,"STRING_LIT":50,"$accept":0,"$end":1},
 terminals_: {2:"error",6:"%%",9:"EOF",14:"START_INC",16:"START_EXC",18:"NAME",21:"<",23:">",24:"*",25:",",26:"ACTION",28:"|",31:"(",32:")",33:"+",34:"?",35:"/",36:"/!",40:".",41:"^",42:"$",45:"{",46:"}",47:"ANY_GROUP_REGEX",48:"ESCAPE_CHAR",49:"RANGE_REGEX",50:"STRING_LIT"},
 productions_: [0,[3,5],[8,1],[8,2],[5,1],[5,0],[4,2],[4,0],[11,2],[11,2],[11,2],[15,1],[15,2],[17,1],[17,2],[12,1],[7,2],[7,1],[19,3],[20,3],[20,3],[20,0],[22,1],[22,3],[10,1],[13,1],[27,3],[27,1],[29,2],[29,1],[30,3],[30,2],[30,2],[30,2],[30,2],[30,2],[30,1],[30,2],[30,1],[30,1],[30,1],[30,1],[30,1],[30,1],[37,3],[39,1],[44,1],[38,1],[43,1]],
-performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$) {
+performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
 
 var $0 = $$.length - 1;
 switch (yystate) {
@@ -2621,6 +2673,7 @@ parse: function parse(input) {
     var self = this,
         stack = [0],
         vstack = [null], // semantic value stack
+        lstack = [], // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
@@ -2634,6 +2687,8 @@ parse: function parse(input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    var yyloc = this.lexer.yylloc;
+    lstack.push(yyloc);
 
     if (typeof this.yy.parseError === 'function')
         this.parseError = this.yy.parseError;
@@ -2641,6 +2696,7 @@ parse: function parse(input) {
     function popStack (n) {
         stack.length = stack.length - 2*n;
         vstack.length = vstack.length - n;
+        lstack.length = lstack.length - n;
     }
 
     function lex() {
@@ -2686,7 +2742,7 @@ parse: function parse(input) {
                                               ("'"+(this.terminals_[symbol] || symbol)+"'"));
                 }
                 this.parseError(errStr,
-                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, expected: expected});
+                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
             }
 
             // just recovered from another error
@@ -2699,6 +2755,7 @@ parse: function parse(input) {
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
+                yyloc = this.lexer.yylloc;
                 symbol = lex();
             }
 
@@ -2734,12 +2791,14 @@ parse: function parse(input) {
 
                 stack.push(symbol);
                 vstack.push(this.lexer.yytext);
+                lstack.push(this.lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution/no error
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
+                    yyloc = this.lexer.yylloc;
                     if (recovering > 0)
                         recovering--;
                 } else { // error just occurred, resume old lookahead f/ before error
@@ -2755,7 +2814,14 @@ parse: function parse(input) {
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length-len]; // default to $$ = $1
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack);
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack.length-(len||1)].first_line,
+                    last_line: lstack[lstack.length-1].last_line,
+                    first_column: lstack[lstack.length-(len||1)].first_column,
+                    last_column: lstack[lstack.length-1].last_column,
+                };
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
                 if (typeof r !== 'undefined') {
                     return r;
@@ -2765,10 +2831,12 @@ parse: function parse(input) {
                 if (len) {
                     stack = stack.slice(0,-1*len*2);
                     vstack = vstack.slice(0, -1*len);
+                    lstack = lstack.slice(0, -1*len);
                 }
 
                 stack.push(this.productions_[action[1]][0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
+                lstack.push(yyval._$);
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length-2]][stack[stack.length-1]];
                 stack.push(newState);
@@ -2796,6 +2864,7 @@ setInput:function (input) {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
+        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
         return this;
     },
 input:function () {
@@ -2841,6 +2910,7 @@ next:function () {
 
         var token,
             match,
+            col,
             lines;
         if (!this._more) {
             this.yytext = '';
@@ -2850,8 +2920,12 @@ next:function () {
         for (var i=0;i < rules.length; i++) {
             match = this._input.match(this.rules[rules[i]]);
             if (match) {
-                lines = match[0].match(/\n/g);
+                lines = match[0].match(/\n.*/g);
                 if (lines) this.yylineno += lines.length;
+                this.yylloc = {first_line: this.yylloc.last_line,
+                               last_line: this.yylineno+1,
+                               first_column: this.yylloc.last_column,
+                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match.length}
                 this.yytext += match[0];
                 this.match += match[0];
                 this.matches = match;
