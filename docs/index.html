@@ -30,6 +30,7 @@
   <li><a href="#the-concepts-of-jison">The Concepts of Jison</a></li>
   <li><a href="#specifying-a-language">Specifying a Language</a></li>
   <li><a href="#lexical-analysis">Lexical Analysis</a></li>
+  <li><a href="#tracking-locations">Tracking Locations</a></li>
   <li><a href="#custom-scanners">Custom Scanners</a></li>
   <li><a href="#sharing-scope">Sharing Scope</a></li>
   <li><a href="#parsing-algorithms">Parsing algorithms</a></li>
@@ -368,6 +369,11 @@ expect-floats        this.begin('expect');
 
 <p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
 
+<h2 id="tracking-locations">Tracking Locations</h2>
+
+<p>Jison’s lexical analyzer will track line number and column number information for each token and make them available within parser actions.
+The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations">Bison’s</a>.</p>
+
 <h2 id="custom-scanners">Custom Scanners</h2>
 
 <p>You don’t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
@@ -420,11 +426,8 @@ var parse = exports.parse = function (input) {
 </ul>
 
 <h2 id="contributors">Contributors</h2>
-<ul>
-  <li>Zach Carter</li>
-  <li>Jarred Ligatti</li>
-  <li>Manuel E. Bermúdez </li>
-</ul>
+
+<p>via <a href="http://github.com/zaach/jison/contributors">github</a></p>
 
 <h2 id="license">License</h2>
 

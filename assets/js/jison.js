@@ -232,7 +232,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             if (handle.constructor === Array) {
                 if (typeof handle[0] === 'string')
                     rhs = handle[0].trim().split(' ');
-                else 
+                else
                     rhs = handle[0].slice(0);
 
                 for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
@@ -394,7 +394,7 @@ lookaheadMixin.followSets = function followSets () {
             for (var i=0,t;t=production.handle[i];++i) {
                 if (!nonterminals[t]) continue;
 
-                // for Simple LALR algorithm, self.go_ checks if 
+                // for Simple LALR algorithm, self.go_ checks if
                 if (ctx)
                     q = self.go_(production.symbol, production.handle.slice(0, i));
                 var bool = !ctx || q === parseInt(self.nterms_[t]);
@@ -573,7 +573,7 @@ lrGeneratorMixin.Item = typal.construct({
     constructor: function Item(production, dot, f, predecessor) {
         this.production = production;
         this.dotPosition = dot || 0;
-        this.follows = f || []; 
+        this.follows = f || [];
         this.predecessor = predecessor;
         this.id = parseInt(production.id+'a'+this.dotPosition, 36);
         this.markedSymbol = this.production.handle[this.dotPosition];
@@ -610,8 +610,8 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
         for (var i=a.length-1;i >=0;i--) {
             this.hash_[a[i].id] = true; //i;
         }
-        this._items.push.apply(this._items, a); 
-        return this; 
+        this._items.push.apply(this._items, a);
+        return this;
     },
     push: function (item) {
         this.hash_[item.id] = true;
@@ -716,7 +716,7 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
         if (i === -1 || typeof i === 'undefined') {
             states.has[gv] = states.size();
             itemSet.edges[symbol] = states.size(); // store goto transition for table
-            states.push(g); 
+            states.push(g);
             g.predecessors[symbol] = [stateNum];
         } else {
             itemSet.edges[symbol] = i; // store goto transition for table
@@ -749,7 +749,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                     if (nonterminals[stackSymbol]) {
                         // store state to go to after a reduce
                         //self.trace(k, stackSymbol, 'g'+gotoState);
-                        state[self.symbols_[stackSymbol]] = gotoState; 
+                        state[self.symbols_[stackSymbol]] = gotoState;
                     } else {
                         //self.trace(k, stackSymbol, 's'+gotoState);
                         state[self.symbols_[stackSymbol]] = [s,gotoState];
@@ -762,7 +762,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
         itemSet.forEach(function (item, j) {
             if (item.markedSymbol == self.EOF) {
                 // accept
-                state[self.symbols_[self.EOF]] = [a]; 
+                state[self.symbols_[self.EOF]] = [a];
                 //self.trace(k, self.EOF, state[self.EOF]);
             }
         });
@@ -989,7 +989,7 @@ lrGeneratorMixin.createParser = function createParser () {
     p.yy = {};
 
     p.init({
-        table: this.table, 
+        table: this.table,
         defaultActions: this.defaultActions,
         productions_: this.productions_,
         symbols_: this.symbols_,
@@ -1131,7 +1131,7 @@ parser.parse = function parse (input) {
                 popStack(1);
                 state = stack[stack.length-1];
             }
-            
+
             preErrorSymbol = symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
@@ -1179,7 +1179,7 @@ parser.parse = function parse (input) {
                     first_line: lstack[lstack.length-(len||1)].first_line,
                     last_line: lstack[lstack.length-1].last_line,
                     first_column: lstack[lstack.length-(len||1)].first_column,
-                    last_column: lstack[lstack.length-1].last_column,
+                    last_column: lstack[lstack.length-1].last_column
                 };
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
@@ -1376,7 +1376,7 @@ var lalrGeneratorDebug = {
     }
 };
 
-/* 
+/*
  * Lookahead parser definitions
  *
  * Define base type
@@ -2160,7 +2160,7 @@ case 20:this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
             if($$[$0]) this.$.push($$[$0]);
             if($$[$0-1]) this.$.push($$[$0-1]);
             if (this.$.length === 1) this.$ = this.$[0];
-        
+
 break;
 case 21:this.$ = $$[$0-1]; this.$.push($$[$0])
 break;
@@ -2289,7 +2289,7 @@ parse: function parse(input) {
                 popStack(1);
                 state = stack[stack.length-1];
             }
-            
+
             preErrorSymbol = symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
@@ -2337,7 +2337,7 @@ parse: function parse(input) {
                     first_line: lstack[lstack.length-(len||1)].first_line,
                     last_line: lstack[lstack.length-1].last_line,
                     first_column: lstack[lstack.length-(len||1)].first_column,
-                    last_column: lstack[lstack.length-1].last_column,
+                    last_column: lstack[lstack.length-1].last_column
                 };
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
@@ -2459,7 +2459,7 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
