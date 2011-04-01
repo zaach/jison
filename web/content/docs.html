@@ -14,6 +14,7 @@ Jison takes a context-free grammar as input and outputs a JavaScript file capabl
 * [The Concepts of Jison](#the-concepts-of-jison)
 * [Specifying a Language](#specifying-a-language)
 * [Lexical Analysis](#lexical-analysis)
+* [Tracking Locations](#tracking-locations)
 * [Custom Scanners](#custom-scanners)
 * [Sharing Scope](#sharing-scope)
 * [Parsing algorithms](#parsing-algorithms)
@@ -335,6 +336,12 @@ A recently added feature are **[start conditions](http://dinosaur.compilertools.
 
 Additionaly, use `this.popState()` within an action to revert to the previous state.
 
+Tracking Locations
+------------------
+
+Jison's lexical analyzer will track line number and column number information for each token and make them available within parser actions.
+The API is identical to [Bison's](http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations).
+
 Custom Scanners
 ---------------
 
@@ -388,9 +395,8 @@ Projects using Jison
 
 Contributors
 ------------
- - Zach Carter
- - Jarred Ligatti
- - Manuel E. Bermúdez 
+
+via [github](http://github.com/zaach/jison/contributors)
 
 License
 -------
