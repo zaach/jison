@@ -44,8 +44,5 @@
     "jison/util/nomnom.js": "lib/jison/util/nomnom.js",
     "jison/util/set.js": "lib/jison/util/set.js",
     "jison/util/typal.js": "lib/jison/util/typal.js"
-  },
-  "files": [
-    ""
-  ]
+  }
 }
