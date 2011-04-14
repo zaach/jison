@@ -1,6 +1,6 @@
 {
   "name": "jison",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "author": "Zach Carter",
   "email": "zach@carter.name",
   "keywords": [
@@ -44,5 +44,8 @@
     "jison/util/nomnom.js": "lib/jison/util/nomnom.js",
     "jison/util/set.js": "lib/jison/util/set.js",
     "jison/util/typal.js": "lib/jison/util/typal.js"
-  }
+  },
+  "files": [
+    ""
+  ]
 }
