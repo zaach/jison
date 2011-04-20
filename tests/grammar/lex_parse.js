@@ -165,3 +165,25 @@ exports["test quote escape"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test unicode encoding"] = function () {
+    var lexgrammar = '%%\n"\\u03c0" return 1;';
+    var expected = {
+        rules: [
+            ["\\u03c0", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test unicode"] = function () {
+    var lexgrammar = '%%\n"π" return 1;';
+    var expected = {
+        rules: [
+            ["π", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}

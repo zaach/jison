@@ -600,3 +600,36 @@ exports["test start condition constants"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test unicode encoding"] = function() {
+    var dict = {
+        rules: [
+            ["\\u2713", "return 'CHECK';" ],
+            ["\\u03c0", "return 'PI';" ],
+            ["y", "return 'Y';" ]
+        ]
+    };
+    var input = "\u2713\u03c0y";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "CHECK");
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+};
+
+exports["test unicode"] = function() {
+    var dict = {
+        rules: [
+            ["π", "return 'PI';" ],
+            ["y", "return 'Y';" ]
+        ]
+    };
+    var input = "πy";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    
+    assert.equal(lexer.lex(), "PI");
+    assert.equal(lexer.lex(), "Y");
+};

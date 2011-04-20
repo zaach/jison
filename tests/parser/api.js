@@ -374,13 +374,6 @@ exports["test lexer with no location support"] = function () {
         }
     };
 
-    var lexData = {
-        rules: [
-           ["\\s", "/*ignore*/"],
-           ["x", "return 'x';"],
-           ["y", "return 'y';"]
-        ]
-    };
     var gen = new Jison.Generator(grammar);
     var parser = gen.createParser();
     parser.lexer = {
