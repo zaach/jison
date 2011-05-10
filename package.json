@@ -2,7 +2,7 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "keywords": [
     "jison",
     "bison",
@@ -20,8 +20,8 @@
     "url": "git://github.com/zaach/jison.git"
   },
   "bugs": {
-    "web": "http://github.com/zaach/jison/issues",
-    "email": "jison@librelist.com"
+    "email": "jison@librelist.com",
+    "url": "http://github.com/zaach/jison/issues"
   },
   "main": "lib/jison",
   "bin": {
