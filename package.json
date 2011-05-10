@@ -1,8 +1,8 @@
 {
+  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
+  "description": "A parser generator with Bison's API",
   "version": "0.2.7",
-  "author": "Zach Carter",
-  "email": "zach@carter.name",
   "keywords": [
     "jison",
     "bison",
@@ -14,9 +14,15 @@
     "tokenizer",
     "compiler"
   ],
-  "githubName": "jison",
-  "type": "zip",
-  "location": "http://github.com/zaach/jison/zipball/master",
+  "preferGlobal": true,
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zaach/jison.git"
+  },
+  "bugs": {
+    "web": "http://github.com/zaach/jison/issues",
+    "email": "jison@librelist.com"
+  },
   "main": "lib/jison",
   "bin": {
     "jison": "lib/jison/cli-wrapper.js",
@@ -24,7 +30,16 @@
     "json2jison": "lib/jison/json2jison.js"
   },
   "engines": {
-    "node": ">=0.1.90"
+    "node": "0.4 || 0.5"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "test": "*",
+    "jison": "*",
+    "uglify-js": "*"
+  },
+  "scripts": {
+    "test": "node tests/all-tests.js"
   },
   "directories": {
     "lib": "lib",
@@ -45,7 +60,5 @@
     "jison/util/set.js": "lib/jison/util/set.js",
     "jison/util/typal.js": "lib/jison/util/typal.js"
   },
-  "files": [
-    ""
-  ]
+  "homepage": "http://jison.org"
 }
