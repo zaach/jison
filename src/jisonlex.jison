@@ -8,11 +8,11 @@
 
 lex 
     : definitions include '%%' rules epilogue
-        {{ $$ = {rules: $4};
+        { $$ = {rules: $4};
           if ($1[0]) $$.macros = $1[0];
           if ($1[1]) $$.startConditions = $1[1];
           if ($2) $$.actionInclude = $2;
-          return $$; }}
+          return $$; }
     ;
 
 epilogue
@@ -27,7 +27,7 @@ include
 
 definitions
     : definitions definition
-        {{ 
+        { 
           $$ = $1;
           if ('length' in $2) {
             $$[0] = $$[0] || {};
@@ -38,7 +38,7 @@ definitions
               $$[1][name] = $2[name];
             }
           }
-        }}
+        }
     | 
         { $$ = [null,null]; }
     ;
@@ -54,14 +54,14 @@ definition
 
 names_inclusive
     : NAME
-        {{ $$ = {}; $$[$1] = 0; }}
+        { $$ = {}; $$[$1] = 0; }
     | names_inclusive NAME
         { $$ = $1; $$[$2] = 0; }
     ;
 
 names_exclusive
     : NAME
-        {{ $$ = {}; $$[$1] = 1; }}
+        { $$ = {}; $$[$1] = 1; }
     | names_exclusive NAME
         { $$ = $1; $$[$2] = 1; }
     ;
@@ -105,10 +105,10 @@ action
 
 regex
     : regex_list 
-        {{ $$ = $1; 
+        { $$ = $1; 
           if ($$.match(/[\w\d]$/) && !$$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               $$ += "\\b";
-        }}
+        }
     ;
 
 regex_list
@@ -152,7 +152,7 @@ regex_base
 
 name_expansion
     : '{' name '}'
-        {{ $$ = '{'+$2+'}'; }}
+        { $$ = '{'+$2+'}'; }
     ;
 
 any_group_regex

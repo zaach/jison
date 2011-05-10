@@ -17,7 +17,7 @@ exports["test advanced grammar"] = function () {
 };
 
 exports["test actions"] = function () {
-    var grammar = "%start foo %% test: foo bar | baz ; hello: world %prec UM {{action{} }} ;";
+    var grammar = "%start foo %% test: foo bar | baz ; hello: world %prec UM {action{}} ;";
     var expected = {start: "foo", bnf: {test: ["foo bar", "baz"], hello: [[ "world", "action{}", {prec: "UM"} ]]}};
 
     assert.deepEqual(json2jison.convert(bnf.parse(grammar)), json2jison.convert(expected), "grammar should be parsed correctly");
