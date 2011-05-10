@@ -106,7 +106,7 @@ action
 regex
     : regex_list 
         {{ $$ = $1; 
-          if ($$.match(/[\w\d]$/) && !$$.match(/\\u[a-fA-F0-9]{4}$/) && !$$.match(/\\b$/))
+          if ($$.match(/[\w\d]$/) && !$$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               $$ += "\\b";
         }}
     ;

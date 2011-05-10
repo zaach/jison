@@ -25,7 +25,7 @@ exports["test lex grammar with macros"] = function () {
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 };
 
-exports["test excaped chars"] = function () {
+exports["test escaped chars"] = function () {
     var lexgrammar = '%%\n"\\n"+ {return \'NL\';}\n\\n+ {return \'NL2\';}\n\\s+ {/* skip */}';
     var expected = {
         rules: [
@@ -156,10 +156,25 @@ exports["test no brace action"] = function () {
 };
 
 exports["test quote escape"] = function () {
-    var lexgrammar = '%%\n\\""x" return 1;';
+    var lexgrammar = '%%\n\\"\\\'"x" return 1;';
     var expected = {
         rules: [
-            ["\"x\\b", "return 1;"]
+            ["\"'x\\b", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test escape things"] = function () {
+    var lexgrammar = '%%\n\\"\\\'\\\\\\*\\i return 1;\n"a"\\b return 2;\n\\cA {}\n\\012 {}\n\\xFF {}';
+    var expected = {
+        rules: [
+            ["\"'\\*i\\b", "return 1;"],
+            ["a\\b", "return 2;"],
+            ["\\cA", ""],
+            ["\\012", ""],
+            ["\\xFF", ""]
         ]
     };
 
