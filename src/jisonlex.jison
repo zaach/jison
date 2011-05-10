@@ -126,6 +126,8 @@ regex_concat
 regex_base
     : '(' regex_list ')'
         { $$ = '('+$2+')'; }
+    | SPECIAL_GROUP regex_list ')'
+        { $$ = $1+$2+')'; }
     | regex_base '+'
         { $$ = $1+'+'; }
     | regex_base '*'

@@ -13,6 +13,9 @@
 "'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';
 "|"                             return '|'
 "["("\]"|[^\]])*"]"             return 'ANY_GROUP_REGEX'
+"(?:"                           return 'SPECIAL_GROUP'
+"(?="                           return 'SPECIAL_GROUP'
+"(?!"                           return 'SPECIAL_GROUP'
 "("                             return '('
 ")"                             return ')'
 "+"                             return '+'

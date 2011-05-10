@@ -213,3 +213,14 @@ exports["test bugs"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 }
+
+exports["test special groupings"] = function () {
+    var lexgrammar = '%%\n(?:"foo"|"bar")\\(\\) return 1;';
+    var expected = {
+        rules: [
+            ["(?:foo|bar)\\(\\)", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}
