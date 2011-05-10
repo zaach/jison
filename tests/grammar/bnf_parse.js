@@ -117,3 +117,10 @@ exports["test embedded lexical block"] = function () {
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test balanced braces"] = function () {
+    var grammar = "%% test: foo bar { node({}, node({foo:'bar'})); }; hello: world ;";
+    var expected = {bnf: {test: [["foo bar"," node({}, node({foo:'bar'})); " ]], hello: ["world"]}};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};

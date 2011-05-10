@@ -11,16 +11,16 @@ declaration_list
     : declaration_list declaration
         {$$ = $1; yy.addDeclaration($$, $2);}
     | 
-        {{$$ = {};}}
+        {$$ = {};}
     ;
 
 declaration
     : START id
-        {{$$ = {start: $2};}}
+        {$$ = {start: $2};}
     | LEX_BLOCK
-        {{$$ = {lex: $1};}}
+        {$$ = {lex: $1};}
     | operator
-        {{$$ = {operator: $1};}}
+        {$$ = {operator: $1};}
     ;
 
 operator
@@ -51,11 +51,11 @@ grammar
 
 production_list
     : production_list production
-        {{$$ = $1;
+        {$$ = $1;
           if($2[0] in $$) $$[$2[0]] = $$[$2[0]].concat($2[1]);
-          else  $$[$2[0]] = $2[1];}}
+          else  $$[$2[0]] = $2[1];}
     | production
-        {{$$ = {}; $$[$1[0]] = $1[1];}}
+        {$$ = {}; $$[$1[0]] = $1[1];}
     ;
 
 production
@@ -88,7 +88,7 @@ handle
 
 prec
     : PREC symbol
-        {{$$ = {prec: $2};}}
+        {$$ = {prec: $2};}
     | 
         {$$ = null;}
     ;
@@ -106,9 +106,19 @@ id
     ;
 
 action
-    : ACTION
-        {$$ = yytext;}
+    : '{' action_body '}'
+        {$$ = $2;}
+    | ACTION 
+        {$$ = $1;}
     | 
         {$$ = '';}
     ;
 
+action_body
+    :
+        {$$ = '';}
+    | ACTION_BODY
+        {$$ = yytext;}
+    | action_body '{' action_body '}' action_body
+        {$$ = $1+$2+$3+$4+$5;}
+    ;
