@@ -320,7 +320,7 @@ e
 <h2 id="lexical-analysis">Lexical Analysis</h2>
 <p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place. </p>
 
-<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes e.g.:</p>
+<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. Several <a href="https://github.com/zaach/jison/wiki/DeviationsFromBison">metacharacters have been added</a>, but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:</p>
 
 <p>Bad:</p>
 
@@ -410,15 +410,7 @@ var parse = exports.parse = function (input) {
 <p><em>*LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.</em></p>
 
 <h2 id="projects-using-jison">Projects using Jison</h2>
-
-<ul>
-  <li><a href="http://github.com/jashkenas/coffee-script">CoffeeScript</a></li>
-  <li><a href="https://github.com/wycats/handlebars.js">handlebars.js</a></li>
-  <li><a href="http://visop-dev.com/Project+jQuery.sheet">jQuery.sheet</a></li>
-  <li><a href="http://github.com/zaach/cafe">cafe</a></li>
-  <li><a href="http://github.com/zaach/jsonlint">jsonlint</a></li>
-  <li><a href="http://github.com/zaach/orderly.js">Orderly.js</a></li>
-</ul>
+<p>View them on the <a href="https://github.com/zaach/jison/wiki/ProjectsUsingJison">wiki</a>, or add your own.</p>
 
 <h2 id="contributors">Contributors</h2>
 
