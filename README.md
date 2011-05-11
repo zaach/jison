@@ -91,12 +91,7 @@ Run tests with:
 Projects using Jison
 ------------------
 
-* [CoffeeScript](http://github.com/jashkenas/coffee-script)
-* [handlebars.js](https://github.com/wycats/handlebars.js)
-* [jQuery.sheet](http://visop-dev.com/Project+jQuery.sheet)
-* [cafe](http://github.com/zaach/cafe)
-* [jsonlint](http://github.com/zaach/jsonlint)
-* [Orderly.js](http://github.com/zaach/orderly.js)
+View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
 
 Contributors
