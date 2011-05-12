@@ -32,7 +32,6 @@
   "engines": {
     "node": "0.4 || 0.5"
   },
-  "dependencies": {},
   "devDependencies": {
     "test": "*",
     "jison": "*",
