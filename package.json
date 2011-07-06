@@ -32,6 +32,9 @@
   "engines": {
     "node": "0.4 || 0.5"
   },
+  "dependencies": {
+    "nomnom": ">= 0.4.3"
+  },
   "devDependencies": {
     "test": "*",
     "jison": "*",
@@ -59,6 +62,5 @@
     "jison/util/set.js": "lib/jison/util/set.js",
     "jison/util/typal.js": "lib/jison/util/typal.js"
   },
-  "homepage": "http://jison.org",
-  "dependencies": {}
+  "homepage": "http://jison.org"
 }
