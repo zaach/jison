@@ -9,6 +9,9 @@ var printOut = function(str){document.getElementById("out").value = JSON.stringi
 
 $(function () {
 
+    Jison = require('jison');
+    bnf = require('jison/bnf');
+
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
