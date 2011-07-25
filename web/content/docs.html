@@ -24,15 +24,11 @@ Jison takes a context-free grammar as input and outputs a JavaScript file capabl
  
 Installation
 ------------
-Jison can be installed for [Narwhal](http://github.com/280north/narwhal) using its bundled `tusk` command or for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
+Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
 
 Using npm:
 
-    npm install jison
-
-Using tusk:
-
-    tusk install jison
+    npm install jison -g
 
 Usage from the command line
 -----------------------
@@ -296,7 +292,7 @@ Lexical Analysis
 ----------------
 Jison includes a rather rudimentary scanner generator, though **any module that supports the basic scanner API could be used** in its place. 
 
-The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. It is a subset, so there are some differences, namely exact string patterns must be placed in quotes e.g.:
+The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. Several [metacharacters have been added](https://github.com/zaach/jison/wiki/DeviationsFromBison), but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:
 
 Bad:
 
@@ -385,13 +381,7 @@ Like Bison, Jison can recognize languages described by LALR(1) grammars, though 
 
 Projects using Jison
 ------------------
-
-* [CoffeeScript](http://github.com/jashkenas/coffee-script)
-* [handlebars.js](https://github.com/wycats/handlebars.js)
-* [jQuery.sheet](http://visop-dev.com/Project+jQuery.sheet)
-* [cafe](http://github.com/zaach/cafe)
-* [jsonlint](http://github.com/zaach/jsonlint)
-* [Orderly.js](http://github.com/zaach/orderly.js)
+View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
 Contributors
 ------------

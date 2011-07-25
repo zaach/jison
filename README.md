@@ -14,15 +14,11 @@ Briefly, Jison takes a JSON encoded grammar specification and outputs a JavaScri
 
 Installation
 ------------
-Jison can be installed for [Narwhal](http://github.com/280north/narwhal) using its bundled `tusk` command or for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
+Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
 
 Using npm:
 
-    npm install jison
-
-Using tusk:
-
-    tusk install jison
+    npm install jison -g
 
 Usage from the command line
 -----------------------
@@ -95,12 +91,7 @@ Run tests with:
 Projects using Jison
 ------------------
 
-* [CoffeeScript](http://github.com/jashkenas/coffee-script)
-* [handlebars.js](https://github.com/wycats/handlebars.js)
-* [jQuery.sheet](http://visop-dev.com/Project+jQuery.sheet)
-* [cafe](http://github.com/zaach/cafe)
-* [jsonlint](http://github.com/zaach/jsonlint)
-* [Orderly.js](http://github.com/zaach/orderly.js)
+View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
 
 Contributors

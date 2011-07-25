@@ -170,7 +170,7 @@ exports["test escape things"] = function () {
     var lexgrammar = '%%\n\\"\\\'\\\\\\*\\i return 1;\n"a"\\b return 2;\n\\cA {}\n\\012 {}\n\\xFF {}';
     var expected = {
         rules: [
-            ["\"'\\*i\\b", "return 1;"],
+            ["\"'\\\\\\*i\\b", "return 1;"],
             ["a\\b", "return 2;"],
             ["\\cA", ""],
             ["\\012", ""],
@@ -197,6 +197,28 @@ exports["test unicode"] = function () {
     var expected = {
         rules: [
             ["π", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}
+
+exports["test bugs"] = function () {
+    var lexgrammar = '%%\n\\\'([^\\\\\']+|\\\\(\\n|.))*?\\\' return 1;';
+    var expected = {
+        rules: [
+            ["'([^\\\\']+|\\\\(\\n|.))*?'", "return 1;"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}
+
+exports["test special groupings"] = function () {
+    var lexgrammar = '%%\n(?:"foo"|"bar")\\(\\) return 1;';
+    var expected = {
+        rules: [
+            ["(?:foo|bar)\\(\\)", "return 1;"]
         ]
     };
 
