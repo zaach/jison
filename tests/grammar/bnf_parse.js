@@ -124,3 +124,24 @@ exports["test balanced braces"] = function () {
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
 };
+
+exports["test code declaration"] = function () {
+    var grammar = "%{var foo = 'bar';%}\n%%hello: world;";
+    var expected = {bnf: {hello: ["world"]}, moduleInclude: "var foo = 'bar';"};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test remainder code"] = function () {
+    var grammar = "%%hello: world;%%var foo = 'bar';";
+    var expected = {bnf: {hello: ["world"]}, moduleInclude: "var foo = 'bar';"};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};
+
+exports["test remainder and declarations code"] = function () {
+    var grammar = "%{test;%}\n%%hello: world;%%var foo = 'bar';";
+    var expected = {bnf: {hello: ["world"]}, moduleInclude: "test;var foo = 'bar';"};
+
+    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+};

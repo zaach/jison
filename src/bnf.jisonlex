@@ -1,6 +1,9 @@
-%x action
+%x action code
+%s grammar
 
 %%
+
+<grammar>"%%"           this.begin('code');return '%%';
 
 \s+                     /* skip whitespace */
 "//".*                  /* skip comment */
@@ -11,7 +14,7 @@
 ":"                     return ':';
 ";"                     return ';';
 "|"                     return '|';
-"%%"                    return '%%';
+"%%"                    this.begin('grammar');return '%%';
 "%prec"                 return 'PREC';
 "%start"                return 'START';
 "%left"                 return 'LEFT';
@@ -24,11 +27,12 @@
 "%{"(.|\n)*?"%}"        yytext = yytext.substr(2, yytext.length-4);return 'ACTION';
 "{"                     yy.depth=0; this.begin('action'); return '{';
 .                       /* ignore bad characters */
-<<EOF>>                 return 'EOF';
+<*><<EOF>>              return 'EOF';
 
 <action>[^{}]+          return 'ACTION_BODY';
 <action>"{"             yy.depth++; return '{';
-<action>"}"             yy.depth==0? this.begin('INITIAL') : yy.depth--; return '}';
+<action>"}"             yy.depth==0? this.begin('grammar') : yy.depth--; return '}';
 
+<code>(.|\n)+           return 'CODE';
 %%
 

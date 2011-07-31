@@ -5,12 +5,14 @@ spec
         {$$ = $1; $$.bnf = $3; return $$;}
     | declaration_list '%%' grammar '%%' EOF
         {$$ = $1; $$.bnf = $3; return $$;}
+    | declaration_list '%%' grammar '%%' CODE EOF
+        {$$ = $1; $$.bnf = $3; yy.addDeclaration($$,{include:$5}); return $$;}
     ;
 
 declaration_list
     : declaration_list declaration
         {$$ = $1; yy.addDeclaration($$, $2);}
-    | 
+    |
         {$$ = {};}
     ;
 
@@ -21,6 +23,8 @@ declaration
         {$$ = {lex: $1};}
     | operator
         {$$ = {operator: $1};}
+    | ACTION
+        {$$ = {include: $1};}
     ;
 
 operator
@@ -71,7 +75,7 @@ handle_list
     ;
 
 handle_action
-    : handle prec action 
+    : handle prec action
         {$$ = [($1.length ? $1.join(' ') : '')];
             if($3) $$.push($3);
             if($2) $$.push($2);

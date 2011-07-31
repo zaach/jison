@@ -194,3 +194,27 @@ exports["test module include"] = function () {
 
     assert.ok(parser.parse(JSON.stringify(grammar.bnf)));
 };
+
+exports["test module include code"] = function () {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return test();"],
+                     "" ]
+        },
+        moduleInclude: "function test(val) { return 1; }"
+    };
+
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateCommonJSModule();
+    var exports = {};
+    eval(parserSource);
+
+    assert.equal(parser.parse('y'), 1, "semantic action");
+};
