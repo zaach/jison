@@ -26,6 +26,7 @@
 "{{"[\w\W]*?"}}"        yytext = yytext.substr(2, yyleng-4); return 'ACTION';
 "%{"(.|\n)*?"%}"        yytext = yytext.substr(2, yytext.length-4);return 'ACTION';
 "{"                     yy.depth=0; this.begin('action'); return '{';
+"->".*                  yytext = yytext.substr(2, yyleng-2); return 'ARROW_ACTION';
 .                       /* ignore bad characters */
 <*><<EOF>>              return 'EOF';
 

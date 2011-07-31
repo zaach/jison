@@ -86,14 +86,14 @@ handle_action
 handle
     : handle symbol
         {$$ = $1; $$.push($2)}
-    | 
+    |
         {$$ = [];}
     ;
 
 prec
     : PREC symbol
         {$$ = {prec: $2};}
-    | 
+    |
         {$$ = null;}
     ;
 
@@ -112,9 +112,11 @@ id
 action
     : '{' action_body '}'
         {$$ = $2;}
-    | ACTION 
+    | ACTION
         {$$ = $1;}
-    | 
+    | ARROW_ACTION
+        {$$ = '$$ ='+$1+';';}
+    |
         {$$ = '';}
     ;
 

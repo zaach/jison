@@ -224,3 +224,16 @@ exports["test special groupings"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 }
+
+exports["test trailing code include"] = function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
+    var expected = {
+        rules: [
+            ["\\[[^\\]]\\]", "return true;"],
+            ["f\"oo'bar\\b", "return 'baz2';"],
+            ['fo"obar\\b', "return 'baz';"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+};
