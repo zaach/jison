@@ -1,5 +1,14 @@
+
+NAME              [a-zA-Z_][a-zA-Z0-9_-]*
+
 %s indented trail
+%x code start_condition
+
 %%
+
+<start_condition>{NAME}         return 'START_COND'
+<start_condition>\n+            this.begin('INITIAL')
+<start_condition>\s+            /* empty */
 
 <trail>.*\n+                    this.begin('INITIAL')
 <indented>"{"[^}]*"}"           {this.begin('trail'); yytext = yytext.substr(1, yytext.length-2);return 'ACTION';}
@@ -8,7 +17,7 @@
 
 \n+                             this.begin('INITIAL')
 \s+                             if (yy.ruleSection) this.begin('indented')
-[a-zA-Z_][a-zA-Z0-9_-]*         return 'NAME'
+{NAME}                          return 'NAME'
 \"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT';
 "'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';
 "|"                             return '|'
@@ -32,14 +41,16 @@
 "\\".                           yytext = yytext.replace(/^\\/g,''); return 'ESCAPE_CHAR'
 "$"                             return '$'
 "."                             return '.'
-"%s"                            return 'START_INC'
-"%x"                            return 'START_EXC'
-"%%"                            yy.ruleSection = true; return '%%'
+"%s"                            this.begin('start_condition');return 'START_INC'
+"%x"                            this.begin('start_condition');return 'START_EXC'
+"%%"                            if (yy.ruleSection) this.begin('code'); yy.ruleSection = true; return '%%'
 "{"\d+(","\s?\d+|",")?"}"       return 'RANGE_REGEX'
 "{"                             return '{'
 "}"                             return '}'
 .                               /* ignore bad characters */
 <*><<EOF>>                      return 'EOF'
+
+<code>(.|\n)+                   return 'CODE';
 
 %%
 

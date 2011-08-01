@@ -218,3 +218,27 @@ exports["test module include code"] = function () {
 
     assert.equal(parser.parse('y'), 1, "semantic action");
 };
+
+exports["test lexer module include code"] = function () {
+    var lexData = {
+        rules: [
+           ["y", "return test();"]
+        ],
+        moduleInclude: "function test() { return 1; }"
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return $2;"],
+                     "" ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateCommonJSModule();
+    var exports = {};
+    eval(parserSource);
+
+    assert.equal(parser.parse('y'), 1, "semantic action");
+};

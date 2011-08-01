@@ -21,5 +21,3 @@
 .		{/* ignore bad characters */}
 <<EOF>>		{return 'EOF';}
 
-%%
-

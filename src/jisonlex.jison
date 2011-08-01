@@ -4,20 +4,25 @@
 
 %left '*' '+' '?' RANGE_REGEX
 
-%% 
+%%
 
-lex 
+lex
     : definitions include '%%' rules epilogue
         { $$ = {rules: $4};
           if ($1[0]) $$.macros = $1[0];
           if ($1[1]) $$.startConditions = $1[1];
           if ($2) $$.actionInclude = $2;
+          if ($5) $$.moduleInclude = $5;
           return $$; }
     ;
 
 epilogue
     : EOF
+      { $$ = null; }
     | '%%' EOF
+      { $$ = null; }
+    | '%%' CODE EOF
+      { $$ = $2; }
     ;
 
 include
@@ -26,25 +31,25 @@ include
     ;
 
 definitions
-    : definitions definition
-        { 
-          $$ = $1;
-          if ('length' in $2) {
+    : definition definitions
+        {
+          $$ = $definitions;
+          if ('length' in $definition) {
             $$[0] = $$[0] || {};
-            $$[0][$2[0]] = $2[1];
+            $$[0][$definition[0]] = $definition[1];
           } else {
             $$[1] = $$[1] || {};
-            for (var name in $2) {
-              $$[1][name] = $2[name];
+            for (var name in $definition) {
+              $$[1][name] = $definition[name];
             }
           }
         }
-    | 
+    |
         { $$ = [null,null]; }
     ;
 
 definition
-    : name regex
+    : NAME regex
         { $$ = [$1, $2]; }
     | START_INC names_inclusive
         { $$ = $2; }
@@ -53,16 +58,16 @@ definition
     ;
 
 names_inclusive
-    : NAME
+    : START_COND
         { $$ = {}; $$[$1] = 0; }
-    | names_inclusive NAME
+    | names_inclusive START_COND
         { $$ = $1; $$[$2] = 0; }
     ;
 
 names_exclusive
-    : NAME
+    : START_COND
         { $$ = {}; $$[$1] = 1; }
-    | names_exclusive NAME
+    | names_exclusive START_COND
         { $$ = $1; $$[$2] = 1; }
     ;
 
@@ -99,22 +104,26 @@ name_list
     ;
 
 action
-    : ACTION 
+    : ACTION
         { $$ = yytext; }
     ;
 
 regex
-    : regex_list 
-        { $$ = $1; 
+    : regex_list
+        { $$ = $1;
           if ($$.match(/[\w\d]$/) && !$$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               $$ += "\\b";
         }
     ;
 
 regex_list
-    : regex_list '|' regex_list
+    : regex_list '|' regex_concat
         { $$ = $1+'|'+$3; }
+    | regex_list '|'
+        { $$ = $1+'|'; }
     | regex_concat
+    |
+        { $$ = '' }
     ;
 
 regex_concat
