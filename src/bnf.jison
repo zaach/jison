@@ -125,6 +125,8 @@ action_body
         {$$ = '';}
     | ACTION_BODY
         {$$ = yytext;}
-    | action_body '{' action_body '}' action_body
+    | action_body '{' action_body '}' ACTION_BODY
         {$$ = $1+$2+$3+$4+$5;}
+    | action_body '{' action_body '}'
+        {$$ = $1+$2+$3+$4;}
     ;
