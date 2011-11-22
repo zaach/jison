@@ -117,3 +117,24 @@ exports["test basic JSON grammar"] = function () {
     assert.ok(parser.parse(source));
 }
 
+exports["test compilers test grammar"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ 'A' ],
+            "A" :[ 'B A', '' ],
+            "B" :[ '', 'x' ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr"});
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(parser.parse("xxx"), "parse");
+};
