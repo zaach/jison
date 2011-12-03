@@ -30,7 +30,7 @@
     "json2jison": "lib/jison/json2jison.js"
   },
   "engines": {
-    "node": "0.4 || 0.5"
+    "node": ">=0.4"
   },
   "dependencies": {
     "JSONSelect": "*",
