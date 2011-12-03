@@ -2,7 +2,7 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "keywords": [
     "jison",
     "bison",
@@ -48,21 +48,6 @@
   "directories": {
     "lib": "lib",
     "bin": "./bin"
-  },
-  "modules": {
-    "jison.js": "lib/jison.js",
-    "jison/bnf.js": "lib/jison/bnf.js",
-    "jison/cli-wrapper.js": "lib/jison/cli-wrapper.js",
-    "jison/jison2json.js": "lib/jison/jison2json.js",
-    "jison/jisonlex.js": "lib/jison/jisonlex.js",
-    "jison/json2jison.js": "lib/jison/json2jison.js",
-    "jison/lexer.js": "lib/jison/lexer.js",
-    "jison/util/bnf-parser.js": "lib/jison/util/bnf-parser.js",
-    "jison/util/io.js": "lib/jison/util/io.js",
-    "jison/util/lex-parser.js": "lib/jison/util/lex-parser.js",
-    "jison/util/nomnom.js": "lib/jison/util/nomnom.js",
-    "jison/util/set.js": "lib/jison/util/set.js",
-    "jison/util/typal.js": "lib/jison/util/typal.js"
   },
   "homepage": "http://jison.org"
 }
