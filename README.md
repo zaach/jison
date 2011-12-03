@@ -62,6 +62,7 @@ You can generate parsers programatically from JavaScript as well. Assuming Jison
         }
     };
     
+    // `grammar` can also be a string that uses jison's grammar format
     var parser = new Parser(grammar);
     
     // generate source, ready to be written to disk
