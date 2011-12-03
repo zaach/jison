@@ -33,9 +33,9 @@
     "node": "0.4 || 0.5"
   },
   "dependencies": {
-    "nomnom": ">= 0.4.3",
     "JSONSelect": "*",
     "reflect": "*"
+    "nomnom": "0.4.3"
   },
   "devDependencies": {
     "test": "*",
