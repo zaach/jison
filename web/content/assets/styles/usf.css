@@ -36,10 +36,10 @@ a img { border: 0px; }
 dt { font-weight: bold; }
 
 .nonterm { background-color: #eef; }
-.action_s { color: #940; }
+.action_s { color: #074; }
 .action_r { color: #707; }
 .accept { background-color: #dfd !important; }
-.conflict { background-color: #ffa !important; }
+.conflict { background-color: #feb !important; }
 .action, .state, .llaction {
   cursor: pointer;
 }
