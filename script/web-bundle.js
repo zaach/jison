@@ -1,4 +1,4 @@
- 
+
 var IO = require("../lib/jison/util/io");
 
 var path = IO.cwd();
@@ -20,5 +20,5 @@ function generate () {
     var out = "var require = (function() {\n" + script + ";\nreturn require;\n})();";
     IO.p(out);
 }
- 
+
 generate();

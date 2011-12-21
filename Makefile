@@ -2,7 +2,7 @@
 all: build test
 
 site:
-	node script/web-bundle.js > web/content/assets/js/jison.js 
+	node script/web-bundle.js > web/content/assets/js/jison.js
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
@@ -13,7 +13,7 @@ preview:
 deploy:
 	rm -r ../pages/jison/*
 	cp -r web/output/jison/* ../pages/jison/
-	cd ../pages/jison && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
+	cd ../pages/jison && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages
 
 build: build_bnf build_lex
 

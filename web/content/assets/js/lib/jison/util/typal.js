@@ -28,8 +28,8 @@ function layerMethod(k, fun) {
         }
     } else if (pos === 'before') {
         this[key] = function () {
-            fun.apply(this, arguments); 
-            var ret = prop.apply(this, arguments); 
+            fun.apply(this, arguments);
+            var ret = prop.apply(this, arguments);
             return ret;
         }
     }

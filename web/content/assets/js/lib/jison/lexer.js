@@ -1,4 +1,4 @@
-// Basic RegExp Lexer 
+// Basic RegExp Lexer
 // MIT Licensed
 // Zachary Carter <zach@carter.name>
 
@@ -104,7 +104,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input 
+    // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
         this._more = this._less = this.done = false;
@@ -188,7 +188,7 @@ RegExpLexer.prototype = {
         if (this._input == this.EOF) {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -243,6 +243,6 @@ return RegExpLexer;
 
 })()
 
-if (typeof exports !== 'undefined') 
+if (typeof exports !== 'undefined')
     exports.RegExpLexer = RegExpLexer;
 

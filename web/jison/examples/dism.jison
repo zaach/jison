@@ -10,7 +10,7 @@ pgm
 instlist
     : label COLON inst instlist
     | inst instlist
-    | 
+    |
     ;
 
 inst

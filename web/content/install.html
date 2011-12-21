@@ -1,4 +1,4 @@
---- 
+---
 title: A New Item
 ---
 

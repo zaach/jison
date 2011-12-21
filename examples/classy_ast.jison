@@ -1,9 +1,9 @@
 
 /* description: ClassyLang grammar with AST-building actions. Very classy. */
-/* 
+/*
   To build parser:
 
-    $ ./bin/jison examples/classy_ast.jison examples/classy.jisonlex 
+    $ ./bin/jison examples/classy_ast.jison examples/classy.jisonlex
 
 */
 
@@ -27,7 +27,7 @@ pgm
 cdl
     : c cdl
         {$$ = prependChild($2, $1);}
-    | 
+    |
         {{$$ = ['CLASS_DECL_LIST',{}];}}
     ;
 
@@ -39,14 +39,14 @@ c
 vdl
     : VAR t id SEMICOLON vdl
         {{$$ = prependChild($5, ['VAR_DECL',{},$2,$3]);}}
-    | 
+    |
         {{$$ = ['VAR_DECL_LIST',{}];}}
     ;
 
 mdl
     : t id LPAREN t id RPAREN LBRACE vdl el RBRACE mdl
         {{$$ = prependChild($11, ['METHOD_DECL',{},$1,$2,$4,$5,$8,$9]);}}
-    | 
+    |
         {{$$ = ['METHOD_DECL_LIST',{}];}}
     ;
 

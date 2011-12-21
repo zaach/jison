@@ -2,11 +2,11 @@ var IO = require("../lib/jison/util/io");
 
 exports.bundle = function(modules) {
     var moduleDefs = [];
-    
+
     for (var i = 0; i < modules.length; i++) {
         var baseID = modules[i].id;
         var path = modules[i].path;
-        
+
         var requires = [];
         var text = IO.read(path).replace(/require\s*\(\s*["']([\/\.\w-]+)["']\s*\)/g, function(match, requireID) {
             if (/^\./.test(requireID)) {
@@ -17,10 +17,10 @@ exports.bundle = function(modules) {
             requires.push(requireID);
             return "require("+JSON.stringify(requireID)+")";
         });
-        
+
         moduleDefs.push("require.def("+JSON.stringify(baseID)+",{factory:function(require,exports,module){\n" + text + "\n//*/\n},requires:"+JSON.stringify(requires)+"})");
     }
-    
+
     return "var require = (" + req + ")()\n" + moduleDefs.join(";\n\n") + ";";
 }
 

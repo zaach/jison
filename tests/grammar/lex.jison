@@ -1,6 +1,6 @@
-%% 
+%%
 
-lex 
+lex
     : definitions include '%%' rules '%%' EOF
         {{ $$ = {macros: $1, rules: $4};
           if ($2) $$.actionInclude = $2;
@@ -46,7 +46,7 @@ rule
     ;
 
 action
-    : ACTION 
+    : ACTION
         { $$ = yytext; }
     ;
 

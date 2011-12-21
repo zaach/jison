@@ -61,7 +61,7 @@ function genHandles (handle, options) {
                 s += (handle[i][0] && quoteSymbols(handle[i][0]));
                 if (typeof handle[i][1] === 'string') {
                     if (!options.stripActions) {
-                        s += handle[i][1].match(/\}/) ? 
+                        s += handle[i][1].match(/\}/) ?
                             "\n        {{"+handle[i][1]+(handle[i][1].match(/\}$/) ? ' ' : '')+"}}" :
                             "\n        {"+handle[i][1]+"}";
                     }
