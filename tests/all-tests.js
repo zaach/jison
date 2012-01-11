@@ -5,4 +5,4 @@ exports.testLexer = require("./lexer/lexer-tests");
 exports.testGrammar = require("./grammar/grammar-tests");
 
 if (require.main === module)
-    require("test").run(exports); 
+    require("test").run(exports);

@@ -7,4 +7,4 @@ exports.testConvert = require("./json2jison");
 exports.testLexParse = require("./lex_parse");
 
 if (require.main === module)
-    require("os").exit(require("test").run(exports)); 
+    require("os").exit(require("test").run(exports));

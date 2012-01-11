@@ -65,7 +65,7 @@ exports["test BNF parser"] = function () {
 
             "id" :[[ "ID", "$$ = yytext;" ]],
 
-            "action" :[[ "ACTION", "$$ = yytext;" ], 
+            "action" :[[ "ACTION", "$$ = yytext;" ],
                        [ "", "$$ = '';" ]]
         }
 
