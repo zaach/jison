@@ -1,9 +1,14 @@
 %x action code
-%s grammar
+%s bnf ebnf
 
 %%
 
-<grammar>"%%"           this.begin('code');return '%%';
+<bnf,ebnf>"%%"           this.begin('code');return '%%';
+
+<ebnf>"("                 return '('
+<ebnf>")"                 return ')'
+<ebnf>"*"                 return '*'
+<ebnf>"?"                 return '?'
 
 \s+                     /* skip whitespace */
 "//".*                  /* skip comment */
@@ -14,7 +19,8 @@
 ":"                     return ':';
 ";"                     return ';';
 "|"                     return '|';
-"%%"                    this.begin('grammar');return '%%';
+"%%"                    this.begin(ebnf ? 'ebnf' : 'bnf');return '%%';
+"%ebnf"                 if (!yy.options) yy.options = {}; ebnf = yy.options.ebnf = true;
 "%prec"                 return 'PREC';
 "%start"                return 'START';
 "%left"                 return 'LEFT';
@@ -32,8 +38,8 @@
 
 <action>[^{}]+          return 'ACTION_BODY';
 <action>"{"             yy.depth++; return '{';
-<action>"}"             yy.depth==0? this.begin('grammar') : yy.depth--; return '}';
+<action>"}"             yy.depth==0? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return '}';
 
 <code>(.|\n)+           return 'CODE';
-%%
 
+%%

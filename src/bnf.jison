@@ -1,12 +1,19 @@
+%{
+var ebnf = false;
+%}
+
 %%
 
 spec
-    : declaration_list '%%' grammar EOF
-        {$$ = $1; $$.bnf = $3; return $$;}
-    | declaration_list '%%' grammar '%%' EOF
-        {$$ = $1; $$.bnf = $3; return $$;}
+    : declaration_list '%%' grammar optional_end_block EOF
+        {$$ = $1; $$[ebnf ? 'ebnf':'bnf'] = $3; return $$;}
     | declaration_list '%%' grammar '%%' CODE EOF
-        {$$ = $1; $$.bnf = $3; yy.addDeclaration($$,{include:$5}); return $$;}
+        {$$ = $1; $$[ebnf ? 'ebnf':'bnf'] = $3; yy.addDeclaration($$,{include:$5}); return $$;}
+    ;
+
+optional_end_block
+    :
+    | '%%'
     ;
 
 declaration_list
@@ -84,10 +91,37 @@ handle_action
     ;
 
 handle
-    : handle symbol
+    : handle expression_suffix
         {$$ = $1; $$.push($2)}
     |
         {$$ = [];}
+    ;
+
+handle_sublist
+    : handle_sublist '|' handle
+        {$$ = $1; $$.push($3.join(' '));}
+    | handle
+        {$$ = [$1.join(' ')];}
+    ;
+
+expression_suffix
+    : expression suffix
+        {$$ = $expression + $suffix; }
+    ;
+
+expression
+    : ID
+        {$$ = $1; }
+    | STRING
+        {$$ = ebnf ? "'"+$1+"'" : $1; }
+    | '(' handle_sublist ')'
+        {$$ = '(' + $handle_sublist.join(' | ') + ')'; }
+    ;
+
+suffix
+    : {$$ = ''}
+    | '*'
+    | '?'
     ;
 
 prec
@@ -130,3 +164,6 @@ action_body
     | action_body '{' action_body '}'
         {$$ = $1+$2+$3+$4;}
     ;
+
+%%
+
