@@ -650,3 +650,18 @@ exports["test longest match returns"] = function() {
     assert.equal(lexer.lex(), "CAT");
     assert.equal(lexer.lex(), "DOT");
 };
+
+exports["test case insensitivity"] = function() {
+    var dict = {
+        rules: [
+            ["cat", "return 'CAT';" ]
+        ],
+        options: {'case-insensitive': true}
+    };
+    var input = "Cat";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "CAT");
+};
