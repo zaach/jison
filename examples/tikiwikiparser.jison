@@ -4,23 +4,7 @@ PLUGIN_ID   					[A-Z]+
 INLINE_PLUGIN_ID				[a-z]+
 SMILE							[a-z]+
 
-%s 
-	bold box
-	center
-	colortext
-	italic
-	header6
-	header5
-	header4
-	header3
-	header2
-	header1
-	link
-	strikethrough
-	table
-	titlebar
-	underscore
-	wikilink
+%s bold box center colortext italic header6 header5 header4 header3 header2 header1 link strikethrough table titlebar underscore wikilink
 
 %%
 
