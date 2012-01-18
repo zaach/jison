@@ -640,7 +640,7 @@ exports["test longest match returns"] = function() {
             [".", "return 'DOT';" ],
             ["cat", "return 'CAT';" ]
         ],
-        options: {longestMatch: true}
+        options: {flex: true}
     };
     var input = "cat!";
 

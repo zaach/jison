@@ -2,9 +2,13 @@
 NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 
 %s indented trail
-%x code start_condition
+%x code start_condition options
 
 %%
+
+<options>{NAME}         yy.options[yytext] = true
+<options>\n+            this.begin('INITIAL')
+<options>\s+            /* empty */
 
 <start_condition>{NAME}         return 'START_COND'
 <start_condition>\n+            this.begin('INITIAL')
@@ -41,6 +45,7 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 "\\".                           yytext = yytext.replace(/^\\/g,''); return 'ESCAPE_CHAR'
 "$"                             return '$'
 "."                             return '.'
+"%options"                      yy.options = {}; this.begin('options');
 "%s"                            this.begin('start_condition');return 'START_INC'
 "%x"                            this.begin('start_condition');return 'START_EXC'
 "%%"                            if (yy.ruleSection) this.begin('code'); yy.ruleSection = true; return '%%'

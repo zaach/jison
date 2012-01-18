@@ -247,3 +247,15 @@ exports["test empty or regex"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 }
+
+exports["test options"] = function () {
+    var lexgrammar = '%options flex\n%%\n"foo" return 1;';
+    var expected = {
+        rules: [
+            ["foo", "return 1;"]
+        ],
+        options: {flex: true}
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}
