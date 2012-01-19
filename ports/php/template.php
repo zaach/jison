@@ -1,31 +1,38 @@
 <?php
 /* Jison generated parser */
-class Parser {
+ini_set('error_reporting', E_ALL);
+ini_set('display_errors', 1);
+
+class Parser
+{
+	var $yy;
+	var $symbols_ = array();
+	var $terminals_ = array();
+	var $productions_ = array();
+	var $table = array();
+	var $defaultActions = array();
+	
+	var $debug = false;
+	
 	function __construct($lexer = null) {
-		
 		$this->lexer = (!empty($lexer) ? $lexer : new Lexer);
+		
+		$accept = 'accept';
+		$end = 'end';
+		
+		$this->symbols_ = 		"<@@SYMBOLS@@>";
+		$this->terminals_ = 	"<@@TERMINALS@@>";
+		$this->productions_ = 	"<@@PRODUCTIONS@@>";
+		$this->table = 			"<@@TABLE@@>";
+		$this->defaultActions = "<@@DEFAULT_ACTIONS@@>";
 	}
 	
 	function trace() {}
-	
-	var $yy;
-
-	var $symbols_ = "<@@SYMBOLS@@>";
-	
-	var $terminals_ = "<@@TERMINALS@@>";
-	
-	var $productions_ = "<@@PRODUCTIONS@@>";
-	
-	var $debug = false;
 	
 	function performAction(&$thisS, $yytext, $yyleng, $yylineno, $yy, $yystate, $S, $_S) {
 		$O = count($S) - 1;
 		"<@@PARSER_PERFORM_ACTION@@>";
 	}
-
-	var $table = "<@@TABLE@@>";
-	
-	var $defaultActions = "<@@DEFAULT_ACTIONS@@>";
 	
 	function popStack($n, $stack, $vstack, $lstack) {
 		array_slice($stack, 0, 2 * $n);
@@ -84,7 +91,7 @@ class Parser {
 			// retreive state number from top of stack
 			$state = $stack[count($stack) - 1];
 			// use default actions if available
-			if (array_key_exists($state, $this->defaultActions)) {
+			if (array_key_exists($state, $this->defaultActions) == true) {
 				$action = $this->defaultActions[$state];		
 			} else {
 				if (empty($symbol)) {
@@ -246,8 +253,13 @@ class Lexer {
 	var $matched = "";
 	var $match = "";
 	var $conditionsStack = array();
+	var $rules = array();
+	var $conditions = array();
 	
-	function Lexer() {}
+	function __construct() {
+		$this->rules = 		"<@@RULES@@>";
+		$this->conditions = "<@@CONDITIONS@@>";
+	}
 	
 	function parseError($str, $hash) {
 		throw new Exception($str);
@@ -391,8 +403,4 @@ class Lexer {
 		$YYSTATE = $YY_START;
 		"<@@LEXER_PERFORM_ACTION@@>";
 	}
-
-	var $rules = "<@@RULES@@>";
-	
-	var $conditions = "<@@CONDITIONS@@>";
 }

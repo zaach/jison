@@ -27,7 +27,7 @@ exec("jison " + process.argv[2], function(error) {
 
 	var table = JSON.stringify(Parser.parser.table);
 	var defaultActions = JSON.stringify(Parser.parser.defaultActions);
-
+	
 	//turn regex into string
 	var rules = [];
 	for(var i = 0; i < Parser.parser.lexer.rules.length; i++) {
@@ -36,29 +36,11 @@ exec("jison " + process.argv[2], function(error) {
 	rules = JSON.stringify(rules);
 	rules = rules.substring(1, rules.length - 1);
 	
-	var conditions = JSON.stringify(Parser.parser.lexer.conditions);
+	var conditions = Parser.parser.lexer.conditions;
 	var parserPerformAction = Parser.parser.performAction.toString();
 	var lexerPerformAction = Parser.parser.lexer.performAction.toString();
 
-	function jsToPhpGen(str, stripKey) {
-		str = str.replace(new RegExp('[\[]', 'g'), "array(");
-		str = str.replace(new RegExp('\]', 'g'), ")");
-		str = str.replace(new RegExp('[\{]', 'g'), "array(");
-		str = str.replace(new RegExp('[\}]', 'g'), ")");
-		str = str.replace(new RegExp('[:]', 'g'), "=>");
-		str = str.replace('$accept', 'accept');
-		str = str.replace('$end', 'end');
-
-		if (stripKey) {
-			str = str.replace(new RegExp(',"', 'g'), ',');
-			str = str.replace(new RegExp('"=>', 'g'), '=>');
-			str = str.replace(new RegExp('[\(]"', 'g'), '(');
-		}
-
-		return str;
-	}
-
-	function jsFnToPhpGen(str) {
+	function jsFnBody(str) {
 		str = str.split('{');
 		str.shift();
 		str = str.join('{');
@@ -71,30 +53,30 @@ exec("jison " + process.argv[2], function(error) {
 	}
 
 	function jsPerformActionToPhp(str) {
-		str = jsFnToPhpGen(str);
+		str = jsFnBody(str);
 		str = str.replace("var $0 = $$.length - 1;", '');
 		str = str.replace("var YYSTATE=YY_START", '');
 		str = str.replace(new RegExp('[$]0', 'g'), '$O');
 		str = str.replace(new RegExp('[$][$]', 'g'), '$S');
-		str = str.replace(new RegExp('parserlib[.]', 'g'), 'ParserLib::');
-		str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
-		str = str.replace(new RegExp('yystate', 'g'), '$yystate');
-		str = str.replace(new RegExp('this[-][->]', 'g'), '$this->');
-		str = str.replace(new RegExp('yy[_][.]yytext', 'g'), '$yy_->yytext');
-		str = str.replace(new RegExp('yy[.]', 'g'), '$yy->');
-		str = str.replace(new RegExp('\][.]', 'g'), ']->');
-		str = str.replace(new RegExp('\[\]', 'g'), 'array()');
 		str = str.replace(new RegExp('default[:][;]', 'g'), '');
+		str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
+		str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
+		str = str.replace(new RegExp('yystate', 'g'), '$yystate');
+		str = str.replace(new RegExp('[.]yytext', 'g'), '->yytext');
+		str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
+		str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
+		str = str.replace(new RegExp('[$]end', 'g'), 'end');
 		
 		str = str.split(/\n/g);
 		
+		var strNew = [];
 		for(var i = 0; i < str.length; i++) {
-			if (str[i].match(/\/\/js/g)) {
-				str[i] = "";
-			} else if (str[i].match(/\/\/php /g)) {
-				str[i] = str[i].replace(/\/\/php /g, '');
+			if (str[i].match(/\/\/php /g) || !str[i].match(/\/\/js/g)) {
+				strNew.push( str[i].replace(/\/\/php /g, '') );
 			}
 		}
+		
+		str = strNew;
 		
 		str = str.join('\n');
 		
@@ -105,26 +87,50 @@ exec("jison " + process.argv[2], function(error) {
 		return str;
 	}
 	
+	var phpOption = {
+		parserClass: 'Parser',
+		lexerClass: 'Lexer',
+		fileName: fileName + '.php'
+	};
+	
+	var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
+	parserDefinition = parserDefinition.split(/\n/g);
+	for(var i = 0; i < parserDefinition.length; i++) {
+		if (parserDefinition[i].match('//phpOption ')) {
+			parserDefinition[i] = parserDefinition[i].replace('//phpOption ', '');
+			parserDefinition[i] = parserDefinition[i].split(':');
+			phpOption[parserDefinition[i][0]] = parserDefinition[i][1];
+		}
+	}
+	
+	console.log(phpOption);
+	
 	var parserRaw = fs.readFileSync(__dirname + "/template.php", "utf8");
+	
+	parserRaw = parserRaw
+		.replace('class Parser', 				'class ' + phpOption.parserClass)
+		.replace('new Parser', 					'new ' + phpOption.parserClass)
+		.replace('class Lexer', 				'class ' + phpOption.lexerClass)
+		.replace('new Lexer', 					'new ' + phpOption.lexerClass)
+	
+		.replace('"<@@SYMBOLS@@>"', 			"json_decode('" + (symbols) + "', true)")
+		.replace('"<@@TERMINALS@@>"', 			"json_decode('" + (terminals) + "', true)")
+		.replace('"<@@PRODUCTIONS@@>"', 		"json_decode('" + (productions) + "', true)")
 
-	parserRaw = parserRaw.replace('"<@@SYMBOLS@@>"', jsToPhpGen(symbols));
-	parserRaw = parserRaw.replace('"<@@TERMINALS@@>"', jsToPhpGen(terminals, true));
-	parserRaw = parserRaw.replace('"<@@PRODUCTIONS@@>"', jsToPhpGen(productions));
+		.replace('"<@@TABLE@@>"', 				"json_decode('" + (table) + "', true)")
+		.replace('"<@@DEFAULT_ACTIONS@@>"', 	"json_decode('" + (defaultActions) + "', true)")
 
-	parserRaw = parserRaw.replace('"<@@TABLE@@>"', jsToPhpGen(table));
-	parserRaw = parserRaw.replace('"<@@DEFAULT_ACTIONS@@>"', jsToPhpGen(defaultActions));
+		.replace('"<@@RULES@@>"', 				'array(' + rules + ')')
+		.replace('"<@@CONDITIONS@@>"',			 "json_decode('" + JSON.stringify(conditions) + "', true)")
 
-	parserRaw = parserRaw.replace('"<@@RULES@@>"', 'array(' + rules + ')');
-	parserRaw = parserRaw.replace('"<@@CONDITIONS@@>"', jsToPhpGen(conditions));
+		.replace('"<@@PARSER_PERFORM_ACTION@@>";', jsPerformActionToPhp(parserPerformAction))
+		.replace('"<@@LEXER_PERFORM_ACTION@@>";', jsPerformActionToPhp(lexerPerformAction));
 
-	parserRaw = parserRaw.replace('"<@@PARSER_PERFORM_ACTION@@>";', jsPerformActionToPhp(parserPerformAction));
-	parserRaw = parserRaw.replace('"<@@LEXER_PERFORM_ACTION@@>";', jsPerformActionToPhp(lexerPerformAction));
-
-	fs.writeFile(fileName + '.php', parserRaw, function(err) {
+	fs.writeFile(phpOption.fileName, parserRaw, function(err) {
 		if (err) {
 			console.log("Something went bad");
 		} else {
-			console.log("Success writing new parser files " + fileName + ".js" + " & " + fileName + ".php");
+			console.log("Success writing new parser files " + fileName + ".js" + " & " + phpOption.fileName);
 			console.log("Please Note: The php version of the jison parser is only an ATTEMPTED conversion");
 		}
 	});
