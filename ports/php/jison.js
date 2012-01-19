@@ -9,13 +9,17 @@ function puts(error, stdout, stderr) {
 
 console.log("Executing: " + "jison " + process.argv[2]);
 
-exec("jison " + process.argv[2], function(out) {
-	if (out) console.log(out);
+exec("jison " + process.argv[2], function(error) {
+	if (error) {
+		console.log(error);
+		return;
+	}
 
 	var fileName = process.argv[2].replace('.jison', '');
+	var requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
 	
 	console.log("Opening newly created jison js file: " + fileName + '.js');
-	var Parser = require(fileName + '.js');
+	var Parser = require(requirePath);
 
 	var symbols = JSON.stringify(Parser.parser.symbols_);
 	var terminals = JSON.stringify(Parser.parser.terminals_);
@@ -75,13 +79,24 @@ exec("jison " + process.argv[2], function(out) {
 		str = str.replace(new RegExp('parserlib[.]', 'g'), 'ParserLib::');
 		str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
 		str = str.replace(new RegExp('yystate', 'g'), '$yystate');
-		str = str.replace(new RegExp('this[.]yy[.]', 'g'), '$this->yy->');
-		str = str.replace(new RegExp('this[.]', 'g'), '$this->');
+		str = str.replace(new RegExp('this[-][->]', 'g'), '$this->');
 		str = str.replace(new RegExp('yy[_][.]yytext', 'g'), '$yy_->yytext');
 		str = str.replace(new RegExp('yy[.]', 'g'), '$yy->');
 		str = str.replace(new RegExp('\][.]', 'g'), ']->');
 		str = str.replace(new RegExp('\[\]', 'g'), 'array()');
 		str = str.replace(new RegExp('default[:][;]', 'g'), '');
+		
+		str = str.split(/\n/g);
+		
+		for(var i = 0; i < str.length; i++) {
+			if (str[i].match(/\/\/js/g)) {
+				str[i] = "";
+			} else if (str[i].match(/\/\/php /g)) {
+				str[i] = str[i].replace(/\/\/php /g, '');
+			}
+		}
+		
+		str = str.join('\n');
 		
 		str = str.replace(/(\d)\n/g, function(){
 			return arguments[1] + ';\n';
@@ -89,8 +104,8 @@ exec("jison " + process.argv[2], function(out) {
 		
 		return str;
 	}
-
-	var parserRaw = fs.readFileSync("./template.php", "utf8");
+	
+	var parserRaw = fs.readFileSync(__dirname + "/template.php", "utf8");
 
 	parserRaw = parserRaw.replace('"<@@SYMBOLS@@>"', jsToPhpGen(symbols));
 	parserRaw = parserRaw.replace('"<@@TERMINALS@@>"', jsToPhpGen(terminals, true));
