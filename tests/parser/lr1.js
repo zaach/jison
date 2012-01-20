@@ -138,3 +138,13 @@ exports["test compilers test grammar"] = function () {
 
     assert.ok(parser.parse("xxx"), "parse");
 };
+
+exports["test compilers test grammar 2"] = function () {
+    var grammar = "%% n : a b ; a : | a x ; b : | b x y ;";
+
+    var parser = new Jison.Generator(grammar, {type: "lr"});
+
+    assert.equal(parser.conflicts, 1, "only one conflict");
+};
+
+

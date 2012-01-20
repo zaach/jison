@@ -855,7 +855,7 @@ function resolveConflict (production, op, reduce, shift) {
     if (shift[0] === r) {
         sln.msg = "Resolve R/R conflict (use first production declared in grammar.)";
         sln.action = shift[1] < reduce[1] ? shift : reduce;
-        sln.bydefault = true;
+        if (shift[1] !== reduce[1]) sln.bydefault = true;
         return sln;
     }
 
@@ -1132,7 +1132,7 @@ parser.parse = function parse (input) {
                 }
                 var errStr = '';
                 if (this.lexer.showPosition) {
-                    errStr = 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+"\nExpecting "+expected.join(', ');
+                    errStr = 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+"\nExpecting "+expected.join(', ') + ", got '" + this.terminals_[symbol]+ "'";
                 } else {
                     errStr = 'Parse error on line '+(yylineno+1)+": Unexpected " +
                                   (symbol == 1 /*EOF*/ ? "end of input" :
@@ -1577,9 +1577,11 @@ return function Parser (g, options) {
 },requires:["jison/util/typal","jison/util/set","jison/lexer","jison/bnf","JSONSelect","reflect","fs","path","file","file"]});
 
 require.def("jison/lexer",{factory:function(require,exports,module){
-// Basic RegExp Lexer
+// Basic RegExp Lexer 
 // MIT Licensed
 // Zachary Carter <zach@carter.name>
+
+var RegExpLexer = (function () {
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(rules, macros, actions, tokens, startConditions) {
@@ -1700,7 +1702,6 @@ function RegExpLexer (dict, input, tokens) {
     this.conditionStack = ['INITIAL'];
 
     this.moduleInclude = dict.moduleInclude;
-    this.matcherStates = [];
 
     this.yy = {};
     if (input) {
@@ -1718,7 +1719,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input
+    // resets the lexer, sets new input 
     setInput: function (input) {
         this._input = input;
         this._more = this._less = this.done = false;
@@ -1780,19 +1781,17 @@ RegExpLexer.prototype = {
         var token,
             match,
             col,
-            lines,
-            index;
+            lines;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
         }
         var rules = this._currentRules();
         for (var i=0;i < rules.length; i++) {
-            index = rules[i];
-            match = this._input.match(this.rules[index]);
+            match = this._input.match(this.rules[rules[i]]);
             if (match) {
                 lines = match[0].match(/\n.*/g);
-                if (lines !== null) this.yylineno += lines.length;
+                if (lines) this.yylineno += lines.length;
                 this.yylloc = {first_line: this.yylloc.last_line,
                                last_line: this.yylineno+1,
                                first_column: this.yylloc.last_column,
@@ -1804,7 +1803,7 @@ RegExpLexer.prototype = {
                 this._more = false;
                 this._input = this._input.slice(match[0].length);
                 this.matched += match[0];
-                token = this.performAction.call(this, this.yy, this, index,this.conditionStack[this.conditionStack.length-1]);
+                token = this.performAction.call(this, this.yy, this, rules[i],this.conditionStack[this.conditionStack.length-1]);
                 if (token) return token;
                 else return;
             }
@@ -1812,7 +1811,7 @@ RegExpLexer.prototype = {
         if (this._input === "") {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
+            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -1879,94 +1878,12 @@ RegExpLexer.prototype = {
     }
 };
 
-function DynamicRegExpLexer (dict, input, tokens) {
-    this.dynamicMatchers = 0;
-    RegExpLexer.call(this, dict, input, tokens);
-}
+return RegExpLexer;
 
-DynamicRegExpLexer.prototype = Object.create(RegExpLexer.prototype);
+})()
 
-var proto = DynamicRegExpLexer.prototype;
-
-proto.setInput = function (input) {
-    RegExpLexer.prototype.setInput.call(this, input);
-    this.dynamicMatchers = this.dynamicMatchers||0;
-};
-
-proto.addMatcher = function (regex, matchConds) {
-    var conditions = this.conditions;
-    this.matcherStates[this.dynamicMatchers] = matchConds;
-    this.dynamicMatchers++;
-    this.rules.unshift(regex);
-    matchConds.forEach(function (cond) {
-        conditions[cond].rules.unshift(-this.dynamicMatchers);
-    });
-};
-
-proto.removeMatcher = function (index) {
-    if (index > this.dynamicMatchers) return;
-    this.rules.splice(this.dynamicMatchers-index-1,1);
-    this.matcherStates.splice(index,1);
-    var conditions = this.conditions;
-    this.matcherStates[index].forEach(function (state) {
-        conditions[state].rules.splice(conditions[state].rules.indexOf(-(index+1)), 1);
-    });
-    this.dynamicMatchers--;
-};
-
-proto.dynamicAction = function (match, index) { },
-
-proto.next = function () {
-    if (this.done) {
-        return this.EOF;
-    }
-    if (!this._input) this.done = true;
-
-    var token,
-        match,
-        col,
-        lines,
-        index;
-    if (!this._more) {
-        this.yytext = '';
-        this.match = '';
-    }
-    var rules = this._currentRules();
-    for (var i=0;i < rules.length; i++) {
-        index = rules[i]+this.dynamicMatchers;
-        match = this._input.match(this.rules[index]);
-        if (match) {
-            lines = match[0].match(/\n.*/g);
-            if (lines) this.yylineno += lines.length;
-            this.yylloc = {first_line: this.yylloc.last_line,
-                           last_line: this.yylineno+1,
-                           first_column: this.yylloc.last_column,
-                           last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match[0].length}
-            this.yytext += match[0];
-            this.match += match[0];
-            this.matches = match;
-            this.yyleng = this.yytext.length;
-            this._more = false;
-            this._input = this._input.slice(match[0].length);
-            this.matched += match[0];
-            token = this.dynamicMatchers ?
-                      this.dynamicAction(this.match, index) :
-                      this.performAction.call(this, this.yy, this, index,this.conditionStack[this.conditionStack.length-1]);
-            if (token) return token;
-            else return;
-        }
-    }
-    if (this._input === "") {
-        return this.EOF;
-    } else {
-        this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
-                {text: "", token: null, line: this.yylineno});
-    }
-};
-
-exports.RegExpLexer = RegExpLexer;
-
-exports.DynamicRegExpLexer = DynamicRegExpLexer;
+if (typeof exports !== 'undefined') 
+    exports.RegExpLexer = RegExpLexer;
 
 
 //*/

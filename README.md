@@ -8,9 +8,7 @@ An API for creating parsers in JavaScript
 
 Jison generates bottom-up parsers in JavaScript. Its API is similar to Bison's, hence the name. It supports many of Bison's major features, plus some of its own. If you are new to parser generators such as Bison, and Context-free Grammars in general, a [good introduction][1] is found in the Bison manual. If you already know Bison, Jison should be easy to pickup.
 
-A brief warning before proceeding: **the API is ridiculously unstable** right now. The goal is to mirror Bison where it makes sense, but we're not even there yet. Also, optimization has not been a main focus as of yet.
-
-Briefly, Jison takes a JSON encoded grammar specification and outputs a JavaScript file capable of parsing the language described by that grammar specification. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input.
+Briefly, Jison takes a JSON encoded grammar or Bison style grammar and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input.
 
 Installation
 ------------
@@ -104,7 +102,7 @@ Special thanks to Jarred Ligatti, Manuel E. Bermúdez
 License
 -------
 
-> Copyright (c) 2009 Zachary Carter
+> Copyright (c) 2012 Zachary Carter
 > 
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a

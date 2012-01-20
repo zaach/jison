@@ -7,12 +7,15 @@
 %%
 
 lex
-    : definitions include '%%' rules epilogue
-        { $$ = {rules: $4};
-          if ($1[0]) $$.macros = $1[0];
-          if ($1[1]) $$.startConditions = $1[1];
-          if ($2) $$.actionInclude = $2;
-          if ($5) $$.moduleInclude = $5;
+    : definitions '%%' rules epilogue
+        { $$ = {rules: $rules};
+          if ($definitions[0]) $$.macros = $definitions[0];
+          if ($definitions[1]) $$.startConditions = $definitions[1];
+          if ($epilogue) $$.moduleInclude = $epilogue;
+          if (yy.options) $$.options = yy.options;
+          if (yy.actionInclude) $$.actionInclude = yy.actionInclude;
+          delete yy.options;
+          delete yy.actionInclude;
           return $$; }
     ;
 
@@ -23,11 +26,6 @@ epilogue
       { $$ = null; }
     | '%%' CODE EOF
       { $$ = $2; }
-    ;
-
-include
-    : action
-    |
     ;
 
 definitions
@@ -44,8 +42,10 @@ definitions
             }
           }
         }
+    | ACTION definitions
+        { yy.actionInclude += $1; $$ = $definitions; }
     |
-        { $$ = [null,null]; }
+        { yy.actionInclude = ''; $$ = [null,null]; }
     ;
 
 definition
@@ -71,11 +71,6 @@ names_exclusive
         { $$ = $1; $$[$2] = 1; }
     ;
 
-name
-    : NAME
-        { $$ = yytext; }
-    ;
-
 rules
     : rules rule
         { $$ = $1; $$.push($2); }
@@ -84,7 +79,7 @@ rules
     ;
 
 rule
-    : start_conditions regex action
+    : start_conditions regex ACTION
         { $$ = $1 ? [$1, $2, $3] : [$2,$3]; }
     ;
 
@@ -103,15 +98,10 @@ name_list
         { $$ = $1; $$.push($3); }
     ;
 
-action
-    : ACTION
-        { $$ = yytext; }
-    ;
-
 regex
     : regex_list
         { $$ = $1;
-          if ($$.match(/[\w\d]$/) && !$$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
+          if (!(yy.options && yy.options.flex) && $$.match(/[\w\d]$/) && !$$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               $$ += "\\b";
         }
     ;
@@ -153,7 +143,7 @@ regex_base
     | any_group_regex
     | '.'
         { $$ = '.'; }
-    | '^' 
+    | '^'
         { $$ = '^'; }
     | '$'
         { $$ = '$'; }
@@ -162,8 +152,7 @@ regex_base
     ;
 
 name_expansion
-    : '{' name '}'
-        { $$ = '{'+$2+'}'; }
+    : NAME_BRACE
     ;
 
 any_group_regex
@@ -184,4 +173,6 @@ range_regex
 string
     : STRING_LIT
         { $$ = yy.prepareString(yytext.substr(1, yytext.length-2)); }
+    | CHARACTER_LIT
     ;
+

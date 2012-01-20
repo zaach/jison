@@ -295,7 +295,7 @@ exports["test module generator"] = function() {
     var lexerSource = lexer_.generateModule();
     eval(lexerSource);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
@@ -348,7 +348,7 @@ exports["test commonjs module generator"] = function() {
     var exports = {};
     eval(lexerSource);
     exports.lexer.setInput(input);
-    
+
     assert.equal(exports.lex(), "X");
     assert.equal(exports.lex(), "X");
     assert.equal(exports.lex(), "Y");
@@ -361,7 +361,7 @@ exports["test DJ lexer"] = function() {
     "lex": {
         "macros": {
             "digit": "[0-9]",
-            "id": "[a-zA-Z][a-zA-Z0-9]*" 
+            "id": "[a-zA-Z][a-zA-Z0-9]*"
         },
 
         "rules": [
@@ -466,12 +466,12 @@ exports["test DJ lexer"] = function() {
 
 exports["test instantiation from string"] = function() {
     var dict = "%%\n'x' {return 'X';}\n'y' {return 'Y';}\n<<EOF>> {return 'EOF';}";
-        
+
     var input = "x";
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
 };
@@ -494,7 +494,7 @@ exports["test inclusive start conditions"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "T");
     assert.equal(lexer.lex(), "TY");
@@ -520,7 +520,7 @@ exports["test exclusive start conditions"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "Y");
@@ -545,7 +545,7 @@ exports["test pop start condition stack"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "Y");
@@ -570,7 +570,7 @@ exports["test star start condition"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "EOF");
@@ -593,7 +593,7 @@ exports["test start condition constants"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "E");
@@ -612,7 +612,7 @@ exports["test unicode encoding"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "CHECK");
     assert.equal(lexer.lex(), "PI");
     assert.equal(lexer.lex(), "Y");
@@ -629,7 +629,39 @@ exports["test unicode"] = function() {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    
+
     assert.equal(lexer.lex(), "PI");
     assert.equal(lexer.lex(), "Y");
+};
+
+exports["test longest match returns"] = function() {
+    var dict = {
+        rules: [
+            [".", "return 'DOT';" ],
+            ["cat", "return 'CAT';" ]
+        ],
+        options: {flex: true}
+    };
+    var input = "cat!";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "CAT");
+    assert.equal(lexer.lex(), "DOT");
+};
+
+exports["test case insensitivity"] = function() {
+    var dict = {
+        rules: [
+            ["cat", "return 'CAT';" ]
+        ],
+        options: {'case-insensitive': true}
+    };
+    var input = "Cat";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "CAT");
 };
