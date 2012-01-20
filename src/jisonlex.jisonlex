@@ -1,29 +1,45 @@
 
 NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 
-%s indented trail
-%x code start_condition options
+%s indented trail rules
+%x code start_condition options conditions
 
 %%
 
+<conditions>{NAME}      return 'NAME'
+<conditions>">"         this.popState(); return '>'
+<conditions>","         return ','
+<conditions>"*"         return '*'
+
+<rules>\n+              /* */
+<rules>\s+              this.begin('indented')
+<rules>"%%"             this.begin('code'); return '%%'
+<rules>[a-zA-Z0-9_]+    return 'CHARACTER_LIT'
+
 <options>{NAME}         yy.options[yytext] = true
 <options>\n+            this.begin('INITIAL')
+<options>\s+\n+         this.begin('INITIAL')
 <options>\s+            /* empty */
 
 <start_condition>{NAME}         return 'START_COND'
 <start_condition>\n+            this.begin('INITIAL')
+<start_condition>\s+\n+         this.begin('INITIAL')
 <start_condition>\s+            /* empty */
 
-<trail>.*\n+                    this.begin('INITIAL')
-<indented>"{"[^}]*"}"           {this.begin('trail'); yytext = yytext.substr(1, yytext.length-2);return 'ACTION';}
-"%{"(.|\n)*?"%}"                {this.begin('trail'); yytext = yytext.substr(2, yytext.length-4);return 'ACTION';}
-<indented>.+                    this.begin('INITIAL'); return 'ACTION'
+<trail>.*\n+                    this.begin('rules')
 
-\n+                             this.begin('INITIAL')
-\s+                             if (yy.ruleSection) this.begin('indented')
+<indented>"{"[^}]*"}"           this.begin('trail'); yytext = yytext.substr(1, yytext.length-2);return 'ACTION'
+
+<indented>"%{"(.|\n)*?"%}"      this.begin('trail'); yytext = yytext.substr(2, yytext.length-4);return 'ACTION'
+"%{"(.|\n)*?"%}"                yytext = yytext.substr(2, yytext.length-4); return 'ACTION'
+
+<indented>.+                    this.begin('rules'); return 'ACTION'
+
+\n+                             /* */
+\s+                             /* */
 {NAME}                          return 'NAME'
-\"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT';
-"'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT';
+\"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT'
+"'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT'
 "|"                             return '|'
 "["("\]"|[^\]])*"]"             return 'ANY_GROUP_REGEX'
 "(?:"                           return 'SPECIAL_GROUP'
@@ -37,25 +53,25 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 "^"                             return '^'
 ","                             return ','
 "<<EOF>>"                       return '$'
-"<"                             return '<'
-">"                             return '>'
+"<"                             this.begin('conditions'); return '<'
 "/!"                            return '/!'
 "/"                             return '/'
 "\\"([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|"c"[A-Z]|"x"[0-9A-F]{2}|"u"[a-fA-F0-9]{4}) return 'ESCAPE_CHAR'
 "\\".                           yytext = yytext.replace(/^\\/g,''); return 'ESCAPE_CHAR'
 "$"                             return '$'
 "."                             return '.'
-"%options"                      yy.options = {}; this.begin('options');
+"%options"                      yy.options = {}; this.begin('options')
 "%s"                            this.begin('start_condition');return 'START_INC'
 "%x"                            this.begin('start_condition');return 'START_EXC'
-"%%"                            if (yy.ruleSection) this.begin('code'); yy.ruleSection = true; return '%%'
+"%%"                            this.begin('rules'); return '%%'
 "{"\d+(","\s?\d+|",")?"}"       return 'RANGE_REGEX'
+"{"{NAME}"}"                    return 'NAME_BRACE'
 "{"                             return '{'
 "}"                             return '}'
 .                               /* ignore bad characters */
 <*><<EOF>>                      return 'EOF'
 
-<code>(.|\n)+                   return 'CODE';
+<code>(.|\n)+                   return 'CODE'
 
 %%
 

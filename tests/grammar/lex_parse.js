@@ -259,3 +259,15 @@ exports["test options"] = function () {
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
 }
+
+exports["test unquoted string rules"] = function () {
+    var lexgrammar = "%%\nfoo* return 1";
+    var expected = {
+        rules: [
+            ["foo*", "return 1"]
+        ]
+    };
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+}
+
