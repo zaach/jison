@@ -1,0 +1,29 @@
+Name: Jison Parser Php Port
+Written By: Robert Plummer, RobertLeePlummerJr@gmail.com
+Description: A jison wrapper that first processes a jison file and then injects a php template with the variables from a .js file.
+
+DIRECTIONS:
+1. After you've downloaded jison & node.js, navigate in command line interface to the folder that containes the ".jison" file that you want to process
+2. Process the ".jison" file like this "node /location_of_jison/ports/php/jison.js my_jison_file.jison"
+
+CONFIGURATION:
+Configuration is a bit obscure since we have both php and javascript in the same file, for the time being:
+*A line in your ".jison" file that has a "//js" artefact AFTER it is removed in the php parser.
+*A line in your ".jison" file that has a "//php" artefact BEFORE it is uncommented in the php parser.
+*A line in your ".jison" file that has no artefact, is left alone.
+*Comments in the ".jison" file that start with "//phpOption" can be used to configure the output of the php file.
+**//phpOption parserClass:Name_Of_Parser_Class will change the parser class from "Parser"
+**//phpOption lexerClass:Name_Of_Lexer_Class will change the parser class from "Lexer"
+**//phpOption fileName:Name_Of_File.php  will change the php filename
+
+EXAMPLE:
+contents
+ : content
+	{$$ = $1;} //<--this is left alone
+ | contents content
+	{
+		$$ =  Wiki.join($1, $2); //js <--this is stripped in the php parser, no action taken in the javascript parser
+		
+		//php $$ = JisonParser_Wiki_Handler::join($1, $2); <-- this is uncommented from the php parser, no action taken in the javascript parser
+	}
+ ;
