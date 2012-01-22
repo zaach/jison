@@ -23,6 +23,27 @@ function testParse(top, strings) {
     }
 }
 
+function testBadParse(top, strings) {
+    return function() {
+        var grammar = {
+            "lex": {
+                "rules": [
+                    ["\\s+", ''],
+                    ["[A-Za-z]+", "return 'word';"],
+                    [",", "return ',';"],
+                    ["$", "return 'EOF';"]
+                ]
+            },
+            "start": "top",
+            "ebnf": {"top": [top]}
+        }
+        strings = (typeof(strings) === 'string' ? [strings] : strings)
+        strings.forEach(function(string) {
+            assert["throws"](function () {new Parser(grammar).parse(string);})
+        });
+    }
+}
+
 var tests = {
     "test idempotent transform": function() {
         var first = {
@@ -34,6 +55,9 @@ var tests = {
     "test repeat (*) on empty string": testParse("word* EOF", ""),
     "test repeat (*) on single word": testParse("word* EOF", "oneword"),
     "test repeat (*) on multiple words": testParse("word* EOF", "multiple words"),
+    "test repeat (+) on empty string": testBadParse("word+ EOF", ""),
+    "test repeat (+) on single word": testParse("word+ EOF", "oneword"),
+    "test repeat (+) on multiple words": testParse("word+ EOF", "multiple words"),
     "test option (?) on empty string": testParse("word? EOF", ""),
     "test option (?) on single word": testParse("word? EOF", "oneword"),
     "test group () on simple phrase": testParse("(word word) EOF", "two words"),

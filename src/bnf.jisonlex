@@ -9,6 +9,7 @@
 <ebnf>")"                 return ')'
 <ebnf>"*"                 return '*'
 <ebnf>"?"                 return '?'
+<ebnf>"+"                 return '+'
 
 \s+                     /* skip whitespace */
 "//".*                  /* skip comment */

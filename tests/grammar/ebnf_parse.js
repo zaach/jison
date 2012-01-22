@@ -24,6 +24,8 @@ var tests = {
     "test repeat (*) on empty string": testParse("word* EOF", ""),
     "test repeat (*) on single word": testParse("word* EOF", "oneword"),
     "test repeat (*) on multiple words": testParse("word* EOF", "multiple words"),
+    "test repeat (+) on single word": testParse("word+ EOF", "oneword"),
+    "test repeat (+) on multiple words": testParse("word+ EOF", "multiple words"),
     "test option (?) on empty string": testParse("word? EOF", ""),
     "test option (?) on single word": testParse("word? EOF", "oneword"),
     "test group () on simple phrase": testParse("(word word) EOF", "two words"),
