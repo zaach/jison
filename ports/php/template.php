@@ -5,16 +5,16 @@ ini_set('display_errors', 1);
 
 class Parser
 {
-	var $yy;
 	var $symbols_ = array();
 	var $terminals_ = array();
 	var $productions_ = array();
 	var $table = array();
 	var $defaultActions = array();
-	
+	var $lexer;
 	var $debug = false;
 	
-	function __construct($lexer = null) {
+	function __construct($lexer = null)
+	{
 		$this->lexer = (!empty($lexer) ? $lexer : new Lexer);
 		
 		$accept = 'accept';
@@ -27,41 +27,49 @@ class Parser
 		$this->defaultActions = "<@@DEFAULT_ACTIONS@@>";
 	}
 	
-	function trace() {}
+	function trace()
+	{
+		
+	}
 	
-	function performAction(&$thisS, $yytext, $yyleng, $yylineno, $yy, $yystate, $S, $_S) {
-		$O = count($S) - 1;
+	function performAction(&$thisS, $yytext, $yyleng, $yylineno, $yystate, $S, $_S, $O)
+	{
 		"<@@PARSER_PERFORM_ACTION@@>";
 	}
 	
-	function popStack($n, $stack, $vstack, $lstack) {
+	function popStack($n, $stack, $vstack, $lstack)
+	{
 		array_slice($stack, 0, 2 * $n);
 		array_slice($vstack, 0, $n);
 		array_slice($lstack, 0, $n);
 	}
-	
-	function lex() {
+
+	function lex()
+	{
 		$token = $this->lexer->lex(); // $end = 1
-		$token = (empty($token) ? 1 : $token);
+		$token = (isset($token) ? $token : 1);
+		
 		// if token isn't its numeric value, convert
 		if (!is_numeric($token)) {
-			$token = (array_key_exists($token, $this->symbols_) ? $this->symbols_[$token] : $token);
+			if (isset($this->symbols_[$token])) {
+				$token = $this->symbols_[$token];
+			}
 		}
 		return $token;
 	}
 	
-	function parseError($str, $hash) {
+	function parseError($str, $hash)
+	{
 		throw new Exception($str);
 	}
 	
-	function parse($input) {
-		$self = $this;
+	function parse($input)
+	{
 		$stack = array(0);
 		$vstack = array(null);
 		// semantic value stack
 		$lstack = array();
 		//location stack
-		$table = $this->table;
 		$yytext = '';
 		$yylineno = 0;
 		$yyleng = 0;
@@ -71,13 +79,9 @@ class Parser
 		$TERROR = 2;
 		$EOF = 1;
 		
-		$this->yy = (object)array();
 		$this->lexer->setInput($input);
-		$this->lexer->yy = $this->yy;
-		$this->yy->lexer = $this->lexer;
-		if (empty($this->lexer->yylloc)) $this->lexer->yylloc = (object)array();
 		$yyloc = $this->lexer->yylloc;
-		array_push($lstack, $yyloc);
+		$lstack[] = $yyloc;
 		
 		if (!empty($this->yy->parseError) && function_exists($this->yy->parseError)) $this->parseError = $this->yy->parseError;
 
@@ -91,17 +95,15 @@ class Parser
 			// retreive state number from top of stack
 			$state = $stack[count($stack) - 1];
 			// use default actions if available
-			if (array_key_exists($state, $this->defaultActions) == true) {
+			if (isset($this->defaultActions[$state])) {
 				$action = $this->defaultActions[$state];		
 			} else {
 				if (empty($symbol)) {
 					$symbol = $this->lex();
 				}
 				// read action for current state and first input
-				if (array_key_exists($state, $table)) {
-					if (array_key_exists($symbol, $table[$state])) {
-						$action = $table[$state][$symbol];
-					}
+				if (isset($this->table[$state][$symbol])) {
+					$action = $this->table[$state][$symbol];
 				}
 			}
 			
@@ -109,9 +111,9 @@ class Parser
 				if (empty($recovering) == false) {
 					// Report error
 					$expected = array();
-					foreach($table[$state] as $p) {
+					foreach($this->table[$state] as $p) {
 						if ($p > 2) {
-							array_push($expected, implode($p));
+							$expected[] = implode($p);
 						}
 					}
 					
@@ -129,7 +131,7 @@ class Parser
 				// just recovered from another error
 				if ($recovering == 3) {
 					if ($symbol == $EOF) {
-						$this->parseError($errStr || 'Parsing halted.');
+						$this->parseError(isset($errStr) ? $errStr : 'Parsing halted.');
 					}
 		
 					// discard current lookahead and grab another
@@ -143,18 +145,16 @@ class Parser
 				// try to recover from error
 				while (true) {
 					// check for error recovery rule in this state
-					if (array_key_exists($TERROR, $table[$state])) {
+					if (isset($this->table[$state][$TERROR])) {
 						break 2;
 					}
 					if ($state == 0) {
-						$this->parseError($errStr || 'Parsing halted.');
+						$this->parseError(isset($errStr) ? $errStr : 'Parsing halted.');
 					}
 					//$this->popStack(1, $stack, $vstack);
 					
 					array_slice($stack, 0, 2 * 1);
 					array_slice($vstack, 0, 1);
-					
-					$lenn = count($stack) - 1;
 					
 					$state = $stack[count($stack) - 1];
 				}
@@ -162,10 +162,8 @@ class Parser
 				$preErrorSymbol = $symbol; // save the lookahead token
 				$symbol = $TERROR; // insert generic error symbol as new lookahead
 				$state = $stack[count($stack) - 1];
-				if (array_key_exists($state, $table)) {
-					if (array_key_exists($TERROR, $table[$state])) {
-						$action = $table[$state][$TERROR];
-					}
+				if (isset($this->table[$state][$TERROR])) {
+					$action = $this->table[$state][$TERROR];
 				}
 				$recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
 			}
@@ -179,10 +177,10 @@ class Parser
 				case 1:
 					// shift
 					//$this->shiftCount++;
-					array_push($stack, $symbol);
-					array_push($vstack, $this->lexer->yytext);
-					array_push($lstack, $this->lexer->yylloc);
-					array_push($stack, $action[1]); // push state
+					$stack[] = $symbol;
+					$vstack[] = $this->lexer->yytext;
+					$lstack[] = $this->lexer->yylloc;
+					$stack[] = $action[1]; // push state
 					$symbol = "";
 					if (empty($preErrorSymbol)) { // normal execution/no error
 						$yyleng = $this->lexer->yyleng;
@@ -200,16 +198,18 @@ class Parser
 					// reduce
 					$len = $this->productions_[$action[1]][1];
 					// perform semantic action
-					$yyval->S = $vstack[count($vstack) - $len];// default to $S = $1
+					$vstackCount = count($vstack);
+					$lstackCount = count($lstack);
+					$yyval->S = $vstack[$vstackCount - $len];// default to $S = $1
 					// default location, uses first token for firsts, last for lasts
-					$yyval->_S = (object)array(
-                        "first_line"=> $lstack[count($lstack) - ($len || 1)]->first_line,
-                        "last_line"=> $lstack[count($lstack) - 1]->last_line,
-                        "first_column"=> $lstack[count($lstack) - ($len || 1)]->first_column,
-                        "last_column"=> $lstack[count($lstack) - 1]->last_column
+					$yyval->_S = array(
+                        "first_line"=> 		$lstack[$lstackCount - (isset($len) ? $len : 1)]['first_line'],
+                        "last_line"=> 		$lstack[$lstackCount - 1]['last_line'],
+                        "first_column"=> 	$lstack[$lstackCount - (isset($len) ? $len : 1)]['first_column'],
+                        "last_column"=> 	$lstack[$lstackCount - 1]['last_column']
                     );
 					
-					$r = $this->performAction($yyval->S, $yytext, $yyleng, $yylineno, $this->yy, $action[1], $vstack, $lstack);
+					$r = $this->performAction($yyval->S, $yytext, $yyleng, $yylineno, $action[1], $vstack, $lstack, $vstackCount - 1);
 					
 					if (empty($r) == false) {
 						return $r;
@@ -222,13 +222,14 @@ class Parser
 						$lstack = array_slice($lstack, 0, -1 * $len);
 					}
 					
-					array_push($stack, $this->productions_[$action[1]][0]); // push nonterminal (reduce)
-					array_push($vstack, $yyval->S);
-					array_push($lstack, $yyval->_S);
+					$stack[] = $this->productions_[$action[1]][0]; // push nonterminal (reduce)
+					$vstack[] = $yyval->S;
+					$lstack[] = $yyval->_S;
 					
 					// goto new state = table[STATE][NONTERMINAL]
-					$newState = $table[$stack[count($stack) - 2]][$stack[count($stack) - 1]];
-					array_push($stack, $newState);
+					$stackCount = count($stack);
+					$newState = $this->table[$stack[$stackCount - 2]][$stack[$stackCount - 1]];
+					$stack[] = $newState;
 					break;
 		
 				case 3:
@@ -243,7 +244,8 @@ class Parser
 }
 
 /* Jison generated lexer */
-class Lexer {
+class Lexer
+{
 	var $EOF = 1;
 	var $S = "";
 	var $yy = "";
@@ -252,26 +254,30 @@ class Lexer {
 	var $yytext = "";
 	var $matched = "";
 	var $match = "";
+	var $yylloc = array();
 	var $conditionsStack = array();
 	var $rules = array();
 	var $conditions = array();
 	
-	function __construct() {
+	function __construct()
+	{
 		$this->rules = 		"<@@RULES@@>";
 		$this->conditions = "<@@CONDITIONS@@>";
 	}
 	
-	function parseError($str, $hash) {
+	function parseError($str, $hash)
+	{
 		throw new Exception($str);
 	}
 	
-	function setInput($input) {
+	function setInput($input)
+	{
 		$this->_input = $input;
 		$this->_more = $this->_less = $this->done = false;
 		$this->yylineno = $this->yyleng = 0;
 		$this->yytext = $this->matched = $this->match = '';
 		$this->conditionStack = array('INITIAL');
-		$this->yylloc = (object)array(
+		$this->yylloc = array(
 			"first_line"=> 1,
 			"first_column"=> 0,
 			"last_line"=> 1,
@@ -280,34 +286,39 @@ class Lexer {
 		return $this;
 	}
 	
-	function input() {
+	function input()
+	{
 		$ch = $this->_input[0];
-		$this->yytext += $ch;
+		$this->yytext .= $ch;
 		$this->yyleng++;
-		$this->match += $ch;
-		$this->matched += $ch;
-		$lines = preg_match("\n", $ch);
+		$this->match .= $ch;
+		$this->matched .= $ch;
+		$lines = preg_match("/\n/", $ch);
 		if (count($lines) > 0) $this->yylineno++;
 		array_slice($this->_input, 1);
 		return $ch;
 	}
 	
-	function unput($ch) {
-		$this->_input = $ch + $this->_input;
+	function unput($ch)
+	{
+		$this->_input = $ch . $this->_input;
 		return $this;
 	}
 	
-	function more() {
+	function more()
+	{
 		$this->_more = true;
 		return $this;
 	}
 	
-	function pastInput() {
+	function pastInput()
+	{
 		$past = substr($this->matched, 0, count($this->matched) - count($this->match));
 		return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
 	}
 	
-	function upcomingInput() {
+	function upcomingInput()
+	{
 		$next = $this->match;
 		if (strlen($next) < 20) {
 			$next .= substr($this->_input, 0, 20 - strlen($next));
@@ -315,13 +326,15 @@ class Lexer {
 		return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
 	}
 	
-	function showPosition() {
+	function showPosition()
+	{
 		$pre = $this->pastInput();
 		$c = implode(array(strlen($pre) + 1), "-");
 		return $pre . $this->upcomingInput() . "\n" . $c . "^";
 	}
 	
-	function next() {
+	function next()
+	{
 		if ($this->done == true) {
 			return $this->EOF;
 		}
@@ -337,14 +350,14 @@ class Lexer {
 		$rules = $this->_currentRules();
 		for ($i = 0; $i < count($rules); $i++) {
 			preg_match($this->rules[$rules[$i]], $this->_input, $match);
-			if ( isset($match) && isset($match[0]) ) {
-				preg_match_all("/\n/", $match[0], $lines, PREG_PATTERN_ORDER);
+			if ( isset($match[0]) ) {
+				preg_match_all("/\n.*/", $match[0], $lines, PREG_PATTERN_ORDER);
 				if (count($lines) > 1) $this->yylineno += count($lines);
-				$this->yylloc = (object)array(
-					"first_line"=> $this->yylloc->last_line,
+				$this->yylloc = array(
+					"first_line"=> $this->yylloc['last_line'],
 					"last_line"=> $this->yylineno + 1,
-					"first_column"=> $this->yylloc->last_column,
-					"last_column"=> $lines ? count($lines[count($lines) - 1]) - 1 : $this->yylloc->last_column + count($match[0])
+					"first_column"=> $this->yylloc['last_column'],
+					"last_column"=> $lines ? count($lines[count($lines) - 1]) - 1 : $this->yylloc['last_column'] + count($match[0])
 				);
 				$this->yytext .= $match[0];
 				$this->match .= $match[0];
@@ -374,7 +387,8 @@ class Lexer {
 		}
 	}
 	
-	function lex() {
+	function lex()
+	{
 		$r = $this->next();
 		if (empty($r) == false) {
 			return $r;
@@ -383,15 +397,18 @@ class Lexer {
 		}
 	}
 	
-	function begin($condition) {
-		array_push($this->conditionStack, $condition);
+	function begin($condition)
+	{
+		$this->conditionStack[] = $condition;
 	}
 	
-	function popState() {
+	function popState()
+	{
 		return array_pop($this->conditionStack);
 	}
 	
-	function _currentRules() {
+	function _currentRules()
+	{
 		return $this->conditions[
 			$this->conditionStack[
 				count($this->conditionStack) - 1
@@ -399,7 +416,8 @@ class Lexer {
 		]['rules'];
 	}
 	
-	function performAction(&$yy, $yy_, $avoiding_name_collisions, $YY_START = null) {
+	function performAction(&$yy, $yy_, $avoiding_name_collisions, $YY_START = null)
+	{
 		$YYSTATE = $YY_START;
 		"<@@LEXER_PERFORM_ACTION@@>";
 	}
