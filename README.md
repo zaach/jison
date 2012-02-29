@@ -81,7 +81,7 @@ For more information on creating grammars and using the generated parsers, read 
 
 How to contribute
 -----------------
-Fork the integration branch, make your changes, run tests and/or add tests then send a pull request.
+Fork, make your changes, run tests and/or add tests then send a pull request.
 
 Run tests with:
 
