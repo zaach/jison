@@ -2,7 +2,37 @@ var Jison = require("../setup").Jison,
     Lexer = require("../setup").Lexer,
     assert = require("assert");
 
+exports["test amd module generator"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        tokens: "x y",
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'A x',
+                   'A y',
+                   ''      ]
+        }
+    };
 
+    var input = "xyxxxy";
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateAMDModule();
+    var parser = null,
+        define = function(deps, callback){
+            // temporary AMD-style define function, for testing.
+            parser = callback();
+        };
+    eval(parserSource);
+
+    assert.ok(parser.parse(input));
+};
 
 exports["test commonjs module generator"] = function () {
     var lexData = {
