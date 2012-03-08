@@ -665,3 +665,19 @@ exports["test case insensitivity"] = function() {
 
     assert.equal(lexer.lex(), "CAT");
 };
+
+exports["test less"] = function() {
+    var dict = {
+        rules: [
+            ["cat", "this.less(2); return 'CAT';" ],
+            ["t", "return 'T';" ]
+        ],
+    };
+    var input = "cat";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "CAT");
+    assert.equal(lexer.lex(), "T");
+};
