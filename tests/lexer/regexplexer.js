@@ -80,6 +80,31 @@ exports["test macro"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test macro precedence"] = function() {
+    var dict = {
+        macros: {
+            "hex": "[0-9]|[a-f]"
+        },
+        rules: [
+           ["-", "return '-';" ],
+           ["{hex}+", "return 'HEX';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "129-abfe-42dc-ea12";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "EOF");
+};
+
 exports["test nested macros"] = function () {
     var dict = {
         macros: {
@@ -106,6 +131,32 @@ exports["test nested macros"] = function () {
     assert.equal(lexer.lex(), "NN");
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "NNN");
+    assert.equal(lexer.lex(), "EOF");
+};
+
+exports["test nested macro precedence"] = function() {
+    var dict = {
+        macros: {
+            "hex": "[0-9]|[a-f]",
+            "col": "#{hex}+"
+        },
+        rules: [
+           ["-", "return '-';" ],
+           ["{col}", "return 'HEX';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "#129-#abfe-#42dc-#ea12";
+
+    var lexer = new RegExpLexer(dict, input);
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
+    assert.equal(lexer.lex(), "-");
+    assert.equal(lexer.lex(), "HEX");
     assert.equal(lexer.lex(), "EOF");
 };
 
