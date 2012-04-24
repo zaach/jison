@@ -732,3 +732,25 @@ exports["test less"] = function() {
     assert.equal(lexer.lex(), "CAT");
     assert.equal(lexer.lex(), "T");
 };
+
+exports["test EOF unput"] = function() {
+    var dict = {
+        startConditions: {
+            "UN": 1,
+        },
+        rules: [
+            ["U", "this.begin('UN');return 'U';" ],
+            [["UN"],"$", "this.unput('X')" ],
+            [["UN"],"X", "this.popState();return 'X';" ],
+            ["$", "return 'EOF'" ]
+        ]
+    };
+    var input = "U";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "U");
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "EOF");
+};
