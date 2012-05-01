@@ -9,6 +9,8 @@ function puts(error, stdout, stderr) {
 
 console.log("Executing: " + "jison " + process.argv[2]);
 
+global.jQuery = {}; //this is to ensure that the exec command doesn't fail;
+
 exec("jison " + process.argv[2], function(error) {
 	if (error) {
 		console.log(error);
@@ -39,7 +41,8 @@ exec("jison " + process.argv[2], function(error) {
 	var conditions = Parser.parser.lexer.conditions;
 	var parserPerformAction = Parser.parser.performAction.toString();
 	var lexerPerformAction = Parser.parser.lexer.performAction.toString();
-
+	var options = Parser.parser.lexer.options;
+console.log(options);
 	function jsFnBody(str) {
 		str = str.split('{');
 		str.shift();
@@ -122,6 +125,8 @@ exec("jison " + process.argv[2], function(error) {
 
 		.replace('"<@@RULES@@>"', 				'array(' + rules + ')')
 		.replace('"<@@CONDITIONS@@>"',			 "json_decode('" + JSON.stringify(conditions) + "', true)")
+		
+		.replace('"<@@OPTIONS@@>"',			 "json_decode('" + JSON.stringify(options) + "', true)")
 
 		.replace('"<@@PARSER_PERFORM_ACTION@@>";', jsPerformActionToPhp(parserPerformAction))
 		.replace('"<@@LEXER_PERFORM_ACTION@@>";', jsPerformActionToPhp(lexerPerformAction));
