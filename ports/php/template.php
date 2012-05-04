@@ -30,7 +30,7 @@ class Parser
 		$this->rules = 			"<@@RULES@@>";
 		$this->conditions = 	"<@@CONDITIONS@@>";
 		
-		$this->options =	"<@@OPTIONS@@>";
+		$this->options =		"<@@OPTIONS@@>";
 	}
 	
 	function trace()
@@ -73,13 +73,17 @@ class Parser
 		$lstackCount = 1;
 		//location stack
 
+		$shifts = 0;
+		$reductions = 0;
 		$recovering = 0;
 		$TERROR = 2;
 		
 		$this->setInput($input);
 		
 		$yyval = (object)array();
-		
+		$yyloc = $this->yylloc;
+		$lstack[] = $yyloc;
+
 		while (true) {
 			// retreive state number from top of stack
 			$state = $stack[$stackCount - 1];
@@ -141,7 +145,8 @@ class Parser
 					$stackCount -= 2;
 					
 					array_slice($vstack, 0, 1);
-					
+					$vstackCount -= 1;
+
 					$state = $stack[$stackCount - 1];
 				}
 	
@@ -177,6 +182,10 @@ class Parser
 
 					$symbol = "";
 					if (empty($preErrorSymbol)) { // normal execution/no error
+						$yyleng = $this->yyleng;
+						$yytext = $this->yytext;
+						$yylineno = $this->yylineno;
+						$yyloc = $this->yylloc;
 						if ($recovering > 0) $recovering--;
 					} else { // error just occurred, resume old lookahead f/ before error
 						$symbol = $preErrorSymbol;
@@ -197,7 +206,7 @@ class Parser
                         "last_column"=> 	$lstack[$lstackCount - 1]['last_column']
                     );
 					
-					$r = $this->parser_performAction($yyval->S, $this->yytext, $this->yyleng, $this->yylineno, $action[1], $vstack, $lstack, $vstackCount - 1);
+					$r = $this->parser_performAction($yyval->S, $yytext, $yyleng, $yylineno, $action[1], $vstack, $lstack, $vstackCount - 1);
 					
 					if (empty($r) == false) {
 						return $r;
