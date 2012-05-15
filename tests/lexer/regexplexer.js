@@ -755,6 +755,22 @@ exports["test EOF unput"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
+exports["test flex mode default rule"] = function() {
+    var dict = {
+        rules: [
+            ["x", "return 'X';" ]
+        ],
+        options: {flex: true}
+    };
+    var input = "xyx";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.equal(lexer.lex(), "X");
+};
+
 exports["test pipe precedence"] = function() {
     var dict = {
         rules: [
