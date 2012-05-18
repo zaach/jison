@@ -1,0 +1,144 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+  	<title>Jison / </title>
+  	<link rel="stylesheet" href="/jison/assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+  </head>
+  <body>
+  	<div id="header">
+  		<h1><a href="/jison/">Jison</a></h1>
+  	</div>
+  	<ul id="nav">
+  	  <li><a href="/jison/docs/">docs</a></li>
+  	  <li><a href="/jison/demos/">demos</a></li>
+  	  <li><a href="/jison/try/">try</a></li>
+  	  <li><a href="/jison/docs/#installation">install</a></li>
+  	  <li><a href="/jison/community/">community</a></li>
+    </ul>
+    <div id="content">
+      
+
+    <link href="/jison/assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
+
+  <div id="try">
+    <h1>Try Jison Online</h1>
+    <p>Build, test, and download your parser from the web!</p>
+    <h2>Describe Your Language</h2>
+
+    <p>
+    Load an example:
+    <select id="examples">
+      <option value="calculator.jison" selected="true">Calculator</option>
+      <option value="lambdacalc.jison">Lambda Calculus</option>
+      <!--<option value="ansic.jison">ANSI C</option>-->
+    </select>
+    </p>
+
+    <textarea id="grammar" rows="20" cols="80">
+/* description: Parses end executes mathematical expressions. */
+
+/* lexical grammar */
+%lex
+%%
+
+\s+                   /* skip whitespace */
+[0-9]+("."[0-9]+)?\b  return 'NUMBER'
+"*"                   return '*'
+"/"                   return '/'
+"-"                   return '-'
+"+"                   return '+'
+"^"                   return '^'
+"("                   return '('
+")"                   return ')'
+"PI"                  return 'PI'
+"E"                   return 'E'
+<<EOF>>               return 'EOF'
+.                     return 'INVALID'
+
+/lex
+
+/* operator associations and precedence */
+
+%left '+' '-'
+%left '*' '/'
+%left '^'
+%left UMINUS
+
+%start expressions
+
+%% /* language grammar */
+
+expressions
+    : e EOF
+        {return $1;}
+    ;
+
+e
+    : e '+' e
+        {$$ = $1+$3;}
+    | e '-' e
+        {$$ = $1-$3;}
+    | e '*' e
+        {$$ = $1*$3;}
+    | e '/' e
+        {$$ = $1/$3;}
+    | e '^' e
+        {$$ = Math.pow($1, $3);}
+    | '-' e %prec UMINUS
+        {$$ = -$2;}
+    | '(' e ')'
+        {$$ = $2;}
+    | NUMBER
+        {$$ = Number(yytext);}
+    | E
+        {$$ = Math.E;}
+    | PI
+        {$$ = Math.PI;}
+    ;
+</textarea>
+    <p>
+      <button id="process_btn">Generate Parser</button>
+      <button id="download_btn" disabled>Download</button>
+    </p>
+    <pre id="gen_out"></pre>
+
+    <div id="nonterminals"></div>
+    <div id="productions"></div>
+    <div id="table"></div>
+
+
+    <div id="parsing">
+      <h2>Test Your Parser</h2>
+      <textarea id="source" rows="8" cols="80">5*PI^2</textarea><br/>
+      <button id="parse_btn">Parse</button>
+    </div>
+    <pre id="out"></pre>
+
+    <div id="loading"></div>
+  </div>
+
+    <script src="/jison/assets/js/webtoolkit.js"></script>
+    <script src="/jison/assets/js/jquery.js"></script>
+    <script src="/jison/assets/js/json2.js"></script>
+    <script src="/jison/assets/js/es5.js"></script>
+    <script src="/jison/assets/js/jison.js"></script>
+    <script src="/jison/assets/js/try.js"></script>
+
+    </div>
+  	<p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2010. MIT Licensed.</p>
+  	
+    <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-3555129-4']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+  </body>
+</html>
