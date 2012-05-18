@@ -2,9 +2,13 @@
 NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 
 %s indented trail rules
-%x code start_condition options conditions
+%x code start_condition options conditions action
 
 %%
+
+<action>[^{}]+          return 'ACTION_BODY'
+<action>"{"             yy.depth++; return '{'
+<action>"}"             yy.depth == 0 ? this.begin('trail') : yy.depth--; return '}'
 
 <conditions>{NAME}      return 'NAME'
 <conditions>">"         this.popState(); return '>'
@@ -28,11 +32,9 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 
 <trail>.*\n+                    this.begin('rules')
 
-<indented>"{"[^}]*"}"           this.begin('trail'); yytext = yytext.substr(1, yytext.length-2);return 'ACTION'
-
+<indented>"{"                   yy.depth = 0; this.begin('action'); return '{'
 <indented>"%{"(.|\n)*?"%}"      this.begin('trail'); yytext = yytext.substr(2, yytext.length-4);return 'ACTION'
 "%{"(.|\n)*?"%}"                yytext = yytext.substr(2, yytext.length-4); return 'ACTION'
-
 <indented>.+                    this.begin('rules'); return 'ACTION'
 
 \n+                             /* */
