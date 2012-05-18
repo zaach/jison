@@ -272,3 +272,30 @@ exports["test lexer module include code"] = function () {
 
     assert.equal(parser.parse('y'), 1, "semantic action");
 };
+
+exports["test generated parser instance creation"] = function () {
+    var grammar = {
+        lex: {
+            rules: [
+               ["y", "return 'y'"]
+            ]
+        },
+        bnf: {
+            "E"   :[ ["E y", "return $2;"],
+                     "" ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar);
+
+    var parserSource = gen.generateModule();
+    eval(parserSource);
+
+    var p = new parser.Parser;
+
+    assert.equal(p.parse('y'), 'y', "semantic action");
+
+    parser.blah = true;
+
+    assert.notEqual(parser.blah, p.blah, "shouldn't inherit props");
+};
