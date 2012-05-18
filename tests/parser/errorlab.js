@@ -124,8 +124,7 @@ exports["test correct AST after error recovery"] = function() {
            ["0", "return 'ZERO';"],
            ["\\+", "return 'PLUS';"],
            [";", "return ';';"],
-           ["$", "return 'EOF';"],
-           [".", "return 'INVALID';"]
+           ["$", "return 'EOF';"]
         ]
     };
     var grammar = {
@@ -139,7 +138,7 @@ exports["test correct AST after error recovery"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammar);
+    var parser = new Jison.Parser(grammar, {debug: true});
     parser.lexer = new Lexer(lexData2);
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
