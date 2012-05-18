@@ -386,3 +386,33 @@ exports["test lexer with no location support"] = function () {
     var loc = parser.parse('xx\nxy');
 };
 
+exports["test intance creation"] = function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                  ['B', 'return @B'],
+            ''      ],
+            "B" :[ 'y' ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = {
+      toks: ['x','x','x','y'],
+      lex: function () {
+        return this.toks.shift();
+      },
+      setInput: function (){}
+    };
+    var parser2 = new parser.Parser();
+    parser2.lexer = parser.lexer;
+    parser2.parse('xx\nxy');
+
+    parser.blah = true;
+
+    assert.notEqual(parser.blah, parser2.blah, "should not inherit");
+};
+
