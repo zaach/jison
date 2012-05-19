@@ -62,6 +62,7 @@ exec("jison " + process.argv[2], function(error) {
 		str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
 		str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
 		str = str.replace(new RegExp('yystate', 'g'), '$yystate');
+		str = str.replace(new RegExp('yytext', 'g'), '$yytext');
 		str = str.replace(new RegExp('[.]yytext', 'g'), '->yytext');
 		str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
 		str = str.replace(new RegExp('[$]accept', 'g'), 'accept');

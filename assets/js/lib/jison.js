@@ -2,16 +2,20 @@
 // Zachary Carter <zach@carter.name>
 // MIT X Licensed
 
-var typal = require('./jison/util/typal').typal,
-    Set = require('./jison/util/set').Set,
-    RegExpLexer = require('./jison/lexer').RegExpLexer;
+if (typeof exports === 'undefined') {
+    exports = {};
+} else if (typeof require !== 'undefined') {
+    // assume we're in commonjs land
+    //var system = require("system");
+    var typal = require('./jison/util/typal').typal;
+    var Set = require('./jison/util/set').Set;
+    var RegExpLexer = require('./jison/lexer').RegExpLexer;
+}
 
 var Jison = exports.Jison = exports;
 
 // detect print
-if (typeof console !== 'undefined' && console.log) {
-    Jison.print = console.log;
-} else if (typeof puts !== 'undefined') {
+if (typeof puts !== 'undefined') {
     Jison.print = function print () { puts([].join.call(arguments, ' ')); };
 } else if (typeof print !== 'undefined') {
     Jison.print = print;
@@ -72,7 +76,7 @@ var generator = typal.beget();
 
 generator.constructor = function Jison_Generator (grammar, opt) {
     if (typeof grammar === 'string') {
-        grammar = require("./jison/bnf").parse(grammar);
+        grammar = require("jison/bnf").parse(grammar);
     }
 
     var options = typal.mix.call({}, grammar.options, opt);
@@ -91,7 +95,6 @@ generator.constructor = function Jison_Generator (grammar, opt) {
         }
         this.actionInclude = grammar.actionInclude;
     }
-    this.moduleInclude = grammar.moduleInclude||'';
 
     this.DEBUG = options.debug || false;
     if (this.DEBUG) this.mix(generatorDebug); // mixin debug methods
@@ -109,10 +112,6 @@ generator.processGrammar = function processGrammarDef (grammar) {
         nonterminals = this.nonterminals = {},
         productions = this.productions,
         self = this;
-
-    if (!grammar.bnf && grammar.ebnf) {
-        bnf = grammar.bnf = require("./jison/ebnf").transform(grammar.ebnf);
-    }
 
     if (tokens) {
         if (typeof tokens === 'string') {
@@ -179,12 +178,8 @@ function processOperators (ops) {
 
 
 generator.buildProductions = function buildProductions(bnf, productions, nonterminals, symbols, operators) {
-    var actions = [
-      this.actionInclude || '',
-      'var $0 = $$.length - 1;',
-      'switch (yystate) {'
-    ];
-    var prods, symbol;
+    var actions = [this.actionInclude || "", "var $$ = arguments[5],$0=arguments[5].length;",'switch(arguments[4]) {'],
+        prods, symbol;
     var productions_ = [0];
     var symbolId = 1;
     var symbols_ = {};
@@ -218,7 +213,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             if (handle.constructor === Array) {
                 if (typeof handle[0] === 'string')
                     rhs = handle[0].trim().split(' ');
-                else
+                else 
                     rhs = handle[0].slice(0);
 
                 for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
@@ -230,7 +225,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     var action = 'case '+(productions.length+1)+':'+handle[1]+'\nbreak;';
 
                     // replace named semantic values ($nonterminal)
-                    if (action.match(/[$@][a-zA-Z][a-zA-Z0-9_]*/)) {
+                    if (action.match(/\$[a-zA-Z][a-zA-Z0-9_]*/)) {
                         var count = {},
                             names = {};
                         for (i=0;i<rhs.length;i++) {
@@ -244,17 +239,10 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                         }
                         action = action.replace(/\$([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
                                 return names[pl] ? '$'+names[pl] : pl;
-                            }).replace(/@([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
-                                return names[pl] ? '@'+names[pl] : pl;
-                            });
-                    }
-                    action = action.replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, "this._$")
-                        .replace(/\$(\d+)/g, function (_, n) {
-                            return "$$[$0" + (n - rhs.length || '') + "]";
-                        })
-                        .replace(/@(\d+)/g, function (_, n) {
-                            return "_$[$0" + (n - rhs.length || '') + "]";
                         });
+                    }
+                    action = action.replace(/\$(?:0|\$)/g, "this.$")
+                        .replace(/\$(\d+)/g, "$$$[\$0-"+rhs.length+"+$1-1]");
                     actions.push(action);
 
                     r = new Production(symbol, rhs, productions.length+1);
@@ -307,23 +295,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     this.productions_ = productions_;
     actions.push('}');
-    this.performAction = Function("yytext,yyleng,yylineno,yy,yystate,$$,_$", actions.join("\n"));
+    this.performAction = Function("yytext","yyleng","yylineno","yy", actions.join("\n"));
 };
 
 generator.createParser = function createParser () {
-    throw new Error('Calling abstract method.');
+    throw 'Calling abstract method.';
 };
 
 // noop. implemented in debug mixin
 generator.trace = function trace () { };
 
 generator.warn = function warn () {
-    var args = Array.prototype.slice.call(arguments,0);
-    Jison.print.call(null,args.join(""));
+    Jison.print.apply(null,arguments);
 };
 
 generator.error = function error (msg) {
-    throw new Error(msg);
+    throw msg;
 };
 
 // Generator debug mixin
@@ -380,7 +367,7 @@ lookaheadMixin.followSets = function followSets () {
             for (var i=0,t;t=production.handle[i];++i) {
                 if (!nonterminals[t]) continue;
 
-                // for Simple LALR algorithm, self.go_ checks if
+                // for Simple LALR algorithm, self.go_ checks if 
                 if (ctx)
                     q = self.go_(production.symbol, production.handle.slice(0, i));
                 var bool = !ctx || q === parseInt(self.nterms_[t]);
@@ -552,14 +539,13 @@ lrGeneratorMixin.buildTable = function buildTable () {
 
     this.states = this.canonicalCollection();
     this.table = this.parseTable(this.states);
-    this.defaultActions = findDefaults(this.table);
 };
 
 lrGeneratorMixin.Item = typal.construct({
     constructor: function Item(production, dot, f, predecessor) {
         this.production = production;
         this.dotPosition = dot || 0;
-        this.follows = f || [];
+        this.follows = f || []; 
         this.predecessor = predecessor;
         this.id = parseInt(production.id+'a'+this.dotPosition, 36);
         this.markedSymbol = this.production.handle[this.dotPosition];
@@ -570,16 +556,12 @@ lrGeneratorMixin.Item = typal.construct({
     eq: function (e) {
         return e.id === this.id;
     },
-    handleToString: function () {
-        var handle = this.production.handle.slice(0);
-        handle[this.dotPosition] = '.'+(handle[this.dotPosition]||'');
-        return handle.join(' ');
-    },
     toString: function () {
         var temp = this.production.handle.slice(0);
         temp[this.dotPosition] = '.'+(temp[this.dotPosition]||'');
-        return this.production.symbol+" -> "+temp.join(' ')
-            +(this.follows.length === 0 ? "" : " #lookaheads= "+this.follows.join(' '));
+        return '['+this.production.symbol+" -> "+temp.join(' ')
+            +(this.follows.length === 0 ? "" : ", "+this.follows.join('/'))
+            +']';
     }
 });
 
@@ -600,8 +582,8 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
         for (var i=a.length-1;i >=0;i--) {
             this.hash_[a[i].id] = true; //i;
         }
-        this._items.push.apply(this._items, a);
-        return this;
+        this._items.push.apply(this._items, a); 
+        return this; 
     },
     push: function (item) {
         this.hash_[item.id] = true;
@@ -673,7 +655,7 @@ lrGeneratorMixin.gotoOperation = function gotoOperation (itemSet, symbol) {
 /* Create unique set of item sets
  * */
 lrGeneratorMixin.canonicalCollection = function canonicalCollection () {
-    var item1 = new this.Item(this.productions[0], 0, [this.EOF]);
+    var item1 = new this.Item(this.productions[0], 0, new Set(this.EOF));
     var firstState = this.closureOperation(new this.ItemSet(item1)),
         states = new Set(firstState),
         marked = 0,
@@ -706,7 +688,7 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
         if (i === -1 || typeof i === 'undefined') {
             states.has[gv] = states.size();
             itemSet.edges[symbol] = states.size(); // store goto transition for table
-            states.push(g);
+            states.push(g); 
             g.predecessors[symbol] = [stateNum];
         } else {
             itemSet.edges[symbol] = i; // store goto transition for table
@@ -717,11 +699,9 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
 
 var NONASSOC = 0;
 lrGeneratorMixin.parseTable = function parseTable (itemSets) {
-    var NONASSOC = 0;
     var states = [],
         nonterminals = this.nonterminals,
         operators = this.operators,
-        conflictedStates = {}, // array of [state, token] tuples
         self = this,
         s = 1, // shift
         r = 2, // reduce
@@ -741,7 +721,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                     if (nonterminals[stackSymbol]) {
                         // store state to go to after a reduce
                         //self.trace(k, stackSymbol, 'g'+gotoState);
-                        state[self.symbols_[stackSymbol]] = gotoState;
+                        state[self.symbols_[stackSymbol]] = gotoState; 
                     } else {
                         //self.trace(k, stackSymbol, 's'+gotoState);
                         state[self.symbols_[stackSymbol]] = [s,gotoState];
@@ -754,7 +734,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
         itemSet.forEach(function (item, j) {
             if (item.markedSymbol == self.EOF) {
                 // accept
-                state[self.symbols_[self.EOF]] = [a];
+                state[self.symbols_[self.EOF]] = [a]; 
                 //self.trace(k, self.EOF, state[self.EOF]);
             }
         });
@@ -777,8 +757,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                     if (sol.bydefault) {
                         self.conflicts++;
                         if (!self.DEBUG) {
-                            self.warn('Conflict in grammar: multiple actions possible when lookahead token is ',stackSymbol,' in state ',k, "\n- ", printAction(sol.r, self), "\n- ", printAction(sol.s, self));
-                            conflictedStates[k] = true;
+                            self.warn('Conflict in grammar (state:',k, ', token:',stackSymbol, ")\n  ", printAction(sol.r, self), "\n  ", printAction(sol.s, self));
                         }
                         if (self.options.noDefaultResolve) {
                             if (!(action[0] instanceof Array))
@@ -801,34 +780,8 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
 
     });
 
-    if (!self.DEBUG && self.conflicts > 0) {
-        self.warn("\nStates with conflicts:");
-        each(conflictedStates, function (val, state) {
-            self.warn('State '+state);
-            self.warn('  ',itemSets.item(state).join("\n  "));
-        });
-    }
-
     return states;
 };
-
-// find states with only one action, a reduction
-function findDefaults (states) {
-    var defaults = {};
-    states.forEach(function (state, k) {
-        var i = 0;
-        for (var act in state) {
-             if ({}.hasOwnProperty.call(state, act)) i++;
-        }
-
-        if (i === 1 && state[act][0] === 2) {
-        // only one action in state and it's a reduction
-            defaults[k] = state[act];
-        }
-    });
-
-    return defaults;
-}
 
 // resolves shift-reduce and reduce-reduce conflicts
 function resolveConflict (production, op, reduce, shift) {
@@ -840,7 +793,7 @@ function resolveConflict (production, op, reduce, shift) {
     if (shift[0] === r) {
         sln.msg = "Resolve R/R conflict (use first production declared in grammar.)";
         sln.action = shift[1] < reduce[1] ? shift : reduce;
-        if (shift[1] !== reduce[1]) sln.bydefault = true;
+        sln.bydefault = true;
         return sln;
     }
 
@@ -873,17 +826,9 @@ function resolveConflict (production, op, reduce, shift) {
 lrGeneratorMixin.generate = function parser_generate (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var code = "";
-
-    // check for illegal identifier
-    if (!opt.moduleName || !opt.moduleName.match(/^[A-Za-z_$][A-Za-z0-9_$]*$/)) {
-        opt.moduleName = "parser";
-    }
     switch (opt.moduleType) {
         case "js":
             code = this.generateModule(opt);
-        break;
-        case "amd":
-            code = this.generateAMDModule(opt);
         break;
         case "commonjs":
         default:
@@ -893,30 +838,16 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
     return code;
 };
 
-lrGeneratorMixin.generateAMDModule = function generateAMDModule(opt){
-    opt = typal.mix.call({}, this.options, opt);
-    var out = 'define([], function(){'
-        + '\nvar parser = '+ this.generateModule_(opt)
-        + (this.lexer && this.lexer.generateModule ?
-          '\n' + this.lexer.generateModule() +
-          '\nparser.lexer = lexer;' : '')
-        + '\nreturn parser;'
-        + '\n});'
-    return out;
-};
-
 lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
-    var out = this.generateModule(opt)
-        + "\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
-        + "\nexports.parser = "+moduleName+";"
-        + "\nexports.Parser = "+moduleName+".Parser;"
-        + "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); }"
-        + "\nexports.main = "+ String(opt.moduleMain || commonjsMain)
-        + "\nif (typeof module !== 'undefined' && require.main === module) {\n"
-        + "  exports.main(typeof process !== 'undefined' ? process.argv.slice(1) : require(\"system\").args);\n}"
-        + "\n}"
+    var out = this.generateModule(opt);
+    out += "\nif (typeof require !== 'undefined') {";
+    out += "\nexports.parser = "+moduleName+";";
+    out += "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); }";
+    out += "\nexports.main = "+ String(opt.moduleMain || commonjsMain);
+    out += "\nif (require.main === module) {\n\texports.main(require(\"system\").args);\n}";
+    out += "\n}";
 
     return out;
 };
@@ -927,51 +858,27 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
     var out = "/* Jison generated parser */\n";
     out += (moduleName.match(/\./) ? moduleName : "var "+moduleName)+" = (function(){";
     out += "\nvar parser = "+this.generateModule_();
-    out += "\n"+this.moduleInclude;
     if (this.lexer && this.lexer.generateModule) {
         out += this.lexer.generateModule();
         out += "\nparser.lexer = lexer;";
     }
-    out += "function Parser () { this.yy = {}; }"
-        + "Parser.prototype = parser;"
-        + "parser.Parser = Parser;"
-        + "\nreturn new Parser;\n})();";
+    out += "\nreturn parser;\n})();";
 
     return out;
 };
 
-// returns parse function without error recovery code
-function removeErrorRecovery (fn) {
-    var parseFn = String(fn);
-    try {
-        var JSONSelect = require('JSONSelect');
-        var Reflect = require('reflect');
-        var ast = Reflect.parse(parseFn);
-
-        var labeled = JSONSelect.match(':has(:root > .label > .name:val("_handle_error"))', ast);
-        labeled[0].body.consequent.body = [labeled[0].body.consequent.body[0]];
-
-        return Reflect.stringify(ast).replace(/_handle_error:\s?/,"").replace(/\\\\n/g,"\\n");
-    } catch (e) {
-        return parseFn;
-    }
-}
-
 lrGeneratorMixin.generateModule_ = function generateModule_ () {
-    var parseFn = (this.hasErrorRecovery ? String : removeErrorRecovery)(parser.parse);
-
     var out = "{";
     out += [
         "trace: " + String(this.trace || parser.trace),
         "yy: {}",
         "symbols_: " + JSON.stringify(this.symbols_),
-        "terminals_: " + JSON.stringify(this.terminals_).replace(/"([0-9]+)":/g,"$1:"),
+        "terminals_: " + JSON.stringify(this.terminals_),
         "productions_: " + JSON.stringify(this.productions_),
         "performAction: " + String(this.performAction),
-        "table: " + JSON.stringify(this.table).replace(/"([0-9]+)":/g,"$1:"),
-        "defaultActions: " + JSON.stringify(this.defaultActions).replace(/"([0-9]+)":/g,"$1:"),
+        "table: " + JSON.stringify(this.table),
         "parseError: " + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
-        "parse: " + parseFn
+        "parse: " + String(parser.parse)
         ].join(",\n");
     out += "};";
 
@@ -980,22 +887,18 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
 
 // default main method for generated commonjs modules
 function commonjsMain (args) {
+    var cwd = require("file").path(require("file").cwd());
     if (!args[1])
         throw new Error('Usage: '+args[0]+' FILE');
-    if (typeof process !== 'undefined') {
-        var source = require('fs').readFileSync(require('path').join(process.cwd(), args[1]), "utf8");
-    } else {
-        var cwd = require("file").path(require("file").cwd());
-        var source = cwd.join(args[1]).read({charset: "utf-8"});
-    }
-    return exports.parser.parse(source);
+    var source = cwd.join(args[1]).read({charset: "utf-8"});
+    exports.parser.parse(source);
 }
 
 // debug mixin for LR parser generators
 
 function printAction (a, gen) {
-    var s = a[0] == 1 ? 'shift token (then go to state '+a[1]+')' :
-        a[0] == 2 ? 'reduce by rule: '+gen.productions[a[1]] :
+    var s = a[0] == 1 ? 'shift '+gen.symbols[a[1]] :
+        a[0] == 2 ? 'reduce by '+gen.productions[a[1]] :
                     'accept' ;
 
     return s;
@@ -1010,7 +913,7 @@ var lrGeneratorDebug = {
         if (this.conflicts > 0) {
             this.resolutions.forEach(function (r, i) {
                 if (r[2].bydefault) {
-                    self.warn('Conflict at state: ',r[0], ', token: ',r[1], "\n  ", printAction(r[2].r, self), "\n  ", printAction(r[2].s, self));
+                    self.warn('Conflict at state:',r[0], ', Token:',r[1], "\n  ", printAction(r[2].r, self), "\n  ", printAction(r[2].s, self));
                 }
             });
             this.trace("\n"+this.conflicts+" Conflict(s) found in grammar.");
@@ -1034,8 +937,7 @@ lrGeneratorMixin.createParser = function createParser () {
     p.yy = {};
 
     p.init({
-        table: this.table,
-        defaultActions: this.defaultActions,
+        table: this.table, 
         productions_: this.productions_,
         symbols_: this.symbols_,
         terminals_: this.terminals_,
@@ -1057,12 +959,6 @@ lrGeneratorMixin.createParser = function createParser () {
     p.generateCommonJSModule = this.generateCommonJSModule;
     p.generateModule_ = this.generateModule_;
 
-    var gen = this;
-
-    p.Parser = function () {
-      return gen.createParser();
-    };
-
     return p;
 };
 
@@ -1082,32 +978,33 @@ parser.parse = function parse (input) {
     var self = this,
         stack = [0],
         vstack = [null], // semantic value stack
-        lstack = [], // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
         yyleng = 0,
+        shifts = 0,
+        reductions = 0,
         recovering = 0,
         TERROR = 2,
         EOF = 1;
 
-    //this.reductionCount = this.shiftCount = 0;
-
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
-    if (typeof this.lexer.yylloc == 'undefined')
-        this.lexer.yylloc = {};
-    var yyloc = this.lexer.yylloc;
-    lstack.push(yyloc);
 
-    if (typeof this.yy.parseError === 'function')
-        this.parseError = this.yy.parseError;
+    var parseError = this.yy.parseError = typeof this.yy.parseError == 'function' ? this.yy.parseError : this.parseError;
 
     function popStack (n) {
         stack.length = stack.length - 2*n;
         vstack.length = vstack.length - n;
-        lstack.length = lstack.length - n;
+    }
+
+    function checkRecover (st) {
+        for (var p in table[st]) if (p == TERROR) {
+            //print('RECOVER!!');
+            return true;
+        }
+        return false;
     }
 
     function lex() {
@@ -1115,28 +1012,20 @@ parser.parse = function parse (input) {
         token = self.lexer.lex() || 1; // $end = 1
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
-            token = self.symbols_[token] || token;
+            token = self.symbols_[token];
         }
         return token;
-    }
+    };
 
-    var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected;
+    var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected, recovered = false;
+    symbol = lex(); 
     while (true) {
-        // retreive state number from top of stack
+        // set first input
         state = stack[stack.length-1];
-
-        // use default actions if available
-        if (this.defaultActions[state]) {
-            action = this.defaultActions[state];
-        } else {
-            if (symbol == null)
-                symbol = lex();
-            // read action for current state and first input
-            action = table[state] && table[state][symbol];
-        }
+        // read action for current state and first input
+        action = table[state] && table[state][symbol];
 
         // handle parse error
-        _handle_error:
         if (typeof action === 'undefined' || !action.length || !action[0]) {
 
             if (!recovering) {
@@ -1145,45 +1034,41 @@ parser.parse = function parse (input) {
                 for (p in table[state]) if (this.terminals_[p] && p > 2) {
                     expected.push("'"+this.terminals_[p]+"'");
                 }
-                var errStr = '';
                 if (this.lexer.showPosition) {
-                    errStr = 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+"\nExpecting "+expected.join(', ') + ", got '" + this.terminals_[symbol]+ "'";
+                    parseError.call(this, 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+'\nExpecting '+expected.join(', '),
+                        {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, expected: expected});
                 } else {
-                    errStr = 'Parse error on line '+(yylineno+1)+": Unexpected " +
-                                  (symbol == 1 /*EOF*/ ? "end of input" :
-                                              ("'"+(this.terminals_[symbol] || symbol)+"'"));
+                    parseError.call(this, 'Parse error on line '+(yylineno+1)+": Unexpected '"+this.terminals_[symbol]+"'",
+                        {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, expected: expected});
                 }
-                this.parseError(errStr,
-                    {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
             }
 
             // just recovered from another error
             if (recovering == 3) {
                 if (symbol == EOF) {
-                    throw new Error(errStr || 'Parsing halted.');
+                    throw 'Parsing halted.'
                 }
 
                 // discard current lookahead and grab another
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
-                yyloc = this.lexer.yylloc;
-                symbol = lex();
+                symbol = lex(); 
             }
 
             // try to recover from error
             while (1) {
                 // check for error recovery rule in this state
-                if ((TERROR.toString()) in table[state]) {
+                if (checkRecover(state)) {
                     break;
                 }
                 if (state == 0) {
-                    throw new Error(errStr || 'Parsing halted.');
+                    throw 'Parsing halted.'
                 }
                 popStack(1);
                 state = stack[stack.length-1];
             }
-
+            
             preErrorSymbol = symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
@@ -1196,21 +1081,21 @@ parser.parse = function parse (input) {
             throw new Error('Parse Error: multiple actions possible at state: '+state+', token: '+symbol);
         }
 
-        switch (action[0]) {
+        a = action; 
+
+        switch (a[0]) {
 
             case 1: // shift
-                //this.shiftCount++;
+                shifts++;
 
                 stack.push(symbol);
-                vstack.push(this.lexer.yytext);
-                lstack.push(this.lexer.yylloc);
-                stack.push(action[1]); // push state
-                symbol = null;
+                vstack.push(this.lexer.yytext); // semantic values or junk only, no terminals
+                stack.push(a[1]); // push state
                 if (!preErrorSymbol) { // normal execution/no error
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
-                    yyloc = this.lexer.yylloc;
+                    symbol = lex(); 
                     if (recovering > 0)
                         recovering--;
                 } else { // error just occurred, resume old lookahead f/ before error
@@ -1220,20 +1105,13 @@ parser.parse = function parse (input) {
                 break;
 
             case 2: // reduce
-                //this.reductionCount++;
+                reductions++;
 
-                len = this.productions_[action[1]][1];
+                len = this.productions_[a[1]][1];
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length-len]; // default to $$ = $1
-                // default location, uses first token for firsts, last for lasts
-                yyval._$ = {
-                    first_line: lstack[lstack.length-(len||1)].first_line,
-                    last_line: lstack[lstack.length-1].last_line,
-                    first_column: lstack[lstack.length-(len||1)].first_column,
-                    last_column: lstack[lstack.length-1].last_column
-                };
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, a[1], vstack);
 
                 if (typeof r !== 'undefined') {
                     return r;
@@ -1243,18 +1121,19 @@ parser.parse = function parse (input) {
                 if (len) {
                     stack = stack.slice(0,-1*len*2);
                     vstack = vstack.slice(0, -1*len);
-                    lstack = lstack.slice(0, -1*len);
                 }
 
-                stack.push(this.productions_[action[1]][0]);    // push nonterminal (reduce)
+                stack.push(this.productions_[a[1]][0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
-                lstack.push(yyval._$);
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length-2]][stack[stack.length-1]];
                 stack.push(newState);
                 break;
 
             case 3: // accept
+
+                this.reductionCount = reductions;
+                this.shiftCount = shifts;
                 return true;
         }
 
@@ -1265,7 +1144,6 @@ parser.parse = function parse (input) {
 
 parser.init = function parser_init (dict) {
     this.table = dict.table;
-    this.defaultActions = dict.defaultActions;
     this.performAction = dict.performAction;
     this.productions_ = dict.productions_;
     this.symbols_ = dict.symbols_;
@@ -1324,7 +1202,6 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
         this.unionLookaheads();
 
         this.table = this.parseTable(this.states);
-        this.defaultActions = findDefaults(this.table);
     },
 
     lookAheads: function LALR_lookaheads (state, item) {
@@ -1428,7 +1305,7 @@ var lalrGeneratorDebug = {
     }
 };
 
-/*
+/* 
  * Lookahead parser definitions
  *
  * Define base type
@@ -1487,7 +1364,7 @@ var lr1 = lrLookaheadGenerator.beget({
             // if token is a nonterminal, recursively add closures
             if (symbol && self.nonterminals[symbol]) {
                 b = self.first(item.remainingHandle());
-                if (b.length === 0 || item.production.nullable) b = b.concat(item.follows);
+                if (b.length === 0) b = item.follows;
                 self.nonterminals[symbol].productions.forEach(function (production) {
                     var newItem = new self.Item(production, 0, b);
                     if(!closureSet.contains(newItem) && !itemQueue.contains(newItem)) {
@@ -1568,16 +1445,12 @@ return function Parser (g, options) {
         switch (opt.type) {
             case 'lr0':
                 gen = new LR0Generator(g, opt);
-                break;
             case 'slr':
                 gen = new SLRGenerator(g, opt);
-                break;
             case 'lr':
                 gen = new LR1Generator(g, opt);
-                break;
             case 'll':
                 gen = new LLGenerator(g, opt);
-                break;
             case 'lalr':
             default:
                 gen = new LALRGenerator(g, opt);
@@ -1586,3 +1459,44 @@ return function Parser (g, options) {
     }
 
 })();
+
+exports.main = function main (args) {
+    //var parser = new require("args").Parser();
+    var fs = require("file");
+        gfile = fs.path(fs.cwd()).join(args[1]);
+
+    // try to parse as JSON, else use BNF parser
+    if (gfile.extension() === '.json') {
+        var grammar = JSON.parse(gfile.read({charset: "utf-8"}));
+    } else if (gfile.extension() === '.jison') {
+        var grammar = require("jison/bnf").parse(gfile.read({charset: "utf-8"}));
+    }
+
+    var opt = grammar.options || {};
+
+    // lexer file
+    if (args[2]) {
+        var lfile = fs.path(fs.cwd()).join(args[2]);
+
+        // try to parse as JSON, else use BNF parser
+        if (lfile.extension() === '.json') {
+            grammar.lex = JSON.parse(lfile.read({charset: "utf-8"}));
+        } else if (lfile.extension() === '.jisonlex') {
+            grammar.lex = require("jison/jisonlex").parse(lfile.read({charset: "utf-8"}));
+        }
+    }
+
+    if (!opt.moduleName)
+        opt.moduleName = gfile.basename().replace(new RegExp(gfile.extension()+"$"), "");
+    if (!opt.moduleType)
+        opt.moduleType = "commonjs";
+
+    var generator = new Jison.Generator(grammar, opt);
+        fname = fs.path(fs.cwd()).join(opt.moduleName + ".js"),
+        source = generator.generate(opt),
+        stream = fname.open("w");
+
+    stream.print(source);
+    stream.close();
+};
+
