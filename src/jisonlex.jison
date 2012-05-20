@@ -79,9 +79,29 @@ rules
     ;
 
 rule
-    : start_conditions regex ACTION
+    : start_conditions regex action
         { $$ = $1 ? [$1, $2, $3] : [$2,$3]; }
     ;
+
+action
+    : '{' action_body '}'
+        {$$ = $2;}
+    | ACTION
+        {$$ = $1;}
+    ;
+
+action_body
+    :
+        {$$ = '';}
+    | ACTION_BODY
+        {$$ = yytext;}
+    | action_body '{' action_body '}' ACTION_BODY
+        {$$ = $1+$2+$3+$4+$5;}
+    | action_body '{' action_body '}'
+        {$$ = $1+$2+$3+$4;}
+    ;
+
+
 
 start_conditions
     : '<' name_list '>'
