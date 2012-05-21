@@ -65,8 +65,10 @@ exec("jison " + process.argv[2], function(error) {
 		str = str.replace(new RegExp('yytext', 'g'), '$yytext');
 		str = str.replace(new RegExp('[.]yytext', 'g'), '->yytext');
 		str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
+		str = str.replace(new RegExp('yy_[.][$]', 'g'), '$yy_->');
 		str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
 		str = str.replace(new RegExp('[$]end', 'g'), 'end');
+		str = str.replace(new RegExp('console[.]log'), '');
 		
 		str = str.split(/\n/g);
 		
