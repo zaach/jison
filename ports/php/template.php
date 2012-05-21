@@ -97,20 +97,22 @@ class Parser
 				// read action for current state and first input
 				if (isset($this->table[$state][$symbol])) {
 					$action = $this->table[$state][$symbol];
+				} else {
+					$action = '';
 				}
 			}
 
 			if (empty($action) == true) {
-				if (empty($recovering) == false) {
+				if (!$recovering) {
 					// Report error
 					$expected = array();
-					foreach($this->table[$state] as $p) {
-						if ($p > 2) {
-							$expected[] = implode($p);
+					foreach($this->table[$state] as $p => $item) {
+						if (!empty($this->terminals_[$p]) && $p > 2) {
+							$expected[] = $this->terminals_[$p];
 						}
 					}
 					
-					$errStr = 'Parse error on line ' . ($this->yylineno + 1) . ":\n" . $this->showPosition() . '\nExpecting ' . implode(', ', $expected);
+					$errStr = "Parse error on line " . ($yylineno + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . $this->terminals_[$symbol] . "'";
 			
 					$this->parseError($errStr, array(
 						"text"=> $this->match,
@@ -164,8 +166,8 @@ class Parser
 			}
 	
 			// this shouldn't happen, unless resolve defaults are off
-			if (isset($action[2])) {
-				$this->parseError('Parse Error: multiple actions possible at state: ' . $state . ', token: ' . $symbol);
+			if (is_array($action[0])) {
+				$this->parseError("Parse Error: multiple actions possible at state: " . $state . ", token: " . $symbol);
 			}
 			
 			switch ($action[0]) {
@@ -318,7 +320,7 @@ class Parser
 	
 	function pastInput()
 	{
-		$past = substr($this->matched, 0, count($this->matched) - count($this->match));
+		$past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
 		return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
 	}
 	
@@ -334,7 +336,12 @@ class Parser
 	function showPosition()
 	{
 		$pre = $this->pastInput();
-		$c = implode(array(strlen($pre) + 1), "-");
+
+		$c = '';
+		for($i = 0, $preLength = strlen($pre); $i < $preLength; $i++) {
+			$c .= '-';
+		}
+
 		return $pre . $this->upcomingInput() . "\n" . $c . "^";
 	}
 	
@@ -389,7 +396,7 @@ class Parser
 		if (empty($this->_input)) {
 			return $this->EOF;
 		} else {
-			$this->parseError('Lexical error on line ' . ($this->yylineno + 1) . '. Unrecognized text.\n' . $this->showPosition(), array(
+			$this->parseError("Lexical error on line " . ($this->yylineno + 1) . ". Unrecognized text.\n" . $this->showPosition(), array(
 				"text"=> "",
 				"token"=> null,
 				"line"=> $this->yylineno
