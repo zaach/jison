@@ -81,7 +81,7 @@ class Parser
 		$this->setInput($input);
 		
 		$yyval = (object)array();
-		$yyloc = $this->yylloc;
+		$yyloc = $this->yyloc;
 		$lstack[] = $yyloc;
 
 		while (true) {
@@ -116,7 +116,7 @@ class Parser
 						"text"=> $this->match,
 						"token"=> $symbol,
 						"line"=> $this->yylineno,
-						"loc"=> $this->yyloc,
+						"loc"=> $yyloc,
 						"expected"=> $expected
 					));
 				}
@@ -126,8 +126,12 @@ class Parser
 					if ($symbol == $this->EOF) {
 						$this->parseError(isset($errStr) ? $errStr : 'Parsing halted.');
 					}
-		
+
 					// discard current lookahead and grab another
+					$yyleng = $this->yyleng;
+					$yytext = $this->yytext;
+					$yylineno = $this->yylineno;
+					$yyloc = $this->yyloc;
 					$symbol = $this->parser_lex();
 				}
 	
@@ -185,7 +189,7 @@ class Parser
 						$yyleng = $this->yyleng;
 						$yytext = $this->yytext;
 						$yylineno = $this->yylineno;
-						$yyloc = $this->yylloc;
+						$yyloc = $this->yyloc;
 						if ($recovering > 0) $recovering--;
 					} else { // error just occurred, resume old lookahead f/ before error
 						$symbol = $preErrorSymbol;
@@ -348,10 +352,10 @@ class Parser
 		$rules = $this->_currentRules();
 		for ($i = 0, $j = count($rules); $i < $j; $i++) {
 			preg_match($this->rules[$rules[$i]], $this->_input, $tempMatch);
-            if ($tempMatch && (!$match || count($tempMatch[0]) > count($match[0]))) {
+            if ($tempMatch && (empty($match) || count($tempMatch[0]) > count($match[0]))) {
                 $match = $tempMatch;
                 $index = $i;
-                if ($this->options->flex == false) break;
+                if (isset($this->options->flex) && $this->options->flex == false) break;
             }
 		}
 		if ( $match ) {
