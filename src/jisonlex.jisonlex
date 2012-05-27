@@ -43,7 +43,7 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 \"("\\\\"|'\"'|[^"])*\"         yytext = yytext.replace(/\\"/g,'"');return 'STRING_LIT'
 "'"("\\\\"|"\'"|[^'])*"'"       yytext = yytext.replace(/\\'/g,"'");return 'STRING_LIT'
 "|"                             return '|'
-"["("\]"|[^\]])*"]"             return 'ANY_GROUP_REGEX'
+"["("\\\\"|"\]"|[^\]])*"]"      return 'ANY_GROUP_REGEX'
 "(?:"                           return 'SPECIAL_GROUP'
 "(?="                           return 'SPECIAL_GROUP'
 "(?!"                           return 'SPECIAL_GROUP'
