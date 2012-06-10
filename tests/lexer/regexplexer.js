@@ -787,3 +787,21 @@ exports["test pipe precedence"] = function() {
     assert.equal(lexer.lex(), "N");
     assert.equal(lexer.lex(), "X_Y");
 };
+
+exports["test ranges"] = function() {
+    var dict = {
+        rules: [
+            ["x+", "return 'X';" ],
+            [".",   "return 'N';"]
+        ],
+        options: {ranges: true}
+    };
+    var input = "xxxyy";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+
+    assert.equal(lexer.lex(), "X");
+    assert.deepEqual(lexer.yylloc.range, [0, 3]);
+};
+
