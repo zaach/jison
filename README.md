@@ -3,6 +3,8 @@ Jison
 * [issues](http://github.com/zaach/jison/issues)
 * [discuss](mailto:jison@librelist.com)
 
+[![build status](https://secure.travis-ci.org/zaach/jison.png)](http://travis-ci.org/zaach/jison)
+
 An API for creating parsers in JavaScript
 -----------------------------------------
 
