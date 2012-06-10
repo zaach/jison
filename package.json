@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "JSONSelect": "*",
-    "reflect": "*",
+    "reflect": "0.0.7",
     "nomnom": "0.4.3"
   },
   "devDependencies": {
