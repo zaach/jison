@@ -805,3 +805,91 @@ exports["test ranges"] = function() {
     assert.deepEqual(lexer.yylloc.range, [0, 3]);
 };
 
+exports["test unput location"] = function() {
+    var dict = {
+        rules: [
+            ["x+", "return 'X';" ],
+            ["y\\n", "this.unput('\\n'); return 'Y';" ],
+            ["\\ny", "this.unput('y'); return 'BR';" ],
+            ["y", "return 'Y';" ],
+            [".",   "return 'N';"]
+        ],
+        options: {ranges: true}
+    };
+    var input = "xxxy\ny";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    console.log(lexer.rules);
+
+    assert.equal(lexer.next(), "X");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [0, 3]});
+    assert.equal(lexer.next(), "Y");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 3,
+                                    last_line: 1,
+                                    last_column: 4,
+                                    range: [3, 4]});
+    assert.equal(lexer.next(), "BR");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 4,
+                                    last_line: 2,
+                                    last_column: 0,
+                                    range: [4, 5]});
+    assert.equal(lexer.next(), "Y");
+    assert.deepEqual(lexer.yylloc, {first_line: 2,
+                                    first_column: 0,
+                                    last_line: 2,
+                                    last_column: 1,
+                                    range: [5, 6]});
+
+};
+
+exports["test unput location again"] = function() {
+    var dict = {
+        rules: [
+            ["x+", "return 'X';" ],
+            ["y\\ny\\n", "this.unput('\\n'); return 'YY';" ],
+            ["\\ny", "this.unput('y'); return 'BR';" ],
+            ["y", "return 'Y';" ],
+            [".",   "return 'N';"]
+        ],
+        options: {ranges: true}
+    };
+    var input = "xxxy\ny\ny";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    console.log(lexer.rules);
+
+    assert.equal(lexer.next(), "X");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 0,
+                                    last_line: 1,
+                                    last_column: 3,
+                                    range: [0, 3]});
+    assert.equal(lexer.next(), "YY");
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 3,
+                                    last_line: 2,
+                                    last_column: 1,
+                                    range: [3, 6]});
+    assert.equal(lexer.next(), "BR");
+    assert.deepEqual(lexer.yylloc, {first_line: 2,
+                                    first_column: 1,
+                                    last_line: 3,
+                                    last_column: 0,
+                                    range: [6, 7]});
+    assert.equal(lexer.next(), "Y");
+    assert.deepEqual(lexer.yylloc, {first_line: 3,
+                                    first_column: 0,
+                                    last_line: 3,
+                                    last_column: 1,
+                                    range: [7, 8]});
+
+};
+
