@@ -37,6 +37,9 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 "%{"(.|\n)*?"%}"                yytext = yytext.substr(2, yytext.length-4); return 'ACTION'
 <indented>.+                    this.begin('rules'); return 'ACTION'
 
+"/*"(.|\n|\r)*?"*/"             /* ignore */
+"//".*                          /* ignore */
+
 \n+                             /* */
 \s+                             /* */
 {NAME}                          return 'NAME'
