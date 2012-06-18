@@ -129,6 +129,10 @@ generator.processGrammar = function processGrammarDef (grammar) {
         productions = this.productions,
         self = this;
 
+    if (!grammar.bnf && grammar.ebnf) {
+        bnf = grammar.bnf = require("jison/ebnf").transform(grammar.ebnf);
+    }
+
     if (tokens) {
         if (typeof tokens === 'string') {
             tokens = tokens.trim().split(' ');
@@ -169,12 +173,12 @@ generator.augmentGrammar = function augmentGrammar (grammar) {
 
     // prepend parser tokens
     this.symbols.unshift("$accept",this.EOF);
-    this.symbols_["$accept"] = 0;
+    this.symbols_.$accept = 0;
     this.symbols_[this.EOF] = 1;
     this.terminals.unshift(this.EOF);
 
-    this.nonterminals["$accept"] = new Nonterminal("$accept");
-    this.nonterminals["$accept"].productions.push(acceptProduction);
+    this.nonterminals.$accept = new Nonterminal("$accept");
+    this.nonterminals.$accept.productions.push(acceptProduction);
 
     // add follow $ to start symbol
     this.nonterminals[this.startSymbol].follows.push(this.EOF);
@@ -228,82 +232,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             prods = bnf[symbol].slice(0);
         }
 
-        prods.forEach(function buildProds_forEach (handle) {
-            var r, rhs, i;
-            if (handle.constructor === Array) {
-                if (typeof handle[0] === 'string')
-                    rhs = handle[0].trim().split(' ');
-                else
-                    rhs = handle[0].slice(0);
-
-                for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
-                    addSymbol(rhs[i]);
-                }
-
-                if (typeof handle[1] === 'string' || handle.length == 3) {
-                    // semantic action specified
-                    var action = 'case '+(productions.length+1)+':'+handle[1]+'\nbreak;';
-
-                    // replace named semantic values ($nonterminal)
-                    if (action.match(/[$@][a-zA-Z][a-zA-Z0-9_]*/)) {
-                        var count = {},
-                            names = {};
-                        for (i=0;i<rhs.length;i++) {
-                            if (names[rhs[i]]) {
-                                names[rhs[i]+(++count[rhs[i]])] = i+1;
-                            } else {
-                                names[rhs[i]] = i+1;
-                                names[rhs[i]+"1"] = i+1;
-                                count[rhs[i]] = 1;
-                            }
-                        }
-                        action = action.replace(/\$([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
-                                return names[pl] ? '$'+names[pl] : pl;
-                            }).replace(/@([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
-                                return names[pl] ? '@'+names[pl] : pl;
-                            });
-                    }
-                    action = action.replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, "this._$")
-                        .replace(/\$(\d+)/g, function (_, n) {
-                            return "$$[$0" + (n - rhs.length || '') + "]";
-                        })
-                        .replace(/@(\d+)/g, function (_, n) {
-                            return "_$[$0" + (n - rhs.length || '') + "]";
-                        });
-                    actions.push(action);
-
-                    r = new Production(symbol, rhs, productions.length+1);
-                    // precedence specified also
-                    if (handle[2] && operators[handle[2].prec]) {
-                        r.precedence = operators[handle[2].prec].precedence;
-                    }
-                } else {
-                    // only precedence specified
-                    r = new Production(symbol, rhs, productions.length+1);
-                    if (operators[handle[1].prec]) {
-                        r.precedence = operators[handle[1].prec].precedence;
-                    }
-                }
-            } else {
-                rhs = handle.trim().split(' ');
-                for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
-                    addSymbol(rhs[i]);
-                }
-                r = new Production(symbol, rhs, productions.length+1);
-            }
-            if (r.precedence === 0) {
-                // set precedence
-                for (i=r.handle.length-1; i>=0; i--) {
-                    if (!(r.handle[i] in nonterminals) && r.handle[i] in operators) {
-                        r.precedence = operators[r.handle[i]].precedence;
-                    }
-                }
-            }
-
-            productions.push(r);
-            productions_.push([symbols_[r.symbol], r.handle[0] === '' ? 0 : r.handle.length]);
-            nonterminals[symbol].productions.push(r);
-        });
+        prods.forEach(buildProduction);
     }
 
     var sym, terms = [], terms_ = {};
@@ -323,7 +252,91 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.productions_ = productions_;
     actions.push('}');
     this.performAction = Function("yytext,yyleng,yylineno,yy,yystate,$$,_$", actions.join("\n"));
+
+    function buildProduction (handle) {
+        var r, rhs, i;
+        if (handle.constructor === Array) {
+            rhs = (typeof handle[0] === 'string') ?
+                      handle[0].trim().split(' ') :
+                      handle[0].slice(0);
+
+            for (i=0; i<rhs.length; i++) {
+                if (rhs[i] === 'error') her = true;
+                if (!symbols_[rhs[i]]) {
+                    addSymbol(rhs[i]);
+                }
+            }
+
+            if (typeof handle[1] === 'string' || handle.length == 3) {
+                // semantic action specified
+                var action = 'case '+(productions.length+1)+':'+handle[1]+'\nbreak;';
+
+                // replace named semantic values ($nonterminal)
+                if (action.match(/[$@][a-zA-Z][a-zA-Z0-9_]*/)) {
+                    var count = {},
+                        names = {};
+                    for (i=0;i<rhs.length;i++) {
+                        if (names[rhs[i]]) {
+                            names[rhs[i]+(++count[rhs[i]])] = i+1;
+                        } else {
+                            names[rhs[i]] = i+1;
+                            names[rhs[i]+"1"] = i+1;
+                            count[rhs[i]] = 1;
+                        }
+                    }
+                    action = action.replace(/\$([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
+                            return names[pl] ? '$'+names[pl] : pl;
+                        }).replace(/@([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
+                            return names[pl] ? '@'+names[pl] : pl;
+                        });
+                }
+                action = action.replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, "this._$")
+                    .replace(/\$(\d+)/g, function (_, n) {
+                        return "$$[$0" + (n - rhs.length || '') + "]";
+                    })
+                    .replace(/@(\d+)/g, function (_, n) {
+                        return "_$[$0" + (n - rhs.length || '') + "]";
+                    });
+                actions.push(action);
+
+                r = new Production(symbol, rhs, productions.length+1);
+                // precedence specified also
+                if (handle[2] && operators[handle[2].prec]) {
+                    r.precedence = operators[handle[2].prec].precedence;
+                }
+            } else {
+                // only precedence specified
+                r = new Production(symbol, rhs, productions.length+1);
+                if (operators[handle[1].prec]) {
+                    r.precedence = operators[handle[1].prec].precedence;
+                }
+            }
+        } else {
+            rhs = handle.trim().split(' ');
+            for (i=0; i<rhs.length; i++) {
+                if (rhs[i] === 'error') her = true;
+                if (!symbols_[rhs[i]]) {
+                    addSymbol(rhs[i]);
+                }
+            }
+            r = new Production(symbol, rhs, productions.length+1);
+        }
+        if (r.precedence === 0) {
+            // set precedence
+            for (i=r.handle.length-1; i>=0; i--) {
+                if (!(r.handle[i] in nonterminals) && r.handle[i] in operators) {
+                    r.precedence = operators[r.handle[i]].precedence;
+                }
+            }
+        }
+
+        productions.push(r);
+        productions_.push([symbols_[r.symbol], r.handle[0] === '' ? 0 : r.handle.length]);
+        nonterminals[symbol].productions.push(r);
+    }
 };
+
+
 
 generator.createParser = function createParser () {
     throw new Error('Calling abstract method.');
@@ -398,10 +411,10 @@ lookaheadMixin.followSets = function followSets () {
                 // for Simple LALR algorithm, self.go_ checks if
                 if (ctx)
                     q = self.go_(production.symbol, production.handle.slice(0, i));
-                var bool = !ctx || q === parseInt(self.nterms_[t]);
+                var bool = !ctx || q === parseInt(self.nterms_[t], 10);
 
                 if (i === production.handle.length+1 && bool) {
-                    set = nonterminals[production.symbol].follows
+                    set = nonterminals[production.symbol].follows;
                 } else {
                     var part = production.handle.slice(i+1);
 
@@ -520,7 +533,7 @@ lookaheadMixin.nullableSets = function nullableSets () {
 lookaheadMixin.nullable = function nullable (symbol) {
     // epsilon
     if (symbol === '') {
-        return true
+        return true;
     // RHS
     } else if (symbol instanceof Array) {
         for (var i=0,t;t=symbol[i];++i) {
@@ -593,8 +606,8 @@ lrGeneratorMixin.Item = typal.construct({
     toString: function () {
         var temp = this.production.handle.slice(0);
         temp[this.dotPosition] = '.'+(temp[this.dotPosition]||'');
-        return this.production.symbol+" -> "+temp.join(' ')
-            +(this.follows.length === 0 ? "" : " #lookaheads= "+this.follows.join(' '));
+        return this.production.symbol+" -> "+temp.join(' ') +
+            (this.follows.length === 0 ? "" : " #lookaheads= "+this.follows.join(' '));
     }
 });
 
@@ -626,8 +639,9 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
         return this.hash_[item.id];
     },
     valueOf: function toValue () {
-        var v = this._items.map(function (a) {return a.id}).sort().join('|');
-        return (this.valueOf = function toValue_inner() {return v;})();
+        var v = this._items.map(function (a) {return a.id;}).sort().join('|');
+        this.valueOf = function toValue_inner() {return v;};
+        return v;
     }
 });
 
@@ -888,16 +902,35 @@ function resolveConflict (production, op, reduce, shift) {
 lrGeneratorMixin.generate = function parser_generate (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var code = "";
+
+    // check for illegal identifier
+    if (!opt.moduleName || !opt.moduleName.match(/^[A-Za-z_$][A-Za-z0-9_$]*$/)) {
+        opt.moduleName = "parser";
+    }
     switch (opt.moduleType) {
         case "js":
             code = this.generateModule(opt);
         break;
-        case "commonjs":
+        case "amd":
+            code = this.generateAMDModule(opt);
+        break;
         default:
             code = this.generateCommonJSModule(opt);
     }
 
     return code;
+};
+
+lrGeneratorMixin.generateAMDModule = function generateAMDModule(opt){
+    opt = typal.mix.call({}, this.options, opt);
+    var out = 'define([], function(){'
+        + '\nvar parser = '+ this.generateModule_(opt)
+        + (this.lexer && this.lexer.generateModule ?
+          '\n' + this.lexer.generateModule() +
+          '\nparser.lexer = lexer;' : '')
+        + '\nreturn parser;'
+        + '\n});'
+    return out;
 };
 
 lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
@@ -906,6 +939,7 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
     var out = this.generateModule(opt)
         + "\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
         + "\nexports.parser = "+moduleName+";"
+        + "\nexports.Parser = "+moduleName+".Parser;"
         + "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); }"
         + "\nexports.main = "+ String(opt.moduleMain || commonjsMain)
         + "\nif (typeof module !== 'undefined' && require.main === module) {\n"
@@ -920,13 +954,16 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
     var moduleName = opt.moduleName || "parser";
     var out = "/* Jison generated parser */\n";
     out += (moduleName.match(/\./) ? moduleName : "var "+moduleName)+" = (function(){";
-    out += "\n"+this.moduleInclude;
     out += "\nvar parser = "+this.generateModule_();
+    out += "\n"+this.moduleInclude;
     if (this.lexer && this.lexer.generateModule) {
         out += this.lexer.generateModule();
         out += "\nparser.lexer = lexer;";
     }
-    out += "\nreturn parser;\n})();";
+    out += "function Parser () { this.yy = {}; }"
+        + "Parser.prototype = parser;"
+        + "parser.Parser = Parser;"
+        + "\nreturn new Parser;\n})();";
 
     return out;
 };
@@ -973,11 +1010,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
 function commonjsMain (args) {
     if (!args[1])
         throw new Error('Usage: '+args[0]+' FILE');
+    var source, cwd;
     if (typeof process !== 'undefined') {
-        var source = require("fs").readFileSync(require("path").join(process.cwd(), args[1]), "utf8");
+        source = require("fs").readFileSync(require("path").resolve(args[1]), "utf8");
     } else {
-        var cwd = require("file").path(require("file").cwd());
-        var source = cwd.join(args[1]).read({charset: "utf-8"});
+        source = require("file").path(require("file").cwd()).join(args[1]).read({charset: "utf-8"});
     }
     return exports.parser.parse(source);
 }
@@ -1036,6 +1073,7 @@ lrGeneratorMixin.createParser = function createParser () {
     // don't throw if grammar recovers from errors
     if (this.hasErrorRecovery) {
         p.parseError = traceParseError;
+        p.recover = true;
     }
 
     // for debugging
@@ -1047,6 +1085,12 @@ lrGeneratorMixin.createParser = function createParser () {
     p.generateModule = this.generateModule;
     p.generateCommonJSModule = this.generateCommonJSModule;
     p.generateModule_ = this.generateModule_;
+
+    var gen = this;
+
+    p.Parser = function () {
+      return gen.createParser();
+    };
 
     return p;
 };
@@ -1081,10 +1125,13 @@ parser.parse = function parse (input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    this.yy.parser = this;
     if (typeof this.lexer.yylloc == 'undefined')
         this.lexer.yylloc = {};
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
+
+    var ranges = this.lexer.options && this.lexer.options.ranges;
 
     if (typeof this.yy.parseError === 'function')
         this.parseError = this.yy.parseError;
@@ -1114,8 +1161,9 @@ parser.parse = function parse (input) {
         if (this.defaultActions[state]) {
             action = this.defaultActions[state];
         } else {
-            if (symbol == null)
+            if (symbol === null || typeof symbol == 'undefined') {
                 symbol = lex();
+            }
             // read action for current state and first input
             action = table[state] && table[state][symbol];
         }
@@ -1124,15 +1172,15 @@ parser.parse = function parse (input) {
         _handle_error:
         if (typeof action === 'undefined' || !action.length || !action[0]) {
 
+            var errStr = '';
             if (!recovering) {
                 // Report error
                 expected = [];
                 for (p in table[state]) if (this.terminals_[p] && p > 2) {
                     expected.push("'"+this.terminals_[p]+"'");
                 }
-                var errStr = '';
                 if (this.lexer.showPosition) {
-                    errStr = 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+"\nExpecting "+expected.join(', ') + ", got '" + this.terminals_[symbol]+ "'";
+                    errStr = 'Parse error on line '+(yylineno+1)+":\n"+this.lexer.showPosition()+"\nExpecting "+expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol)+ "'";
                 } else {
                     errStr = 'Parse error on line '+(yylineno+1)+": Unexpected " +
                                   (symbol == 1 /*EOF*/ ? "end of input" :
@@ -1162,14 +1210,14 @@ parser.parse = function parse (input) {
                 if ((TERROR.toString()) in table[state]) {
                     break;
                 }
-                if (state == 0) {
+                if (state === 0) {
                     throw new Error(errStr || 'Parsing halted.');
                 }
                 popStack(1);
                 state = stack[stack.length-1];
             }
 
-            preErrorSymbol = symbol; // save the lookahead token
+            preErrorSymbol = symbol == 2 ? null : symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
             action = table[state] && table[state][TERROR];
@@ -1218,6 +1266,9 @@ parser.parse = function parse (input) {
                     first_column: lstack[lstack.length-(len||1)].first_column,
                     last_column: lstack[lstack.length-1].last_column
                 };
+                if (ranges) {
+                  yyval._$.range = [lstack[lstack.length-(len||1)].range[0], lstack[lstack.length-1].range[1]];
+                }
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
 
                 if (typeof r !== 'undefined') {
@@ -1291,7 +1342,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
             DEBUG: false,
             go_: function (r, B) {
                 r = r.split(":")[0]; // grab state #
-                B = B.map(function (b) { return b.slice(b.indexOf(":")+1)});
+                B = B.map(function (b) { return b.slice(b.indexOf(":")+1); });
                 return this.oldg.go(r, B);
             }
         });
@@ -1316,14 +1367,14 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
         return (!!this.onDemandLookahead && !state.inadequate) ? this.terminals : item.follows;
     },
     go: function LALR_go (p, w) {
-        var q = parseInt(p);
+        var q = parseInt(p, 10);
         for (var i=0;i<w.length;i++) {
             q = this.states.item(q).edges[w[i]] || q;
         }
         return q;
     },
     goPath: function LALR_goPath (p, w) {
-        var q = parseInt(p),t,
+        var q = parseInt(p, 10),t,
             path = [];
         for (var i=0;i<w.length;i++) {
             t = w[i] ? q+":"+w[i] : '';
@@ -1541,11 +1592,10 @@ Jison.Generator = function Jison_Generator (g, options) {
             return new LR1Generator(g, opt);
         case 'll':
             return new LLGenerator(g, opt);
-        case 'lalr':
         default:
             return new LALRGenerator(g, opt);
     }
-}
+};
 
 return function Parser (g, options) {
         var opt = typal.mix.call({}, g.options, options);
@@ -1563,18 +1613,17 @@ return function Parser (g, options) {
             case 'll':
                 gen = new LLGenerator(g, opt);
                 break;
-            case 'lalr':
             default:
                 gen = new LALRGenerator(g, opt);
         }
         return gen.createParser();
-    }
+    };
 
 })();
 
 
 //*/
-},requires:["jison/util/typal","jison/util/set","jison/lexer","jison/bnf","JSONSelect","reflect","fs","path","file","file"]});
+},requires:["jison/util/typal","jison/util/set","jison/lexer","jison/bnf","jison/ebnf","JSONSelect","reflect","fs","path","file","file"]});
 
 require.def("jison/lexer",{factory:function(require,exports,module){
 // Basic RegExp Lexer 
@@ -1584,12 +1633,16 @@ require.def("jison/lexer",{factory:function(require,exports,module){
 var RegExpLexer = (function () {
 
 // expand macros and convert matchers to RegExp's
-function prepareRules(rules, macros, actions, tokens, startConditions) {
+function prepareRules(rules, macros, actions, tokens, startConditions, caseless) {
     var m,i,k,action,conditions,
         newRules = [];
 
     if (macros) {
         macros = prepareMacros(macros);
+    }
+
+    function tokenNumberReplacement (str, token) {
+        return "return "+(tokens[token] || "'"+token+"'");
     }
 
     actions.push('switch($avoiding_name_collisions) {');
@@ -1617,13 +1670,13 @@ function prepareRules(rules, macros, actions, tokens, startConditions) {
         }
 
         m = rules[i][0];
-        for (k in macros) {
-            if (macros.hasOwnProperty(k) && typeof m === 'string') {
-                m = m.split("{"+k+"}").join(macros[k]);
-            }
-        }
         if (typeof m === 'string') {
-            m = new RegExp("^"+m);
+            for (k in macros) {
+                if (macros.hasOwnProperty(k)) {
+                    m = m.split("{"+k+"}").join('(' + macros[k] + ')');
+                }
+            }
+            m = new RegExp("^(?:"+m+")", caseless ? 'i':'');
         }
         newRules.push(m);
         if (typeof rules[i][1] === 'function') {
@@ -1631,9 +1684,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions) {
         }
         action = rules[i][1];
         if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/, function (str, pl) {
-                        return "return "+(tokens[pl] ? tokens[pl] : "'"+pl+"'");
-                    });
+            action = action.replace(/return '([^']+)'/, tokenNumberReplacement);
         }
         actions.push('case '+i+':' +action+'\nbreak;');
     }
@@ -1651,7 +1702,7 @@ function prepareMacros (macros) {
         for (i in macros) if (macros.hasOwnProperty(i)) {
             m = macros[i];
             for (k in macros) if (macros.hasOwnProperty(k) && i !== k) {
-                mnew = m.split("{"+k+"}").join(macros[k]);
+                mnew = m.split("{"+k+"}").join('(' + macros[k] + ')');
                 if (mnew !== m) {
                     cont = true;
                     macros[i] = mnew;
@@ -1662,7 +1713,6 @@ function prepareMacros (macros) {
     return macros;
 }
 
-// expand macros within macros
 function prepareStartConditions (conditions) {
     var sc,
         hash = {};
@@ -1681,7 +1731,11 @@ function buildActions (dict, tokens) {
         toks[tokens[tok]] = tok;
     }
 
-    this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions);
+    if (dict.options && dict.options.flex) {
+        dict.rules.push([".", "console.log(yytext);"]);
+    }
+
+    this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
     var fun = actions.join("\n");
     "yytext yyleng yylineno".split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp("("+yy+")", "g"), "yy_.$1");
@@ -1695,8 +1749,9 @@ function RegExpLexer (dict, input, tokens) {
         dict = require("jison/jisonlex").parse(dict);
     }
     dict = dict || {};
+    this.options = dict.options || {};
     this.conditions = prepareStartConditions(dict.startConditions);
-    this.conditions['INITIAL'] = {rules:[],inclusive:true};
+    this.conditions.INITIAL = {rules:[],inclusive:true};
 
     this.performAction = buildActions.call(this, dict, tokens);
     this.conditionStack = ['INITIAL'];
@@ -1712,8 +1767,8 @@ function RegExpLexer (dict, input, tokens) {
 RegExpLexer.prototype = {
     EOF: 1,
     parseError: function parseError(str, hash) {
-        if (this.yy.parseError) {
-            this.yy.parseError(str, hash);
+        if (this.yy.parser) {
+            this.yy.parser.parseError(str, hash);
         } else {
             throw new Error(str);
         }
@@ -1727,29 +1782,67 @@ RegExpLexer.prototype = {
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
         this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
+        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.offset = 0;
         return this;
     },
     // consumes and returns one char from the input
     input: function () {
         var ch = this._input[0];
-        this.yytext+=ch;
+        this.yytext += ch;
         this.yyleng++;
-        this.match+=ch;
-        this.matched+=ch;
-        var lines = ch.match(/\n/);
-        if (lines) this.yylineno++;
+        this.offset++;
+        this.match += ch;
+        this.matched += ch;
+        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno++;
+            this.yylloc.last_line++;
+        } else {
+            this.yylloc.last_column++;
+        }
+        if (this.options.ranges) this.yylloc.range[1]++;
+
         this._input = this._input.slice(1);
         return ch;
     },
     // unshifts one char into the input
     unput: function (ch) {
+        var len = ch.length;
+        var lines = ch.split(/(?:\r\n?|\n)/g);
+
         this._input = ch + this._input;
+        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        //this.yyleng -= len;
+        this.offset -= len;
+        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+        this.match = this.match.substr(0, this.match.length-1);
+        this.matched = this.matched.substr(0, this.matched.length-1);
+
+        if (lines.length-1) this.yylineno -= lines.length-1;
+        var r = this.yylloc.range;
+
+        this.yylloc = {first_line: this.yylloc.first_line,
+          last_line: this.yylineno+1,
+          first_column: this.yylloc.first_column,
+          last_column: lines ?
+              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+              this.yylloc.first_column - len
+          };
+
+        if (this.options.ranges) {
+            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+        }
         return this;
     },
     // When called from action, caches matched text and appends it on next action
     more: function () {
         this._more = true;
         return this;
+    },
+    // retain first n characters of the match
+    less: function (n) {
+        this.unput(this.match.slice(n));
     },
     // displays upcoming input, i.e. for error messages
     pastInput: function () {
@@ -1780,6 +1873,8 @@ RegExpLexer.prototype = {
 
         var token,
             match,
+            tempMatch,
+            index,
             col,
             lines;
         if (!this._more) {
@@ -1788,30 +1883,39 @@ RegExpLexer.prototype = {
         }
         var rules = this._currentRules();
         for (var i=0;i < rules.length; i++) {
-            match = this._input.match(this.rules[rules[i]]);
-            if (match) {
-                lines = match[0].match(/\n.*/g);
-                if (lines) this.yylineno += lines.length;
-                this.yylloc = {first_line: this.yylloc.last_line,
-                               last_line: this.yylineno+1,
-                               first_column: this.yylloc.last_column,
-                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match[0].length}
-                this.yytext += match[0];
-                this.match += match[0];
-                this.matches = match;
-                this.yyleng = this.yytext.length;
-                this._more = false;
-                this._input = this._input.slice(match[0].length);
-                this.matched += match[0];
-                token = this.performAction.call(this, this.yy, this, rules[i],this.conditionStack[this.conditionStack.length-1]);
-                if (token) return token;
-                else return;
+            tempMatch = this._input.match(this.rules[rules[i]]);
+            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                match = tempMatch;
+                index = i;
+                if (!this.options.flex) break;
             }
+        }
+        if (match) {
+            lines = match[0].match(/(?:\r\n?|\n).*/g);
+            if (lines) this.yylineno += lines.length;
+            this.yylloc = {first_line: this.yylloc.last_line,
+                           last_line: this.yylineno+1,
+                           first_column: this.yylloc.last_column,
+                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
+            this.yytext += match[0];
+            this.match += match[0];
+            this.matches = match;
+            this.yyleng = this.yytext.length;
+            if (this.options.ranges) {
+                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            }
+            this._more = false;
+            this._input = this._input.slice(match[0].length);
+            this.matched += match[0];
+            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
+            if (this.done && this._input) this.done = false;
+            if (token) return token;
+            else return;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -1854,17 +1958,21 @@ RegExpLexer.prototype = {
         opt = opt || {};
         var out = "/* Jison generated lexer */",
             moduleName = opt.moduleName || "lexer";
-        out += "\nvar "+moduleName+" = (function(){\n"+(this.moduleInclude||'')+"\nvar lexer = ({";
+        out += "\nvar "+moduleName+" = (function(){\nvar lexer = ({";
         var p = [];
         for (var k in RegExpLexer.prototype)
             if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1)
             p.push(k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
         out += p.join(",\n");
         out += "})";
+        if (this.options) {
+            out += ";\nlexer.options = "+JSON.stringify(this.options);
+        }
         out += ";\nlexer.performAction = "+String(this.performAction);
         out += ";\nlexer.rules = [" + this.rules + "]";
         out += ";\nlexer.conditions = " + JSON.stringify(this.conditions);
-        out += ";return lexer;})()";
+        if (this.moduleInclude) out += ";\n"+this.moduleInclude;
+        out += ";\nreturn lexer;})()";
         return out;
     },
     generateCommonJSModule: function generateCommonJSModule(opt) {
@@ -1880,9 +1988,9 @@ RegExpLexer.prototype = {
 
 return RegExpLexer;
 
-})()
+})();
 
-if (typeof exports !== 'undefined') 
+if (typeof exports !== 'undefined')
     exports.RegExpLexer = RegExpLexer;
 
 
@@ -1893,7 +2001,7 @@ require.def("jison/bnf",{factory:function(require,exports,module){
 var bnf = require("jison/util/bnf-parser").parser,
     jisonlex = require("jison/jisonlex");
 
-exports.parse = function parse () { return bnf.parse.apply(bnf, arguments) };
+exports.parse = function parse () { return bnf.parse.apply(bnf, arguments); };
 
 // adds a declaration to the grammar
 bnf.yy.addDeclaration = function (grammar, decl) {
@@ -1927,12 +2035,12 @@ bnf.yy.lexComment = function (lexer) {
         lexer.unput('/*');
         lexer.more();
     }
-}
+};
 
 // parse an embedded lex section
 var parseLex = function (text) {
     return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
-}
+};
 
 
 //*/
@@ -1976,7 +2084,7 @@ var setMixin = {
     },
     concat: function concat (setB) {
         this._items.push.apply(this._items, setB._items || setB); 
-        return this; 
+        return this;
     },
     eq: function eq (set) {
         return this._items.length === set._items.length && this.subset(set); 
@@ -2008,7 +2116,7 @@ var setMixin = {
         var cont = true;
         for (var i=0; i<this._items.length && cont;i++) {
             cont = cont && set.contains(this._items[i]);
-        };
+        }
         return cont;
     },
     superset: function superset (set) {
@@ -2070,7 +2178,7 @@ require.def("jison/util/typal",{factory:function(require,exports,module){
 
 var typal = (function () {
 
-var create = Object.create || function (o) { function F(){}; F.prototype = o; return new F(); };
+var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
 var position = /^(before|after)/;
 
 // basic method layering
@@ -2087,13 +2195,13 @@ function layerMethod(k, fun) {
             args.splice(0, 0, ret);
             fun.apply(this, args);
             return ret;
-        }
+        };
     } else if (pos === 'before') {
         this[key] = function () {
-            fun.apply(this, arguments); 
-            var ret = prop.apply(this, arguments); 
+            fun.apply(this, arguments);
+            var ret = prop.apply(this, arguments);
             return ret;
-        }
+        };
     }
 }
 
@@ -2157,100 +2265,111 @@ if (typeof exports !== 'undefined')
 require.def("jison/util/bnf-parser",{factory:function(require,exports,module){
 /* Jison generated parser */
 var bnf = (function(){
-
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"spec":3,"declaration_list":4,"%%":5,"grammar":6,"EOF":7,"CODE":8,"declaration":9,"START":10,"id":11,"LEX_BLOCK":12,"operator":13,"ACTION":14,"associativity":15,"token_list":16,"LEFT":17,"RIGHT":18,"NONASSOC":19,"symbol":20,"production_list":21,"production":22,":":23,"handle_list":24,";":25,"|":26,"handle_action":27,"handle":28,"prec":29,"action":30,"PREC":31,"STRING":32,"ID":33,"{":34,"action_body":35,"}":36,"ARROW_ACTION":37,"ACTION_BODY":38,"$accept":0,"$end":1},
-terminals_: {2:"error",5:"%%",7:"EOF",8:"CODE",10:"START",12:"LEX_BLOCK",14:"ACTION",17:"LEFT",18:"RIGHT",19:"NONASSOC",23:":",25:";",26:"|",31:"PREC",32:"STRING",33:"ID",34:"{",36:"}",37:"ARROW_ACTION",38:"ACTION_BODY"},
-productions_: [0,[3,4],[3,5],[3,6],[4,2],[4,0],[9,2],[9,1],[9,1],[9,1],[13,2],[15,1],[15,1],[15,1],[16,2],[16,1],[6,1],[21,2],[21,1],[22,4],[24,3],[24,1],[27,3],[28,2],[28,0],[29,2],[29,0],[20,1],[20,1],[11,1],[30,3],[30,1],[30,1],[30,0],[35,0],[35,1],[35,5],[35,4]],
+symbols_: {"error":2,"spec":3,"declaration_list":4,"%%":5,"grammar":6,"optional_end_block":7,"EOF":8,"CODE":9,"declaration":10,"START":11,"id":12,"LEX_BLOCK":13,"operator":14,"ACTION":15,"associativity":16,"token_list":17,"LEFT":18,"RIGHT":19,"NONASSOC":20,"symbol":21,"production_list":22,"production":23,":":24,"handle_list":25,";":26,"|":27,"handle_action":28,"handle":29,"prec":30,"action":31,"expression_suffix":32,"handle_sublist":33,"expression":34,"suffix":35,"ID":36,"STRING":37,"(":38,")":39,"*":40,"?":41,"+":42,"PREC":43,"{":44,"action_body":45,"}":46,"ARROW_ACTION":47,"ACTION_BODY":48,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"%%",8:"EOF",9:"CODE",11:"START",13:"LEX_BLOCK",15:"ACTION",18:"LEFT",19:"RIGHT",20:"NONASSOC",24:":",26:";",27:"|",36:"ID",37:"STRING",38:"(",39:")",40:"*",41:"?",42:"+",43:"PREC",44:"{",46:"}",47:"ARROW_ACTION",48:"ACTION_BODY"},
+productions_: [0,[3,5],[3,6],[7,0],[7,1],[4,2],[4,0],[10,2],[10,1],[10,1],[10,1],[14,2],[16,1],[16,1],[16,1],[17,2],[17,1],[6,1],[22,2],[22,1],[23,4],[25,3],[25,1],[28,3],[29,2],[29,0],[33,3],[33,1],[32,2],[34,1],[34,1],[34,3],[35,0],[35,1],[35,1],[35,1],[30,2],[30,0],[21,1],[21,1],[12,1],[31,3],[31,1],[31,1],[31,0],[45,0],[45,1],[45,5],[45,4]],
 performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
 
 var $0 = $$.length - 1;
 switch (yystate) {
-case 1:this.$ = $$[$0-3]; this.$.bnf = $$[$0-1]; return this.$;
+case 1:this.$ = $$[$0-4]; this.$[ebnf ? 'ebnf':'bnf'] = $$[$0-2]; return this.$;
 break;
-case 2:this.$ = $$[$0-4]; this.$.bnf = $$[$0-2]; return this.$;
+case 2:this.$ = $$[$0-5]; this.$[ebnf ? 'ebnf':'bnf'] = $$[$0-3]; yy.addDeclaration(this.$,{include:$$[$0-1]}); return this.$;
 break;
-case 3:this.$ = $$[$0-5]; this.$.bnf = $$[$0-3]; yy.addDeclaration(this.$,{include:$$[$0-1]}); return this.$;
+case 5:this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]);
 break;
-case 4:this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]);
+case 6:this.$ = {};
 break;
-case 5:this.$ = {};
+case 7:this.$ = {start: $$[$0]};
 break;
-case 6:this.$ = {start: $$[$0]};
+case 8:this.$ = {lex: $$[$0]};
 break;
-case 7:this.$ = {lex: $$[$0]};
+case 9:this.$ = {operator: $$[$0]};
 break;
-case 8:this.$ = {operator: $$[$0]};
+case 10:this.$ = {include: $$[$0]};
 break;
-case 9:this.$ = {include: $$[$0]};
+case 11:this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);
 break;
-case 10:this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);
+case 12:this.$ = 'left';
 break;
-case 11:this.$ = 'left';
+case 13:this.$ = 'right';
 break;
-case 12:this.$ = 'right';
+case 14:this.$ = 'nonassoc';
 break;
-case 13:this.$ = 'nonassoc';
+case 15:this.$ = $$[$0-1]; this.$.push($$[$0]);
 break;
-case 14:this.$ = $$[$0-1]; this.$.push($$[$0]);
+case 16:this.$ = [$$[$0]];
 break;
-case 15:this.$ = [$$[$0]];
+case 17:this.$ = $$[$0];
 break;
-case 16:this.$ = $$[$0];
-break;
-case 17:this.$ = $$[$0-1];
+case 18:this.$ = $$[$0-1];
           if($$[$0][0] in this.$) this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
           else  this.$[$$[$0][0]] = $$[$0][1];
 break;
-case 18:this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];
+case 19:this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];
 break;
-case 19:this.$ = [$$[$0-3], $$[$0-1]];
+case 20:this.$ = [$$[$0-3], $$[$0-1]];
 break;
-case 20:this.$ = $$[$0-2]; this.$.push($$[$0]);
+case 21:this.$ = $$[$0-2]; this.$.push($$[$0]);
 break;
-case 21:this.$ = [$$[$0]];
+case 22:this.$ = [$$[$0]];
 break;
-case 22:this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
+case 23:this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
             if($$[$0]) this.$.push($$[$0]);
             if($$[$0-1]) this.$.push($$[$0-1]);
             if (this.$.length === 1) this.$ = this.$[0];
         
 break;
-case 23:this.$ = $$[$0-1]; this.$.push($$[$0])
+case 24:this.$ = $$[$0-1]; this.$.push($$[$0])
 break;
-case 24:this.$ = [];
+case 25:this.$ = [];
 break;
-case 25:this.$ = {prec: $$[$0]};
+case 26:this.$ = $$[$0-2]; this.$.push($$[$0].join(' '));
 break;
-case 26:this.$ = null;
+case 27:this.$ = [$$[$0].join(' ')];
 break;
-case 27:this.$ = $$[$0];
+case 28:this.$ = $$[$0-1] + $$[$0]; 
 break;
-case 28:this.$ = yytext;
+case 29:this.$ = $$[$0]; 
 break;
-case 29:this.$ = yytext;
+case 30:this.$ = ebnf ? "'"+$$[$0]+"'" : $$[$0]; 
 break;
-case 30:this.$ = $$[$0-1];
+case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')'; 
 break;
-case 31:this.$ = $$[$0];
+case 32:this.$ = ''
 break;
-case 32:this.$ = '$$ ='+$$[$0]+';';
+case 36:this.$ = {prec: $$[$0]};
 break;
-case 33:this.$ = '';
+case 37:this.$ = null;
 break;
-case 34:this.$ = '';
+case 38:this.$ = $$[$0];
 break;
-case 35:this.$ = yytext;
+case 39:this.$ = yytext;
 break;
-case 36:this.$ = $$[$0-4]+$$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
+case 40:this.$ = yytext;
 break;
-case 37:this.$ = $$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
+case 41:this.$ = $$[$0-1];
+break;
+case 42:this.$ = $$[$0];
+break;
+case 43:this.$ = '$$ ='+$$[$0]+';';
+break;
+case 44:this.$ = '';
+break;
+case 45:this.$ = '';
+break;
+case 46:this.$ = yytext;
+break;
+case 47:this.$ = $$[$0-4]+$$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
+break;
+case 48:this.$ = $$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
 break;
 }
 },
-table: [{3:1,4:2,5:[2,5],10:[2,5],12:[2,5],14:[2,5],17:[2,5],18:[2,5],19:[2,5]},{1:[3]},{5:[1,3],9:4,10:[1,5],12:[1,6],13:7,14:[1,8],15:9,17:[1,10],18:[1,11],19:[1,12]},{6:13,11:16,21:14,22:15,33:[1,17]},{5:[2,4],10:[2,4],12:[2,4],14:[2,4],17:[2,4],18:[2,4],19:[2,4]},{11:18,33:[1,17]},{5:[2,7],10:[2,7],12:[2,7],14:[2,7],17:[2,7],18:[2,7],19:[2,7]},{5:[2,8],10:[2,8],12:[2,8],14:[2,8],17:[2,8],18:[2,8],19:[2,8]},{5:[2,9],10:[2,9],12:[2,9],14:[2,9],17:[2,9],18:[2,9],19:[2,9]},{11:21,16:19,20:20,32:[1,22],33:[1,17]},{32:[2,11],33:[2,11]},{32:[2,12],33:[2,12]},{32:[2,13],33:[2,13]},{5:[1,24],7:[1,23]},{5:[2,16],7:[2,16],11:16,22:25,33:[1,17]},{5:[2,18],7:[2,18],33:[2,18]},{23:[1,26]},{5:[2,29],10:[2,29],12:[2,29],14:[2,29],17:[2,29],18:[2,29],19:[2,29],23:[2,29],25:[2,29],26:[2,29],31:[2,29],32:[2,29],33:[2,29],34:[2,29],37:[2,29]},{5:[2,6],10:[2,6],12:[2,6],14:[2,6],17:[2,6],18:[2,6],19:[2,6]},{5:[2,10],10:[2,10],11:21,12:[2,10],14:[2,10],17:[2,10],18:[2,10],19:[2,10],20:27,32:[1,22],33:[1,17]},{5:[2,15],10:[2,15],12:[2,15],14:[2,15],17:[2,15],18:[2,15],19:[2,15],32:[2,15],33:[2,15]},{5:[2,27],10:[2,27],12:[2,27],14:[2,27],17:[2,27],18:[2,27],19:[2,27],25:[2,27],26:[2,27],31:[2,27],32:[2,27],33:[2,27],34:[2,27],37:[2,27]},{5:[2,28],10:[2,28],12:[2,28],14:[2,28],17:[2,28],18:[2,28],19:[2,28],25:[2,28],26:[2,28],31:[2,28],32:[2,28],33:[2,28],34:[2,28],37:[2,28]},{1:[2,1]},{7:[1,28],8:[1,29]},{5:[2,17],7:[2,17],33:[2,17]},{14:[2,24],24:30,25:[2,24],26:[2,24],27:31,28:32,31:[2,24],32:[2,24],33:[2,24],34:[2,24],37:[2,24]},{5:[2,14],10:[2,14],12:[2,14],14:[2,14],17:[2,14],18:[2,14],19:[2,14],32:[2,14],33:[2,14]},{1:[2,2]},{7:[1,33]},{25:[1,34],26:[1,35]},{25:[2,21],26:[2,21]},{11:21,14:[2,26],20:37,25:[2,26],26:[2,26],29:36,31:[1,38],32:[1,22],33:[1,17],34:[2,26],37:[2,26]},{1:[2,3]},{5:[2,19],7:[2,19],33:[2,19]},{14:[2,24],25:[2,24],26:[2,24],27:39,28:32,31:[2,24],32:[2,24],33:[2,24],34:[2,24],37:[2,24]},{14:[1,42],25:[2,33],26:[2,33],30:40,34:[1,41],37:[1,43]},{14:[2,23],25:[2,23],26:[2,23],31:[2,23],32:[2,23],33:[2,23],34:[2,23],37:[2,23]},{11:21,20:44,32:[1,22],33:[1,17]},{25:[2,20],26:[2,20]},{25:[2,22],26:[2,22]},{34:[2,34],35:45,36:[2,34],38:[1,46]},{25:[2,31],26:[2,31]},{25:[2,32],26:[2,32]},{14:[2,25],25:[2,25],26:[2,25],34:[2,25],37:[2,25]},{34:[1,48],36:[1,47]},{34:[2,35],36:[2,35]},{25:[2,30],26:[2,30]},{34:[2,34],35:49,36:[2,34],38:[1,46]},{34:[1,48],36:[1,50]},{34:[2,37],36:[2,37],38:[1,51]},{34:[2,36],36:[2,36]}],
-defaultActions: {23:[2,1],28:[2,2],33:[2,3]},
+table: [{3:1,4:2,5:[2,6],11:[2,6],13:[2,6],15:[2,6],18:[2,6],19:[2,6],20:[2,6]},{1:[3]},{5:[1,3],10:4,11:[1,5],13:[1,6],14:7,15:[1,8],16:9,18:[1,10],19:[1,11],20:[1,12]},{6:13,12:16,22:14,23:15,36:[1,17]},{5:[2,5],11:[2,5],13:[2,5],15:[2,5],18:[2,5],19:[2,5],20:[2,5]},{12:18,36:[1,17]},{5:[2,8],11:[2,8],13:[2,8],15:[2,8],18:[2,8],19:[2,8],20:[2,8]},{5:[2,9],11:[2,9],13:[2,9],15:[2,9],18:[2,9],19:[2,9],20:[2,9]},{5:[2,10],11:[2,10],13:[2,10],15:[2,10],18:[2,10],19:[2,10],20:[2,10]},{12:21,17:19,21:20,36:[1,17],37:[1,22]},{36:[2,12],37:[2,12]},{36:[2,13],37:[2,13]},{36:[2,14],37:[2,14]},{5:[1,24],7:23,8:[2,3]},{5:[2,17],8:[2,17],12:16,23:25,36:[1,17]},{5:[2,19],8:[2,19],36:[2,19]},{24:[1,26]},{5:[2,40],11:[2,40],13:[2,40],15:[2,40],18:[2,40],19:[2,40],20:[2,40],24:[2,40],26:[2,40],27:[2,40],36:[2,40],37:[2,40],44:[2,40],47:[2,40]},{5:[2,7],11:[2,7],13:[2,7],15:[2,7],18:[2,7],19:[2,7],20:[2,7]},{5:[2,11],11:[2,11],12:21,13:[2,11],15:[2,11],18:[2,11],19:[2,11],20:[2,11],21:27,36:[1,17],37:[1,22]},{5:[2,16],11:[2,16],13:[2,16],15:[2,16],18:[2,16],19:[2,16],20:[2,16],36:[2,16],37:[2,16]},{5:[2,38],11:[2,38],13:[2,38],15:[2,38],18:[2,38],19:[2,38],20:[2,38],26:[2,38],27:[2,38],36:[2,38],37:[2,38],44:[2,38],47:[2,38]},{5:[2,39],11:[2,39],13:[2,39],15:[2,39],18:[2,39],19:[2,39],20:[2,39],26:[2,39],27:[2,39],36:[2,39],37:[2,39],44:[2,39],47:[2,39]},{8:[1,28]},{8:[2,4],9:[1,29]},{5:[2,18],8:[2,18],36:[2,18]},{15:[2,25],25:30,26:[2,25],27:[2,25],28:31,29:32,36:[2,25],37:[2,25],38:[2,25],43:[2,25],44:[2,25],47:[2,25]},{5:[2,15],11:[2,15],13:[2,15],15:[2,15],18:[2,15],19:[2,15],20:[2,15],36:[2,15],37:[2,15]},{1:[2,1]},{8:[1,33]},{26:[1,34],27:[1,35]},{26:[2,22],27:[2,22]},{15:[2,37],26:[2,37],27:[2,37],30:36,32:37,34:39,36:[1,40],37:[1,41],38:[1,42],43:[1,38],44:[2,37],47:[2,37]},{1:[2,2]},{5:[2,20],8:[2,20],36:[2,20]},{15:[2,25],26:[2,25],27:[2,25],28:43,29:32,36:[2,25],37:[2,25],38:[2,25],43:[2,25],44:[2,25],47:[2,25]},{15:[1,46],26:[2,44],27:[2,44],31:44,44:[1,45],47:[1,47]},{15:[2,24],26:[2,24],27:[2,24],36:[2,24],37:[2,24],38:[2,24],39:[2,24],43:[2,24],44:[2,24],47:[2,24]},{12:21,21:48,36:[1,17],37:[1,22]},{15:[2,32],26:[2,32],27:[2,32],35:49,36:[2,32],37:[2,32],38:[2,32],39:[2,32],40:[1,50],41:[1,51],42:[1,52],43:[2,32],44:[2,32],47:[2,32]},{15:[2,29],26:[2,29],27:[2,29],36:[2,29],37:[2,29],38:[2,29],39:[2,29],40:[2,29],41:[2,29],42:[2,29],43:[2,29],44:[2,29],47:[2,29]},{15:[2,30],26:[2,30],27:[2,30],36:[2,30],37:[2,30],38:[2,30],39:[2,30],40:[2,30],41:[2,30],42:[2,30],43:[2,30],44:[2,30],47:[2,30]},{27:[2,25],29:54,33:53,36:[2,25],37:[2,25],38:[2,25],39:[2,25]},{26:[2,21],27:[2,21]},{26:[2,23],27:[2,23]},{44:[2,45],45:55,46:[2,45],48:[1,56]},{26:[2,42],27:[2,42]},{26:[2,43],27:[2,43]},{15:[2,36],26:[2,36],27:[2,36],44:[2,36],47:[2,36]},{15:[2,28],26:[2,28],27:[2,28],36:[2,28],37:[2,28],38:[2,28],39:[2,28],43:[2,28],44:[2,28],47:[2,28]},{15:[2,33],26:[2,33],27:[2,33],36:[2,33],37:[2,33],38:[2,33],39:[2,33],43:[2,33],44:[2,33],47:[2,33]},{15:[2,34],26:[2,34],27:[2,34],36:[2,34],37:[2,34],38:[2,34],39:[2,34],43:[2,34],44:[2,34],47:[2,34]},{15:[2,35],26:[2,35],27:[2,35],36:[2,35],37:[2,35],38:[2,35],39:[2,35],43:[2,35],44:[2,35],47:[2,35]},{27:[1,58],39:[1,57]},{27:[2,27],32:37,34:39,36:[1,40],37:[1,41],38:[1,42],39:[2,27]},{44:[1,60],46:[1,59]},{44:[2,46],46:[2,46]},{15:[2,31],26:[2,31],27:[2,31],36:[2,31],37:[2,31],38:[2,31],39:[2,31],40:[2,31],41:[2,31],42:[2,31],43:[2,31],44:[2,31],47:[2,31]},{27:[2,25],29:61,36:[2,25],37:[2,25],38:[2,25],39:[2,25]},{26:[2,41],27:[2,41]},{44:[2,45],45:62,46:[2,45],48:[1,56]},{27:[2,26],32:37,34:39,36:[1,40],37:[1,41],38:[1,42],39:[2,26]},{44:[1,60],46:[1,63]},{44:[2,48],46:[2,48],48:[1,64]},{44:[2,47],46:[2,47]}],
+defaultActions: {28:[2,1],33:[2,2]},
 parseError: function parseError(str, hash) {
     throw new Error(str);
 },
@@ -2259,10 +2378,12 @@ parse: function parse(input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    this.yy.parser = this;
     if (typeof this.lexer.yylloc == "undefined")
         this.lexer.yylloc = {};
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
+    var ranges = this.lexer.options && this.lexer.options.ranges;
     if (typeof this.yy.parseError === "function")
         this.parseError = this.yy.parseError;
     function popStack(n) {
@@ -2284,25 +2405,13 @@ parse: function parse(input) {
         if (this.defaultActions[state]) {
             action = this.defaultActions[state];
         } else {
-            if (symbol == null)
+            if (symbol === null || typeof symbol == "undefined") {
                 symbol = lex();
+            }
             action = table[state] && table[state][symbol];
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
-            if (!recovering) {
-                expected = [];
-                for (p in table[state])
-                    if (this.terminals_[p] && p > 2) {
-                        expected.push("'" + this.terminals_[p] + "'");
-                    }
-                var errStr = "";
-                if (this.lexer.showPosition) {
-                    errStr = "Parse error on line " + (yylineno + 1) + ":\\n" + this.lexer.showPosition() + "\\nExpecting " + expected.join(", ");
-                } else {
-                    errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
-                }
-                this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
-            }
+            var errStr = "";
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -2330,6 +2439,9 @@ parse: function parse(input) {
             len = this.productions_[action[1]][1];
             yyval.$ = vstack[vstack.length - len];
             yyval._$ = {first_line: lstack[lstack.length - (len || 1)].first_line, last_line: lstack[lstack.length - 1].last_line, first_column: lstack[lstack.length - (len || 1)].first_column, last_column: lstack[lstack.length - 1].last_column};
+            if (ranges) {
+                yyval._$.range = [lstack[lstack.length - (len || 1)].range[0], lstack[lstack.length - 1].range[1]];
+            }
             r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
             if (typeof r !== "undefined") {
                 return r;
@@ -2351,15 +2463,17 @@ parse: function parse(input) {
     }
     return true;
 }
-};/* Jison generated lexer */
+};
+
+var ebnf = false;
+
+
+/* Jison generated lexer */
 var lexer = (function(){
-
-
-
 var lexer = ({EOF:1,
 parseError:function parseError(str, hash) {
-        if (this.yy.parseError) {
-            this.yy.parseError(str, hash);
+        if (this.yy.parser) {
+            this.yy.parser.parseError(str, hash);
         } else {
             throw new Error(str);
         }
@@ -2371,26 +2485,63 @@ setInput:function (input) {
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
         this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
+        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.offset = 0;
         return this;
     },
 input:function () {
         var ch = this._input[0];
-        this.yytext+=ch;
+        this.yytext += ch;
         this.yyleng++;
-        this.match+=ch;
-        this.matched+=ch;
-        var lines = ch.match(/\n/);
-        if (lines) this.yylineno++;
+        this.offset++;
+        this.match += ch;
+        this.matched += ch;
+        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno++;
+            this.yylloc.last_line++;
+        } else {
+            this.yylloc.last_column++;
+        }
+        if (this.options.ranges) this.yylloc.range[1]++;
+
         this._input = this._input.slice(1);
         return ch;
     },
 unput:function (ch) {
+        var len = ch.length;
+        var lines = ch.split(/(?:\r\n?|\n)/g);
+
         this._input = ch + this._input;
+        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        //this.yyleng -= len;
+        this.offset -= len;
+        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+        this.match = this.match.substr(0, this.match.length-1);
+        this.matched = this.matched.substr(0, this.matched.length-1);
+
+        if (lines.length-1) this.yylineno -= lines.length-1;
+        var r = this.yylloc.range;
+
+        this.yylloc = {first_line: this.yylloc.first_line,
+          last_line: this.yylineno+1,
+          first_column: this.yylloc.first_column,
+          last_column: lines ?
+              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+              this.yylloc.first_column - len
+          };
+
+        if (this.options.ranges) {
+            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+        }
         return this;
     },
 more:function () {
         this._more = true;
         return this;
+    },
+less:function (n) {
+        this.unput(this.match.slice(n));
     },
 pastInput:function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
@@ -2416,6 +2567,8 @@ next:function () {
 
         var token,
             match,
+            tempMatch,
+            index,
             col,
             lines;
         if (!this._more) {
@@ -2424,30 +2577,39 @@ next:function () {
         }
         var rules = this._currentRules();
         for (var i=0;i < rules.length; i++) {
-            match = this._input.match(this.rules[rules[i]]);
-            if (match) {
-                lines = match[0].match(/\n.*/g);
-                if (lines) this.yylineno += lines.length;
-                this.yylloc = {first_line: this.yylloc.last_line,
-                               last_line: this.yylineno+1,
-                               first_column: this.yylloc.last_column,
-                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match[0].length}
-                this.yytext += match[0];
-                this.match += match[0];
-                this.matches = match;
-                this.yyleng = this.yytext.length;
-                this._more = false;
-                this._input = this._input.slice(match[0].length);
-                this.matched += match[0];
-                token = this.performAction.call(this, this.yy, this, rules[i],this.conditionStack[this.conditionStack.length-1]);
-                if (token) return token;
-                else return;
+            tempMatch = this._input.match(this.rules[rules[i]]);
+            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                match = tempMatch;
+                index = i;
+                if (!this.options.flex) break;
             }
+        }
+        if (match) {
+            lines = match[0].match(/(?:\r\n?|\n).*/g);
+            if (lines) this.yylineno += lines.length;
+            this.yylloc = {first_line: this.yylloc.last_line,
+                           last_line: this.yylineno+1,
+                           first_column: this.yylloc.last_column,
+                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
+            this.yytext += match[0];
+            this.match += match[0];
+            this.matches = match;
+            this.yyleng = this.yytext.length;
+            if (this.options.ranges) {
+                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            }
+            this._more = false;
+            this._input = this._input.slice(match[0].length);
+            this.matched += match[0];
+            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
+            if (this.done && this._input) this.done = false;
+            if (token) return token;
+            else return;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -2467,87 +2629,110 @@ popState:function popState() {
     },
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+    },
+topState:function () {
+        return this.conditionStack[this.conditionStack.length-2];
+    },
+pushState:function begin(condition) {
+        this.begin(condition);
     }});
+lexer.options = {};
 lexer.performAction = function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
 var YYSTATE=YY_START
 switch($avoiding_name_collisions) {
 case 0:this.begin('code');return 5;
 break;
-case 1:/* skip whitespace */
+case 1:return 38
 break;
-case 2:/* skip comment */
+case 2:return 39
 break;
-case 3:return yy.lexComment(this);
+case 3:return 40
 break;
-case 4:return 33;
+case 4:return 41
 break;
-case 5:yy_.yytext = yy_.yytext.substr(1, yy_.yyleng-2); return 32;
+case 5:return 42
 break;
-case 6:yy_.yytext = yy_.yytext.substr(1, yy_.yyleng-2); return 32;
+case 6:/* skip whitespace */
 break;
-case 7:return 23;
+case 7:/* skip comment */
 break;
-case 8:return 25;
+case 8:return yy.lexComment(this);
 break;
-case 9:return 26;
+case 9:return 36;
 break;
-case 10:this.begin('grammar');return 5;
+case 10:yy_.yytext = yy_.yytext.substr(1, yy_.yyleng-2); return 37;
 break;
-case 11:return 31;
+case 11:yy_.yytext = yy_.yytext.substr(1, yy_.yyleng-2); return 37;
 break;
-case 12:return 10;
+case 12:return 24;
 break;
-case 13:return 17;
+case 13:return 26;
 break;
-case 14:return 18;
+case 14:return 27;
 break;
-case 15:return 19;
+case 15:this.begin(ebnf ? 'ebnf' : 'bnf');return 5;
 break;
-case 16:return 12;
+case 16:if (!yy.options) yy.options = {}; ebnf = yy.options.ebnf = true;
 break;
-case 17:/* ignore unrecognized decl */
+case 17:return 43;
 break;
-case 18:/* ignore type */
+case 18:return 11;
 break;
-case 19:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-4); return 14;
+case 19:return 18;
 break;
-case 20:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4);return 14;
+case 20:return 19;
 break;
-case 21:yy.depth=0; this.begin('action'); return 34;
+case 21:return 20;
 break;
-case 22:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-2); return 37;
+case 22:return 13;
 break;
-case 23:/* ignore bad characters */
+case 23:/* ignore unrecognized decl */
 break;
-case 24:return 7;
+case 24:/* ignore type */
 break;
-case 25:return 38;
+case 25:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-4); return 15;
 break;
-case 26:yy.depth++; return 34;
+case 26:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4);return 15;
 break;
-case 27:yy.depth==0? this.begin('grammar') : yy.depth--; return 36;
+case 27:yy.depth=0; this.begin('action'); return 44;
 break;
-case 28:return 8;
+case 28:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-2); return 47;
+break;
+case 29:/* ignore bad characters */
+break;
+case 30:return 8;
+break;
+case 31:return 48;
+break;
+case 32:yy.depth++; return 44;
+break;
+case 33:yy.depth==0? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return 46;
+break;
+case 34:return 9;
 break;
 }
 };
-lexer.rules = [/^%%/,/^\s+/,/^\/\/.*/,/^\/\*[^*]*\*/,/^[a-zA-Z][a-zA-Z0-9_-]*/,/^"[^"]+"/,/^'[^']+'/,/^:/,/^;/,/^\|/,/^%%/,/^%prec\b/,/^%start\b/,/^%left\b/,/^%right\b/,/^%nonassoc\b/,/^%lex[\w\W]*?\/lex\b/,/^%[a-zA-Z]+[^\n]*/,/^<[a-zA-Z]*>/,/^\{\{[\w\W]*?\}\}/,/^%\{(.|\n)*?%\}/,/^\{/,/^->.*/,/^./,/^$/,/^[^{}]+/,/^\{/,/^\}/,/^(.|\n)+/];
-lexer.conditions = {"grammar":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],"inclusive":true},"action":{"rules":[24,25,26,27],"inclusive":false},"code":{"rules":[24,28],"inclusive":false},"INITIAL":{"rules":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],"inclusive":true}};return lexer;})()
-parser.lexer = lexer;
-return parser;
+lexer.rules = [/^(?:%%)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\+)/,/^(?:\s+)/,/^(?:\/\/.*)/,/^(?:\/\*[^*]*\*)/,/^(?:[a-zA-Z][a-zA-Z0-9_-]*)/,/^(?:"[^"]+")/,/^(?:'[^']+')/,/^(?::)/,/^(?:;)/,/^(?:\|)/,/^(?:%%)/,/^(?:%ebnf\b)/,/^(?:%prec\b)/,/^(?:%start\b)/,/^(?:%left\b)/,/^(?:%right\b)/,/^(?:%nonassoc\b)/,/^(?:%lex[\w\W]*?\/lex\b)/,/^(?:%[a-zA-Z]+[^\n]*)/,/^(?:<[a-zA-Z]*>)/,/^(?:\{\{[\w\W]*?\}\})/,/^(?:%\{(.|\n)*?%\})/,/^(?:\{)/,/^(?:->.*)/,/^(?:.)/,/^(?:$)/,/^(?:[^{}]+)/,/^(?:\{)/,/^(?:\})/,/^(?:(.|\n)+)/];
+lexer.conditions = {"bnf":{"rules":[0,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"inclusive":true},"ebnf":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"inclusive":true},"action":{"rules":[30,31,32,33],"inclusive":false},"code":{"rules":[30,34],"inclusive":false},"INITIAL":{"rules":[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],"inclusive":true}};
+
+;
+return lexer;})()
+parser.lexer = lexer;function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
+return new Parser;
 })();
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = bnf;
+exports.Parser = bnf.Parser;
 exports.parse = function () { return bnf.parse.apply(bnf, arguments); }
 exports.main = function commonjsMain(args) {
     if (!args[1])
         throw new Error('Usage: '+args[0]+' FILE');
+    var source, cwd;
     if (typeof process !== 'undefined') {
-        var source = require("fs").readFileSync(require("path").join(process.cwd(), args[1]), "utf8");
+        source = require("fs").readFileSync(require("path").resolve(args[1]), "utf8");
     } else {
-        var cwd = require("file").path(require("file").cwd());
-        var source = cwd.join(args[1]).read({charset: "utf-8"});
+        source = require("file").path(require("file").cwd()).join(args[1]).read({charset: "utf-8"});
     }
     return exports.parser.parse(source);
 }
@@ -2561,21 +2746,23 @@ if (typeof module !== 'undefined' && require.main === module) {
 require.def("jison/util/lex-parser",{factory:function(require,exports,module){
 /* Jison generated parser */
 var jisonlex = (function(){
-
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"lex":3,"definitions":4,"include":5,"%%":6,"rules":7,"epilogue":8,"EOF":9,"CODE":10,"action":11,"definition":12,"NAME":13,"regex":14,"START_INC":15,"names_inclusive":16,"START_EXC":17,"names_exclusive":18,"START_COND":19,"name":20,"rule":21,"start_conditions":22,"<":23,"name_list":24,">":25,"*":26,",":27,"ACTION":28,"regex_list":29,"|":30,"regex_concat":31,"regex_base":32,"(":33,")":34,"SPECIAL_GROUP":35,"+":36,"?":37,"/":38,"/!":39,"name_expansion":40,"range_regex":41,"any_group_regex":42,".":43,"^":44,"$":45,"string":46,"escape_char":47,"{":48,"}":49,"ANY_GROUP_REGEX":50,"ESCAPE_CHAR":51,"RANGE_REGEX":52,"STRING_LIT":53,"$accept":0,"$end":1},
-terminals_: {2:"error",6:"%%",9:"EOF",10:"CODE",13:"NAME",15:"START_INC",17:"START_EXC",19:"START_COND",23:"<",25:">",26:"*",27:",",28:"ACTION",30:"|",33:"(",34:")",35:"SPECIAL_GROUP",36:"+",37:"?",38:"/",39:"/!",43:".",44:"^",45:"$",48:"{",49:"}",50:"ANY_GROUP_REGEX",51:"ESCAPE_CHAR",52:"RANGE_REGEX",53:"STRING_LIT"},
-productions_: [0,[3,5],[8,1],[8,2],[8,3],[5,1],[5,0],[4,2],[4,0],[12,2],[12,2],[12,2],[16,1],[16,2],[18,1],[18,2],[20,1],[7,2],[7,1],[21,3],[22,3],[22,3],[22,0],[24,1],[24,3],[11,1],[14,1],[29,3],[29,2],[29,1],[29,0],[31,2],[31,1],[32,3],[32,3],[32,2],[32,2],[32,2],[32,2],[32,2],[32,1],[32,2],[32,1],[32,1],[32,1],[32,1],[32,1],[32,1],[40,3],[42,1],[47,1],[41,1],[46,1]],
+symbols_: {"error":2,"lex":3,"definitions":4,"%%":5,"rules":6,"epilogue":7,"EOF":8,"CODE":9,"definition":10,"ACTION":11,"NAME":12,"regex":13,"START_INC":14,"names_inclusive":15,"START_EXC":16,"names_exclusive":17,"START_COND":18,"rule":19,"start_conditions":20,"action":21,"{":22,"action_body":23,"}":24,"ACTION_BODY":25,"<":26,"name_list":27,">":28,"*":29,",":30,"regex_list":31,"|":32,"regex_concat":33,"regex_base":34,"(":35,")":36,"SPECIAL_GROUP":37,"+":38,"?":39,"/":40,"/!":41,"name_expansion":42,"range_regex":43,"any_group_regex":44,".":45,"^":46,"$":47,"string":48,"escape_char":49,"NAME_BRACE":50,"ANY_GROUP_REGEX":51,"ESCAPE_CHAR":52,"RANGE_REGEX":53,"STRING_LIT":54,"CHARACTER_LIT":55,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"%%",8:"EOF",9:"CODE",11:"ACTION",12:"NAME",14:"START_INC",16:"START_EXC",18:"START_COND",22:"{",24:"}",25:"ACTION_BODY",26:"<",28:">",29:"*",30:",",32:"|",35:"(",36:")",37:"SPECIAL_GROUP",38:"+",39:"?",40:"/",41:"/!",45:".",46:"^",47:"$",50:"NAME_BRACE",51:"ANY_GROUP_REGEX",52:"ESCAPE_CHAR",53:"RANGE_REGEX",54:"STRING_LIT",55:"CHARACTER_LIT"},
+productions_: [0,[3,4],[7,1],[7,2],[7,3],[4,2],[4,2],[4,0],[10,2],[10,2],[10,2],[15,1],[15,2],[17,1],[17,2],[6,2],[6,1],[19,3],[21,3],[21,1],[23,0],[23,1],[23,5],[23,4],[20,3],[20,3],[20,0],[27,1],[27,3],[13,1],[31,3],[31,2],[31,1],[31,0],[33,2],[33,1],[34,3],[34,3],[34,2],[34,2],[34,2],[34,2],[34,2],[34,1],[34,2],[34,1],[34,1],[34,1],[34,1],[34,1],[34,1],[42,1],[44,1],[49,1],[43,1],[48,1],[48,1]],
 performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
 
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1: this.$ = {rules: $$[$0-1]};
-          if ($$[$0-4][0]) this.$.macros = $$[$0-4][0];
-          if ($$[$0-4][1]) this.$.startConditions = $$[$0-4][1];
-          if ($$[$0-3]) this.$.actionInclude = $$[$0-3];
+          if ($$[$0-3][0]) this.$.macros = $$[$0-3][0];
+          if ($$[$0-3][1]) this.$.startConditions = $$[$0-3][1];
           if ($$[$0]) this.$.moduleInclude = $$[$0];
+          if (yy.options) this.$.options = yy.options;
+          if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
+          delete yy.options;
+          delete yy.actionInclude;
           return this.$; 
 break;
 case 2: this.$ = null; 
@@ -2584,7 +2771,7 @@ case 3: this.$ = null;
 break;
 case 4: this.$ = $$[$0-1]; 
 break;
-case 7:
+case 5:
           this.$ = $$[$0];
           if ('length' in $$[$0-1]) {
             this.$[0] = this.$[0] || {};
@@ -2597,89 +2784,97 @@ case 7:
           }
         
 break;
-case 8: this.$ = [null,null]; 
+case 6: yy.actionInclude += $$[$0-1]; this.$ = $$[$0]; 
 break;
-case 9: this.$ = [$$[$0-1], $$[$0]]; 
+case 7: yy.actionInclude = ''; this.$ = [null,null]; 
+break;
+case 8: this.$ = [$$[$0-1], $$[$0]]; 
+break;
+case 9: this.$ = $$[$0]; 
 break;
 case 10: this.$ = $$[$0]; 
 break;
-case 11: this.$ = $$[$0]; 
+case 11: this.$ = {}; this.$[$$[$0]] = 0; 
 break;
-case 12: this.$ = {}; this.$[$$[$0]] = 0; 
+case 12: this.$ = $$[$0-1]; this.$[$$[$0]] = 0; 
 break;
-case 13: this.$ = $$[$0-1]; this.$[$$[$0]] = 0; 
+case 13: this.$ = {}; this.$[$$[$0]] = 1; 
 break;
-case 14: this.$ = {}; this.$[$$[$0]] = 1; 
+case 14: this.$ = $$[$0-1]; this.$[$$[$0]] = 1; 
 break;
-case 15: this.$ = $$[$0-1]; this.$[$$[$0]] = 1; 
+case 15: this.$ = $$[$0-1]; this.$.push($$[$0]); 
 break;
-case 16: this.$ = yytext; 
+case 16: this.$ = [$$[$0]]; 
 break;
-case 17: this.$ = $$[$0-1]; this.$.push($$[$0]); 
+case 17: this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1],$$[$0]]; 
 break;
-case 18: this.$ = [$$[$0]]; 
+case 18:this.$ = $$[$0-1];
 break;
-case 19: this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1],$$[$0]]; 
+case 19:this.$ = $$[$0];
 break;
-case 20: this.$ = $$[$0-1]; 
+case 20:this.$ = '';
 break;
-case 21: this.$ = ['*']; 
+case 21:this.$ = yytext;
 break;
-case 23: this.$ = [$$[$0]]; 
+case 22:this.$ = $$[$0-4]+$$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
 break;
-case 24: this.$ = $$[$0-2]; this.$.push($$[$0]); 
+case 23:this.$ = $$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
 break;
-case 25: this.$ = yytext; 
+case 24: this.$ = $$[$0-1]; 
 break;
-case 26: this.$ = $$[$0];
-          if (this.$.match(/[\w\d]$/) && !this.$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
+case 25: this.$ = ['*']; 
+break;
+case 27: this.$ = [$$[$0]]; 
+break;
+case 28: this.$ = $$[$0-2]; this.$.push($$[$0]); 
+break;
+case 29: this.$ = $$[$0];
+          if (!(yy.options && yy.options.flex) && this.$.match(/[\w\d]$/) && !this.$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               this.$ += "\\b";
         
 break;
-case 27: this.$ = $$[$0-2]+'|'+$$[$0]; 
+case 30: this.$ = $$[$0-2]+'|'+$$[$0]; 
 break;
-case 28: this.$ = $$[$0-1]+'|'; 
+case 31: this.$ = $$[$0-1]+'|'; 
 break;
-case 30: this.$ = '' 
+case 33: this.$ = '' 
 break;
-case 31: this.$ = $$[$0-1]+$$[$0]; 
+case 34: this.$ = $$[$0-1]+$$[$0]; 
 break;
-case 33: this.$ = '('+$$[$0-1]+')'; 
+case 36: this.$ = '('+$$[$0-1]+')'; 
 break;
-case 34: this.$ = $$[$0-2]+$$[$0-1]+')'; 
+case 37: this.$ = $$[$0-2]+$$[$0-1]+')'; 
 break;
-case 35: this.$ = $$[$0-1]+'+'; 
+case 38: this.$ = $$[$0-1]+'+'; 
 break;
-case 36: this.$ = $$[$0-1]+'*'; 
+case 39: this.$ = $$[$0-1]+'*'; 
 break;
-case 37: this.$ = $$[$0-1]+'?'; 
+case 40: this.$ = $$[$0-1]+'?'; 
 break;
-case 38: this.$ = '(?='+$$[$0]+')'; 
+case 41: this.$ = '(?='+$$[$0]+')'; 
 break;
-case 39: this.$ = '(?!'+$$[$0]+')'; 
+case 42: this.$ = '(?!'+$$[$0]+')'; 
 break;
-case 41: this.$ = $$[$0-1]+$$[$0]; 
+case 44: this.$ = $$[$0-1]+$$[$0]; 
 break;
-case 43: this.$ = '.'; 
+case 46: this.$ = '.'; 
 break;
-case 44: this.$ = '^'; 
+case 47: this.$ = '^'; 
 break;
-case 45: this.$ = '$'; 
+case 48: this.$ = '$'; 
 break;
-case 48: this.$ = '{'+$$[$0-1]+'}'; 
+case 52: this.$ = yytext; 
 break;
-case 49: this.$ = yytext; 
+case 53: this.$ = yytext; 
 break;
-case 50: this.$ = yytext; 
+case 54: this.$ = yytext; 
 break;
-case 51: this.$ = yytext; 
-break;
-case 52: this.$ = yy.prepareString(yytext.substr(1, yytext.length-2)); 
+case 55: this.$ = yy.prepareString(yytext.substr(1, yytext.length-2)); 
 break;
 }
 },
-table: [{3:1,4:2,6:[2,8],12:3,13:[1,4],15:[1,5],17:[1,6],28:[2,8]},{1:[3]},{5:7,6:[2,6],11:8,28:[1,9]},{4:10,6:[2,8],12:3,13:[1,4],15:[1,5],17:[1,6],28:[2,8]},{6:[2,30],13:[2,30],14:11,15:[2,30],17:[2,30],28:[2,30],29:12,30:[2,30],31:13,32:14,33:[1,15],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{16:30,19:[1,31]},{18:32,19:[1,33]},{6:[1,34]},{6:[2,5]},{6:[2,25],9:[2,25],23:[2,25],28:[2,25],30:[2,25],33:[2,25],35:[2,25],38:[2,25],39:[2,25],43:[2,25],44:[2,25],45:[2,25],48:[2,25],50:[2,25],51:[2,25],53:[2,25]},{6:[2,7],28:[2,7]},{6:[2,9],13:[2,9],15:[2,9],17:[2,9],28:[2,9]},{6:[2,26],13:[2,26],15:[2,26],17:[2,26],28:[2,26],30:[1,35]},{6:[2,29],13:[2,29],15:[2,29],17:[2,29],28:[2,29],30:[2,29],32:36,33:[1,15],34:[2,29],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{6:[2,32],13:[2,32],15:[2,32],17:[2,32],26:[1,38],28:[2,32],30:[2,32],33:[2,32],34:[2,32],35:[2,32],36:[1,37],37:[1,39],38:[2,32],39:[2,32],41:40,43:[2,32],44:[2,32],45:[2,32],48:[2,32],50:[2,32],51:[2,32],52:[1,41],53:[2,32]},{29:42,30:[2,30],31:13,32:14,33:[1,15],34:[2,30],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{29:43,30:[2,30],31:13,32:14,33:[1,15],34:[2,30],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{32:44,33:[1,15],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{32:45,33:[1,15],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{6:[2,40],13:[2,40],15:[2,40],17:[2,40],26:[2,40],28:[2,40],30:[2,40],33:[2,40],34:[2,40],35:[2,40],36:[2,40],37:[2,40],38:[2,40],39:[2,40],43:[2,40],44:[2,40],45:[2,40],48:[2,40],50:[2,40],51:[2,40],52:[2,40],53:[2,40]},{6:[2,42],13:[2,42],15:[2,42],17:[2,42],26:[2,42],28:[2,42],30:[2,42],33:[2,42],34:[2,42],35:[2,42],36:[2,42],37:[2,42],38:[2,42],39:[2,42],43:[2,42],44:[2,42],45:[2,42],48:[2,42],50:[2,42],51:[2,42],52:[2,42],53:[2,42]},{6:[2,43],13:[2,43],15:[2,43],17:[2,43],26:[2,43],28:[2,43],30:[2,43],33:[2,43],34:[2,43],35:[2,43],36:[2,43],37:[2,43],38:[2,43],39:[2,43],43:[2,43],44:[2,43],45:[2,43],48:[2,43],50:[2,43],51:[2,43],52:[2,43],53:[2,43]},{6:[2,44],13:[2,44],15:[2,44],17:[2,44],26:[2,44],28:[2,44],30:[2,44],33:[2,44],34:[2,44],35:[2,44],36:[2,44],37:[2,44],38:[2,44],39:[2,44],43:[2,44],44:[2,44],45:[2,44],48:[2,44],50:[2,44],51:[2,44],52:[2,44],53:[2,44]},{6:[2,45],13:[2,45],15:[2,45],17:[2,45],26:[2,45],28:[2,45],30:[2,45],33:[2,45],34:[2,45],35:[2,45],36:[2,45],37:[2,45],38:[2,45],39:[2,45],43:[2,45],44:[2,45],45:[2,45],48:[2,45],50:[2,45],51:[2,45],52:[2,45],53:[2,45]},{6:[2,46],13:[2,46],15:[2,46],17:[2,46],26:[2,46],28:[2,46],30:[2,46],33:[2,46],34:[2,46],35:[2,46],36:[2,46],37:[2,46],38:[2,46],39:[2,46],43:[2,46],44:[2,46],45:[2,46],48:[2,46],50:[2,46],51:[2,46],52:[2,46],53:[2,46]},{6:[2,47],13:[2,47],15:[2,47],17:[2,47],26:[2,47],28:[2,47],30:[2,47],33:[2,47],34:[2,47],35:[2,47],36:[2,47],37:[2,47],38:[2,47],39:[2,47],43:[2,47],44:[2,47],45:[2,47],48:[2,47],50:[2,47],51:[2,47],52:[2,47],53:[2,47]},{13:[1,47],20:46},{6:[2,49],13:[2,49],15:[2,49],17:[2,49],26:[2,49],28:[2,49],30:[2,49],33:[2,49],34:[2,49],35:[2,49],36:[2,49],37:[2,49],38:[2,49],39:[2,49],43:[2,49],44:[2,49],45:[2,49],48:[2,49],50:[2,49],51:[2,49],52:[2,49],53:[2,49]},{6:[2,52],13:[2,52],15:[2,52],17:[2,52],26:[2,52],28:[2,52],30:[2,52],33:[2,52],34:[2,52],35:[2,52],36:[2,52],37:[2,52],38:[2,52],39:[2,52],43:[2,52],44:[2,52],45:[2,52],48:[2,52],50:[2,52],51:[2,52],52:[2,52],53:[2,52]},{6:[2,50],13:[2,50],15:[2,50],17:[2,50],26:[2,50],28:[2,50],30:[2,50],33:[2,50],34:[2,50],35:[2,50],36:[2,50],37:[2,50],38:[2,50],39:[2,50],43:[2,50],44:[2,50],45:[2,50],48:[2,50],50:[2,50],51:[2,50],52:[2,50],53:[2,50]},{6:[2,10],13:[2,10],15:[2,10],17:[2,10],19:[1,48],28:[2,10]},{6:[2,12],13:[2,12],15:[2,12],17:[2,12],19:[2,12],28:[2,12]},{6:[2,11],13:[2,11],15:[2,11],17:[2,11],19:[1,49],28:[2,11]},{6:[2,14],13:[2,14],15:[2,14],17:[2,14],19:[2,14],28:[2,14]},{7:50,21:51,22:52,23:[1,53],28:[2,22],30:[2,22],33:[2,22],35:[2,22],38:[2,22],39:[2,22],43:[2,22],44:[2,22],45:[2,22],48:[2,22],50:[2,22],51:[2,22],53:[2,22]},{6:[2,28],13:[2,28],15:[2,28],17:[2,28],28:[2,28],30:[2,28],31:54,32:14,33:[1,15],34:[2,28],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{6:[2,31],13:[2,31],15:[2,31],17:[2,31],26:[1,38],28:[2,31],30:[2,31],33:[2,31],34:[2,31],35:[2,31],36:[1,37],37:[1,39],38:[2,31],39:[2,31],41:40,43:[2,31],44:[2,31],45:[2,31],48:[2,31],50:[2,31],51:[2,31],52:[1,41],53:[2,31]},{6:[2,35],13:[2,35],15:[2,35],17:[2,35],26:[2,35],28:[2,35],30:[2,35],33:[2,35],34:[2,35],35:[2,35],36:[2,35],37:[2,35],38:[2,35],39:[2,35],43:[2,35],44:[2,35],45:[2,35],48:[2,35],50:[2,35],51:[2,35],52:[2,35],53:[2,35]},{6:[2,36],13:[2,36],15:[2,36],17:[2,36],26:[2,36],28:[2,36],30:[2,36],33:[2,36],34:[2,36],35:[2,36],36:[2,36],37:[2,36],38:[2,36],39:[2,36],43:[2,36],44:[2,36],45:[2,36],48:[2,36],50:[2,36],51:[2,36],52:[2,36],53:[2,36]},{6:[2,37],13:[2,37],15:[2,37],17:[2,37],26:[2,37],28:[2,37],30:[2,37],33:[2,37],34:[2,37],35:[2,37],36:[2,37],37:[2,37],38:[2,37],39:[2,37],43:[2,37],44:[2,37],45:[2,37],48:[2,37],50:[2,37],51:[2,37],52:[2,37],53:[2,37]},{6:[2,41],13:[2,41],15:[2,41],17:[2,41],26:[2,41],28:[2,41],30:[2,41],33:[2,41],34:[2,41],35:[2,41],36:[2,41],37:[2,41],38:[2,41],39:[2,41],43:[2,41],44:[2,41],45:[2,41],48:[2,41],50:[2,41],51:[2,41],52:[2,41],53:[2,41]},{6:[2,51],13:[2,51],15:[2,51],17:[2,51],26:[2,51],28:[2,51],30:[2,51],33:[2,51],34:[2,51],35:[2,51],36:[2,51],37:[2,51],38:[2,51],39:[2,51],43:[2,51],44:[2,51],45:[2,51],48:[2,51],50:[2,51],51:[2,51],52:[2,51],53:[2,51]},{30:[1,35],34:[1,55]},{30:[1,35],34:[1,56]},{6:[2,38],13:[2,38],15:[2,38],17:[2,38],26:[1,38],28:[2,38],30:[2,38],33:[2,38],34:[2,38],35:[2,38],36:[1,37],37:[1,39],38:[2,38],39:[2,38],41:40,43:[2,38],44:[2,38],45:[2,38],48:[2,38],50:[2,38],51:[2,38],52:[1,41],53:[2,38]},{6:[2,39],13:[2,39],15:[2,39],17:[2,39],26:[1,38],28:[2,39],30:[2,39],33:[2,39],34:[2,39],35:[2,39],36:[1,37],37:[1,39],38:[2,39],39:[2,39],41:40,43:[2,39],44:[2,39],45:[2,39],48:[2,39],50:[2,39],51:[2,39],52:[1,41],53:[2,39]},{49:[1,57]},{49:[2,16]},{6:[2,13],13:[2,13],15:[2,13],17:[2,13],19:[2,13],28:[2,13]},{6:[2,15],13:[2,15],15:[2,15],17:[2,15],19:[2,15],28:[2,15]},{6:[1,61],8:58,9:[1,60],21:59,22:52,23:[1,53],28:[2,22],30:[2,22],33:[2,22],35:[2,22],38:[2,22],39:[2,22],43:[2,22],44:[2,22],45:[2,22],48:[2,22],50:[2,22],51:[2,22],53:[2,22]},{6:[2,18],9:[2,18],23:[2,18],28:[2,18],30:[2,18],33:[2,18],35:[2,18],38:[2,18],39:[2,18],43:[2,18],44:[2,18],45:[2,18],48:[2,18],50:[2,18],51:[2,18],53:[2,18]},{14:62,28:[2,30],29:12,30:[2,30],31:13,32:14,33:[1,15],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{13:[1,65],24:63,26:[1,64]},{6:[2,27],13:[2,27],15:[2,27],17:[2,27],28:[2,27],30:[2,27],32:36,33:[1,15],34:[2,27],35:[1,16],38:[1,17],39:[1,18],40:19,42:20,43:[1,21],44:[1,22],45:[1,23],46:24,47:25,48:[1,26],50:[1,27],51:[1,29],53:[1,28]},{6:[2,33],13:[2,33],15:[2,33],17:[2,33],26:[2,33],28:[2,33],30:[2,33],33:[2,33],34:[2,33],35:[2,33],36:[2,33],37:[2,33],38:[2,33],39:[2,33],43:[2,33],44:[2,33],45:[2,33],48:[2,33],50:[2,33],51:[2,33],52:[2,33],53:[2,33]},{6:[2,34],13:[2,34],15:[2,34],17:[2,34],26:[2,34],28:[2,34],30:[2,34],33:[2,34],34:[2,34],35:[2,34],36:[2,34],37:[2,34],38:[2,34],39:[2,34],43:[2,34],44:[2,34],45:[2,34],48:[2,34],50:[2,34],51:[2,34],52:[2,34],53:[2,34]},{6:[2,48],13:[2,48],15:[2,48],17:[2,48],26:[2,48],28:[2,48],30:[2,48],33:[2,48],34:[2,48],35:[2,48],36:[2,48],37:[2,48],38:[2,48],39:[2,48],43:[2,48],44:[2,48],45:[2,48],48:[2,48],50:[2,48],51:[2,48],52:[2,48],53:[2,48]},{1:[2,1]},{6:[2,17],9:[2,17],23:[2,17],28:[2,17],30:[2,17],33:[2,17],35:[2,17],38:[2,17],39:[2,17],43:[2,17],44:[2,17],45:[2,17],48:[2,17],50:[2,17],51:[2,17],53:[2,17]},{1:[2,2]},{9:[1,66],10:[1,67]},{11:68,28:[1,9]},{25:[1,69],27:[1,70]},{25:[1,71]},{25:[2,23],27:[2,23]},{1:[2,3]},{9:[1,72]},{6:[2,19],9:[2,19],23:[2,19],28:[2,19],30:[2,19],33:[2,19],35:[2,19],38:[2,19],39:[2,19],43:[2,19],44:[2,19],45:[2,19],48:[2,19],50:[2,19],51:[2,19],53:[2,19]},{28:[2,20],30:[2,20],33:[2,20],35:[2,20],38:[2,20],39:[2,20],43:[2,20],44:[2,20],45:[2,20],48:[2,20],50:[2,20],51:[2,20],53:[2,20]},{13:[1,73]},{28:[2,21],30:[2,21],33:[2,21],35:[2,21],38:[2,21],39:[2,21],43:[2,21],44:[2,21],45:[2,21],48:[2,21],50:[2,21],51:[2,21],53:[2,21]},{1:[2,4]},{25:[2,24],27:[2,24]}],
-defaultActions: {8:[2,5],47:[2,16],58:[2,1],60:[2,2],66:[2,3],72:[2,4]},
+table: [{3:1,4:2,5:[2,7],10:3,11:[1,4],12:[1,5],14:[1,6],16:[1,7]},{1:[3]},{5:[1,8]},{4:9,5:[2,7],10:3,11:[1,4],12:[1,5],14:[1,6],16:[1,7]},{4:10,5:[2,7],10:3,11:[1,4],12:[1,5],14:[1,6],16:[1,7]},{5:[2,33],11:[2,33],12:[2,33],13:11,14:[2,33],16:[2,33],31:12,32:[2,33],33:13,34:14,35:[1,15],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{15:31,18:[1,32]},{17:33,18:[1,34]},{6:35,11:[2,26],19:36,20:37,22:[2,26],26:[1,38],32:[2,26],35:[2,26],37:[2,26],40:[2,26],41:[2,26],45:[2,26],46:[2,26],47:[2,26],50:[2,26],51:[2,26],52:[2,26],54:[2,26],55:[2,26]},{5:[2,5]},{5:[2,6]},{5:[2,8],11:[2,8],12:[2,8],14:[2,8],16:[2,8]},{5:[2,29],11:[2,29],12:[2,29],14:[2,29],16:[2,29],22:[2,29],32:[1,39]},{5:[2,32],11:[2,32],12:[2,32],14:[2,32],16:[2,32],22:[2,32],32:[2,32],34:40,35:[1,15],36:[2,32],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{5:[2,35],11:[2,35],12:[2,35],14:[2,35],16:[2,35],22:[2,35],29:[1,42],32:[2,35],35:[2,35],36:[2,35],37:[2,35],38:[1,41],39:[1,43],40:[2,35],41:[2,35],43:44,45:[2,35],46:[2,35],47:[2,35],50:[2,35],51:[2,35],52:[2,35],53:[1,45],54:[2,35],55:[2,35]},{31:46,32:[2,33],33:13,34:14,35:[1,15],36:[2,33],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{31:47,32:[2,33],33:13,34:14,35:[1,15],36:[2,33],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{34:48,35:[1,15],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{34:49,35:[1,15],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{5:[2,43],11:[2,43],12:[2,43],14:[2,43],16:[2,43],22:[2,43],29:[2,43],32:[2,43],35:[2,43],36:[2,43],37:[2,43],38:[2,43],39:[2,43],40:[2,43],41:[2,43],45:[2,43],46:[2,43],47:[2,43],50:[2,43],51:[2,43],52:[2,43],53:[2,43],54:[2,43],55:[2,43]},{5:[2,45],11:[2,45],12:[2,45],14:[2,45],16:[2,45],22:[2,45],29:[2,45],32:[2,45],35:[2,45],36:[2,45],37:[2,45],38:[2,45],39:[2,45],40:[2,45],41:[2,45],45:[2,45],46:[2,45],47:[2,45],50:[2,45],51:[2,45],52:[2,45],53:[2,45],54:[2,45],55:[2,45]},{5:[2,46],11:[2,46],12:[2,46],14:[2,46],16:[2,46],22:[2,46],29:[2,46],32:[2,46],35:[2,46],36:[2,46],37:[2,46],38:[2,46],39:[2,46],40:[2,46],41:[2,46],45:[2,46],46:[2,46],47:[2,46],50:[2,46],51:[2,46],52:[2,46],53:[2,46],54:[2,46],55:[2,46]},{5:[2,47],11:[2,47],12:[2,47],14:[2,47],16:[2,47],22:[2,47],29:[2,47],32:[2,47],35:[2,47],36:[2,47],37:[2,47],38:[2,47],39:[2,47],40:[2,47],41:[2,47],45:[2,47],46:[2,47],47:[2,47],50:[2,47],51:[2,47],52:[2,47],53:[2,47],54:[2,47],55:[2,47]},{5:[2,48],11:[2,48],12:[2,48],14:[2,48],16:[2,48],22:[2,48],29:[2,48],32:[2,48],35:[2,48],36:[2,48],37:[2,48],38:[2,48],39:[2,48],40:[2,48],41:[2,48],45:[2,48],46:[2,48],47:[2,48],50:[2,48],51:[2,48],52:[2,48],53:[2,48],54:[2,48],55:[2,48]},{5:[2,49],11:[2,49],12:[2,49],14:[2,49],16:[2,49],22:[2,49],29:[2,49],32:[2,49],35:[2,49],36:[2,49],37:[2,49],38:[2,49],39:[2,49],40:[2,49],41:[2,49],45:[2,49],46:[2,49],47:[2,49],50:[2,49],51:[2,49],52:[2,49],53:[2,49],54:[2,49],55:[2,49]},{5:[2,50],11:[2,50],12:[2,50],14:[2,50],16:[2,50],22:[2,50],29:[2,50],32:[2,50],35:[2,50],36:[2,50],37:[2,50],38:[2,50],39:[2,50],40:[2,50],41:[2,50],45:[2,50],46:[2,50],47:[2,50],50:[2,50],51:[2,50],52:[2,50],53:[2,50],54:[2,50],55:[2,50]},{5:[2,51],11:[2,51],12:[2,51],14:[2,51],16:[2,51],22:[2,51],29:[2,51],32:[2,51],35:[2,51],36:[2,51],37:[2,51],38:[2,51],39:[2,51],40:[2,51],41:[2,51],45:[2,51],46:[2,51],47:[2,51],50:[2,51],51:[2,51],52:[2,51],53:[2,51],54:[2,51],55:[2,51]},{5:[2,52],11:[2,52],12:[2,52],14:[2,52],16:[2,52],22:[2,52],29:[2,52],32:[2,52],35:[2,52],36:[2,52],37:[2,52],38:[2,52],39:[2,52],40:[2,52],41:[2,52],45:[2,52],46:[2,52],47:[2,52],50:[2,52],51:[2,52],52:[2,52],53:[2,52],54:[2,52],55:[2,52]},{5:[2,55],11:[2,55],12:[2,55],14:[2,55],16:[2,55],22:[2,55],29:[2,55],32:[2,55],35:[2,55],36:[2,55],37:[2,55],38:[2,55],39:[2,55],40:[2,55],41:[2,55],45:[2,55],46:[2,55],47:[2,55],50:[2,55],51:[2,55],52:[2,55],53:[2,55],54:[2,55],55:[2,55]},{5:[2,56],11:[2,56],12:[2,56],14:[2,56],16:[2,56],22:[2,56],29:[2,56],32:[2,56],35:[2,56],36:[2,56],37:[2,56],38:[2,56],39:[2,56],40:[2,56],41:[2,56],45:[2,56],46:[2,56],47:[2,56],50:[2,56],51:[2,56],52:[2,56],53:[2,56],54:[2,56],55:[2,56]},{5:[2,53],11:[2,53],12:[2,53],14:[2,53],16:[2,53],22:[2,53],29:[2,53],32:[2,53],35:[2,53],36:[2,53],37:[2,53],38:[2,53],39:[2,53],40:[2,53],41:[2,53],45:[2,53],46:[2,53],47:[2,53],50:[2,53],51:[2,53],52:[2,53],53:[2,53],54:[2,53],55:[2,53]},{5:[2,9],11:[2,9],12:[2,9],14:[2,9],16:[2,9],18:[1,50]},{5:[2,11],11:[2,11],12:[2,11],14:[2,11],16:[2,11],18:[2,11]},{5:[2,10],11:[2,10],12:[2,10],14:[2,10],16:[2,10],18:[1,51]},{5:[2,13],11:[2,13],12:[2,13],14:[2,13],16:[2,13],18:[2,13]},{5:[1,55],7:52,8:[1,54],11:[2,26],19:53,20:37,22:[2,26],26:[1,38],32:[2,26],35:[2,26],37:[2,26],40:[2,26],41:[2,26],45:[2,26],46:[2,26],47:[2,26],50:[2,26],51:[2,26],52:[2,26],54:[2,26],55:[2,26]},{5:[2,16],8:[2,16],11:[2,16],22:[2,16],26:[2,16],32:[2,16],35:[2,16],37:[2,16],40:[2,16],41:[2,16],45:[2,16],46:[2,16],47:[2,16],50:[2,16],51:[2,16],52:[2,16],54:[2,16],55:[2,16]},{11:[2,33],13:56,22:[2,33],31:12,32:[2,33],33:13,34:14,35:[1,15],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{12:[1,59],27:57,29:[1,58]},{5:[2,31],11:[2,31],12:[2,31],14:[2,31],16:[2,31],22:[2,31],32:[2,31],33:60,34:14,35:[1,15],36:[2,31],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{5:[2,34],11:[2,34],12:[2,34],14:[2,34],16:[2,34],22:[2,34],29:[1,42],32:[2,34],35:[2,34],36:[2,34],37:[2,34],38:[1,41],39:[1,43],40:[2,34],41:[2,34],43:44,45:[2,34],46:[2,34],47:[2,34],50:[2,34],51:[2,34],52:[2,34],53:[1,45],54:[2,34],55:[2,34]},{5:[2,38],11:[2,38],12:[2,38],14:[2,38],16:[2,38],22:[2,38],29:[2,38],32:[2,38],35:[2,38],36:[2,38],37:[2,38],38:[2,38],39:[2,38],40:[2,38],41:[2,38],45:[2,38],46:[2,38],47:[2,38],50:[2,38],51:[2,38],52:[2,38],53:[2,38],54:[2,38],55:[2,38]},{5:[2,39],11:[2,39],12:[2,39],14:[2,39],16:[2,39],22:[2,39],29:[2,39],32:[2,39],35:[2,39],36:[2,39],37:[2,39],38:[2,39],39:[2,39],40:[2,39],41:[2,39],45:[2,39],46:[2,39],47:[2,39],50:[2,39],51:[2,39],52:[2,39],53:[2,39],54:[2,39],55:[2,39]},{5:[2,40],11:[2,40],12:[2,40],14:[2,40],16:[2,40],22:[2,40],29:[2,40],32:[2,40],35:[2,40],36:[2,40],37:[2,40],38:[2,40],39:[2,40],40:[2,40],41:[2,40],45:[2,40],46:[2,40],47:[2,40],50:[2,40],51:[2,40],52:[2,40],53:[2,40],54:[2,40],55:[2,40]},{5:[2,44],11:[2,44],12:[2,44],14:[2,44],16:[2,44],22:[2,44],29:[2,44],32:[2,44],35:[2,44],36:[2,44],37:[2,44],38:[2,44],39:[2,44],40:[2,44],41:[2,44],45:[2,44],46:[2,44],47:[2,44],50:[2,44],51:[2,44],52:[2,44],53:[2,44],54:[2,44],55:[2,44]},{5:[2,54],11:[2,54],12:[2,54],14:[2,54],16:[2,54],22:[2,54],29:[2,54],32:[2,54],35:[2,54],36:[2,54],37:[2,54],38:[2,54],39:[2,54],40:[2,54],41:[2,54],45:[2,54],46:[2,54],47:[2,54],50:[2,54],51:[2,54],52:[2,54],53:[2,54],54:[2,54],55:[2,54]},{32:[1,39],36:[1,61]},{32:[1,39],36:[1,62]},{5:[2,41],11:[2,41],12:[2,41],14:[2,41],16:[2,41],22:[2,41],29:[1,42],32:[2,41],35:[2,41],36:[2,41],37:[2,41],38:[1,41],39:[1,43],40:[2,41],41:[2,41],43:44,45:[2,41],46:[2,41],47:[2,41],50:[2,41],51:[2,41],52:[2,41],53:[1,45],54:[2,41],55:[2,41]},{5:[2,42],11:[2,42],12:[2,42],14:[2,42],16:[2,42],22:[2,42],29:[1,42],32:[2,42],35:[2,42],36:[2,42],37:[2,42],38:[1,41],39:[1,43],40:[2,42],41:[2,42],43:44,45:[2,42],46:[2,42],47:[2,42],50:[2,42],51:[2,42],52:[2,42],53:[1,45],54:[2,42],55:[2,42]},{5:[2,12],11:[2,12],12:[2,12],14:[2,12],16:[2,12],18:[2,12]},{5:[2,14],11:[2,14],12:[2,14],14:[2,14],16:[2,14],18:[2,14]},{1:[2,1]},{5:[2,15],8:[2,15],11:[2,15],22:[2,15],26:[2,15],32:[2,15],35:[2,15],37:[2,15],40:[2,15],41:[2,15],45:[2,15],46:[2,15],47:[2,15],50:[2,15],51:[2,15],52:[2,15],54:[2,15],55:[2,15]},{1:[2,2]},{8:[1,63],9:[1,64]},{11:[1,67],21:65,22:[1,66]},{28:[1,68],30:[1,69]},{28:[1,70]},{28:[2,27],30:[2,27]},{5:[2,30],11:[2,30],12:[2,30],14:[2,30],16:[2,30],22:[2,30],32:[2,30],34:40,35:[1,15],36:[2,30],37:[1,16],40:[1,17],41:[1,18],42:19,44:20,45:[1,21],46:[1,22],47:[1,23],48:24,49:25,50:[1,26],51:[1,27],52:[1,30],54:[1,28],55:[1,29]},{5:[2,36],11:[2,36],12:[2,36],14:[2,36],16:[2,36],22:[2,36],29:[2,36],32:[2,36],35:[2,36],36:[2,36],37:[2,36],38:[2,36],39:[2,36],40:[2,36],41:[2,36],45:[2,36],46:[2,36],47:[2,36],50:[2,36],51:[2,36],52:[2,36],53:[2,36],54:[2,36],55:[2,36]},{5:[2,37],11:[2,37],12:[2,37],14:[2,37],16:[2,37],22:[2,37],29:[2,37],32:[2,37],35:[2,37],36:[2,37],37:[2,37],38:[2,37],39:[2,37],40:[2,37],41:[2,37],45:[2,37],46:[2,37],47:[2,37],50:[2,37],51:[2,37],52:[2,37],53:[2,37],54:[2,37],55:[2,37]},{1:[2,3]},{8:[1,71]},{5:[2,17],8:[2,17],11:[2,17],22:[2,17],26:[2,17],32:[2,17],35:[2,17],37:[2,17],40:[2,17],41:[2,17],45:[2,17],46:[2,17],47:[2,17],50:[2,17],51:[2,17],52:[2,17],54:[2,17],55:[2,17]},{22:[2,20],23:72,24:[2,20],25:[1,73]},{5:[2,19],8:[2,19],11:[2,19],22:[2,19],26:[2,19],32:[2,19],35:[2,19],37:[2,19],40:[2,19],41:[2,19],45:[2,19],46:[2,19],47:[2,19],50:[2,19],51:[2,19],52:[2,19],54:[2,19],55:[2,19]},{11:[2,24],22:[2,24],32:[2,24],35:[2,24],37:[2,24],40:[2,24],41:[2,24],45:[2,24],46:[2,24],47:[2,24],50:[2,24],51:[2,24],52:[2,24],54:[2,24],55:[2,24]},{12:[1,74]},{11:[2,25],22:[2,25],32:[2,25],35:[2,25],37:[2,25],40:[2,25],41:[2,25],45:[2,25],46:[2,25],47:[2,25],50:[2,25],51:[2,25],52:[2,25],54:[2,25],55:[2,25]},{1:[2,4]},{22:[1,76],24:[1,75]},{22:[2,21],24:[2,21]},{28:[2,28],30:[2,28]},{5:[2,18],8:[2,18],11:[2,18],22:[2,18],26:[2,18],32:[2,18],35:[2,18],37:[2,18],40:[2,18],41:[2,18],45:[2,18],46:[2,18],47:[2,18],50:[2,18],51:[2,18],52:[2,18],54:[2,18],55:[2,18]},{22:[2,20],23:77,24:[2,20],25:[1,73]},{22:[1,76],24:[1,78]},{22:[2,23],24:[2,23],25:[1,79]},{22:[2,22],24:[2,22]}],
+defaultActions: {9:[2,5],10:[2,6],52:[2,1],54:[2,2],63:[2,3],71:[2,4]},
 parseError: function parseError(str, hash) {
     throw new Error(str);
 },
@@ -2688,10 +2883,12 @@ parse: function parse(input) {
     this.lexer.setInput(input);
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
+    this.yy.parser = this;
     if (typeof this.lexer.yylloc == "undefined")
         this.lexer.yylloc = {};
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
+    var ranges = this.lexer.options && this.lexer.options.ranges;
     if (typeof this.yy.parseError === "function")
         this.parseError = this.yy.parseError;
     function popStack(n) {
@@ -2713,25 +2910,13 @@ parse: function parse(input) {
         if (this.defaultActions[state]) {
             action = this.defaultActions[state];
         } else {
-            if (symbol == null)
+            if (symbol === null || typeof symbol == "undefined") {
                 symbol = lex();
+            }
             action = table[state] && table[state][symbol];
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
-            if (!recovering) {
-                expected = [];
-                for (p in table[state])
-                    if (this.terminals_[p] && p > 2) {
-                        expected.push("'" + this.terminals_[p] + "'");
-                    }
-                var errStr = "";
-                if (this.lexer.showPosition) {
-                    errStr = "Parse error on line " + (yylineno + 1) + ":\\n" + this.lexer.showPosition() + "\\nExpecting " + expected.join(", ");
-                } else {
-                    errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
-                }
-                this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
-            }
+            var errStr = "";
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -2759,6 +2944,9 @@ parse: function parse(input) {
             len = this.productions_[action[1]][1];
             yyval.$ = vstack[vstack.length - len];
             yyval._$ = {first_line: lstack[lstack.length - (len || 1)].first_line, last_line: lstack[lstack.length - 1].last_line, first_column: lstack[lstack.length - (len || 1)].first_column, last_column: lstack[lstack.length - 1].last_column};
+            if (ranges) {
+                yyval._$.range = [lstack[lstack.length - (len || 1)].range[0], lstack[lstack.length - 1].range[1]];
+            }
             r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
             if (typeof r !== "undefined") {
                 return r;
@@ -2780,15 +2968,13 @@ parse: function parse(input) {
     }
     return true;
 }
-};/* Jison generated lexer */
+};
+/* Jison generated lexer */
 var lexer = (function(){
-
-
-
 var lexer = ({EOF:1,
 parseError:function parseError(str, hash) {
-        if (this.yy.parseError) {
-            this.yy.parseError(str, hash);
+        if (this.yy.parser) {
+            this.yy.parser.parseError(str, hash);
         } else {
             throw new Error(str);
         }
@@ -2800,26 +2986,63 @@ setInput:function (input) {
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
         this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
+        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.offset = 0;
         return this;
     },
 input:function () {
         var ch = this._input[0];
-        this.yytext+=ch;
+        this.yytext += ch;
         this.yyleng++;
-        this.match+=ch;
-        this.matched+=ch;
-        var lines = ch.match(/\n/);
-        if (lines) this.yylineno++;
+        this.offset++;
+        this.match += ch;
+        this.matched += ch;
+        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno++;
+            this.yylloc.last_line++;
+        } else {
+            this.yylloc.last_column++;
+        }
+        if (this.options.ranges) this.yylloc.range[1]++;
+
         this._input = this._input.slice(1);
         return ch;
     },
 unput:function (ch) {
+        var len = ch.length;
+        var lines = ch.split(/(?:\r\n?|\n)/g);
+
         this._input = ch + this._input;
+        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        //this.yyleng -= len;
+        this.offset -= len;
+        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+        this.match = this.match.substr(0, this.match.length-1);
+        this.matched = this.matched.substr(0, this.matched.length-1);
+
+        if (lines.length-1) this.yylineno -= lines.length-1;
+        var r = this.yylloc.range;
+
+        this.yylloc = {first_line: this.yylloc.first_line,
+          last_line: this.yylineno+1,
+          first_column: this.yylloc.first_column,
+          last_column: lines ?
+              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+              this.yylloc.first_column - len
+          };
+
+        if (this.options.ranges) {
+            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+        }
         return this;
     },
 more:function () {
         this._more = true;
         return this;
+    },
+less:function (n) {
+        this.unput(this.match.slice(n));
     },
 pastInput:function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
@@ -2845,6 +3068,8 @@ next:function () {
 
         var token,
             match,
+            tempMatch,
+            index,
             col,
             lines;
         if (!this._more) {
@@ -2853,30 +3078,39 @@ next:function () {
         }
         var rules = this._currentRules();
         for (var i=0;i < rules.length; i++) {
-            match = this._input.match(this.rules[rules[i]]);
-            if (match) {
-                lines = match[0].match(/\n.*/g);
-                if (lines) this.yylineno += lines.length;
-                this.yylloc = {first_line: this.yylloc.last_line,
-                               last_line: this.yylineno+1,
-                               first_column: this.yylloc.last_column,
-                               last_column: lines ? lines[lines.length-1].length-1 : this.yylloc.last_column + match[0].length}
-                this.yytext += match[0];
-                this.match += match[0];
-                this.matches = match;
-                this.yyleng = this.yytext.length;
-                this._more = false;
-                this._input = this._input.slice(match[0].length);
-                this.matched += match[0];
-                token = this.performAction.call(this, this.yy, this, rules[i],this.conditionStack[this.conditionStack.length-1]);
-                if (token) return token;
-                else return;
+            tempMatch = this._input.match(this.rules[rules[i]]);
+            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                match = tempMatch;
+                index = i;
+                if (!this.options.flex) break;
             }
+        }
+        if (match) {
+            lines = match[0].match(/(?:\r\n?|\n).*/g);
+            if (lines) this.yylineno += lines.length;
+            this.yylloc = {first_line: this.yylloc.last_line,
+                           last_line: this.yylineno+1,
+                           first_column: this.yylloc.last_column,
+                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
+            this.yytext += match[0];
+            this.match += match[0];
+            this.matches = match;
+            this.yyleng = this.yytext.length;
+            if (this.options.ranges) {
+                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            }
+            this._more = false;
+            this._input = this._input.slice(match[0].length);
+            this.matched += match[0];
+            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
+            if (this.done && this._input) this.done = false;
+            if (token) return token;
+            else return;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -2896,113 +3130,165 @@ popState:function popState() {
     },
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+    },
+topState:function () {
+        return this.conditionStack[this.conditionStack.length-2];
+    },
+pushState:function begin(condition) {
+        this.begin(condition);
     }});
+lexer.options = {};
 lexer.performAction = function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
 var YYSTATE=YY_START
 switch($avoiding_name_collisions) {
-case 0:return 19
+case 0:return 25
 break;
-case 1:this.begin('INITIAL')
+case 1:yy.depth++; return 22
 break;
-case 2:/* empty */
+case 2:yy.depth == 0 ? this.begin('trail') : yy.depth--; return 24
 break;
-case 3:this.begin('INITIAL')
+case 3:return 12
 break;
-case 4:this.begin('trail'); yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length-2);return 28;
+case 4:this.popState(); return 28
 break;
-case 5:this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4);return 28;
+case 5:return 30
 break;
-case 6:this.begin('INITIAL'); return 28
+case 6:return 29
 break;
-case 7:this.begin('INITIAL')
+case 7:/* */
 break;
-case 8:if (yy.ruleSection) this.begin('indented')
+case 8:this.begin('indented')
 break;
-case 9:return 13
+case 9:this.begin('code'); return 5
 break;
-case 10:yy_.yytext = yy_.yytext.replace(/\\"/g,'"');return 53;
+case 10:return 55
 break;
-case 11:yy_.yytext = yy_.yytext.replace(/\\'/g,"'");return 53;
+case 11:yy.options[yy_.yytext] = true
 break;
-case 12:return 30
+case 12:this.begin('INITIAL')
 break;
-case 13:return 50
+case 13:this.begin('INITIAL')
 break;
-case 14:return 35
+case 14:/* empty */
 break;
-case 15:return 35
+case 15:return 18
 break;
-case 16:return 35
+case 16:this.begin('INITIAL')
 break;
-case 17:return 33
+case 17:this.begin('INITIAL')
 break;
-case 18:return 34
+case 18:/* empty */
 break;
-case 19:return 36
+case 19:this.begin('rules')
 break;
-case 20:return 26
+case 20:yy.depth = 0; this.begin('action'); return 22
 break;
-case 21:return 37
+case 21:this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4);return 11
 break;
-case 22:return 44
+case 22:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4); return 11
 break;
-case 23:return 27
+case 23:this.begin('rules'); return 11
 break;
-case 24:return 45
+case 24:/* ignore */
 break;
-case 25:return 23
+case 25:/* ignore */
 break;
-case 26:return 25
+case 26:/* */
 break;
-case 27:return 39
+case 27:/* */
 break;
-case 28:return 38
+case 28:return 12
 break;
-case 29:return 51
+case 29:yy_.yytext = yy_.yytext.replace(/\\"/g,'"');return 54
 break;
-case 30:yy_.yytext = yy_.yytext.replace(/^\\/g,''); return 51
+case 30:yy_.yytext = yy_.yytext.replace(/\\'/g,"'");return 54
 break;
-case 31:return 45
+case 31:return 32
 break;
-case 32:return 43
+case 32:return 51
 break;
-case 33:this.begin('start_condition');return 15
+case 33:return 37
 break;
-case 34:this.begin('start_condition');return 17
+case 34:return 37
 break;
-case 35:if (yy.ruleSection) this.begin('code'); yy.ruleSection = true; return 6
+case 35:return 37
 break;
-case 36:return 52
+case 36:return 35
 break;
-case 37:return 48
+case 37:return 36
 break;
-case 38:return 49
+case 38:return 38
 break;
-case 39:/* ignore bad characters */
+case 39:return 29
 break;
-case 40:return 9
+case 40:return 39
 break;
-case 41:return 10;
+case 41:return 46
+break;
+case 42:return 30
+break;
+case 43:return 47
+break;
+case 44:this.begin('conditions'); return 26
+break;
+case 45:return 41
+break;
+case 46:return 40
+break;
+case 47:return 52
+break;
+case 48:yy_.yytext = yy_.yytext.replace(/^\\/g,''); return 52
+break;
+case 49:return 47
+break;
+case 50:return 45
+break;
+case 51:yy.options = {}; this.begin('options')
+break;
+case 52:this.begin('start_condition');return 14
+break;
+case 53:this.begin('start_condition');return 16
+break;
+case 54:this.begin('rules'); return 5
+break;
+case 55:return 53
+break;
+case 56:return 50
+break;
+case 57:return 22
+break;
+case 58:return 24
+break;
+case 59:/* ignore bad characters */
+break;
+case 60:return 8
+break;
+case 61:return 9
 break;
 }
 };
-lexer.rules = [/^[a-zA-Z_][a-zA-Z0-9_-]*/,/^\n+/,/^\s+/,/^.*\n+/,/^\{[^}]*\}/,/^%\{(.|\n)*?%\}/,/^.+/,/^\n+/,/^\s+/,/^[a-zA-Z_][a-zA-Z0-9_-]*/,/^"(\\\\|\\"|[^"])*"/,/^'(\\\\|\\'|[^'])*'/,/^\|/,/^\[(\\\]|[^\]])*\]/,/^\(\?:/,/^\(\?=/,/^\(\?!/,/^\(/,/^\)/,/^\+/,/^\*/,/^\?/,/^\^/,/^,/,/^<<EOF>>/,/^</,/^>/,/^\/!/,/^\//,/^\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4})/,/^\\./,/^\$/,/^\./,/^%s\b/,/^%x\b/,/^%%/,/^\{\d+(,\s?\d+|,)?\}/,/^\{/,/^\}/,/^./,/^$/,/^(.|\n)+/];
-lexer.conditions = {"code":{"rules":[40,41],"inclusive":false},"start_condition":{"rules":[0,1,2,40],"inclusive":false},"indented":{"rules":[4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],"inclusive":true},"trail":{"rules":[3,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],"inclusive":true},"INITIAL":{"rules":[5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],"inclusive":true}};return lexer;})()
-parser.lexer = lexer;
-return parser;
+lexer.rules = [/^(?:[^{}]+)/,/^(?:\{)/,/^(?:\})/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:>)/,/^(?:,)/,/^(?:\*)/,/^(?:\n+)/,/^(?:\s+)/,/^(?:%%)/,/^(?:[a-zA-Z0-9_]+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:\n+)/,/^(?:\s+\n+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:\n+)/,/^(?:\s+\n+)/,/^(?:\s+)/,/^(?:.*\n+)/,/^(?:\{)/,/^(?:%\{(.|\n)*?%\})/,/^(?:%\{(.|\n)*?%\})/,/^(?:.+)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\n+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:\|)/,/^(?:\[(\\\\|\\\]|[^\]])*\])/,/^(?:\(\?:)/,/^(?:\(\?=)/,/^(?:\(\?!)/,/^(?:\()/,/^(?:\))/,/^(?:\+)/,/^(?:\*)/,/^(?:\?)/,/^(?:\^)/,/^(?:,)/,/^(?:<<EOF>>)/,/^(?:<)/,/^(?:\/!)/,/^(?:\/)/,/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,/^(?:\\.)/,/^(?:\$)/,/^(?:\.)/,/^(?:%options\b)/,/^(?:%s\b)/,/^(?:%x\b)/,/^(?:%%)/,/^(?:\{\d+(,\s?\d+|,)?\})/,/^(?:\{([a-zA-Z_][a-zA-Z0-9_-]*)\})/,/^(?:\{)/,/^(?:\})/,/^(?:.)/,/^(?:$)/,/^(?:(.|\n)+)/];
+lexer.conditions = {"code":{"rules":[60,61],"inclusive":false},"start_condition":{"rules":[15,16,17,18,60],"inclusive":false},"options":{"rules":[11,12,13,14,60],"inclusive":false},"conditions":{"rules":[3,4,5,6,60],"inclusive":false},"action":{"rules":[0,1,2,60],"inclusive":false},"indented":{"rules":[20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],"inclusive":true},"trail":{"rules":[19,22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],"inclusive":true},"rules":{"rules":[7,8,9,10,22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],"inclusive":true},"INITIAL":{"rules":[22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60],"inclusive":true}};
+
+
+;
+return lexer;})()
+parser.lexer = lexer;function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
+return new Parser;
 })();
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = jisonlex;
+exports.Parser = jisonlex.Parser;
 exports.parse = function () { return jisonlex.parse.apply(jisonlex, arguments); }
 exports.main = function commonjsMain(args) {
     if (!args[1])
         throw new Error('Usage: '+args[0]+' FILE');
+    var source, cwd;
     if (typeof process !== 'undefined') {
-        var source = require("fs").readFileSync(require("path").join(process.cwd(), args[1]), "utf8");
+        source = require("fs").readFileSync(require("path").resolve(args[1]), "utf8");
     } else {
-        var cwd = require("file").path(require("file").cwd());
-        var source = cwd.join(args[1]).read({charset: "utf-8"});
+        source = require("file").path(require("file").cwd()).join(args[1]).read({charset: "utf-8"});
     }
     return exports.parser.parse(source);
 }
