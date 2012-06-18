@@ -18,11 +18,11 @@ deploy:
 build: build_bnf build_lex
 
 build_bnf:
-	node lib/jison/cli-wrapper.js src/bnf.jison src/bnf.jisonlex
+	node lib/jison/cli-wrapper.js src/bnf.y src/bnf.l
 	mv bnf.js lib/jison/util/bnf-parser.js
 
 build_lex:
-	node lib/jison/cli-wrapper.js src/jisonlex.jison src/jisonlex.jisonlex
+	node lib/jison/cli-wrapper.js src/jisonlex.y src/jisonlex.l
 	mv jisonlex.js lib/jison/util/lex-parser.js
 
 test:
