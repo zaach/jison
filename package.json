@@ -33,14 +33,14 @@
     "node": ">=0.4"
   },
   "dependencies": {
-    "JSONSelect": "*",
+    "JSONSelect": "0.4.0",
     "reflect": "0.0.7",
     "nomnom": "0.4.3"
   },
   "devDependencies": {
-    "test": "*",
-    "jison": "*",
-    "uglify-js": "*"
+    "test": "0.4.4",
+    "jison": "0.3.11",
+    "uglify-js": "1.3.3"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
@@ -49,6 +49,5 @@
     "lib": "lib",
     "bin": "./bin"
   },
-  "homepage": "http://jison.org",
-  "optionalDependencies": {}
+  "homepage": "http://jison.org"
 }
