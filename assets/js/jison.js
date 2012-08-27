@@ -960,7 +960,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         out += this.lexer.generateModule();
         out += "\nparser.lexer = lexer;";
     }
-    out += "function Parser () { this.yy = {}; }"
+    out += "\nfunction Parser () { this.yy = {}; }"
         + "Parser.prototype = parser;"
         + "parser.Parser = Parser;"
         + "\nreturn new Parser;\n})();";
@@ -977,7 +977,7 @@ function removeErrorRecovery (fn) {
         var ast = Reflect.parse(parseFn);
 
         var labeled = JSONSelect.match(':has(:root > .label > .name:val("_handle_error"))', ast);
-        labeled[0].body.consequent.body = [labeled[0].body.consequent.body[0]];
+        labeled[0].body.consequent.body = [labeled[0].body.consequent.body[0], labeled[0].body.consequent.body[1]];
 
         return Reflect.stringify(ast).replace(/_handle_error:\s?/,"").replace(/\\\\n/g,"\\n");
     } catch (e) {
@@ -2412,6 +2412,19 @@ parse: function parse(input) {
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
             var errStr = "";
+            if (!recovering) {
+                expected = [];
+                for (p in table[state])
+                    if (this.terminals_[p] && p > 2) {
+                        expected.push("'" + this.terminals_[p] + "'");
+                    }
+                if (this.lexer.showPosition) {
+                    errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                } else {
+                    errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+                }
+                this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
+            }
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -2718,7 +2731,8 @@ lexer.conditions = {"bnf":{"rules":[0,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,2
 
 ;
 return lexer;})()
-parser.lexer = lexer;function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
+parser.lexer = lexer;
+function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
 return new Parser;
 })();
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
@@ -2917,6 +2931,19 @@ parse: function parse(input) {
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
             var errStr = "";
+            if (!recovering) {
+                expected = [];
+                for (p in table[state])
+                    if (this.terminals_[p] && p > 2) {
+                        expected.push("'" + this.terminals_[p] + "'");
+                    }
+                if (this.lexer.showPosition) {
+                    errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                } else {
+                    errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+                }
+                this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
+            }
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -3274,7 +3301,8 @@ lexer.conditions = {"code":{"rules":[60,61],"inclusive":false},"start_condition"
 
 ;
 return lexer;})()
-parser.lexer = lexer;function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
+parser.lexer = lexer;
+function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
 return new Parser;
 })();
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {

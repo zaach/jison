@@ -108,7 +108,7 @@ parser.parse("adfe34bc zxg");
 
 <p>As demonstrated before, the parser can be used from the command line:    </p>
 
-<pre><code>narwhal calculator.js testcalc
+<pre><code>node calculator.js testcalc
 </code></pre>
 
 <p>Though, more ideally, the parser will be a dependency of another module. You can require it from another module like so:</p>
@@ -302,17 +302,17 @@ e
 
 <p>Jison accepts both the Bison/Flex style format, or the raw JSON format, e.g:</p>
 
-<pre><code>narwhal bin/jison examples/calculator.jison
+<pre><code>node bin/jison examples/calculator.jison
 </code></pre>
 
 <p>or</p>
 
-<pre><code>narwhal bin/jison examples/calculator.json
+<pre><code>node bin/jison examples/calculator.json
 </code></pre>
 
 <p>When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:</p>
 
-<pre><code>narwhal bin/jison examples/classy.jison examples/classy.jisonlex
+<pre><code>node bin/jison examples/classy.jison examples/classy.jisonlex
 </code></pre>
 
 <p>More examples can be found in the <a href="http://github.com/zaach/jison/tree/master/examples/"><code>examples/</code></a> and <a href="http://github.com/zaach/jison/tree/master/tests/parser/"><code>tests/parser/</code></a> directories.</p>
