@@ -8,7 +8,7 @@ class Parser
 	var $productions_ = array();
 	var $table = array();
 	var $defaultActions = array();
-	var $version = '0.3.6';
+	var $version = '0.3.12';
 	var $debug = false;
 
 	function __construct()
@@ -267,7 +267,12 @@ class Parser
 	var $yytext = "";
 	var $match = "";
 	var $matched = "";
-	var $yyloc = array();
+	var $yyloc = array(
+		"first_line"=> 1,
+		"first_column"=> 0,
+		"last_line"=> 1,
+		"last_column"=> 0
+	);
 	var $conditionsStack = array();
 	var $conditionStackCount = 0;
 	var $rules = array();
@@ -277,6 +282,7 @@ class Parser
 	var $more;
 	var $_input;
 	var $options;
+	var $offset;
 	
 	function setInput($input)
 	{
@@ -285,12 +291,15 @@ class Parser
 		$this->yylineno = $this->yyleng = 0;
 		$this->yytext = $this->matched = $this->match = '';
 		$this->conditionStack = array('INITIAL');
-		$this->yyloc = array(
-			"first_line"=> 1,
-			"first_column"=> 0,
-			"last_line"=> 1,
-			"last_column"=> 0
-		);
+		$this->yyloc["first_line"] = 1;
+		$this->yyloc["first_column"] = 0;
+		$this->yyloc["last_line"] = 1;
+		$this->yyloc["last_column"] = 0;
+		if ($this->options->ranges) {
+			$this->yyloc['range'] = array(0,0);
+		}
+		$this->offset = 0;
+		return $this;
 	}
 	
 	function input()
@@ -298,17 +307,52 @@ class Parser
 		$ch = $this->_input[0];
 		$this->yytext .= $ch;
 		$this->yyleng++;
+		$this->offset++;
 		$this->match .= $ch;
 		$this->matched .= $ch;
-		$lines = preg_match("/\n/", $ch);
-		if (count($lines) > 0) $this->yylineno++;
-		array_slice($this->_input, 1);
+		$lines = preg_match("/(?:\r\n?|\n).*/", $ch);
+		if (count($lines) > 0) {
+			$this->yylineno++;
+			$this->yyloc['last_line']++;
+		} else {
+			$this->yyloc['last_column']++;
+		}
+		if ($this->options->ranges) $this->yyloc['range'][1]++;
+		
+		$this->_input = array_slice($this->_input, 1);
 		return $ch;
 	}
 	
 	function unput($ch)
 	{
+		$len = strlen($ch);
+		$lines = explode("/(?:\r\n?|\n)/", $ch);
+		$linesCount = count($lines);
+		
 		$this->_input = $ch . $this->_input;
+		$this->yytext = substr($this->yytext, 0, $len - 1);
+		//$this->yylen -= $len;
+		$this->offset -= $len;
+		$oldLines = explode("/(?:\r\n?|\n)/", $this->match);
+		$oldLinesCount = count($oldLines);
+		$this->match = substr($this->match, 0, strlen($this->match) - 1);
+		$this->matched = substr($this->matched, 0, strlen($this->matched) - 1);
+		
+		if (($linesCount - 1) > 0) $this->yylineno -= $linesCount - 1;
+		$r = $this->yyloc['range'];
+		$oldLinesLength = (isset($oldLines[$oldLinesCount - $linesCount]) ? strlen($oldLines[$oldLinesCount - $linesCount]) : 0);
+		
+		$this->yyloc["first_line"] = $this->yyloc["first_line"];
+		$this->yyloc["last_line"] = $this->yylineno + 1;
+		$this->yyloc["first_column"] = $this->yyloc['first_column'];
+		$this->yyloc["last_column"] = (empty($lines) ?
+			($linesCount == $oldLinesCount ? $this->yyloc['first_column'] : 0) + $oldLinesLength :
+			$this->yyloc['first_column'] - $len);
+		
+		if (isset($this->options->ranges)) {
+			$this->yyloc['range'] = array($r[0], $r[0] + $this->yyleng - $len);
+		}
+		
 		return $this;
 	}
 	
@@ -369,16 +413,19 @@ class Parser
 			$matchCount = strlen($match[0]);
 			$lineCount = preg_match("/\n.*/", $match[0], $lines);
 
-			if ($lineCount > 1) $this->yylineno += $lineCount;
-			$this->yyloc = array(
-				"first_line"=> $this->yyloc['last_line'],
-				"last_line"=> $this->yylineno + 1,
-				"first_column"=> $this->yyloc['last_column'],
-				"last_column"=> $lines ? count($lines[$lineCount - 1]) - 1 : $this->yyloc['last_column'] + $matchCount
-			);
+			$this->yylineno += $lineCount;
+			$this->yyloc["first_line"] = $this->yyloc['last_line'];
+			$this->yyloc["last_line"] = $this->yylineno + 1;
+			$this->yyloc["first_column"] = $this->yyloc['last_column'];
+			$this->yyloc["last_column"] = $lines ? count($lines[$lineCount - 1]) - 1 : $this->yyloc['last_column'] + $matchCount;
+			
 			$this->yytext .= $match[0];
 			$this->match .= $match[0];
+			$this->matches = $match;
 			$this->yyleng = strlen($this->yytext);
+			if ($this->options.ranges) {
+				$this->yyloc['range'] = array($this->offset, $this->offset += $this->yyleng);
+			}
 			$this->more = false;
 			$this->_input = substr($this->_input, $matchCount, strlen($this->_input));
 			$this->matched .= $match[0];
