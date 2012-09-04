@@ -37,6 +37,7 @@ exec("jison " + process.argv[2], function(error) {
 	rules = rules.substring(1, rules.length - 1);
 	
 	var conditions = Parser.parser.lexer.conditions;
+    var options = JSON.stringify(Parser.parser.lexer.options);
 	var parserPerformAction = Parser.parser.performAction.toString();
 	var lexerPerformAction = Parser.parser.lexer.performAction.toString();
 
@@ -125,6 +126,8 @@ exec("jison " + process.argv[2], function(error) {
 
 		.replace('"<@@RULES@@>"', 				'array(' + rules + ')')
 		.replace('"<@@CONDITIONS@@>"',			 "json_decode('" + JSON.stringify(conditions) + "', true)")
+
+        .replace('"<@@OPTIONS@@>"',             "json_decode('" + (options) + "', true)")
 
 		.replace('"<@@PARSER_PERFORM_ACTION@@>";', jsPerformActionToPhp(parserPerformAction))
 		.replace('"<@@LEXER_PERFORM_ACTION@@>";', jsPerformActionToPhp(lexerPerformAction));
