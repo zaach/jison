@@ -112,7 +112,7 @@ class Parser
 						}
 					}
 					
-					$errStr = "Parse error on line " . ($yylineno + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . $this->terminals_[$symbol] . "'";
+					$errStr = "Parse error on line " . ($this->yylineno + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals_[$symbol]) ? $this->terminals_[$symbol] : 'NOTHING') . "'";
 			
 					$this->parseError($errStr, array(
 						"text"=> $this->match,
@@ -214,7 +214,7 @@ class Parser
 					
 					$r = $this->parser_performAction($yyval->S, $yytext, $yyleng, $yylineno, $action[1], $vstack, $lstack, $vstackCount - 1);
 					
-					if (empty($r) == false) {
+					if (isset($r)) {
 						return $r;
 					}
 					
@@ -271,7 +271,8 @@ class Parser
 		"first_line"=> 1,
 		"first_column"=> 0,
 		"last_line"=> 1,
-		"last_column"=> 0
+		"last_column"=> 0,
+		"range"=> array()
 	);
 	var $conditionsStack = array();
 	var $conditionStackCount = 0;
@@ -295,7 +296,7 @@ class Parser
 		$this->yyloc["first_column"] = 0;
 		$this->yyloc["last_line"] = 1;
 		$this->yyloc["last_column"] = 0;
-		if ($this->options->ranges) {
+		if (isset($this->options->ranges)) {
 			$this->yyloc['range'] = array(0,0);
 		}
 		$this->offset = 0;
@@ -317,7 +318,7 @@ class Parser
 		} else {
 			$this->yyloc['last_column']++;
 		}
-		if ($this->options->ranges) $this->yyloc['range'][1]++;
+		if (isset($this->options->ranges)) $this->yyloc['range'][1]++;
 		
 		$this->_input = array_slice($this->_input, 1);
 		return $ch;
@@ -423,7 +424,7 @@ class Parser
 			$this->match .= $match[0];
 			$this->matches = $match;
 			$this->yyleng = strlen($this->yytext);
-			if ($this->options.ranges) {
+			if (isset($this->options->ranges)) {
 				$this->yyloc['range'] = array($this->offset, $this->offset += $this->yyleng);
 			}
 			$this->more = false;
