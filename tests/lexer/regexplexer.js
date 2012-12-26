@@ -196,7 +196,7 @@ exports["test ignored"] = function() {
     assert.equal(lexer.lex(), "EOF");
 };
 
-exports["test dissambiguate"] = function() {
+exports["test disambiguate"] = function() {
     var dict = {
         rules: [
            ["for\\b", "return 'FOR';" ],
