@@ -1,4 +1,4 @@
-// Basic RegExp Lexer 
+// Basic RegExp Lexer
 // MIT Licensed
 // Zachary Carter <zach@carter.name>
 
@@ -104,7 +104,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input 
+    // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
         this._more = this._less = this.done = false;
@@ -145,13 +145,13 @@ RegExpLexer.prototype = {
         if (next.length < 20) {
             next += this._input.substr(0, 20-next.length);
         }
-        return (next.substr(0,20)+(next.length > 20 ? '...':'')).replace(/\n/g, "");
+        return (next.substr(0,20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
     // displays upcoming input, i.e. for error messages
     showPosition: function () {
         var pre = this.pastInput();
         var c = new Array(pre.length + 1).join("-");
-        return pre + this.upcomingInput() + "\n" + c+"^";
+        return pre + this.upcomingInput() + "\n" + c + "^";
     },
 
     // return next match in input
@@ -181,14 +181,16 @@ RegExpLexer.prototype = {
                 this._input = this._input.slice(match[0].length);
                 this.matched += match[0];
                 token = this.performAction.call(this, this.yy, this, i);
-                if (token) return token;
-                else return;
+                if (token)
+					return token;
+                else
+					return;
             }
         }
         if (this._input == this.EOF) {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -216,7 +218,7 @@ RegExpLexer.prototype = {
         opt = opt || {};
         var out = "/* Jison generated lexer */",
             moduleName = opt.moduleName || "lexer";
-        out += "\nvar "+moduleName+" = (function(){var lexer = ({";
+        out += "\nvar " + moduleName + " = (function(){var lexer = ({";
         var p = [];
         for (var k in RegExpLexer.prototype)
             if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1)
@@ -225,7 +227,7 @@ RegExpLexer.prototype = {
         out += "})";
         out += ";\nlexer.performAction = "+String(this.performAction);
         out += ";\nlexer.rules = [" + this.rules + "]";
-        out += ";return lexer;})()";
+        out += ";return lexer;})();";
         return out;
     },
     generateCommonJSModule: function generateCommonJSModule(opt) {
@@ -241,8 +243,8 @@ RegExpLexer.prototype = {
 
 return RegExpLexer;
 
-})()
+})();
 
-if (typeof exports !== 'undefined') 
+if (typeof exports !== 'undefined')
     exports.RegExpLexer = RegExpLexer;
 
