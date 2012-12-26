@@ -15,23 +15,10 @@ $(function () {
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
-    $(".action, .state").on("click", function (ev){
-      if (!$(ev.target).is("a"))
-        $(this).toggleClass("open");
-    });
-
-    $(".action, .state").on("dblclick", function (ev){
-        var row = this.className.match(/(row_[0-9]+)/)[1];
-        $(this).hasClass("open") ?
-          $("."+row).removeClass("open") :
-          $("."+row).addClass("open");
-        return false;
-    });
-
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
-      $.get("/jison/examples/"+file, function (data) {
+      $.get(file, function (data) {
         $("#grammar").val(data);
         $(document.body).removeClass("loading");
       });
@@ -70,6 +57,38 @@ function processGrammar () {
       llTable(parser);
     else
       lrTable(parser);
+
+    var do_click = false;
+
+    // now that the table has been generated, add the click handlers:
+    function click_handler(ev) {
+      do_click = true;
+      // delay 'click' action so dblclick gets a chance too.
+      // (make sure 'this' remains accessible via closure)
+      var self = $(this);
+      setTimeout(function() {
+        if (do_click) {
+          console.log("click_handler", ev);
+          if (!$(ev.target).is("a"))
+            self.toggleClass("open");
+          do_click = false;
+        }
+      }, 350);
+    }
+    $(".action").on("click", click_handler);
+    $(".state").on("click", click_handler);
+
+    function dblclick_handler(ev) {
+      console.log("dblclick_handler", ev);
+      do_click = false; // disable 'click' action
+      var row = this.className.match(/(row_[0-9]+)/)[1];
+      $(this).hasClass("open") ?
+        $("."+row).removeClass("open") :
+        $("."+row).addClass("open");
+      return false;
+    }
+    $(".action").on("dblclick", dblclick_handler);
+    $(".state").on("dblclick", dblclick_handler);
 }
 
 function runParser () {

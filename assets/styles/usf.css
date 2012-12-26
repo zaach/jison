@@ -5,6 +5,16 @@ a img { border: 0px; }
   width: 100%;
 }
 
+div#container
+{
+  margin-left: 1em;
+  margin-right: 1em;
+}
+#lead-in
+{
+  margin-right: 110px;
+}
+
 #intro {
   font-size: 2em;
   -moz-border-radius: 8px;
