@@ -110,7 +110,7 @@ generator.constructor = function Jison_Generator (grammar, opt) {
         }
         this.actionInclude = grammar.actionInclude;
     }
-    this.moduleInclude = grammar.moduleInclude||'';
+    this.moduleInclude = grammar.moduleInclude || '';
 
     this.DEBUG = options.debug || false;
     if (this.DEBUG) this.mix(generatorDebug); // mixin debug methods
@@ -199,6 +199,7 @@ function processOperators (ops) {
 
 generator.buildProductions = function buildProductions(bnf, productions, nonterminals, symbols, operators) {
     var actions = [
+	  '/* this == yyval */',
       this.actionInclude || '',
       'var $0 = $$.length - 1;',
       'switch (yystate) {'
@@ -251,7 +252,13 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     this.productions_ = productions_;
     actions.push('}');
-    this.performAction = Function("yytext,yyleng,yylineno,yy,yystate,$$,_$", actions.join("\n"));
+    // first try to create the performAction function the old way,
+    // but this will break for some legal constructs in the user action code:
+    try {
+        this.performAction = Function("yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */", actions.join("\n"));
+    } catch (e) {
+        this.performAction = "function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {\n" + actions.join("\n") + "\n}";
+    }
 
     function buildProduction (handle) {
         var r, rhs, i;
@@ -746,7 +753,6 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
 
 var NONASSOC = 0;
 lrGeneratorMixin.parseTable = function parseTable (itemSets) {
-    var NONASSOC = 0;
     var states = [],
         nonterminals = this.nonterminals,
         operators = this.operators,
@@ -910,12 +916,13 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
     switch (opt.moduleType) {
         case "js":
             code = this.generateModule(opt);
-        break;
+            break;
         case "amd":
             code = this.generateAMDModule(opt);
-        break;
+            break;
         default:
             code = this.generateCommonJSModule(opt);
+            break;
     }
 
     return code;
@@ -923,7 +930,7 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
 
 lrGeneratorMixin.generateAMDModule = function generateAMDModule(opt){
     opt = typal.mix.call({}, this.options, opt);
-    var out = 'define([], function(){'
+    var out = '\n\ndefine([], function(){'
         + '\nvar parser = '+ this.generateModule_(opt)
         + (this.lexer && this.lexer.generateModule ?
           '\n' + this.lexer.generateModule() +
@@ -937,14 +944,14 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
     var out = this.generateModule(opt)
-        + "\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
+        + "\n\n\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
         + "\nexports.parser = "+moduleName+";"
         + "\nexports.Parser = "+moduleName+".Parser;"
-        + "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); }"
-        + "\nexports.main = "+ String(opt.moduleMain || commonjsMain)
+        + "\nexports.parse = function () { return "+moduleName+".parse.apply("+moduleName+", arguments); };"
+        + "\nexports.main = "+ String(opt.moduleMain || commonjsMain) + ";"
         + "\nif (typeof module !== 'undefined' && require.main === module) {\n"
         + "  exports.main(typeof process !== 'undefined' ? process.argv.slice(1) : require(\"system\").args);\n}"
-        + "\n}"
+        + "\n}";
 
     return out;
 };
@@ -952,7 +959,65 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
 lrGeneratorMixin.generateModule = function generateModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
-    var out = "/* Jison generated parser */\n";
+    var out = "/* Jison generated parser */\n"
+        + "/*\n"
+        + "  Returns a Parser object of the following structure:\n"
+        + "\n"
+        + "  Parser: {\n"
+        + "    yy: {}\n"
+        + "  }\n"
+        + "\n"
+        + "  Parser.prototype: {\n"
+        + "    yy: {},\n"
+        + "    trace: function(),\n"
+        + "    symbols_: {associative list: name ==> number},\n"
+        + "    terminals_: {associative list: number ==> name},\n"
+        + "    productions_: [...],\n"
+        + "    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$),\n"
+        + "    table: [...],\n"
+        + "    defaultActions: {...},\n"
+        + "    parseError: function(str, hash),\n"
+        + "    parse: function(input),\n"
+        + "\n"
+        + "    lexer: {\n"
+        + "        EOF: 1,\n"
+        + "        parseError: function(str, hash),\n"
+        + "        setInput: function(input),\n"
+        + "        input: function(),\n"
+        + "        unput: function(str),\n"
+        + "        more: function(),\n"
+        + "        less: function(n),\n"
+        + "        pastInput: function(),\n"
+        + "        upcomingInput: function(),\n"
+        + "        showPosition: function(),\n"
+        + "        next: function(),\n"
+        + "        lex: function(),\n"
+        + "        begin: function(condition),\n"
+        + "        popState: function(),\n"
+        + "        _currentRules: function(),\n"
+        + "        topState: function(),\n"
+        + "        pushState: function(condition),\n"
+        + "\n"
+        + "        options: {\n"
+        + "            ranges: boolean   (optional: true ==> token location info will include a .range[] member)\n"
+        + "            flex: boolean     (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)\n"
+        + "        },\n"
+        + "\n"
+        + "        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),\n"
+        + "        rules: [...],\n"
+        + "        conditions: {associative list: name ==> set},\n"
+        + "    }\n"
+        + "  }\n"
+        + "\n"
+        + "\n"
+        + "  token location info (@$, _$, etc.): {\n"
+        + "    first_line: n,\n"
+        + "    last_line: n,\n"
+        + "    first_column: n,\n"
+        + "    last_column: n,\n"
+        + "    range: [start_number, end_number]       (where the numbers are indexes into the input string, regular zero-based)\n"
+        + "  }\n"
+        + "*/\n";
     out += (moduleName.match(/\./) ? moduleName : "var "+moduleName)+" = (function(){";
     out += "\nvar parser = "+this.generateModule_();
     out += "\n"+this.moduleInclude;
@@ -960,7 +1025,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         out += this.lexer.generateModule();
         out += "\nparser.lexer = lexer;";
     }
-    out += "\nfunction Parser () { this.yy = {}; }"
+    out += "\nfunction Parser () {\n  this.yy = {};\n}\n"
         + "Parser.prototype = parser;"
         + "parser.Parser = Parser;"
         + "\nreturn new Parser;\n})();";
@@ -1626,7 +1691,7 @@ return function Parser (g, options) {
 },requires:["jison/util/typal","jison/util/set","jison/lexer","jison/bnf","jison/ebnf","JSONSelect","reflect","fs","path","file","file"]});
 
 require.def("jison/lexer",{factory:function(require,exports,module){
-// Basic RegExp Lexer 
+// Basic RegExp Lexer
 // MIT Licensed
 // Zachary Carter <zach@carter.name>
 
@@ -1774,7 +1839,7 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input 
+    // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
         this._more = this._less = this.done = false;
@@ -2083,11 +2148,11 @@ var setMixin = {
             this._items = [].slice.call(arguments,0);
     },
     concat: function concat (setB) {
-        this._items.push.apply(this._items, setB._items || setB); 
+        this._items.push.apply(this._items, setB._items || setB);
         return this;
     },
     eq: function eq (set) {
-        return this._items.length === set._items.length && this.subset(set); 
+        return this._items.length === set._items.length && this.subset(set);
     },
     indexOf: function indexOf (item) {
         if(item && item.eq) {
@@ -2320,7 +2385,7 @@ case 23:this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
             if($$[$0]) this.$.push($$[$0]);
             if($$[$0-1]) this.$.push($$[$0-1]);
             if (this.$.length === 1) this.$ = this.$[0];
-        
+
 break;
 case 24:this.$ = $$[$0-1]; this.$.push($$[$0])
 break;
@@ -2330,13 +2395,13 @@ case 26:this.$ = $$[$0-2]; this.$.push($$[$0].join(' '));
 break;
 case 27:this.$ = [$$[$0].join(' ')];
 break;
-case 28:this.$ = $$[$0-1] + $$[$0]; 
+case 28:this.$ = $$[$0-1] + $$[$0];
 break;
-case 29:this.$ = $$[$0]; 
+case 29:this.$ = $$[$0];
 break;
-case 30:this.$ = ebnf ? "'"+$$[$0]+"'" : $$[$0]; 
+case 30:this.$ = ebnf ? "'"+$$[$0]+"'" : $$[$0];
 break;
-case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')'; 
+case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')';
 break;
 case 32:this.$ = ''
 break;
@@ -2777,13 +2842,13 @@ case 1: this.$ = {rules: $$[$0-1]};
           if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
           delete yy.options;
           delete yy.actionInclude;
-          return this.$; 
+          return this.$;
 break;
-case 2: this.$ = null; 
+case 2: this.$ = null;
 break;
-case 3: this.$ = null; 
+case 3: this.$ = null;
 break;
-case 4: this.$ = $$[$0-1]; 
+case 4: this.$ = $$[$0-1];
 break;
 case 5:
           this.$ = $$[$0];
@@ -2796,31 +2861,31 @@ case 5:
               this.$[1][name] = $$[$0-1][name];
             }
           }
-        
+
 break;
-case 6: yy.actionInclude += $$[$0-1]; this.$ = $$[$0]; 
+case 6: yy.actionInclude += $$[$0-1]; this.$ = $$[$0];
 break;
-case 7: yy.actionInclude = ''; this.$ = [null,null]; 
+case 7: yy.actionInclude = ''; this.$ = [null,null];
 break;
-case 8: this.$ = [$$[$0-1], $$[$0]]; 
+case 8: this.$ = [$$[$0-1], $$[$0]];
 break;
-case 9: this.$ = $$[$0]; 
+case 9: this.$ = $$[$0];
 break;
-case 10: this.$ = $$[$0]; 
+case 10: this.$ = $$[$0];
 break;
-case 11: this.$ = {}; this.$[$$[$0]] = 0; 
+case 11: this.$ = {}; this.$[$$[$0]] = 0;
 break;
-case 12: this.$ = $$[$0-1]; this.$[$$[$0]] = 0; 
+case 12: this.$ = $$[$0-1]; this.$[$$[$0]] = 0;
 break;
-case 13: this.$ = {}; this.$[$$[$0]] = 1; 
+case 13: this.$ = {}; this.$[$$[$0]] = 1;
 break;
-case 14: this.$ = $$[$0-1]; this.$[$$[$0]] = 1; 
+case 14: this.$ = $$[$0-1]; this.$[$$[$0]] = 1;
 break;
-case 15: this.$ = $$[$0-1]; this.$.push($$[$0]); 
+case 15: this.$ = $$[$0-1]; this.$.push($$[$0]);
 break;
-case 16: this.$ = [$$[$0]]; 
+case 16: this.$ = [$$[$0]];
 break;
-case 17: this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1],$$[$0]]; 
+case 17: this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1],$$[$0]];
 break;
 case 18:this.$ = $$[$0-1];
 break;
@@ -2834,56 +2899,56 @@ case 22:this.$ = $$[$0-4]+$$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
 break;
 case 23:this.$ = $$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
 break;
-case 24: this.$ = $$[$0-1]; 
+case 24: this.$ = $$[$0-1];
 break;
-case 25: this.$ = ['*']; 
+case 25: this.$ = ['*'];
 break;
-case 27: this.$ = [$$[$0]]; 
+case 27: this.$ = [$$[$0]];
 break;
-case 28: this.$ = $$[$0-2]; this.$.push($$[$0]); 
+case 28: this.$ = $$[$0-2]; this.$.push($$[$0]);
 break;
 case 29: this.$ = $$[$0];
           if (!(yy.options && yy.options.flex) && this.$.match(/[\w\d]$/) && !this.$.match(/\\(b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/))
               this.$ += "\\b";
-        
+
 break;
-case 30: this.$ = $$[$0-2]+'|'+$$[$0]; 
+case 30: this.$ = $$[$0-2]+'|'+$$[$0];
 break;
-case 31: this.$ = $$[$0-1]+'|'; 
+case 31: this.$ = $$[$0-1]+'|';
 break;
-case 33: this.$ = '' 
+case 33: this.$ = ''
 break;
-case 34: this.$ = $$[$0-1]+$$[$0]; 
+case 34: this.$ = $$[$0-1]+$$[$0];
 break;
-case 36: this.$ = '('+$$[$0-1]+')'; 
+case 36: this.$ = '('+$$[$0-1]+')';
 break;
-case 37: this.$ = $$[$0-2]+$$[$0-1]+')'; 
+case 37: this.$ = $$[$0-2]+$$[$0-1]+')';
 break;
-case 38: this.$ = $$[$0-1]+'+'; 
+case 38: this.$ = $$[$0-1]+'+';
 break;
-case 39: this.$ = $$[$0-1]+'*'; 
+case 39: this.$ = $$[$0-1]+'*';
 break;
-case 40: this.$ = $$[$0-1]+'?'; 
+case 40: this.$ = $$[$0-1]+'?';
 break;
-case 41: this.$ = '(?='+$$[$0]+')'; 
+case 41: this.$ = '(?='+$$[$0]+')';
 break;
-case 42: this.$ = '(?!'+$$[$0]+')'; 
+case 42: this.$ = '(?!'+$$[$0]+')';
 break;
-case 44: this.$ = $$[$0-1]+$$[$0]; 
+case 44: this.$ = $$[$0-1]+$$[$0];
 break;
-case 46: this.$ = '.'; 
+case 46: this.$ = '.';
 break;
-case 47: this.$ = '^'; 
+case 47: this.$ = '^';
 break;
-case 48: this.$ = '$'; 
+case 48: this.$ = '$';
 break;
-case 52: this.$ = yytext; 
+case 52: this.$ = yytext;
 break;
-case 53: this.$ = yytext; 
+case 53: this.$ = yytext;
 break;
-case 54: this.$ = yytext; 
+case 54: this.$ = yytext;
 break;
-case 55: this.$ = yy.prepareString(yytext.substr(1, yytext.length-2)); 
+case 55: this.$ = yy.prepareString(yytext.substr(1, yytext.length-2));
 break;
 }
 },
