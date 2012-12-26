@@ -37,11 +37,11 @@ textarea {
     display: block;
     width: 586px;
     height: 200px;
-    background: url(/jison/assets/images/jison_x1.png) no-repeat;
+    background: url(../../assets/images/jison_x1.png) no-repeat;
     outline-style: none;
 }
 #header h1 a:active {
-    background: url(/jison/assets/images/jison_x1.png) no-repeat 2px 3px;
+    background: url(../../assets/images/jison_x1.png) no-repeat 2px 3px;
 }
 
 #header h2 {
