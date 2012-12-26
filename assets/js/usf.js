@@ -15,12 +15,12 @@ $(function () {
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
-    $(".action, .state").live("click", function (ev){
+    $(".action, .state").on("click", function (ev){
       if (!$(ev.target).is("a"))
         $(this).toggleClass("open");
     });
 
-    $(".action, .state").live("dblclick", function (ev){
+    $(".action, .state").on("dblclick", function (ev){
         var row = this.className.match(/(row_[0-9]+)/)[1];
         $(this).hasClass("open") ?
           $("."+row).removeClass("open") :
@@ -49,7 +49,7 @@ function processGrammar () {
         try {
             var cfg = bnf.parse(grammar);
         } catch (e) {
-            return alert("Oops. Make sure your grammar is in the correct format.\n"+e); 
+            return alert("Oops. Make sure your grammar is in the correct format.\n"+e);
         }
     }
 
@@ -68,7 +68,7 @@ function processGrammar () {
 
     if (type === 'll')
       llTable(parser);
-    else 
+    else
       lrTable(parser);
 }
 
@@ -114,7 +114,7 @@ function printCell (cell){
 
     out += "<div class='details'>";
     for (var i=0;i<cell.length;i++)
-        out += parser.productions[cell[i]]+"<br />"; 
+        out += parser.productions[cell[i]]+"<br />";
     out += "</div>";
 
     return out;
@@ -223,7 +223,7 @@ function lrTable (p){
         if (p.nonterminals[ts]){
           if (typeof state[t] === 'number')
             ntout.push('<td class="nonterm nt-'+t+'"><a href="#state_'+state[t]+'">',state[t],'</a></td>');
-          else 
+          else
             ntout.push('<td class="nonterm">&nbsp;</td>');
         } else if (state[t]) {
           out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t] == 3 ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
