@@ -255,7 +255,7 @@ function lrTable (p){
 
     out.push('</table>');
 
-    $("#table").html("<h3>"+parser.type+" Parse Table</h3><p>Click cells to show details</p>"+out.join(""));
+    $("#table").html("<h3>"+parser.type+" Parse Table</h3><p>Click cells to show details (double-click to show details for the entire row of cells)</p>"+out.join(""));
 
     p.resolutions.forEach(function (res){
       var r = res[2];

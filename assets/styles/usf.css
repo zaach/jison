@@ -5,14 +5,10 @@ a img { border: 0px; }
   width: 100%;
 }
 
-div#container
-{
-  margin-left: 1em;
-  margin-right: 1em;
-}
-#lead-in
-{
-  margin-right: 110px;
+#content {
+    max-width: 2600px;
+    margin: 0 auto;
+    padding: 0 1em;
 }
 
 #intro {
