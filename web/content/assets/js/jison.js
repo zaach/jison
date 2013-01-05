@@ -1311,8 +1311,9 @@ parser.parse = function parse (input) {
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
                     yyloc = this.lexer.yylloc;
-                    if (recovering > 0)
+                    if (recovering > 0) {
                         recovering--;
+                    }
                 } else { // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
                     preErrorSymbol = null;
@@ -2617,8 +2618,9 @@ parse: function parse(input) {
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
                 yyloc = this.lexer.yylloc;
-                if (recovering > 0)
+                if (recovering > 0) {
                     recovering--;
+                }
             } else {
                 symbol = preErrorSymbol;
                 preErrorSymbol = null;
@@ -3136,8 +3138,9 @@ parse: function parse(input) {
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
                 yyloc = this.lexer.yylloc;
-                if (recovering > 0)
+                if (recovering > 0) {
                     recovering--;
+                }
             } else {
                 symbol = preErrorSymbol;
                 preErrorSymbol = null;

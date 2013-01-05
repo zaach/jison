@@ -1156,8 +1156,9 @@ parser.parse = function parse (input) {
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
                     symbol = lex();
-                    if (recovering > 0)
+                    if (recovering > 0) {
                         recovering--;
+                    }
                 } else { // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
                     preErrorSymbol = null;
