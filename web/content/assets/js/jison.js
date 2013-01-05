@@ -990,6 +990,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "        pastInput: function(),\n"
         + "        upcomingInput: function(),\n"
         + "        showPosition: function(),\n"
+        + "        test_match: function(regex_match_array, rule_index),\n"
         + "        next: function(),\n"
         + "        lex: function(),\n"
         + "        begin: function(condition),\n"
@@ -999,8 +1000,9 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "        pushState: function(condition),\n"
         + "\n"
         + "        options: {\n"
-        + "            ranges: boolean   (optional: true ==> token location info will include a .range[] member)\n"
-        + "            flex: boolean     (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)\n"
+        + "            ranges: boolean           (optional: true ==> token location info will include a .range[] member)\n"
+        + "            flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)\n"
+        + "            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)\n"
         + "        },\n"
         + "\n"
         + "        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),\n"
@@ -1749,7 +1751,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
         }
         action = rules[i][1];
         if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/, tokenNumberReplacement);
+            action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
         }
         actions.push('case '+i+':' +action+'\nbreak;');
     }
@@ -1788,7 +1790,7 @@ function prepareStartConditions (conditions) {
 }
 
 function buildActions (dict, tokens) {
-    var actions = [dict.actionInclude || '', "var YYSTATE=YY_START"];
+    var actions = [dict.actionInclude || '', "var YYSTATE=YY_START;"];
     var tok;
     var toks = {};
 
@@ -1846,8 +1848,15 @@ RegExpLexer.prototype = {
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
-        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
-        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.yylloc = {
+			first_line: 1,
+			first_column: 0,
+			last_line: 1,
+			last_column: 0
+		};
+        if (this.options.ranges) {
+			this.yylloc.range = [0,0];
+		}
         this.offset = 0;
         return this;
     },
@@ -1866,7 +1875,9 @@ RegExpLexer.prototype = {
         } else {
             this.yylloc.last_column++;
         }
-        if (this.options.ranges) this.yylloc.range[1]++;
+        if (this.options.ranges) {
+			this.yylloc.range[1]++;
+		}
 
         this._input = this._input.slice(1);
         return ch;
@@ -1877,23 +1888,27 @@ RegExpLexer.prototype = {
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
         this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
         //this.yyleng -= len;
         this.offset -= len;
         var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length-1);
-        this.matched = this.matched.substr(0, this.matched.length-1);
+        this.match = this.match.substr(0, this.match.length - 1);
+        this.matched = this.matched.substr(0, this.matched.length - 1);
 
-        if (lines.length-1) this.yylineno -= lines.length-1;
+        if (lines.length - 1) {
+			this.yylineno -= lines.length - 1;
+		}
         var r = this.yylloc.range;
 
-        this.yylloc = {first_line: this.yylloc.first_line,
-          last_line: this.yylineno+1,
-          first_column: this.yylloc.first_column,
-          last_column: lines ?
-              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+        this.yylloc = {
+			first_line: this.yylloc.first_line,
+          	last_line: this.yylineno + 1,
+	        first_column: this.yylloc.first_column,
+            last_column: lines ?
+              	(lines.length === oldLines.length ? this.yylloc.first_column : 0)
+				 + oldLines[oldLines.length - lines.length].length - lines[0].length :
               this.yylloc.first_column - len
-          };
+        };
 
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
@@ -1909,7 +1924,7 @@ RegExpLexer.prototype = {
     less: function (n) {
         this.unput(this.match.slice(n));
     },
-    // displays upcoming input, i.e. for error messages
+    // displays already matched input, i.e. for error messages
     pastInput: function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         return (past.length > 20 ? '...':'') + past.substr(-20).replace(/\n/g, "");
@@ -1920,73 +1935,149 @@ RegExpLexer.prototype = {
         if (next.length < 20) {
             next += this._input.substr(0, 20-next.length);
         }
-        return (next.substr(0,20)+(next.length > 20 ? '...':'')).replace(/\n/g, "");
+        return (next.substr(0,20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
-    // displays upcoming input, i.e. for error messages
+    // displays the character position where the lexing error occurred, i.e. for error messages
     showPosition: function () {
         var pre = this.pastInput();
         var c = new Array(pre.length + 1).join("-");
-        return pre + this.upcomingInput() + "\n" + c+"^";
+        return pre + this.upcomingInput() + "\n" + c + "^";
+    },
+
+    // test the lexed token: return FALSE when not a match, otherwise return token
+    test_match: function(match, index) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yyloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines)
+            this.yylineno += lines.length;
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset += this.yyleng];
+        }
+        this._more = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, rules[index], this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            if (this.options.backtrack_lexer)
+                delete backup;
+            return token;
+        }
+
+        if (this.options.backtrack_lexer) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+        }
+        return false;
     },
 
     // return next match in input
-    next: function () {
+    next: function() {
         if (this.done) {
             return this.EOF;
         }
-        if (!this._input) this.done = true;
+        if (!this._input) {
+            this.done = true;
+        }
 
         var token,
             match,
             tempMatch,
-            index,
-            col,
-            lines;
+            index;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
         }
         var rules = this._currentRules();
-        for (var i=0;i < rules.length; i++) {
+        for (var i = 0; i < rules.length; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
-                if (!this.options.flex) break;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, i);
+                    if (token !== false) {
+                        return token;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
             }
         }
         if (match) {
-            lines = match[0].match(/(?:\r\n?|\n).*/g);
-            if (lines) this.yylineno += lines.length;
-            this.yylloc = {first_line: this.yylloc.last_line,
-                           last_line: this.yylineno+1,
-                           first_column: this.yylloc.last_column,
-                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
-            this.yytext += match[0];
-            this.match += match[0];
-            this.matches = match;
-            this.yyleng = this.yytext.length;
-            if (this.options.ranges) {
-                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            token = this.test_match(match, index);
+            if (token !== false) {
+                return token;
+            } else {
+                return this.parseError('Lexical error on line ' + (this.yylineno + 1)
+                                        + '. Text matched by regex #' + index
+                                        + ' (' + rules[index] + ': ' + this.rules[rules[index]]
+                                        + ') did not produce a token.\n' + this.showPosition(), {
+                    text: "",
+                    token: null,
+                    line: this.yylineno
+                });
             }
-            this._more = false;
-            this._input = this._input.slice(match[0].length);
-            this.matched += match[0];
-            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
-            if (this.done && this._input) this.done = false;
-            if (token) return token;
-            else return;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
-                    {text: "", token: null, line: this.yylineno});
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
         }
     },
 
     // return next match that has a token
-    lex: function lex () {
+    lex: function lex() {
         var r = this.next();
         if (typeof r !== 'undefined') {
             return r;
@@ -2001,10 +2092,10 @@ RegExpLexer.prototype = {
         return this.conditionStack.pop();
     },
     _currentRules: function _currentRules () {
-        return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+        return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
     },
     topState: function () {
-        return this.conditionStack[this.conditionStack.length-2];
+        return this.conditionStack[this.conditionStack.length - 2];
     },
     pushState: function begin (condition) {
         this.begin(condition);
@@ -2021,23 +2112,43 @@ RegExpLexer.prototype = {
     },
     generateModule: function generateModule(opt) {
         opt = opt || {};
+        var function_descriptions = {
+            setInput: "resets the lexer, sets new input",
+            input: "consumes and returns one char from the input",
+            unput: "unshifts one char into the input",
+            more: "When called from action, caches matched text and appends it on next action",
+            less: "retain first n characters of the match",
+            pastInput: "displays already matched input, i.e. for error messages",
+            upcomingInput: "displays upcoming input, i.e. for error messages",
+            showPosition: "displays the character position where the lexing error occurred, i.e. for error messages",
+			test_match: "test the lexed token: return FALSE when not a match, otherwise return token",
+            next: "return next match in input",
+            lex: "return next match that has a token"
+        };
         var out = "/* Jison generated lexer */",
             moduleName = opt.moduleName || "lexer";
-        out += "\nvar "+moduleName+" = (function(){\nvar lexer = ({";
+        out += "\nvar " + moduleName + " = (function(){\nvar lexer = ({";
         var p = [];
-        for (var k in RegExpLexer.prototype)
-            if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1)
-            p.push(k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
+        for (var k in RegExpLexer.prototype) {
+            if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1) {
+                // copy the function description as a comment before the implementation; supports multi-line descriptions
+                var descr = "";
+                if (function_descriptions[k]) {
+                    descr += "// " + function_descriptions[k].replace(/\n/g, "\n\/\/ ") + "\n";
+                }
+                p.push(descr + k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
+            }
+        }
         out += p.join(",\n");
         out += "})";
         if (this.options) {
-            out += ";\nlexer.options = "+JSON.stringify(this.options);
+            out += ";\nlexer.options = " + JSON.stringify(this.options);
         }
         out += ";\nlexer.performAction = "+String(this.performAction);
         out += ";\nlexer.rules = [" + this.rules + "]";
         out += ";\nlexer.conditions = " + JSON.stringify(this.conditions);
-        if (this.moduleInclude) out += ";\n"+this.moduleInclude;
-        out += ";\nreturn lexer;})()";
+        if (this.moduleInclude) out += ";\n" + this.moduleInclude;
+        out += ";\nreturn lexer;})();";
         return out;
     },
     generateCommonJSModule: function generateCommonJSModule(opt) {
