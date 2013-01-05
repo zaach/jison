@@ -1,4 +1,4 @@
-#!/usr/bin/env narwhal
+#!/usr/bin/env node
 
 exports.testParser = require("./parser/parser-tests");
 exports.testLexer = require("./lexer/lexer-tests");
