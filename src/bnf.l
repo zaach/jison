@@ -3,13 +3,13 @@
 
 %%
 
-<bnf,ebnf>"%%"           this.begin('code');return '%%';
+<bnf,ebnf>"%%"          this.begin('code');return '%%';
 
-<ebnf>"("                 return '('
-<ebnf>")"                 return ')'
-<ebnf>"*"                 return '*'
-<ebnf>"?"                 return '?'
-<ebnf>"+"                 return '+'
+<ebnf>"("               return '(';
+<ebnf>")"               return ')';
+<ebnf>"*"               return '*';
+<ebnf>"?"               return '?';
+<ebnf>"+"               return '+';
 
 \s+                     /* skip whitespace */
 "//".*                  /* skip comment */
@@ -20,7 +20,7 @@
 ":"                     return ':';
 ";"                     return ';';
 "|"                     return '|';
-"%%"                    this.begin(ebnf ? 'ebnf' : 'bnf');return '%%';
+"%%"                    this.begin(ebnf ? 'ebnf' : 'bnf'); return '%%';
 "%ebnf"                 if (!yy.options) yy.options = {}; ebnf = yy.options.ebnf = true;
 "%prec"                 return 'PREC';
 "%start"                return 'START';
@@ -31,15 +31,15 @@
 "%"[a-zA-Z]+[^\n]*      /* ignore unrecognized decl */
 "<"[a-zA-Z]*">"         /* ignore type */
 "{{"[\w\W]*?"}}"        yytext = yytext.substr(2, yyleng-4); return 'ACTION';
-"%{"(.|\n)*?"%}"        yytext = yytext.substr(2, yytext.length-4);return 'ACTION';
-"{"                     yy.depth=0; this.begin('action'); return '{';
+"%{"(.|\n)*?"%}"        yytext = yytext.substr(2, yytext.length-4); return 'ACTION';
+"{"                     yy.depth = 0; this.begin('action'); return '{';
 "->".*                  yytext = yytext.substr(2, yyleng-2); return 'ARROW_ACTION';
 .                       /* ignore bad characters */
 <*><<EOF>>              return 'EOF';
 
 <action>[^{}]+          return 'ACTION_BODY';
 <action>"{"             yy.depth++; return '{';
-<action>"}"             yy.depth==0? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return '}';
+<action>"}"             yy.depth == 0 ? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return '}';
 
 <code>(.|\n)+           return 'CODE';
 
