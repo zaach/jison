@@ -1056,7 +1056,10 @@ function removeErrorRecovery (fn) {
         var ast = Reflect.parse(parseFn);
 
         var labeled = JSONSelect.match(':has(:root > .label > .name:val("_handle_error"))', ast);
-        labeled[0].body.consequent.body = [labeled[0].body.consequent.body[0], labeled[0].body.consequent.body[1]];
+        var reduced_code = labeled[0].body.consequent.body[3].consequent.body;
+        reduced_code[0] = labeled[0].body.consequent.body[1];     // remove the line: error_rule_depth = locateNearestErrorRecoveryRule(state);
+        reduced_code[4].expression.arguments[1].properties.pop(); // remove the line: 'recoverable: error_rule_depth !== false' 
+        labeled[0].body.consequent.body = reduced_code;
 
         return Reflect.stringify(ast).replace(/_handle_error:\s?/,"").replace(/\\\\n/g,"\\n");
     } catch (e) {
@@ -1241,27 +1244,6 @@ parser.parse = function parse (input) {
         return token;
     }
 
-    // Return the rule stack depth where the nearest error rule can be found.
-    // Return FALSE when no error recovery rule was found.
-    function locateNearestErrorRecoveryRule(state) {
-        var stack_probe = stack.length - 1;
-        var depth = 0;
-
-        // try to recover from error
-        for(;;) {
-            // check for error recovery rule in this state
-            if ((TERROR.toString()) in table[state]) {
-                return depth;
-            }
-            if (state === 0 || stack_probe < 2) {
-                return false; // No suitable error recovery rule available.
-            }
-            stack_probe -= 2; // popStack(1): [symbol, action]
-            state = stack[stack_probe];
-            ++depth;
-        }
-    }
-
     var symbol, preErrorSymbol, state, action, a, r, yyval = {}, p, len, newState, expected;
     while (true) {
         // retreive state number from top of stack
@@ -1283,6 +1265,28 @@ _handle_error:
         if (typeof action === 'undefined' || !action.length || !action[0]) {
             var error_rule_depth;
             var errStr = '';
+
+            // Return the rule stack depth where the nearest error rule can be found.
+            // Return FALSE when no error recovery rule was found.
+            function locateNearestErrorRecoveryRule(state) {
+                var stack_probe = stack.length - 1;
+                var depth = 0;
+
+                // try to recover from error
+                for(;;) {
+                    // check for error recovery rule in this state
+                    if ((TERROR.toString()) in table[state]) {
+                        return depth;
+                    }
+                    if (state === 0 || stack_probe < 2) {
+                        return false; // No suitable error recovery rule available.
+                    }
+                    stack_probe -= 2; // popStack(1): [symbol, action]
+                    state = stack[stack_probe];
+                    ++depth;
+                }
+            }
+
             if (!recovering) {
                 // first see if there's any chance at hitting an error recovery rule:
                 error_rule_depth = locateNearestErrorRecoveryRule(state);
@@ -1715,25 +1719,7 @@ Jison.Generator = function Jison_Generator (g, options) {
 };
 
 return function Parser (g, options) {
-        var opt = typal.mix.call({}, g.options, options);
-        var gen;
-        switch (opt.type) {
-            case 'lr0':
-                gen = new LR0Generator(g, opt);
-                break;
-            case 'slr':
-                gen = new SLRGenerator(g, opt);
-                break;
-            case 'lr':
-                gen = new LR1Generator(g, opt);
-                break;
-            case 'll':
-                gen = new LLGenerator(g, opt);
-                break;
-            default:
-                gen = new LALRGenerator(g, opt);
-                break;
-        }
+        var gen = Jison.Generator(g, options);
         return gen.createParser();
     };
 
@@ -2767,21 +2753,6 @@ parse: function parse(input) {
         }
         return token;
     }
-    function locateNearestErrorRecoveryRule(state) {
-        var stack_probe = stack.length - 1;
-        var depth = 0;
-        for (;;) {
-            if (TERROR.toString() in table[state]) {
-                return depth;
-            }
-            if (state === 0 || stack_probe < 2) {
-                return false;
-            }
-            stack_probe -= 2;
-            state = stack[stack_probe];
-            ++depth;
-        }
-    }
     var symbol, preErrorSymbol, state, action, a, r, yyval = {}, p, len, newState, expected;
     while (true) {
         state = stack[stack.length - 1];
@@ -2794,8 +2765,19 @@ parse: function parse(input) {
             action = table[state] && table[state][symbol];
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
-            var error_rule_depth;
             var errStr = "";
+            expected = [];
+            for (p in table[state]) {
+                if (this.terminals_[p] && p > TERROR) {
+                    expected.push("'" + this.terminals_[p] + "'");
+                }
+            }
+            if (this.lexer.showPosition) {
+                errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+            } else {
+                errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == EOF?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+            }
+            this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -3525,21 +3507,6 @@ parse: function parse(input) {
         }
         return token;
     }
-    function locateNearestErrorRecoveryRule(state) {
-        var stack_probe = stack.length - 1;
-        var depth = 0;
-        for (;;) {
-            if (TERROR.toString() in table[state]) {
-                return depth;
-            }
-            if (state === 0 || stack_probe < 2) {
-                return false;
-            }
-            stack_probe -= 2;
-            state = stack[stack_probe];
-            ++depth;
-        }
-    }
     var symbol, preErrorSymbol, state, action, a, r, yyval = {}, p, len, newState, expected;
     while (true) {
         state = stack[stack.length - 1];
@@ -3552,8 +3519,19 @@ parse: function parse(input) {
             action = table[state] && table[state][symbol];
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
-            var error_rule_depth;
             var errStr = "";
+            expected = [];
+            for (p in table[state]) {
+                if (this.terminals_[p] && p > TERROR) {
+                    expected.push("'" + this.terminals_[p] + "'");
+                }
+            }
+            if (this.lexer.showPosition) {
+                errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+            } else {
+                errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == EOF?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+            }
+            this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
