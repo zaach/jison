@@ -1842,7 +1842,7 @@ function buildActions (dict, tokens) {
     this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
     var fun = actions.join("\n");
     "yytext yyleng yylineno".split(' ').forEach(function (yy) {
-        fun = fun.replace(new RegExp("("+yy+")", "g"), "yy_.$1");
+        fun = fun.replace(new RegExp("\\b("+yy+")\\b", "g"), "yy_.$1");
     });
 
 
@@ -1928,7 +1928,7 @@ RegExpLexer.prototype = {
         return ch;
     },
 
-    // unshifts one char into the input
+    // unshifts one char (or a string) into the input
     unput: function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
@@ -1959,6 +1959,7 @@ RegExpLexer.prototype = {
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
 
@@ -2201,7 +2202,7 @@ RegExpLexer.prototype = {
         var function_descriptions = {
             setInput: "resets the lexer, sets new input",
             input: "consumes and returns one char from the input",
-            unput: "unshifts one char into the input",
+            unput: "unshifts one char (or a string) into the input",
             more: "When called from action, caches matched text and appends it on next action",
             reject: "When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.",
             less: "retain first n characters of the match",
@@ -2891,7 +2892,7 @@ input:function () {
         return ch;
     },
 
-// unshifts one char into the input
+// unshifts one char (or a string) into the input
 unput:function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
@@ -2922,6 +2923,7 @@ unput:function (ch) {
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
 
@@ -3641,7 +3643,7 @@ input:function () {
         return ch;
     },
 
-// unshifts one char into the input
+// unshifts one char (or a string) into the input
 unput:function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
@@ -3672,6 +3674,7 @@ unput:function (ch) {
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
 
