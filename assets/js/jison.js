@@ -1974,7 +1974,7 @@ RegExpLexer.prototype = {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack = true).\n' + this.showPosition(), {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: "",
                 token: null,
                 line: this.yylineno
@@ -2077,15 +2077,14 @@ RegExpLexer.prototype = {
             }
             return token;
         } else if (this._backtrack) {
-            delete backup;
-            return false; // rule action called reject() implying the next rule should be tested instead.
-        }
-
-        if (this.options.backtrack_lexer) {
             // recover context
             for (var k in backup) {
                 this[k] = backup[k];
             }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
         }
         return false;
     },
@@ -2118,6 +2117,7 @@ RegExpLexer.prototype = {
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
+                        match = false;
                         continue; // rule action called reject() implying a rule MISmatch.
                     }
                 } else if (!this.options.flex) {
@@ -2938,7 +2938,7 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack = true).\n' + this.showPosition(), {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: "",
                 token: null,
                 line: this.yylineno
@@ -3041,15 +3041,14 @@ test_match:function (match, indexed_rule) {
             }
             return token;
         } else if (this._backtrack) {
-            delete backup;
-            return false; // rule action called reject() implying the next rule should be tested instead.
-        }
-
-        if (this.options.backtrack_lexer) {
             // recover context
             for (var k in backup) {
                 this[k] = backup[k];
             }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
         }
         return false;
     },
@@ -3082,6 +3081,7 @@ next:function () {
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
+                        match = false;
                         continue; // rule action called reject() implying a rule MISmatch.
                     }
                 } else if (!this.options.flex) {
@@ -3689,7 +3689,7 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack = true).\n' + this.showPosition(), {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: "",
                 token: null,
                 line: this.yylineno
@@ -3792,15 +3792,14 @@ test_match:function (match, indexed_rule) {
             }
             return token;
         } else if (this._backtrack) {
-            delete backup;
-            return false; // rule action called reject() implying the next rule should be tested instead.
-        }
-
-        if (this.options.backtrack_lexer) {
             // recover context
             for (var k in backup) {
                 this[k] = backup[k];
             }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
         }
         return false;
     },
@@ -3833,6 +3832,7 @@ next:function () {
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
+                        match = false;
                         continue; // rule action called reject() implying a rule MISmatch.
                     }
                 } else if (!this.options.flex) {
