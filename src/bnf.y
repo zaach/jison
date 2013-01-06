@@ -6,9 +6,9 @@ var ebnf = false;
 
 spec
     : declaration_list '%%' grammar optional_end_block EOF
-        {$$ = $1; $$[ebnf ? 'ebnf':'bnf'] = $3; return $$;}
+        {$$ = $1; $$[ebnf ? 'ebnf' : 'bnf'] = $3; return $$;}
     | declaration_list '%%' grammar '%%' CODE EOF
-        {$$ = $1; $$[ebnf ? 'ebnf':'bnf'] = $3; yy.addDeclaration($$,{include:$5}); return $$;}
+        {$$ = $1; $$[ebnf ? 'ebnf' : 'bnf'] = $3; yy.addDeclaration($$,{include: $5}); return $$;}
     ;
 
 optional_end_block
@@ -62,9 +62,13 @@ grammar
 
 production_list
     : production_list production
-        {$$ = $1;
-          if($2[0] in $$) $$[$2[0]] = $$[$2[0]].concat($2[1]);
-          else  $$[$2[0]] = $2[1];}
+        {
+            $$ = $1;
+            if ($2[0] in $$) 
+                $$[$2[0]] = $$[$2[0]].concat($2[1]);
+            else
+                $$[$2[0]] = $2[1];
+        }
     | production
         {$$ = {}; $$[$1[0]] = $1[1];}
     ;
@@ -83,7 +87,8 @@ handle_list
 
 handle_action
     : handle prec action
-        {$$ = [($1.length ? $1.join(' ') : '')];
+        {
+            $$ = [($1.length ? $1.join(' ') : '')];
             if($3) $$.push($3);
             if($2) $$.push($2);
             if ($$.length === 1) $$ = $$[0];
@@ -113,7 +118,7 @@ expression
     : ID
         {$$ = $1; }
     | STRING
-        {$$ = ebnf ? "'"+$1+"'" : $1; }
+        {$$ = ebnf ? "'" + $1 + "'" : $1; }
     | '(' handle_sublist ')'
         {$$ = '(' + $handle_sublist.join(' | ') + ')'; }
     ;
@@ -150,7 +155,7 @@ action
     | ACTION
         {$$ = $1;}
     | ARROW_ACTION
-        {$$ = '$$ ='+$1+';';}
+        {$$ = '$$ =' + $1 + ';';}
     |
         {$$ = '';}
     ;
@@ -161,9 +166,9 @@ action_body
     | ACTION_BODY
         {$$ = yytext;}
     | action_body '{' action_body '}' ACTION_BODY
-        {$$ = $1+$2+$3+$4+$5;}
+        {$$ = $1 + $2 + $3 + $4 + $5;}
     | action_body '{' action_body '}'
-        {$$ = $1+$2+$3+$4;}
+        {$$ = $1 + $2 + $3 + $4;}
     ;
 
 %%

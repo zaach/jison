@@ -27,6 +27,4 @@ build_lex:
 
 test:
 	node tests/all-tests.js
-testn:
-	narwhal tests/all-tests.js
 

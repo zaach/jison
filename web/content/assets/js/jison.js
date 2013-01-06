@@ -1236,7 +1236,7 @@ parser.parse = function parse (input) {
         }
 
         // handle parse error
-        _handle_error:
+_handle_error:
         if (typeof action === 'undefined' || !action.length || !action[0]) {
 
             var errStr = '';
