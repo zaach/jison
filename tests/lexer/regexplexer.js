@@ -54,7 +54,7 @@ exports["test unrecognized char"] = function() {
 
     var lexer = new RegExpLexer(dict, input);
     assert.equal(lexer.lex(), "X");
-    assert["throws"](function(){lexer.lex()}, "bad char");
+    assert.throws(function(){lexer.lex()}, "bad char");
 };
 
 exports["test macro"] = function() {
@@ -897,7 +897,7 @@ exports["test backtracking lexer reject() method"] = function() {
     var dict = {
         rules: [
             ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
-            ["[A-Z]+", "return 'WORD';" ]
+            ["[A-Z]+", "return 'WORD';" ],
             ["[0-9]+", "return 'NUM';" ]
         ],
         options: {backtrack_lexer: true}
@@ -915,7 +915,7 @@ exports["test lexer reject() exception when not in backtracking mode"] = functio
     var dict = {
         rules: [
             ["[A-Z]+([0-9]+)", "if (this.matches[1].length) this.reject(); else return 'ID';" ],
-            ["[A-Z]+", "return 'WORD';" ]
+            ["[A-Z]+", "return 'WORD';" ],
             ["[0-9]+", "return 'NUM';" ]
         ],
         options: {backtrack_lexer: false}

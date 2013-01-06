@@ -39,7 +39,7 @@ function testBadParse(top, strings) {
         }
         strings = (typeof(strings) === 'string' ? [strings] : strings)
         strings.forEach(function(string) {
-            assert["throws"](function () {new Parser(grammar).parse(string);})
+            assert.throws(function () {new Parser(grammar).parse(string);})
         });
     }
 }
