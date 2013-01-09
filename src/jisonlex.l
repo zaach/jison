@@ -16,6 +16,7 @@ NAME              [a-zA-Z_][a-zA-Z0-9_-]*
 <conditions>"*"         		return '*';
 
 <rules>\n+              		/* */
+<rules>\s+\n+              		/* */
 <rules>\s+              		this.begin('indented');
 <rules>"%%"             		this.begin('code'); return '%%';
 <rules>[a-zA-Z0-9_]+    		return 'CHARACTER_LIT';
