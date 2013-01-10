@@ -1027,7 +1027,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "    line:        (yylineno)\n"
         + "  }\n"
         + "  while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {\n"
-        + "    loc:         (yyloc)\n"
+        + "    loc:         (yylloc)\n"
         + "    expected:    (string describing the set of expected tokens)\n"
         + "    recoverable: (boolean: TRUE when the parser has a error recovery rule available for this particular error)\n"
         + "  }\n"
@@ -2040,7 +2040,7 @@ RegExpLexer.prototype = {
                 done: this.done
             };
             if (this.options.ranges) {
-                backup.yylloc.range = this.yyloc.range.slice(0);
+                backup.yylloc.range = this.yylloc.range.slice(0);
             }
         }
 
@@ -2605,7 +2605,7 @@ require.def("jison/util/bnf-parser",{factory:function(require,exports,module){
     line:        (yylineno)
   }
   while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {
-    loc:         (yyloc)
+    loc:         (yylloc)
     expected:    (string describing the set of expected tokens)
     recoverable: (boolean: TRUE when the parser has a error recovery rule available for this particular error)
   }
@@ -3009,7 +3009,7 @@ test_match:function (match, indexed_rule) {
                 done: this.done
             };
             if (this.options.ranges) {
-                backup.yylloc.range = this.yyloc.range.slice(0);
+                backup.yylloc.range = this.yylloc.range.slice(0);
             }
         }
 
@@ -3343,7 +3343,7 @@ require.def("jison/util/lex-parser",{factory:function(require,exports,module){
     line:        (yylineno)
   }
   while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {
-    loc:         (yyloc)
+    loc:         (yylloc)
     expected:    (string describing the set of expected tokens)
     recoverable: (boolean: TRUE when the parser has a error recovery rule available for this particular error)
   }
@@ -3765,7 +3765,7 @@ test_match:function (match, indexed_rule) {
                 done: this.done
             };
             if (this.options.ranges) {
-                backup.yylloc.range = this.yyloc.range.slice(0);
+                backup.yylloc.range = this.yylloc.range.slice(0);
             }
         }
 
