@@ -11,9 +11,9 @@ preview:
 	open http://localhost:3000/jison/
 
 deploy:
-	rm -r ../pages/jison/*
-	cp -r web/output/jison/* ../pages/jison/
-	cd ../pages/jison && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
+	-rm -r ./gh-pages/*
+	cp -r web/output/jison/* ./gh-pages/
+	cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
 
 build: build_bnf build_lex
 
