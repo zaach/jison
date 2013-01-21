@@ -857,7 +857,7 @@ function findDefaults (states) {
         }
 
         if (i === 1 && state[act][0] === 2) {
-        // only one action in state and it's a reduction
+            // only one action in state and it's a reduction
             defaults[k] = state[act];
         }
     });
@@ -1841,7 +1841,7 @@ function buildActions (dict, tokens) {
 
     this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
     var fun = actions.join("\n");
-    "yytext yyleng yylineno".split(' ').forEach(function (yy) {
+    "yytext yyleng yylineno yylloc".split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp("\\b("+yy+")\\b", "g"), "yy_.$1");
     });
 
@@ -3172,7 +3172,7 @@ lexer.performAction = function anonymous(yy,yy_,$avoiding_name_collisions,YY_STA
 
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
-case 0:this.begin('code');return 5;
+case 0:this.pushState('code');return 5;
 break;
 case 1:return 38;
 break;
@@ -3202,7 +3202,7 @@ case 13:return 26;
 break;
 case 14:return 27;
 break;
-case 15:this.begin(ebnf ? 'ebnf' : 'bnf'); return 5;
+case 15:this.pushState(ebnf ? 'ebnf' : 'bnf'); return 5;
 break;
 case 16:if (!yy.options) yy.options = {}; ebnf = yy.options.ebnf = true;
 break;
@@ -3226,7 +3226,7 @@ case 25:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-4); return 15;
 break;
 case 26:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4); return 15;
 break;
-case 27:yy.depth = 0; this.begin('action'); return 44;
+case 27:yy.depth = 0; this.pushState('action'); return 44;
 break;
 case 28:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-2); return 47;
 break;
@@ -3238,7 +3238,7 @@ case 31:return 48;
 break;
 case 32:yy.depth++; return 44;
 break;
-case 33:yy.depth == 0 ? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return 46;
+case 33:if (yy.depth == 0) this.popState(); else yy.depth--; return 46;
 break;
 case 34:return 9;
 break;
