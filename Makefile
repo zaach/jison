@@ -13,7 +13,7 @@ preview:
 deploy:
 	-rm -r ./gh-pages/*
 	cp -r web/output/jison/* ./gh-pages/
-	cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
+	-cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
 
 build: build_bnf build_lex
 
