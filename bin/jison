@@ -1,4 +1,4 @@
-#!/usr/bin/env narwhal
+#!/usr/bin/env node
 
 var JISON = require('../lib/jison');
     IO = require('../lib/jison/util/io');
