@@ -45,9 +45,5 @@
   "scripts": {
     "test": "node tests/all-tests.js"
   },
-  "directories": {
-    "lib": "lib",
-    "bin": "./bin"
-  },
   "homepage": "http://jison.org"
 }
