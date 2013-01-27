@@ -1,2 +1,2 @@
 Use Jison to generate parsers from an example, e.g.:
-    $ ../bin/jison basic_lex.jison
+    $ node ../lib/cli.js basic_lex.jison
