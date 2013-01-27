@@ -34,7 +34,7 @@
     "jison-lex": "0.0.1",
     "ebnf-parser": "0.0.1",
     "lex-parser": "0.0.1",
-    "nomnom": "0.4.3"
+    "nomnom": "1.5.2"
   },
   "devDependencies": {
     "test": "0.4.4",
