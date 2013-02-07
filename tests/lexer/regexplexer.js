@@ -933,3 +933,23 @@ exports["test lexer reject() exception when not in backtracking mode"] = functio
     });
 };
 
+exports["test yytext state after unput"] = function() {
+    var dict = {
+        rules: [
+            ["cat4", "this.unput('4'); return 'CAT';" ],
+            ["4", "return 'NUMBER';" ],
+	    	["$", "return 'EOF';"]
+        ]
+    };
+    
+    var input = "cat4";
+
+    var lexer = new RegExpLexer(dict);
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), "CAT");
+    /*the yytext should be 'cat' since we unput '4' from 'cat4' */
+    assert.equal(lexer.yytext, "cat");
+    assert.equal(lexer.lex(), "NUMBER");
+    assert.equal(lexer.lex(), "EOF");
+};
+
