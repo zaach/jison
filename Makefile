@@ -2,7 +2,7 @@
 all: test
 
 site:
-	node_modules/browserify/bin/cmd.js -r ./lib/jison.js -a 'file:fs' -a 'system:util' --exports require | uglifyjs > web/content/assets/js/jison.js
+	node_modules/browserify/bin/cmd.js -r ./lib/jison.js -a 'file:fs' -a 'system:util' --exports require > web/content/assets/js/jison.js
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
