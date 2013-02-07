@@ -1,8 +1,8 @@
 
-all: build test
+all: test
 
 site:
-	node script/web-bundle.js > web/content/assets/js/jison.js 
+	node_modules/browserify/bin/cmd.js -r ./lib/jison.js -a 'file:fs' -a 'system:util' --exports require | uglifyjs > web/content/assets/js/jison.js
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
@@ -13,17 +13,7 @@ preview:
 deploy:
 	-rm -r ./gh-pages/*
 	cp -r web/output/jison/* ./gh-pages/
-	-cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages 
-
-build: build_bnf build_lex
-
-build_bnf:
-	node lib/jison/cli-wrapper.js src/bnf.y src/bnf.l
-	mv bnf.js lib/jison/util/bnf-parser.js
-
-build_lex:
-	node lib/jison/cli-wrapper.js src/jisonlex.y src/jisonlex.l
-	mv jisonlex.js lib/jison/util/lex-parser.js
+	-cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages
 
 test:
 	node tests/all-tests.js

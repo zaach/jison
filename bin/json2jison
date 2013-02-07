@@ -1,3 +1,0 @@
-#!/usr/bin/env narwhal
-
-require('../lib/jison/json2jison').main(system.args);

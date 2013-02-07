@@ -1,5 +1,3 @@
-#!/usr/bin/env narwhal
-
 // TODO: ...should probably have some real performance tests.
 
 var Jison = require("./setup").Jison;

@@ -2,7 +2,7 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.3.12-2",
+  "version": "0.4.2",
   "keywords": [
     "jison",
     "bison",
@@ -24,29 +24,26 @@
     "url": "http://github.com/zaach/jison/issues"
   },
   "main": "lib/jison",
-  "bin": {
-    "jison": "lib/jison/cli-wrapper.js",
-    "jison2json": "lib/jison/jison2json.js",
-    "json2jison": "lib/jison/json2jison.js"
-  },
+  "bin": "lib/cli.js",
   "engines": {
     "node": ">=0.9"
   },
   "dependencies": {
     "JSONSelect": ">=0.4.0",
     "reflect": ">=0.1.3",
+    "jison-lex": "0.1.x",
+    "ebnf-parser": "0.1.x",
+    "lex-parser": "0.1.x",
     "nomnom": ">=1.5.2"
   },
   "devDependencies": {
     "test": ">=0.4.4",
-    "uglify-js": ">=1.3.3"
+    "jison": "0.4.x",
+    "uglify-js": ">=1.3.3",
+    "browserify": "*"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
-  },
-  "directories": {
-    "lib": "lib",
-    "bin": "./bin"
   },
   "homepage": "http://jison.org"
 }

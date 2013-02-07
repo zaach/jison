@@ -1,5 +1,3 @@
-#!/usr/bin/env narwhal
-
 exports.testAPI = require("./api");
 exports.testLR0 = require("./lr0");
 exports.testSLR = require("./slr");
@@ -12,4 +10,4 @@ exports.testGenerator = require("./generator");
 exports.testErrorLab = require("./errorlab");
 
 if (require.main === module)
-    require("os").exit(require("test").run(exports)); 
+    require("test").run(exports);
