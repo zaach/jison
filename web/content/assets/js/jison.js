@@ -438,8 +438,8 @@ require.define("/lib/jison.js",function(require,module,exports,__dirname,__filen
 
 var typal      = require('./util/typal').typal;
 var Set        = require('./util/set').Set;
-var Lexer      = require('jison-lex');
-var ebnfParser = require('ebnf-parser');
+var Lexer      = require('./util/regexp-lexer.js');
+var ebnfParser = require('./util/ebnf-parser.js');
 var JSONSelect = require('JSONSelect');
 var Reflect    = require('reflect');
 
@@ -1477,7 +1477,7 @@ function removeErrorRecovery (fn) {
         var labeled = JSONSelect.match(':has(:root > .label > .name:val("_handle_error"))', ast);
         var reduced_code = labeled[0].body.consequent.body[3].consequent.body;
         reduced_code[0] = labeled[0].body.consequent.body[1];     // remove the line: error_rule_depth = locateNearestErrorRecoveryRule(state);
-        reduced_code[4].expression.arguments[1].properties.pop(); // remove the line: 'recoverable: error_rule_depth !== false' 
+        reduced_code[4].expression.arguments[1].properties.pop(); // remove the line: 'recoverable: error_rule_depth !== false'
         labeled[0].body.consequent.body = reduced_code;
 
         return Reflect.stringify(ast).replace(/_handle_error:\s?/,"").replace(/\\\\n/g,"\\n");
@@ -2144,6 +2144,9 @@ return function Parser (g, options) {
 
 });
 
+require.define("/lib/util/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"regexp-lexer"}
+});
+
 require.define("/lib/util/typal.js",function(require,module,exports,__dirname,__filename,process,global){/*
  * Introduces a typal object to make classical/prototypal patterns easier
  * Plus some AOP sugar
@@ -2333,10 +2336,7 @@ if (typeof exports !== 'undefined')
 
 });
 
-require.define("/node_modules/jison-lex/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"regexp-lexer"}
-});
-
-require.define("/node_modules/jison-lex/regexp-lexer.js",function(require,module,exports,__dirname,__filename,process,global){// Basic Lexer implemented using JavaScript regular expressions
+require.define("/lib/util/regexp-lexer.js",function(require,module,exports,__dirname,__filename,process,global){// Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
 
 var RegExpLexer = (function () {
@@ -2396,7 +2396,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless)
         }
         action = rules[i][1];
         if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/, tokenNumberReplacement);
+            action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
         }
         actions.push('case '+i+':' +action+'\nbreak;');
     }
@@ -2449,11 +2449,18 @@ function buildActions (dict, tokens) {
 
     this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options["case-insensitive"]);
     var fun = actions.join("\n");
-    "yytext yyleng yylineno".split(' ').forEach(function (yy) {
-        fun = fun.replace(new RegExp("("+yy+")", "g"), "yy_.$1");
+    "yytext yyleng yylineno yylloc".split(' ').forEach(function (yy) {
+        fun = fun.replace(new RegExp("\\b("+yy+")\\b", "g"), "yy_.$1");
     });
 
-    return Function("yy,yy_,$avoiding_name_collisions,YY_START", fun);
+
+    // first try to create the performAction function the old way,
+    // but this will break for some legal constructs in the user action code:
+    try {
+        return Function("yy,yy_,$avoiding_name_collisions,YY_START", fun);
+    } catch (e) {
+        return "function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {" + fun + "\n}";
+    }
 }
 
 function RegExpLexer (dict, input, tokens) {
@@ -2487,18 +2494,26 @@ RegExpLexer.prototype = {
         }
     },
 
-    // resets the lexer, sets new input 
+    // resets the lexer, sets new input
     setInput: function (input) {
         this._input = input;
-        this._more = this._less = this.done = false;
+        this._more = this._backtrack = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
-        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
-        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.yylloc = {
+			first_line: 1,
+			first_column: 0,
+			last_line: 1,
+			last_column: 0
+		};
+        if (this.options.ranges) {
+			this.yylloc.range = [0,0];
+		}
         this.offset = 0;
         return this;
     },
+
     // consumes and returns one char from the input
     input: function () {
         var ch = this._input[0];
@@ -2514,67 +2529,173 @@ RegExpLexer.prototype = {
         } else {
             this.yylloc.last_column++;
         }
-        if (this.options.ranges) this.yylloc.range[1]++;
+        if (this.options.ranges) {
+			this.yylloc.range[1]++;
+		}
 
         this._input = this._input.slice(1);
         return ch;
     },
-    // unshifts one char into the input
+
+    // unshifts one char (or a string) into the input
     unput: function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
         this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
         //this.yyleng -= len;
         this.offset -= len;
         var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length-1);
-        this.matched = this.matched.substr(0, this.matched.length-1);
+        this.match = this.match.substr(0, this.match.length - 1);
+        this.matched = this.matched.substr(0, this.matched.length - 1);
 
-        if (lines.length-1) this.yylineno -= lines.length-1;
+        if (lines.length - 1) {
+			this.yylineno -= lines.length - 1;
+		}
         var r = this.yylloc.range;
 
-        this.yylloc = {first_line: this.yylloc.first_line,
-          last_line: this.yylineno+1,
-          first_column: this.yylloc.first_column,
-          last_column: lines ?
-              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+        this.yylloc = {
+			first_line: this.yylloc.first_line,
+          	last_line: this.yylineno + 1,
+	        first_column: this.yylloc.first_column,
+            last_column: lines ?
+              	(lines.length === oldLines.length ? this.yylloc.first_column : 0)
+				 + oldLines[oldLines.length - lines.length].length - lines[0].length :
               this.yylloc.first_column - len
-          };
+        };
 
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
+
     // When called from action, caches matched text and appends it on next action
     more: function () {
         this._more = true;
         return this;
     },
+
+    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+    reject: function () {
+        if (this.options.backtrack_lexer) {
+            this._backtrack = true;
+        } else {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
+
+        }
+        return this;
+    },
+
     // retain first n characters of the match
     less: function (n) {
         this.unput(this.match.slice(n));
     },
-    // displays upcoming input, i.e. for error messages
+
+    // displays already matched input, i.e. for error messages
     pastInput: function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         return (past.length > 20 ? '...':'') + past.substr(-20).replace(/\n/g, "");
     },
+
     // displays upcoming input, i.e. for error messages
     upcomingInput: function () {
         var next = this.match;
         if (next.length < 20) {
             next += this._input.substr(0, 20-next.length);
         }
-        return (next.substr(0,20)+(next.length > 20 ? '...':'')).replace(/\n/g, "");
+        return (next.substr(0,20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
-    // displays upcoming input, i.e. for error messages
+
+    // displays the character position where the lexing error occurred, i.e. for error messages
     showPosition: function () {
         var pre = this.pastInput();
         var c = new Array(pre.length + 1).join("-");
-        return pre + this.upcomingInput() + "\n" + c+"^";
+        return pre + this.upcomingInput() + "\n" + c + "^";
+    },
+
+    // test the lexed token: return FALSE when not a match, otherwise return token
+    test_match: function(match, indexed_rule) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yylloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno += lines.length;
+		}
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset += this.yyleng];
+        }
+        this._more = false;
+        this._backtrack = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            if (this.options.backtrack_lexer) {
+                delete backup;
+            }
+            return token;
+        } else if (this._backtrack) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
+        }
+        return false;
     },
 
     // return next match in input
@@ -2582,79 +2703,105 @@ RegExpLexer.prototype = {
         if (this.done) {
             return this.EOF;
         }
-        if (!this._input) this.done = true;
+        if (!this._input) {
+            this.done = true;
+        }
 
         var token,
             match,
             tempMatch,
-            index,
-            col,
-            lines;
+            index;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
         }
         var rules = this._currentRules();
-        for (var i=0;i < rules.length; i++) {
+        for (var i = 0; i < rules.length; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
-                if (!this.options.flex) break;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, rules[i]);
+                    if (token !== false) {
+                        return token;
+                    } else if (this._backtrack) {
+                        match = false;
+                        continue; // rule action called reject() implying a rule MISmatch.
+                    } else {
+                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                        return false;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
             }
         }
         if (match) {
-            lines = match[0].match(/(?:\r\n?|\n).*/g);
-            if (lines) this.yylineno += lines.length;
-            this.yylloc = {first_line: this.yylloc.last_line,
-                           last_line: this.yylineno+1,
-                           first_column: this.yylloc.last_column,
-                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
-            this.yytext += match[0];
-            this.match += match[0];
-            this.matches = match;
-            this.yyleng = this.yytext.length;
-            if (this.options.ranges) {
-                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            token = this.test_match(match, rules[index]);
+            if (token !== false) {
+                return token;
             }
-            this._more = false;
-            this._input = this._input.slice(match[0].length);
-            this.matched += match[0];
-            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
-            if (this.done && this._input) this.done = false;
-            if (token) return token;
-            else return;
+            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+            return false;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
-                    {text: "", token: null, line: this.yylineno});
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
         }
     },
 
     // return next match that has a token
     lex: function lex () {
         var r = this.next();
-        if (typeof r !== 'undefined') {
+        if (r) {
             return r;
         } else {
             return this.lex();
         }
     },
+
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     begin: function begin (condition) {
         this.conditionStack.push(condition);
     },
+
+	// pop the previously active lexer condition state off the condition stack
     popState: function popState () {
-        return this.conditionStack.pop();
+        var n = this.conditionStack.length - 1;
+        if (n > 0) {
+            return this.conditionStack.pop();
+        } else {
+            return this.conditionStack[0];
+        }
     },
+
+	// produce the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function _currentRules () {
-        return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+		if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+	        return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+		} else {
+	        return this.conditions["INITIAL"].rules;
+		}
     },
-    topState: function () {
-        return this.conditionStack[this.conditionStack.length-2];
+
+ 	// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+    topState: function topState (n) {
+		n = this.conditionStack.length - 1 - Math.abs(n || 0);
+		if (n >= 0) {
+	        return this.conditionStack[n];
+		} else {
+			return "INITIAL";
+		}
     },
-    pushState: function begin (condition) {
+
+	// alias for begin(condition)
+    pushState: function pushState (condition) {
         this.begin(condition);
     },
 
@@ -2671,11 +2818,36 @@ RegExpLexer.prototype = {
         return code;
     },
     generateModuleBody: function generateModule() {
+        var function_descriptions = {
+            setInput: "resets the lexer, sets new input",
+            input: "consumes and returns one char from the input",
+            unput: "unshifts one char (or a string) into the input",
+            more: "When called from action, caches matched text and appends it on next action",
+            reject: "When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.",
+            less: "retain first n characters of the match",
+            pastInput: "displays already matched input, i.e. for error messages",
+            upcomingInput: "displays upcoming input, i.e. for error messages",
+            showPosition: "displays the character position where the lexing error occurred, i.e. for error messages",
+			test_match: "test the lexed token: return FALSE when not a match, otherwise return token",
+            next: "return next match in input",
+            lex: "return next match that has a token",
+		    begin: "activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)",
+			popState: "pop the previously active lexer condition state off the condition stack",
+			_currentRules: "produce the lexer rule set which is active for the currently active lexer condition state",
+		    topState: "return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available",
+		    pushState: "alias for begin(condition)"
+        };
         var out = "{\n";
         var p = [];
+		var descr;
         for (var k in RegExpLexer.prototype) {
             if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf("generate") === -1) {
-              p.push(k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
+                // copy the function description as a comment before the implementation; supports multi-line descriptions
+                descr = "\n";
+                if (function_descriptions[k]) {
+                    descr += "// " + function_descriptions[k].replace(/\n/g, "\n\/\/ ") + "\n";
+                }
+                p.push(descr + k + ":" + (RegExpLexer.prototype[k].toString() || '""'));
             }
         }
         out += p.join(",\n");
@@ -3321,10 +3493,7 @@ require.define("fs",function(require,module,exports,__dirname,__filename,process
 
 });
 
-require.define("/node_modules/ebnf-parser/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"ebnf-parser.js"}
-});
-
-require.define("/node_modules/ebnf-parser/ebnf-parser.js",function(require,module,exports,__dirname,__filename,process,global){var bnf = require("./parser").parser,
+require.define("/lib/util/ebnf-parser.js",function(require,module,exports,__dirname,__filename,process,global){var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("lex-parser");
 
@@ -3373,14 +3542,87 @@ var parseLex = function (text) {
 
 });
 
-require.define("/node_modules/ebnf-parser/parser.js",function(require,module,exports,__dirname,__filename,process,global){/* parser generated by jison 0.4.0 */
-var bnf = (function(){
+require.define("/lib/util/parser.js",function(require,module,exports,__dirname,__filename,process,global){/* parser generated by jison 0.4.2 */
+/*
+  Returns a Parser object of the following structure:
+
+  Parser: {
+    yy: {}
+  }
+
+  Parser.prototype: {
+    yy: {},
+    trace: function(),
+    symbols_: {associative list: name ==> number},
+    terminals_: {associative list: number ==> name},
+    productions_: [...],
+    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$),
+    table: [...],
+    defaultActions: {...},
+    parseError: function(str, hash),
+    parse: function(input),
+
+    lexer: {
+        EOF: 1,
+        parseError: function(str, hash),
+        setInput: function(input),
+        input: function(),
+        unput: function(str),
+        more: function(),
+        less: function(n),
+        pastInput: function(),
+        upcomingInput: function(),
+        showPosition: function(),
+        test_match: function(regex_match_array, rule_index),
+        next: function(),
+        lex: function(),
+        begin: function(condition),
+        popState: function(),
+        _currentRules: function(),
+        topState: function(),
+        pushState: function(condition),
+
+        options: {
+            ranges: boolean           (optional: true ==> token location info will include a .range[] member)
+            flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+        },
+
+        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
+        rules: [...],
+        conditions: {associative list: name ==> set},
+    }
+  }
+
+
+  token location info (@$, _$, etc.): {
+    first_line: n,
+    last_line: n,
+    first_column: n,
+    last_column: n,
+    range: [start_number, end_number]       (where the numbers are indexes into the input string, regular zero-based)
+  }
+
+
+  the parseError function receives a 'hash' object with these members for lexer and parser errors: {
+    text:        (matched text)
+    token:       (the produced terminal token, if any)
+    line:        (yylineno)
+  }
+  while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {
+    loc:         (yylloc)
+    expected:    (string describing the set of expected tokens)
+    recoverable: (boolean: TRUE when the parser has a error recovery rule available for this particular error)
+  }
+*/
+var parser = (function(){
 var parser = {trace: function trace() { },
 yy: {},
 symbols_: {"error":2,"spec":3,"declaration_list":4,"%":5,"grammar":6,"optional_end_block":7,"EOF":8,"CODE":9,"declaration":10,"START":11,"id":12,"LEX_BLOCK":13,"operator":14,"ACTION":15,"associativity":16,"token_list":17,"LEFT":18,"RIGHT":19,"NONASSOC":20,"symbol":21,"production_list":22,"production":23,":":24,"handle_list":25,";":26,"|":27,"handle_action":28,"handle":29,"prec":30,"action":31,"expression_suffix":32,"handle_sublist":33,"expression":34,"suffix":35,"ID":36,"STRING":37,"(":38,")":39,"*":40,"?":41,"+":42,"PREC":43,"{":44,"action_body":45,"}":46,"ARROW_ACTION":47,"ACTION_BODY":48,"$accept":0,"$end":1},
 terminals_: {2:"error",5:"%",8:"EOF",9:"CODE",11:"START",13:"LEX_BLOCK",15:"ACTION",18:"LEFT",19:"RIGHT",20:"NONASSOC",24:":",26:";",27:"|",36:"ID",37:"STRING",38:"(",39:")",40:"*",41:"?",42:"+",43:"PREC",44:"{",46:"}",47:"ARROW_ACTION",48:"ACTION_BODY"},
 productions_: [0,[3,5],[3,6],[7,0],[7,1],[4,2],[4,0],[10,2],[10,1],[10,1],[10,1],[14,2],[16,1],[16,1],[16,1],[17,2],[17,1],[6,1],[22,2],[22,1],[23,4],[25,3],[25,1],[28,3],[29,2],[29,0],[33,3],[33,1],[32,2],[34,1],[34,1],[34,3],[35,0],[35,1],[35,1],[35,1],[30,2],[30,0],[21,1],[21,1],[12,1],[31,3],[31,1],[31,1],[31,0],[45,0],[45,1],[45,5],[45,4]],
-performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
+performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
+/* this == yyval */
 
 var $0 = $$.length - 1;
 switch (yystate) {
@@ -3414,9 +3656,13 @@ case 16:this.$ = [$$[$0]];
 break;
 case 17:this.$ = $$[$0];
 break;
-case 18:this.$ = $$[$0-1];
-          if($$[$0][0] in this.$) this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
-          else  this.$[$$[$0][0]] = $$[$0][1];
+case 18:
+            this.$ = $$[$0-1];
+            if ($$[$0][0] in this.$) 
+                this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
+            else
+                this.$[$$[$0][0]] = $$[$0][1];
+        
 break;
 case 19:this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];
 break;
@@ -3426,7 +3672,8 @@ case 21:this.$ = $$[$0-2]; this.$.push($$[$0]);
 break;
 case 22:this.$ = [$$[$0]];
 break;
-case 23:this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
+case 23:
+            this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
             if($$[$0]) this.$.push($$[$0]);
             if($$[$0-1]) this.$.push($$[$0-1]);
             if (this.$.length === 1) this.$ = this.$[0];
@@ -3444,7 +3691,7 @@ case 28:this.$ = $$[$0-1] + $$[$0];
 break;
 case 29:this.$ = $$[$0]; 
 break;
-case 30:this.$ = ebnf ? "'"+$$[$0]+"'" : $$[$0]; 
+case 30:this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0]; 
 break;
 case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')'; 
 break;
@@ -3464,7 +3711,7 @@ case 41:this.$ = $$[$0-1];
 break;
 case 42:this.$ = $$[$0];
 break;
-case 43:this.$ = '$$ ='+$$[$0]+';';
+case 43:this.$ = '$$ =' + $$[$0] + ';';
 break;
 case 44:this.$ = '';
 break;
@@ -3472,16 +3719,20 @@ case 45:this.$ = '';
 break;
 case 46:this.$ = yytext;
 break;
-case 47:this.$ = $$[$0-4]+$$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
+case 47:this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];
 break;
-case 48:this.$ = $$[$0-3]+$$[$0-2]+$$[$0-1]+$$[$0];
+case 48:this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];
 break;
 }
 },
 table: [{3:1,4:2,5:[2,6],11:[2,6],13:[2,6],15:[2,6],18:[2,6],19:[2,6],20:[2,6]},{1:[3]},{5:[1,3],10:4,11:[1,5],13:[1,6],14:7,15:[1,8],16:9,18:[1,10],19:[1,11],20:[1,12]},{6:13,12:16,22:14,23:15,36:[1,17]},{5:[2,5],11:[2,5],13:[2,5],15:[2,5],18:[2,5],19:[2,5],20:[2,5]},{12:18,36:[1,17]},{5:[2,8],11:[2,8],13:[2,8],15:[2,8],18:[2,8],19:[2,8],20:[2,8]},{5:[2,9],11:[2,9],13:[2,9],15:[2,9],18:[2,9],19:[2,9],20:[2,9]},{5:[2,10],11:[2,10],13:[2,10],15:[2,10],18:[2,10],19:[2,10],20:[2,10]},{12:21,17:19,21:20,36:[1,17],37:[1,22]},{36:[2,12],37:[2,12]},{36:[2,13],37:[2,13]},{36:[2,14],37:[2,14]},{5:[1,24],7:23,8:[2,3]},{5:[2,17],8:[2,17],12:16,23:25,36:[1,17]},{5:[2,19],8:[2,19],36:[2,19]},{24:[1,26]},{5:[2,40],11:[2,40],13:[2,40],15:[2,40],18:[2,40],19:[2,40],20:[2,40],24:[2,40],26:[2,40],27:[2,40],36:[2,40],37:[2,40],44:[2,40],47:[2,40]},{5:[2,7],11:[2,7],13:[2,7],15:[2,7],18:[2,7],19:[2,7],20:[2,7]},{5:[2,11],11:[2,11],12:21,13:[2,11],15:[2,11],18:[2,11],19:[2,11],20:[2,11],21:27,36:[1,17],37:[1,22]},{5:[2,16],11:[2,16],13:[2,16],15:[2,16],18:[2,16],19:[2,16],20:[2,16],36:[2,16],37:[2,16]},{5:[2,38],11:[2,38],13:[2,38],15:[2,38],18:[2,38],19:[2,38],20:[2,38],26:[2,38],27:[2,38],36:[2,38],37:[2,38],44:[2,38],47:[2,38]},{5:[2,39],11:[2,39],13:[2,39],15:[2,39],18:[2,39],19:[2,39],20:[2,39],26:[2,39],27:[2,39],36:[2,39],37:[2,39],44:[2,39],47:[2,39]},{8:[1,28]},{8:[2,4],9:[1,29]},{5:[2,18],8:[2,18],36:[2,18]},{15:[2,25],25:30,26:[2,25],27:[2,25],28:31,29:32,36:[2,25],37:[2,25],38:[2,25],43:[2,25],44:[2,25],47:[2,25]},{5:[2,15],11:[2,15],13:[2,15],15:[2,15],18:[2,15],19:[2,15],20:[2,15],36:[2,15],37:[2,15]},{1:[2,1]},{8:[1,33]},{26:[1,34],27:[1,35]},{26:[2,22],27:[2,22]},{15:[2,37],26:[2,37],27:[2,37],30:36,32:37,34:39,36:[1,40],37:[1,41],38:[1,42],43:[1,38],44:[2,37],47:[2,37]},{1:[2,2]},{5:[2,20],8:[2,20],36:[2,20]},{15:[2,25],26:[2,25],27:[2,25],28:43,29:32,36:[2,25],37:[2,25],38:[2,25],43:[2,25],44:[2,25],47:[2,25]},{15:[1,46],26:[2,44],27:[2,44],31:44,44:[1,45],47:[1,47]},{15:[2,24],26:[2,24],27:[2,24],36:[2,24],37:[2,24],38:[2,24],39:[2,24],43:[2,24],44:[2,24],47:[2,24]},{12:21,21:48,36:[1,17],37:[1,22]},{15:[2,32],26:[2,32],27:[2,32],35:49,36:[2,32],37:[2,32],38:[2,32],39:[2,32],40:[1,50],41:[1,51],42:[1,52],43:[2,32],44:[2,32],47:[2,32]},{15:[2,29],26:[2,29],27:[2,29],36:[2,29],37:[2,29],38:[2,29],39:[2,29],40:[2,29],41:[2,29],42:[2,29],43:[2,29],44:[2,29],47:[2,29]},{15:[2,30],26:[2,30],27:[2,30],36:[2,30],37:[2,30],38:[2,30],39:[2,30],40:[2,30],41:[2,30],42:[2,30],43:[2,30],44:[2,30],47:[2,30]},{27:[2,25],29:54,33:53,36:[2,25],37:[2,25],38:[2,25],39:[2,25]},{26:[2,21],27:[2,21]},{26:[2,23],27:[2,23]},{44:[2,45],45:55,46:[2,45],48:[1,56]},{26:[2,42],27:[2,42]},{26:[2,43],27:[2,43]},{15:[2,36],26:[2,36],27:[2,36],44:[2,36],47:[2,36]},{15:[2,28],26:[2,28],27:[2,28],36:[2,28],37:[2,28],38:[2,28],39:[2,28],43:[2,28],44:[2,28],47:[2,28]},{15:[2,33],26:[2,33],27:[2,33],36:[2,33],37:[2,33],38:[2,33],39:[2,33],43:[2,33],44:[2,33],47:[2,33]},{15:[2,34],26:[2,34],27:[2,34],36:[2,34],37:[2,34],38:[2,34],39:[2,34],43:[2,34],44:[2,34],47:[2,34]},{15:[2,35],26:[2,35],27:[2,35],36:[2,35],37:[2,35],38:[2,35],39:[2,35],43:[2,35],44:[2,35],47:[2,35]},{27:[1,58],39:[1,57]},{27:[2,27],32:37,34:39,36:[1,40],37:[1,41],38:[1,42],39:[2,27]},{44:[1,60],46:[1,59]},{44:[2,46],46:[2,46]},{15:[2,31],26:[2,31],27:[2,31],36:[2,31],37:[2,31],38:[2,31],39:[2,31],40:[2,31],41:[2,31],42:[2,31],43:[2,31],44:[2,31],47:[2,31]},{27:[2,25],29:61,36:[2,25],37:[2,25],38:[2,25],39:[2,25]},{26:[2,41],27:[2,41]},{44:[2,45],45:62,46:[2,45],48:[1,56]},{27:[2,26],32:37,34:39,36:[1,40],37:[1,41],38:[1,42],39:[2,26]},{44:[1,60],46:[1,63]},{44:[2,48],46:[2,48],48:[1,64]},{44:[2,47],46:[2,47]}],
 defaultActions: {28:[2,1],33:[2,2]},
 parseError: function parseError(str, hash) {
-    throw new Error(str);
+    if (hash.recoverable) {
+        this.trace(str);
+    } else {
+        throw new Error(str);
+    }
 },
 parse: function parse(input) {
     var self = this, stack = [0], vstack = [null], lstack = [], table = this.table, yytext = "", yylineno = 0, yyleng = 0, recovering = 0, TERROR = 2, EOF = 1;
@@ -3489,13 +3740,17 @@ parse: function parse(input) {
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
     this.yy.parser = this;
-    if (typeof this.lexer.yylloc == "undefined")
+    if (typeof this.lexer.yylloc == "undefined") {
         this.lexer.yylloc = {};
+    }
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
     var ranges = this.lexer.options && this.lexer.options.ranges;
-    if (typeof this.yy.parseError === "function")
+    if (typeof this.yy.parseError === "function") {
         this.parseError = this.yy.parseError;
+    } else {
+        this.parseError = Object.getPrototypeOf(this).parseError;
+    }
     function popStack(n) {
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
@@ -3503,7 +3758,7 @@ parse: function parse(input) {
     }
     function lex() {
         var token;
-        token = self.lexer.lex() || 1;
+        token = self.lexer.lex() || EOF;
         if (typeof token !== "number") {
             token = self.symbols_[token] || token;
         }
@@ -3522,19 +3777,18 @@ parse: function parse(input) {
         }
         if (typeof action === "undefined" || !action.length || !action[0]) {
             var errStr = "";
-            if (!recovering) {
-                expected = [];
-                for (p in table[state])
-                    if (this.terminals_[p] && p > 2) {
-                        expected.push("'" + this.terminals_[p] + "'");
-                    }
-                if (this.lexer.showPosition) {
-                    errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
-                } else {
-                    errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+            expected = [];
+            for (p in table[state]) {
+                if (this.terminals_[p] && p > TERROR) {
+                    expected.push("'" + this.terminals_[p] + "'");
                 }
-                this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
             }
+            if (this.lexer.showPosition) {
+                errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+            } else {
+                errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == EOF?"end of input":"'" + (this.terminals_[symbol] || symbol) + "'");
+            }
+            this.parseError(errStr, {text: this.lexer.match, token: this.terminals_[symbol] || symbol, line: this.lexer.yylineno, loc: yyloc, expected: expected});
         }
         if (action[0] instanceof Array && action.length > 1) {
             throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
@@ -3551,8 +3805,9 @@ parse: function parse(input) {
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
                 yyloc = this.lexer.yylloc;
-                if (recovering > 0)
+                if (recovering > 0) {
                     recovering--;
+                }
             } else {
                 symbol = preErrorSymbol;
                 preErrorSymbol = null;
@@ -3597,10 +3852,13 @@ function extend (json, grammar) {
     json.bnf = ebnf ? transform(grammar) : grammar;
     return json;
 }
-/* generated by jison-lex 0.0.1 */
+
+/* generated by jison-lex 0.1.0 */
 var lexer = (function(){
 var lexer = {
+
 EOF:1,
+
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
             this.yy.parser.parseError(str, hash);
@@ -3608,17 +3866,28 @@ parseError:function parseError(str, hash) {
             throw new Error(str);
         }
     },
+
+// resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._less = this.done = false;
+        this._more = this._backtrack = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
-        this.yylloc = {first_line:1,first_column:0,last_line:1,last_column:0};
-        if (this.options.ranges) this.yylloc.range = [0,0];
+        this.yylloc = {
+			first_line: 1,
+			first_column: 0,
+			last_line: 1,
+			last_column: 0
+		};
+        if (this.options.ranges) {
+			this.yylloc.range = [0,0];
+		}
         this.offset = 0;
         return this;
     },
+
+// consumes and returns one char from the input
 input:function () {
         var ch = this._input[0];
         this.yytext += ch;
@@ -3633,137 +3902,279 @@ input:function () {
         } else {
             this.yylloc.last_column++;
         }
-        if (this.options.ranges) this.yylloc.range[1]++;
+        if (this.options.ranges) {
+			this.yylloc.range[1]++;
+		}
 
         this._input = this._input.slice(1);
         return ch;
     },
+
+// unshifts one char (or a string) into the input
 unput:function (ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
         this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length-len-1);
+        this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
         //this.yyleng -= len;
         this.offset -= len;
         var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length-1);
-        this.matched = this.matched.substr(0, this.matched.length-1);
+        this.match = this.match.substr(0, this.match.length - 1);
+        this.matched = this.matched.substr(0, this.matched.length - 1);
 
-        if (lines.length-1) this.yylineno -= lines.length-1;
+        if (lines.length - 1) {
+			this.yylineno -= lines.length - 1;
+		}
         var r = this.yylloc.range;
 
-        this.yylloc = {first_line: this.yylloc.first_line,
-          last_line: this.yylineno+1,
-          first_column: this.yylloc.first_column,
-          last_column: lines ?
-              (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length:
+        this.yylloc = {
+			first_line: this.yylloc.first_line,
+          	last_line: this.yylineno + 1,
+	        first_column: this.yylloc.first_column,
+            last_column: lines ?
+              	(lines.length === oldLines.length ? this.yylloc.first_column : 0)
+				 + oldLines[oldLines.length - lines.length].length - lines[0].length :
               this.yylloc.first_column - len
-          };
+        };
 
         if (this.options.ranges) {
             this.yylloc.range = [r[0], r[0] + this.yyleng - len];
         }
+        this.yyleng = this.yytext.length;
         return this;
     },
+
+// When called from action, caches matched text and appends it on next action
 more:function () {
         this._more = true;
         return this;
     },
+
+// When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+reject:function () {
+        if (this.options.backtrack_lexer) {
+            this._backtrack = true;
+        } else {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
+
+        }
+        return this;
+    },
+
+// retain first n characters of the match
 less:function (n) {
         this.unput(this.match.slice(n));
     },
+
+// displays already matched input, i.e. for error messages
 pastInput:function () {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         return (past.length > 20 ? '...':'') + past.substr(-20).replace(/\n/g, "");
     },
+
+// displays upcoming input, i.e. for error messages
 upcomingInput:function () {
         var next = this.match;
         if (next.length < 20) {
             next += this._input.substr(0, 20-next.length);
         }
-        return (next.substr(0,20)+(next.length > 20 ? '...':'')).replace(/\n/g, "");
+        return (next.substr(0,20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
     },
+
+// displays the character position where the lexing error occurred, i.e. for error messages
 showPosition:function () {
         var pre = this.pastInput();
         var c = new Array(pre.length + 1).join("-");
-        return pre + this.upcomingInput() + "\n" + c+"^";
+        return pre + this.upcomingInput() + "\n" + c + "^";
     },
+
+// test the lexed token: return FALSE when not a match, otherwise return token
+test_match:function (match, indexed_rule) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yylloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno += lines.length;
+		}
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset += this.yyleng];
+        }
+        this._more = false;
+        this._backtrack = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            if (this.options.backtrack_lexer) {
+                delete backup;
+            }
+            return token;
+        } else if (this._backtrack) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        }
+        if (this.options.backtrack_lexer) {
+            delete backup;
+        }
+        return false;
+    },
+
+// return next match in input
 next:function () {
         if (this.done) {
             return this.EOF;
         }
-        if (!this._input) this.done = true;
+        if (!this._input) {
+            this.done = true;
+        }
 
         var token,
             match,
             tempMatch,
-            index,
-            col,
-            lines;
+            index;
         if (!this._more) {
             this.yytext = '';
             this.match = '';
         }
         var rules = this._currentRules();
-        for (var i=0;i < rules.length; i++) {
+        for (var i = 0; i < rules.length; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
-                if (!this.options.flex) break;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, rules[i]);
+                    if (token !== false) {
+                        return token;
+                    } else if (this._backtrack) {
+                        match = false;
+                        continue; // rule action called reject() implying a rule MISmatch.
+                    } else {
+                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                        return false;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
             }
         }
         if (match) {
-            lines = match[0].match(/(?:\r\n?|\n).*/g);
-            if (lines) this.yylineno += lines.length;
-            this.yylloc = {first_line: this.yylloc.last_line,
-                           last_line: this.yylineno+1,
-                           first_column: this.yylloc.last_column,
-                           last_column: lines ? lines[lines.length-1].length-lines[lines.length-1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length};
-            this.yytext += match[0];
-            this.match += match[0];
-            this.matches = match;
-            this.yyleng = this.yytext.length;
-            if (this.options.ranges) {
-                this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            token = this.test_match(match, rules[index]);
+            if (token !== false) {
+                return token;
             }
-            this._more = false;
-            this._input = this._input.slice(match[0].length);
-            this.matched += match[0];
-            token = this.performAction.call(this, this.yy, this, rules[index],this.conditionStack[this.conditionStack.length-1]);
-            if (this.done && this._input) this.done = false;
-            if (token) return token;
-            else return;
+            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+            return false;
         }
         if (this._input === "") {
             return this.EOF;
         } else {
-            return this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
-                    {text: "", token: null, line: this.yylineno});
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: "",
+                token: null,
+                line: this.yylineno
+            });
         }
     },
+
+// return next match that has a token
 lex:function lex() {
         var r = this.next();
-        if (typeof r !== 'undefined') {
+        if (r) {
             return r;
         } else {
             return this.lex();
         }
     },
+
+// activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
 begin:function begin(condition) {
         this.conditionStack.push(condition);
     },
+
+// pop the previously active lexer condition state off the condition stack
 popState:function popState() {
-        return this.conditionStack.pop();
+        var n = this.conditionStack.length - 1;
+        if (n > 0) {
+            return this.conditionStack.pop();
+        } else {
+            return this.conditionStack[0];
+        }
     },
+
+// produce the lexer rule set which is active for the currently active lexer condition state
 _currentRules:function _currentRules() {
-        return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
+		if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+	        return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+		} else {
+	        return this.conditions["INITIAL"].rules;
+		}
     },
-topState:function () {
-        return this.conditionStack[this.conditionStack.length-2];
+
+// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+topState:function topState(n) {
+		n = this.conditionStack.length - 1 - Math.abs(n || 0);
+		if (n >= 0) {
+	        return this.conditionStack[n];
+		} else {
+			return "INITIAL";
+		}
     },
-pushState:function begin(condition) {
+
+// alias for begin(condition)
+pushState:function pushState(condition) {
         this.begin(condition);
     },
 options: {},
@@ -3771,17 +4182,17 @@ performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
-case 0:this.begin('code');return 5;
+case 0:this.pushState('code');return 5;
 break;
-case 1:return 38
+case 1:return 38;
 break;
-case 2:return 39
+case 2:return 39;
 break;
-case 3:return 40
+case 3:return 40;
 break;
-case 4:return 41
+case 4:return 41;
 break;
-case 5:return 42
+case 5:return 42;
 break;
 case 6:/* skip whitespace */
 break;
@@ -3801,7 +4212,7 @@ case 13:return 26;
 break;
 case 14:return 27;
 break;
-case 15:this.begin(ebnf ? 'ebnf' : 'bnf');return 5;
+case 15:this.pushState(ebnf ? 'ebnf' : 'bnf'); return 5;
 break;
 case 16:if (!yy.options) yy.options = {}; ebnf = yy.options.ebnf = true;
 break;
@@ -3823,9 +4234,9 @@ case 24:/* ignore type */
 break;
 case 25:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-4); return 15;
 break;
-case 26:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4);return 15;
+case 26:yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length-4); return 15;
 break;
-case 27:yy.depth=0; this.begin('action'); return 44;
+case 27:yy.depth = 0; this.pushState('action'); return 44;
 break;
 case 28:yy_.yytext = yy_.yytext.substr(2, yy_.yyleng-2); return 47;
 break;
@@ -3837,7 +4248,7 @@ case 31:return 48;
 break;
 case 32:yy.depth++; return 44;
 break;
-case 33:yy.depth==0? this.begin(ebnf ? 'ebnf' : 'bnf') : yy.depth--; return 46;
+case 33:if (yy.depth == 0) this.popState(); else yy.depth--; return 46;
 break;
 case 34:return 9;
 break;
@@ -3849,13 +4260,18 @@ conditions: {"bnf":{"rules":[0,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23
 return lexer;
 })();
 parser.lexer = lexer;
-function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Parser;
+function Parser () {
+  this.yy = {};
+}
+Parser.prototype = parser;parser.Parser = Parser;
 return new Parser;
 })();
+
+
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = bnf;
-exports.Parser = bnf.Parser;
-exports.parse = function () { return bnf.parse.apply(bnf, arguments); };
+exports.parser = parser;
+exports.Parser = parser.Parser;
+exports.parse = function () { return parser.parse.apply(parser, arguments); };
 exports.main = function commonjsMain(args) {
     if (!args[1]) {
         console.log('Usage: '+args[0]+' FILE');
@@ -3870,7 +4286,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 });
 
-require.define("/node_modules/ebnf-parser/ebnf-transform.js",function(require,module,exports,__dirname,__filename,process,global){var EBNF = (function(){
+require.define("/lib/util/ebnf-transform.js",function(require,module,exports,__dirname,__filename,process,global){var EBNF = (function(){
     var parser = require('./transform-parser.js');
 
     var transformExpression = function(e, opts, emit) {
@@ -3985,7 +4401,7 @@ exports.transform = EBNF.transform;
 
 });
 
-require.define("/node_modules/ebnf-parser/transform-parser.js",function(require,module,exports,__dirname,__filename,process,global){/* parser generated by jison 0.4.0 */
+require.define("/lib/util/transform-parser.js",function(require,module,exports,__dirname,__filename,process,global){/* parser generated by jison 0.4.0 */
 var parser = (function(){
 var parser = {trace: function trace() { },
 yy: {},

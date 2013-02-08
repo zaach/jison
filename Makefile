@@ -27,9 +27,37 @@ test:
 
 build: build_bnf build_lex
 
-build_bnf:
-	node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 
-build_lex:
-	node lib/cli.js -o modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+JISON_DEPS = \
+	lib/util/regexp-lexer.js \
+	lib/util/package.json \
+	lib/util/ebnf-parser.js \
+	lib/util/ebnf-transform.js \
+	lib/util/transform-parser.js
+
+
+build_bnf: $(JISON_DEPS)
+	NODE_PATH=lib/util  node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	cat modules/ebnf-parser/parser.js > lib/util/parser.js
+
+build_lex: $(JISON_DEPS)
+	NODE_PATH=lib/util  node lib/cli.js -o modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+	cat modules/lex-parser/lex-parser.js > lib/util/lex-parser.js
+
+
+lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
+	cat modules/jison-lex/regexp-lexer.js > $@
+
+lib/util/package.json: modules/jison-lex/package.json
+	cat modules/jison-lex/package.json > $@
+
+lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js
+	cat modules/ebnf-parser/ebnf-parser.js > $@
+
+lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js
+	cat modules/ebnf-parser/ebnf-transform.js > $@
+
+lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js
+	cat modules/ebnf-parser/transform-parser.js > $@
+
 
