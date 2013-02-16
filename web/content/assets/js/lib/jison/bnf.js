@@ -31,7 +31,7 @@ bnf.yy.lexComment = function (lexer) {
         lexer.unput('/*');
         lexer.more();
     }
-}
+};
 
 // helps tokenize actions
 bnf.yy.lexAction = function (lexer) {
@@ -43,10 +43,10 @@ bnf.yy.lexAction = function (lexer) {
         lexer.unput('{{');
         lexer.more();
     }
-}
+};
 
 // parse an embedded lex section
 var parseLex = function (text) {
     return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
-}
+};
 

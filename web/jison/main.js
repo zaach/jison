@@ -12,12 +12,12 @@ $(function () {
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
-    $(".action, .state").live("click", function (ev){
+    $(".action, .state").on("click", function (ev){
       if (!$(ev.target).is("a"))
         $(this).toggleClass("open");
     });
 
-    $(".action, .state").live("dblclick", function (ev){
+    $(".action, .state").on("dblclick", function (ev){
         var row = this.className.match(/(row_[0-9]+)/)[1];
         $(this).hasClass("open") ?
           $("."+row).removeClass("open") :

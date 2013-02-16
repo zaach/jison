@@ -26,20 +26,20 @@
   "main": "lib/jison",
   "bin": "lib/cli.js",
   "engines": {
-    "node": ">=0.4"
+    "node": ">=0.9"
   },
   "dependencies": {
-    "JSONSelect": "0.4.0",
-    "reflect": "0.0.7",
+    "JSONSelect": ">=0.4.0",
+    "reflect": ">=0.1.3",
     "jison-lex": "0.1.x",
     "ebnf-parser": "0.1.x",
     "lex-parser": "0.1.x",
-    "nomnom": "1.5.2"
+    "nomnom": ">=1.5.2"
   },
   "devDependencies": {
-    "test": "0.4.4",
+    "test": ">=0.4.4",
     "jison": "0.4.x",
-    "uglify-js": "1.3.3",
+    "uglify-js": ">=1.3.3",
     "browserify": "*"
   },
   "scripts": {
