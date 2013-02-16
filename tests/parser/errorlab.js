@@ -91,7 +91,7 @@ exports["test no recovery"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert["throws"](function (){parser.parse('xxgy')}, "should throw");
+    assert.throws(function (){parser.parse('xxgy')}, "should throw");
 };
 
 exports["test error after error recovery"] = function () {
@@ -115,7 +115,7 @@ exports["test error after error recovery"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert["throws"](function (){parser.parse('gxxx;')}, "should return bar");
+    assert.throws(function (){parser.parse('gxxx;')}, "should return bar");
 };
 
 exports["test throws error despite recovery rule"] = function() {
@@ -144,7 +144,7 @@ exports["test throws error despite recovery rule"] = function() {
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
-    assert['throws'](function (){(parser.parse("0+0+0>"), expectedAST);});
+    assert.throws(function (){(parser.parse("0+0+0>"), expectedAST);});
 };
 
 exports["test correct AST after error recovery abrupt end"] = function() {
