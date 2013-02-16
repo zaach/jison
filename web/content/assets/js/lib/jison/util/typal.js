@@ -8,7 +8,7 @@
 
 var typal = (function () {
 
-var create = Object.create || function (o) { function F(){}; F.prototype = o; return new F(); };
+var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
 var position = /^(before|after)/;
 
 // basic method layering
@@ -25,13 +25,13 @@ function layerMethod(k, fun) {
             args.splice(0, 0, ret);
             fun.apply(this, args);
             return ret;
-        }
+        };
     } else if (pos === 'before') {
         this[key] = function () {
-            fun.apply(this, arguments); 
-            var ret = prop.apply(this, arguments); 
+            fun.apply(this, arguments);
+            var ret = prop.apply(this, arguments);
             return ret;
-        }
+        };
     }
 }
 
