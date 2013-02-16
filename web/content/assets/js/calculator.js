@@ -5,7 +5,7 @@ yy: {},
 symbols_: {"error":2,"expressions":3,"e":4,"EOF":5,"+":6,"-":7,"*":8,"/":9,"^":10,"(":11,")":12,"NUMBER":13,"E":14,"PI":15,"$accept":0,"$end":1},
 terminals_: {"2":"error","5":"EOF","6":"+","7":"-","8":"*","9":"/","10":"^","11":"(","12":")","13":"NUMBER","14":"E","15":"PI"},
 productions_: [0,[3,2],[4,3],[4,3],[4,3],[4,3],[4,3],[4,2],[4,3],[4,1],[4,1],[4,1]],
-performAction: function anonymous(yytext, yyleng, yylineno, yy) { 
+performAction: function anonymous(yytext, yyleng, yylineno, yy) {
 var $$ = arguments[5],$0=arguments[5].length;
 switch(arguments[4]) {
 case 1:return $$[$0-2+1-1];
@@ -80,7 +80,7 @@ parse: function parse(input) {
     };
 
     var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected, recovered = false;
-    symbol = lex(); 
+    symbol = lex();
     while (true) {
         // set first input
         state = stack[stack.length-1];
@@ -115,7 +115,7 @@ parse: function parse(input) {
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
-                symbol = lex(); 
+                symbol = lex();
             }
 
             // try to recover from error
@@ -130,7 +130,7 @@ parse: function parse(input) {
                 popStack(1);
                 state = stack[stack.length-1];
             }
-            
+
             preErrorSymbol = symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
@@ -143,7 +143,7 @@ parse: function parse(input) {
             throw new Error('Parse Error: multiple actions possible at state: '+state+', token: '+symbol);
         }
 
-        a = action; 
+        a = action;
 
         switch (a[0]) {
 
@@ -157,9 +157,10 @@ parse: function parse(input) {
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
-                    symbol = lex(); 
-                    if (recovering > 0)
+                    symbol = lex();
+                    if (recovering > 0) {
                         recovering--;
+                    }
                 } else { // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
                     preErrorSymbol = null;
@@ -286,7 +287,7 @@ next:function () {
         if (this._input == this.EOF) {
             return this.EOF;
         } else {
-            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(), 
+            this.parseError('Lexical error on line '+(this.yylineno+1)+'. Unrecognized text.\n'+this.showPosition(),
                     {text: "", token: null, line: this.yylineno});
         }
     },
@@ -298,7 +299,7 @@ lex:function () {
             return this.lex();
         }
     }});
-lexer.performAction = function anonymous(yy, yy_) { 
+lexer.performAction = function anonymous(yy, yy_) {
 switch(arguments[2]) {
 case 0:/* skip whitespace */
 break;

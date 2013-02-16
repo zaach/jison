@@ -6,14 +6,25 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <title>Jison, parse table visualation page</title>
+    <link rel="stylesheet" href="/jison/assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
     <link href="/jison/assets/styles/usf.css" type="text/css" rel="stylesheet" media="screen" />
   </head>
 
   <body>
   <div id="container">
-    <h2>Jison</h2>
-      <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
-    <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br /> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="../../assets/styles/usflogo.jpg" alt="USF" /></a> </p>
+    <div id="header">
+      <h1><a href="/jison/">Jison</a></h1>
+    </div>
+    <ul id="nav">
+      <li><a href="/jison/docs/">docs</a></li>
+      <li><a href="/jison/demos/">demos</a></li>
+      <li><a href="/jison/try/">try</a></li>
+      <li><a href="/jison/docs/#installation">install</a></li>
+      <li><a href="/jison/community/">community</a></li>
+    </ul>
+    <div id="content">
+      <p><a href="http://github.com/zaach/jison">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
+      <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br /> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="/jison/assets/styles/usflogo.jpg" alt="USF" /></a> </p>
 
     <h2>Input</h2>
 
@@ -23,13 +34,13 @@
     <p>
     Load an example:
     <select id="examples">
-      <option value="basic.jison" selected="true">Basic</option>
-      <option value="basic2.jison">Basic #2</option>
-      <option value="dism.jison">DISM</option>
-      <option value="dism_lr0.jison">DISM in LR(0)</option>
-      <option value="precedence.jison">Precedence operators</option>
-      <option value="reduce_conflict.jison">Reduce-Reduce conflict</option>
-      <option value="ansic.jison">ANSI C</option>
+      <option value="/jison/examples/basic.jison" selected="true">Basic</option>
+      <option value="/jison/examples/basic2.jison">Basic #2</option>
+      <option value="/jison/examples/dism.jison">DISM</option>
+      <option value="/jison/examples/dism_lr0.jison">DISM in LR(0)</option>
+      <option value="/jison/examples/precedence.jison">Precedence operators</option>
+      <option value="/jison/examples/reduce_conflict.jison">Reduce-Reduce conflict</option>
+      <option value="/jison/examples/ansic.jison">ANSI C</option>
     </select>
     </p>
 

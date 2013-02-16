@@ -213,7 +213,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             if (handle.constructor === Array) {
                 if (typeof handle[0] === 'string')
                     rhs = handle[0].trim().split(' ');
-                else 
+                else
                     rhs = handle[0].slice(0);
 
                 for (i=0; her = her || rhs[i] === 'error',i<rhs.length; i++) if (!symbols_[rhs[i]]) {
@@ -367,13 +367,13 @@ lookaheadMixin.followSets = function followSets () {
             for (var i=0,t;t=production.handle[i];++i) {
                 if (!nonterminals[t]) continue;
 
-                // for Simple LALR algorithm, self.go_ checks if 
+                // for Simple LALR algorithm, self.go_ checks if
                 if (ctx)
                     q = self.go_(production.symbol, production.handle.slice(0, i));
                 var bool = !ctx || q === parseInt(self.nterms_[t]);
 
                 if (i === production.handle.length+1 && bool) {
-                    set = nonterminals[production.symbol].follows
+                    set = nonterminals[production.symbol].follows;
                 } else {
                     var part = production.handle.slice(i+1);
 
@@ -492,7 +492,7 @@ lookaheadMixin.nullableSets = function nullableSets () {
 lookaheadMixin.nullable = function nullable (symbol) {
     // epsilon
     if (symbol === '') {
-        return true
+        return true;
     // RHS
     } else if (symbol instanceof Array) {
         for (var i=0,t;t=symbol[i];++i) {
@@ -545,7 +545,7 @@ lrGeneratorMixin.Item = typal.construct({
     constructor: function Item(production, dot, f, predecessor) {
         this.production = production;
         this.dotPosition = dot || 0;
-        this.follows = f || []; 
+        this.follows = f || [];
         this.predecessor = predecessor;
         this.id = parseInt(production.id+'a'+this.dotPosition, 36);
         this.markedSymbol = this.production.handle[this.dotPosition];
@@ -582,8 +582,8 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
         for (var i=a.length-1;i >=0;i--) {
             this.hash_[a[i].id] = true; //i;
         }
-        this._items.push.apply(this._items, a); 
-        return this; 
+        this._items.push.apply(this._items, a);
+        return this;
     },
     push: function (item) {
         this.hash_[item.id] = true;
@@ -688,7 +688,7 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
         if (i === -1 || typeof i === 'undefined') {
             states.has[gv] = states.size();
             itemSet.edges[symbol] = states.size(); // store goto transition for table
-            states.push(g); 
+            states.push(g);
             g.predecessors[symbol] = [stateNum];
         } else {
             itemSet.edges[symbol] = i; // store goto transition for table
@@ -721,7 +721,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                     if (nonterminals[stackSymbol]) {
                         // store state to go to after a reduce
                         //self.trace(k, stackSymbol, 'g'+gotoState);
-                        state[self.symbols_[stackSymbol]] = gotoState; 
+                        state[self.symbols_[stackSymbol]] = gotoState;
                     } else {
                         //self.trace(k, stackSymbol, 's'+gotoState);
                         state[self.symbols_[stackSymbol]] = [s,gotoState];
@@ -734,7 +734,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
         itemSet.forEach(function (item, j) {
             if (item.markedSymbol == self.EOF) {
                 // accept
-                state[self.symbols_[self.EOF]] = [a]; 
+                state[self.symbols_[self.EOF]] = [a];
                 //self.trace(k, self.EOF, state[self.EOF]);
             }
         });
@@ -855,7 +855,67 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
 lrGeneratorMixin.generateModule = function generateModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
-    var out = "/* Jison generated parser */\n";
+    var out = "/* Jison generated parser */\n"
+        + "/*\n"
+        + "  Returns a Parser object of the following structure:\n"
+        + "\n"
+        + "  Parser: {\n"
+        + "    yy: {}\n"
+        + "  }\n"
+        + "\n"
+        + "  Parser.prototype: {\n"
+        + "    yy: {},\n"
+        + "    trace: function(),\n"
+        + "    symbols_: {associative list: name ==> number},\n"
+        + "    terminals_: {associative list: number ==> name},\n"
+        + "    productions_: [...],\n"
+        + "    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$),\n"
+        + "    table: [...],\n"
+        + "    defaultActions: {...},\n"
+        + "    parseError: function(str, hash),\n"
+        + "    parse: function(input),\n"
+        + "\n"
+        + "    lexer: {\n"
+        + "        EOF: 1,\n"
+        + "        parseError: function(str, hash),\n"
+        + "        setInput: function(input),\n"
+        + "        input: function(),\n"
+        + "        unput: function(str),\n"
+        + "        more: function(),\n"
+        + "        less: function(n),\n"
+        + "        pastInput: function(),\n"
+        + "        upcomingInput: function(),\n"
+        + "        showPosition: function(),\n"
+        + "        test_match: function(regex_match_array, rule_index),\n"
+        + "        next: function(),\n"
+        + "        lex: function(),\n"
+        + "        begin: function(condition),\n"
+        + "        popState: function(),\n"
+        + "        _currentRules: function(),\n"
+        + "        topState: function(),\n"
+        + "        pushState: function(condition),\n"
+        + "\n"
+        + "        options: {\n"
+        + "            ranges: boolean           (optional: true ==> token location info will include a .range[] member)\n"
+        + "            flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)\n"
+        + "            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)\n"
+        + "        },\n"
+        + "\n"
+        + "        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),\n"
+        + "        rules: [...],\n"
+        + "        conditions: {associative list: name ==> set},\n"
+        + "    }\n"
+        + "  }\n"
+        + "\n"
+        + "\n"
+        + "  token location info (@$, _$, etc.): {\n"
+        + "    first_line: n,\n"
+        + "    last_line: n,\n"
+        + "    first_column: n,\n"
+        + "    last_column: n,\n"
+        + "    range: [start_number, end_number]       (where the numbers are indexes into the input string, regular zero-based)\n"
+        + "  }\n"
+        + "*/\n";
     out += (moduleName.match(/\./) ? moduleName : "var "+moduleName)+" = (function(){";
     out += "\nvar parser = "+this.generateModule_();
     if (this.lexer && this.lexer.generateModule) {
@@ -937,7 +997,7 @@ lrGeneratorMixin.createParser = function createParser () {
     p.yy = {};
 
     p.init({
-        table: this.table, 
+        table: this.table,
         productions_: this.productions_,
         symbols_: this.symbols_,
         terminals_: this.terminals_,
@@ -1018,7 +1078,7 @@ parser.parse = function parse (input) {
     };
 
     var symbol, preErrorSymbol, state, action, a, r, yyval={},p,len,newState, expected, recovered = false;
-    symbol = lex(); 
+    symbol = lex();
     while (true) {
         // set first input
         state = stack[stack.length-1];
@@ -1046,14 +1106,14 @@ parser.parse = function parse (input) {
             // just recovered from another error
             if (recovering == 3) {
                 if (symbol == EOF) {
-                    throw 'Parsing halted.'
+                    throw 'Parsing halted.';
                 }
 
                 // discard current lookahead and grab another
                 yyleng = this.lexer.yyleng;
                 yytext = this.lexer.yytext;
                 yylineno = this.lexer.yylineno;
-                symbol = lex(); 
+                symbol = lex();
             }
 
             // try to recover from error
@@ -1063,12 +1123,12 @@ parser.parse = function parse (input) {
                     break;
                 }
                 if (state == 0) {
-                    throw 'Parsing halted.'
+                    throw 'Parsing halted.';
                 }
                 popStack(1);
                 state = stack[stack.length-1];
             }
-            
+
             preErrorSymbol = symbol; // save the lookahead token
             symbol = TERROR;         // insert generic error symbol as new lookahead
             state = stack[stack.length-1];
@@ -1081,7 +1141,7 @@ parser.parse = function parse (input) {
             throw new Error('Parse Error: multiple actions possible at state: '+state+', token: '+symbol);
         }
 
-        a = action; 
+        a = action;
 
         switch (a[0]) {
 
@@ -1095,9 +1155,10 @@ parser.parse = function parse (input) {
                     yyleng = this.lexer.yyleng;
                     yytext = this.lexer.yytext;
                     yylineno = this.lexer.yylineno;
-                    symbol = lex(); 
-                    if (recovering > 0)
+                    symbol = lex();
+                    if (recovering > 0) {
                         recovering--;
+                    }
                 } else { // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
                     preErrorSymbol = null;
@@ -1184,7 +1245,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
             DEBUG: false,
             go_: function (r, B) {
                 r = r.split(":")[0]; // grab state #
-                B = B.map(function (b) { return b.slice(b.indexOf(":")+1)});
+                B = B.map(function (b) { return b.slice(b.indexOf(":")+1); });
                 return this.oldg.go(r, B);
             }
         });
@@ -1305,7 +1366,7 @@ var lalrGeneratorDebug = {
     }
 };
 
-/* 
+/*
  * Lookahead parser definitions
  *
  * Define base type
@@ -1445,15 +1506,20 @@ return function Parser (g, options) {
         switch (opt.type) {
             case 'lr0':
                 gen = new LR0Generator(g, opt);
+                break;
             case 'slr':
                 gen = new SLRGenerator(g, opt);
+                break;
             case 'lr':
                 gen = new LR1Generator(g, opt);
+                break;
             case 'll':
                 gen = new LLGenerator(g, opt);
+                break;
             case 'lalr':
             default:
                 gen = new LALRGenerator(g, opt);
+                break;
         }
         return gen.createParser();
     }
