@@ -451,6 +451,6 @@ exports.main = function commonjsMain(args) {
     exports.parser.parse(source);
 }
 if (require.main === module) {
-	exports.main(require("system").args);
+    exports.main(require("system").args);
 }
 }
