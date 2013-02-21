@@ -7,14 +7,18 @@ var parser,
     parser2;
 
 //IE, mainly
-if(typeof console === 'undefined'){
+if (typeof console === 'undefined') {
     console = {};
-    console.log = function (str) {$("#out").html(uneval(str))};
+    console.log = function (str) {
+        $("#out").html(uneval(str));
+    };
 }
 // noop
-print = function (){}
+print = function () {};
 
-var printOut = function (str) { $("#out").html(str); };
+var printOut = function (str) {
+    $("#out").html(str);
+};
 
 $(document).ready(function () {
     $("#process_btn").click(processGrammar);
@@ -41,7 +45,7 @@ function processGrammar () {
         try {
             var cfg = bnf.parse(grammar);
         } catch (e) {
-            $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n"+e).addClass('bad');
+            $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n" + e).addClass('bad');
             return;
         }
     }
@@ -58,13 +62,13 @@ function processGrammar () {
     }
 
     $("#download_btn").click(function () {
-            window.location.href = "data:application/javascript;charset=utf-8;base64,"+Base64.encode(parser.generate());
-        }).removeAttr('disabled');
+        window.location.href = "data:application/javascript;charset=utf-8;base64," + Base64.encode(parser.generate());
+    }).removeAttr('disabled');
 
     parser.resolutions.forEach(function (res) {
         var r = res[2];
         if (!r.bydefault) return;
-        $("#gen_out").append(r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action);
+        $("#gen_out").append(r.msg + "\n" + "(" + r.s + ", " + r.r + ") -> " + r.action);
     });
 
     parser2 = parser.createParser();
