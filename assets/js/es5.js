@@ -74,7 +74,7 @@ if (!String.prototype.trim) {
 // ES5 draft:
 // http://www.ecma-international.org/publications/files/drafts/tc39-2009-025.pdf
 
-// ES5 15.4.3.2 
+// ES5 15.4.3.2
 if (!Array.isArray) {
     Array.isArray = function(obj) {
         return Object.prototype.toString.call(obj) == "[object Array]";
