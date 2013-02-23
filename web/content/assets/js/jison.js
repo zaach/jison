@@ -1766,7 +1766,6 @@ _handle_error:
         }
 
         switch (action[0]) {
-
             case 1: // shift
                 //this.shiftCount++;
 
@@ -1783,13 +1782,15 @@ _handle_error:
                     if (recovering > 0) {
                         recovering--;
                     }
-                } else { // error just occurred, resume old lookahead f/ before error
+                } else {
+                    // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
                     preErrorSymbol = null;
                 }
                 break;
 
-            case 2: // reduce
+            case 2:
+                // reduce
                 //this.reductionCount++;
 
                 len = this.productions_[action[1]][1];
@@ -1827,7 +1828,8 @@ _handle_error:
                 stack.push(newState);
                 break;
 
-            case 3: // accept
+            case 3:
+                // accept
                 return true;
         }
 

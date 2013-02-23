@@ -19,11 +19,11 @@ Configuration is a bit obscure since we have both php and javascript in the same
 EXAMPLE:
 contents
  : content
-	{$$ = $1;} //<--this is left alone
+    {$$ = $1;} //<--this is left alone
  | contents content
-	{
-		$$ =  Wiki.join($1, $2); //js <--this is stripped in the php parser, no action taken in the javascript parser
-		
-		//php $$ = JisonParser_Wiki_Handler::join($1, $2); <-- this is uncommented from the php parser, no action taken in the javascript parser
-	}
+    {
+        $$ =  Wiki.join($1, $2); //js <--this is stripped in the php parser, no action taken in the javascript parser
+
+        //php $$ = JisonParser_Wiki_Handler::join($1, $2); <-- this is uncommented from the php parser, no action taken in the javascript parser
+    }
  ;

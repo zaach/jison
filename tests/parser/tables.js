@@ -117,7 +117,7 @@ exports["test Ambigous grammar"] = function () {
         //"bnf": {
             //"S" : "a A d | b A c | b B d",
             //"A" : "e A | e",
-            //"B" : "e B | e" 
+            //"B" : "e B | e"
         //}
     //};
 
