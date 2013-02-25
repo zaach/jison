@@ -5,13 +5,6 @@ a img { border: 0px; }
   width: 100%;
 }
 
-#intro {
-  font-size: 2em;
-  -moz-border-radius: 8px;
-  background-color: #eee;
-}
-#intro p { margin: 1em 1em; padding: 1em 0em; }
-
 #table table, #productions li, #nonterminals dl {
   font-family: monospace;
 }
