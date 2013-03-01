@@ -15,27 +15,31 @@
   	  <li><a href="/jison/try/">try</a></li>
   	  <li><a href="/jison/docs/#installation">install</a></li>
   	  <li><a href="/jison/community/">community</a></li>
-    </ul>
+        </ul>
+
     <div id="content">
       
-
     <link href="/jison/assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
 
+      <div>
+        <h1>Try Jison Online</h1>
+        <p>Build, test, and download your parser from the web!</p>
+      </div>
+
   <div id="try">
-    <h1>Try Jison Online</h1>
-    <p>Build, test, and download your parser from the web!</p>
-    <h2>Describe Your Language</h2>
+    <div id="describe">
+      <h2>Describe Your Language</h2>
 
-    <p>
-    Load an example:
-    <select id="examples">
-      <option value="calculator.jison" selected="true">Calculator</option>
-      <option value="lambdacalc.jison">Lambda Calculus</option>
-      <!--<option value="ansic.jison">ANSI C</option>-->
-    </select>
-    </p>
+      <p>
+      Load an example:
+      <select id="examples">
+        <option value="calculator.jison" selected="true">Calculator</option>
+        <option value="lambdacalc.jison">Lambda Calculus</option>
+        <!--<option value="ansic.jison">ANSI C</option>-->
+      </select>
+      </p>
 
-    <textarea id="grammar" rows="20" cols="80">
+      <textarea id="grammar" rows="20" cols="80">
 /* description: Parses end executes mathematical expressions. */
 
 /* lexical grammar */
@@ -97,32 +101,34 @@ e
         {$$ = Math.PI;}
     ;
 </textarea>
-    <p>
-      <button id="process_btn">Generate Parser</button>
-      <button id="download_btn" disabled>Download</button>
-    </p>
-    <pre id="gen_out"></pre>
+      <p>
+        <button id="process_btn">Generate Parser</button>
+        <button id="download_btn" disabled>Download</button>
+      </p>
+      <pre id="gen_out"></pre>
 
-    <div id="nonterminals"></div>
-    <div id="productions"></div>
-    <div id="table"></div>
-
-
-    <div id="parsing">
-      <h2>Test Your Parser</h2>
-      <textarea id="source" rows="8" cols="80">5*PI^2</textarea><br/>
-      <button id="parse_btn">Parse</button>
+      <div id="nonterminals"></div>
+      <div id="productions"></div>
+      <div id="table"></div>
     </div>
-    <pre id="out"></pre>
+  
+    <div id="test">
+      <h2>Test Your Parser</h2>
+      <p>&nbsp;</p>
+      <textarea id="source" rows="10" cols="80">5*PI^2</textarea><br/>
+      <button id="parse_btn">Parse</button>
+      <pre id="out"></pre>
 
-    <div id="loading"></div>
-  </div>
+      <div id="loading"></div>
+    </div>
+</div>
 
   <div id="usf">
     <h2>Suggestion</h2>
     <p>You may also want to try <a href="usf/index.html">the Jison USF page</a> which includes logic to show the productions and state transition diagram. This can be very useful for debugging your grammar!</p>
   </div>
 
+            
     <script src="/jison/assets/js/webtoolkit.js"></script>
     <script src="/jison/assets/js/jquery.js"></script>
     <script src="/jison/assets/js/json2.js"></script>
@@ -134,6 +140,7 @@ e
   	<p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2013. MIT Licensed.</p>
   	
     <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+
 <script type="text/javascript">
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-3555129-4']);
