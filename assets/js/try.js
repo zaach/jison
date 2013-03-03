@@ -44,8 +44,13 @@ function processGrammar () {
         }
     }
 
-    Jison.print = function () {};
-    parser = Jison.Generator(cfg, {type: type});
+    //Jison.print = function () {};
+    try {
+        parser = Jison.Generator(cfg, {type: type});
+    } catch(e) {
+        $("#gen_out").text("Oops. Error while parsing grammar.\n"+e).addClass('bad');
+        throw(e);
+    }
 
     $("#out").removeClass("good").removeClass("bad").html('');
     $("#gen_out").removeClass("good").removeClass("bad");
