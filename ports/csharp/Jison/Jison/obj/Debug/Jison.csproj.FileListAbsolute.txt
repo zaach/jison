@@ -5,3 +5,10 @@ C:\Users\robert\documents\visual studio 2012\Projects\Jison\Jison\bin\Debug\Jiso
 C:\Users\robert\documents\visual studio 2012\Projects\Jison\Jison\bin\Debug\Newtonsoft.Json.dll
 C:\Users\robert\documents\visual studio 2012\Projects\Jison\Jison\obj\Debug\Jison.exe
 C:\Users\robert\documents\visual studio 2012\Projects\Jison\Jison\obj\Debug\Jison.pdb
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Jison.exe.config
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.exe
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.pdb
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.csprojResolveAssemblyReference.cache
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Jison.exe
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Jison.pdb
+C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Newtonsoft.Json.dll

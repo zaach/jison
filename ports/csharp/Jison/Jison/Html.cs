@@ -64,177 +64,150 @@ namespace Jison
 		
 		public Parser()
 		{
-            //@@INJECT@@
-
-            var accept = new ParserSymbol("accept", 0);
-            var end = new ParserSymbol("end", 1);
             var error = new ParserSymbol("error", 2);
-            var wiki = new ParserSymbol("wiki", 3);
-            var contents = new ParserSymbol("contents", 4);
-            var EOF = new ParserSymbol("EOF", 5);
-            var content = new ParserSymbol("content", 6);
-            var CONTENT = new ParserSymbol("CONTENT", 7);
-            var LINE_END = new ParserSymbol("LINE_END", 8);
-            var HTML_TAG_INLINE = new ParserSymbol("HTML_TAG_INLINE", 9);
-            var HTML_TAG_OPEN = new ParserSymbol("HTML_TAG_OPEN", 10);
-            var HTML_TAG_CLOSE = new ParserSymbol("HTML_TAG_CLOSE", 11);
+ParserActions.Add(2, error);
+var wiki = new ParserSymbol("wiki", 3);
+ParserActions.Add(3, wiki);
+var contents = new ParserSymbol("contents", 4);
+ParserActions.Add(4, contents);
+var EOF = new ParserSymbol("EOF", 5);
+ParserActions.Add(5, EOF);
+var content = new ParserSymbol("content", 6);
+ParserActions.Add(6, content);
+var CONTENT = new ParserSymbol("CONTENT", 7);
+ParserActions.Add(7, CONTENT);
+var LINE_END = new ParserSymbol("LINE_END", 8);
+ParserActions.Add(8, LINE_END);
+var HTML_TAG_INLINE = new ParserSymbol("HTML_TAG_INLINE", 9);
+ParserActions.Add(9, HTML_TAG_INLINE);
+var HTML_TAG_OPEN = new ParserSymbol("HTML_TAG_OPEN", 10);
+ParserActions.Add(10, HTML_TAG_OPEN);
+var HTML_TAG_CLOSE = new ParserSymbol("HTML_TAG_CLOSE", 11);
+ParserActions.Add(11, HTML_TAG_CLOSE);
+var accept = new ParserSymbol("accept", 0);
+ParserActions.Add(0, accept);
+var end = new ParserSymbol("end", 1);
+ParserActions.Add(1, end);
 
-            ParserActions = new Dictionary<int, ParserSymbol>() {
-                {error.Index, error},
-                {wiki.Index, wiki},
-                {contents.Index, contents},
-                {EOF.Index, EOF},
-                {content.Index, content},
-                {CONTENT.Index, CONTENT},
-                {LINE_END.Index, LINE_END},
-                {HTML_TAG_INLINE.Index, HTML_TAG_INLINE},
-                {HTML_TAG_OPEN.Index, HTML_TAG_OPEN},
-                {HTML_TAG_CLOSE.Index, HTML_TAG_CLOSE}
-            };
+ParserActions = new Dictionary<int, ParserSymbol>() {{error.Index, error},
+{wiki.Index, wiki},
+{contents.Index, contents},
+{EOF.Index, EOF},
+{content.Index, content},
+{CONTENT.Index, CONTENT},
+{LINE_END.Index, LINE_END},
+{HTML_TAG_INLINE.Index, HTML_TAG_INLINE},
+{HTML_TAG_OPEN.Index, HTML_TAG_OPEN},
+{HTML_TAG_CLOSE.Index, HTML_TAG_CLOSE},
+{accept.Index, accept},
+{end.Index, end}};
 
-            Rules = new Dictionary<int, Regex>() {
-                {0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
-                {1, new Regex("^(?:$)")},
-                {2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
-                {3, new Regex("^(?:(<(.|\n)[^>]*?>))")},
-                {4, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
-                {5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
-                {6, new Regex("^(?:([ ]))")},
-                {7, new Regex("^(?:((\n\r|\r\n|[\n\r])))")},
-                {8, new Regex("^(?:(.))")},
-                {9, new Regex("^(?:$)")}
-            };
+Rules = new Dictionary<int, Regex>() {{0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
+{1, new Regex("^(?:$)")},
+{2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+{3, new Regex("^(?:(<(.|\n)[^>]*?>))")},
+{4, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+{5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
+{6, new Regex("^(?:([ ]))")},
+{7, new Regex("^(?:((\n\r|\r\n|[\n\r])))")},
+{8, new Regex("^(?:(.))")},
+{9, new Regex("^(?:$)")}};
 
-            Conditions.Add("htmlElement", new ParserConditions(new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }, true));
-            Conditions.Add("INITIAL", new ParserConditions(new List<int> {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, true));
+Conditions.Add("htmlElement", new ParserConditions(new List<int> { 0,1,2,3,4,5,6,7,8,9 }, true));
+;Conditions.Add("INITIAL", new ParserConditions(new List<int> { 0,3,4,5,6,7,8,9 }, true));
+Table.Add(new Dictionary<int, ParserAction>() {{3, new ParserAction(1)},
+{4, new ParserAction(2)},
+{5, new ParserAction(1, 3)},
+{6, new ParserAction(4)},
+{7, new ParserAction(1, 5)},
+{8, new ParserAction(1, 6)},
+{9, new ParserAction(1, 7)},
+{10, new ParserAction(1, 8)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {3, new ParserAction(1)},
-                {4, new ParserAction(2)},
-                {5, new ParserAction(1, 3)},
-                {6, new ParserAction(4)},
-                {7, new ParserAction(1, 5)},
-                {8, new ParserAction(1, 6)},
-                {9, new ParserAction(1, 7)},
-                {10, new ParserAction(1, 8)}
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(3)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {3, new ParserAction(3)}
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 1)},
+{5, new ParserAction(1, 9)},
+{6, new ParserAction(10)},
+{7, new ParserAction(1, 5)},
+{8, new ParserAction(1, 6)},
+{9, new ParserAction(1, 7)},
+{10, new ParserAction(1, 8)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 1)},
-                {5, new ParserAction(1, 9)},
-                {6, new ParserAction(10)},
-                {7, new ParserAction(1, 5)},
-                {8, new ParserAction(1, 6)},
-                {9, new ParserAction(1, 7)},
-                {10, new ParserAction(1, 8)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 3)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 3)}
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 4)},
+{5, new ParserAction(2, 4)},
+{7, new ParserAction(2, 4)},
+{8, new ParserAction(2, 4)},
+{9, new ParserAction(2, 4)},
+{10, new ParserAction(2, 4)},
+{11, new ParserAction(2, 4)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 4)},
-                {5, new ParserAction(2, 4)},
-                {7, new ParserAction(2, 4)},
-                {8, new ParserAction(2, 4)},
-                {9, new ParserAction(2, 4)},
-                {10, new ParserAction(2, 4)},
-                {11, new ParserAction(2, 4)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 6)},
+{5, new ParserAction(2, 6)},
+{7, new ParserAction(2, 6)},
+{8, new ParserAction(2, 6)},
+{9, new ParserAction(2, 6)},
+{10, new ParserAction(2, 6)},
+{11, new ParserAction(2, 6)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 6)},
-                {5, new ParserAction(2, 6)},
-                {7, new ParserAction(2, 6)},
-                {8, new ParserAction(2, 6)},
-                {9, new ParserAction(2, 6)},
-                {10, new ParserAction(2, 6)},
-                {11, new ParserAction(2, 6)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 7)},
+{5, new ParserAction(2, 7)},
+{7, new ParserAction(2, 7)},
+{8, new ParserAction(2, 7)},
+{9, new ParserAction(2, 7)},
+{10, new ParserAction(2, 7)},
+{11, new ParserAction(2, 7)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 7)},
-                {5, new ParserAction(2, 7)},
-                {7, new ParserAction(2, 7)},
-                {8, new ParserAction(2, 7)},
-                {9, new ParserAction(2, 7)},
-                {10, new ParserAction(2, 7)},
-                {11, new ParserAction(2, 7)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 8)},
+{5, new ParserAction(2, 8)},
+{7, new ParserAction(2, 8)},
+{8, new ParserAction(2, 8)},
+{9, new ParserAction(2, 8)},
+{10, new ParserAction(2, 8)},
+{11, new ParserAction(2, 8)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 8)},
-                {5, new ParserAction(2, 8)},
-                {7, new ParserAction(2, 8)},
-                {8, new ParserAction(2, 8)},
-                {9, new ParserAction(2, 8)},
-                {10, new ParserAction(2, 8)},
-                {11, new ParserAction(2, 8)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{4, new ParserAction(11)},
+{6, new ParserAction(4)},
+{7, new ParserAction(1, 5)},
+{8, new ParserAction(1, 6)},
+{9, new ParserAction(1, 7)},
+{10, new ParserAction(1, 8)},
+{11, new ParserAction(1, 12)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {4, new ParserAction(11)},
-                {6, new ParserAction(4)},
-                {7, new ParserAction(1, 5)},
-                {8, new ParserAction(1, 6)},
-                {9, new ParserAction(1, 7)},
-                {10, new ParserAction(1, 8)},
-                {11, new ParserAction(1, 12)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 2)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 2)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 5)},
+{5, new ParserAction(2, 5)},
+{7, new ParserAction(2, 5)},
+{8, new ParserAction(2, 5)},
+{9, new ParserAction(2, 5)},
+{10, new ParserAction(2, 5)},
+{11, new ParserAction(2, 5)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 5)},
-                {5, new ParserAction(2, 5)},
-                {7, new ParserAction(2, 5)},
-                {8, new ParserAction(2, 5)},
-                {9, new ParserAction(2, 5)},
-                {10, new ParserAction(2, 5)},
-                {11, new ParserAction(2, 5)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{6, new ParserAction(10)},
+{7, new ParserAction(1, 5)},
+{8, new ParserAction(1, 6)},
+{9, new ParserAction(1, 7)},
+{10, new ParserAction(1, 8)},
+{11, new ParserAction(1, 13)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {6, new ParserAction(10)},
-                {7, new ParserAction(1, 5)},
-                {8, new ParserAction(1, 6)},
-                {9, new ParserAction(1, 7)},
-                {10, new ParserAction(1, 9)},
-                {11, new ParserAction(1, 13)},
-            });
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 10)},
+{5, new ParserAction(2, 10)},
+{7, new ParserAction(2, 10)},
+{8, new ParserAction(2, 10)},
+{9, new ParserAction(2, 10)},
+{10, new ParserAction(2, 10)},
+{11, new ParserAction(2, 10)}});
 
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 10)},
-                {5, new ParserAction(2, 10)},
-                {7, new ParserAction(2, 10)},
-                {8, new ParserAction(2, 10)},
-                {9, new ParserAction(2, 10)},
-                {10, new ParserAction(2, 10)},
-                {11, new ParserAction(2, 10)},
-            });
-
-            Table.Add(new Dictionary<int, ParserAction>() {
-                {1, new ParserAction(2, 9)},
-                {5, new ParserAction(2, 9)},
-                {7, new ParserAction(2, 9)},
-                {8, new ParserAction(2, 9)},
-                {9, new ParserAction(2, 9)},
-                {10, new ParserAction(2, 9)},
-                {11, new ParserAction(2, 9)},
-            });
-
-
-            /*{
-             * 3:1,
-             * 4:2,
-             * 5:[1,3],6:4,7:[1,5],8:[1,6],9:[1,7],10:[1,8]},{1:[3]},{1:[2,1],5:[1,9],6:10,7:[1,5],8:[1,6],9:[1,7],10:[1,8]},{1:[2,3]},{1:[2,4],5:[2,4],7:[2,4],8:[2,4],9:[2,4],10:[2,4],11:[2,4]},{1:[2,6],5:[2,6],7:[2,6],8:[2,6],9:[2,6],10:[2,6],11:[2,6]},{1:[2,7],5:[2,7],7:[2,7],8:[2,7],9:[2,7],10:[2,7],11:[2,7]},{1:[2,8],5:[2,8],7:[2,8],8:[2,8],9:[2,8],10:[2,8],11:[2,8]},{4:11,6:4,7:[1,5],8:[1,6],9:[1,7],10:[1,8],11:[1,12]},{1:[2,2]},{1:[2,5],5:[2,5],7:[2,5],8:[2,5],9:[2,5],10:[2,5],11:[2,5]},{6:10,7:[1,5],8:[1,6],9:[1,7],10:[1,8],11:[1,13]},{1:[2,10],5:[2,10],7:[2,10],8:[2,10],9:[2,10],10:[2,10],11:[2,10]},{1:[2,9],5:[2,9],7:[2,9],8:[2,9],9:[2,9],10:[2,9],11:[2,9]}*/
+Table.Add(new Dictionary<int, ParserAction>() {{1, new ParserAction(2, 9)},
+{5, new ParserAction(2, 9)},
+{7, new ParserAction(2, 9)},
+{8, new ParserAction(2, 9)},
+{9, new ParserAction(2, 9)},
+{10, new ParserAction(2, 9)},
+{11, new ParserAction(2, 9)}});
 		}
 		
 		public static void Main() {
@@ -247,8 +220,50 @@ namespace Jison
 			
 		}
 
-        public ParserValue ParserPerformAction(ParserYY THIS, ParserYY yy, int _yy, Stack<ParserYY> yystate, int _S)
+        public ParserValue ParserPerformAction(ParserValue thisS, ParserValue yy, int yystate, IList<ParserValue> SS)
 		{
+			var SO = SS.Count - 1;
+
+
+switch (yystate) {
+case 1:return SS[SO];
+break;
+case 2:return SS[SO-1];
+break;
+case 3:
+		return new ParserValue("");
+	
+break;
+case 4:thisS = SS[SO];
+break;
+case 5:
+		
+		SS[SO-1].StringValue += SS[SO].StringValue;
+		thisS = SS[SO-1];
+	
+break;
+case 6:
+		thisS = SS[SO];
+    
+break;
+case 7:
+		thisS = SS[SO];
+    
+break;
+case 8:
+		thisS = SS[SO];
+	
+break;
+case 9:
+		thisS = SS[SO-2];
+	
+break;
+case 10:
+		thisS = SS[SO];
+	
+break;
+}
+
             return null;
 		}
 		
@@ -273,9 +288,9 @@ namespace Jison
         public ParserValue Parse(string input)
 		{
             var stack = new Stack<ParserSymbol>();
-            Stack<ParserYY> vstack = new Stack<ParserYY>();
-            ParserYY yy = new ParserYY();
-            ParserYY _yy = new ParserYY();
+            Stack<ParserValue> vstack = new Stack<ParserValue>();
+            ParserValue yy = new ParserValue();
+            ParserValue _yy = new ParserValue();
             ParserValue v = new ParserValue();
 			int shifts = 0;
 			int reductions = 0;
@@ -396,11 +411,10 @@ namespace Jison
 					    // reduce
                         int len = Productions[action.Symbols[1].Index].Len;
 					    // perform semantic action
-                        _yy = new ParserYY();
-                        _yy.S = vstack.ElementAt(vstack.Count - len).S;
+                        _yy = new ParserValue(vstack.ElementAt( vstack.Count - len).S);
                         //yyval; yytext; yyleng; yylineno; action.State[0]; vstack; lstack; vstack.Count - 1;
 
-                        ParserValue value = ParserPerformAction(_yy, yy, action.Symbols[0].Index, vstack, vstack.Count - 1);
+                        ParserValue value = ParserPerformAction(_yy, yy, action.Symbols[0].Index, vstack);
 					
 					    if (value.ValueSet) {
 						    return value;
@@ -435,7 +449,7 @@ namespace Jison
 		/* Jison generated lexer */
 		public int EOF = 1;
 		public string S = "";
-        public ParserYY _YY = new ParserYY();
+        public ParserValue _YY = new ParserValue();
 		public string YY = "";
 		public int YYLineNo = 0;
 		public int YYLeng = 0;
@@ -656,10 +670,60 @@ namespace Jison
             return Conditions[peek].Rules;
 		}
 		
-		public dynamic LexerPerformAction(dynamic yy, dynamic yy_, dynamic avoiding_name_collisions, dynamic YY_START = null)
+		public dynamic LexerPerformAction(dynamic yy, dynamic yy_, int avoiding_name_collisions, dynamic YY_START = null)
 		{
-			//dynamic YYSTATE = YY_START;
-			//"<@@LEXER_PERFORM_ACTION@@>";
+			
+
+;
+switch(avoiding_name_collisions) {
+case 0:
+		//A tag that doesn't need to track state
+
+		//A non-valid html tag, return "<" put the rest back into the parser
+		return 7;
+	
+break;
+case 1:
+		//A tag that was left open, and needs to close
+		
+		return 7;
+	
+break;
+case 2:
+		//A tag that is open and we just found the close for it
+		
+		return 7;
+	
+break;
+case 3:
+		//An tag open
+
+    	//A non-valid html tag, return the first character in the stack and put the rest back into the parser
+		
+		return 7;
+	
+break;
+case 4:
+		//A tag that was not opened, needs to be ignored
+		
+		return 7;
+	
+break;
+case 5:return 7;
+break;
+case 6:return 7;
+break;
+case 7:
+		
+		return 7;
+	
+break;
+case 8:return 7;
+break;
+case 9:return 5;
+break;
+}
+
 			return null;
 		}
 		
@@ -789,11 +853,18 @@ namespace Jison
         public Stack<string> StackStringValue;
         public Stack<ParserValue> Children = new Stack<ParserValue>();
 
-        public ParserValue()
+        public string S = "";
+        public ParserLocation _S;
+        public int Leng = 0;
+        public ParserLocation Loc;
+        public int LineNo = 0;
+        public ParserYYVal Val;
+
+		public ParserValue()
         {
             
         }
-
+		
         public ParserValue(bool value)
         {
             ValueSet = true;
