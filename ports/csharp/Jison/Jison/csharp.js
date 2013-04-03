@@ -114,22 +114,24 @@ exec("jison " + process.argv[2], function (error) {
     function Inject() {
         var result = '',
             symbolsInjection = [],
+            symbolsByIndex = [],
             parserActionsInjection = [],
             rulesInjection = [],
             conditionsInjection = [],
-            tableInjection = [];
+            tableInjection = [],
+            defaultActionsInjections = [],
+            productionsInjections = [],
+            terminalInjections = [];
 
         for (var symbol in symbols) {
             var _symbol = symbol.replace('$', '');
 
             symbolsInjection.push('var ' + _symbol + ' = new ParserSymbol("' + _symbol + '", ' + symbols[symbol] + ')');
-            symbolsInjection.push('ParserActions.Add(' + symbols[symbol] + ', ' + _symbol + ')');
-
-            parserActionsInjection.push('{' + _symbol + '.Index, ' + _symbol + '}');
+            symbolsInjection.push('ParserActions.Push(' + _symbol + ')');
+            symbolsByIndex[symbols[symbol]] = _symbol;
         }
 
         result += symbolsInjection.join(';\n') + ';\n\n';
-        result += 'ParserActions = new Dictionary<int, ParserSymbol>() {' + parserActionsInjection.join(',\n') + '};\n\n';
 
         for (var rule in rules) {
             rulesInjection.push('{' + rule + ', new Regex("' + rules[rule].substring(1, rules[rule].length - 1).replace('\/', '\\/') + '")}');
@@ -138,23 +140,48 @@ exec("jison " + process.argv[2], function (error) {
         result += 'Rules = new Dictionary<int, Regex>() {' + rulesInjection.join(',\n') + '};\n\n';
 
         for (var condition in conditions) {
-            conditionsInjection.push('Conditions.Add("' + condition  + '", new ParserConditions(new List<int> { ' + conditions[condition].rules.join(',') + ' }, ' + conditions[condition].inclusive + '));\n');
+            conditionsInjection.push('Conditions.Add("' + condition  + '", new ParserConditions(new List<int> { ' + conditions[condition].rules.join(',') + ' }, ' + conditions[condition].inclusive + '))');
         }
 
-        result += conditionsInjection.join(';');
+        result += conditionsInjection.join(';\n') + ';\n\n';
 
+        for (var terminal in terminals) {
+            terminalInjections.push('');
+        }
+        
         for (var items in table) {
             var itemsInjection = [];
-            console.log(table[items]);
             for (var item in table[items]) {
                 if (table[items] && table[items][item]) {
-                    itemsInjection.push('{' + item + ', new ParserAction(' + (table[items][item].join ? table[items][item].join(', ') : table[items][item]) + ')}');
+                    var actions = [];
+                    if (table[items][item].join) {
+                        var i = 0;
+                        for (var key in table[items][item]) {
+                            if (i) {
+                                actions.push('Table[' + table[items][item][key] + ']');
+                            } else {
+                                actions.push(symbolsByIndex[table[items][item][key]]);
+                            }
+                            i++;
+                        }
+                    } else {
+                        actions.push(symbolsByIndex[table[items][item]]);
+                    }
+                    itemsInjection.push('{' + item + ', new ParserAction(' + actions.join(',') + ')}');
                 }
             }
-            tableInjection.push('Table.Add(new Dictionary<int, ParserAction>() {' + itemsInjection.join(',\n') + '});');
+            tableInjection.push('Table.Push(new Dictionary<int, ParserAction>() {' + itemsInjection.join(',\n') + '});');
         }
 
-        result += tableInjection.join('\n\n');
+        result += tableInjection.join('\n\n') + '\n\n';
+
+        for (var action in defaultActions) {
+            result += 'DefaultActions.Add(' + action + ', new ParserAction(' + defaultActions[action].join(',') + '));\n';
+        }
+
+        for (var production in productions) {
+            
+        }
 
         return result;
     }

@@ -1,64 +1,18 @@
 ﻿using System;
-using System.Collections;
-using System.Dynamic;
-using System.Runtime;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Converters;
 
 
 namespace Jison
 {
-    class ParserAction
-    {
-        public int Action = 0;
-        public int State = 0;
-
-        public ParserAction(int action)
-        {
-            Action = action;
-        }
-
-        public ParserAction(int action, int state)
-        {
-            Action = action;
-            State = state;
-        }
-    }
-
-    class ParserSymbol
-    {
-        public string Name;
-        public int Index;
-        public IDictionary<int, ParserSymbol> Symbols = new Dictionary<int, ParserSymbol>();
-        public IDictionary<string, ParserSymbol> SymbolsByName = new Dictionary<string, ParserSymbol>();
-
-        public ParserSymbol(string name, int index)
-        {
-            Name = name;
-            Index = index;
-        }
-
-        public void AddAction(ParserSymbol p)
-        {
-            Symbols.Add(p.Index, p);
-            SymbolsByName.Add(p.Name, p);
-        }
-    }
-
     class Parser
     {
-        public IDictionary<int, ParserSymbol> ParserActions = new Dictionary<int, ParserSymbol>();
-        public IDictionary<int, int> Symbols;
-		public IDictionary<int, string> Terminals;
-        public IDictionary<int, ParserProduction> Productions = new Dictionary<int, ParserProduction>();
-        public IList<IDictionary<int,ParserAction>> Table = new List<IDictionary<int, ParserAction>>();
-        public IDictionary<int, ParserSymbol> DefaultActions;
+        public JList<ParserSymbol> Symbols = new JList<ParserSymbol>();
+        public Dictionary<int, ParserSymbol> Terminals;
+        public JList<ParserProduction> Productions = new JList<ParserProduction>();
+        public JList<Dictionary<int, ParserAction>> Table = new JList<Dictionary<int, ParserAction>>();
+        public IDictionary<int, ParserAction> DefaultActions = new Dictionary<int, ParserAction>();
 		public string Version = "0.3.12";
 		public bool Debug = false;
 		
@@ -70,6 +24,7 @@ namespace Jison
 		public static void Main() {
 			var parser = new Parser();
             var o = parser.Parse("Test");
+		    o = o;
 		}
 		
 		public void Trace()
@@ -77,9 +32,9 @@ namespace Jison
 			
 		}
 
-        public ParserValue ParserPerformAction(ParserValue thisS, ParserYY yy, int yystate, IList<ParserValue> SS)
+        public ParserValue ParserPerformAction(ParserValue thisS, ParserValue yy, int yystate, JList<ParserValue> SS)
 		{
-			var SO = SS.Count - 1;//@@ParserPerformActionInjection@@
+			var SO = SS.Length - 1;//@@ParserPerformActionInjection@@
             return null;
 		}
 		
@@ -89,8 +44,8 @@ namespace Jison
 			token = (token != 0 ? token : 1);
 			
 			// if token isn't its numeric value, convert
-			if ( token > -1 && ParserActions.ContainsKey(token)) {
-                return ParserActions[token].Index;
+			if ( token > -1 && Symbols[token] != null) {
+                return token;
 			}
 			
 			return token;
@@ -102,49 +57,63 @@ namespace Jison
 		}
 
         public ParserValue Parse(string input)
-		{
-            var stack = new Stack<ParserSymbol>();
-            Stack<ParserYY> vstack = new Stack<ParserYY>();
-            ParserYY yy = new ParserYY();
-            ParserValue _yy = new ParserValue();
-            ParserValue v = new ParserValue();
+        {
+            var stack = new JList<ParserSymbol>();
+            stack.Push(new ParserSymbol("", 0));
+            var vstack = new JList<ParserValue>();
+            vstack.Push(new ParserValue());
+            var lstack = new JList<ParserLocation>();
+
+            var yy = new ParserValue();
+            var _yy = new ParserValue();
+            var v = new ParserValue();
 			int shifts = 0;
 			int reductions = 0;
 			int recovering = 0;
 			int TERROR = 2;
 			int symbol = -1;
-            ParserSymbol action = null;
+            ParserAction action = null;
 			string errStr = "";
 			int preErrorSymbol = -1;
             ParserSymbol defaultActions;
+            ParserSymbol state = null;
 
             SetInput(input);
 
 			while (true)
 			{
 				// retreive state number from top of stack
-                ParserSymbol state = (stack.Count > 0 ? stack.Last() : null);
+                state = stack.Last();
                 
 				// use default actions if available
-				if (state != null) {
-					action = DefaultActions[state.Index];
-				} else {
-					if (symbol < 0) {
-						symbol = ParserLex();
-					}
-					// read action for current state and first input
-					if (state != null && state.Symbols.ContainsKey(symbol)) {
-                        action = state.Symbols[symbol];
-					} else {
-						action = null;
-					}
-				}
-				
-				if (action == null) {
+			    if (state != null && DefaultActions.ContainsKey(state.Index))
+			    {
+			        action = DefaultActions[state.Index];
+			    }
+			    else
+			    {
+			        if (symbol <= 0)
+			        {
+			            symbol = ParserLex();
+			        }
+			        // read action for current state and first input
+			        if (Table[state.Index] != null && Table[state.Index].ContainsKey(symbol))
+			        {
+                        var t = Table[state.Index];
+                       action = t[symbol];
+
+			        }
+			        else
+			        {
+			            action = null;
+			        }
+			    }
+
+			    if (action == null) {
 					if (recovering > 0) {
 						// Report error
 						string[] expected = new string[]{};
-						foreach(var item in state.Symbols) {
+						foreach(var p in Table[state.Index]) {
 							//TODO: populate expected here
 						}
 						
@@ -204,18 +173,22 @@ namespace Jison
 				/*if (type.IsArray()) {
 					this.parseError("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
 				}*/
+
+			    if (state == null)
+			    {
+			        break;
+			    }
 				
-				switch (action.Index) {
+				switch (action.Action) {
 				    case 1:
 					    // shift
-					    stack.Push(ParserActions[symbol]);
+					    stack.Push(Symbols[symbol]);
 					    vstack.Push(_YY);
-					
-					    stack.Push(action.Symbols[1]); // push state
+                        stack.Push(Symbols[action.State]);
 
 					    symbol = -1;
-					    if (preErrorSymbol > -1) { // normal execution/no error
-                            yy = _YY;
+					    if (preErrorSymbol == -1) { // normal execution/no error
+                            yy = new ParserValue(_YY);
 						    if (recovering > 0) recovering--;
 					    } else { // error just occurred, resume old lookahead f/ before error
 						    symbol = preErrorSymbol;
@@ -225,14 +198,14 @@ namespace Jison
 		
 				    case 2:
 					    // reduce
-                        int len = Productions[action.Symbols[1].Index].Len;
+                        int len = Productions[action.Action].Len;
 					    // perform semantic action
-                        _yy = new ParserValue(vstack.ElementAt( vstack.Count - len).S);
+                        _yy = vstack[vstack.Length - len];
                         //yyval; yytext; yyleng; yylineno; action.State[0]; vstack; lstack; vstack.Count - 1;
 
-                        ParserValue value = ParserPerformAction(_yy, yy, action.Symbols[0].Index, vstack);
+                        ParserValue value = ParserPerformAction(_yy, yy, action.State, vstack);
 					
-					    if (value.ValueSet) {
+					    if (value != null) {
 						    return value;
 					    }
 					
@@ -243,11 +216,14 @@ namespace Jison
 						    vstack.Pop();
 					    }
 					
-					    stack.Push(ParserActions[Productions[action.Symbols[1].Index].Nonterminal]); // push nonterminal (reduce)
+					    stack.Push(Productions[action.State].Symbol); // push nonterminal (reduce)
 					    vstack.Push(yy);
 					
 					    // goto new state = table[STATE][NONTERMINAL]
-					    dynamic newState = ParserActions[stack.ElementAt(stack.Count - 2).Index].Symbols[stack.ElementAt(stack.Count - 1).Index];
+				        var tableIndex = stack[stack.Length - 2].Index;
+				        int stateIndex = stack[stack.Length - 1].Index;
+
+					    dynamic newState = Symbols[Table[tableIndex][stateIndex].State];
 					
 					    stack.Push(newState);
 					
@@ -265,11 +241,10 @@ namespace Jison
 		/* Jison generated lexer */
 		public int EOF = 1;
 		public string S = "";
-        public ParserYY _YY = new ParserYY();
+        public ParserValue _YY = new ParserValue();
 		public string YY = "";
 		public int YYLineNo = 0;
 		public int YYLeng = 0;
-		public ParserYYVal YYVal;
 		public string Match = "";
 		public string Matched = "";
         public ParserLocation YYLoc;
@@ -282,7 +257,7 @@ namespace Jison
 		public string _Input;
 		public dynamic Offset;
         public int[,] Ranges = new int[,]{};
-        public bool Flex = true;
+        public bool Flex = false;
 		
 		public void SetInput(string input)
 		{
@@ -290,7 +265,6 @@ namespace Jison
 			_More = Less = Done = false;
 			_YY.LineNo = _YY.Leng = 0;
 			Matched = Match = "";
-            _YY.Val = new ParserYYVal("", 1, 0, 1, 0);
             ConditionStack = new Stack<string>();
 			ConditionStack.Push("INITIAL");
             _YY.Loc = new ParserLocation(1, 0, 1, 0);
@@ -404,6 +378,7 @@ namespace Jison
 	
 			var rules = CurrentRules();
 			string match = "";
+		    bool matched = false;
 			int index = 0;
             Regex rule;
 			for (int i = 0; i < rules.Count; i++) {
@@ -411,13 +386,14 @@ namespace Jison
 				var tempMatch = rule.Match(_Input);
 	            if (tempMatch.Success == true && (match != null || tempMatch.Length > match.Length)) {
                     match = tempMatch.Value;
+	                matched = true;
 	                index = i;
 	                if (!Flex) {
 						break;
 					}
 	            }
 			}
-			if ( !String.IsNullOrEmpty(match) ) {
+			if ( matched ) {
 				Match lineCount = Regex.Match(match, "/\n.*/");
 	
 				_YY.LineNo += lineCount.Length;
@@ -425,9 +401,11 @@ namespace Jison
                 _YY.Loc.LastLine = _YY.LineNo + 1;
                 _YY.Loc.FirstColumn = _YY.Loc.LastColumn;
                 _YY.Loc.LastColumn = lineCount.Length > 0 ? lineCount.Length - 1 : _YY.Loc.LastColumn + match.Length;
-				
-				_YY.Text += match[0];
-				Match += match[0];
+
+                _YY.Text += match;
+                Match += match;
+                Matched += match;
+                
 				//this.matches = match;
 				_YY.Leng = _YY.Text.Length;
 				if (Ranges.Length > 0) {
@@ -435,12 +413,11 @@ namespace Jison
 				}
 				_More = false;
 				_Input = _Input.Substring(match.Length);
-				Matched += match[0];
 				var token = LexerPerformAction(YY, this, rules[index], ConditionStack.Peek());
 	
 				if (Done == true && String.IsNullOrEmpty(_Input) == false) Done = false;
 	
-				if (String.IsNullOrEmpty(token) == false) {
+				if (token != null) {
 					return token;
 				} else {
 					return -1;
@@ -462,12 +439,13 @@ namespace Jison
 		public int LexerLex()
 		{
 			var r = Next();
-			
-			while (r > -1 && Done == false) {
-				r = Next();
-			}
-			
-			return r;
+
+            if (r > -1)
+            {
+                return r;
+            } else {
+                return LexerLex();
+            }
 		}
 	
 		public void Begin(dynamic condition)
@@ -536,77 +514,6 @@ namespace Jison
         }
     }
 
-    /*class ParserAction
-    {
-        public int Action;
-        public IDictionary<int, ParserAction> Actions = new Dictionary<int, ParserAction>();
-
-        public ParserAction(int action)
-        {
-            Action = action;
-        }
-
-        public ParserAction(int action1, int action2)
-        {
-            Actions.Add(0, new ParserAction(action1));
-            Actions.Add(1, new ParserAction(action2));
-        }
-    }*/
-
-    class ParserYY
-    {
-        public string Text = "";
-        public string S = "";
-        public ParserLocation _S;
-        public int Leng = 0;
-        public ParserLocation Loc;
-        public int LineNo = 0;
-        public ParserYYVal Val;
-    }
-
-    class ParserYYVal
-    {
-        public string S;
-        public ParserLocation _S;
-        public ParserValue Value;
-
-        public ParserYYVal(string s, int firstLine, int lastLine, int firstColumn, int lastColumn)
-        {
-            S = s;
-            _S = new ParserLocation(firstLine, lastLine, firstColumn, lastColumn);
-        }
-
-        public void SetValue(bool value)
-        {
-            Value = new ParserValue(value);
-        }
-
-        public void SetValue(decimal value)
-        {
-            Value = new ParserValue(value);
-        }
-
-        public void SetValue(string value)
-        {
-            Value = new ParserValue(value);
-        }
-
-        public void SetValue(Stack<bool> value)
-        {
-            Value = new ParserValue(value);
-        }
-
-        public void SetValue(Stack<decimal> value)
-        {
-            Value = new ParserValue(value);
-        }
-
-        public void SetValue(Stack<string> value)
-        {
-            Value = new ParserValue(value);
-        }
-    }
-
     class ParserValue
     {
         public bool ValueSet = false;
@@ -617,13 +524,37 @@ namespace Jison
         public Stack<decimal> StackDecimalValue;
         public Stack<string> StackStringValue;
         public Stack<ParserValue> Children = new Stack<ParserValue>();
-		public ParserLocation Loc;
+
+        public string S = "";
+        public ParserLocation _S;
+        public int Leng = 0;
+        public ParserLocation Loc;
+        public int LineNo = 0;
+
+        public string Text = "";
 
 		public ParserValue()
         {
             
         }
-		
+
+        public ParserValue(ParserValue parserValue)
+        {
+            ValueSet = parserValue.ValueSet;
+            BoolValue = parserValue.BoolValue;
+            DecimalValue = parserValue.DecimalValue;
+            StringValue = parserValue.StringValue;
+            StackBoolValue = parserValue.StackBoolValue;
+            StackDecimalValue =  parserValue.StackDecimalValue;
+            StackStringValue = parserValue.StackStringValue;
+            Children = parserValue.Children;
+            S = parserValue.S;
+            _S = parserValue._S;
+            Leng = parserValue.Leng;
+            Loc = parserValue.Loc;
+            LineNo = parserValue.LineNo;
+            Text = parserValue.Text;
+        }
         public ParserValue(bool value)
         {
             ValueSet = true;
@@ -679,13 +610,91 @@ namespace Jison
 
     class ParserProduction
     {
-        public int Len;
-        public int Nonterminal;
+        public int Len = 0;
+        public ParserSymbol Symbol;
 
-        public ParserProduction(int len, int nonterminal)
+        public ParserProduction(ParserSymbol symbol)
         {
+            Symbol = symbol;
+        }
+
+        public ParserProduction(ParserSymbol symbol, int len)
+        {
+            Symbol = symbol;
             Len = len;
-            Nonterminal = nonterminal;
+        }
+    }
+
+    class ParserAction
+    {
+        public int Action = -1;
+        public int State = -1;
+
+        public ParserAction(int action)
+        {
+            Action = action;
+        }
+
+        public ParserAction(int action, int state)
+        {
+            Action = action;
+            State = state;
+        }
+    }
+
+    class ParserSymbol
+    {
+        public string Name;
+        public int Index;
+        public IDictionary<int, ParserSymbol> Symbols = new Dictionary<int, ParserSymbol>();
+        public IDictionary<string, ParserSymbol> SymbolsByName = new Dictionary<string, ParserSymbol>();
+
+        public ParserSymbol(string name, int index)
+        {
+            Name = name;
+            Index = index;
+        }
+
+        public void AddAction(ParserSymbol p)
+        {
+            Symbols.Add(p.Index, p);
+            SymbolsByName.Add(p.Name, p);
+        }
+    }
+
+    internal class JList<T> : List<T> where T : class
+    {
+        public int Length = 0;
+
+        new public void Push(T item)
+        {
+            Length++;
+            base.Add(item);
+        }
+
+        new public void Pop()
+        {
+            Length--;
+            Length = Math.Max(0, Length);
+            base.RemoveAt(Length);
+        }
+
+        new public void Clear()
+        {
+            Length = 0;
+            base.Clear();
+        }
+
+        new public T this[int index]
+        {
+            get
+            {
+                if (index >= Length || Length == 0)
+                {
+                    return null;
+                }
+                return base[index];
+            }
         }
     }
 }
