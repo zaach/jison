@@ -11,8 +11,5 @@ C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.
 C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.csprojResolveAssemblyReference.cache
 C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Jison.exe
 C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Jison.pdb
-C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\Newtonsoft.Json.dll
 C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.Properties.Resources.resources
 C:\Users\robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\obj\Debug\Jison.csproj.GenerateResource.Cache
-C:\Users\Robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\System.Collections.Immutable.dll
-C:\Users\Robert\Documents\GitHub\jison\ports\csharp\Jison\Jison\bin\Debug\System.Collections.Immutable.xml

@@ -18,7 +18,179 @@ namespace Jison
 		
 		public Parser()
 		{
-            //@@INJECT@@
+        			var symbol0 = new ParserSymbol("accept", 0);
+			Symbols.Push(symbol0);
+			var symbol1 = new ParserSymbol("end", 1);
+			Symbols.Push(symbol1);
+			var symbol2 = new ParserSymbol("error", 2);
+			Symbols.Push(symbol2);
+			var symbol3 = new ParserSymbol("wiki", 3);
+			Symbols.Push(symbol3);
+			var symbol4 = new ParserSymbol("contents", 4);
+			Symbols.Push(symbol4);
+			var symbol5 = new ParserSymbol("EOF", 5);
+			Symbols.Push(symbol5);
+			var symbol6 = new ParserSymbol("content", 6);
+			Symbols.Push(symbol6);
+			var symbol7 = new ParserSymbol("CONTENT", 7);
+			Symbols.Push(symbol7);
+			var symbol8 = new ParserSymbol("LINE_END", 8);
+			Symbols.Push(symbol8);
+			var symbol9 = new ParserSymbol("HTML_TAG_INLINE", 9);
+			Symbols.Push(symbol9);
+			var symbol10 = new ParserSymbol("HTML_TAG_OPEN", 10);
+			Symbols.Push(symbol10);
+			var symbol11 = new ParserSymbol("HTML_TAG_CLOSE", 11);
+			Symbols.Push(symbol11);
+
+			Rules = new Dictionary<int, Regex>() {
+				{0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
+				{1, new Regex("^(?:$)")},
+				{2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+				{3, new Regex("^(?:(<(.|\n)[^>]*?>))")},
+				{4, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+				{5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
+				{6, new Regex("^(?:([ ]))")},
+				{7, new Regex("^(?:((\n\r|\r\n|[\n\r])))")},
+				{8, new Regex("^(?:(.))")},
+				{9, new Regex("^(?:$)")}};
+
+			Conditions.Add("htmlElement", new ParserConditions(new List<int> { 0,1,2,3,4,5,6,7,8,9 }, true));
+			Conditions.Add("INITIAL", new ParserConditions(new List<int> { 0,3,4,5,6,7,8,9 }, true));
+
+			Terminals = new Dictionary<int, ParserSymbol>(){
+				{2,symbol2},
+				{5,symbol5},
+				{7,symbol7},
+				{8,symbol8},
+				{9,symbol9},
+				{10,symbol10},
+				{11,symbol11}};
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{3, new ParserAction(-1,1)},
+				{4, new ParserAction(-1,2)},
+				{5, new ParserAction(1,3)},
+				{6, new ParserAction(-1,4)},
+				{7, new ParserAction(1,5)},
+				{8, new ParserAction(1,6)},
+				{9, new ParserAction(1,7)},
+				{10, new ParserAction(1,8)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(3)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,1)},
+				{5, new ParserAction(1,9)},
+				{6, new ParserAction(-1,10)},
+				{7, new ParserAction(1,5)},
+				{8, new ParserAction(1,6)},
+				{9, new ParserAction(1,7)},
+				{10, new ParserAction(1,8)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,3)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,4)},
+				{5, new ParserAction(2,4)},
+				{7, new ParserAction(2,4)},
+				{8, new ParserAction(2,4)},
+				{9, new ParserAction(2,4)},
+				{10, new ParserAction(2,4)},
+				{11, new ParserAction(2,4)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,6)},
+				{5, new ParserAction(2,6)},
+				{7, new ParserAction(2,6)},
+				{8, new ParserAction(2,6)},
+				{9, new ParserAction(2,6)},
+				{10, new ParserAction(2,6)},
+				{11, new ParserAction(2,6)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,7)},
+				{5, new ParserAction(2,7)},
+				{7, new ParserAction(2,7)},
+				{8, new ParserAction(2,7)},
+				{9, new ParserAction(2,7)},
+				{10, new ParserAction(2,7)},
+				{11, new ParserAction(2,7)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,8)},
+				{5, new ParserAction(2,8)},
+				{7, new ParserAction(2,8)},
+				{8, new ParserAction(2,8)},
+				{9, new ParserAction(2,8)},
+				{10, new ParserAction(2,8)},
+				{11, new ParserAction(2,8)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{4, new ParserAction(-1,11)},
+				{6, new ParserAction(-1,4)},
+				{7, new ParserAction(1,5)},
+				{8, new ParserAction(1,6)},
+				{9, new ParserAction(1,7)},
+				{10, new ParserAction(1,8)},
+				{11, new ParserAction(1,12)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,2)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,5)},
+				{5, new ParserAction(2,5)},
+				{7, new ParserAction(2,5)},
+				{8, new ParserAction(2,5)},
+				{9, new ParserAction(2,5)},
+				{10, new ParserAction(2,5)},
+				{11, new ParserAction(2,5)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{6, new ParserAction(-1,10)},
+				{7, new ParserAction(1,5)},
+				{8, new ParserAction(1,6)},
+				{9, new ParserAction(1,7)},
+				{10, new ParserAction(1,8)},
+				{11, new ParserAction(1,13)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,10)},
+				{5, new ParserAction(2,10)},
+				{7, new ParserAction(2,10)},
+				{8, new ParserAction(2,10)},
+				{9, new ParserAction(2,10)},
+				{10, new ParserAction(2,10)},
+				{11, new ParserAction(2,10)}});
+
+			Table.Push(new Dictionary<int, ParserAction>() {
+				{1, new ParserAction(2,9)},
+				{5, new ParserAction(2,9)},
+				{7, new ParserAction(2,9)},
+				{8, new ParserAction(2,9)},
+				{9, new ParserAction(2,9)},
+				{10, new ParserAction(2,9)},
+				{11, new ParserAction(2,9)}});
+
+			DefaultActions.Add(3, new ParserAction(2,3));
+			DefaultActions.Add(9, new ParserAction(2,2));
+
+
+			Productions.Push(new ParserProduction(symbol0));
+			Productions.Push(new ParserProduction(symbol3,1));
+			Productions.Push(new ParserProduction(symbol3,2));
+			Productions.Push(new ParserProduction(symbol3,1));
+			Productions.Push(new ParserProduction(symbol4,1));
+			Productions.Push(new ParserProduction(symbol4,2));
+			Productions.Push(new ParserProduction(symbol6,1));
+			Productions.Push(new ParserProduction(symbol6,1));
+			Productions.Push(new ParserProduction(symbol6,1));
+			Productions.Push(new ParserProduction(symbol6,3));
+			Productions.Push(new ParserProduction(symbol6,2));
+
 		}
 		
 		public static void Main() {
@@ -67,15 +239,12 @@ namespace Jison
             var yy = new ParserValue();
             var _yy = new ParserValue();
             var v = new ParserValue();
-			int shifts = 0;
-			int reductions = 0;
 			int recovering = 0;
 			int TERROR = 2;
 			int symbol = -1;
             ParserAction action = null;
 			string errStr = "";
 			int preErrorSymbol = -1;
-            ParserSymbol defaultActions;
             ParserSymbol state = null;
 
             SetInput(input);
@@ -163,8 +332,8 @@ namespace Jison
 					preErrorSymbol = symbol; // save the lookahead token
 					symbol = TERROR; // insert generic error symbol as new lookahead
 					state = stack.Last();
-					if (state != null && state.Symbols.ContainsKey(TERROR)) {
-                        action = state.Symbols[TERROR];
+					if (state != null && Table[state.Index].ContainsKey(TERROR)) {
+                        action = Table[state.Index][TERROR];
 					}
 					recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
 				}

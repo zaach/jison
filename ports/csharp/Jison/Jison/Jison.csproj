@@ -66,12 +66,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="Template.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>

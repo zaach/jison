@@ -15,29 +15,28 @@ exec("jison " + process.argv[2], function (error) {
         return;
     }
 
-    var fileName = process.argv[2].replace('.jison', '');
-    var requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
+    var fileName = process.argv[2].replace('.jison', ''),
+        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
 
     console.log("Opening newly created jison js file: " + fileName + '.js');
-    var Parser = require(requirePath);
 
-    var symbols = Parser.parser.symbols_;
-    var terminals = Parser.parser.terminals_;
-    var productions = Parser.parser.productions_;
-
-    var table = Parser.parser.table;
-    var defaultActions = Parser.parser.defaultActions;
-
-    //turn regex into string
-    var rules = [];
+    var Parser = require(requirePath),
+        symbols = Parser.parser.symbols_,
+        terminals = Parser.parser.terminals_,
+        productions = Parser.parser.productions_,
+        table = Parser.parser.table,
+        defaultActions = Parser.parser.defaultActions,
+        //turn regex into string
+        rules = [];
+    
     for (var i = 0; i < Parser.parser.lexer.rules.length; i++) {
         rules.push(Parser.parser.lexer.rules[i].toString());
     }
 
-    var conditions = Parser.parser.lexer.conditions;
-    var options = Parser.parser.lexer.options;
-    var parserPerformAction = Parser.parser.performAction.toString();
-    var lexerPerformAction = Parser.parser.lexer.performAction.toString();
+    var conditions = Parser.parser.lexer.conditions,
+        options = Parser.parser.lexer.options,
+        parserPerformAction = Parser.parser.performAction.toString(),
+        lexerPerformAction = Parser.parser.lexer.performAction.toString();
 
     function jsFnBody(str) {
         str = str.split('{');
@@ -66,7 +65,6 @@ exec("jison " + process.argv[2], function (error) {
         str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoiding_name_collisions');
 		if (isLex) {
 			str = str.replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
-				//console.log(arguments);
 				return arguments[1] + symbols[arguments[3]] + ';';
 			});
 		}
@@ -115,72 +113,86 @@ exec("jison " + process.argv[2], function (error) {
         var result = '',
             symbolsInjection = [],
             symbolsByIndex = [],
-            parserActionsInjection = [],
             rulesInjection = [],
             conditionsInjection = [],
             tableInjection = [],
-            defaultActionsInjections = [],
-            productionsInjections = [],
             terminalInjections = [];
 
-        for (var symbol in symbols) {
-            var _symbol = symbol.replace('$', '');
+        for (var i in symbols) {
+            symbolsByIndex[symbols[i] * 1] = {
+                name: i.replace('$', ''),
+                index: symbols[i]
+            };
+        }
 
-            symbolsInjection.push('var ' + _symbol + ' = new ParserSymbol("' + _symbol + '", ' + symbols[symbol] + ')');
-            symbolsInjection.push('ParserActions.Push(' + _symbol + ')');
-            symbolsByIndex[symbols[symbol]] = _symbol;
+        for (var i in symbolsByIndex) {
+            var symbol = symbolsByIndex[i];
+            symbolsInjection.push('\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ')');
+            symbolsInjection.push('\t\t\tSymbols.Push(symbol' + symbol.index + ')');
+            
         }
 
         result += symbolsInjection.join(';\n') + ';\n\n';
 
-        for (var rule in rules) {
-            rulesInjection.push('{' + rule + ', new Regex("' + rules[rule].substring(1, rules[rule].length - 1).replace('\/', '\\/') + '")}');
+        for (var i in rules) {
+            rulesInjection.push('\t\t\t\t{' + i + ', new Regex("' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/') + '")}');
         }
 
-        result += 'Rules = new Dictionary<int, Regex>() {' + rulesInjection.join(',\n') + '};\n\n';
+        result += '\t\t\tRules = new Dictionary<int, Regex>() {\n' + rulesInjection.join(',\n') + '};\n\n';
 
-        for (var condition in conditions) {
-            conditionsInjection.push('Conditions.Add("' + condition  + '", new ParserConditions(new List<int> { ' + conditions[condition].rules.join(',') + ' }, ' + conditions[condition].inclusive + '))');
+        for (var i in conditions) {
+            conditionsInjection.push('\t\t\tConditions.Add("' + i + '", new ParserConditions(new List<int> { ' + conditions[i].rules.join(',') + ' }, ' + conditions[i].inclusive + '))');
         }
 
         result += conditionsInjection.join(';\n') + ';\n\n';
 
-        for (var terminal in terminals) {
-            terminalInjections.push('');
+        for (var i in terminals) {
+            terminalInjections.push('\t\t\t\t{' + i + ',symbol' + i + '}');
         }
+
+        result += '\t\t\tTerminals = new Dictionary<int, ParserSymbol>(){\n' + terminalInjections.join(',\n') + '};\n\n';
         
-        for (var items in table) {
+        for (var i in table) {
             var itemsInjection = [];
-            for (var item in table[items]) {
-                if (table[items] && table[items][item]) {
-                    var actions = [];
-                    if (table[items][item].join) {
-                        var i = 0;
-                        for (var key in table[items][item]) {
-                            if (i) {
-                                actions.push('Table[' + table[items][item][key] + ']');
-                            } else {
-                                actions.push(symbolsByIndex[table[items][item][key]]);
-                            }
-                            i++;
-                        }
+            for (var j in table[i]) {
+                var item = table[i][j],
+                    action = -1,
+                    state = -1;
+                if (item.join) { //is array
+                    if (item.length == 1) {
+                        state = item[0];
+                        itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + state + ')}');
                     } else {
-                        actions.push(symbolsByIndex[table[items][item]]);
+                        action = item[0];
+                        state = item[1];
+                        itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + action + ',' + state + ')}');
                     }
-                    itemsInjection.push('{' + item + ', new ParserAction(' + actions.join(',') + ')}');
+                } else {
+                    state = item;
+                    itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + action + ',' + state + ')}');
                 }
             }
-            tableInjection.push('Table.Push(new Dictionary<int, ParserAction>() {' + itemsInjection.join(',\n') + '});');
+            tableInjection.push('\t\t\tTable.Push(new Dictionary<int, ParserAction>() {\n' + itemsInjection.join(',\n') + '});');
         }
 
         result += tableInjection.join('\n\n') + '\n\n';
 
-        for (var action in defaultActions) {
-            result += 'DefaultActions.Add(' + action + ', new ParserAction(' + defaultActions[action].join(',') + '));\n';
+        for (var i in defaultActions) {
+            result += '\t\t\tDefaultActions.Add(' + i + ', new ParserAction(' + defaultActions[i].join(',') + '));\n';
         }
 
-        for (var production in productions) {
-            
+        result += '\n\n';
+        
+        for (var i in productions) {
+            var production = productions[i];
+            if (production.join) {
+                var symbol = production[0],
+                    len = production[1];
+                result += '\t\t\tProductions.Push(new ParserProduction(symbol' + symbolsByIndex[symbol].index + ',' + len + '));\n';
+            } else {
+                var symbol = production;
+                result += '\t\t\tProductions.Push(new ParserProduction(symbol' + symbolsByIndex[symbol].index + '));\n';
+            }
         }
 
         return result;
@@ -188,9 +200,7 @@ exec("jison " + process.argv[2], function (error) {
 
     parserRaw = parserRaw
         .replace('class Parser', 'class ' + phpOption.parserClass)
-        .replace('new Parser', 'new ' + phpOption.parserClass)
-        .replace('class Lexer', 'class ' + phpOption.lexerClass)
-        .replace('new Lexer', 'new ' + phpOption.lexerClass)
+        .replace('new Parser(', 'new ' + phpOption.parserClass + '(')
 
         .replace('//@@INJECT@@',
             Inject()
@@ -202,22 +212,7 @@ exec("jison " + process.argv[2], function (error) {
 		
 		.replace('//@@LexerPerformActionInjection@@',
 			jsPerformActionToCs(lexerPerformAction, true)
-		);/*
-
-        .replace('"<@@SYMBOLS@@>"', "json_decode('" + (symbols) + "', true)")
-        .replace('"<@@TERMINALS@@>"', "json_decode('" + (terminals) + "', true)")
-        .replace('"<@@PRODUCTIONS@@>"', "json_decode('" + (productions) + "', true)")
-
-        .replace('"<@@TABLE@@>"', "json_decode('" + (table) + "', true)")
-        .replace('"<@@DEFAULT_ACTIONS@@>"', "json_decode('" + (defaultActions) + "', true)")
-
-        .replace('"<@@RULES@@>"', 'array(' + rules + ')')
-        .replace('"<@@CONDITIONS@@>"', "json_decode('" + JSON.stringify(conditions) + "', true)")
-
-        .replace('"<@@OPTIONS@@>"', "json_decode('" + (options) + "', true)")
-
-        .replace('"<@@PARSER_PERFORM_ACTION@@>";', jsPerformActionToCs(parserPerformAction))
-        .replace('"<@@LEXER_PERFORM_ACTION@@>";', jsPerformActionToCs(lexerPerformAction));*/
+		);
 
     fs.writeFile(phpOption.fileName, parserRaw, function (err) {
         if (err) {
