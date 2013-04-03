@@ -102,8 +102,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  </Target>
   <Target Name="AfterBuild">
   </Target>
-  -->
 </Project>
