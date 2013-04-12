@@ -1419,6 +1419,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "        _currentRules: function(),\n"
         + "        topState: function(),\n"
         + "        pushState: function(condition),\n"
+        + "        stateStackSize: function(),\n"
         + "\n"
         + "        options: {\n"
         + "            ranges: boolean           (optional: true ==> token location info will include a .range[] member)\n"
@@ -2651,11 +2652,16 @@ RegExpLexer.prototype = {
     _currentRules: function _currentRules () {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
-    topState: function () {
+    topState: function topState() {
         return this.conditionStack[this.conditionStack.length-2];
     },
-    pushState: function begin (condition) {
+    pushState: function pushState(condition) {
         this.begin(condition);
+    },
+
+    // return the number of states pushed
+    stateStackSize: function stateStackSize() {
+        return this.conditionStack.length;
     },
 
     generate:  function generate(opt) {
@@ -3153,12 +3159,16 @@ popState:function popState() {
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
-topState:function () {
+topState:function topState() {
         return this.conditionStack[this.conditionStack.length-2];
     },
-pushState:function begin(condition) {
+pushState:function pushState(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -3760,12 +3770,16 @@ popState:function popState() {
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
-topState:function () {
+topState:function topState() {
         return this.conditionStack[this.conditionStack.length-2];
     },
-pushState:function begin(condition) {
+pushState:function pushState(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -4286,12 +4300,16 @@ popState:function popState() {
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
-topState:function () {
+topState:function topState() {
         return this.conditionStack[this.conditionStack.length-2];
     },
-pushState:function begin(condition) {
+pushState:function pushState(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -6262,12 +6280,16 @@ popState:function popState() {
 _currentRules:function _currentRules() {
         return this.conditions[this.conditionStack[this.conditionStack.length-1]].rules;
     },
-topState:function () {
+topState:function topState() {
         return this.conditionStack[this.conditionStack.length-2];
     },
-pushState:function begin(condition) {
+pushState:function pushState(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
 execRegexp:function (str, regex, pos, sticky) {
         var r2 = copy(regex, "g" + (sticky && hasNativeY ? "y" : ""), (sticky === false ? "y" : "")),
             match;
