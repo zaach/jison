@@ -54,8 +54,8 @@ exec("jison " + process.argv[2], function (error) {
         str = jsFnBody(str);
         str = str.replace("var $0 = $$.length - 1;", '');
         str = str.replace("var YYSTATE=YY_START", '');
-        str = str.replace(new RegExp('[$]0', 'g'), 'SO');
-        str = str.replace(new RegExp('[$][$]', 'g'), 'SS');
+        str = str.replace(new RegExp('[$]0', 'g'), 'so');
+        str = str.replace(new RegExp('[$][$]', 'g'), 'ss');
         str = str.replace(new RegExp('default[:][;]', 'g'), '');
         str = str.replace(new RegExp('this[.][$]', 'g'), 'thisS');
         str = str.replace(new RegExp('[.]yytext', 'g'), '.yytext');
@@ -64,9 +64,11 @@ exec("jison " + process.argv[2], function (error) {
         str = str.replace(new RegExp('console[.]log'), '');
         str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoiding_name_collisions');
 		if (isLex) {
-			str = str.replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
-				return arguments[1] + symbols[arguments[3]] + ';';
-			});
+		    str = str
+		        .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function () {
+		            return arguments[1] + symbols[arguments[3]] + ';';
+		        })
+		        .replace('avoiding_name_collisions', 'avoidingNameCollisions');
 		}
 
         str = str.split(/\n/g);
@@ -109,101 +111,131 @@ exec("jison " + process.argv[2], function (error) {
 
     var parserRaw = fs.readFileSync(__dirname + "/template.cs", "utf8");
 
-    function Inject() {
-        var result = '',
-            symbolsInjection = [],
-            symbolsByIndex = [],
-            rulesInjection = [],
-            conditionsInjection = [],
-            tableInjection = [],
-            terminalInjections = [];
+    function parserInject() {
+        var result = '\n';
+        this.symbols = [];
+        this.symbolsByIndex = [];
+        this.tableInstantiation = [];
+        this.tableDefinition = [];
+        this.table = [];
+        this.terminals = [];
+        this.defaultActions = [];
+        this.productions = [];
+
+        var actions = [
+            'None',
+            'Shift',
+            'Reduce',
+            'Accept'
+        ];
 
         for (var i in symbols) {
-            symbolsByIndex[symbols[i] * 1] = {
+            this.symbolsByIndex[symbols[i] * 1] = {
                 name: i.replace('$', ''),
                 index: symbols[i]
             };
         }
 
         for (var i in symbolsByIndex) {
-            var symbol = symbolsByIndex[i];
-            symbolsInjection.push('\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ')');
-            symbolsInjection.push('\t\t\tSymbols.Push(symbol' + symbol.index + ')');
+            var symbol = this.symbolsByIndex[i];
+            result += '\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
+            this.symbols.push('\t\t\t\t\t{' + i + ', symbol' + symbol.index + '}');
             
         }
 
-        result += symbolsInjection.join(';\n') + ';\n\n';
-
-        for (var i in rules) {
-            rulesInjection.push('\t\t\t\t{' + i + ', new Regex("' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/') + '")}');
-        }
-
-        result += '\t\t\tRules = new Dictionary<int, Regex>() {\n' + rulesInjection.join(',\n') + '};\n\n';
-
-        for (var i in conditions) {
-            conditionsInjection.push('\t\t\tConditions.Add("' + i + '", new ParserConditions(new List<int> { ' + conditions[i].rules.join(',') + ' }, ' + conditions[i].inclusive + '))');
-        }
-
-        result += conditionsInjection.join(';\n') + ';\n\n';
+        result += '\n\n\t\t\tSymbols = new Dictionary<int, ParserSymbol>\n\t\t\t\t{\n' + this.symbols.join(',\n') + '\n\t\t\t\t};\n\n';
 
         for (var i in terminals) {
-            terminalInjections.push('\t\t\t\t{' + i + ',symbol' + i + '}');
+            this.terminals.push('\t\t\t\t\t{' + i + ', symbol' + i + '}');
         }
 
-        result += '\t\t\tTerminals = new Dictionary<int, ParserSymbol>(){\n' + terminalInjections.join(',\n') + '};\n\n';
+        result += '\t\t\tTerminals = new Dictionary<int, ParserSymbol>\n\t\t\t\t{\n' + this.terminals.join(',\n') + '\n\t\t\t\t};\n\n';
         
         for (var i in table) {
-            var itemsInjection = [];
+            var items = [];
             for (var j in table[i]) {
                 var item = table[i][j],
-                    action = -1,
-                    state = -1;
+                    action = 0,
+                    state = 0;
                 if (item.join) { //is array
                     if (item.length == 1) {
-                        state = item[0];
-                        itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + state + ')}');
+                        action = item[0];
+                        items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ')}');
                     } else {
                         action = item[0];
                         state = item[1];
-                        itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + action + ',' + state + ')}');
+                        items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', table' + state + ')}');
                     }
                 } else {
                     state = item;
-                    itemsInjection.push('\t\t\t\t{' + j + ', new ParserAction(' + action + ',' + state + ')}');
+                    items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', table' + state + ')}');
                 }
             }
-            tableInjection.push('\t\t\tTable.Push(new Dictionary<int, ParserAction>() {\n' + itemsInjection.join(',\n') + '});');
+            
+            this.tableInstantiation.push('\t\t\tvar table' + i + ' = new ParserState(' + i + ')');
+            this.tableDefinition.push('\t\t\ttable' + i + '.SetActions(new Dictionary<int, ParserAction>\n\t\t\t\t\t\t{\n' + items.join(',\n') + '\n\t\t\t\t\t\t})');
+            this.table.push('\t\t\t\t\t{' + i + ', table' + i + '\n\t\t\t\t\t}');
         }
 
-        result += tableInjection.join('\n\n') + '\n\n';
+        result += '\t\t\t' + this.tableInstantiation.join(';\n') + ';\n\n';
+        result += '\t\t\t' + this.tableDefinition.join(';\n') + ';\n\n';
+        result += '\t\t\tTable = new Dictionary<int, ParserState>\n\t\t\t\t{\n' + this.table.join(',\n\n') + '\n\t\t\t\t};\n\n';
 
         for (var i in defaultActions) {
-            result += '\t\t\tDefaultActions.Add(' + i + ', new ParserAction(' + defaultActions[i].join(',') + '));\n';
+            var action = defaultActions[i][0];
+            var state = defaultActions[i][1];
+           this.defaultActions.push('\t\t\t\t\t{' + i + ', new ParserAction(' + actions[action] +', table' +  state + ')}');
         }
 
-        result += '\n\n';
+        result += '\t\t\tDefaultActions = new Dictionary<int, ParserAction>\n\t\t\t\t{\n' + this.defaultActions.join(',\n') + '\n\t\t\t\t};\n\n';
         
         for (var i in productions) {
             var production = productions[i];
             if (production.join) {
                 var symbol = production[0],
                     len = production[1];
-                result += '\t\t\tProductions.Push(new ParserProduction(symbol' + symbolsByIndex[symbol].index + ',' + len + '));\n';
+                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + symbolsByIndex[symbol].index + ',' + len + ')}');
             } else {
                 var symbol = production;
-                result += '\t\t\tProductions.Push(new ParserProduction(symbol' + symbolsByIndex[symbol].index + '));\n';
+                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + symbolsByIndex[symbol].index + ')}');
             }
         }
+
+        result += '\t\t\tProductions = new Dictionary<int, ParserProduction>\n\t\t\t\t{\t\t\t\t\n' + this.productions.join(',\n') + '\n\t\t\t\t};\n\n\n';
 
         return result;
     }
 
+    function lexerInject() {
+        var result = '\n';
+        this.rules = [],
+        this.conditions = [];
+        
+        for (var i in rules) {
+            this.rules.push('\t\t\t\t\t{' + i + ', new Regex("' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/') + '")}');
+        }
+
+        result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';
+
+        for (var i in conditions) {
+            this.conditions.push('\t\t\t\t\t{"' + i + '", new LexerConditions(new List<int> { ' + conditions[i].rules.join(',') + ' }, ' + conditions[i].inclusive + ')}');
+        }
+
+        result += '\t\t\tConditions = new Dictionary<string, LexerConditions>\n\t\t\t\t{\n' + this.conditions.join(',\n') + '\n\t\t\t\t};\n\n';
+
+        return result;
+    }
+    
     parserRaw = parserRaw
         .replace('class Parser', 'class ' + phpOption.parserClass)
         .replace('new Parser(', 'new ' + phpOption.parserClass + '(')
 
-        .replace('//@@INJECT@@',
-            Inject()
+        .replace('//@@PARSER_INJECT@@',
+            parserInject()
+        )
+    
+        .replace('//@@LEXER_INJECT@@',
+            lexerInject()
         )
 		
 		.replace('//@@ParserPerformActionInjection@@',

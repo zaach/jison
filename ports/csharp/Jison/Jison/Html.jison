@@ -3,106 +3,66 @@
 //Lexical Grammer
 %lex
 
-LINE_END                        (\n\r|\r\n|[\n\r])
-HTML_TAG_INLINE                 "<"(.|\n)[^>]*?"/>"
-HTML_TAG_CLOSE                  "</"(.|\n)[^>]*?">"
-HTML_TAG_OPEN                   "<"(.|\n)[^>]*?">"
+REG_LINE_END                        (\n\r|\r\n|[\n\r])
+REG_HTML_TAG_INLINE                 "<"(.|\n)[^>]*?"/>"
+REG_HTML_TAG_CLOSE                  "</"(.|\n)[^>]*?">"
+REG_HTML_TAG_OPEN                   "<"(.|\n)[^>]*?">"
 
 %s htmlElement
 
 %%
-{HTML_TAG_INLINE}
+{REG_HTML_TAG_INLINE}
 	%{
 		//A tag that doesn't need to track state
-		//php if (JisonParser_Html_Handler::isHtmlTag($yytext) == true) {
-		//php   $yytext = $this->inlineTag($yytext);
-		//php   return "HTML_TAG_INLINE";
-		//php }
-
-		//A non-valid html tag, return "<" put the rest back into the parser
-        //php if (isset($yytext{0})) {
-        //php   $tag = $yytext;
-        //php   $yytext = $yytext{0};
-        //php   $this->unput(substr($tag, 1));
-        //php }
-        //php return 'CONTENT';
-		//cs return 'CONTENT';
+		return "HTML_TAG_INLINE";
 	%}
 
 
 <htmlElement><<EOF>>
 	%{
 		//A tag that was left open, and needs to close
-		//php $name = end($this->htmlElementsStack);
-		//php $keyStack = key($this->htmlElementStack);
-		//php end($this->htmlElementStack[$keyStack]);
-		//php $keyElement = key($this->htmlElementStack[$keyStack]);
-		//php $tag = &$this->htmlElementStack[$keyStack][$keyElement];
-		//php $tag['state'] = 'repaired';
-		//php if (!empty($tag['name'])) {
-		//php   $this->unput('</' . $tag['name'] . '>');
-		//php }
-		//php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//php $this->popState();
+		//cs PopState();
+		this.popState();//js
+
+		return "EOF";
 	%}
-<htmlElement>{HTML_TAG_CLOSE}
+<htmlElement>{REG_HTML_TAG_CLOSE}
 	%{
 		//A tag that is open and we just found the close for it
-		//php $element = $this->unStackHtmlElement($yytext);
-		//php if ($this->compareElementClosingToYytext($element, $yytext) && $this->htmlElementsStackCount == 0) {
-		//php   $yytext = $element;
-		//php   $this->popState();
-    	//php   return "HTML_TAG_CLOSE";
-    	//php }
-    	//php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//php $this->popState();
+		//cs PopState();
+		this.popState();//js
+
+		return "HTML_TAG_CLOSE";
 	%}
-{HTML_TAG_OPEN}
+{REG_HTML_TAG_OPEN}
 	%{
 		//An tag open
-		//php if (JisonParser_Html_Handler::isHtmlTag($yytext) == true) {
-		//php   if ($this->stackHtmlElement($yytext)) {
-		//php       if ($this->htmlElementsStackCount == 1) {
-		//php           $this->begin('htmlElement');
-    	//php           return "HTML_TAG_OPEN";
-    	//php       }
-    	//php   }
-    	//php   return 'CONTENT';
-    	//php }
 
-    	//A non-valid html tag, return the first character in the stack and put the rest back into the parser
-    	//php if (isset($yytext{0})) {
-        //php   $tag = $yytext;
-        //php   $yytext = $yytext{0};
-        //php   $this->unput(substr($tag, 1));
-        //php }
-        //php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//php $this->begin("htmlElement");
+
+		//cs Begin("htmlElement");
+
+		this.begin("htmlElement");//js
+
+		return "HTML_TAG_OPEN";
 	%}
-{HTML_TAG_CLOSE}
+{REG_HTML_TAG_CLOSE}
 	%{
 		//A tag that was not opened, needs to be ignored
-    	//php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		return "HTML_TAG_CLOSE";
 	%}
-([A-Za-z0-9 .,?;]+)                         return 'CONTENT';
+([A-Za-z0-9 .,?;]+)                         return "CONTENT";
 
-([ ])                                       return 'CONTENT';
-{LINE_END}
+([ ])                                       return "CONTENT";
+{REG_LINE_END}
 	%{
-		//php if ($this->htmlElementsStackCount == 0 || $this->isStaticTag == true) {
-		//php   return 'LINE_END';
-		//php }
-		//php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//Line end
+		return "LINE_END";
 	%}
-(.)                                         return 'CONTENT';
-<<EOF>>										return 'EOF';
+(.)                                         return "CONTENT";
+<<EOF>>										return "EOF";
 
 /lex
 
@@ -116,7 +76,7 @@ wiki
 	{return $1;}
  | EOF
     {
-		return new ParserValue(""); //js
+		return ""; //js
 		//php return "";
 		//cs return new ParserValue("");
 	}
@@ -129,8 +89,9 @@ contents
 	{
 		//php $$ = $1 . $2;
 		
-		//cs $1.StringValue += $2.StringValue;
-		//cs $$ = $1;
+		//cs $$ = new ParserValue($1.StringValue + $2.StringValue);
+
+		$$ = $1 + $2;//js
 	}
  ;
 
@@ -138,26 +99,31 @@ content
  : CONTENT
     {
         //php $$ = $this->content($1);
-		//cs $$ = $1;
+		//cs $$ = new ParserValue($1);
+		$$ = $1;//js
     }
  | LINE_END
     {
         //php $$ = $this->lineEnd($1);
-		//cs $$ = $1;
+		//cs $$ = new ParserValue($1);
+		$$ = $1;//js
     }
  | HTML_TAG_INLINE
 	{
 	    //php $$ = $this->toWiki($1);
-		//cs $$ = $1;
+		//cs $$ = new ParserValue("");
+		$$ = '';//js
 	}
  | HTML_TAG_OPEN contents HTML_TAG_CLOSE
 	{
-	    //php $$ = $this->toWiki($3, $2);
-		//cs $$ = $1;
+	    //php $$ = $2;
+		//cs $$ = new ParserValue($2);
+		$$ = $2;//js
 	}
  | HTML_TAG_OPEN HTML_TAG_CLOSE
 	{
 	    //php $$ = $this->toWiki($2);
-		//cs $$ = $2;
+		//cs $$ = new ParserValue("");
+		$$ = '';//js
 	}
  ;

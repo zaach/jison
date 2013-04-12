@@ -66,6 +66,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="Html.jison" />
     <None Include="Template.cs" />
   </ItemGroup>
   <ItemGroup>

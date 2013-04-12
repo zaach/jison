@@ -14,7 +14,7 @@ break;
 case 2:return $$[$0-1];
 break;
 case 3:
-		return new ParserValue(""); //js
+		return ""; //js
 		//php return "";
 		//cs return new ParserValue("");
 	
@@ -24,33 +24,39 @@ break;
 case 5:
 		//php this.$ = $$[$0-1] . $$[$0];
 		
-		//cs $$[$0-1].StringValue += $$[$0].StringValue;
-		//cs this.$ = $$[$0-1];
+		//cs this.$ = new ParserValue($$[$0-1].StringValue + $$[$0].StringValue);
+
+		this.$ = $$[$0-1] + $$[$0];//js
 	
 break;
 case 6:
         //php this.$ = this->content($$[$0]);
-		//cs this.$ = $$[$0];
+		//cs this.$ = new ParserValue($$[$0]);
+		this.$ = $$[$0];//js
     
 break;
 case 7:
         //php this.$ = this->lineEnd($$[$0]);
-		//cs this.$ = $$[$0];
+		//cs this.$ = new ParserValue($$[$0]);
+		this.$ = $$[$0];//js
     
 break;
 case 8:
 	    //php this.$ = this->toWiki($$[$0]);
-		//cs this.$ = $$[$0];
+		//cs this.$ = new ParserValue("");
+		this.$ = '';//js
 	
 break;
 case 9:
-	    //php this.$ = this->toWiki($$[$0], $$[$0-1]);
-		//cs this.$ = $$[$0-2];
+	    //php this.$ = $$[$0-1];
+		//cs this.$ = new ParserValue($$[$0-1]);
+		this.$ = $$[$0-1];//js
 	
 break;
 case 10:
 	    //php this.$ = this->toWiki($$[$0]);
-		//cs this.$ = $$[$0];
+		//cs this.$ = new ParserValue("");
+		this.$ = '';//js
 	
 break;
 }
@@ -340,96 +346,56 @@ var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
 case 0:
 		//A tag that doesn't need to track state
-		//php if (JisonParser_Html_Handler::isHtmlTag($yy_.yytext) == true) {
-		//php   $yy_.yytext = $this->inlineTag($yy_.yytext);
-		//php   return "HTML_TAG_INLINE";
-		//php }
-
-		//A non-valid html tag, return "<" put the rest back into the parser
-        //php if (isset($yy_.yytext{0})) {
-        //php   $tag = $yy_.yytext;
-        //php   $yy_.yytext = $yy_.yytext{0};
-        //php   $this->unput(substr($tag, 1));
-        //php }
-        //php return 7;
-		//cs return 'CONTENT';
+		return "HTML_TAG_INLINE";
 	
 break;
 case 1:
 		//A tag that was left open, and needs to close
-		//php $name = end($this->htmlElementsStack);
-		//php $keyStack = key($this->htmlElementStack);
-		//php end($this->htmlElementStack[$keyStack]);
-		//php $keyElement = key($this->htmlElementStack[$keyStack]);
-		//php $tag = &$this->htmlElementStack[$keyStack][$keyElement];
-		//php $tag['state'] = 'repaired';
-		//php if (!empty($tag['name'])) {
-		//php   $this->unput('</' . $tag['name'] . '>');
-		//php }
-		//php return 7;
-		
-		//cs return 'CONTENT';
+		//php $this->popState();
+		//cs PopState();
+		this.popState();//js
+
+		return "EOF";
 	
 break;
 case 2:
 		//A tag that is open and we just found the close for it
-		//php $element = $this->unStackHtmlElement($yy_.yytext);
-		//php if ($this->compareElementClosingToYytext($element, $yy_.yytext) && $this->htmlElementsStackCount == 0) {
-		//php   $yy_.yytext = $element;
-		//php   $this->popState();
-    	//php   return "HTML_TAG_CLOSE";
-    	//php }
-    	//php return 7;
-		
-		//cs return 'CONTENT';
+		//php $this->popState();
+		//cs PopState();
+		this.popState();//js
+
+		return "HTML_TAG_CLOSE";
 	
 break;
 case 3:
 		//An tag open
-		//php if (JisonParser_Html_Handler::isHtmlTag($yy_.yytext) == true) {
-		//php   if ($this->stackHtmlElement($yy_.yytext)) {
-		//php       if ($this->htmlElementsStackCount == 1) {
-		//php           $this->begin('htmlElement');
-    	//php           return "HTML_TAG_OPEN";
-    	//php       }
-    	//php   }
-    	//php   return 7;
-    	//php }
 
-    	//A non-valid html tag, return the first character in the stack and put the rest back into the parser
-    	//php if (isset($yy_.yytext{0})) {
-        //php   $tag = $yy_.yytext;
-        //php   $yy_.yytext = $yy_.yytext{0};
-        //php   $this->unput(substr($tag, 1));
-        //php }
-        //php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//php $this->begin("htmlElement");
+
+		//cs Begin("htmlElement");
+
+		this.begin("htmlElement");//js
+
+		return "HTML_TAG_OPEN";
 	
 break;
 case 4:
 		//A tag that was not opened, needs to be ignored
-    	//php return 7;
-		
-		//cs return 'CONTENT';
+		return "HTML_TAG_CLOSE";
 	
 break;
-case 5:return 7;
+case 5:return "CONTENT";
 break;
-case 6:return 7;
+case 6:return "CONTENT";
 break;
 case 7:
-		//php if ($this->htmlElementsStackCount == 0 || $this->isStaticTag == true) {
-		//php   return 8;
-		//php }
-		//php return 'CONTENT';
-		
-		//cs return 'CONTENT';
+		//Line end
+		return "LINE_END";
 	
 break;
-case 8:return 7;
+case 8:return "CONTENT";
 break;
-case 9:return 5;
+case 9:return "EOF";
 break;
 }
 },
