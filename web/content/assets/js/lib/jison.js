@@ -894,6 +894,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "        _currentRules: function(),\n"
         + "        topState: function(),\n"
         + "        pushState: function(condition),\n"
+        + "        stateStackSize: function(),\n"
         + "\n"
         + "        options: {\n"
         + "            ranges: boolean           (optional: true ==> token location info will include a .range[] member)\n"

@@ -1419,6 +1419,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
         + "        _currentRules: function(),\n"
         + "        topState: function(),\n"
         + "        pushState: function(condition),\n"
+        + "        stateStackSize: function(),\n"
         + "\n"
         + "        options: {\n"
         + "            ranges: boolean           (optional: true ==> token location info will include a .range[] member)\n"
@@ -2807,6 +2808,11 @@ RegExpLexer.prototype = {
         this.begin(condition);
     },
 
+    // return the number of states pushed
+    stateStackSize: function stateStackSize() {
+        return this.conditionStack.length;
+    },
+
     generate:  function generate(opt) {
         var code = "";
         if (opt.moduleType === 'commonjs') {
@@ -2837,7 +2843,8 @@ RegExpLexer.prototype = {
             popState: "pop the previously active lexer condition state off the condition stack",
             _currentRules: "produce the lexer rule set which is active for the currently active lexer condition state",
             topState: "return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available",
-            pushState: "alias for begin(condition)"
+            pushState: "alias for begin(condition)",
+            stateStackSize: "return the number of states currently on the stack"
         };
         var out = "{\n";
         var p = [];
@@ -3333,6 +3340,11 @@ topState:function () {
 pushState:function begin(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
+
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -3583,6 +3595,7 @@ require.define("/lib/util/parser.js",function(require,module,exports,__dirname,_
         _currentRules: function(),
         topState: function(),
         pushState: function(condition),
+        stateStackSize: function(),
 
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
@@ -4179,6 +4192,11 @@ topState:function topState(n) {
 pushState:function pushState(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
+
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -4710,6 +4728,11 @@ topState:function () {
 pushState:function begin(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
+
 options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 
@@ -6686,6 +6709,11 @@ topState:function () {
 pushState:function begin(condition) {
         this.begin(condition);
     },
+// return the number of states pushed
+stateStackSize: function stateStackSize() {
+    return this.conditionStack.length;
+},
+
 execRegexp:function (str, regex, pos, sticky) {
         var r2 = copy(regex, "g" + (sticky && hasNativeY ? "y" : ""), (sticky === false ? "y" : "")),
             match;
