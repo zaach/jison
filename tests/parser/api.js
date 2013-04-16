@@ -97,7 +97,7 @@ exports["test start symbol should be nonterminal"] = function () {
         }
     };
 
-    assert["throws"](function(){new Jison.Generator(grammar);}, "throws error");
+    assert.throws(function(){new Jison.Generator(grammar);}, "throws error");
 };
 
 exports["test token list as string"] = function () {
@@ -220,7 +220,7 @@ exports["test custom parse error method"] = function () {
         throw str;
     };
 
-    assert["throws"](function () {parser.parse("aga")});
+    assert.throws(function () {parser.parse("aga")});
     assert.strictEqual(result.text, "a", "parse error text should equal b");
     assert.strictEqual(typeof result.token, 'string', "parse error token should be a string");
     assert.strictEqual(result.line, 0, "hash should include line number");
@@ -251,7 +251,7 @@ exports["test no default resolve"] = function () {
 
     assert.ok(gen.table.length == 4, "table has 4 states");
     assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
-    assert["throws"](function () {parser.parse("xx")}, "throws parse error for multiple actions");
+    assert.throws(function () {parser.parse("xx")}, "throws parse error for multiple actions");
 };
 
 
@@ -270,7 +270,7 @@ exports["test EOF in 'Unexpected token' error message"] = function () {
         assert.ok(str.match("end of input"));
     };
 
-    assert['throws'](function () {parser.parse("xx"); });
+    assert.throws(function () {parser.parse("xx"); });
 
 };
 
