@@ -39,6 +39,7 @@ textarea {
     height: 200px;
     background: url(/jison/assets/images/jison_x1.png) no-repeat;
     outline-style: none;
+    margin: 0 auto; /* center the jison logo */
 }
 #header h1 a:active {
     background: url(/jison/assets/images/jison_x1.png) no-repeat 2px 3px;
