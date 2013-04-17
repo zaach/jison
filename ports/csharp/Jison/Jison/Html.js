@@ -2,8 +2,8 @@
 var Html = (function(){
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"wiki":3,"contents":4,"EOF":5,"content":6,"CONTENT":7,"LINE_END":8,"HTML_TAG_INLINE":9,"HTML_TAG_OPEN":10,"HTML_TAG_CLOSE":11,"$accept":0,"$end":1},
-terminals_: {2:"error",5:"EOF",7:"CONTENT",8:"LINE_END",9:"HTML_TAG_INLINE",10:"HTML_TAG_OPEN",11:"HTML_TAG_CLOSE"},
+symbols_: {"error":2,"wiki":3,"contents":4,"eof":5,"content":6,"string":7,"lineEnd":8,"tag":9,"tagOpen":10,"tagClose":11,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"eof",7:"string",8:"lineEnd",9:"tag",10:"tagOpen",11:"tagClose"},
 productions_: [0,[3,1],[3,2],[3,1],[4,1],[4,2],[6,1],[6,1],[6,1],[6,3],[6,2]],
 performAction: function anonymous(yytext,yyleng,yylineno,yy,yystate,$$,_$) {
 
@@ -14,49 +14,51 @@ break;
 case 2:return $$[$0-1];
 break;
 case 3:
-		return ""; //js
-		//php return "";
-		//cs return new ParserValue("");
+		//php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("");
+		this.$ = "";//js
 	
 break;
-case 4:this.$ = $$[$0];
+case 4:
+		//php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("content");
+		this.$ = "";//js
+	
 break;
 case 5:
-		//php this.$ = $$[$0-1] . $$[$0];
-		
-		//cs this.$ = new ParserValue($$[$0-1].StringValue + $$[$0].StringValue);
-
-		this.$ = $$[$0-1] + $$[$0];//js
+		//php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue($$[$0-1].StringValue + "content");
+		this.$ = "";//js
 	
 break;
 case 6:
-        //php this.$ = this->content($$[$0]);
-		//cs this.$ = new ParserValue($$[$0]);
-		this.$ = $$[$0];//js
+        //php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("string");
+		this.$ = "";//js
     
 break;
 case 7:
-        //php this.$ = this->lineEnd($$[$0]);
-		//cs this.$ = new ParserValue($$[$0]);
-		this.$ = $$[$0];//js
+        //php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("lineEnd");
+		this.$ = "";//js
     
 break;
 case 8:
-	    //php this.$ = this->toWiki($$[$0]);
-		//cs this.$ = new ParserValue("");
-		this.$ = '';//js
+	    //php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("tag");
+		this.$ = "";//js
 	
 break;
 case 9:
-	    //php this.$ = $$[$0-1];
-		//cs this.$ = new ParserValue($$[$0-1]);
-		this.$ = $$[$0-1];//js
+	    //php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("open");
+		this.$ = "";//js
 	
 break;
 case 10:
-	    //php this.$ = this->toWiki($$[$0]);
-		//cs this.$ = new ParserValue("");
-		this.$ = '';//js
+	    //php this.$ = this->toWiki("");
+		//cs this.$ = new ParserValue("tag");
+		this.$ = "";//js
 	
 break;
 }
@@ -345,57 +347,36 @@ performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
 case 0:
-		//A tag that doesn't need to track state
-		return "HTML_TAG_INLINE";
+        return 9;
 	
 break;
 case 1:
-		//A tag that was left open, and needs to close
-		//php $this->popState();
-		//cs PopState();
-		this.popState();//js
-
-		return "EOF";
+		return 5;
 	
 break;
 case 2:
-		//A tag that is open and we just found the close for it
-		//php $this->popState();
-		//cs PopState();
-		this.popState();//js
-
-		return "HTML_TAG_CLOSE";
+		return 11;
 	
 break;
 case 3:
-		//An tag open
-
-		//php $this->begin("htmlElement");
-
-		//cs Begin("htmlElement");
-
-		this.begin("htmlElement");//js
-
-		return "HTML_TAG_OPEN";
+		return 10;
 	
 break;
 case 4:
-		//A tag that was not opened, needs to be ignored
-		return "HTML_TAG_CLOSE";
+    	return 7;
 	
 break;
-case 5:return "CONTENT";
+case 5:return 7;
 break;
-case 6:return "CONTENT";
+case 6:return 7;
 break;
 case 7:
-		//Line end
-		return "LINE_END";
+		return 8;
 	
 break;
-case 8:return "CONTENT";
+case 8:return 7;
 break;
-case 9:return "EOF";
+case 9:return 5;
 break;
 }
 },

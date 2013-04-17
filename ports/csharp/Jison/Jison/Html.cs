@@ -8,7 +8,7 @@ namespace Jison
 {
     class Parser
     {
-        public Dictionary<int, ParserSymbol> Symbols;
+        public ParserSymbols Symbols;
         public Dictionary<int, ParserSymbol> Terminals;
         public Dictionary<int, ParserProduction> Productions;
         public Dictionary<int, ParserState> Table;
@@ -30,30 +30,28 @@ namespace Jison
 			var symbol2 = new ParserSymbol("error", 2);
 			var symbol3 = new ParserSymbol("wiki", 3);
 			var symbol4 = new ParserSymbol("contents", 4);
-			var symbol5 = new ParserSymbol("EOF", 5);
+			var symbol5 = new ParserSymbol("eof", 5);
 			var symbol6 = new ParserSymbol("content", 6);
-			var symbol7 = new ParserSymbol("CONTENT", 7);
-			var symbol8 = new ParserSymbol("LINE_END", 8);
-			var symbol9 = new ParserSymbol("HTML_TAG_INLINE", 9);
-			var symbol10 = new ParserSymbol("HTML_TAG_OPEN", 10);
-			var symbol11 = new ParserSymbol("HTML_TAG_CLOSE", 11);
+			var symbol7 = new ParserSymbol("string", 7);
+			var symbol8 = new ParserSymbol("lineEnd", 8);
+			var symbol9 = new ParserSymbol("tag", 9);
+			var symbol10 = new ParserSymbol("tagOpen", 10);
+			var symbol11 = new ParserSymbol("tagClose", 11);
 
 
-			Symbols = new Dictionary<int, ParserSymbol>
-				{
-					{0, symbol0},
-					{1, symbol1},
-					{2, symbol2},
-					{3, symbol3},
-					{4, symbol4},
-					{5, symbol5},
-					{6, symbol6},
-					{7, symbol7},
-					{8, symbol8},
-					{9, symbol9},
-					{10, symbol10},
-					{11, symbol11}
-				};
+			Symbols = new ParserSymbols();
+			Symbols.Add(symbol0);
+			Symbols.Add(symbol1);
+			Symbols.Add(symbol2);
+			Symbols.Add(symbol3);
+			Symbols.Add(symbol4);
+			Symbols.Add(symbol5);
+			Symbols.Add(symbol6);
+			Symbols.Add(symbol7);
+			Symbols.Add(symbol8);
+			Symbols.Add(symbol9);
+			Symbols.Add(symbol10);
+			Symbols.Add(symbol11);
 
 			Terminals = new Dictionary<int, ParserSymbol>
 				{
@@ -66,7 +64,7 @@ namespace Jison
 					{11, symbol11}
 				};
 
-						var table0 = new ParserState(0);
+			var table0 = new ParserState(0);
 			var table1 = new ParserState(1);
 			var table2 = new ParserState(2);
 			var table3 = new ParserState(3);
@@ -81,172 +79,158 @@ namespace Jison
 			var table12 = new ParserState(12);
 			var table13 = new ParserState(13);
 
-						table0.SetActions(new Dictionary<int, ParserAction>
-						{
-							{3, new ParserAction(None, table1)},
-							{4, new ParserAction(None, table2)},
-							{5, new ParserAction(Shift, table3)},
-							{6, new ParserAction(None, table4)},
-							{7, new ParserAction(Shift, table5)},
-							{8, new ParserAction(Shift, table6)},
-							{9, new ParserAction(Shift, table7)},
-							{10, new ParserAction(Shift, table8)}
-						});
+			table0.SetActions(new Dictionary<int, ParserAction>
+				{
+					{3, new ParserAction(None, symbol1)},
+					{4, new ParserAction(None, symbol2)},
+					{5, new ParserAction(Shift, table3)},
+					{6, new ParserAction(None, symbol4)},
+					{7, new ParserAction(Shift, table5)},
+					{8, new ParserAction(Shift, table6)},
+					{9, new ParserAction(Shift, table7)},
+					{10, new ParserAction(Shift, table8)}
+				});
+
 			table1.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Accept)}
-						});
+				{
+					{1, new ParserAction(Accept)}
+				});
+
 			table2.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table1)},
-							{5, new ParserAction(Shift, table9)},
-							{6, new ParserAction(None, table10)},
-							{7, new ParserAction(Shift, table5)},
-							{8, new ParserAction(Shift, table6)},
-							{9, new ParserAction(Shift, table7)},
-							{10, new ParserAction(Shift, table8)}
-						});
+				{
+					{1, new ParserAction(Reduce, table1)},
+					{5, new ParserAction(Shift, table9)},
+					{6, new ParserAction(None, symbol10)},
+					{7, new ParserAction(Shift, table5)},
+					{8, new ParserAction(Shift, table6)},
+					{9, new ParserAction(Shift, table7)},
+					{10, new ParserAction(Shift, table8)}
+				});
+
 			table3.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table3)}
-						});
+				{
+					{1, new ParserAction(Reduce, table3)}
+				});
+
 			table4.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table4)},
-							{5, new ParserAction(Reduce, table4)},
-							{7, new ParserAction(Reduce, table4)},
-							{8, new ParserAction(Reduce, table4)},
-							{9, new ParserAction(Reduce, table4)},
-							{10, new ParserAction(Reduce, table4)},
-							{11, new ParserAction(Reduce, table4)}
-						});
+				{
+					{1, new ParserAction(Reduce, table4)},
+					{5, new ParserAction(Reduce, table4)},
+					{7, new ParserAction(Reduce, table4)},
+					{8, new ParserAction(Reduce, table4)},
+					{9, new ParserAction(Reduce, table4)},
+					{10, new ParserAction(Reduce, table4)},
+					{11, new ParserAction(Reduce, table4)}
+				});
+
 			table5.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table6)},
-							{5, new ParserAction(Reduce, table6)},
-							{7, new ParserAction(Reduce, table6)},
-							{8, new ParserAction(Reduce, table6)},
-							{9, new ParserAction(Reduce, table6)},
-							{10, new ParserAction(Reduce, table6)},
-							{11, new ParserAction(Reduce, table6)}
-						});
+				{
+					{1, new ParserAction(Reduce, table6)},
+					{5, new ParserAction(Reduce, table6)},
+					{7, new ParserAction(Reduce, table6)},
+					{8, new ParserAction(Reduce, table6)},
+					{9, new ParserAction(Reduce, table6)},
+					{10, new ParserAction(Reduce, table6)},
+					{11, new ParserAction(Reduce, table6)}
+				});
+
 			table6.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table7)},
-							{5, new ParserAction(Reduce, table7)},
-							{7, new ParserAction(Reduce, table7)},
-							{8, new ParserAction(Reduce, table7)},
-							{9, new ParserAction(Reduce, table7)},
-							{10, new ParserAction(Reduce, table7)},
-							{11, new ParserAction(Reduce, table7)}
-						});
+				{
+					{1, new ParserAction(Reduce, table7)},
+					{5, new ParserAction(Reduce, table7)},
+					{7, new ParserAction(Reduce, table7)},
+					{8, new ParserAction(Reduce, table7)},
+					{9, new ParserAction(Reduce, table7)},
+					{10, new ParserAction(Reduce, table7)},
+					{11, new ParserAction(Reduce, table7)}
+				});
+
 			table7.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table8)},
-							{5, new ParserAction(Reduce, table8)},
-							{7, new ParserAction(Reduce, table8)},
-							{8, new ParserAction(Reduce, table8)},
-							{9, new ParserAction(Reduce, table8)},
-							{10, new ParserAction(Reduce, table8)},
-							{11, new ParserAction(Reduce, table8)}
-						});
+				{
+					{1, new ParserAction(Reduce, table8)},
+					{5, new ParserAction(Reduce, table8)},
+					{7, new ParserAction(Reduce, table8)},
+					{8, new ParserAction(Reduce, table8)},
+					{9, new ParserAction(Reduce, table8)},
+					{10, new ParserAction(Reduce, table8)},
+					{11, new ParserAction(Reduce, table8)}
+				});
+
 			table8.SetActions(new Dictionary<int, ParserAction>
-						{
-							{4, new ParserAction(None, table11)},
-							{6, new ParserAction(None, table4)},
-							{7, new ParserAction(Shift, table5)},
-							{8, new ParserAction(Shift, table6)},
-							{9, new ParserAction(Shift, table7)},
-							{10, new ParserAction(Shift, table8)},
-							{11, new ParserAction(Shift, table12)}
-						});
+				{
+					{4, new ParserAction(None, symbol11)},
+					{6, new ParserAction(None, symbol4)},
+					{7, new ParserAction(Shift, table5)},
+					{8, new ParserAction(Shift, table6)},
+					{9, new ParserAction(Shift, table7)},
+					{10, new ParserAction(Shift, table8)},
+					{11, new ParserAction(Shift, table12)}
+				});
+
 			table9.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table2)}
-						});
+				{
+					{1, new ParserAction(Reduce, table2)}
+				});
+
 			table10.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table5)},
-							{5, new ParserAction(Reduce, table5)},
-							{7, new ParserAction(Reduce, table5)},
-							{8, new ParserAction(Reduce, table5)},
-							{9, new ParserAction(Reduce, table5)},
-							{10, new ParserAction(Reduce, table5)},
-							{11, new ParserAction(Reduce, table5)}
-						});
+				{
+					{1, new ParserAction(Reduce, table5)},
+					{5, new ParserAction(Reduce, table5)},
+					{7, new ParserAction(Reduce, table5)},
+					{8, new ParserAction(Reduce, table5)},
+					{9, new ParserAction(Reduce, table5)},
+					{10, new ParserAction(Reduce, table5)},
+					{11, new ParserAction(Reduce, table5)}
+				});
+
 			table11.SetActions(new Dictionary<int, ParserAction>
-						{
-							{6, new ParserAction(None, table10)},
-							{7, new ParserAction(Shift, table5)},
-							{8, new ParserAction(Shift, table6)},
-							{9, new ParserAction(Shift, table7)},
-							{10, new ParserAction(Shift, table8)},
-							{11, new ParserAction(Shift, table13)}
-						});
+				{
+					{6, new ParserAction(None, symbol10)},
+					{7, new ParserAction(Shift, table5)},
+					{8, new ParserAction(Shift, table6)},
+					{9, new ParserAction(Shift, table7)},
+					{10, new ParserAction(Shift, table8)},
+					{11, new ParserAction(Shift, table13)}
+				});
+
 			table12.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table10)},
-							{5, new ParserAction(Reduce, table10)},
-							{7, new ParserAction(Reduce, table10)},
-							{8, new ParserAction(Reduce, table10)},
-							{9, new ParserAction(Reduce, table10)},
-							{10, new ParserAction(Reduce, table10)},
-							{11, new ParserAction(Reduce, table10)}
-						});
+				{
+					{1, new ParserAction(Reduce, table10)},
+					{5, new ParserAction(Reduce, table10)},
+					{7, new ParserAction(Reduce, table10)},
+					{8, new ParserAction(Reduce, table10)},
+					{9, new ParserAction(Reduce, table10)},
+					{10, new ParserAction(Reduce, table10)},
+					{11, new ParserAction(Reduce, table10)}
+				});
+
 			table13.SetActions(new Dictionary<int, ParserAction>
-						{
-							{1, new ParserAction(Reduce, table9)},
-							{5, new ParserAction(Reduce, table9)},
-							{7, new ParserAction(Reduce, table9)},
-							{8, new ParserAction(Reduce, table9)},
-							{9, new ParserAction(Reduce, table9)},
-							{10, new ParserAction(Reduce, table9)},
-							{11, new ParserAction(Reduce, table9)}
-						});
+				{
+					{1, new ParserAction(Reduce, table9)},
+					{5, new ParserAction(Reduce, table9)},
+					{7, new ParserAction(Reduce, table9)},
+					{8, new ParserAction(Reduce, table9)},
+					{9, new ParserAction(Reduce, table9)},
+					{10, new ParserAction(Reduce, table9)},
+					{11, new ParserAction(Reduce, table9)}
+				});
 
 			Table = new Dictionary<int, ParserState>
 				{
-					{0, table0
-					},
-
-					{1, table1
-					},
-
-					{2, table2
-					},
-
-					{3, table3
-					},
-
-					{4, table4
-					},
-
-					{5, table5
-					},
-
-					{6, table6
-					},
-
-					{7, table7
-					},
-
-					{8, table8
-					},
-
-					{9, table9
-					},
-
-					{10, table10
-					},
-
-					{11, table11
-					},
-
-					{12, table12
-					},
-
-					{13, table13
-					}
+					{0, table0},
+					{1, table1},
+					{2, table2},
+					{3, table3},
+					{4, table4},
+					{5, table5},
+					{6, table6},
+					{7, table7},
+					{8, table8},
+					{9, table9},
+					{10, table10},
+					{11, table11},
+					{12, table12},
+					{13, table13}
 				};
 
 			DefaultActions = new Dictionary<int, ParserAction>
@@ -321,35 +305,35 @@ break;
 case 2:return ss[so-1];
 break;
 case 3:
-		return new ParserValue("");
+		thisS = new ParserValue("");
 	
 break;
-case 4:thisS = ss[so];
+case 4:
+		thisS = new ParserValue("content");
+	
 break;
 case 5:
-		
-		thisS = new ParserValue(ss[so-1].StringValue + ss[so].StringValue);
-
+		thisS = new ParserValue(ss[so-1].StringValue + "content");
 	
 break;
 case 6:
-		thisS = new ParserValue(ss[so]);
+		thisS = new ParserValue("string");
     
 break;
 case 7:
-		thisS = new ParserValue(ss[so]);
+		thisS = new ParserValue("lineEnd");
     
 break;
 case 8:
-		thisS = new ParserValue("");
+		thisS = new ParserValue("tag");
 	
 break;
 case 9:
-		thisS = new ParserValue(ss[so-1]);
+		thisS = new ParserValue("open");
 	
 break;
 case 10:
-		thisS = new ParserValue("");
+		thisS = new ParserValue("tag");
 	
 break;
 }
@@ -357,16 +341,10 @@ break;
             return null;
 		}
 		
-		public int ParserLex()
+		public ParserSymbol ParserLex()
 		{
 			var token = LexerLex();//end = 1
-			token = (token != 0 ? token : 1);
-			
-			// if token isn't its numeric value, convert
-			if ( token > -1 && Symbols[token] != null)
-            {
-                return token;
-			}
+			token = (token != null ? token : Symbols["end"]);
 			
 			return token;
 		}
@@ -383,9 +361,9 @@ break;
 
         public ParserValue Parse(string input)
         {
-            var stack = new JList<ParserSymbol>
+            var stack = new JList<ParserAction>
                 {
-                    new ParserSymbol("", 0)
+                    new ParserAction(0, Table[0])
                 };
             var vstack = new JList<ParserValue>
                 {
@@ -395,18 +373,18 @@ break;
             var _yy = new ParserValue();
             var v = new ParserValue();
 			int recovering = 0;
-			int symbol = -1;
+			ParserSymbol symbol = null;
             ParserAction action = null;
 			string errStr = "";
-			int preErrorSymbol = -1;
-            ParserSymbol state = null;
+			ParserSymbol preErrorSymbol = null;
+            ParserState state = null;
 
             SetInput(input);
 
 			while (true)
 			{
 				// retreive state number from top of stack
-                state = stack.Last();
+                state = stack.Last().State;
                 
 				// use default actions if available
 			    if (state != null && DefaultActions.ContainsKey(state.Index))
@@ -415,16 +393,14 @@ break;
 			    }
 			    else
 			    {
-			        if (symbol <= 0)
+			        if (symbol == null)
 			        {
 			            symbol = ParserLex();
 			        }
 			        // read action for current state and first input
-			        if (Table[state.Index] != null && Table[state.Index].Actions.ContainsKey(symbol))
+			        if (state != null && state.Actions.ContainsKey(symbol.Index))
 			        {
-			            var t = Table[state.Index].Actions;
-                    	action = t[symbol];
-
+                        action = state.Actions[symbol.Index];
 			        }
 			        else
 			        {
@@ -447,7 +423,7 @@ break;
 							ShowPosition() + '\n' + 
 							"Expecting " + String.Join(", ", expected) +
 							", got '" +
-							(symbol > 0 ? Terminals[symbol].ToString() : "NOTHING") + "'";
+							(symbol != null ? Terminals[symbol.Index].ToString() : "NOTHING") + "'";
 
 					    ParseError(errStr, new ParserError(Match, state, symbol, Yy.LineNo, yy.Loc, expected));
 					}
@@ -465,18 +441,18 @@ break;
 				switch (action.Action)
                 {
 				    case Shift:
-					    stack.Push(Symbols[symbol]);
+					    stack.Push(new ParserAction(symbol.Index, symbol));
 					    vstack.Push(Yy);
-                        stack.Push(Symbols[action.State.Index]);
+                        stack.Push(action);
 
-					    symbol = -1;
-					    if (preErrorSymbol == -1)
+					    symbol = null;
+					    if (preErrorSymbol == null)
                         { // normal execution/no error
                             yy = new ParserValue(Yy);
 						    if (recovering > 0) recovering--;
 					    } else { // error just occurred, resume old lookahead f/ before error
 						    symbol = preErrorSymbol;
-						    preErrorSymbol = -1;
+						    preErrorSymbol = null;
 					    }
 					    break;
 		
@@ -506,19 +482,20 @@ break;
                             stack.Pop();
 						    vstack.Pop();
 					    }
-					
-					    stack.Push(Productions[action.State.Index].Symbol); // push nonterminal (reduce)
+
+                        var newSymbol = Productions[action.State.Index].Symbol;
+					    stack.Push(new ParserAction(newSymbol.Index, newSymbol)); // push nonterminal (reduce)
 					    vstack.Push(_yy);
 					
 					    // goto new state = table[STATE][NONTERMINAL]
                         int stackLength = stack.Length;
-				        int tableIndex = stack[stackLength - 2].Index;
-				        int stateIndex = stack[stackLength - 1].Index;
-                        var newAction = Table[tableIndex].Actions[stateIndex];
+				        int stateIndex = stack[stackLength - 2].State.Index;
+				        int symbolIndex = stack[stackLength - 1].Symbol.Index;
+                        var newAction = Table[stateIndex].Actions[symbolIndex];
 
-                        var newState = Symbols[newAction.State.Index];
+                        var newState = newAction.Symbol;
 					
-					    stack.Push(newState);
+					    stack.Push(new ParserAction(newState.Index, newState));
 					
 					    break;
 		
@@ -531,7 +508,7 @@ break;
 		}
 		
 		/* Jison generated lexer */
-		public int Eof = 1;
+		public ParserSymbol Eof = new ParserSymbol("Eof", 1);
         public ParserValue Yy = new ParserValue();
 		public string Match = "";
 		public string Matched = "";
@@ -657,8 +634,8 @@ break;
 	
 			return pre + UpcomingInput() + '\n' + c + "^";
 		}
-		
-		public int Next()
+
+        public ParserSymbol Next()
 		{
 			if (Done == true)
 			{
@@ -716,34 +693,34 @@ break;
 				}
 				_More = false;
 				_Input = _Input.Substring(match.Length);
-				var token = LexerPerformAction(rules[index], ConditionStack.Peek());
+				ParserSymbol token = Symbols[LexerPerformAction(rules[index], ConditionStack.Peek())];
 	
 				if (Done == true && String.IsNullOrEmpty(_Input) == false)
 				{
 				    Done = false;
 				}
 	
-				if (token > -1) {
+				if (token.Index > -1) {
 					return token;
 				} else {
-					return -1;
+					return null;
 				}
 			}
 			
 			if (String.IsNullOrEmpty(_Input)) {
-				return Eof;
+				return Symbols["EOF"];
 			} else
 			{
 			    LexerError("Lexical error on line " + (Yy.LineNo + 1) + ". Unrecognized text.\n" + ShowPosition(), new LexerError("", -1, Yy.LineNo));
-				return -1;
+				return null;
 			}
 		}
-		
-		public int LexerLex()
+
+        public ParserSymbol LexerLex()
 		{
 			var r = Next();
 
-            if (r > -1)
+            if (r != null)
             {
                 return r;
             } else {
@@ -774,37 +751,23 @@ break;
 ;
 switch(avoidingNameCollisions) {
 case 0:
-		//A tag that doesn't need to track state
-		return "HTML_TAG_INLINE";
+        return 9;
 	
 break;
 case 1:
-		//A tag that was left open, and needs to close
-		PopState();
-
 		return 5;
 	
 break;
 case 2:
-		//A tag that is open and we just found the close for it
-		PopState();
-
-		return "HTML_TAG_CLOSE";
+		return 11;
 	
 break;
 case 3:
-		//An tag open
-
-
-		Begin("htmlElement");
-
-
-		return "HTML_TAG_OPEN";
+		return 10;
 	
 break;
 case 4:
-		//A tag that was not opened, needs to be ignored
-		return "HTML_TAG_CLOSE";
+    	return 7;
 	
 break;
 case 5:return 7;
@@ -812,8 +775,7 @@ break;
 case 6:return 7;
 break;
 case 7:
-		//Line end
-		return "LINE_END";
+		return 8;
 	
 break;
 case 8:return 7;
@@ -962,6 +924,7 @@ break;
     {
         public int Action = 0;
         public ParserState State;
+        public ParserSymbol Symbol;
 
         public ParserAction(int action)
         {
@@ -972,6 +935,12 @@ break;
         {
             Action = action;
             State = state;
+        }
+
+        public ParserAction(int action, ParserSymbol symbol)
+        {
+            Action = action;
+            Symbol = symbol;
         }
     }
 
@@ -998,13 +967,13 @@ break;
     class ParserError
     {
         public String Text;
-        public ParserSymbol State;
-        public int Symbol;
+        public ParserState State;
+        public ParserSymbol Symbol;
         public int LineNo;
         public ParserLocation Loc;
         public Stack<string> Expected;
 
-        public ParserError(String text, ParserSymbol state, int symbol, int lineNo, ParserLocation loc, Stack<string> expected)
+        public ParserError(String text, ParserState state, ParserSymbol symbol, int lineNo, ParserLocation loc, Stack<string> expected)
         {
             Text = text;
             State = state;
@@ -1054,6 +1023,34 @@ break;
         {
             X = x;
             Y = y;
+        }
+    }
+
+    class ParserSymbols
+    {
+        private Dictionary<string, ParserSymbol> SymbolsString = new Dictionary<string, ParserSymbol>();
+        private Dictionary<int, ParserSymbol> SymbolsInt = new Dictionary<int, ParserSymbol>();
+
+        public void Add(ParserSymbol symbol)
+        {
+            SymbolsInt.Add(symbol.Index, symbol);
+            SymbolsString.Add(symbol.Name, symbol);
+        }
+
+        new public ParserSymbol this[string name]
+        {
+            get
+            {
+                return SymbolsString[name];
+            }
+        }
+
+        new public ParserSymbol this[int index]
+        {
+            get
+            {
+                return SymbolsInt[index];
+            }
         }
     }
 

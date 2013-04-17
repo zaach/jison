@@ -139,11 +139,12 @@ exec("jison " + process.argv[2], function (error) {
         for (var i in symbolsByIndex) {
             var symbol = this.symbolsByIndex[i];
             result += '\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
-            this.symbols.push('\t\t\t\t\t{' + i + ', symbol' + symbol.index + '}');
+            this.symbols.push('\t\t\tSymbols.Add(symbol' + symbol.index + ')');
             
         }
 
-        result += '\n\n\t\t\tSymbols = new Dictionary<int, ParserSymbol>\n\t\t\t\t{\n' + this.symbols.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '\n\n\t\t\tSymbols = new ParserSymbols();\n'
+		result += this.symbols.join(';\n') + ';\n\n';
 
         for (var i in terminals) {
             this.terminals.push('\t\t\t\t\t{' + i + ', symbol' + i + '}');
@@ -160,26 +161,26 @@ exec("jison " + process.argv[2], function (error) {
                 if (item.join) { //is array
                     if (item.length == 1) {
                         action = item[0];
-                        items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ')}');
+                        items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ')}');
                     } else {
                         action = item[0];
                         state = item[1];
-                        items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', table' + state + ')}');
+                        items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', table' + state + ')}');
                     }
                 } else {
                     state = item;
-                    items.push('\t\t\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', table' + state + ')}');
+                    items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', symbol' + state + ')}');
                 }
             }
             
             this.tableInstantiation.push('\t\t\tvar table' + i + ' = new ParserState(' + i + ')');
-            this.tableDefinition.push('\t\t\ttable' + i + '.SetActions(new Dictionary<int, ParserAction>\n\t\t\t\t\t\t{\n' + items.join(',\n') + '\n\t\t\t\t\t\t})');
-            this.table.push('\t\t\t\t\t{' + i + ', table' + i + '\n\t\t\t\t\t}');
+            this.tableDefinition.push('\t\t\ttable' + i + '.SetActions(new Dictionary<int, ParserAction>\n\t\t\t\t{\n' + items.join(',\n') + '\n\t\t\t\t})');
+            this.table.push('\t\t\t\t\t{' + i + ', table' + i + '}');
         }
 
-        result += '\t\t\t' + this.tableInstantiation.join(';\n') + ';\n\n';
-        result += '\t\t\t' + this.tableDefinition.join(';\n') + ';\n\n';
-        result += '\t\t\tTable = new Dictionary<int, ParserState>\n\t\t\t\t{\n' + this.table.join(',\n\n') + '\n\t\t\t\t};\n\n';
+        result += this.tableInstantiation.join(';\n') + ';\n\n';
+        result += this.tableDefinition.join(';\n\n') + ';\n\n';
+        result += '\t\t\tTable = new Dictionary<int, ParserState>\n\t\t\t\t{\n' + this.table.join(',\n') + '\n\t\t\t\t};\n\n';
 
         for (var i in defaultActions) {
             var action = defaultActions[i][0];

@@ -8,7 +8,7 @@ namespace Jison
 {
     class Parser
     {
-        public Dictionary<int, ParserSymbol> Symbols;
+        public ParserSymbols Symbols;
         public Dictionary<int, ParserSymbol> Terminals;
         public Dictionary<int, ParserProduction> Productions;
         public Dictionary<int, ParserState> Table;
@@ -48,16 +48,10 @@ namespace Jison
             return null;
 		}
 		
-		public int ParserLex()
+		public ParserSymbol ParserLex()
 		{
 			var token = LexerLex();//end = 1
-			token = (token != 0 ? token : 1);
-			
-			// if token isn't its numeric value, convert
-			if ( token > -1 && Symbols[token] != null)
-            {
-                return token;
-			}
+			token = (token != null ? token : Symbols["end"]);
 			
 			return token;
 		}
@@ -74,9 +68,9 @@ namespace Jison
 
         public ParserValue Parse(string input)
         {
-            var stack = new JList<ParserSymbol>
+            var stack = new JList<ParserAction>
                 {
-                    new ParserSymbol("", 0)
+                    new ParserAction(0, Table[0])
                 };
             var vstack = new JList<ParserValue>
                 {
@@ -86,18 +80,18 @@ namespace Jison
             var _yy = new ParserValue();
             var v = new ParserValue();
 			int recovering = 0;
-			int symbol = -1;
+			ParserSymbol symbol = null;
             ParserAction action = null;
 			string errStr = "";
-			int preErrorSymbol = -1;
-            ParserSymbol state = null;
+			ParserSymbol preErrorSymbol = null;
+            ParserState state = null;
 
             SetInput(input);
 
 			while (true)
 			{
 				// retreive state number from top of stack
-                state = stack.Last();
+                state = stack.Last().State;
                 
 				// use default actions if available
 			    if (state != null && DefaultActions.ContainsKey(state.Index))
@@ -106,16 +100,14 @@ namespace Jison
 			    }
 			    else
 			    {
-			        if (symbol <= 0)
+			        if (symbol == null)
 			        {
 			            symbol = ParserLex();
 			        }
 			        // read action for current state and first input
-			        if (Table[state.Index] != null && Table[state.Index].Actions.ContainsKey(symbol))
+			        if (state != null && state.Actions.ContainsKey(symbol.Index))
 			        {
-			            var t = Table[state.Index].Actions;
-                    	action = t[symbol];
-
+                        action = state.Actions[symbol.Index];
 			        }
 			        else
 			        {
@@ -138,7 +130,7 @@ namespace Jison
 							ShowPosition() + '\n' + 
 							"Expecting " + String.Join(", ", expected) +
 							", got '" +
-							(symbol > 0 ? Terminals[symbol].ToString() : "NOTHING") + "'";
+							(symbol != null ? Terminals[symbol.Index].ToString() : "NOTHING") + "'";
 
 					    ParseError(errStr, new ParserError(Match, state, symbol, Yy.LineNo, yy.Loc, expected));
 					}
@@ -156,18 +148,18 @@ namespace Jison
 				switch (action.Action)
                 {
 				    case Shift:
-					    stack.Push(Symbols[symbol]);
+					    stack.Push(new ParserAction(symbol.Index, symbol));
 					    vstack.Push(Yy);
-                        stack.Push(Symbols[action.State.Index]);
+                        stack.Push(action);
 
-					    symbol = -1;
-					    if (preErrorSymbol == -1)
+					    symbol = null;
+					    if (preErrorSymbol == null)
                         { // normal execution/no error
                             yy = new ParserValue(Yy);
 						    if (recovering > 0) recovering--;
 					    } else { // error just occurred, resume old lookahead f/ before error
 						    symbol = preErrorSymbol;
-						    preErrorSymbol = -1;
+						    preErrorSymbol = null;
 					    }
 					    break;
 		
@@ -197,19 +189,20 @@ namespace Jison
                             stack.Pop();
 						    vstack.Pop();
 					    }
-					
-					    stack.Push(Productions[action.State.Index].Symbol); // push nonterminal (reduce)
+
+                        var newSymbol = Productions[action.State.Index].Symbol;
+					    stack.Push(new ParserAction(newSymbol.Index, newSymbol)); // push nonterminal (reduce)
 					    vstack.Push(_yy);
 					
 					    // goto new state = table[STATE][NONTERMINAL]
                         int stackLength = stack.Length;
-				        int tableIndex = stack[stackLength - 2].Index;
-				        int stateIndex = stack[stackLength - 1].Index;
-                        var newAction = Table[tableIndex].Actions[stateIndex];
+				        int stateIndex = stack[stackLength - 2].State.Index;
+				        int symbolIndex = stack[stackLength - 1].Symbol.Index;
+                        var newAction = Table[stateIndex].Actions[symbolIndex];
 
-                        var newState = Symbols[newAction.State.Index];
+                        var newState = newAction.Symbol;
 					
-					    stack.Push(newState);
+					    stack.Push(new ParserAction(newState.Index, newState));
 					
 					    break;
 		
@@ -222,7 +215,7 @@ namespace Jison
 		}
 		
 		/* Jison generated lexer */
-		public int Eof = 1;
+		public ParserSymbol Eof = new ParserSymbol("Eof", 1);
         public ParserValue Yy = new ParserValue();
 		public string Match = "";
 		public string Matched = "";
@@ -348,8 +341,8 @@ namespace Jison
 	
 			return pre + UpcomingInput() + '\n' + c + "^";
 		}
-		
-		public int Next()
+
+        public ParserSymbol Next()
 		{
 			if (Done == true)
 			{
@@ -407,34 +400,34 @@ namespace Jison
 				}
 				_More = false;
 				_Input = _Input.Substring(match.Length);
-				var token = LexerPerformAction(rules[index], ConditionStack.Peek());
+				ParserSymbol token = Symbols[LexerPerformAction(rules[index], ConditionStack.Peek())];
 	
 				if (Done == true && String.IsNullOrEmpty(_Input) == false)
 				{
 				    Done = false;
 				}
 	
-				if (token > -1) {
+				if (token.Index > -1) {
 					return token;
 				} else {
-					return -1;
+					return null;
 				}
 			}
 			
 			if (String.IsNullOrEmpty(_Input)) {
-				return Eof;
+				return Symbols["EOF"];
 			} else
 			{
 			    LexerError("Lexical error on line " + (Yy.LineNo + 1) + ". Unrecognized text.\n" + ShowPosition(), new LexerError("", -1, Yy.LineNo));
-				return -1;
+				return null;
 			}
 		}
-		
-		public int LexerLex()
+
+        public ParserSymbol LexerLex()
 		{
 			var r = Next();
 
-            if (r > -1)
+            if (r != null)
             {
                 return r;
             } else {
@@ -458,7 +451,7 @@ namespace Jison
             return Conditions[peek].Rules;
 		}
 		
-		public int LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
+		public dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
 		{
 			//@@LexerPerformActionInjection@@
 			return -1;
@@ -601,6 +594,7 @@ namespace Jison
     {
         public int Action = 0;
         public ParserState State;
+        public ParserSymbol Symbol;
 
         public ParserAction(int action)
         {
@@ -611,6 +605,12 @@ namespace Jison
         {
             Action = action;
             State = state;
+        }
+
+        public ParserAction(int action, ParserSymbol symbol)
+        {
+            Action = action;
+            Symbol = symbol;
         }
     }
 
@@ -637,13 +637,13 @@ namespace Jison
     class ParserError
     {
         public String Text;
-        public ParserSymbol State;
-        public int Symbol;
+        public ParserState State;
+        public ParserSymbol Symbol;
         public int LineNo;
         public ParserLocation Loc;
         public Stack<string> Expected;
 
-        public ParserError(String text, ParserSymbol state, int symbol, int lineNo, ParserLocation loc, Stack<string> expected)
+        public ParserError(String text, ParserState state, ParserSymbol symbol, int lineNo, ParserLocation loc, Stack<string> expected)
         {
             Text = text;
             State = state;
@@ -693,6 +693,34 @@ namespace Jison
         {
             X = x;
             Y = y;
+        }
+    }
+
+    class ParserSymbols
+    {
+        private Dictionary<string, ParserSymbol> SymbolsString = new Dictionary<string, ParserSymbol>();
+        private Dictionary<int, ParserSymbol> SymbolsInt = new Dictionary<int, ParserSymbol>();
+
+        public void Add(ParserSymbol symbol)
+        {
+            SymbolsInt.Add(symbol.Index, symbol);
+            SymbolsString.Add(symbol.Name, symbol);
+        }
+
+        new public ParserSymbol this[string name]
+        {
+            get
+            {
+                return SymbolsString[name];
+            }
+        }
+
+        new public ParserSymbol this[int index]
+        {
+            get
+            {
+                return SymbolsInt[index];
+            }
         }
     }
 

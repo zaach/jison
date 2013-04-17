@@ -3,66 +3,45 @@
 //Lexical Grammer
 %lex
 
-REG_LINE_END                        (\n\r|\r\n|[\n\r])
-REG_HTML_TAG_INLINE                 "<"(.|\n)[^>]*?"/>"
-REG_HTML_TAG_CLOSE                  "</"(.|\n)[^>]*?">"
-REG_HTML_TAG_OPEN                   "<"(.|\n)[^>]*?">"
+lineEnd (\n\r|\r\n|[\n\r])
+tag "<"(.|\n)[^>]*?"/>"
+tagClose "</"(.|\n)[^>]*?">"
+tagOpen "<"(.|\n)[^>]*?">"
 
 %s htmlElement
 
 %%
-{REG_HTML_TAG_INLINE}
+{tag}
 	%{
-		//A tag that doesn't need to track state
-		return "HTML_TAG_INLINE";
+        return 'tag';
 	%}
 
 
 <htmlElement><<EOF>>
 	%{
-		//A tag that was left open, and needs to close
-		//php $this->popState();
-		//cs PopState();
-		this.popState();//js
-
-		return "EOF";
+		return 'eof';
 	%}
-<htmlElement>{REG_HTML_TAG_CLOSE}
+<htmlElement>{tagClose}
 	%{
-		//A tag that is open and we just found the close for it
-		//php $this->popState();
-		//cs PopState();
-		this.popState();//js
-
-		return "HTML_TAG_CLOSE";
+		return 'tagClose';
 	%}
-{REG_HTML_TAG_OPEN}
+{tagOpen}
 	%{
-		//An tag open
-
-		//php $this->begin("htmlElement");
-
-		//cs Begin("htmlElement");
-
-		this.begin("htmlElement");//js
-
-		return "HTML_TAG_OPEN";
+		return 'tagOpen';
 	%}
-{REG_HTML_TAG_CLOSE}
+{tagClose}
 	%{
-		//A tag that was not opened, needs to be ignored
-		return "HTML_TAG_CLOSE";
+    	return 'string';
 	%}
-([A-Za-z0-9 .,?;]+)                         return "CONTENT";
+([A-Za-z0-9 .,?;]+) return 'string';
 
-([ ])                                       return "CONTENT";
-{REG_LINE_END}
+([ ]) return 'string';
+{lineEnd}
 	%{
-		//Line end
-		return "LINE_END";
+		return 'lineEnd';
 	%}
-(.)                                         return "CONTENT";
-<<EOF>>										return "EOF";
+(.) return 'string';
+<<EOF>> return 'eof';
 
 /lex
 
@@ -72,58 +51,60 @@ REG_HTML_TAG_OPEN                   "<"(.|\n)[^>]*?">"
 wiki
  : contents
  	{return $1;}
- | contents EOF
+ | contents eof
 	{return $1;}
- | EOF
+ | eof
     {
-		return ""; //js
-		//php return "";
-		//cs return new ParserValue("");
+		//php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("");
+		$$ = "";//js
 	}
  ;
 
 contents
  : content
-	{$$ = $1;}
+	{
+		//php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("content");
+		$$ = "";//js
+	}
  | contents content
 	{
-		//php $$ = $1 . $2;
-		
-		//cs $$ = new ParserValue($1.StringValue + $2.StringValue);
-
-		$$ = $1 + $2;//js
+		//php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue($1.StringValue + "content");
+		$$ = "";//js
 	}
  ;
 
 content
- : CONTENT
+ : string
     {
-        //php $$ = $this->content($1);
-		//cs $$ = new ParserValue($1);
-		$$ = $1;//js
+        //php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("string");
+		$$ = "";//js
     }
- | LINE_END
+ | lineEnd
     {
-        //php $$ = $this->lineEnd($1);
-		//cs $$ = new ParserValue($1);
-		$$ = $1;//js
+        //php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("lineEnd");
+		$$ = "";//js
     }
- | HTML_TAG_INLINE
+ | tag
 	{
-	    //php $$ = $this->toWiki($1);
-		//cs $$ = new ParserValue("");
-		$$ = '';//js
+	    //php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("tag");
+		$$ = "";//js
 	}
- | HTML_TAG_OPEN contents HTML_TAG_CLOSE
+ | tagOpen contents tagClose
 	{
-	    //php $$ = $2;
-		//cs $$ = new ParserValue($2);
-		$$ = $2;//js
+	    //php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("open");
+		$$ = "";//js
 	}
- | HTML_TAG_OPEN HTML_TAG_CLOSE
+ | tagOpen tagClose
 	{
-	    //php $$ = $this->toWiki($2);
-		//cs $$ = new ParserValue("");
-		$$ = '';//js
+	    //php $$ = $this->toWiki("");
+		//cs $$ = new ParserValue("tag");
+		$$ = "";//js
 	}
  ;
