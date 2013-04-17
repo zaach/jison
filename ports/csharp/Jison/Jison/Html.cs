@@ -81,10 +81,10 @@ namespace Jison
 
 			table0.SetActions(new Dictionary<int, ParserAction>
 				{
-					{3, new ParserAction(None, symbol1)},
-					{4, new ParserAction(None, symbol2)},
+					{3, new ParserAction(None, table0, symbol1)},
+					{4, new ParserAction(None, table0, symbol2)},
 					{5, new ParserAction(Shift, table3)},
-					{6, new ParserAction(None, symbol4)},
+					{6, new ParserAction(None, table0, symbol4)},
 					{7, new ParserAction(Shift, table5)},
 					{8, new ParserAction(Shift, table6)},
 					{9, new ParserAction(Shift, table7)},
@@ -100,7 +100,7 @@ namespace Jison
 				{
 					{1, new ParserAction(Reduce, table1)},
 					{5, new ParserAction(Shift, table9)},
-					{6, new ParserAction(None, symbol10)},
+					{6, new ParserAction(None, table2, symbol10)},
 					{7, new ParserAction(Shift, table5)},
 					{8, new ParserAction(Shift, table6)},
 					{9, new ParserAction(Shift, table7)},
@@ -158,8 +158,8 @@ namespace Jison
 
 			table8.SetActions(new Dictionary<int, ParserAction>
 				{
-					{4, new ParserAction(None, symbol11)},
-					{6, new ParserAction(None, symbol4)},
+					{4, new ParserAction(None, table8, symbol11)},
+					{6, new ParserAction(None, table8, symbol4)},
 					{7, new ParserAction(Shift, table5)},
 					{8, new ParserAction(Shift, table6)},
 					{9, new ParserAction(Shift, table7)},
@@ -185,7 +185,7 @@ namespace Jison
 
 			table11.SetActions(new Dictionary<int, ParserAction>
 				{
-					{6, new ParserAction(None, symbol10)},
+					{6, new ParserAction(None, table11, symbol10)},
 					{7, new ParserAction(Shift, table5)},
 					{8, new ParserAction(Shift, table6)},
 					{9, new ParserAction(Shift, table7)},
@@ -263,9 +263,9 @@ namespace Jison
 				{
 					{0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
 					{1, new Regex("^(?:$)")},
-					{2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
-					{3, new Regex("^(?:(<(.|\n)[^>]*?>))")},
-					{4, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+					{2, new Regex("^(?:(<(.|\n)[^>]*?>))")},
+					{3, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
+					{4, new Regex("^(?:(<(.|\n)[^>]*?>))")},
 					{5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
 					{6, new Regex("^(?:([ ]))")},
 					{7, new Regex("^(?:((\n\r|\r\n|[\n\r])))")},
@@ -294,46 +294,47 @@ namespace Jison
 			
 		}
 
-        public ParserValue ParserPerformAction(ParserValue thisS, ParserValue yy, int yystate, JList<ParserValue> ss)
+        public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Length - 1;
 
 
 switch (yystate) {
-case 1:return ss[so];
+case 1:
+    return ss[so];
 break;
-case 2:return ss[so-1];
+case 2:
+    return ss[so-1];
 break;
 case 3:
-		thisS = new ParserValue("");
+thisS.StringValue = "";
 	
 break;
 case 4:
-		thisS = new ParserValue("content");
-	
+thisS.StringValue = "content";	
 break;
 case 5:
-		thisS = new ParserValue(ss[so-1].StringValue + "content");
+		thisS.StringValue = ss[so-1].StringValue + "content";
 	
 break;
 case 6:
-		thisS = new ParserValue("string");
+thisS.StringValue = "string";
     
 break;
 case 7:
-		thisS = new ParserValue("lineEnd");
+		thisS.StringValue = "lineEnd";
     
 break;
 case 8:
-		thisS = new ParserValue("tag");
+		thisS.StringValue = "tag";
 	
 break;
 case 9:
-		thisS = new ParserValue("open");
+		thisS.StringValue = "open";
 	
 break;
 case 10:
-		thisS = new ParserValue("tag");
+		thisS.StringValue = "tag";
 	
 break;
 }
@@ -361,9 +362,9 @@ break;
 
         public ParserValue Parse(string input)
         {
-            var stack = new JList<ParserAction>
+            var stack = new JList<ParserCachedAction>
                 {
-                    new ParserAction(0, Table[0])
+                    new ParserCachedAction(new ParserAction(0, Table[0]))
                 };
             var vstack = new JList<ParserValue>
                 {
@@ -384,7 +385,7 @@ break;
 			while (true)
 			{
 				// retreive state number from top of stack
-                state = stack.Last().State;
+                state = stack.Last().Action.State;
                 
 				// use default actions if available
 			    if (state != null && DefaultActions.ContainsKey(state.Index))
@@ -441,9 +442,8 @@ break;
 				switch (action.Action)
                 {
 				    case Shift:
-					    stack.Push(new ParserAction(symbol.Index, symbol));
+                        stack.Push(new ParserCachedAction(action, symbol));
 					    vstack.Push(Yy);
-                        stack.Push(action);
 
 					    symbol = null;
 					    if (preErrorSymbol == null)
@@ -469,7 +469,7 @@ break;
                             );
                         }
 
-                        ParserValue value = ParserPerformAction(_yy, yy, action.State.Index, vstack);
+                        ParserValue value = ParserPerformAction(ref _yy, ref yy, ref action.State.Index, ref vstack);
 					
 					    if (value != null)
                         {
@@ -479,23 +479,17 @@ break;
 					    // pop off stack
 					    if (len > 0) {
                             stack.Pop();
-                            stack.Pop();
 						    vstack.Pop();
 					    }
 
-                        var newSymbol = Productions[action.State.Index].Symbol;
-					    stack.Push(new ParserAction(newSymbol.Index, newSymbol)); // push nonterminal (reduce)
 					    vstack.Push(_yy);
-					
+                        var nextSymbol = Productions[action.State.Index].Symbol;
 					    // goto new state = table[STATE][NONTERMINAL]
-                        int stackLength = stack.Length;
-				        int stateIndex = stack[stackLength - 2].State.Index;
-				        int symbolIndex = stack[stackLength - 1].Symbol.Index;
-                        var newAction = Table[stateIndex].Actions[symbolIndex];
+                        var nextState = stack.Last();
+                        int stateIndex = nextState.Action.State.Index;
+                        var nextAction = Table[action.State.Index].Actions[action.Symbol.Index];
 
-                        var newState = newAction.Symbol;
-					
-					    stack.Push(new ParserAction(newState.Index, newState));
+                        stack.Push(new ParserCachedAction(nextAction, action));
 					
 					    break;
 		
@@ -920,6 +914,23 @@ break;
         }
     }
 
+    class ParserCachedAction
+    {
+        public ParserAction Action;
+        public ParserSymbol Symbol;
+
+        public ParserCachedAction(ParserAction action)
+        {
+            Action = action;
+        }
+
+        public ParserCachedAction(ParserAction action, ParserSymbol symbol)
+        {
+            Action = action;
+            Symbol = symbol;
+        }
+    }
+
     class ParserAction
     {
         public int Action = 0;
@@ -937,9 +948,10 @@ break;
             State = state;
         }
 
-        public ParserAction(int action, ParserSymbol symbol)
+        public ParserAction(int action, ParserState state, ParserSymbol symbol)
         {
             Action = action;
+            State = state;
             Symbol = symbol;
         }
     }
