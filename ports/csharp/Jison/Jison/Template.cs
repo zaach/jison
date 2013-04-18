@@ -42,7 +42,7 @@ namespace Jison
 			
 		}
 
-        public ParserValue ParserPerformAction(ParserValue thisS, ParserValue yy, int yystate, JList<ParserValue> ss)
+        public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Length - 1;//@@ParserPerformActionInjection@@
             return null;
@@ -68,9 +68,9 @@ namespace Jison
 
         public ParserValue Parse(string input)
         {
-            var stack = new JList<ParserAction>
+            var stack = new JList<ParserCachedAction>
                 {
-                    new ParserAction(0, Table[0])
+                    new ParserCachedAction(new ParserAction(0, Table[0]))
                 };
             var vstack = new JList<ParserValue>
                 {
@@ -91,7 +91,7 @@ namespace Jison
 			while (true)
 			{
 				// retreive state number from top of stack
-                state = stack.Last().State;
+                state = stack.Last().Action.State;
                 
 				// use default actions if available
 			    if (state != null && DefaultActions.ContainsKey(state.Index))
@@ -148,9 +148,8 @@ namespace Jison
 				switch (action.Action)
                 {
 				    case Shift:
-					    stack.Push(new ParserAction(symbol.Index, symbol));
+                        stack.Push(new ParserCachedAction(symbol, action));
 					    vstack.Push(Yy);
-                        stack.Push(action);
 
 					    symbol = null;
 					    if (preErrorSymbol == null)
@@ -176,7 +175,7 @@ namespace Jison
                             );
                         }
 
-                        ParserValue value = ParserPerformAction(_yy, yy, action.State.Index, vstack);
+                        ParserValue value = ParserPerformAction(ref _yy, ref yy, ref action.State.Index, ref vstack);
 					
 					    if (value != null)
                         {
@@ -186,23 +185,17 @@ namespace Jison
 					    // pop off stack
 					    if (len > 0) {
                             stack.Pop();
-                            stack.Pop();
 						    vstack.Pop();
 					    }
 
-                        var newSymbol = Productions[action.State.Index].Symbol;
-					    stack.Push(new ParserAction(newSymbol.Index, newSymbol)); // push nonterminal (reduce)
 					    vstack.Push(_yy);
-					
+                        var nextSymbol = Productions[action.State.Index].Symbol;
 					    // goto new state = table[STATE][NONTERMINAL]
-                        int stackLength = stack.Length;
-				        int stateIndex = stack[stackLength - 2].State.Index;
-				        int symbolIndex = stack[stackLength - 1].Symbol.Index;
-                        var newAction = Table[stateIndex].Actions[symbolIndex];
+                        var nextState = stack.Last().Action.State;
+                        //int stateIndex = nextState.Action.State.Index;
+                        var nextAction = nextState.Actions[nextSymbol.Index];
 
-                        var newState = newAction.Symbol;
-					
-					    stack.Push(new ParserAction(newState.Index, newState));
+                        stack.Push(new ParserCachedAction(nextSymbol, nextAction));
 					
 					    break;
 		
@@ -590,6 +583,23 @@ namespace Jison
         }
     }
 
+    class ParserCachedAction
+    {
+        public ParserAction Action;
+        public ParserSymbol Symbol;
+
+        public ParserCachedAction(ParserAction action)
+        {
+            Action = action;
+        }
+
+        public ParserCachedAction(ParserSymbol symbol, ParserAction action)
+        {
+            Action = action;
+            Symbol = symbol;
+        }
+    }
+
     class ParserAction
     {
         public int Action = 0;
@@ -601,13 +611,19 @@ namespace Jison
             Action = action;
         }
 
+        public ParserAction(int action, ref ParserState state)
+        {
+            Action = action;
+            State = state;
+        }
+
         public ParserAction(int action, ParserState state)
         {
             Action = action;
             State = state;
         }
 
-        public ParserAction(int action, ParserSymbol symbol)
+        public ParserAction(int action, ref ParserSymbol symbol)
         {
             Action = action;
             Symbol = symbol;
@@ -678,7 +694,7 @@ namespace Jison
             Index = index;
         }
 
-        public void SetActions(Dictionary<int, ParserAction> actions)
+        public void SetActions(ref Dictionary<int, ParserAction> actions)
         {
             Actions = actions;
         }

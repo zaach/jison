@@ -79,141 +79,169 @@ namespace Jison
 			var table12 = new ParserState(12);
 			var table13 = new ParserState(13);
 
-			table0.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition0 = new Dictionary<int, ParserAction>
 				{
-					{3, new ParserAction(None, table0, symbol1)},
-					{4, new ParserAction(None, table0, symbol2)},
-					{5, new ParserAction(Shift, table3)},
-					{6, new ParserAction(None, table0, symbol4)},
-					{7, new ParserAction(Shift, table5)},
-					{8, new ParserAction(Shift, table6)},
-					{9, new ParserAction(Shift, table7)},
-					{10, new ParserAction(Shift, table8)}
-				});
+					{3, new ParserAction(None, ref table1)},
+					{4, new ParserAction(None, ref table2)},
+					{5, new ParserAction(Shift, ref table3)},
+					{6, new ParserAction(None, ref table4)},
+					{7, new ParserAction(Shift, ref table5)},
+					{8, new ParserAction(Shift, ref table6)},
+					{9, new ParserAction(Shift, ref table7)},
+					{10, new ParserAction(Shift, ref table8)}
+				};
 
-			table1.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition1 = new Dictionary<int, ParserAction>
 				{
 					{1, new ParserAction(Accept)}
-				});
+				};
 
-			table2.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition2 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table1)},
-					{5, new ParserAction(Shift, table9)},
-					{6, new ParserAction(None, table2, symbol10)},
-					{7, new ParserAction(Shift, table5)},
-					{8, new ParserAction(Shift, table6)},
-					{9, new ParserAction(Shift, table7)},
-					{10, new ParserAction(Shift, table8)}
-				});
+					{1, new ParserAction(Reduce, ref table1)},
+					{5, new ParserAction(Shift, ref table9)},
+					{6, new ParserAction(None, ref table10)},
+					{7, new ParserAction(Shift, ref table5)},
+					{8, new ParserAction(Shift, ref table6)},
+					{9, new ParserAction(Shift, ref table7)},
+					{10, new ParserAction(Shift, ref table8)}
+				};
 
-			table3.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition3 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table3)}
-				});
+					{1, new ParserAction(Reduce, ref table3)}
+				};
 
-			table4.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition4 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table4)},
-					{5, new ParserAction(Reduce, table4)},
-					{7, new ParserAction(Reduce, table4)},
-					{8, new ParserAction(Reduce, table4)},
-					{9, new ParserAction(Reduce, table4)},
-					{10, new ParserAction(Reduce, table4)},
-					{11, new ParserAction(Reduce, table4)}
-				});
+					{1, new ParserAction(Reduce, ref table4)},
+					{5, new ParserAction(Reduce, ref table4)},
+					{7, new ParserAction(Reduce, ref table4)},
+					{8, new ParserAction(Reduce, ref table4)},
+					{9, new ParserAction(Reduce, ref table4)},
+					{10, new ParserAction(Reduce, ref table4)},
+					{11, new ParserAction(Reduce, ref table4)}
+				};
 
-			table5.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition5 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table6)},
-					{5, new ParserAction(Reduce, table6)},
-					{7, new ParserAction(Reduce, table6)},
-					{8, new ParserAction(Reduce, table6)},
-					{9, new ParserAction(Reduce, table6)},
-					{10, new ParserAction(Reduce, table6)},
-					{11, new ParserAction(Reduce, table6)}
-				});
+					{1, new ParserAction(Reduce, ref table6)},
+					{5, new ParserAction(Reduce, ref table6)},
+					{7, new ParserAction(Reduce, ref table6)},
+					{8, new ParserAction(Reduce, ref table6)},
+					{9, new ParserAction(Reduce, ref table6)},
+					{10, new ParserAction(Reduce, ref table6)},
+					{11, new ParserAction(Reduce, ref table6)}
+				};
 
-			table6.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition6 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table7)},
-					{5, new ParserAction(Reduce, table7)},
-					{7, new ParserAction(Reduce, table7)},
-					{8, new ParserAction(Reduce, table7)},
-					{9, new ParserAction(Reduce, table7)},
-					{10, new ParserAction(Reduce, table7)},
-					{11, new ParserAction(Reduce, table7)}
-				});
+					{1, new ParserAction(Reduce, ref table7)},
+					{5, new ParserAction(Reduce, ref table7)},
+					{7, new ParserAction(Reduce, ref table7)},
+					{8, new ParserAction(Reduce, ref table7)},
+					{9, new ParserAction(Reduce, ref table7)},
+					{10, new ParserAction(Reduce, ref table7)},
+					{11, new ParserAction(Reduce, ref table7)}
+				};
 
-			table7.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition7 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table8)},
-					{5, new ParserAction(Reduce, table8)},
-					{7, new ParserAction(Reduce, table8)},
-					{8, new ParserAction(Reduce, table8)},
-					{9, new ParserAction(Reduce, table8)},
-					{10, new ParserAction(Reduce, table8)},
-					{11, new ParserAction(Reduce, table8)}
-				});
+					{1, new ParserAction(Reduce, ref table8)},
+					{5, new ParserAction(Reduce, ref table8)},
+					{7, new ParserAction(Reduce, ref table8)},
+					{8, new ParserAction(Reduce, ref table8)},
+					{9, new ParserAction(Reduce, ref table8)},
+					{10, new ParserAction(Reduce, ref table8)},
+					{11, new ParserAction(Reduce, ref table8)}
+				};
 
-			table8.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition8 = new Dictionary<int, ParserAction>
 				{
-					{4, new ParserAction(None, table8, symbol11)},
-					{6, new ParserAction(None, table8, symbol4)},
-					{7, new ParserAction(Shift, table5)},
-					{8, new ParserAction(Shift, table6)},
-					{9, new ParserAction(Shift, table7)},
-					{10, new ParserAction(Shift, table8)},
-					{11, new ParserAction(Shift, table12)}
-				});
+					{4, new ParserAction(None, ref table11)},
+					{6, new ParserAction(None, ref table4)},
+					{7, new ParserAction(Shift, ref table5)},
+					{8, new ParserAction(Shift, ref table6)},
+					{9, new ParserAction(Shift, ref table7)},
+					{10, new ParserAction(Shift, ref table8)},
+					{11, new ParserAction(Shift, ref table12)}
+				};
 
-			table9.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition9 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table2)}
-				});
+					{1, new ParserAction(Reduce, ref table2)}
+				};
 
-			table10.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition10 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table5)},
-					{5, new ParserAction(Reduce, table5)},
-					{7, new ParserAction(Reduce, table5)},
-					{8, new ParserAction(Reduce, table5)},
-					{9, new ParserAction(Reduce, table5)},
-					{10, new ParserAction(Reduce, table5)},
-					{11, new ParserAction(Reduce, table5)}
-				});
+					{1, new ParserAction(Reduce, ref table5)},
+					{5, new ParserAction(Reduce, ref table5)},
+					{7, new ParserAction(Reduce, ref table5)},
+					{8, new ParserAction(Reduce, ref table5)},
+					{9, new ParserAction(Reduce, ref table5)},
+					{10, new ParserAction(Reduce, ref table5)},
+					{11, new ParserAction(Reduce, ref table5)}
+				};
 
-			table11.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition11 = new Dictionary<int, ParserAction>
 				{
-					{6, new ParserAction(None, table11, symbol10)},
-					{7, new ParserAction(Shift, table5)},
-					{8, new ParserAction(Shift, table6)},
-					{9, new ParserAction(Shift, table7)},
-					{10, new ParserAction(Shift, table8)},
-					{11, new ParserAction(Shift, table13)}
-				});
+					{6, new ParserAction(None, ref table10)},
+					{7, new ParserAction(Shift, ref table5)},
+					{8, new ParserAction(Shift, ref table6)},
+					{9, new ParserAction(Shift, ref table7)},
+					{10, new ParserAction(Shift, ref table8)},
+					{11, new ParserAction(Shift, ref table13)}
+				};
 
-			table12.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition12 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table10)},
-					{5, new ParserAction(Reduce, table10)},
-					{7, new ParserAction(Reduce, table10)},
-					{8, new ParserAction(Reduce, table10)},
-					{9, new ParserAction(Reduce, table10)},
-					{10, new ParserAction(Reduce, table10)},
-					{11, new ParserAction(Reduce, table10)}
-				});
+					{1, new ParserAction(Reduce, ref table10)},
+					{5, new ParserAction(Reduce, ref table10)},
+					{7, new ParserAction(Reduce, ref table10)},
+					{8, new ParserAction(Reduce, ref table10)},
+					{9, new ParserAction(Reduce, ref table10)},
+					{10, new ParserAction(Reduce, ref table10)},
+					{11, new ParserAction(Reduce, ref table10)}
+				};
 
-			table13.SetActions(new Dictionary<int, ParserAction>
+			var tableDefinition13 = new Dictionary<int, ParserAction>
 				{
-					{1, new ParserAction(Reduce, table9)},
-					{5, new ParserAction(Reduce, table9)},
-					{7, new ParserAction(Reduce, table9)},
-					{8, new ParserAction(Reduce, table9)},
-					{9, new ParserAction(Reduce, table9)},
-					{10, new ParserAction(Reduce, table9)},
-					{11, new ParserAction(Reduce, table9)}
-				});
+					{1, new ParserAction(Reduce, ref table9)},
+					{5, new ParserAction(Reduce, ref table9)},
+					{7, new ParserAction(Reduce, ref table9)},
+					{8, new ParserAction(Reduce, ref table9)},
+					{9, new ParserAction(Reduce, ref table9)},
+					{10, new ParserAction(Reduce, ref table9)},
+					{11, new ParserAction(Reduce, ref table9)}
+				};
+
+			table0.SetActions(ref tableDefinition0);
+
+			table1.SetActions(ref tableDefinition1);
+
+			table2.SetActions(ref tableDefinition2);
+
+			table3.SetActions(ref tableDefinition3);
+
+			table4.SetActions(ref tableDefinition4);
+
+			table5.SetActions(ref tableDefinition5);
+
+			table6.SetActions(ref tableDefinition6);
+
+			table7.SetActions(ref tableDefinition7);
+
+			table8.SetActions(ref tableDefinition8);
+
+			table9.SetActions(ref tableDefinition9);
+
+			table10.SetActions(ref tableDefinition10);
+
+			table11.SetActions(ref tableDefinition11);
+
+			table12.SetActions(ref tableDefinition12);
+
+			table13.SetActions(ref tableDefinition13);
 
 			Table = new Dictionary<int, ParserState>
 				{
@@ -235,8 +263,8 @@ namespace Jison
 
 			DefaultActions = new Dictionary<int, ParserAction>
 				{
-					{3, new ParserAction(Reduce, table3)},
-					{9, new ParserAction(Reduce, table2)}
+					{3, new ParserAction(Reduce, ref table3)},
+					{9, new ParserAction(Reduce, ref table2)}
 				};
 
 			Productions = new Dictionary<int, ParserProduction>
@@ -263,7 +291,7 @@ namespace Jison
 				{
 					{0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
 					{1, new Regex("^(?:$)")},
-					{2, new Regex("^(?:(<(.|\n)[^>]*?>))")},
+					{2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
 					{3, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
 					{4, new Regex("^(?:(<(.|\n)[^>]*?>))")},
 					{5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
@@ -300,41 +328,40 @@ namespace Jison
 
 
 switch (yystate) {
-case 1:
-    return ss[so];
+case 1:return ss[so];
 break;
-case 2:
-    return ss[so-1];
+case 2:return ss[so-1];
 break;
 case 3:
-thisS.StringValue = "";
+		thisS = new ParserValue("");
 	
 break;
 case 4:
-thisS.StringValue = "content";	
+		thisS = new ParserValue("content");
+	
 break;
 case 5:
-		thisS.StringValue = ss[so-1].StringValue + "content";
+		thisS = new ParserValue(ss[so-1].StringValue + "content");
 	
 break;
 case 6:
-thisS.StringValue = "string";
+		thisS = new ParserValue("string");
     
 break;
 case 7:
-		thisS.StringValue = "lineEnd";
+		thisS = new ParserValue("lineEnd");
     
 break;
 case 8:
-		thisS.StringValue = "tag";
+		thisS = new ParserValue("tag");
 	
 break;
 case 9:
-		thisS.StringValue = "open";
+		thisS = new ParserValue("open");
 	
 break;
 case 10:
-		thisS.StringValue = "tag";
+		thisS = new ParserValue("tag");
 	
 break;
 }
@@ -442,7 +469,7 @@ break;
 				switch (action.Action)
                 {
 				    case Shift:
-                        stack.Push(new ParserCachedAction(action, symbol));
+                        stack.Push(new ParserCachedAction(symbol, action));
 					    vstack.Push(Yy);
 
 					    symbol = null;
@@ -477,19 +504,20 @@ break;
 					    }
 					
 					    // pop off stack
-					    if (len > 0) {
+					    while (len > 0) {
                             stack.Pop();
 						    vstack.Pop();
+                            len--;
 					    }
 
 					    vstack.Push(_yy);
                         var nextSymbol = Productions[action.State.Index].Symbol;
 					    // goto new state = table[STATE][NONTERMINAL]
-                        var nextState = stack.Last();
-                        int stateIndex = nextState.Action.State.Index;
-                        var nextAction = Table[action.State.Index].Actions[action.Symbol.Index];
+                        var nextState = stack.Last().Action.State;
+                        //int stateIndex = nextState.Action.State.Index;
+                        var nextAction = nextState.Actions[nextSymbol.Index];
 
-                        stack.Push(new ParserCachedAction(nextAction, action));
+                        stack.Push(new ParserCachedAction(nextSymbol, nextAction));
 					
 					    break;
 		
@@ -756,12 +784,12 @@ case 2:
 		return 11;
 	
 break;
-case 3:
-		return 10;
+case 3://close
+    	return 11;
 	
 break;
-case 4:
-    	return 7;
+case 4://open
+		return 10;
 	
 break;
 case 5:return 7;
@@ -924,7 +952,7 @@ break;
             Action = action;
         }
 
-        public ParserCachedAction(ParserAction action, ParserSymbol symbol)
+        public ParserCachedAction(ParserSymbol symbol, ParserAction action)
         {
             Action = action;
             Symbol = symbol;
@@ -942,16 +970,21 @@ break;
             Action = action;
         }
 
+        public ParserAction(int action, ref ParserState state)
+        {
+            Action = action;
+            State = state;
+        }
+
         public ParserAction(int action, ParserState state)
         {
             Action = action;
             State = state;
         }
 
-        public ParserAction(int action, ParserState state, ParserSymbol symbol)
+        public ParserAction(int action, ref ParserSymbol symbol)
         {
             Action = action;
-            State = state;
             Symbol = symbol;
         }
     }
@@ -1020,7 +1053,7 @@ break;
             Index = index;
         }
 
-        public void SetActions(Dictionary<int, ParserAction> actions)
+        public void SetActions(ref Dictionary<int, ParserAction> actions)
         {
             Actions = actions;
         }

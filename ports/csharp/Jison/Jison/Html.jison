@@ -25,13 +25,13 @@ tagOpen "<"(.|\n)[^>]*?">"
 	%{
 		return 'tagClose';
 	%}
-{tagOpen}
-	%{
-		return 'tagOpen';
-	%}
 {tagClose}
-	%{
-    	return 'string';
+	%{//close
+    	return 'tagClose';
+	%}
+{tagOpen}
+	%{//open
+		return 'tagOpen';
 	%}
 ([A-Za-z0-9 .,?;]+) return 'string';
 
