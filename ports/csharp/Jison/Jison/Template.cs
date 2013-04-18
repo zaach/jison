@@ -44,7 +44,7 @@ namespace Jison
 
         public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
-			var so = ss.Length - 1;//@@ParserPerformActionInjection@@
+			var so = ss.Count - 1;//@@ParserPerformActionInjection@@
             return null;
 		}
 		
@@ -149,12 +149,12 @@ namespace Jison
                 {
 				    case Shift:
                         stack.Push(new ParserCachedAction(symbol, action));
-					    vstack.Push(Yy);
+					    vstack.Push(Yy.Clone());
 
 					    symbol = null;
 					    if (preErrorSymbol == null)
                         { // normal execution/no error
-                            yy = new ParserValue(Yy);
+                            yy = Yy.Clone();
 						    if (recovering > 0) recovering--;
 					    } else { // error just occurred, resume old lookahead f/ before error
 						    symbol = preErrorSymbol;
@@ -165,12 +165,12 @@ namespace Jison
 				    case Reduce:
                         int len = Productions[action.State.Index].Len;
 					    // perform semantic action
-                        _yy = vstack[vstack.Length - len];
+                        _yy = vstack[vstack.Count - len];
                         
                         if (Ranges != null)
                         {
                             Yy.Loc.Range = new ParserRange(
-                                vstack[vstack.Length - len].Loc.Range.X,
+                                vstack[vstack.Count - len].Loc.Range.X,
                                 vstack.Last().Loc.Range.Y
                             );
                         }
@@ -183,12 +183,14 @@ namespace Jison
 					    }
 					
 					    // pop off stack
-					    if (len > 0) {
+                       while (len > 0)
+                        {
                             stack.Pop();
-						    vstack.Pop();
-					    }
+                            vstack.Pop();
+                            len--;
+                        }
 
-					    vstack.Push(_yy);
+					    vstack.Push(_yy.Clone());
                         var nextSymbol = Productions[action.State.Index].Symbol;
 					    // goto new state = table[STATE][NONTERMINAL]
                         var nextState = stack.Last().Action.State;
@@ -496,6 +498,11 @@ namespace Jison
         {
         }
 
+        public ParserValue Clone()
+        {
+            return new ParserValue(this);
+        }
+
         public ParserValue(ParserValue parserValue)
         {
             ValueSet = parserValue.ValueSet;
@@ -742,31 +749,21 @@ namespace Jison
 
     class JList<T> : List<T> where T : class
     {
-        public int Length = 0;
-
         public void Push(T item)
         {
             Add(item);
-            Length++;
         }
 
         public void Pop()
         {
             RemoveAt(Count - 1);
-            Length = Math.Max(0, Count);
-        }
-
-        new public void Clear()
-        {
-            Length = 0;
-            base.Clear();
         }
 
         new public T this[int index]
         {
             get
             {
-                if (index >= Length || index < 0 || Length == 0)
+                if (index >= Count || index < 0 || Count == 0)
                 {
                     return null;
                 }

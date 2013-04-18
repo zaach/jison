@@ -14,51 +14,59 @@ break;
 case 2:return $$[$0-1];
 break;
 case 3:
-		//php this.$ = this->toWiki("");
+		//php this.$ = "";
 		//cs this.$ = new ParserValue("");
 		this.$ = "";//js
 	
 break;
 case 4:
-		//php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("content");
-		this.$ = "";//js
+		//php this.$ = $$[$0];
+		//cs $$[$0].StringValue = $$[$0].Text;
+		//cs this.$ = $$[$0];
+		this.$ = $$[$0];//js
 	
 break;
 case 5:
-		//php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue($$[$0-1].StringValue + "content");
-		this.$ = "";//js
+		//php this.$ = $$[$0-1] . $$[$0];
+		//cs $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
+		//cs $$[$0-1].StringValue = $$[$0-1].Text;
+		//cs this.$ = $$[$0-1];
+		this.$ = $$[$0-1] + $$[$0];//js
 	
 break;
 case 6:
-        //php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("string");
+        //php this.$ = $$[$0];
+		//string
+		//cs this.$ = $$[$0];
 		this.$ = "";//js
     
 break;
 case 7:
-        //php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("lineEnd");
+        //php this.$ = $$[$0];
+		//cs this.$ = $$[$0];
 		this.$ = "";//js
     
 break;
 case 8:
-	    //php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("tag");
-		this.$ = "";//js
+	    //php this.$ = $$[$0];
+		//cs this.$ = $$[$0];
+		this.$ = $$[$0];//js
 	
 break;
 case 9:
-	    //php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("open");
-		this.$ = "";//js
+	    //php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
+		//cs $$[$0-2].Text = $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text;
+		//cs $$[$0-2].StringValue = $$[$0-2].Text;
+		//cs this.$ = $$[$0-2];
+		this.$ = $$[$0-2] + $$[$0-1] + $$[$0];//js
 	
 break;
 case 10:
-	    //php this.$ = this->toWiki("");
-		//cs this.$ = new ParserValue("tag");
-		this.$ = "";//js
+	    //php this.$ = $$[$0-1] . $$[$0];
+		//cs $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
+		//cs $$[$0-1].StringValue = $$[$0-1].Text;
+		//cs this.$ = $$[$0-1];
+		this.$ = $$[$0-1] + $$[$0];//js
 	
 break;
 }
@@ -355,6 +363,8 @@ case 1:
 	
 break;
 case 2:
+		//cs PopState();
+		this.popState();//js
 		return 11;
 	
 break;
@@ -363,6 +373,8 @@ case 3://close
 	
 break;
 case 4://open
+		//cs Begin("htmlElement");
+		this.begin("htmlElement");//js
 		return 10;
 	
 break;

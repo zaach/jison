@@ -23,6 +23,8 @@ tagOpen "<"(.|\n)[^>]*?">"
 	%}
 <htmlElement>{tagClose}
 	%{
+		//cs PopState();
+		this.popState();//js
 		return 'tagClose';
 	%}
 {tagClose}
@@ -31,6 +33,8 @@ tagOpen "<"(.|\n)[^>]*?">"
 	%}
 {tagOpen}
 	%{//open
+		//cs Begin("htmlElement");
+		this.begin("htmlElement");//js
 		return 'tagOpen';
 	%}
 ([A-Za-z0-9 .,?;]+) return 'string';
@@ -55,7 +59,7 @@ wiki
 	{return $1;}
  | eof
     {
-		//php $$ = $this->toWiki("");
+		//php $$ = "";
 		//cs $$ = new ParserValue("");
 		$$ = "";//js
 	}
@@ -64,47 +68,55 @@ wiki
 contents
  : content
 	{
-		//php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("content");
-		$$ = "";//js
+		//php $$ = $1;
+		//cs $1.StringValue = $1.Text;
+		//cs $$ = $1;
+		$$ = $1;//js
 	}
  | contents content
 	{
-		//php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue($1.StringValue + "content");
-		$$ = "";//js
+		//php $$ = $1 . $2;
+		//cs $1.Text = $1.Text + $2.Text;
+		//cs $1.StringValue = $1.Text;
+		//cs $$ = $1;
+		$$ = $1 + $2;//js
 	}
  ;
 
 content
  : string
     {
-        //php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("string");
+        //php $$ = $1;
+		//string
+		//cs $$ = $1;
 		$$ = "";//js
     }
  | lineEnd
     {
-        //php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("lineEnd");
+        //php $$ = $1;
+		//cs $$ = $1;
 		$$ = "";//js
     }
  | tag
 	{
-	    //php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("tag");
-		$$ = "";//js
+	    //php $$ = $1;
+		//cs $$ = $1;
+		$$ = $1;//js
 	}
  | tagOpen contents tagClose
 	{
-	    //php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("open");
-		$$ = "";//js
+	    //php $$ = $1 . $2 . $3;
+		//cs $1.Text = $1.Text + $2.Text + $3.Text;
+		//cs $1.StringValue = $1.Text;
+		//cs $$ = $1;
+		$$ = $1 + $2 + $3;//js
 	}
  | tagOpen tagClose
 	{
-	    //php $$ = $this->toWiki("");
-		//cs $$ = new ParserValue("tag");
-		$$ = "";//js
+	    //php $$ = $1 . $2;
+		//cs $1.Text = $1.Text + $2.Text;
+		//cs $1.StringValue = $1.Text;
+		//cs $$ = $1;
+		$$ = $1 + $2;//js
 	}
  ;

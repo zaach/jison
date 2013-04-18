@@ -324,7 +324,7 @@ namespace Jison
 
         public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
-			var so = ss.Length - 1;
+			var so = ss.Count - 1;
 
 
 switch (yystate) {
@@ -337,31 +337,39 @@ case 3:
 	
 break;
 case 4:
-		thisS = new ParserValue("content");
+		ss[so].StringValue = ss[so].Text;
+		thisS = ss[so];
 	
 break;
 case 5:
-		thisS = new ParserValue(ss[so-1].StringValue + "content");
+		ss[so-1].Text = ss[so-1].Text + ss[so].Text;
+		ss[so-1].StringValue = ss[so-1].Text;
+		thisS = ss[so-1];
 	
 break;
 case 6:
-		thisS = new ParserValue("string");
+		//string
+		thisS = ss[so];
     
 break;
 case 7:
-		thisS = new ParserValue("lineEnd");
+		thisS = ss[so];
     
 break;
 case 8:
-		thisS = new ParserValue("tag");
+		thisS = ss[so];
 	
 break;
 case 9:
-		thisS = new ParserValue("open");
+		ss[so-2].Text = ss[so-2].Text + ss[so-1].Text + ss[so].Text;
+		ss[so-2].StringValue = ss[so-2].Text;
+		thisS = ss[so-2];
 	
 break;
 case 10:
-		thisS = new ParserValue("tag");
+		ss[so-1].Text = ss[so-1].Text + ss[so].Text;
+		ss[so-1].StringValue = ss[so-1].Text;
+		thisS = ss[so-1];
 	
 break;
 }
@@ -470,12 +478,12 @@ break;
                 {
 				    case Shift:
                         stack.Push(new ParserCachedAction(symbol, action));
-					    vstack.Push(Yy);
+					    vstack.Push(Yy.Clone());
 
 					    symbol = null;
 					    if (preErrorSymbol == null)
                         { // normal execution/no error
-                            yy = new ParserValue(Yy);
+                            yy = Yy.Clone();
 						    if (recovering > 0) recovering--;
 					    } else { // error just occurred, resume old lookahead f/ before error
 						    symbol = preErrorSymbol;
@@ -486,12 +494,12 @@ break;
 				    case Reduce:
                         int len = Productions[action.State.Index].Len;
 					    // perform semantic action
-                        _yy = vstack[vstack.Length - len];
+                        _yy = vstack[vstack.Count - len];
                         
                         if (Ranges != null)
                         {
                             Yy.Loc.Range = new ParserRange(
-                                vstack[vstack.Length - len].Loc.Range.X,
+                                vstack[vstack.Count - len].Loc.Range.X,
                                 vstack.Last().Loc.Range.Y
                             );
                         }
@@ -504,13 +512,14 @@ break;
 					    }
 					
 					    // pop off stack
-					    while (len > 0) {
+                       while (len > 0)
+                        {
                             stack.Pop();
-						    vstack.Pop();
+                            vstack.Pop();
                             len--;
-					    }
+                        }
 
-					    vstack.Push(_yy);
+					    vstack.Push(_yy.Clone());
                         var nextSymbol = Productions[action.State.Index].Symbol;
 					    // goto new state = table[STATE][NONTERMINAL]
                         var nextState = stack.Last().Action.State;
@@ -781,6 +790,7 @@ case 1:
 	
 break;
 case 2:
+		PopState();
 		return 11;
 	
 break;
@@ -789,6 +799,7 @@ case 3://close
 	
 break;
 case 4://open
+		Begin("htmlElement");
 		return 10;
 	
 break;
@@ -853,6 +864,11 @@ break;
 
         public ParserValue()
         {
+        }
+
+        public ParserValue Clone()
+        {
+            return new ParserValue(this);
         }
 
         public ParserValue(ParserValue parserValue)
@@ -1101,31 +1117,21 @@ break;
 
     class JList<T> : List<T> where T : class
     {
-        public int Length = 0;
-
         public void Push(T item)
         {
             Add(item);
-            Length++;
         }
 
         public void Pop()
         {
             RemoveAt(Count - 1);
-            Length = Math.Max(0, Count);
-        }
-
-        new public void Clear()
-        {
-            Length = 0;
-            base.Clear();
         }
 
         new public T this[int index]
         {
             get
             {
-                if (index >= Length || index < 0 || Length == 0)
+                if (index >= Count || index < 0 || Count == 0)
                 {
                     return null;
                 }
