@@ -12,142 +12,177 @@ switch (yystate) {
 case 1:return $$[$0-1];
 break;
 case 2:
-			this.$ = yy.handler.variable.apply(yy.obj, $$[$0]);//js
-            //php this.$ = this->variable($$[$0]);
+			//js
+			this.$ = yy.handler.variable.apply(yy.obj, $$[$0]);
+            
+			//php this.$ = this->variable($$[$0]);
 		
 break;
 case 3:
-			this.$ = yy.handler.time.apply(yy.obj, [$$[$0], true]);//js
+			//js
+			this.$ = yy.handler.time.apply(yy.obj, [$$[$0], true]);
+			//
 		
 break;
 case 4:
-			this.$ = yy.handler.time.apply(yy.obj, [$$[$0]]);//js
+			//js
+			this.$ = yy.handler.time.apply(yy.obj, [$$[$0]]);
+			//
 		
 break;
 case 5:
+			//js
+			this.$ = yy.handler.number.apply(yy.obj, [$$[$0]]);
+			
 			//php this.$ = $$[$0] * 1;
-
-			this.$ = yy.handler.number.apply(yy.obj, [$$[$0]]);//js
 		
 break;
 case 6:
-			this.$ = $$[$0].substring(1, $$[$0].length - 1);//js
+			//js
+			this.$ = $$[$0].substring(1, $$[$0].length - 1);
+			
 			//php this.$ = substr($$[$0], 1, -1);
 		
 break;
 case 7:
+			//js
+			yy.obj.html.pop();
+			this.$ = yy.handler.callFunction.apply(yy.obj, ['EQUAL', [$$[$0-2], $$[$0]]]);
+			
 			//php this.$ = $$[$0-2] == $$[$0];
-
-			yy.obj.html.pop();//js
-			this.$ = yy.handler.callFunction.apply(yy.obj, ['EQUAL', [$$[$0-2], $$[$0]]]);//js
 		
 break;
 case 8:
-			this.$ = yy.handler.performMath.apply(yy.obj, ['+', $$[$0-2], $$[$0]]);//js
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
+			//js
+			this.$ = yy.handler.performMath.apply(yy.obj, ['+', $$[$0-2], $$[$0]]);
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
 
-			//php if (is_numeric($$[$0-2]) && is_numeric($$[$0])) {
-			//php   this.$ = $$[$0-2] + $$[$0];
-			//php } else {
-			//php   this.$ = $$[$0-2] . $$[$0];
-			//php }
+			/*php
+				if (is_numeric($$[$0-2]) && is_numeric($$[$0])) {
+					this.$ = $$[$0-2] + $$[$0];
+				} else {
+					this.$ = $$[$0-2] . $$[$0];
+				}
+			*/
 		
 break;
-case 9:this.$ = yy.handler.number.apply(yy.obj, [$$[$0-1]]);//js
+case 9:
+			//js
+			this.$ = yy.handler.number.apply(yy.obj, [$$[$0-1]]);
+			//
+		
 break;
 case 10:
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS_EQUAL', [$$[$0-3], $$[$0-1]]]);
+			
 			//php this.$ = ($$[$0-3] * 1) <= ($$[$0] * 1);
-			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS_EQUAL', [$$[$0-3], $$[$0-1]]]);//js
 		
 break;
 case 11:
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER_EQUAL', [$$[$0-3], $$[$0-1]]]);
+			
 			//php this.$ = ($$[$0-3] * 1) >= ($$[$0] * 1);
-			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER_EQUAL', [$$[$0-3], $$[$0-1]]]);//js
 		
 break;
 case 12:
+			//js|php
 			this.$ = ($$[$0-3] * 1) != ($$[$0] * 1);
-
-			if (isNaN(this.$)) this.$ = 0;//js
-
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
+			
+			//js
+			if (isNaN(this.$)) this.$ = 0;
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
+			//
 		
 break;
 case 13:
+			//js|php
 			this.$ = $$[$0-2] != $$[$0];
 
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
+			//js
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
+			//
 		
 break;
 case 14:
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER', [$$[$0-2], $$[$0]]]);
+			
 			//php this.$ = ($$[$0-2] * 1) > ($$[$0] * 1);
-
-			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER', [$$[$0-2], $$[$0]]]);//js
 		
 break;
 case 15:
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS', [$$[$0-2], $$[$0]]]);
+			
 			//php this.$ = ($$[$0-2] * 1) < ($$[$0] * 1);
-
-			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS', [$$[$0-2], $$[$0]]]);//js
 		
 break;
 case 16:
+			//js|php
 			this.$ = ($$[$0-2] * 1) - ($$[$0] * 1);
 
-			this.$ = yy.handler.performMath.apply(yy.obj, ['-', $$[$0-2], $$[$0]]);//js
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
+			//js
+			this.$ = yy.handler.performMath.apply(yy.obj, ['-', $$[$0-2], $$[$0]]);
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
 		
 break;
 case 17:
+			//js
+			this.$ = yy.handler.performMath.apply(yy.obj, ['*', $$[$0-2], $$[$0]]);
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
+			
 			//php this.$ = ($$[$0-2] * 1) * ($$[$0] * 1);
-
-			this.$ = yy.handler.performMath.apply(yy.obj, ['*', $$[$0-2], $$[$0]]);//js
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
 		
 break;
 case 18:
+			//js
+			this.$ = yy.handler.performMath.apply(yy.obj, ['/', $$[$0-2], $$[$0]]);
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
+			
 			//php this.$ = ($$[$0-2] * 1) / ($$[$0] * 1);
-
-			this.$ = yy.handler.performMath.apply(yy.obj, ['/', $$[$0-2], $$[$0]]);//js
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
 		
 break;
 case 19:
-			var n1 = yy.handler.number.apply(yy.obj, [$$[$0-2]]),//js
-				n2 = yy.handler.number.apply(yy.obj, [$$[$0]]);//js
+			//js
+			var n1 = yy.handler.number.apply(yy.obj, [$$[$0-2]]),
+				n2 = yy.handler.number.apply(yy.obj, [$$[$0]]);
 
-			this.$ = yy.handler.performMath.apply(yy.obj, ['^', $$[$0-2], $$[$0]]);//js
-			yy.obj.html.pop();//js
-			yy.obj.html.pop();//js
-			yy.obj.html.push(null);//js
+			this.$ = yy.handler.performMath.apply(yy.obj, ['^', $$[$0-2], $$[$0]]);
+			yy.obj.html.pop();
+			yy.obj.html.pop();
+			yy.obj.html.push(null);
 
 			//php this.$ = pow(($$[$0-2] * 1), ($$[$0] * 1));
 		
 break;
 case 20:
-			var n1 = yy.handler.number.apply(yy.obj, [$$[$0]]);//js
-			this.$ = n1 * -1;//js
-			if (isNaN(this.$)) this.$ = 0;//js
+			//js
+			var n1 = yy.handler.number.apply(yy.obj, [$$[$0]]);
+			this.$ = n1 * -1;
+			if (isNaN(this.$)) this.$ = 0;
 
 			//php this.$ = $$[$0-1] * 1;
 		
 break;
 case 21:
-			var n1 = yy.handler.number.apply(yy.obj, [$$[$0]]);//js
-			this.$ = n1 * 1;//js
-			if (isNaN(this.$)) this.$ = 0;//js
+			//js
+			var n1 = yy.handler.number.apply(yy.obj, [$$[$0]]);
+			this.$ = n1 * 1;
+			if (isNaN(this.$)) this.$ = 0;
 
 			//php this.$ = $$[$0-1] * 1;
 		
@@ -155,99 +190,140 @@ break;
 case 22:/*this.$ = Math.E;*/;
 break;
 case 23:
-			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-2], '']);//js
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-2], '']);
+			
 			//php this.$ = this->callFunction($$[$0-2]);
 		
 break;
 case 24:
-			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-3], $$[$0-1]]);//js
+			//js
+			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-3], $$[$0-1]]);
+			
 			//php this.$ = this->callFunction($$[$0-3], $$[$0-1]);
 		
 break;
 case 28:
-			this.$ = yy.handler.fixedCellValue.apply(yy.obj, [$$[$0]]);//js
+			//js
+			this.$ = yy.handler.fixedCellValue.apply(yy.obj, [$$[$0]]);
+			
 			//php this.$ = this->fixedCellValue($$[$0]);
 		
 break;
 case 29:
-			this.$ = yy.handler.fixedCellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);//js
+			//js
+			this.$ = yy.handler.fixedCellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
+			
 			//php this.$ = this->fixedCellRangeValue($$[$0-2], $$[$0]);
 		
 break;
 case 30:
-			this.$ = yy.handler.cellValue.apply(yy.obj, [$$[$0]]);//js
+			//js
+			this.$ = yy.handler.cellValue.apply(yy.obj, [$$[$0]]);
+			
 			//php this.$ = this->cellValue($$[$0]);
 		
 break;
 case 31:
-			this.$ = yy.handler.cellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);//js
+			//js
+			this.$ = yy.handler.cellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
+			
 			//php this.$ = this->cellRangeValue($$[$0-2], $$[$0]);
 		
 break;
 case 32:
-			this.$ = yy.handler.remoteCellValue.apply(yy.obj, [$$[$0-2], $$[$0]]);//js
+			//js
+			this.$ = yy.handler.remoteCellValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
+			
 			//php this.$ = this->remoteCellValue($$[$0-2], $$[$0]);
 		
 break;
 case 33:
-			this.$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$$[$0-4], $$[$0-2], $$[$0]]);//js
+			//js
+			this.$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$$[$0-4], $$[$0-2], $$[$0]]);
+			
 			//php this.$ = this->remoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
 		
 break;
 case 34:
-			this.$ = [$$[$0]];//js
+			//js
+			this.$ = [$$[$0]];
+			
 			//php this.$ = array($$[$0]);
 		
 break;
 case 35:
-	        $$[$0-2].push($$[$0]);//js
-	        this.$ = $$[$0-2];//js
+			//js
+	        $$[$0-2].push($$[$0]);
+	        this.$ = $$[$0-2];
 
-			//php $$[$0-2][] = $$[$0];
-			//php this.$ = $$[$0-2];
+			/*php
+				$$[$0-2][] = $$[$0];
+				this.$ = $$[$0-2];
+			*/
 	    
 break;
 case 36:
-	        $$[$0-2].push($$[$0]);//js
-	        this.$ = $$[$0-2];//js
+			//js
+	        $$[$0-2].push($$[$0]);
+	        this.$ = $$[$0-2];
 
-			//php $$[$0-2][] = $$[$0];
-			//php this.$ = $$[$0-2];
+			/*php
+				$$[$0-2][] = $$[$0];
+				this.$ = $$[$0-2];
+			*/
 	    
 break;
 case 37:
-			this.$ = [$$[$0]];//js
+			//js
+			this.$ = [$$[$0]];
+			
 			//php this.$ = array($$[$0]);
 		
 break;
 case 38:
-			this.$ = ($.isArray($$[$0-2]) ? $$[$0-2] : [$$[$0-2]]);//js
-            this.$.push($$[$0]);//js
+			//js
+			this.$ = ($.isArray($$[$0-2]) ? $$[$0-2] : [$$[$0-2]]);
+            this.$.push($$[$0]);
 
-            //php this.$ = (is_array($$[$0-2]) ? $$[$0-2] : array());
-            //php this.$[] = $$[$0];
+            /*php
+				this.$ = (is_array($$[$0-2]) ? $$[$0-2] : array());
+				this.$[] = $$[$0];
+			*/
 		
 break;
 case 39:
+			//js|php
 			this.$ = $$[$0] * 1;
 		
 break;
 case 40:
-			this.$ = ($$[$0-2] + '.' + $$[$0]) * 1;//js
+			//js
+			this.$ =($$[$0-2] + '.' + $$[$0]) * 1;
+			
 			//php this.$ = $$[$0-2] . '.' . $$[$0];
 		
 break;
 case 41:
-			yy.obj.html.push($$[$0-1] + $$[$0]);//js
+			//js
+			yy.obj.html.push($$[$0-1] + $$[$0]);
+			
+			//js|php
 			this.$ = $$[$0-1] * 0.01;
 		
 break;
 case 42:
+			//js
 			this.$ = $$[$0-2] + $$[$0-1] + $$[$0];
+			
+			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
       	
 break;
 case 43:
+			//js
 			this.$ = $$[$0-2] + $$[$0-1] + $$[$0];
+			
+			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
 		
 break;
 }
@@ -654,27 +730,36 @@ break;
 case 5:return 8;
 break;
 case 6:
-	if (yy.obj.type == 'cell') return 29;//js
-	return 'VARIABLE';//js
-
-	//php if ($this->type == 'cell') return 'SHEET';
-	//php return 'VARIABLE';
+	//js
+	if (yy.obj.type == 'cell') return 29;
+	return 'VARIABLE';
+	
+	/*php
+		if ($this->type == 'cell') return 'SHEET';
+		return 'VARIABLE';
+	*/
 
 break;
 case 7:
-	if (yy.obj.type == 'cell') return 26;//js
-	return 'VARIABLE';//js
+	//js
+	if (yy.obj.type == 'cell') return 26;
+	return 'VARIABLE';
 
-	//php if ($this->type == 'cell') return 'FIXEDCELL';
-    //php return 'VARIABLE';
+	/*php
+		if ($this->type == 'cell') return 'FIXEDCELL';
+		return 'VARIABLE';
+	*/
 
 break;
 case 8:
-	if (yy.obj.type == 'cell') return 28;//js
-	return 'VARIABLE';//js
+	//js
+	if (yy.obj.type == 'cell') return 28;
+	return 'VARIABLE';
 
-	//php if ($this->type == 'cell') return 'CELL';
-    //php return 'VARIABLE';
+	/*php
+		if ($this->type == 'cell') return 'CELL';
+		return 'VARIABLE';
+	*/
 
 break;
 case 9:return 23;
@@ -717,28 +802,26 @@ case 27:return 15;
 break;
 case 28:return 17;
 break;
-case 29:return 'PI';
+case 29:return 22;
 break;
-case 30:return 22;
+case 30:return '"';
 break;
-case 31:return '"';
+case 31:return "'";
 break;
-case 32:return "'";
+case 32:return "!";
 break;
-case 33:return "!";
+case 33:return 11;
 break;
-case 34:return 11;
+case 34:return 36;
 break;
-case 35:return 36;
+case 35:return 37;
 break;
-case 36:return 37;
-break;
-case 37:return 5;
+case 36:return 5;
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:"(\\["]|[^"])*")/,/^(?:'(\\[']|[^'])*')/,/^(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))/,/^(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))/,/^(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)/,/^(?:SHEET[0-9]+)/,/^(?:\$[A-Za-z]+\$[0-9]+)/,/^(?:[A-Za-z]+[0-9]+)/,/^(?:[A-Za-z]+(?=[(]))/,/^(?:[A-Za-z]{1,}[A-Za-z_0-9]+)/,/^(?:[A-Za-z_]+)/,/^(?:[0-9]+)/,/^(?:\$)/,/^(?: )/,/^(?:[.])/,/^(?::)/,/^(?:;)/,/^(?:,)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>)/,/^(?:<)/,/^(?:NOT\b)/,/^(?:PI\b)/,/^(?:E\b)/,/^(?:")/,/^(?:')/,/^(?:!)/,/^(?:=)/,/^(?:%)/,/^(?:[#])/,/^(?:$)/],
-conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37],"inclusive":true}}
+rules: [/^(?:\s+)/,/^(?:"(\\["]|[^"])*")/,/^(?:'(\\[']|[^'])*')/,/^(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))/,/^(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))/,/^(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)/,/^(?:SHEET[0-9]+)/,/^(?:\$[A-Za-z]+\$[0-9]+)/,/^(?:[A-Za-z]+[0-9]+)/,/^(?:[A-Za-z]+(?=[(]))/,/^(?:[A-Za-z]{1,}[A-Za-z_0-9]+)/,/^(?:[A-Za-z_]+)/,/^(?:[0-9]+)/,/^(?:\$)/,/^(?: )/,/^(?:[.])/,/^(?::)/,/^(?:;)/,/^(?:,)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>)/,/^(?:<)/,/^(?:NOT\b)/,/^(?:E\b)/,/^(?:")/,/^(?:')/,/^(?:!)/,/^(?:=)/,/^(?:%)/,/^(?:[#])/,/^(?:$)/],
+conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36],"inclusive":true}}
 };
 return lexer;
 })();

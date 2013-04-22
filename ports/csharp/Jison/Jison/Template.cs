@@ -730,6 +730,14 @@ using System.Linq;
             SymbolsString.Add(symbol.Name, symbol);
         }
 
+        new public ParserSymbol this[char name]
+        {
+            get
+            {
+                return SymbolsString[name.ToString()];
+            }
+        }
+
         new public ParserSymbol this[string name]
         {
             get

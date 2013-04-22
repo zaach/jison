@@ -59,6 +59,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="comments.jison" />
+    <None Include="formula.jison" />
     <None Include="Html.cs" />
     <Compile Include="formula.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

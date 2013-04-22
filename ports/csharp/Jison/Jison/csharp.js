@@ -1,7 +1,14 @@
-﻿var fs = require('fs');
-var util = require('util');
-var exec = require('child_process').exec;
-var path = require('path');
+﻿var fs = require('fs'),
+    util = require('util'),
+    exec = require('child_process').exec,
+    path = require('path');
+
+GLOBAL.convertToSyntax = function (type, body) {
+    if (type.match('cs')) {
+        return body;
+    }
+    return '';
+};
 
 function puts(error, stdout, stderr) {
     util.puts(stdout);
@@ -16,8 +23,9 @@ exec("jison " + process.argv[2], function (error) {
     }
 
     var fileName = process.argv[2].replace('.jison', ''),
+        comments = require(path.resolve(__dirname, 'comments.js')),
         requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
-
+    
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
     var Parser = require(requirePath),
@@ -70,19 +78,7 @@ exec("jison " + process.argv[2], function (error) {
 		        })
 		        .replace('avoiding_name_collisions', 'avoidingNameCollisions');
 		}
-
-        str = str.split(/\n/g);
-
-        var strNew = [];
-        for (var i = 0; i < str.length; i++) {
-            if (str[i].match('//cs ')) {
-                strNew.push(str[i].replace(/\/\/cs /g, ''));
-            }
-        }
-
-        str = strNew;
-
-        str = str.join('\n');
+		str = comments.parse(str);
 
         str = str.replace(/(\d)\n/g, function () {
             return arguments[1] + ';\n';

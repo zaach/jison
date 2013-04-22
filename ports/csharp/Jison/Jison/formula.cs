@@ -1753,20 +1753,19 @@ namespace Jison
 					{26, new Regex(@"""^(?:>)""")},
 					{27, new Regex(@"""^(?:<)""")},
 					{28, new Regex(@"""^(?:NOT\b)""")},
-					{29, new Regex(@"""^(?:PI\b)""")},
-					{30, new Regex(@"""^(?:E\b)""")},
-					{31, new Regex(@"""^(?:"")""")},
-					{32, new Regex(@"""^(?:')""")},
-					{33, new Regex(@"""^(?:!)""")},
-					{34, new Regex(@"""^(?:=)""")},
-					{35, new Regex(@"""^(?:%)""")},
-					{36, new Regex(@"""^(?:[#])""")},
-					{37, new Regex(@"""^(?:$)""")}
+					{29, new Regex(@"""^(?:E\b)""")},
+					{30, new Regex(@"""^(?:"")""")},
+					{31, new Regex(@"""^(?:')""")},
+					{32, new Regex(@"""^(?:!)""")},
+					{33, new Regex(@"""^(?:=)""")},
+					{34, new Regex(@"""^(?:%)""")},
+					{35, new Regex(@"""^(?:[#])""")},
+					{36, new Regex(@"""^(?:$)""")}
 				};
 
 			Conditions = new Dictionary<string, LexerConditions>
 				{
-					{"INITIAL", new LexerConditions(new List<int> { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37 }, true)}
+					{"INITIAL", new LexerConditions(new List<int> { 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36 }, true)}
 				};
 
 
@@ -1787,6 +1786,150 @@ namespace Jison
         public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Count - 1;
+
+
+switch (yystate) {
+case 1:return ss[so-1];
+break;
+case 2:
+			
+		
+break;
+case 3:
+					
+break;
+case 4:
+					
+break;
+case 5:
+			
+		
+break;
+case 6:
+			
+		
+break;
+case 7:
+			
+		
+break;
+case 8:
+			
+		
+break;
+case 9:
+					
+break;
+case 10:
+			
+		
+break;
+case 11:
+			
+		
+break;
+case 12:
+					
+break;
+case 13:
+					
+break;
+case 14:
+			
+		
+break;
+case 15:
+			
+		
+break;
+case 16:
+			
+		
+break;
+case 18:
+			
+		
+break;
+case 19:
+			
+		
+break;
+case 20:
+			
+		
+break;
+case 21:
+			
+		
+break;
+case 22:;
+break;
+case 23:
+			
+		
+break;
+case 24:
+			
+		
+break;
+case 28:
+			
+		
+break;
+case 29:
+			
+		
+break;
+case 30:
+			
+		
+break;
+case 31:
+			
+		
+break;
+case 32:
+			
+		
+break;
+case 33:
+			
+		
+break;
+case 34:
+			
+		
+break;
+case 35:
+			
+	    
+break;
+case 36:
+			
+	    
+break;
+case 37:
+			
+		
+break;
+case 38:
+			
+		
+break;
+case 39:
+			
+		
+break;
+case 41:
+			
+      	
+break;
+case 43:
+			
+		
+break;
+}
+
             return null;
 		}
 		
@@ -2191,6 +2334,91 @@ namespace Jison
 		public dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
 		{
 			
+
+;
+switch(avoidingNameCollisions) {
+case 0:/* skip whitespace */
+break;
+case 1:return 10;
+break;
+case 2:return 10;
+break;
+case 3:return 23;
+break;
+case 4:return 7;
+break;
+case 5:return 8;
+break;
+case 6:
+	
+
+break;
+case 7:
+	
+
+break;
+case 8:
+	
+
+break;
+case 9:return 23;
+break;
+case 10:return 33;
+break;
+case 11:return 33;
+break;
+case 12:return 35;
+break;
+case 13:/* skip whitespace */
+break;
+case 14:return ' ';
+break;
+case 15:return 34;
+break;
+case 16:return 27;
+break;
+case 17:return 31;
+break;
+case 18:return 32;
+break;
+case 19:return 19;
+break;
+case 20:return 20;
+break;
+case 21:return 18;
+break;
+case 22:return 12;
+break;
+case 23:return 21;
+break;
+case 24:return 13;
+break;
+case 25:return 14;
+break;
+case 26:return 16;
+break;
+case 27:return 15;
+break;
+case 28:return 17;
+break;
+case 29:return 22;
+break;
+case 30:return '"';
+break;
+case 31:return "'";
+break;
+case 32:return "!";
+break;
+case 33:return 11;
+break;
+case 34:return 36;
+break;
+case 35:return 37;
+break;
+case 36:return 5;
+break;
+}
+
 			return -1;
 		}
 	}
@@ -2470,6 +2698,14 @@ namespace Jison
         {
             SymbolsInt.Add(symbol.Index, symbol);
             SymbolsString.Add(symbol.Name, symbol);
+        }
+
+        new public ParserSymbol this[char name]
+        {
+            get
+            {
+                return SymbolsString[name.ToString()];
+            }
         }
 
         new public ParserSymbol this[string name]
