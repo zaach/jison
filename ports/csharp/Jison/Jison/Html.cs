@@ -342,8 +342,7 @@ case 4:
 	
 break;
 case 5:
-		ss[so-1].Text = ss[so-1].Text + ss[so].Text;
-		ss[so-1].StringValue = ss[so-1].Text;
+		ss[so-1].StringValue = ss[so-1].Text = ss[so-1].Text + ss[so].Text;
 		thisS = ss[so-1];
 	
 break;
@@ -361,14 +360,12 @@ case 8:
 	
 break;
 case 9:
-		ss[so-2].Text = ss[so-2].Text + ss[so-1].Text + ss[so].Text;
-		ss[so-2].StringValue = ss[so-2].Text;
+		ss[so-2].StringValue = ss[so-2].Text = ss[so-2].Text + ss[so-1].Text + ss[so].Text;
 		thisS = ss[so-2];
 	
 break;
 case 10:
-		ss[so-1].Text = ss[so-1].Text + ss[so].Text;
-		ss[so-1].StringValue = ss[so-1].Text;
+		ss[so-1].StringValue = ss[so-1].Text = ss[so-1].Text + ss[so].Text;
 		thisS = ss[so-1];
 	
 break;

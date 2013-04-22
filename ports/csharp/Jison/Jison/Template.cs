@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 
-namespace Jison
+/**/namespace Jison/**/
 {
-    class Parser
+    /**/class Parser/**/
     {
         public ParserSymbols Symbols;
         public Dictionary<int, ParserSymbol> Terminals;

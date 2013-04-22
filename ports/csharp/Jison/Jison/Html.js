@@ -28,8 +28,7 @@ case 4:
 break;
 case 5:
 		//php this.$ = $$[$0-1] . $$[$0];
-		//cs $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
-		//cs $$[$0-1].StringValue = $$[$0-1].Text;
+		//cs $$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
 		//cs this.$ = $$[$0-1];
 		this.$ = $$[$0-1] + $$[$0];//js
 	
@@ -55,16 +54,14 @@ case 8:
 break;
 case 9:
 	    //php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
-		//cs $$[$0-2].Text = $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text;
-		//cs $$[$0-2].StringValue = $$[$0-2].Text;
+		//cs $$[$0-2].StringValue = $$[$0-2].Text = $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text;
 		//cs this.$ = $$[$0-2];
 		this.$ = $$[$0-2] + $$[$0-1] + $$[$0];//js
 	
 break;
 case 10:
 	    //php this.$ = $$[$0-1] . $$[$0];
-		//cs $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
-		//cs $$[$0-1].StringValue = $$[$0-1].Text;
+		//cs $$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
 		//cs this.$ = $$[$0-1];
 		this.$ = $$[$0-1] + $$[$0];//js
 	

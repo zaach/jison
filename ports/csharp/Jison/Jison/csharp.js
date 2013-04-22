@@ -75,7 +75,7 @@ exec("jison " + process.argv[2], function (error) {
 
         var strNew = [];
         for (var i = 0; i < str.length; i++) {
-            if (str[i].match('//cs ') || !str[i].match(/\/\/js|\/\/php/g)) {
+            if (str[i].match('//cs ')) {
                 strNew.push(str[i].replace(/\/\/cs /g, ''));
             }
         }
@@ -91,9 +91,9 @@ exec("jison " + process.argv[2], function (error) {
         return str;
     }
 
-    var phpOption = {
+    var option = {
+        parserNamespace: 'Jison',
         parserClass: 'Parser',
-        lexerClass: 'Lexer',
         fileName: fileName + '.cs'
     };
 
@@ -103,11 +103,11 @@ exec("jison " + process.argv[2], function (error) {
         if (parserDefinition[i].match('//csOption ')) {
             parserDefinition[i] = parserDefinition[i].replace('//csOption ', '');
             parserDefinition[i] = parserDefinition[i].split(':');
-            phpOption[parserDefinition[i][0]] = parserDefinition[i][1];
+            option[parserDefinition[i][0]] = parserDefinition[i][1];
         }
     }
 
-    console.log(phpOption);
+    console.log(option);
 
     var parserRaw = fs.readFileSync(__dirname + "/template.cs", "utf8");
 
@@ -144,7 +144,7 @@ exec("jison " + process.argv[2], function (error) {
             
         }
 
-        result += '\n\n\t\t\tSymbols = new ParserSymbols();\n'
+        result += '\n\n\t\t\tSymbols = new ParserSymbols();\n';
 		result += this.symbols.join(';\n') + ';\n\n';
 
         for (var i in terminals) {
@@ -182,7 +182,7 @@ exec("jison " + process.argv[2], function (error) {
 
         result += this.tableInstantiation.join(';\n') + ';\n\n';
         result += this.tableDefinition.join(';\n\n') + ';\n\n';
-        result += this.tableSetActions.join(';\n\n') + ';\n\n';
+        result += this.tableSetActions.join(';\n') + ';\n\n';
         result += '\t\t\tTable = new Dictionary<int, ParserState>\n\t\t\t\t{\n' + this.table.join(',\n') + '\n\t\t\t\t};\n\n';
 
         for (var i in defaultActions) {
@@ -216,7 +216,7 @@ exec("jison " + process.argv[2], function (error) {
         this.conditions = [];
         
         for (var i in rules) {
-            this.rules.push('\t\t\t\t\t{' + i + ', new Regex("' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/') + '")}');
+            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"""' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/').replace(/"/g, '""') + '""")}');
         }
 
         result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';
@@ -231,8 +231,9 @@ exec("jison " + process.argv[2], function (error) {
     }
     
     parserRaw = parserRaw
-        .replace('class Parser', 'class ' + phpOption.parserClass)
-        .replace('new Parser(', 'new ' + phpOption.parserClass + '(')
+        .replace('/**/namespace Jison/**/', 'namespace ' + option.parserNamespace)
+        .replace('/**/class Parser/**/', 'class ' + option.parserClass)
+        .replace('new Parser(', 'new ' + option.parserClass + '(')
 
         .replace('//@@PARSER_INJECT@@',
             parserInject()
@@ -250,11 +251,12 @@ exec("jison " + process.argv[2], function (error) {
 			jsPerformActionToCs(lexerPerformAction, true)
 		);
 
-    fs.writeFile(phpOption.fileName, parserRaw, function (err) {
+    fs.writeFile(option.fileName, parserRaw, function (err) {
         if (err) {
             console.log("Something went bad");
+            console.log(err);
         } else {
-            console.log("Success writing new parser files " + fileName + ".js" + " & " + phpOption.fileName);
+            console.log("Success writing new parser files " + fileName + ".js" + " & " + option.fileName);
             console.log("Please Note: The csharp version of the jison parser is only an ATTEMPTED conversion");
         }
     });

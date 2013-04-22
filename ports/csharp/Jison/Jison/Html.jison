@@ -16,34 +16,39 @@ tagOpen "<"(.|\n)[^>]*?">"
         return 'tag';
 	%}
 
-
 <htmlElement><<EOF>>
 	%{
 		return 'eof';
 	%}
+
 <htmlElement>{tagClose}
 	%{
 		//cs PopState();
 		this.popState();//js
 		return 'tagClose';
 	%}
+
 {tagClose}
 	%{//close
     	return 'tagClose';
 	%}
+
 {tagOpen}
 	%{//open
 		//cs Begin("htmlElement");
 		this.begin("htmlElement");//js
 		return 'tagOpen';
 	%}
+
 ([A-Za-z0-9 .,?;]+) return 'string';
 
 ([ ]) return 'string';
+
 {lineEnd}
 	%{
 		return 'lineEnd';
 	%}
+
 (.) return 'string';
 <<EOF>> return 'eof';
 
@@ -76,8 +81,7 @@ contents
  | contents content
 	{
 		//php $$ = $1 . $2;
-		//cs $1.Text = $1.Text + $2.Text;
-		//cs $1.StringValue = $1.Text;
+		//cs $1.StringValue = $1.Text = $1.Text + $2.Text;
 		//cs $$ = $1;
 		$$ = $1 + $2;//js
 	}
@@ -106,17 +110,15 @@ content
  | tagOpen contents tagClose
 	{
 	    //php $$ = $1 . $2 . $3;
-		//cs $1.Text = $1.Text + $2.Text + $3.Text;
-		//cs $1.StringValue = $1.Text;
+		//cs $1.StringValue = $1.Text = $1.Text + $2.Text + $3.Text;
 		//cs $$ = $1;
 		$$ = $1 + $2 + $3;//js
 	}
  | tagOpen tagClose
 	{
 	    //php $$ = $1 . $2;
-		//cs $1.Text = $1.Text + $2.Text;
-		//cs $1.StringValue = $1.Text;
+		//cs $1.StringValue = $1.Text = $1.Text + $2.Text;
 		//cs $$ = $1;
 		$$ = $1 + $2;//js
 	}
- ;
+;
