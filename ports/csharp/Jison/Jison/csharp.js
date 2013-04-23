@@ -211,7 +211,7 @@ exec("jison " + process.argv[2], function (error) {
         this.conditions = [];
         
         for (var i in rules) {
-            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"""' + rules[i].substring(1, rules[i].length - 1).replace('\/', '\\/').replace(/"/g, '""') + '""")}');
+            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '""') + '")}');
         }
 
         result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';

@@ -1724,43 +1724,43 @@ namespace Jison
             
 			Rules = new Dictionary<int, Regex>
 				{
-					{0, new Regex(@"""^(?:\s+)""")},
-					{1, new Regex(@"""^(?:""(\\[""]|[^""])*"")""")},
-					{2, new Regex(@"""^(?:'(\\[']|[^'])*')""")},
-					{3, new Regex(@"""^(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))""")},
-					{4, new Regex(@"""^(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))""")},
-					{5, new Regex(@"""^(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)""")},
-					{6, new Regex(@"""^(?:SHEET[0-9]+)""")},
-					{7, new Regex(@"""^(?:\$[A-Za-z]+\$[0-9]+)""")},
-					{8, new Regex(@"""^(?:[A-Za-z]+[0-9]+)""")},
-					{9, new Regex(@"""^(?:[A-Za-z]+(?=[(]))""")},
-					{10, new Regex(@"""^(?:[A-Za-z]{1,}[A-Za-z_0-9]+)""")},
-					{11, new Regex(@"""^(?:[A-Za-z_]+)""")},
-					{12, new Regex(@"""^(?:[0-9]+)""")},
-					{13, new Regex(@"""^(?:\$)""")},
-					{14, new Regex(@"""^(?: )""")},
-					{15, new Regex(@"""^(?:[.])""")},
-					{16, new Regex(@"""^(?::)""")},
-					{17, new Regex(@"""^(?:;)""")},
-					{18, new Regex(@"""^(?:,)""")},
-					{19, new Regex(@"""^(?:\*)""")},
-					{20, new Regex(@"""^(?:\\/)""")},
-					{21, new Regex(@"""^(?:-)""")},
-					{22, new Regex(@"""^(?:\+)""")},
-					{23, new Regex(@"""^(?:\^)""")},
-					{24, new Regex(@"""^(?:\()""")},
-					{25, new Regex(@"""^(?:\))""")},
-					{26, new Regex(@"""^(?:>)""")},
-					{27, new Regex(@"""^(?:<)""")},
-					{28, new Regex(@"""^(?:NOT\b)""")},
-					{29, new Regex(@"""^(?:E\b)""")},
-					{30, new Regex(@"""^(?:"")""")},
-					{31, new Regex(@"""^(?:')""")},
-					{32, new Regex(@"""^(?:!)""")},
-					{33, new Regex(@"""^(?:=)""")},
-					{34, new Regex(@"""^(?:%)""")},
-					{35, new Regex(@"""^(?:[#])""")},
-					{36, new Regex(@"""^(?:$)""")}
+					{0, new Regex(@"^(?:\s+)")},
+					{1, new Regex(@"^(?:""(\\[""]|[^""])*"")")},
+					{2, new Regex(@"^(?:'(\\[']|[^'])*')")},
+					{3, new Regex(@"^(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))")},
+					{4, new Regex(@"^(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))")},
+					{5, new Regex(@"^(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)")},
+					{6, new Regex(@"^(?:SHEET[0-9]+)")},
+					{7, new Regex(@"^(?:\$[A-Za-z]+\$[0-9]+)")},
+					{8, new Regex(@"^(?:[A-Za-z]+[0-9]+)")},
+					{9, new Regex(@"^(?:[A-Za-z]+(?=[(]))")},
+					{10, new Regex(@"^(?:[A-Za-z]{1,}[A-Za-z_0-9]+)")},
+					{11, new Regex(@"^(?:[A-Za-z_]+)")},
+					{12, new Regex(@"^(?:[0-9]+)")},
+					{13, new Regex(@"^(?:\$)")},
+					{14, new Regex(@"^(?: )")},
+					{15, new Regex(@"^(?:[.])")},
+					{16, new Regex(@"^(?::)")},
+					{17, new Regex(@"^(?:;)")},
+					{18, new Regex(@"^(?:,)")},
+					{19, new Regex(@"^(?:\*)")},
+					{20, new Regex(@"^(?:\/)")},
+					{21, new Regex(@"^(?:-)")},
+					{22, new Regex(@"^(?:\+)")},
+					{23, new Regex(@"^(?:\^)")},
+					{24, new Regex(@"^(?:\()")},
+					{25, new Regex(@"^(?:\))")},
+					{26, new Regex(@"^(?:>)")},
+					{27, new Regex(@"^(?:<)")},
+					{28, new Regex(@"^(?:NOT\b)")},
+					{29, new Regex(@"^(?:E\b)")},
+					{30, new Regex(@"^(?:"")")},
+					{31, new Regex(@"^(?:')")},
+					{32, new Regex(@"^(?:!)")},
+					{33, new Regex(@"^(?:=)")},
+					{34, new Regex(@"^(?:%)")},
+					{35, new Regex(@"^(?:[#])")},
+					{36, new Regex(@"^(?:$)")}
 				};
 
 			Conditions = new Dictionary<string, LexerConditions>
@@ -2025,7 +2025,7 @@ break;
 					this.parseError("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
 				}*/
 
-			    if (state == null)
+                if (state == null || action == null)
 			    {
 			        break;
 			    }
@@ -2196,18 +2196,18 @@ break;
 		public string PastInput()
 		{
 			var past = Matched.Substring(0, Matched.Length - Match.Length);
-			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(-20), "/\n/", "") : "");
+            return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(-20), "/\n/", "") : "");
 		}
-		
-		public string UpcomingInput()
-		{
-			var next = Match;
-			if (next.Length < 20)
+
+        public string UpcomingInput()
+        {
+            var next = Match;
+            if (next.Length < 20)
             {
-				next += _Input.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
-			}
+                next += _Input.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
+            }
             return Regex.Replace(next.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length)) + (next.Length > 20 ? "..." : ""), "/\n/", "");
-		}
+        }
 		
 		public string ShowPosition()
 		{
@@ -2614,6 +2614,10 @@ break;
         public IDictionary<int, ParserSymbol> Symbols = new Dictionary<int, ParserSymbol>();
         public IDictionary<string, ParserSymbol> SymbolsByName = new Dictionary<string, ParserSymbol>();
 
+        public ParserSymbol()
+        {
+        }
+
         public ParserSymbol(string name, int index)
         {
             Name = name;
@@ -2720,6 +2724,10 @@ break;
         {
             get
             {
+                if (index < 0)
+                {
+                    return new ParserSymbol();
+                }
                 return SymbolsInt[index];
             }
         }

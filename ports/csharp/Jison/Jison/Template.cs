@@ -140,7 +140,7 @@ using System.Linq;
 					this.parseError("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
 				}*/
 
-			    if (state == null)
+                if (state == null || action == null)
 			    {
 			        break;
 			    }
@@ -644,6 +644,10 @@ using System.Linq;
         public IDictionary<int, ParserSymbol> Symbols = new Dictionary<int, ParserSymbol>();
         public IDictionary<string, ParserSymbol> SymbolsByName = new Dictionary<string, ParserSymbol>();
 
+        public ParserSymbol()
+        {
+        }
+
         public ParserSymbol(string name, int index)
         {
             Name = name;
@@ -750,6 +754,10 @@ using System.Linq;
         {
             get
             {
+                if (index < 0)
+                {
+                    return new ParserSymbol();
+                }
                 return SymbolsInt[index];
             }
         }
