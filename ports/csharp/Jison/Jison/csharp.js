@@ -3,8 +3,8 @@
     exec = require('child_process').exec,
     path = require('path');
 
-GLOBAL.convertToSyntax = function (type, body) {
-    if (type.match('cs')) {
+GLOBAL.convertToSyntax = function (types, body) {
+    if (types['cs'] || types['CS'] || types['c#'] || types['C#'] || types['csharp'] || types['CSharp']) {
         return body;
     }
     return '';

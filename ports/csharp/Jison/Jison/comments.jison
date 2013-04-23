@@ -4,7 +4,7 @@
 %lex
 
 lineEnd (\n\r|\r\n|[\n\r])
-commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
+commentName ([a-zA-Z]+("|"|[a-zA-Z]+)*(?=[\s]*))
 %s area commentBody inlineCommentBody
 
 %%
@@ -31,7 +31,7 @@ commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
 ("//"){commentName}(?={lineEnd})
 	%{
 		this.begin('area');
-		yytext = yytext.substring(2, yytext.length);
+		yytext = getTypes(yytext.substring(2, yytext.length));
 		return 'areaType';
 	%}
 
@@ -48,7 +48,7 @@ commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
 ("/*"){commentName}
 	%{
 		this.begin('commentBody');
-		yytext = yytext.substring(2, yytext.length - 1);
+		yytext = getTypes(yytext.substring(2, yytext.length));
 		return 'commentType';
 	%}
 
@@ -70,7 +70,7 @@ commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
 "//"{commentName}
 	%{
 		this.begin('inlineCommentBody');
-		yytext = yytext.substring(2, yytext.length - 1);
+		yytext = getTypes(yytext.substring(2, yytext.length));
 		return 'inlineCommentType';
 	%}
 
@@ -187,3 +187,13 @@ areaBody
 			$$ = $1 + $2;
 		}
 	;
+%%
+
+var getTypes = function (types) {
+	types = types.split(',');
+	var Types = {};
+	for (var i in types) {
+		Types[types[i]] = true;
+	}
+	return Types;
+};

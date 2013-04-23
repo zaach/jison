@@ -33,7 +33,7 @@ using System.Linq;
         public static void Main()
         {
 			var parser = new Parser();
-            var o = parser.Parse("A1:B1");
+            var o = parser.Parse("A1");
 		    o = o;
 		}
 		
@@ -558,6 +558,11 @@ using System.Linq;
         public void AppendChildren(ParserValue value)
         {
             Children.Push(value);
+        }
+
+        public void ToDecimal()
+        {
+            DecimalValue = Convert.ToDecimal(Text);
         }
     }
 

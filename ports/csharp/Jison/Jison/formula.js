@@ -222,6 +222,11 @@ case 30:
 			this.$ = yy.handler.cellValue.apply(yy.obj, [$$[$0]]);
 			
 			//php this.$ = this->cellValue($$[$0]);
+			
+			/*cs
+				$$[$0].ToDecimal();
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 31:

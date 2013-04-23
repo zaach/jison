@@ -1774,7 +1774,7 @@ namespace Jison
         public static void Main()
         {
 			var parser = new Parser();
-            var o = parser.Parse("A1:B1");
+            var o = parser.Parse("A1");
 		    o = o;
 		}
 		
@@ -1881,6 +1881,11 @@ case 29:
 		
 break;
 case 30:
+			
+			
+			
+				ss[so].ToDecimal();
+				thisS = ss[so];
 			
 		
 break;
@@ -2528,6 +2533,11 @@ break;
         public void AppendChildren(ParserValue value)
         {
             Children.Push(value);
+        }
+
+        public void ToDecimal()
+        {
+            DecimalValue = Convert.ToDecimal(Text);
         }
     }
 

@@ -314,6 +314,11 @@ cell :
 			$$ = yy.handler.cellValue.apply(yy.obj, [$1]);
 			
 			//php $$ = $this->cellValue($1);
+			
+			/*cs
+				$1.ToDecimal();
+				$$ = $1;
+			*/
 		}
 	| CELL ':' CELL
 		{
