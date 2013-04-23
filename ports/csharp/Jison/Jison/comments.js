@@ -386,33 +386,33 @@ case 2:
 	
 break;
 case 3:
+		this.popState();
+		return 20;
+	
+break;
+case 4:
 		this.begin('area');
 		yy_.yytext = yy_.yytext.substring(2, yy_.yytext.length);
 		return 19;
 	
 break;
-case 4:
+case 5:
 		this.popState();
 		return 12;
 	
 break;
-case 5:
+case 6:
 		return 14;
 	
 break;
-case 6:
+case 7:
 		this.begin('commentBody');
 		yy_.yytext = yy_.yytext.substring(2, yy_.yytext.length - 1);
 		return 11;
 	
 break;
-case 7:
-		return 18;
-	
-break;
 case 8:
-		this.popState();
-		return 17;
+		return 18;
 	
 break;
 case 9:
@@ -421,12 +421,15 @@ case 9:
 	
 break;
 case 10:
+		this.popState();
+		return 17;
+	
+break;
+case 11:
 		this.begin('inlineCommentBody');
 		yy_.yytext = yy_.yytext.substring(2, yy_.yytext.length - 1);
 		return 15;
 	
-break;
-case 11:return 7;
 break;
 case 12:return 7;
 break;
@@ -434,12 +437,14 @@ case 13:return 7;
 break;
 case 14:return 7;
 break;
-case 15:return 5;
+case 15:return 7;
+break;
+case 16:return 5;
 break;
 }
 },
-rules: [/^(?:(\/\/\n))/,/^(?:(?=(\/\/|\/\*)))/,/^(?:(.|((\n\r|\r\n|[\n\r]))))/,/^(?:(\/\/)(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*))(?=((\n\r|\r\n|[\n\r]))))/,/^(?:(\*\/))/,/^(?:(.|((\n\r|\r\n|[\n\r]))))/,/^(?:(\/\*)(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*)))/,/^(?:(.))/,/^(?:(?=((\n\r|\r\n|[\n\r]))))/,/^(?:$)/,/^(?:\/\/(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*)))/,/^(?:([A-Za-z0-9 .,?;]+))/,/^(?:([ ]))/,/^(?:((\n\r|\r\n|[\n\r])))/,/^(?:(.))/,/^(?:$)/],
-conditions: {"area":{"rules":[0,1,2,3,6,10,11,12,13,14,15],"inclusive":true},"commentBody":{"rules":[3,4,5,6,10,11,12,13,14,15],"inclusive":true},"inlineCommentBody":{"rules":[3,6,7,8,9,10,11,12,13,14,15],"inclusive":true},"INITIAL":{"rules":[3,6,10,11,12,13,14,15],"inclusive":true}}
+rules: [/^(?:(\/\/\n))/,/^(?:(?=(\/\/|\/\*)))/,/^(?:(.|((\n\r|\r\n|[\n\r]))))/,/^(?:(?=$))/,/^(?:(\/\/)(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*))(?=((\n\r|\r\n|[\n\r]))))/,/^(?:(\*\/))/,/^(?:(.|((\n\r|\r\n|[\n\r]))))/,/^(?:(\/\*)(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*)))/,/^(?:(.))/,/^(?:(?=((\n\r|\r\n|[\n\r]))))/,/^(?:(?=$))/,/^(?:\/\/(([a-zA-Z]+?(\||[a-zA-Z]+)*?[\s]*)))/,/^(?:([A-Za-z0-9 .,?;]+))/,/^(?:([ ]))/,/^(?:((\n\r|\r\n|[\n\r])))/,/^(?:(.))/,/^(?:$)/],
+conditions: {"area":{"rules":[0,1,2,3,4,7,11,12,13,14,15,16],"inclusive":true},"commentBody":{"rules":[4,5,6,7,11,12,13,14,15,16],"inclusive":true},"inlineCommentBody":{"rules":[4,7,8,9,10,11,12,13,14,15,16],"inclusive":true},"INITIAL":{"rules":[4,7,11,12,13,14,15,16],"inclusive":true}}
 };
 return lexer;
 })();

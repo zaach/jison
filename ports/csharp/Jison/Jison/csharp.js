@@ -70,13 +70,12 @@ exec("jison " + process.argv[2], function (error) {
         str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
         str = str.replace(new RegExp('[$]end', 'g'), 'end');
         str = str.replace(new RegExp('console[.]log'), '');
-        str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoiding_name_collisions');
+        str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoidingNameCollisions');
 		if (isLex) {
 		    str = str
-		        .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function () {
+		        .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
 		            return arguments[1] + symbols[arguments[3]] + ';';
-		        })
-		        .replace('avoiding_name_collisions', 'avoidingNameCollisions');
+		        });
 		}
 		str = comments.parse(str);
 

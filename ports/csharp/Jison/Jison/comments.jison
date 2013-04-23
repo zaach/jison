@@ -23,6 +23,11 @@ commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
 	%{
 		return 'areaString';
 	%}
+<area>(?=<<EOF>>)
+	%{
+		this.popState();
+		return 'areaEnd';
+	%}
 ("//"){commentName}(?={lineEnd})
 	%{
 		this.begin('area');
@@ -57,7 +62,7 @@ commentName ([a-zA-Z]+?("|"|[a-zA-Z]+)*?[\s]*)
 		this.popState();
 		return 'inlineCommentEnd';
 	%}
-<inlineCommentBody><<EOF>>
+<inlineCommentBody>(?=<<EOF>>)
 	%{
 		this.popState();
 		return 'inlineCommentEnd';

@@ -216,31 +216,18 @@ namespace Jison
 				};
 
 			table0.SetActions(ref tableDefinition0);
-
 			table1.SetActions(ref tableDefinition1);
-
 			table2.SetActions(ref tableDefinition2);
-
 			table3.SetActions(ref tableDefinition3);
-
 			table4.SetActions(ref tableDefinition4);
-
 			table5.SetActions(ref tableDefinition5);
-
 			table6.SetActions(ref tableDefinition6);
-
 			table7.SetActions(ref tableDefinition7);
-
 			table8.SetActions(ref tableDefinition8);
-
 			table9.SetActions(ref tableDefinition9);
-
 			table10.SetActions(ref tableDefinition10);
-
 			table11.SetActions(ref tableDefinition11);
-
 			table12.SetActions(ref tableDefinition12);
-
 			table13.SetActions(ref tableDefinition13);
 
 			Table = new Dictionary<int, ParserState>
@@ -289,16 +276,16 @@ namespace Jison
             
 			Rules = new Dictionary<int, Regex>
 				{
-					{0, new Regex("^(?:(<(.|\n)[^>]*?\\/>))")},
-					{1, new Regex("^(?:$)")},
-					{2, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
-					{3, new Regex("^(?:(<\\/(.|\n)[^>]*?>))")},
-					{4, new Regex("^(?:(<(.|\n)[^>]*?>))")},
-					{5, new Regex("^(?:([A-Za-z0-9 .,?;]+))")},
-					{6, new Regex("^(?:([ ]))")},
-					{7, new Regex("^(?:((\n\r|\r\n|[\n\r])))")},
-					{8, new Regex("^(?:(.))")},
-					{9, new Regex("^(?:$)")}
+					{0, new Regex(@"""^(?:(<(.|\n)[^>]*?\\/>))""")},
+					{1, new Regex(@"""^(?:$)""")},
+					{2, new Regex(@"""^(?:(<\\/(.|\n)[^>]*?>))""")},
+					{3, new Regex(@"""^(?:(<\\/(.|\n)[^>]*?>))""")},
+					{4, new Regex(@"""^(?:(<(.|\n)[^>]*?>))""")},
+					{5, new Regex(@"""^(?:([A-Za-z0-9 .,?;]+))""")},
+					{6, new Regex(@"""^(?:([ ]))""")},
+					{7, new Regex(@"""^(?:((\n\r|\r\n|[\n\r])))""")},
+					{8, new Regex(@"""^(?:(.))""")},
+					{9, new Regex(@"""^(?:$)""")}
 				};
 
 			Conditions = new Dictionary<string, LexerConditions>
@@ -333,40 +320,51 @@ break;
 case 2:return ss[so-1];
 break;
 case 3:
-		thisS = new ParserValue("");
+		
+		
+		
 	
 break;
 case 4:
-		ss[so].StringValue = ss[so].Text;
-		thisS = ss[so];
+		
+		
+		
 	
 break;
 case 5:
-		ss[so-1].StringValue = ss[so-1].Text = ss[so-1].Text + ss[so].Text;
-		thisS = ss[so-1];
+		
+
+		
 	
 break;
 case 6:
-		//string
-		thisS = ss[so];
+        
+		
+		
     
 break;
 case 7:
-		thisS = ss[so];
+        
+		
+		
     
 break;
 case 8:
-		thisS = ss[so];
+	    
+		
+		
 	
 break;
 case 9:
-		ss[so-2].StringValue = ss[so-2].Text = ss[so-2].Text + ss[so-1].Text + ss[so].Text;
-		thisS = ss[so-2];
+	    
+		
+		
 	
 break;
 case 10:
-		ss[so-1].StringValue = ss[so-1].Text = ss[so-1].Text + ss[so].Text;
-		thisS = ss[so-1];
+	    
+		
+		
 	
 break;
 }
@@ -787,16 +785,16 @@ case 1:
 	
 break;
 case 2:
-		PopState();
-		return 11;
+		
 	
 break;
-case 3://close
+case 3:
     	return 11;
 	
 break;
-case 4://open
-		Begin("htmlElement");
+case 4:
+		
+		
 		return 10;
 	
 break;
@@ -1095,7 +1093,15 @@ break;
             SymbolsString.Add(symbol.Name, symbol);
         }
 
-        new public ParserSymbol this[string name]
+        public ParserSymbol this[char name]
+        {
+            get
+            {
+                return SymbolsString[name.ToString()];
+            }
+        }
+
+        public ParserSymbol this[string name]
         {
             get
             {
@@ -1103,7 +1109,7 @@ break;
             }
         }
 
-        new public ParserSymbol this[int index]
+        public ParserSymbol this[int index]
         {
             get
             {

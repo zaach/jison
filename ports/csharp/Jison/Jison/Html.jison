@@ -23,20 +23,25 @@ tagOpen "<"(.|\n)[^>]*?">"
 
 <htmlElement>{tagClose}
 	%{
-		//cs PopState();
-		this.popState();//js
+		//js
+		this.popState();
 		return 'tagClose';
+
+		//cs PopState();
 	%}
 
 {tagClose}
-	%{//close
+	%{
     	return 'tagClose';
 	%}
 
 {tagOpen}
-	%{//open
+	%{
+		//js
+		this.begin("htmlElement");
+		
 		//cs Begin("htmlElement");
-		this.begin("htmlElement");//js
+		
 		return 'tagOpen';
 	%}
 
@@ -64,61 +69,92 @@ wiki
 	{return $1;}
  | eof
     {
+		//js
+		$$ = "";
+		
 		//php $$ = "";
+		
 		//cs $$ = new ParserValue("");
-		$$ = "";//js
 	}
  ;
 
 contents
  : content
 	{
+		//js
+		$$ = $1;
+		
 		//php $$ = $1;
-		//cs $1.StringValue = $1.Text;
-		//cs $$ = $1;
-		$$ = $1;//js
+		
+		/*cs
+			$1.StringValue = $1.Text;
+			$$ = $1;
+		*/
 	}
  | contents content
 	{
+		//js
+		$$ = $1 + $2;
+
 		//php $$ = $1 . $2;
-		//cs $1.StringValue = $1.Text = $1.Text + $2.Text;
-		//cs $$ = $1;
-		$$ = $1 + $2;//js
+
+		/*cs
+			$1.StringValue = $1.Text = $1.Text + $2.Text;
+			$$ = $1;
+		*/
 	}
  ;
 
 content
  : string
     {
-        //php $$ = $1;
-		//string
+        //js
+		$$ = "";
+		
+		//php $$ = $1;
+		
 		//cs $$ = $1;
-		$$ = "";//js
     }
  | lineEnd
     {
-        //php $$ = $1;
+        //js
+		$$ = "";
+		
+		//php $$ = $1;
+		
 		//cs $$ = $1;
-		$$ = "";//js
     }
  | tag
 	{
-	    //php $$ = $1;
+	    //js
+		$$ = $1;
+		
+		//php $$ = $1;
+		
 		//cs $$ = $1;
-		$$ = $1;//js
 	}
  | tagOpen contents tagClose
 	{
-	    //php $$ = $1 . $2 . $3;
-		//cs $1.StringValue = $1.Text = $1.Text + $2.Text + $3.Text;
-		//cs $$ = $1;
-		$$ = $1 + $2 + $3;//js
+	    //js
+		$$ = $1 + $2 + $3;
+		
+		//php $$ = $1 . $2 . $3;
+		
+		/*cs
+			$1.StringValue = $1.Text = $1.Text + $2.Text + $3.Text;
+			$$ = $1;
+		*/
 	}
  | tagOpen tagClose
 	{
-	    //php $$ = $1 . $2;
-		//cs $1.StringValue = $1.Text = $1.Text + $2.Text;
-		//cs $$ = $1;
-		$$ = $1 + $2;//js
+	    //js
+		$$ = $1 + $2;
+		
+		//php $$ = $1 . $2;
+		
+		/*cs
+			$1.StringValue = $1.Text = $1.Text + $2.Text;
+			$$ = $1;
+		*/
 	}
 ;

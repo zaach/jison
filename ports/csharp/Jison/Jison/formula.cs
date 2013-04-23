@@ -1774,7 +1774,7 @@ namespace Jison
         public static void Main()
         {
 			var parser = new Parser();
-            var o = parser.Parse("<b>Test</b>");
+            var o = parser.Parse("A1:B1");
 		    o = o;
 		}
 		
@@ -2196,7 +2196,7 @@ break;
 		public string PastInput()
 		{
 			var past = Matched.Substring(0, Matched.Length - Match.Length);
-			return (past.Length > 20 ? "..." : "") + Regex.Replace(past.Substring(-20), "/\n/", "");
+			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(-20), "/\n/", "") : "");
 		}
 		
 		public string UpcomingInput()
@@ -2204,9 +2204,9 @@ break;
 			var next = Match;
 			if (next.Length < 20)
             {
-				next += _Input.Substring(0, 20 - next.Length);
+				next += _Input.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
 			}
-			return Regex.Replace(next.Substring(0, 20) + (next.Length > 20 ? "..." : ""), "/\n/", "");
+            return Regex.Replace(next.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length)) + (next.Length > 20 ? "..." : ""), "/\n/", "");
 		}
 		
 		public string ShowPosition()
@@ -2700,7 +2700,7 @@ break;
             SymbolsString.Add(symbol.Name, symbol);
         }
 
-        new public ParserSymbol this[char name]
+        public ParserSymbol this[char name]
         {
             get
             {
@@ -2708,7 +2708,7 @@ break;
             }
         }
 
-        new public ParserSymbol this[string name]
+        public ParserSymbol this[string name]
         {
             get
             {
@@ -2716,7 +2716,7 @@ break;
             }
         }
 
-        new public ParserSymbol this[int index]
+        public ParserSymbol this[int index]
         {
             get
             {

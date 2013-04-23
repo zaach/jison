@@ -14,56 +14,87 @@ break;
 case 2:return $$[$0-1];
 break;
 case 3:
+		//js
+		this.$ = "";
+		
 		//php this.$ = "";
+		
 		//cs this.$ = new ParserValue("");
-		this.$ = "";//js
 	
 break;
 case 4:
+		//js
+		this.$ = $$[$0];
+		
 		//php this.$ = $$[$0];
-		//cs $$[$0].StringValue = $$[$0].Text;
-		//cs this.$ = $$[$0];
-		this.$ = $$[$0];//js
+		
+		/*cs
+			$$[$0].StringValue = $$[$0].Text;
+			this.$ = $$[$0];
+		*/
 	
 break;
 case 5:
+		//js
+		this.$ = $$[$0-1] + $$[$0];
+
 		//php this.$ = $$[$0-1] . $$[$0];
-		//cs $$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
-		//cs this.$ = $$[$0-1];
-		this.$ = $$[$0-1] + $$[$0];//js
+
+		/*cs
+			$$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
+			this.$ = $$[$0-1];
+		*/
 	
 break;
 case 6:
-        //php this.$ = $$[$0];
-		//string
+        //js
+		this.$ = "";
+		
+		//php this.$ = $$[$0];
+		
 		//cs this.$ = $$[$0];
-		this.$ = "";//js
     
 break;
 case 7:
-        //php this.$ = $$[$0];
+        //js
+		this.$ = "";
+		
+		//php this.$ = $$[$0];
+		
 		//cs this.$ = $$[$0];
-		this.$ = "";//js
     
 break;
 case 8:
-	    //php this.$ = $$[$0];
+	    //js
+		this.$ = $$[$0];
+		
+		//php this.$ = $$[$0];
+		
 		//cs this.$ = $$[$0];
-		this.$ = $$[$0];//js
 	
 break;
 case 9:
-	    //php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
-		//cs $$[$0-2].StringValue = $$[$0-2].Text = $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text;
-		//cs this.$ = $$[$0-2];
-		this.$ = $$[$0-2] + $$[$0-1] + $$[$0];//js
+	    //js
+		this.$ = $$[$0-2] + $$[$0-1] + $$[$0];
+		
+		//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
+		
+		/*cs
+			$$[$0-2].StringValue = $$[$0-2].Text = $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text;
+			this.$ = $$[$0-2];
+		*/
 	
 break;
 case 10:
-	    //php this.$ = $$[$0-1] . $$[$0];
-		//cs $$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
-		//cs this.$ = $$[$0-1];
-		this.$ = $$[$0-1] + $$[$0];//js
+	    //js
+		this.$ = $$[$0-1] + $$[$0];
+		
+		//php this.$ = $$[$0-1] . $$[$0];
+		
+		/*cs
+			$$[$0-1].StringValue = $$[$0-1].Text = $$[$0-1].Text + $$[$0].Text;
+			this.$ = $$[$0-1];
+		*/
 	
 break;
 }
@@ -360,18 +391,23 @@ case 1:
 	
 break;
 case 2:
-		//cs PopState();
-		this.popState();//js
+		//js
+		this.popState();
 		return 11;
+
+		//cs PopState();
 	
 break;
-case 3://close
+case 3:
     	return 11;
 	
 break;
-case 4://open
+case 4:
+		//js
+		this.begin("htmlElement");
+		
 		//cs Begin("htmlElement");
-		this.begin("htmlElement");//js
+		
 		return 10;
 	
 break;
