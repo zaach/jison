@@ -7,7 +7,7 @@
   </head>
   <body>
     <div id="header">
-      <h1><a href="../">Jison</a></h1>
+        <h1><a href="../">Jison</a></h1>
     </div>
     <ul id="nav">
       <li><a href="../docs/">docs</a></li>
@@ -106,7 +106,7 @@ parser.parse("adfe34bc zxg");
 <h2 id="using-the-generated-parser">Using the Generated Parser</h2>
 <p>Once you have generated the parser and saved it, you no longer need Jison or any other dependencies.</p>
 
-<p>As demonstrated before, the parser can be used from the command line:    </p>
+<p>As demonstrated before, the parser can be used from the command line:</p>
 
 <pre><code>node calculator.js testcalc
 </code></pre>
@@ -191,7 +191,7 @@ var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 </ul>
 
 <h2 id="specifying-a-language">Specifying a Language</h2>
-<p>The process of parsing a language involves two phases: <strong>lexical analysis</strong> (tokenizing) and <strong>parsing</strong>, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar. </p>
+<p>The process of parsing a language involves two phases: <strong>lexical analysis</strong> (tokenizing) and <strong>parsing</strong>, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar.</p>
 
 <p>For example, here is the grammar for the calculator parser:</p>
 
@@ -318,7 +318,7 @@ e
 <p>More examples can be found in the <a href="http://github.com/zaach/jison/tree/master/examples/"><code>examples/</code></a> and <a href="http://github.com/zaach/jison/tree/master/tests/parser/"><code>tests/parser/</code></a> directories.</p>
 
 <h2 id="lexical-analysis">Lexical Analysis</h2>
-<p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place. </p>
+<p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place.</p>
 
 <p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. Several <a href="https://github.com/zaach/jison/wiki/DeviationsFromBison">metacharacters have been added</a>, but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:</p>
 
