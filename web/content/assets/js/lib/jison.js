@@ -1053,7 +1053,7 @@ parser.parse = function parse (input) {
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
 
-    var parseError = this.yy.parseError = typeof this.yy.parseError == 'function' ? this.yy.parseError : this.parseError;
+    var parseError = this.yy.parseError = typeof this.yy.parseError === 'function' ? this.yy.parseError : this.parseError;
 
     function popStack (n) {
         stack.length = stack.length - 2*n;
