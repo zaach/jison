@@ -31,9 +31,9 @@ if (!Object.defineProperty)
                     "This implementation of Object.defineProperty does not " +
                     "support configurable, enumerable, or writable."
                 );
-            else if (typeof descriptor.get == "function")
+            else if (typeof descriptor.get === "function")
                 object.__defineGetter__(property, descriptor.get);
-            if (typeof descriptor.set == "function")
+            if (typeof descriptor.set === "function")
                 object.__defineSetter__(property, descriptor.set);
         }
         return object;
