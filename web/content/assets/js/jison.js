@@ -3061,7 +3061,7 @@ parse: function parse(input) {
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
     this.yy.parser = this;
-    if (typeof this.lexer.yylloc == "undefined")
+    if (typeof this.lexer.yylloc === "undefined")
         this.lexer.yylloc = {};
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
@@ -3087,7 +3087,7 @@ parse: function parse(input) {
         if (this.defaultActions[state]) {
             action = this.defaultActions[state];
         } else {
-            if (symbol === null || typeof symbol == "undefined") {
+            if (symbol === null || typeof symbol === "undefined") {
                 symbol = lex();
             }
             action = table[state] && table[state][symbol];
@@ -4456,7 +4456,7 @@ parse: function parse(input) {
     this.lexer.yy = this.yy;
     this.yy.lexer = this.lexer;
     this.yy.parser = this;
-    if (typeof this.lexer.yylloc == "undefined")
+    if (typeof this.lexer.yylloc === "undefined")
         this.lexer.yylloc = {};
     var yyloc = this.lexer.yylloc;
     lstack.push(yyloc);
@@ -4482,7 +4482,7 @@ parse: function parse(input) {
         if (this.defaultActions[state]) {
             action = this.defaultActions[state];
         } else {
-            if (symbol === null || typeof symbol == "undefined") {
+            if (symbol === null || typeof symbol === "undefined") {
                 symbol = lex();
             }
             action = table[state] && table[state][symbol];
