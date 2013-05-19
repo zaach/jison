@@ -25,35 +25,35 @@ require._core = {
 require.resolve = (function () {
     return function (x, cwd) {
         if (!cwd) cwd = '/';
-
+        
         if (require._core[x]) return x;
         var path = require.modules.path();
         cwd = path.resolve('/', cwd);
         var y = cwd || '/';
-
+        
         if (x.match(/^(?:\.\.?\/|\/)/)) {
             var m = loadAsFileSync(path.resolve(y, x))
                 || loadAsDirectorySync(path.resolve(y, x));
             if (m) return m;
         }
-
+        
         var n = loadNodeModulesSync(x, y);
         if (n) return n;
-
+        
         throw new Error("Cannot find module '" + x + "'");
-
+        
         function loadAsFileSync (x) {
             x = path.normalize(x);
             if (require.modules[x]) {
                 return x;
             }
-
+            
             for (var i = 0; i < require.extensions.length; i++) {
                 var ext = require.extensions[i];
                 if (require.modules[x + ext]) return x + ext;
             }
         }
-
+        
         function loadAsDirectorySync (x) {
             x = x.replace(/\/+$/, '');
             var pkgfile = path.normalize(x + '/package.json');
@@ -73,10 +73,10 @@ require.resolve = (function () {
                     if (m) return m;
                 }
             }
-
+            
             return loadAsFileSync(x + '/index');
         }
-
+        
         function loadNodeModulesSync (x, start) {
             var dirs = nodeModulesPathsSync(start);
             for (var i = 0; i < dirs.length; i++) {
@@ -86,23 +86,23 @@ require.resolve = (function () {
                 var n = loadAsDirectorySync(dir + '/' + x);
                 if (n) return n;
             }
-
+            
             var m = loadAsFileSync(x);
             if (m) return m;
         }
-
+        
         function nodeModulesPathsSync (start) {
             var parts;
             if (start === '/') parts = [ '' ];
             else parts = path.normalize(start).split('/');
-
+            
             var dirs = [];
             for (var i = parts.length - 1; i >= 0; i--) {
                 if (parts[i] === 'node_modules') continue;
                 var dir = parts.slice(0, i + 1).join('/') + '/node_modules';
                 dirs.push(dir);
             }
-
+            
             return dirs;
         }
     };
@@ -118,13 +118,13 @@ require.alias = function (from, to) {
         res = require.resolve(from, '/');
     }
     var basedir = path.dirname(res);
-
+    
     var keys = (Object.keys || function (obj) {
         var res = [];
         for (var key in obj) res.push(key);
         return res;
     })(require.modules);
-
+    
     for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
         if (key.slice(0, basedir.length + 1) === basedir + '/') {
@@ -141,18 +141,18 @@ require.alias = function (from, to) {
     var process = {};
     var global = typeof window !== 'undefined' ? window : {};
     var definedProcess = false;
-
+    
     require.define = function (filename, fn) {
         if (!definedProcess && require.modules.__browserify_process) {
             process = require.modules.__browserify_process();
             definedProcess = true;
         }
-
+        
         var dirname = require._core[filename]
             ? ''
             : require.modules.path().dirname(filename)
         ;
-
+        
         var require_ = function (file) {
             var requiredModule = require(file, dirname);
             var cached = require.cache[require.resolve(file, dirname)];
@@ -176,7 +176,7 @@ require.alias = function (from, to) {
             loaded : false,
             parent: null
         };
-
+        
         require.modules[filename] = function () {
             require.cache[filename] = module_;
             fn.call(
@@ -286,7 +286,7 @@ path = normalizeArray(filter(path.split('/'), function(p) {
   if (path && trailingSlash) {
     path += '/';
   }
-
+  
   return (isAbsolute ? '/' : '') + path;
 };
 
@@ -1663,7 +1663,7 @@ parser.parse = function parse (input) {
 
     var symbol, preErrorSymbol, state, action, a, r, yyval = {}, p, len, newState, expected;
     while (true) {
-        // retrieve state number from top of stack
+        // retreive state number from top of stack
         state = stack[stack.length - 1];
 
         // use default actions if available
@@ -3668,11 +3668,11 @@ case 17:this.$ = $$[$0];
 break;
 case 18:
             this.$ = $$[$0-1];
-            if ($$[$0][0] in this.$)
+            if ($$[$0][0] in this.$) 
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             else
                 this.$[$$[$0][0]] = $$[$0][1];
-
+        
 break;
 case 19:this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];
 break;
@@ -3687,7 +3687,7 @@ case 23:
             if($$[$0]) this.$.push($$[$0]);
             if($$[$0-1]) this.$.push($$[$0-1]);
             if (this.$.length === 1) this.$ = this.$[0];
-
+        
 break;
 case 24:this.$ = $$[$0-1]; this.$.push($$[$0])
 break;
@@ -3697,13 +3697,13 @@ case 26:this.$ = $$[$0-2]; this.$.push($$[$0].join(' '));
 break;
 case 27:this.$ = [$$[$0].join(' ')];
 break;
-case 28:this.$ = $$[$0-1] + $$[$0];
+case 28:this.$ = $$[$0-1] + $$[$0]; 
 break;
-case 29:this.$ = $$[$0];
+case 29:this.$ = $$[$0]; 
 break;
-case 30:this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0];
+case 30:this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0]; 
 break;
-case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')';
+case 31:this.$ = '(' + $$[$0-1].join(' | ') + ')'; 
 break;
 case 32:this.$ = ''
 break;
@@ -4805,8 +4805,8 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
  * optional array of values.  When provided, they will be escaped and
  * inserted into the selector string properly escaped.  i.e.:
  *
- *   .match(':has(?)', [ 'foo' ], {})
- *
+ *   .match(':has(?)', [ 'foo' ], {}) 
+ * 
  * would result in the seclector ':has("foo")' being matched against {}.
  *
  * This feature makes dynamically generated selectors more readable.
@@ -4820,9 +4820,9 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
  * .forEach(selector, [ values ], object, callback)
  *
  *   Like match, but rather than returning an array, invokes the provided
- *   callback once per match as the matches are discovered.
- *
- * .compile(selector, [ values ])
+ *   callback once per match as the matches are discovered. 
+ * 
+ * .compile(selector, [ values ]) 
  *
  *   Parses the selector and compiles it to an internal form, and returns
  *   an object which contains the compiled selector and has two properties:
@@ -4831,7 +4831,7 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
  *   use the compiled selector.
  *
  *   For cases where a complex selector is repeatedly used, this method
- *   should be faster as it will avoid recompiling the selector each time.
+ *   should be faster as it will avoid recompiling the selector each time. 
  */
 (function(exports) {
 
@@ -4934,7 +4934,7 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
             // skip and don't capture leading whitespace
             "^\\s*(?:" +
             // (1) simple vals
-            "(true|false|null)|" +
+            "(true|false|null)|" + 
             // (2) numbers
             "(-?\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d+)?)|" +
             // (3) strings
@@ -5050,7 +5050,7 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
         if (!nested) hints = {};
 
         var a = [], am, readParen;
-        if (!off) off = 0;
+        if (!off) off = 0; 
 
         while (true) {
             var s = parse_selector(str, off, hints);
@@ -5229,7 +5229,7 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
     // THE EVALUATOR
 
     function isArray(o) {
-        return Array.isArray ? Array.isArray(o) :
+        return Array.isArray ? Array.isArray(o) : 
           toString.call(o) === "[object Array]";
     }
 
@@ -5337,7 +5337,7 @@ require.define("/node_modules/JSONSelect/src/jsonselect.js",function(require,mod
         });
         if (arr.length) throw "too many parameters supplied";
         return sel;
-    }
+    } 
 
     function compile(sel, arr) {
         if (arr) sel = format(sel, arr);
