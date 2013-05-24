@@ -23,7 +23,7 @@ exec("jison " + process.argv[2], function (error) {
     }
 
     var fileName = process.argv[2].replace('.jison', ''),
-        comments = require(path.resolve(__dirname, 'comments.js')),
+        comments = require(path.resolve(__dirname, '../../../comments.js')),
         requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
@@ -88,7 +88,7 @@ exec("jison " + process.argv[2], function (error) {
 
     var option = {
         parserNamespace: 'Jison',
-        parserClass: 'Parser',
+        parserClass: 'Definition',
         fileName: fileName + '.cs'
     };
 
@@ -104,7 +104,7 @@ exec("jison " + process.argv[2], function (error) {
 
     console.log(option);
 
-    var parserRaw = fs.readFileSync(__dirname + "/template.cs", "utf8");
+    var parserRaw = fs.readFileSync(__dirname + "/Template.cs", "utf8");
 
     function parserInject() {
         var result = '\n';
@@ -227,7 +227,7 @@ exec("jison " + process.argv[2], function (error) {
     
     parserRaw = parserRaw
         .replace('/**/namespace Jison/**/', 'namespace ' + option.parserNamespace)
-        .replace('/**/class Parser/**/', 'class ' + option.parserClass)
+        .replace('/**/class Definition/**/', 'class ' + option.parserClass)
         .replace('new Parser(', 'new ' + option.parserClass + '(')
 
         .replace('//@@PARSER_INJECT@@',

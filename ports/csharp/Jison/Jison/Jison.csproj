@@ -59,17 +59,23 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="comments.jison" />
     <None Include="formula.jison" />
-    <None Include="Html.cs" />
-    <Compile Include="formula.cs" />
+    <Compile Include="Jison.Base.cs" />
+    <Compile Include="Jison.Definition.cs" />
+    <Compile Include="jQuerySheet.FormulaFunctions.cs" />
+    <Compile Include="jQuerySheet.Spreadsheet.cs" />
+    <Compile Include="\\VBOXSVR\robert\Dropbox\Jison.Formula.cs">
+      <Link>Jison.Formula.cs</Link>
+    </Compile>
+    <None Include="\\VBOXSVR\robert\Dropbox\formula.cs">
+      <Link>formula.cs</Link>
+    </None>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="Html.jison" />
     <None Include="Template.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -107,6 +113,7 @@
   <Target Name="AfterBuild">
   </Target>
   <PropertyGroup>
-    <PreBuildEvent>node ../../csharp.js ../../formula.jison</PreBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
   </PropertyGroup>
 </Project>

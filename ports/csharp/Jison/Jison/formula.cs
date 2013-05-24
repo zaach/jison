@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Jison
 {
-    class Parser
+    public class Parser
     {
         public ParserSymbols Symbols;
         public Dictionary<int, ParserSymbol> Terminals;
@@ -1786,6 +1786,7 @@ namespace Jison
         public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Count - 1;
+/* this == yyval */
 
 
 switch (yystate) {
@@ -1884,6 +1885,7 @@ case 30:
 			
 			
 			
+				ss[so].Text = "100.56";
 				ss[so].ToDecimal();
 				thisS = ss[so];
 			
@@ -1922,6 +1924,19 @@ case 38:
 		
 break;
 case 39:
+			
+				ss[so].ToDecimal();
+				thisS = ss[so];
+			
+		
+break;
+case 40:
+			
+			
+			
+				ss[so-2].Text += "." + ss[so].Text;
+				ss[so-2].ToDecimal();
+				thisS = ss[so-2];
 			
 		
 break;
@@ -2364,6 +2379,10 @@ case 7:
 break;
 case 8:
 	
+	
+	
+		return 28;
+	
 
 break;
 case 9:return 23;
@@ -2428,7 +2447,7 @@ break;
 		}
 	}
 
-    class ParserLocation
+    public class ParserLocation
     {
         public int FirstLine;
         public int LastLine;
@@ -2454,7 +2473,7 @@ break;
         }
     }
 
-    class ParserValue
+    public class ParserValue
     {
         public bool ValueSet = false;
         public bool BoolValue = false;
@@ -2541,7 +2560,7 @@ break;
         }
     }
 
-    class LexerConditions
+    public class LexerConditions
     {
         public List<int> Rules;
         public bool Inclusive;
@@ -2553,7 +2572,7 @@ break;
         }
     }
 
-    class ParserProduction
+    public class ParserProduction
     {
         public int Len = 0;
         public ParserSymbol Symbol;
@@ -2570,7 +2589,7 @@ break;
         }
     }
 
-    class ParserCachedAction
+    public class ParserCachedAction
     {
         public ParserAction Action;
         public ParserSymbol Symbol;
@@ -2587,7 +2606,7 @@ break;
         }
     }
 
-    class ParserAction
+    public class ParserAction
     {
         public int Action = 0;
         public ParserState State;
@@ -2617,7 +2636,7 @@ break;
         }
     }
 
-    class ParserSymbol
+    public class ParserSymbol
     {
         public string Name;
         public int Index;
@@ -2641,7 +2660,7 @@ break;
         }
     }
 
-    class ParserError
+    public class ParserError
     {
         public String Text;
         public ParserState State;
@@ -2661,7 +2680,7 @@ break;
         }
     }
 
-    class LexerError
+    public class LexerError
     {
         public String Text;
         public int Token;
@@ -2675,7 +2694,7 @@ break;
         }
     }
 
-    class ParserState
+    public class ParserState
     {
         public int Index;
         public Dictionary<int, ParserAction> Actions = new Dictionary<int, ParserAction>();
@@ -2691,7 +2710,7 @@ break;
         }
     }
 
-    class ParserRange
+    public class ParserRange
     {
         public int X;
         public int Y;
@@ -2703,7 +2722,7 @@ break;
         }
     }
 
-    class ParserSymbols
+    public class ParserSymbols
     {
         private Dictionary<string, ParserSymbol> SymbolsString = new Dictionary<string, ParserSymbol>();
         private Dictionary<int, ParserSymbol> SymbolsInt = new Dictionary<int, ParserSymbol>();
@@ -2743,7 +2762,7 @@ break;
         }
     }
 
-    class JList<T> : List<T> where T : class
+    public class JList<T> : List<T> where T : class
     {
         public void Push(T item)
         {

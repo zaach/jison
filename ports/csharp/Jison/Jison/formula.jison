@@ -1,4 +1,3 @@
-//phpOption parserClass:Formula
 /* description: Parses end evaluates mathematical expressions. */
 /* lexical grammar */
 %lex
@@ -42,6 +41,10 @@
 	/*php
 		if ($this->type == 'cell') return 'CELL';
 		return 'VARIABLE';
+	*/
+	
+	/*cs
+		return "CELL";
 	*/
 %}
 [A-Za-z]+(?=[(])    				{return 'FUNCTION';}
@@ -316,6 +319,7 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
+				$1.Text = "100.56";
 				$1.ToDecimal();
 				$$ = $1;
 			*/
@@ -402,6 +406,11 @@ number :
 		{
 			//js|php
 			$$ = $1 * 1;
+			
+			/*cs
+				$1.ToDecimal();
+				$$ = $1;
+			*/
 		}
 	| NUMBER DECIMAL NUMBER
 		{
@@ -409,6 +418,12 @@ number :
 			$$ =($1 + '.' + $3) * 1;
 			
 			//php $$ = $1 . '.' . $3;
+			
+			/*cs
+				$1.Text += "." + $3.Text;
+				$1.ToDecimal();
+				$$ = $1;
+			*/
 		}
 	| number '%'
 		{
