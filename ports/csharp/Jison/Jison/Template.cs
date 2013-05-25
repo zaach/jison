@@ -12,6 +12,8 @@ using System.Collections.Generic;
 		new public Dictionary<int, ParserState> Table;
 		new public Dictionary<int, ParserAction> DefaultActions;
 		new public bool Debug = false;
+		
+		public string Type = "Cell";
 
 		/**/public Definition/**/()
         {

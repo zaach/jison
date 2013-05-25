@@ -89,6 +89,10 @@ case 2:
 			this.$ = yy.handler.variable.apply(yy.obj, $$[$0]);
             
 			//php this.$ = this->variable($$[$0]);
+			
+			/*cs
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 3:
@@ -108,6 +112,11 @@ case 5:
 			this.$ = yy.handler.number.apply(yy.obj, [$$[$0]]);
 			
 			//php this.$ = $$[$0] * 1;
+			
+			/*cs
+				$$[$0].ToDecimal();
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 6:
@@ -115,6 +124,11 @@ case 6:
 			this.$ = $$[$0].substring(1, $$[$0].length - 1);
 			
 			//php this.$ = substr($$[$0], 1, -1);
+			
+			/*cs
+				$$[$0].ToString();
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 7:
@@ -123,6 +137,10 @@ case 7:
 			this.$ = yy.handler.callFunction.apply(yy.obj, ['EQUAL', [$$[$0-2], $$[$0]]]);
 			
 			//php this.$ = $$[$0-2] == $$[$0];
+			
+			/*cs
+				this.$ = new ParserValue($$[$0-2].Text == $$[$0].Text);
+			*/
 		
 break;
 case 8:
@@ -139,6 +157,12 @@ case 8:
 					this.$ = $$[$0-2] . $$[$0];
 				}
 			*/
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue + $$[$0].DecimalValue);
+			*/
 		
 break;
 case 9:
@@ -152,6 +176,12 @@ case 10:
 			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS_EQUAL', [$$[$0-3], $$[$0-1]]]);
 			
 			//php this.$ = ($$[$0-3] * 1) <= ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-3].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-3].DecimalValue <= $$[$0].DecimalValue);
+			*/
 		
 break;
 case 11:
@@ -159,6 +189,12 @@ case 11:
 			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER_EQUAL', [$$[$0-3], $$[$0-1]]]);
 			
 			//php this.$ = ($$[$0-3] * 1) >= ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-3].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-3].DecimalValue >= $$[$0].DecimalValue);
+			*/
 		
 break;
 case 12:
@@ -171,6 +207,10 @@ case 12:
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
 			//
+			
+			/*cs
+				this.$ = new ParserValue($$[$0-3].Text != $$[$0].Text);
+			*/
 		
 break;
 case 13:
@@ -182,6 +222,10 @@ case 13:
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
 			//
+			
+			/*cs
+				this.$ = new ParserValue($$[$0-2].Text != $$[$0].Text);
+			*/
 		
 break;
 case 14:
@@ -189,6 +233,12 @@ case 14:
 			this.$ = yy.handler.callFunction.apply(yy.obj, ['GREATER', [$$[$0-2], $$[$0]]]);
 			
 			//php this.$ = ($$[$0-2] * 1) > ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue > $$[$0].DecimalValue);
+			*/
 		
 break;
 case 15:
@@ -196,6 +246,12 @@ case 15:
 			this.$ = yy.handler.callFunction.apply(yy.obj, ['LESS', [$$[$0-2], $$[$0]]]);
 			
 			//php this.$ = ($$[$0-2] * 1) < ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue < $$[$0].DecimalValue);
+			*/
 		
 break;
 case 16:
@@ -207,6 +263,12 @@ case 16:
 			yy.obj.html.pop();
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue - $$[$0].DecimalValue);
+			*/
 		
 break;
 case 17:
@@ -217,6 +279,12 @@ case 17:
 			yy.obj.html.push(null);
 			
 			//php this.$ = ($$[$0-2] * 1) * ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue * $$[$0].DecimalValue);
+			*/
 		
 break;
 case 18:
@@ -227,6 +295,12 @@ case 18:
 			yy.obj.html.push(null);
 			
 			//php this.$ = ($$[$0-2] * 1) / ($$[$0] * 1);
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue($$[$0-2].DecimalValue / $$[$0].DecimalValue);
+			*/
 		
 break;
 case 19:
@@ -240,6 +314,12 @@ case 19:
 			yy.obj.html.push(null);
 
 			//php this.$ = pow(($$[$0-2] * 1), ($$[$0] * 1));
+			
+			/*cs
+				$$[$0-2].ToDecimal();
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue((decimal)(Math.Pow((double)$$[$0-2].DecimalValue, (double)$$[$0].DecimalValue));
+			*/
 		
 break;
 case 20:
@@ -249,6 +329,11 @@ case 20:
 			if (isNaN(this.$)) this.$ = 0;
 
 			//php this.$ = $$[$0-1] * 1;
+			
+			/*cs
+				$$[$0].ToDecimal();
+				this.$ = new ParserValue(-$$[$0].DecimalValue);
+			*/
 		
 break;
 case 21:
@@ -258,6 +343,11 @@ case 21:
 			if (isNaN(this.$)) this.$ = 0;
 
 			//php this.$ = $$[$0-1] * 1;
+			
+			/*cs
+				$$[$0].ToDecimal();
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 22:/*this.$ = Math.E;*/;
@@ -267,6 +357,10 @@ case 23:
 			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-2], '']);
 			
 			//php this.$ = this->callFunction($$[$0-2]);
+			
+			/*cs
+				this.$ = jQuerySheet.FormulaFunctions.Call($$[$0-2].Text);
+			*/
 		
 break;
 case 24:
@@ -274,6 +368,10 @@ case 24:
 			this.$ = yy.handler.callFunction.apply(yy.obj, [$$[$0-3], $$[$0-1]]);
 			
 			//php this.$ = this->callFunction($$[$0-3], $$[$0-1]);
+			
+			/*cs
+				this.$ = jQuerySheet.FormulaFunctions.Call($$[$0-3].Text, $$[$0-1]);
+			*/
 		
 break;
 case 28:
@@ -281,6 +379,10 @@ case 28:
 			this.$ = yy.handler.fixedCellValue.apply(yy.obj, [$$[$0]]);
 			
 			//php this.$ = this->fixedCellValue($$[$0]);
+			
+			/*cs
+				this.$ = jQuerySheet.FixedCellValue($$[$0]);
+			*/
 		
 break;
 case 29:
@@ -288,6 +390,10 @@ case 29:
 			this.$ = yy.handler.fixedCellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
 			
 			//php this.$ = this->fixedCellRangeValue($$[$0-2], $$[$0]);
+			
+			/*cs
+				this.$ = jQuerySheet.FixedCellRangeValue($$[$0-2], $$[$0]);
+			*/
 		
 break;
 case 30:
@@ -297,9 +403,8 @@ case 30:
 			//php this.$ = this->cellValue($$[$0]);
 			
 			/*cs
-				$$[$0].Text = "100.56";
-				$$[$0].ToDecimal();
-				this.$ = $$[$0];
+				var cell = new jQuerySheet.SpreadsheetCellLocation($$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.UpdateCellValue(jQuerySheet.Spreadsheet.Spreadsheets[0][cell.Row][cell.Col]);
 			*/
 		
 break;
@@ -308,6 +413,10 @@ case 31:
 			this.$ = yy.handler.cellRangeValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
 			
 			//php this.$ = this->cellRangeValue($$[$0-2], $$[$0]);
+			
+			/*cs
+				this.$ = jQuerySheet.CellRangeValue($$[$0-2], $$[$0]);
+			*/
 		
 break;
 case 32:
@@ -315,6 +424,10 @@ case 32:
 			this.$ = yy.handler.remoteCellValue.apply(yy.obj, [$$[$0-2], $$[$0]]);
 			
 			//php this.$ = this->remoteCellValue($$[$0-2], $$[$0]);
+			
+			/*cs
+				this.$ = jQuerySheet.RemoteCellValue($$[$0-2], $$[$0]);
+			*/
 		
 break;
 case 33:
@@ -322,6 +435,10 @@ case 33:
 			this.$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$$[$0-4], $$[$0-2], $$[$0]]);
 			
 			//php this.$ = this->remoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
+			
+			/*cs
+				this.$ = jQuerySheet.RemoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
+			*/
 		
 break;
 case 34:
@@ -329,6 +446,10 @@ case 34:
 			this.$ = [$$[$0]];
 			
 			//php this.$ = array($$[$0]);
+			
+			/*cs
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 35:
@@ -338,6 +459,11 @@ case 35:
 
 			/*php
 				$$[$0-2][] = $$[$0];
+				this.$ = $$[$0-2];
+			*/
+			
+			/*cs
+				$$[$0-2].Push($$[$0]);
 				this.$ = $$[$0-2];
 			*/
 	    
@@ -351,6 +477,11 @@ case 36:
 				$$[$0-2][] = $$[$0];
 				this.$ = $$[$0-2];
 			*/
+			
+			/*cs
+				$$[$0-2].Push($$[$0]);
+				this.$ = $$[$0-2];
+			*/
 	    
 break;
 case 37:
@@ -358,6 +489,10 @@ case 37:
 			this.$ = [$$[$0]];
 			
 			//php this.$ = array($$[$0]);
+			
+			/*cs
+				this.$ = $$[$0];
+			*/
 		
 break;
 case 38:
@@ -368,6 +503,11 @@ case 38:
             /*php
 				this.$ = (is_array($$[$0-2]) ? $$[$0-2] : array());
 				this.$[] = $$[$0];
+			*/
+			
+			/*cs
+				$$[$0-2].Push($$[$0]);
+				this.$ = $$[$0-2];
 			*/
 		
 break;
@@ -400,6 +540,11 @@ case 41:
 			
 			//js|php
 			this.$ = $$[$0-1] * 0.01;
+			
+			/*cs
+				$$[$0-1].ToDecimal();
+				this.$ = new ParserValue($$[$0-1].DecimalValue * 0.01);
+			*/
 		
 break;
 case 42:
@@ -407,6 +552,10 @@ case 42:
 			this.$ = $$[$0-2] + $$[$0-1] + $$[$0];
 			
 			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
+			
+			/*cs
+				this.$ = new ParserValue($$[$0-2].Text + $$[$0-1].Text + $$[$0].Text);
+			*/
       	
 break;
 case 43:
@@ -414,6 +563,10 @@ case 43:
 			this.$ = $$[$0-2] + $$[$0-1] + $$[$0];
 			
 			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
+			
+			/*cs
+				this.$ = new ParserValue($$[$0-3].Text + $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text);
+			*/
 		
 break;
 }
@@ -1027,6 +1180,11 @@ case 6:
 		if ($this->type == 'cell') return 29;
 		return 33;
 	*/
+	
+	/*cs
+		if (Type == "Cell") return 29;
+		return 33;
+	*/
 
 break;
 case 7:
@@ -1036,6 +1194,11 @@ case 7:
 
 	/*php
 		if ($this->type == 'cell') return 26;
+		return 33;
+	*/
+	
+	/*cs
+		if (Type == "Cell") return 26;
 		return 33;
 	*/
 
@@ -1051,7 +1214,8 @@ case 8:
 	*/
 	
 	/*cs
-		return "CELL";
+		if (Type == "Cell") return 28;
+		return 33;
 	*/
 
 break;

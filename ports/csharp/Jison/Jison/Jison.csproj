@@ -61,7 +61,7 @@
   <ItemGroup>
     <None Include="formula.jison" />
     <Compile Include="Jison.Base.cs" />
-    <Compile Include="Jison.Definition.cs" />
+    <Compile Include="Jison.FormulaDefinition.cs" />
     <Compile Include="jQuerySheet.FormulaFunctions.cs" />
     <Compile Include="jQuerySheet.Spreadsheet.cs" />
     <Compile Include="\\VBOXSVR\robert\Dropbox\Jison.Formula.cs">

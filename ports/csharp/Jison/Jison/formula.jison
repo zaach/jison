@@ -1,4 +1,4 @@
-/* description: Parses end evaluates mathematical expressions. */
+﻿/* description: Parses end evaluates mathematical expressions. */
 /* lexical grammar */
 %lex
 %%
@@ -20,6 +20,11 @@
 		if ($this->type == 'cell') return 'SHEET';
 		return 'VARIABLE';
 	*/
+	
+	/*cs
+		if (Type == "Cell") return 'SHEET';
+		return 'VARIABLE';
+	*/
 %}
 '$'[A-Za-z]+'$'[0-9]+
 %{
@@ -29,6 +34,11 @@
 
 	/*php
 		if ($this->type == 'cell') return 'FIXEDCELL';
+		return 'VARIABLE';
+	*/
+	
+	/*cs
+		if (Type == "Cell") return 'FIXEDCELL';
 		return 'VARIABLE';
 	*/
 %}
@@ -44,7 +54,8 @@
 	*/
 	
 	/*cs
-		return "CELL";
+		if (Type == "Cell") return 'CELL';
+		return 'VARIABLE';
 	*/
 %}
 [A-Za-z]+(?=[(])    				{return 'FUNCTION';}
@@ -105,6 +116,10 @@ expression :
 			$$ = yy.handler.variable.apply(yy.obj, $1);
             
 			//php $$ = $this->variable($1);
+			
+			/*cs
+				$$ = $1;
+			*/
 		}
 	| TIME_AMPM
 		{
@@ -124,6 +139,11 @@ expression :
 			$$ = yy.handler.number.apply(yy.obj, [$1]);
 			
 			//php $$ = $1 * 1;
+			
+			/*cs
+				$1.ToDecimal();
+				$$ = $1;
+			*/
 		}
 	| STRING
 		{
@@ -131,6 +151,11 @@ expression :
 			$$ = $1.substring(1, $1.length - 1);
 			
 			//php $$ = substr($1, 1, -1);
+			
+			/*cs
+				$1.ToString();
+				$$ = $1;
+			*/
 		}
 	| expression '=' expression
 		{
@@ -139,6 +164,10 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, ['EQUAL', [$1, $3]]);
 			
 			//php $$ = $1 == $3;
+			
+			/*cs
+				$$ = new ParserValue($1.Text == $3.Text);
+			*/
 		}
 	| expression '+' expression
 		{
@@ -155,6 +184,12 @@ expression :
 					$$ = $1 . $3;
 				}
 			*/
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue + $3.DecimalValue);
+			*/
 		}
 	| '(' expression ')'
 		{
@@ -168,6 +203,12 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, ['LESS_EQUAL', [$1, $3]]);
 			
 			//php $$ = ($1 * 1) <= ($4 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$4.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue <= $4.DecimalValue);
+			*/
 		}
 	| expression '>' '=' expression
 		{
@@ -175,6 +216,12 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, ['GREATER_EQUAL', [$1, $3]]);
 			
 			//php $$ = ($1 * 1) >= ($4 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$4.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue >= $4.DecimalValue);
+			*/
 		}
 	| expression '<' '>' expression
 		{
@@ -187,6 +234,10 @@ expression :
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
 			//
+			
+			/*cs
+				$$ = new ParserValue($1.Text != $4.Text);
+			*/
 		}
 	| expression NOT expression
 		{
@@ -198,6 +249,10 @@ expression :
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
 			//
+			
+			/*cs
+				$$ = new ParserValue($1.Text != $3.Text);
+			*/
 		}
 	| expression '>' expression
 		{
@@ -205,6 +260,12 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, ['GREATER', [$1, $3]]);
 			
 			//php $$ = ($1 * 1) > ($3 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue > $3.DecimalValue);
+			*/
 		}
 	| expression '<' expression
 		{
@@ -212,6 +273,12 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, ['LESS', [$1, $3]]);
 			
 			//php $$ = ($1 * 1) < ($3 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue < $3.DecimalValue);
+			*/
 		}
 	| expression '-' expression
 		{
@@ -223,6 +290,12 @@ expression :
 			yy.obj.html.pop();
 			yy.obj.html.pop();
 			yy.obj.html.push(null);
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue - $3.DecimalValue);
+			*/
 		}
 	| expression '*' expression
 		{
@@ -233,6 +306,12 @@ expression :
 			yy.obj.html.push(null);
 			
 			//php $$ = ($1 * 1) * ($3 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue * $3.DecimalValue);
+			*/
 		}
 	| expression '/' expression
 		{
@@ -243,6 +322,12 @@ expression :
 			yy.obj.html.push(null);
 			
 			//php $$ = ($1 * 1) / ($3 * 1);
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue / $3.DecimalValue);
+			*/
 		}
 	| expression '^' expression
 		{
@@ -256,6 +341,12 @@ expression :
 			yy.obj.html.push(null);
 
 			//php $$ = pow(($1 * 1), ($3 * 1));
+			
+			/*cs
+				$1.ToDecimal();
+				$3.ToDecimal();
+				$$ = new ParserValue((decimal)(Math.Pow((double)$1.DecimalValue, (double)$3.DecimalValue));
+			*/
 		}
 	| '-' expression
 		{
@@ -265,6 +356,11 @@ expression :
 			if (isNaN($$)) $$ = 0;
 
 			//php $$ = $1 * 1;
+			
+			/*cs
+				$2.ToDecimal();
+				$$ = new ParserValue(-$2.DecimalValue);
+			*/
 		}
 	| '+' expression
 		{
@@ -274,6 +370,11 @@ expression :
 			if (isNaN($$)) $$ = 0;
 
 			//php $$ = $1 * 1;
+			
+			/*cs
+				$2.ToDecimal();
+				$$ = $2;
+			*/
 		}
 	| E
 		{/*$$ = Math.E;*/;}
@@ -283,6 +384,10 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, [$1, '']);
 			
 			//php $$ = $this->callFunction($1);
+			
+			/*cs
+				$$ = jQuerySheet.FormulaFunctions.Call($1.Text);
+			*/
 		}
 	| FUNCTION '(' expseq ')'
 		{
@@ -290,6 +395,10 @@ expression :
 			$$ = yy.handler.callFunction.apply(yy.obj, [$1, $3]);
 			
 			//php $$ = $this->callFunction($1, $3);
+			
+			/*cs
+				$$ = jQuerySheet.FormulaFunctions.Call($1.Text, $3);
+			*/
 		}
 	| cell
 	| error
@@ -303,6 +412,10 @@ cell :
 			$$ = yy.handler.fixedCellValue.apply(yy.obj, [$1]);
 			
 			//php $$ = $this->fixedCellValue($1);
+			
+			/*cs
+				$$ = jQuerySheet.FixedCellValue($1);
+			*/
 		}
 	| FIXEDCELL ':' FIXEDCELL
 		{
@@ -310,6 +423,10 @@ cell :
 			$$ = yy.handler.fixedCellRangeValue.apply(yy.obj, [$1, $3]);
 			
 			//php $$ = $this->fixedCellRangeValue($1, $3);
+			
+			/*cs
+				$$ = jQuerySheet.FixedCellRangeValue($1, $3);
+			*/
 		}
 	| CELL
 		{
@@ -319,9 +436,8 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
-				$1.Text = "100.56";
-				$1.ToDecimal();
-				$$ = $1;
+				var cell = new jQuerySheet.SpreadsheetCellLocation($1.Text);
+				$$ = jQuerySheet.Spreadsheet.UpdateCellValue(jQuerySheet.Spreadsheet.Spreadsheets[0][cell.Row][cell.Col]);
 			*/
 		}
 	| CELL ':' CELL
@@ -330,6 +446,10 @@ cell :
 			$$ = yy.handler.cellRangeValue.apply(yy.obj, [$1, $3]);
 			
 			//php $$ = $this->cellRangeValue($1, $3);
+			
+			/*cs
+				$$ = jQuerySheet.CellRangeValue($1, $3);
+			*/
 		}
 	| SHEET '!' CELL
 		{
@@ -337,6 +457,10 @@ cell :
 			$$ = yy.handler.remoteCellValue.apply(yy.obj, [$1, $3]);
 			
 			//php $$ = $this->remoteCellValue($1, $3);
+			
+			/*cs
+				$$ = jQuerySheet.RemoteCellValue($1, $3);
+			*/
 		}
 	| SHEET '!' CELL ':' CELL
 		{
@@ -344,6 +468,10 @@ cell :
 			$$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$1, $3, $5]);
 			
 			//php $$ = $this->remoteCellRangeValue($1, $3, $5);
+			
+			/*cs
+				$$ = jQuerySheet.RemoteCellRangeValue($1, $3, $5);
+			*/
 		}
 ;
 
@@ -354,6 +482,10 @@ expseq :
 			$$ = [$1];
 			
 			//php $$ = array($1);
+			
+			/*cs
+				$$ = $1;
+			*/
 		}
 	| expseq ';' expression
 	    {
@@ -363,6 +495,11 @@ expseq :
 
 			/*php
 				$1[] = $3;
+				$$ = $1;
+			*/
+			
+			/*cs
+				$1.Push($3);
 				$$ = $1;
 			*/
 	    }
@@ -376,6 +513,11 @@ expseq :
 				$1[] = $3;
 				$$ = $1;
 			*/
+			
+			/*cs
+				$1.Push($3);
+				$$ = $1;
+			*/
 	    }
  ;
 
@@ -387,6 +529,10 @@ variableSequence :
 			$$ = [$1];
 			
 			//php $$ = array($1);
+			
+			/*cs
+				$$ = $1;
+			*/
 		}
 	| variableSequence DECIMAL VARIABLE
 		{
@@ -397,6 +543,11 @@ variableSequence :
             /*php
 				$$ = (is_array($1) ? $1 : array());
 				$$[] = $3;
+			*/
+			
+			/*cs
+				$1.Push($3);
+				$$ = $1;
 			*/
 		}
 ;
@@ -432,6 +583,11 @@ number :
 			
 			//js|php
 			$$ = $1 * 0.01;
+			
+			/*cs
+				$1.ToDecimal();
+				$$ = new ParserValue($1.DecimalValue * 0.01);
+			*/
 		}
 ;
 
@@ -441,12 +597,20 @@ error :
 			$$ = $1 + $2 + $3;
 			
 			//php $$ = $1 . $2 . $3;
+			
+			/*cs
+				$$ = new ParserValue($1.Text + $2.Text + $3.Text);
+			*/
       	}
     | VARIABLE '#' VARIABLE '!' {
 			//js
 			$$ = $2 + $3 + $4;
 			
 			//php $$ = $2 . $3 . $4;
+			
+			/*cs
+				$$ = new ParserValue($1.Text + $2.Text + $3.Text + $4.Text);
+			*/
 		}
 ;
 

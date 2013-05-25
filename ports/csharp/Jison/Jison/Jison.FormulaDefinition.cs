@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Jison
 {
-	public class Definition : Base
+	public class FormulaDefinition : Base
 	{
         new public ParserSymbols Symbols;
 		new public Dictionary<int, ParserSymbol> Terminals;
@@ -15,7 +15,7 @@ namespace Jison
 		
 		public string Type = "Cell";
 
-		/**/public Definition/**/()
+		public FormulaDefinition()
         {
             //Setup Parser
             
@@ -2114,7 +2114,7 @@ case 6:
 	
 	
 	
-		if (Type == 'Cell') return 29;
+		if (Type == "Cell") return 29;
 		return 33;
 	
 
@@ -2123,7 +2123,7 @@ case 7:
 	
 	
 	
-		if (Type == 'Cell') return 26;
+		if (Type == "Cell") return 26;
 		return 33;
 	
 
@@ -2132,7 +2132,7 @@ case 8:
 	
 	
 	
-		if (Type == 'Cell') return 28;
+		if (Type == "Cell") return 28;
 		return 33;
 	
 

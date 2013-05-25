@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace jQuerySheet
 {
-	public class Spreadsheet : Definition
+	public class Spreadsheet : FormulaDefinition
     {
 		static public Dictionary<int, Dictionary<int,Dictionary<int, SpreadsheetCell>>> Spreadsheets = new Dictionary<int, Dictionary<int,Dictionary<int, SpreadsheetCell>>>()
 			{

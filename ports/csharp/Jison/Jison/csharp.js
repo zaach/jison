@@ -86,10 +86,12 @@ exec("jison " + process.argv[2], function (error) {
         return str;
     }
 
+    fileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+    
     var option = {
         parserNamespace: 'Jison',
-        parserClass: 'Definition',
-        fileName: fileName + '.cs'
+        parserClass: fileName + 'Definition',
+        fileName: 'Jison.' + fileName + 'Definition.cs'
     };
 
     var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
@@ -228,6 +230,7 @@ exec("jison " + process.argv[2], function (error) {
     parserRaw = parserRaw
         .replace('/**/namespace Jison/**/', 'namespace ' + option.parserNamespace)
         .replace('/**/class Definition/**/', 'class ' + option.parserClass)
+        .replace('/**/public Definition/**/', 'public ' + option.parserClass)
         .replace('new Parser(', 'new ' + option.parserClass + '(')
 
         .replace('//@@PARSER_INJECT@@',
