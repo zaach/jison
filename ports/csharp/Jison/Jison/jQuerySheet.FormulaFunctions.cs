@@ -6,6 +6,11 @@ namespace jQuerySheet
 {
 	static public class FormulaFunctions
 	{
+        public static ParserValue Call(string fnName)
+        {
+            return Call(fnName, new ParserValue());
+        }
+
 		public static ParserValue Call(string fnName, ParserValue value)
 		{
 			switch (fnName.ToUpper())
@@ -18,15 +23,14 @@ namespace jQuerySheet
 
 		public static ParserValue SUM(ParserValue value)
 		{
-			return value;
+            return new ParserValue(value.ToDouble());
 		}
 
 		public static ParserValue SUM(Stack<ParserValue> values)
 		{
-			Decimal sum = 0;
+			double sum = 0;
 			foreach(ParserValue value in values) {
-				value.ToDecimal();
-				sum += value.DecimalValue;
+				sum += value.ToDouble();
 			}
 			return new ParserValue(sum);
 		}

@@ -22,15 +22,17 @@ using System.Collections.Generic;
 
             //Setup Lexer
             //@@LEXER_INJECT@@
+
+            Setup(ref Symbols, ref Terminals, ref Productions, ref Table, ref DefaultActions, ref Rules, ref Conditions);
         }
 
-        public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
+        public override ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Count - 1;//@@ParserPerformActionInjection@@
             return null;
 		}
 		
-		public dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
+		public override dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
 		{
 			//@@LexerPerformActionInjection@@
 			return -1;

@@ -32,6 +32,11 @@ namespace jQuerySheet
 			o = o;
 		}
 
+        public static ParserValue UpdateCellValue(SpreadsheetCellLocation loc)
+        {
+            return UpdateCellValue(Spreadsheets[loc.Speadsheet][loc.Row][loc.Col]);
+        }
+
 		public static ParserValue UpdateCellValue(SpreadsheetCell cell)
         {
             if (cell.HasFormula && cell.State.Count < 1)
@@ -47,17 +52,73 @@ namespace jQuerySheet
             return cell.ParserValue;
         }
 
-		public Dictionary<int[], SpreadsheetCell> CellRangeValue(string start, string end)
+        public static ParserValue CellValue(string id)
+        { 
+            var cellLoc = new SpreadsheetCellLocation(id);
+            var cell = Spreadsheets[cellLoc.Speadsheet][cellLoc.Row][cellLoc.Col];
+            var value = UpdateCellValue(cell);
+            return value;
+        
+        }
+
+        public static ParserValue FixedCellValue(string id)
         {
-            var _start = new SpreadsheetCellLocation(start);
-            var _end = new SpreadsheetCellLocation(end);
-            var range = new Dictionary<int[], SpreadsheetCell>();
-            
-            for (var row = _start.Row; row < _end.Row; row++)
+            return UpdateCellValue(new SpreadsheetCellLocation(id));
+        }
+
+        public static ParserValue FixedCellRangeValue(string startId, string endId)
+        {
+            var startLoc = new SpreadsheetCellLocation(startId);
+            var endLoc = new SpreadsheetCellLocation(endId);
+            var range = new ParserValue();
+
+            for (var row = startLoc.Row; row < endLoc.Row; row++)
             {
-                for (var col= _start.Col; col < _end.Col; col++)
+                for (var col = startLoc.Col; col < endLoc.Col; col++)
                 {
-                    range.Add(new int[]{row, col}, new SpreadsheetCell(0, row, col));
+                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
+                }
+            }
+
+            return range;
+        }
+
+        public static ParserValue RemoteCellValue(string sheetId, string cellId)
+        {
+            var loc = new SpreadsheetCellLocation(cellId);
+            return UpdateCellValue(Spreadsheets[loc.Speadsheet][loc.Row][loc.Col]);
+        }
+
+
+        public static ParserValue RemoteCellRangeValue(string sheetId, string startCellId, string endCellId)
+        {
+            var startLoc = new SpreadsheetCellLocation(startCellId);
+            var endLoc = new SpreadsheetCellLocation(endCellId);
+            var range = new ParserValue();
+
+            for (var row = startLoc.Row; row < endLoc.Row; row++)
+            {
+                for (var col = startLoc.Col; col < endLoc.Col; col++)
+                {
+                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
+                }
+            }
+
+            return range;
+        }
+
+
+		public static ParserValue CellRangeValue(string startId, string endId)
+        {
+            var startLoc = new SpreadsheetCellLocation(startId);
+            var endLoc = new SpreadsheetCellLocation(endId);
+            var range = new ParserValue();
+            
+            for (var row = startLoc.Row; row < endLoc.Row; row++)
+            {
+                for (var col= startLoc.Col; col < endLoc.Col; col++)
+                {
+                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
                 }
             }
 
@@ -92,6 +153,7 @@ namespace jQuerySheet
 			Row = row;
 			Cell = cell;
 			Value = value;
+            ParserValue = new ParserValue(value);
 		}
 		public SpreadsheetCell(int spreadsheet, int row, int cell, string value, string formula)
 		{
@@ -99,7 +161,9 @@ namespace jQuerySheet
 			Row = row;
 			Cell = cell;
 			Value = value;
+            ParserValue = new ParserValue(value);
 			Formula = formula;
+            HasFormula = true;
 		}
     }
 
@@ -110,6 +174,7 @@ namespace jQuerySheet
 
     public class SpreadsheetCellLocation
     {
+        public int Speadsheet = 0;
         public int Row = -1;
         public int Col = -1;
 		public Dictionary<string, int> Alphabet = new Dictionary<string, int>()

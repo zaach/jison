@@ -399,7 +399,10 @@ namespace Jison
 				}
 				_More = false;
 				_Input = _Input.Substring(match.Length);
-				ParserSymbol token = Symbols[LexerPerformAction(rules[index], ConditionStack.Peek())];
+                var ruleIndex = rules[index];
+                var nextCondition = ConditionStack.Peek();
+                dynamic action = LexerPerformAction(ruleIndex, ConditionStack.Peek());
+				ParserSymbol token = Symbols[action];
 
 				if (Done == true && String.IsNullOrEmpty(_Input) == false)
 				{
@@ -495,16 +498,17 @@ namespace Jison
 	{
 		public bool ValueSet = false;
 		public bool BoolValue = false;
-		public decimal DecimalValue;
+		public double DoubleValue;
 		public string StringValue;
 		public Stack<bool> StackBoolValue;
-		public Stack<decimal> StackDecimalValue;
+		public Stack<double> StackDoubleValue;
 		public Stack<string> StackStringValue;
 		public Stack<ParserValue> Children = new Stack<ParserValue>();
 		public int Leng = 0;
 		public ParserLocation Loc;
 		public int LineNo = 0;
 		public string Text = "";
+        public bool IsPushed = false;
 
 		public ParserValue()
 		{
@@ -519,10 +523,10 @@ namespace Jison
 		{
 			ValueSet = parserValue.ValueSet;
 			BoolValue = parserValue.BoolValue;
-			DecimalValue = parserValue.DecimalValue;
+			DoubleValue = parserValue.DoubleValue;
 			StringValue = parserValue.StringValue;
 			StackBoolValue = parserValue.StackBoolValue;
-			StackDecimalValue =  parserValue.StackDecimalValue;
+			StackDoubleValue =  parserValue.StackDoubleValue;
 			StackStringValue = parserValue.StackStringValue;
 			Children = parserValue.Children;
 			Leng = parserValue.Leng;
@@ -537,10 +541,10 @@ namespace Jison
 			BoolValue = value;
 		}
 
-		public ParserValue(decimal value)
+        public ParserValue(double value)
 		{
 			ValueSet = true;
-			DecimalValue = value;
+			DoubleValue = value;
 		}
 
 		public ParserValue(string value)
@@ -555,10 +559,10 @@ namespace Jison
 			StackBoolValue = value;
 		}
 
-		public ParserValue(Stack<decimal> value)
+		public ParserValue(Stack<double> value)
 		{
 			ValueSet = true;
-			StackDecimalValue = value;
+			StackDoubleValue = value;
 		}
 
 		public ParserValue(Stack<string> value)
@@ -567,18 +571,32 @@ namespace Jison
 			StackStringValue = value;
 		}
 
+        public void Push(ParserValue value)
+        {
+            if (!IsPushed)
+            {
+                Children.Push(this);
+            }
+            Children.Push(value);
+        }
+
 		public void AppendChildren(ParserValue value)
 		{
 			Children.Push(value);
 		}
 
-		public void ToDecimal()
+		public double ToDouble()
 		{
+            if (ValueSet) {
+                return DoubleValue;
+            }
+
 			if (String.IsNullOrEmpty(Text)) {
-				DecimalValue = 0;
+				DoubleValue = 0;
 			} else {
-				DecimalValue = Convert.ToDecimal(Text);
+				DoubleValue = Convert.ToDouble(Text);
 			}
+            return DoubleValue;
 		}
 	}
 

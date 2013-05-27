@@ -1763,9 +1763,11 @@ namespace Jison
 				};
 
 
+
+            Setup(ref Symbols, ref Terminals, ref Productions, ref Table, ref DefaultActions, ref Rules, ref Conditions);
         }
 
-        public ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
+        public override ParserValue ParserPerformAction(ref ParserValue thisS, ref ParserValue yy, ref int yystate, ref JList<ParserValue> ss)
 		{
 			var so = ss.Count - 1;
 /* this == yyval */
@@ -1792,7 +1794,7 @@ case 5:
 			
 			
 			
-				ss[so].ToDecimal();
+				ss[so].ToDouble();
 				thisS = ss[so];
 			
 		
@@ -1818,9 +1820,7 @@ case 8:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue + ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() + ss[so].ToDouble());
 			
 		
 break;
@@ -1831,9 +1831,7 @@ case 10:
 			
 			
 			
-				ss[so-3].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-3].DecimalValue <= ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-3].ToDouble() <= ss[so].ToDouble());
 			
 		
 break;
@@ -1841,9 +1839,7 @@ case 11:
 			
 			
 			
-				ss[so-3].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-3].DecimalValue >= ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-3].ToDouble() >= ss[so].ToDouble());
 			
 		
 break;
@@ -1865,9 +1861,7 @@ case 14:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue > ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() > ss[so].ToDouble());
 			
 		
 break;
@@ -1875,17 +1869,13 @@ case 15:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue < ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() < ss[so].ToDouble());
 			
 		
 break;
 case 16:
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue - ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() - ss[so].ToDouble());
 			
 		
 break;
@@ -1893,9 +1883,7 @@ case 17:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue * ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() * ss[so].ToDouble());
 			
 		
 break;
@@ -1903,9 +1891,7 @@ case 18:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue(ss[so-2].DecimalValue / ss[so].DecimalValue);
+				thisS = new ParserValue(ss[so-2].ToDouble() / ss[so].ToDouble());
 			
 		
 break;
@@ -1913,9 +1899,7 @@ case 19:
 			
 			
 			
-				ss[so-2].ToDecimal();
-				ss[so].ToDecimal();
-				thisS = new ParserValue((decimal)(Math.Pow((double)ss[so-2].DecimalValue, (double)ss[so].DecimalValue));
+				thisS = new ParserValue(Math.Pow(ss[so-2].ToDouble(), ss[so].ToDouble()));
 			
 		
 break;
@@ -1923,8 +1907,7 @@ case 20:
 			
 			
 			
-				ss[so].ToDecimal();
-				thisS = new ParserValue(-ss[so].DecimalValue);
+				thisS = new ParserValue(-ss[so].ToDouble());
 			
 		
 break;
@@ -1932,7 +1915,7 @@ case 21:
 			
 			
 			
-				ss[so].ToDecimal();
+				ss[so].ToDouble();
 				thisS = ss[so];
 			
 		
@@ -1959,7 +1942,7 @@ case 28:
 			
 			
 			
-				thisS = jQuerySheet.FixedCellValue(ss[so]);
+				thisS = jQuerySheet.Spreadsheet.FixedCellValue(ss[so].Text);
 			
 		
 break;
@@ -1967,7 +1950,7 @@ case 29:
 			
 			
 			
-				thisS = jQuerySheet.FixedCellRangeValue(ss[so-2], ss[so]);
+				thisS = jQuerySheet.Spreadsheet.FixedCellRangeValue(ss[so-2].Text, ss[so].Text);
 			
 		
 break;
@@ -1975,8 +1958,7 @@ case 30:
 			
 			
 			
-				var cell = new jQuerySheet.SpreadsheetCellLocation(ss[so].Text);
-				thisS = jQuerySheet.Spreadsheet.UpdateCellValue(jQuerySheet.Spreadsheet.Spreadsheets[0][cell.Row][cell.Col]);
+				thisS = jQuerySheet.Spreadsheet.CellValue(ss[so].Text);
 			
 		
 break;
@@ -1984,7 +1966,7 @@ case 31:
 			
 			
 			
-				thisS = jQuerySheet.CellRangeValue(ss[so-2], ss[so]);
+				thisS = jQuerySheet.Spreadsheet.CellRangeValue(ss[so-2].Text, ss[so].Text);
 			
 		
 break;
@@ -1992,7 +1974,7 @@ case 32:
 			
 			
 			
-				thisS = jQuerySheet.RemoteCellValue(ss[so-2], ss[so]);
+				thisS = jQuerySheet.Spreadsheet.RemoteCellValue(ss[so-2].Text, ss[so].Text);
 			
 		
 break;
@@ -2000,7 +1982,7 @@ case 33:
 			
 			
 			
-				thisS = jQuerySheet.RemoteCellRangeValue(ss[so-4], ss[so-2], ss[so]);
+				thisS = jQuerySheet.Spreadsheet.RemoteCellRangeValue(ss[so-4].Text, ss[so-2].Text, ss[so].Text);
 			
 		
 break;
@@ -2049,7 +2031,7 @@ case 38:
 break;
 case 39:
 			
-				ss[so].ToDecimal();
+				ss[so].ToDouble();
 				thisS = ss[so];
 			
 		
@@ -2059,15 +2041,14 @@ case 40:
 			
 			
 				ss[so-2].Text += "." + ss[so].Text;
-				ss[so-2].ToDecimal();
+				ss[so-2].ToDouble();
 				thisS = ss[so-2];
 			
 		
 break;
 case 41:
 			
-				ss[so-1].ToDecimal();
-				thisS = new ParserValue(ss[so-1].DecimalValue * 0.01);
+				thisS = new ParserValue(ss[so-1].ToDouble() * 0.01);
 			
 		
 break;
@@ -2092,7 +2073,7 @@ break;
             return null;
 		}
 		
-		public dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
+		public override dynamic LexerPerformAction(int avoidingNameCollisions, string Yy_Start)
 		{
 			
 

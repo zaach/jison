@@ -141,7 +141,7 @@ expression :
 			//php $$ = $1 * 1;
 			
 			/*cs
-				$1.ToDecimal();
+				$1.ToDouble();
 				$$ = $1;
 			*/
 		}
@@ -186,9 +186,7 @@ expression :
 			*/
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue + $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() + $3.ToDouble());
 			*/
 		}
 	| '(' expression ')'
@@ -205,9 +203,7 @@ expression :
 			//php $$ = ($1 * 1) <= ($4 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$4.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue <= $4.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() <= $4.ToDouble());
 			*/
 		}
 	| expression '>' '=' expression
@@ -218,9 +214,7 @@ expression :
 			//php $$ = ($1 * 1) >= ($4 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$4.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue >= $4.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() >= $4.ToDouble());
 			*/
 		}
 	| expression '<' '>' expression
@@ -262,9 +256,7 @@ expression :
 			//php $$ = ($1 * 1) > ($3 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue > $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() > $3.ToDouble());
 			*/
 		}
 	| expression '<' expression
@@ -275,9 +267,7 @@ expression :
 			//php $$ = ($1 * 1) < ($3 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue < $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() < $3.ToDouble());
 			*/
 		}
 	| expression '-' expression
@@ -292,9 +282,7 @@ expression :
 			yy.obj.html.push(null);
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue - $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() - $3.ToDouble());
 			*/
 		}
 	| expression '*' expression
@@ -308,9 +296,7 @@ expression :
 			//php $$ = ($1 * 1) * ($3 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue * $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() * $3.ToDouble());
 			*/
 		}
 	| expression '/' expression
@@ -324,9 +310,7 @@ expression :
 			//php $$ = ($1 * 1) / ($3 * 1);
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue / $3.DecimalValue);
+				$$ = new ParserValue($1.ToDouble() / $3.ToDouble());
 			*/
 		}
 	| expression '^' expression
@@ -343,9 +327,7 @@ expression :
 			//php $$ = pow(($1 * 1), ($3 * 1));
 			
 			/*cs
-				$1.ToDecimal();
-				$3.ToDecimal();
-				$$ = new ParserValue((decimal)(Math.Pow((double)$1.DecimalValue, (double)$3.DecimalValue));
+				$$ = new ParserValue(Math.Pow($1.ToDouble(), $3.ToDouble()));
 			*/
 		}
 	| '-' expression
@@ -358,8 +340,7 @@ expression :
 			//php $$ = $1 * 1;
 			
 			/*cs
-				$2.ToDecimal();
-				$$ = new ParserValue(-$2.DecimalValue);
+				$$ = new ParserValue(-$2.ToDouble());
 			*/
 		}
 	| '+' expression
@@ -372,7 +353,7 @@ expression :
 			//php $$ = $1 * 1;
 			
 			/*cs
-				$2.ToDecimal();
+				$2.ToDouble();
 				$$ = $2;
 			*/
 		}
@@ -414,7 +395,7 @@ cell :
 			//php $$ = $this->fixedCellValue($1);
 			
 			/*cs
-				$$ = jQuerySheet.FixedCellValue($1);
+				$$ = jQuerySheet.Spreadsheet.FixedCellValue($1.Text);
 			*/
 		}
 	| FIXEDCELL ':' FIXEDCELL
@@ -425,7 +406,7 @@ cell :
 			//php $$ = $this->fixedCellRangeValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.FixedCellRangeValue($1, $3);
+				$$ = jQuerySheet.Spreadsheet.FixedCellRangeValue($1.Text, $3.Text);
 			*/
 		}
 	| CELL
@@ -436,8 +417,7 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
-				var cell = new jQuerySheet.SpreadsheetCellLocation($1.Text);
-				$$ = jQuerySheet.Spreadsheet.UpdateCellValue(jQuerySheet.Spreadsheet.Spreadsheets[0][cell.Row][cell.Col]);
+				$$ = jQuerySheet.Spreadsheet.CellValue($1.Text);
 			*/
 		}
 	| CELL ':' CELL
@@ -448,7 +428,7 @@ cell :
 			//php $$ = $this->cellRangeValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.CellRangeValue($1, $3);
+				$$ = jQuerySheet.Spreadsheet.CellRangeValue($1.Text, $3.Text);
 			*/
 		}
 	| SHEET '!' CELL
@@ -459,18 +439,18 @@ cell :
 			//php $$ = $this->remoteCellValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.RemoteCellValue($1, $3);
+				$$ = jQuerySheet.Spreadsheet.RemoteCellValue($1.Text, $3.Text);
 			*/
 		}
 	| SHEET '!' CELL ':' CELL
 		{
 			//js
-			$$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$1, $3, $5]);
+			$$ = yy.handler.remoteCellRangeValue.apply(yy.obj, [$1.Text, $3.Text, $5.Text]);
 			
 			//php $$ = $this->remoteCellRangeValue($1, $3, $5);
 			
 			/*cs
-				$$ = jQuerySheet.RemoteCellRangeValue($1, $3, $5);
+				$$ = jQuerySheet.Spreadsheet.RemoteCellRangeValue($1.Text, $3.Text, $5.Text);
 			*/
 		}
 ;
@@ -559,7 +539,7 @@ number :
 			$$ = $1 * 1;
 			
 			/*cs
-				$1.ToDecimal();
+				$1.ToDouble();
 				$$ = $1;
 			*/
 		}
@@ -572,7 +552,7 @@ number :
 			
 			/*cs
 				$1.Text += "." + $3.Text;
-				$1.ToDecimal();
+				$1.ToDouble();
 				$$ = $1;
 			*/
 		}
@@ -585,8 +565,7 @@ number :
 			$$ = $1 * 0.01;
 			
 			/*cs
-				$1.ToDecimal();
-				$$ = new ParserValue($1.DecimalValue * 0.01);
+				$$ = new ParserValue($1.ToDouble() * 0.01);
 			*/
 		}
 ;
