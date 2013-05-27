@@ -13,12 +13,15 @@ namespace jQuerySheet
 
 		public static ParserValue Call(string fnName, ParserValue value)
 		{
-			switch (fnName.ToUpper())
+		    ParserValue result = null;
+            switch (fnName.ToUpper())
 			{
-				case "SUM": return SUM(value);
+				case "SUM":
+                    result = SUM(value);
+			        break;
 			}
 
-			return null;
+			return result;
 		}
 
 		public static ParserValue SUM(ParserValue value)

@@ -16,7 +16,7 @@ namespace jQuerySheet
 						{0, new Dictionary<int, SpreadsheetCell>()
 							{
 								{0, new SpreadsheetCell(0,0,0, "50")},
-								{1, new SpreadsheetCell(0,0,1, "777", "A1")}
+								{1, new SpreadsheetCell(0,0,1, "777")}
 							}
 						}
 					}
@@ -28,7 +28,7 @@ namespace jQuerySheet
 		public static void Main()
 		{
 			var parser = new Spreadsheet();
-			var o = parser.Parse("SUM(SUM(A1) + 100)");
+			var o = parser.Parse("SUM(SUM(A1) + 100 - B1)");
 			o = o;
 		}
 

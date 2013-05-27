@@ -549,8 +549,8 @@ namespace Jison
 
 		public ParserValue(string value)
 		{
-			ValueSet = true;
 			StringValue = value;
+            Text = value;
 		}
 
 		public ParserValue(Stack<bool> value)
