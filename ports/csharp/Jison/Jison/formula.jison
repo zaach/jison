@@ -186,7 +186,11 @@ expression :
 			*/
 			
 			/*cs
-				$$ = new ParserValue($1.ToDouble() + $3.ToDouble());
+				if ($1.IsNumeric()) {
+					$$ = new ParserValue($1.ToDouble() + $3.ToDouble());
+				} else {
+					$$ = new ParserValue($1.Text + $3.Text);
+				}
 			*/
 		}
 	| '(' expression ')'

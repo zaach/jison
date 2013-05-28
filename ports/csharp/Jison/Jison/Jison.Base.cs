@@ -508,6 +508,7 @@ namespace Jison
 		public ParserLocation Loc;
 		public int LineNo = 0;
 		public string Text = "";
+        public readonly string Type = "";
         public bool IsPushed = false;
 
 		public ParserValue()
@@ -539,18 +540,21 @@ namespace Jison
 		{
 			ValueSet = true;
 			BoolValue = value;
+		    Type = "bool";
 		}
 
         public ParserValue(double value)
 		{
 			ValueSet = true;
 			DoubleValue = value;
+            Type = "double";
 		}
 
 		public ParserValue(string value)
 		{
 			StringValue = value;
             Text = value;
+            Type = "string";
 		}
 
 		public ParserValue(Stack<bool> value)
@@ -585,7 +589,23 @@ namespace Jison
 			Children.Push(value);
 		}
 
-		public double ToDouble()
+	    public bool IsNumeric()
+	    {
+	        if (Type == "double")
+	        {
+	            return true;
+	        }
+
+	        double num;
+	        if (double.TryParse(Text, out num))
+	        {
+	            return true;
+	        }
+
+	        return false;
+	    }
+
+	    public double ToDouble()
 		{
             if (ValueSet) {
                 return DoubleValue;
@@ -594,7 +614,14 @@ namespace Jison
 			if (String.IsNullOrEmpty(Text)) {
 				DoubleValue = 0;
 			} else {
-				DoubleValue = Convert.ToDouble(Text);
+			    if (double.TryParse(Text, out DoubleValue))
+			    {
+			        return DoubleValue;
+			    }
+			    else
+			    {
+			        return 0;
+			    }
 			}
             return DoubleValue;
 		}

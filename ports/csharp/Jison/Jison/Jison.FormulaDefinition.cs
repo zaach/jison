@@ -1820,7 +1820,11 @@ case 8:
 			
 			
 			
-				thisS = new ParserValue(ss[so-2].ToDouble() + ss[so].ToDouble());
+				if (ss[so-2].IsNumeric()) {
+					thisS = new ParserValue(ss[so-2].ToDouble() + ss[so].ToDouble());
+				} else {
+					thisS = new ParserValue(ss[so-2].Text + ss[so].Text);
+				}
 			
 		
 break;

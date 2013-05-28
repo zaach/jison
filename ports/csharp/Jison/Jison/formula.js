@@ -159,7 +159,11 @@ case 8:
 			*/
 			
 			/*cs
-				this.$ = new ParserValue($$[$0-2].ToDouble() + $$[$0].ToDouble());
+				if ($$[$0-2].IsNumeric()) {
+					this.$ = new ParserValue($$[$0-2].ToDouble() + $$[$0].ToDouble());
+				} else {
+					this.$ = new ParserValue($$[$0-2].Text + $$[$0].Text);
+				}
 			*/
 		
 break;
