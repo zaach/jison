@@ -68,7 +68,7 @@ function processGrammar () {
 }
 
 function runParser () {
-    if (!parser) processGrammer();
+    if (!parser) processGrammar();
     printOut("Parsing...");
     var source = $("#source").val();
     try {
