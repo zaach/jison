@@ -44,7 +44,7 @@ function processGrammar () {
     }
 
     Jison.print = function () {};
-    parser = new Jison.Generator(cfg, {type: type});
+    parser = Jison.Generator(cfg, {type: type});
 
     $("#out").removeClass("good").removeClass("bad").html('');
     $("#gen_out").removeClass("good").removeClass("bad");
