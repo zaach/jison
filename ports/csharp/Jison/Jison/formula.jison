@@ -399,7 +399,7 @@ cell :
 			//php $$ = $this->fixedCellValue($1);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.FixedCellValue($1.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed($1.Text));
 			*/
 		}
 	| FIXEDCELL ':' FIXEDCELL
@@ -410,7 +410,7 @@ cell :
 			//php $$ = $this->fixedCellRangeValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.FixedCellRangeValue($1.Text, $3.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed($1.Text), jQuerySheet.CellLocation.ParseFixed($3.Text));
 			*/
 		}
 	| CELL
@@ -421,7 +421,7 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.CellValue($1.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse($1.Text));
 			*/
 		}
 	| CELL ':' CELL
@@ -432,7 +432,7 @@ cell :
 			//php $$ = $this->cellRangeValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.CellRangeValue($1.Text, $3.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse($1.Text), jQuerySheet.CellLocation.Parse($3.Text));
 			*/
 		}
 	| SHEET '!' CELL
@@ -443,7 +443,7 @@ cell :
 			//php $$ = $this->remoteCellValue($1, $3);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.RemoteCellValue($1.Text, $3.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote($1.Text, $3.Text));
 			*/
 		}
 	| SHEET '!' CELL ':' CELL
@@ -454,7 +454,7 @@ cell :
 			//php $$ = $this->remoteCellRangeValue($1, $3, $5);
 			
 			/*cs
-				$$ = jQuerySheet.Spreadsheet.RemoteCellRangeValue($1.Text, $3.Text, $5.Text);
+				$$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote($1.Text, $3.Text), jQuerySheet.CellLocation.ParseRemote($1.Text, $5.Text));
 			*/
 		}
 ;

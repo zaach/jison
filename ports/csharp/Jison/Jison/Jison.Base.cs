@@ -534,6 +534,7 @@ namespace Jison
 			Loc = parserValue.Loc;
 			LineNo = parserValue.LineNo;
 			Text = parserValue.Text;
+            IsPushed = parserValue.IsPushed;
 		}
 
 		public ParserValue(bool value)
@@ -577,11 +578,12 @@ namespace Jison
 
         public void Push(ParserValue value)
         {
-            if (!IsPushed)
+            if (!IsPushed && ValueSet)
             {
                 Children.Push(this);
             }
             Children.Push(value);
+            IsPushed = true;
         }
 
 		public void AppendChildren(ParserValue value)

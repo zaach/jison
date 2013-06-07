@@ -9,6 +9,8 @@ namespace jQuerySheet
 {
 	public class Spreadsheet : FormulaDefinition
     {
+        static public int ActiveSpreadsheet = 0;
+
 		static public Dictionary<int, Dictionary<int,Dictionary<int, SpreadsheetCell>>> Spreadsheets = new Dictionary<int, Dictionary<int,Dictionary<int, SpreadsheetCell>>>()
 			{
 				{0, new Dictionary<int, Dictionary<int, SpreadsheetCell>>()
@@ -16,7 +18,7 @@ namespace jQuerySheet
 						{0, new Dictionary<int, SpreadsheetCell>()
 							{
 								{0, new SpreadsheetCell(0,0,0, "50")},
-								{1, new SpreadsheetCell(0,0,1, "Test")}
+								{1, new SpreadsheetCell(0,0,1, "33")}
 							}
 						}
 					}
@@ -28,14 +30,9 @@ namespace jQuerySheet
 		public static void Main()
 		{
 			var parser = new Spreadsheet();
-			var o = parser.Parse("SUM(A1) + 100");
+			var o = parser.Parse("SUM(A1:B1) + 100");
 			o = o;
-		}
-
-        public static ParserValue UpdateCellValue(SpreadsheetCellLocation loc)
-        {
-            return UpdateCellValue(Spreadsheets[loc.Speadsheet][loc.Row][loc.Col]);
-        }
+		}   
 
 		public static ParserValue UpdateCellValue(SpreadsheetCell cell)
         {
@@ -52,73 +49,29 @@ namespace jQuerySheet
             return cell.ParserValue;
         }
 
-        public static ParserValue CellValue(string id)
-        { 
-            var cellLoc = new SpreadsheetCellLocation(id);
-            var cell = Spreadsheets[cellLoc.Speadsheet][cellLoc.Row][cellLoc.Col];
+	    public static ParserValue CellValue(int spreadsheet, int row, int col)
+	    {
+            var cell = Spreadsheets[spreadsheet][row][col];
             var value = UpdateCellValue(cell);
             return value;
-        
+	    }
+
+	    public static ParserValue CellValue(CellLocation loc)
+        {
+            var cell = Spreadsheets[loc.Sheet][loc.Row][loc.Col];
+            var value = UpdateCellValue(cell);
+            return value;
         }
 
-        public static ParserValue FixedCellValue(string id)
+        public static ParserValue CellValue(CellLocation locStart, CellLocation locEnd)
         {
-            return UpdateCellValue(new SpreadsheetCellLocation(id));
-        }
-
-        public static ParserValue FixedCellRangeValue(string startId, string endId)
-        {
-            var startLoc = new SpreadsheetCellLocation(startId);
-            var endLoc = new SpreadsheetCellLocation(endId);
             var range = new ParserValue();
 
-            for (var row = startLoc.Row; row < endLoc.Row; row++)
+            for (var row = locStart.Row; row <= locEnd.Row; row++)
             {
-                for (var col = startLoc.Col; col < endLoc.Col; col++)
+                for (var col = locStart.Col; col <= locEnd.Col; col++)
                 {
-                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
-                }
-            }
-
-            return range;
-        }
-
-        public static ParserValue RemoteCellValue(string sheetId, string cellId)
-        {
-            var loc = new SpreadsheetCellLocation(cellId);
-            return UpdateCellValue(Spreadsheets[loc.Speadsheet][loc.Row][loc.Col]);
-        }
-
-
-        public static ParserValue RemoteCellRangeValue(string sheetId, string startCellId, string endCellId)
-        {
-            var startLoc = new SpreadsheetCellLocation(startCellId);
-            var endLoc = new SpreadsheetCellLocation(endCellId);
-            var range = new ParserValue();
-
-            for (var row = startLoc.Row; row < endLoc.Row; row++)
-            {
-                for (var col = startLoc.Col; col < endLoc.Col; col++)
-                {
-                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
-                }
-            }
-
-            return range;
-        }
-
-
-		public static ParserValue CellRangeValue(string startId, string endId)
-        {
-            var startLoc = new SpreadsheetCellLocation(startId);
-            var endLoc = new SpreadsheetCellLocation(endId);
-            var range = new ParserValue();
-            
-            for (var row = startLoc.Row; row < endLoc.Row; row++)
-            {
-                for (var col= startLoc.Col; col < endLoc.Col; col++)
-                {
-                    range.Push(UpdateCellValue(Spreadsheets[startLoc.Speadsheet][row][col]));
+                    range.Push(UpdateCellValue(Spreadsheets[locStart.Sheet][row][col]));
                 }
             }
 
@@ -167,17 +120,15 @@ namespace jQuerySheet
 		}
     }
 
-    public class FormulaVariables
+    public class CellLocation
     {
-
-    }
-
-    public class SpreadsheetCellLocation
-    {
-        public int Speadsheet = 0;
+        public int Sheet = -1;
         public int Row = -1;
         public int Col = -1;
-		public Dictionary<string, int> Alphabet = new Dictionary<string, int>()
+        public bool IsFixed = false;
+        public bool IsRemote = false;
+
+		static readonly public Dictionary<string, int> Alphabet = new Dictionary<string, int>()
 			{
 				{"A", 0},
 				{"B", 1},
@@ -206,9 +157,30 @@ namespace jQuerySheet
 				{"Y", 24},
 				{"Z", 25}
 			};
-        static readonly Regex Cell = new Regex("^([A-Z]+)([0-9]+)");
 
-        public SpreadsheetCellLocation(string id)
+        static readonly public Regex Cell = new Regex("^([A-Z]+)([0-9]+)");
+
+        public static CellLocation Parse(string id)
+        {
+            return new CellLocation(id);
+        }
+
+        public static CellLocation ParseRemote(string sheet, string id)
+        {
+            return new CellLocation(sheet, id);
+        }
+
+        public static CellLocation ParseFixed(string id)
+        {
+            return new CellLocation(id, true);
+        }
+
+        public static CellLocation ParseRemoteFixed(string sheet, string id)
+        {
+            return new CellLocation(sheet, id, true);
+        }
+
+        public void ParseCellId(string id)
         {
             var match = Cell.Match(id);
             if (match.Success)
@@ -216,6 +188,38 @@ namespace jQuerySheet
                 Col = Alphabet[match.Groups[1].Value];
                 Row = Convert.ToInt32(match.Groups[2].Value) - 1;
             }
+            Sheet = Spreadsheet.ActiveSpreadsheet;
+        }
+
+        public void ParseSheetId(string sheet)
+        {
+            sheet = sheet.Replace("sheet", "");
+            Sheet = Convert.ToInt32(sheet);
+        }
+
+        public CellLocation(string id)
+        {
+            ParseCellId(id);
+        }
+
+        public CellLocation(string sheet, string id)
+        {
+            ParseCellId(id);
+            ParseSheetId(sheet);
+            IsRemote = true;
+        }
+
+        public CellLocation(string id, bool remote)
+        {
+            ParseCellId(id);
+            IsRemote = remote;
+        }
+
+        public CellLocation(string sheet, string id, bool remote)
+        {
+            ParseCellId(id);
+            ParseSheetId(sheet);
+            IsRemote = remote;
         }
     }
 }

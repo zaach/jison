@@ -1946,7 +1946,7 @@ case 28:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.FixedCellValue(ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed(ss[so].Text));
 			
 		
 break;
@@ -1954,7 +1954,7 @@ case 29:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.FixedCellRangeValue(ss[so-2].Text, ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed(ss[so-2].Text), jQuerySheet.CellLocation.ParseFixed(ss[so].Text));
 			
 		
 break;
@@ -1962,7 +1962,7 @@ case 30:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.CellValue(ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse(ss[so].Text));
 			
 		
 break;
@@ -1970,7 +1970,7 @@ case 31:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.CellRangeValue(ss[so-2].Text, ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse(ss[so-2].Text), jQuerySheet.CellLocation.Parse(ss[so].Text));
 			
 		
 break;
@@ -1978,7 +1978,7 @@ case 32:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.RemoteCellValue(ss[so-2].Text, ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote(ss[so-2].Text, ss[so].Text));
 			
 		
 break;
@@ -1986,7 +1986,7 @@ case 33:
 			
 			
 			
-				thisS = jQuerySheet.Spreadsheet.RemoteCellRangeValue(ss[so-4].Text, ss[so-2].Text, ss[so].Text);
+				thisS = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote(ss[so-4].Text, ss[so-2].Text), jQuerySheet.CellLocation.ParseRemote(ss[so-4].Text, ss[so].Text));
 			
 		
 break;

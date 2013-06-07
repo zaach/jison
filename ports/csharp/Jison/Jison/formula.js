@@ -366,7 +366,7 @@ case 28:
 			//php this.$ = this->fixedCellValue($$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.FixedCellValue($$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed($$[$0].Text));
 			*/
 		
 break;
@@ -377,7 +377,7 @@ case 29:
 			//php this.$ = this->fixedCellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.FixedCellRangeValue($$[$0-2].Text, $$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseFixed($$[$0-2].Text), jQuerySheet.CellLocation.ParseFixed($$[$0].Text));
 			*/
 		
 break;
@@ -388,7 +388,7 @@ case 30:
 			//php this.$ = this->cellValue($$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.CellValue($$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse($$[$0].Text));
 			*/
 		
 break;
@@ -399,7 +399,7 @@ case 31:
 			//php this.$ = this->cellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.CellRangeValue($$[$0-2].Text, $$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.Parse($$[$0-2].Text), jQuerySheet.CellLocation.Parse($$[$0].Text));
 			*/
 		
 break;
@@ -410,7 +410,7 @@ case 32:
 			//php this.$ = this->remoteCellValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.RemoteCellValue($$[$0-2].Text, $$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote($$[$0-2].Text, $$[$0].Text));
 			*/
 		
 break;
@@ -421,7 +421,7 @@ case 33:
 			//php this.$ = this->remoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = jQuerySheet.Spreadsheet.RemoteCellRangeValue($$[$0-4].Text, $$[$0-2].Text, $$[$0].Text);
+				this.$ = jQuerySheet.Spreadsheet.CellValue(jQuerySheet.CellLocation.ParseRemote($$[$0-4].Text, $$[$0-2].Text), jQuerySheet.CellLocation.ParseRemote($$[$0-4].Text, $$[$0].Text));
 			*/
 		
 break;

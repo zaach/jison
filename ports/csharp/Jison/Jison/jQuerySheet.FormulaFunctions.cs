@@ -17,25 +17,26 @@ namespace jQuerySheet
             switch (fnName.ToUpper())
 			{
 				case "SUM":
-                    result = SUM(value);
+                    result = Sum(value);
 			        break;
 			}
 
 			return result;
 		}
 
-		public static ParserValue SUM(ParserValue value)
+		public static ParserValue Sum(ParserValue value)
 		{
-            return new ParserValue(value.ToDouble());
-		}
+		    if (value.IsPushed)
+		    {
+		        double sum = 0;
+		        foreach (ParserValue child in value.Children)
+		        {
+		            sum += child.ToDouble();
+		        }
+		        return new ParserValue(sum);
+		    }
 
-		public static ParserValue SUM(Stack<ParserValue> values)
-		{
-			double sum = 0;
-			foreach(ParserValue value in values) {
-				sum += value.ToDouble();
-			}
-			return new ParserValue(sum);
+		    return new ParserValue(value.ToDouble());
 		}
 	}
 }
