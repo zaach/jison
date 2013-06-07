@@ -508,7 +508,7 @@ namespace Jison
 		public ParserLocation Loc;
 		public int LineNo = 0;
 		public string Text = "";
-        public readonly string Type = "";
+        public string Type = "";
         public bool IsPushed = false;
 
 		public ParserValue()
@@ -591,7 +591,7 @@ namespace Jison
 
 	    public bool IsNumeric()
 	    {
-	        if (Type == "double")
+	        if (Type == "double" || DoubleValue > 0)
 	        {
 	            return true;
 	        }
@@ -607,6 +607,7 @@ namespace Jison
 
 	    public double ToDouble()
 		{
+            Type = "double";
             if (ValueSet) {
                 return DoubleValue;
             }

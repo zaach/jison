@@ -28,7 +28,7 @@ namespace jQuerySheet
 		public static void Main()
 		{
 			var parser = new Spreadsheet();
-			var o = parser.Parse("'Test' + 100");
+			var o = parser.Parse("SUM(A1) + 100");
 			o = o;
 		}
 
