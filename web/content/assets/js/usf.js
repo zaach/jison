@@ -41,7 +41,7 @@ function processGrammar () {
     else $("#parsing").hide();
 
     Jison.print = function () {};
-    parser = new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
+    parser = Jison.Generator(cfg, {type: type,noDefaultResolve:true});
     if (parser.computeLookaheads)
       parser.computeLookaheads();
 
@@ -89,7 +89,7 @@ function processGrammar () {
 }
 
 function runParser () {
-    if (!parser) processGrammer();
+    if (!parser) processGrammar();
     if (!parser2) parser2 = parser.createParser();
     printOut("Parsing...");
     var source = $("#source").val();
