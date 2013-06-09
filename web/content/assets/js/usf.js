@@ -15,7 +15,7 @@ $(function () {
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
-      $.get(file, function (data) {
+      $.get("/jison/examples/"+file, function (data) {
         $("#grammar").val(data);
         $(document.body).removeClass("loading");
       });
@@ -70,7 +70,7 @@ function processGrammar () {
             self.toggleClass("open");
           do_click = false;
         }
-      }, 350);
+      }, 200);
     }
     $(".action").on("click", click_handler);
     $(".state").on("click", click_handler);
