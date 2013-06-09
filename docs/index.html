@@ -19,7 +19,7 @@
     <div id="content">
       <h1 id="documentation">Documentation</h1>
 
-<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you&#8217;re familiar with Bison or Yacc, or other clones, you&#8217;re almost ready to roll.</p>
+<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you’re familiar with Bison or Yacc, or other clones, you’re almost ready to roll.</p>
 
 <ul>
   <li><a href="#installation">Installation</a></li>
@@ -55,7 +55,7 @@
 cd jison/examples
 </code></pre>
 
-<p>Now you&#8217;re ready to generate some parsers:</p>
+<p>Now you’re ready to generate some parsers:</p>
 
 <pre><code>jison calculator.jison
 </code></pre>
@@ -70,7 +70,7 @@ node calculator.js testcalc
 
 <h2 id="usage-from-a-commonjs-module">Usage from a CommonJS Module</h2>
 
-<p>You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment&#8217;s load path:</p>
+<p>You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment’s load path:</p>
 
 <pre><code>// mygenerator.js
 var Parser = require("jison").Parser;
@@ -135,7 +135,7 @@ var twenty = exec("4 * 5");
 
 <h2 id="using-the-parser-from-the-web">Using the Parser from the Web</h2>
 
-<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It&#8217;s as simple as pointing to it via a script tag:</p>
+<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It’s as simple as pointing to it via a script tag:</p>
 
 <pre><code>&lt;script src="calculator.js"&gt;&lt;/script&gt;
 </code></pre>
@@ -174,7 +174,7 @@ var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 &lt;/script&gt;
 </code></pre>
 
-<p>Or something like that &#8211; you get the picture.</p>
+<p>Or something like that – you get the picture.</p>
 
 <p>A demo of the calculator script used in a web page is <a href="/jison/demos/calc/">here</a>.</p>
 
@@ -366,12 +366,12 @@ expect-floats        this.begin('expect');
 
 <h2 id="tracking-locations">Tracking Locations</h2>
 
-<p>Jison&#8217;s lexical analyzer will track line number and column number information for each token and make them available within parser actions.
-The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations">Bison&#8217;s</a>.</p>
+<p>Jison’s lexical analyzer will track line number and column number information for each token and make them available within parser actions.
+The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations">Bison’s</a>.</p>
 
 <h2 id="custom-scanners">Custom Scanners</h2>
 
-<p>You don&#8217;t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
+<p>You don’t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
 
 <pre><code>parser.lexer = {lex: function () { return 'NIL'; }, setInput: function (str) {} }
 </code></pre>
@@ -384,7 +384,7 @@ The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_n
 
 <p>In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.</p>
 
-<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can&#8217;t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
+<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can’t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
 
 <p>An example from orderly.js:</p>
 
@@ -424,7 +424,7 @@ var parse = exports.parse = function (input) {
   <p>Permission is hereby granted, free of
 charge, to any person  obtaining a
 copy of this software and associated
-documentation  files (the &#8220;Software&#8221;),
+documentation  files (the “Software”),
 to deal in the Software without
 restriction, including without
 limitation the rights to use,  copy,
@@ -440,7 +440,7 @@ permission notice shall be  included
 in all copies or substantial portions
 of the Software.</p>
 
-  <p>THE SOFTWARE IS PROVIDED &#8220;AS IS&#8221;,
+  <p>THE SOFTWARE IS PROVIDED “AS IS”,
 WITHOUT WARRANTY OF ANY KIND,  EXPRESS
 OR IMPLIED, INCLUDING BUT NOT LIMITED
 TO THE WARRANTIES  OF MERCHANTABILITY,

@@ -8,12 +8,14 @@ if(typeof console === 'undefined'){
 var printOut = function(str){document.getElementById("out").value = JSON.stringify(str)};
 
 $(function () {
+
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
+
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
-      $.get(file, function (data) {
+      $.get("/jison/examples/"+file, function (data) {
         $("#grammar").val(data);
         $(document.body).removeClass("loading");
       });
@@ -39,7 +41,7 @@ function processGrammar () {
     else $("#parsing").hide();
 
     Jison.print = function () {};
-    parser = new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
+    parser = Jison.Generator(cfg, {type: type,noDefaultResolve:true});
     if (parser.computeLookaheads)
       parser.computeLookaheads();
 
@@ -68,7 +70,7 @@ function processGrammar () {
             self.toggleClass("open");
           do_click = false;
         }
-      }, 350);
+      }, 200);
     }
     $(".action").on("click", click_handler);
     $(".state").on("click", click_handler);
@@ -87,7 +89,7 @@ function processGrammar () {
 }
 
 function runParser () {
-    if (!parser) processGrammer();
+    if (!parser) processGrammar();
     if (!parser2) parser2 = parser.createParser();
     printOut("Parsing...");
     var source = $("#source").val();
