@@ -63,6 +63,13 @@ lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js
 	cat modules/ebnf-parser/transform-parser.js > $@
 
 
+submodules:
+	cd modules/ebnf-parser && make
+	cd modules/jison-lex && make
+	cd modules/jison2json && make
+	cd modules/json2jison && make
+	cd modules/lex-parser && make
+
 
 
 clean:
@@ -71,4 +78,7 @@ clean:
 	-@rm lib/util/ebnf-parser.js
 	-@rm lib/util/ebnf-transform.js
 	-@rm lib/util/transform-parser.js
+
+superclean: clean
+	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
