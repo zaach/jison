@@ -268,10 +268,32 @@ exports["test EOF in 'Unexpected token' error message"] = function () {
     parser.lexer.showPosition = null; // needed for "Unexpected" message
     parser.yy.parseError = function (str, hash) {
         assert.ok(str.match("end of input"));
+        // as we override the default parseError(),
+        // the default behaviour of throwing an exception is not available now;
+        // instead the parser will return our return value:
+        if ('expected' in hash) {
+            return 666; // parser error
+        } else {
+            return 7;   // lexer error
+        }
     };
 
-    assert.throws(function () {parser.parse("xx"); });
+    assert.ok(parser.parse("xx") === 666, "on error, the parseError return value is the parse result");
+};
 
+exports["test whether default parser error handling throws an exception"] = function () {
+
+    var grammar = {
+        bnf: {
+            "A" :[ 'x x y' ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    parser.lexer.showPosition = null; // needed for "Unexpected" message
+
+    assert.throws(function () {parser.parse("xx"); });
 };
 
 exports["test locations"] = function () {
