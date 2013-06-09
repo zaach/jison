@@ -2344,8 +2344,8 @@ require.define("/lib/util/regexp-lexer.js",function(require,module,exports,__dir
 
 var RegExpLexer = (function () {
 
-var lexParser = require('lex-parser');
-var version = require('./package.json').version;
+var lexParser = require("lex-parser");
+var version = require("./package.json").version;
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(rules, macros, actions, tokens, startConditions, caseless) {
@@ -3504,7 +3504,7 @@ require.define("fs",function(require,module,exports,__dirname,__filename,process
 
 require.define("/lib/util/ebnf-parser.js",function(require,module,exports,__dirname,__filename,process,global){var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
-    jisonlex = require("lex-parser");
+    jisonlex = require("./lex-parser");
 
 exports.parse = function parse (grammar) { return bnf.parse(grammar); };
 exports.transform = ebnf.transform;
