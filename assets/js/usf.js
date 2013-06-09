@@ -8,13 +8,8 @@ if(typeof console === 'undefined'){
 var printOut = function(str){document.getElementById("out").value = JSON.stringify(str)};
 
 $(function () {
-
-    Jison = require('jison');
-    bnf = require('jison/bnf');
-
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
-
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");

@@ -1,4 +1,3 @@
-
 /* description: ClassyLang grammar with AST-building actions. Very classy. */
 /* 
   To build parser:
@@ -8,6 +7,13 @@
 */
 
 /* author: Zach Carter */
+
+%{
+    function prependChild(node, child){
+      node.splice(2,0,child); 
+      return node;
+    }
+%}
 
 %right ASSIGN
 %left OR
