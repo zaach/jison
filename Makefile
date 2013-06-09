@@ -75,4 +75,5 @@ clean:
 
 superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
+	-rm -rf web/output/
 
