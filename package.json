@@ -2,7 +2,7 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "keywords": [
     "jison",
     "bison",
@@ -30,7 +30,8 @@
   },
   "dependencies": {
     "JSONSelect": ">=0.4.0",
-    "reflect": ">=0.1.3",
+    "esprima": "1.0.x",
+    "escodegen": "0.0.21",
     "jison-lex": "git://github.com/GerHobbelt/jison-lex.git",
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
@@ -40,7 +41,7 @@
     "test": ">=0.4.4",
     "jison": ">=0.4.0",
     "uglify-js": ">=1.3.3",
-    "browserify": "*"
+    "browserify": "2.x.x"
   },
   "scripts": {
     "test": "node tests/all-tests.js"

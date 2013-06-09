@@ -2,7 +2,7 @@
 all: build test
 
 site: npm-install
-	node_modules/.bin/browserify -r ./lib/jison.js -a 'file:fs' -a 'system:util' --exports require > web/content/assets/js/jison.js
+	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
@@ -18,12 +18,6 @@ deploy:
 test:
 	node tests/all-tests.js
 
-#
-# As usual, the 'npm install' of the required packages is FUBAR. So we stick with the old build tasks,
-# as those at least worked as soon as you got the 'npm install' for jison itself hacked into a working condition.
-#
-# You know where to take NodeJS/NPM...
-#
 
 build: npm-install build_bnf build_lex
 
