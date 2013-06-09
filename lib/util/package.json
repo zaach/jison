@@ -25,11 +25,11 @@
     "node": ">=0.4"
   },
   "dependencies": {
-    "lex-parser": "0.1.x",
-    "nomnom": "1.5.2"
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
+    "nomnom": ">=1.5.2"
   },
   "devDependencies": {
-    "test": "0.4.4"
+    "test": ">=0.4.4"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
