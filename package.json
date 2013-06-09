@@ -31,14 +31,14 @@
   "dependencies": {
     "JSONSelect": ">=0.4.0",
     "reflect": ">=0.1.3",
-    "jison-lex": "0.1.x",
-    "ebnf-parser": "0.1.x",
-    "lex-parser": "0.1.x",
+    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git",
+    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git",
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
     "nomnom": ">=1.5.2"
   },
   "devDependencies": {
     "test": ">=0.4.4",
-    "jison": "0.4.x",
+    "jison": ">=0.4.0",
     "uglify-js": ">=1.3.3",
     "browserify": "*"
   },
