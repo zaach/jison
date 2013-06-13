@@ -134,7 +134,7 @@ exec("jison " + process.argv[2], function (error) {
             };
         }
 
-        for (var i in symbolsByIndex) {
+        for (var i in this.symbolsByIndex) {
             var symbol = this.symbolsByIndex[i];
             result += '\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
             this.symbols.push('\t\t\tSymbols.Add(symbol' + symbol.index + ')');
@@ -195,10 +195,10 @@ exec("jison " + process.argv[2], function (error) {
             if (production.join) {
                 var symbol = production[0],
                     len = production[1];
-                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + symbolsByIndex[symbol].index + ',' + len + ')}');
+                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ',' + len + ')}');
             } else {
                 var symbol = production;
-                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + symbolsByIndex[symbol].index + ')}');
+                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ')}');
             }
         }
 

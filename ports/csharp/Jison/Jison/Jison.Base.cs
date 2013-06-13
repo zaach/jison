@@ -198,7 +198,6 @@ namespace Jison
 				        var nextSymbol = Productions[action.State.Index].Symbol;
 						// goto new state = table[STATE][NONTERMINAL]
 						var nextState = stack.Last().Action.State;
-						//int stateIndex = nextState.Action.State.Index;
 						var nextAction = nextState.Actions[nextSymbol.Index];
 
 						stack.Push(new ParserCachedAction(nextSymbol, nextAction));
