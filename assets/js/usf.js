@@ -9,24 +9,8 @@ var printOut = function(str){document.getElementById("out").value = JSON.stringi
 
 $(function () {
 
-    Jison = require('jison');
-    bnf = require('jison/bnf');
-
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
-
-    $(".action, .state").live("click", function (ev){
-      if (!$(ev.target).is("a"))
-        $(this).toggleClass("open");
-    });
-
-    $(".action, .state").live("dblclick", function (ev){
-        var row = this.className.match(/(row_[0-9]+)/)[1];
-        $(this).hasClass("open") ?
-          $("."+row).removeClass("open") :
-          $("."+row).addClass("open");
-        return false;
-    });
 
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
@@ -49,7 +33,7 @@ function processGrammar () {
         try {
             var cfg = bnf.parse(grammar);
         } catch (e) {
-            return alert("Oops. Make sure your grammar is in the correct format.\n"+e); 
+            return alert("Oops. Make sure your grammar is in the correct format.\n"+e);
         }
     }
 
@@ -57,7 +41,7 @@ function processGrammar () {
     else $("#parsing").hide();
 
     Jison.print = function () {};
-    parser = new Jison.Generator(cfg, {type: type,noDefaultResolve:true});
+    parser = Jison.Generator(cfg, {type: type,noDefaultResolve:true});
     if (parser.computeLookaheads)
       parser.computeLookaheads();
 
@@ -68,12 +52,44 @@ function processGrammar () {
 
     if (type === 'll')
       llTable(parser);
-    else 
+    else
       lrTable(parser);
+
+    var do_click = false;
+
+    // now that the table has been generated, add the click handlers:
+    function click_handler(ev) {
+      do_click = true;
+      // delay 'click' action so dblclick gets a chance too.
+      // (make sure 'this' remains accessible via closure)
+      var self = $(this);
+      setTimeout(function() {
+        if (do_click) {
+          console.log("click_handler", ev);
+          if (!$(ev.target).is("a"))
+            self.toggleClass("open");
+          do_click = false;
+        }
+      }, 200);
+    }
+    $(".action").on("click", click_handler);
+    $(".state").on("click", click_handler);
+
+    function dblclick_handler(ev) {
+      console.log("dblclick_handler", ev);
+      do_click = false; // disable 'click' action
+      var row = this.className.match(/(row_[0-9]+)/)[1];
+      $(this).hasClass("open") ?
+        $("."+row).removeClass("open") :
+        $("."+row).addClass("open");
+      return false;
+    }
+    $(".action").on("dblclick", dblclick_handler);
+    $(".state").on("dblclick", dblclick_handler);
 }
 
 function runParser () {
-    if (!parser) processGrammer();
+    if (!parser) processGrammar();
     if (!parser2) parser2 = parser.createParser();
     printOut("Parsing...");
     var source = $("#source").val();
@@ -114,7 +130,7 @@ function printCell (cell){
 
     out += "<div class='details'>";
     for (var i=0;i<cell.length;i++)
-        out += parser.productions[cell[i]]+"<br />"; 
+        out += parser.productions[cell[i]]+"<br />";
     out += "</div>";
 
     return out;
@@ -223,7 +239,7 @@ function lrTable (p){
         if (p.nonterminals[ts]){
           if (typeof state[t] === 'number')
             ntout.push('<td class="nonterm nt-'+t+'"><a href="#state_'+state[t]+'">',state[t],'</a></td>');
-          else 
+          else
             ntout.push('<td class="nonterm">&nbsp;</td>');
         } else if (state[t]) {
           out.push('<td id="act-'+i+'-'+t+'" class="row_'+i+' '+(state[t] == 3 ? "accept" : '')+' action">',printAction(state[t]),printActionDetails(state[t], t));
@@ -236,7 +252,7 @@ function lrTable (p){
 
     out.push('</table>');
 
-    $("#table").html("<h3>"+parser.type+" Parse Table</h3><p>Click cells to show details</p>"+out.join(""));
+    $("#table").html("<h3>"+parser.type+" Parse Table</h3><p>Click cells to show details (double-click to show details for the entire row of cells)</p>"+out.join(""));
 
     p.resolutions.forEach(function (res){
       var r = res[2];

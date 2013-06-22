@@ -1,4 +1,4 @@
-var Generator = require("jison").Generator;
+var Generator = require("../lib/jison").Generator;
 
 exports.grammar = {
     "comment": "ECMA-262 5th Edition, 15.12.1 The JSON Grammar.",
@@ -66,14 +66,11 @@ exports.grammar = {
 
 var options = {type: "slr", moduleType: "commonjs", moduleName: "jsoncheck"};
 
-exports.main = function main (args) {
-    var fs = require("file"),
-        cwd = fs.path(fs.cwd()),
-        code = new Generator(exports.grammar, options).generate(),
-        stream = cwd.join(options.moduleName+".js").open("w");
-    stream.print(code).close();
+exports.main = function main () {
+    var code = new Generator(exports.grammar, options).generate();
+    console.log(code);
 };
 
 if (require.main === module)
-    exports.main(require("system").args);
+    exports.main();
 

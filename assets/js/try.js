@@ -1,8 +1,5 @@
 (function ($) {
 
-var Jison = require('jison'),
-    bnf = require('jison/bnf');
-
 var parser,
     parser2;
 
@@ -47,7 +44,7 @@ function processGrammar () {
     }
 
     Jison.print = function () {};
-    parser = new Jison.Generator(cfg, {type: type});
+    parser = Jison.Generator(cfg, {type: type});
 
     $("#out").removeClass("good").removeClass("bad").html('');
     $("#gen_out").removeClass("good").removeClass("bad");
@@ -71,7 +68,7 @@ function processGrammar () {
 }
 
 function runParser () {
-    if (!parser) processGrammer();
+    if (!parser) processGrammar();
     printOut("Parsing...");
     var source = $("#source").val();
     try {
