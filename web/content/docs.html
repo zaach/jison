@@ -332,6 +332,16 @@ A recently added feature are **[start conditions](http://dinosaur.compilertools.
 
 Additionaly, use `this.popState()` within an action to revert to the previous state.
 
+Using the JSON format, start conditions are defined with an array before the rule's matcher:
+
+    {
+      rules: [
+        [['expect'], '[0-9]+"."[0-9]+', 'console.log( "found a float, = " + yytext );']
+      ]
+    }
+
+The array contains the list of start conditions for the rule.
+
 Tracking Locations
 ------------------
 
@@ -354,7 +364,7 @@ Sharing Scope
 
 In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.
 
-Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can't rely on it being available through lexical scoping. Instead, the parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
+Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules.The parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
 
 An example from orderly.js:
 
@@ -370,8 +380,6 @@ An example from orderly.js:
     ...
 
 The `scope` module contains logic for building data structures, which is used within the semantic actions.
-
-*TODO: More on this.*
 
 Parsing algorithms
 ------------------
@@ -391,7 +399,7 @@ via [github](http://github.com/zaach/jison/contributors)
 License
 -------
 
-> Copyright (c) 2009 Zachary Carter
+> Copyright (c) 2013 Zachary Carter
 > 
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a
