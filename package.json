@@ -33,9 +33,10 @@
     "esprima": "1.0.x",
     "escodegen": "0.0.21",
     "jison-lex": "0.2.x",
-    "ebnf-parser": "~0.1.4",
-    "lex-parser": "~0.1.1",
-    "nomnom": "1.5.2"
+    "ebnf-parser": "~0.1.5",
+    "lex-parser": "~0.1.2",
+    "nomnom": "1.5.2",
+    "cjson": "~0.2.1"
   },
   "devDependencies": {
     "test": "0.4.4",
