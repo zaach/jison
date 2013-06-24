@@ -1,4 +1,6 @@
 <?php
+/* Jison base parser */
+
 require_once('base.php');
 /**/class Definition/**/ extends Jison_Base
 {
@@ -13,12 +15,12 @@ require_once('base.php');
         //@@LEXER_INJECT@@
     }
 
-    function parserPerformAction(&$thisS, $yy, $yystate, $s)
+    function parserPerformAction(&$thisS, &$yy, $yystate, &$s, $o)
 	{
-		$o = count($s) - 1;//@@ParserPerformActionInjection@@
+		//@@ParserPerformActionInjection@@
 	}
 
-	function LexerPerformAction($avoidingNameCollisions, $Yy_Start)
+	function LexerPerformAction($avoidingNameCollisions, $YY_START = null)
 	{
 		//@@LexerPerformActionInjection@@
 	}

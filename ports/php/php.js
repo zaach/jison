@@ -137,15 +137,15 @@ exec("jison " + process.argv[2], function (error) {
 		for (var i in this.symbolsByIndex) {
 			var symbol = this.symbolsByIndex[i];
 			result += '\t\t\t$symbol' + symbol.index + ' = new Jison_ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
-			this.symbols.push('\t\t\t$this->symbols->add($symbol' + symbol.index + ')');
+			this.symbols.push('\t\t\t$this->symbols[' + symbol.index + '] = $symbol' + symbol.index + '');
+			this.symbols.push('\t\t\t$this->symbols["' + symbol.name + '"] = $symbol' + symbol.index + '');
 
 		}
 
-		result += '\n\n\t\t\t$this->symbols = new Jison_ParserSymbols();\n';
 		result += this.symbols.join(';\n') + ';\n\n';
 
 		for (var i in terminals) {
-			this.terminals.push('\t\t\t\t\t' + i + '=>$symbol' + i + '');
+			this.terminals.push('\t\t\t\t\t' + i + '=>&$symbol' + i + '');
 		}
 
 		result += '\t\t\t$this->terminals = array(\n' + this.terminals.join(',\n') + '\n\t\t\t\t);\n\n';
@@ -185,7 +185,7 @@ exec("jison " + process.argv[2], function (error) {
 		for (var i in defaultActions) {
 			var action = defaultActions[i][0];
 			var state = defaultActions[i][1];
-			this.defaultActions.push('\t\t\t\t\t' + i + ', new Jison_ParserAction($this->' + actions[action] +', $table' +  state + ')');
+			this.defaultActions.push('\t\t\t\t\t' + i + '=>new Jison_ParserAction($this->' + actions[action] +', $table' +  state + ')');
 		}
 
 		result += '\t\t\t$this->defaultActions = array(\n\t\t\t\t\n' + this.defaultActions.join(',\n') + '\n\t\t\t\t);\n\n';
@@ -213,7 +213,7 @@ exec("jison " + process.argv[2], function (error) {
 			this.conditions = [];
 
 		for (var i in rules) {
-			this.rules.push('\t\t\t\t\t' + i + '=>"' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '\\"') + '"');
+			this.rules.push('\t\t\t\t\t' + i + '=>"/' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '\\"') + '/"');
 		}
 
 		result += '\t\t\t$this->rules = array(\n\t\t\t\t\n' + this.rules.join(',\n') + '\n\t\t\t\t);\n\n';

@@ -1,7 +1,7 @@
 <?php
-/* Jison generated parser */
+/* Jison base parser */
 
-class Jison_Base
+abstract class Jison_Base
 {
 	public $symbols = array();
 	public $terminals = array();
@@ -20,26 +20,25 @@ class Jison_Base
 
 	}
 
-	function parserPerformAction(&$thisS, $yytext, $yyleng, $yylineno, $yystate, $S, $_S, $O) {}
+	protected abstract function parserPerformAction(&$thisS, &$yy, $yystate, &$s, $o);
 
 	function parserLex()
 	{
 		$token = $this->lexerLex(); // $end = 1
-		$token = (isset($token) ? $token : 1);
 
-		// if token isn't its numeric value, convert
-		if (isset($this->symbols[$token]))
-			return $this->symbols[$token];
+		if (isset($token)) {
+			return $token;
+		}
 
-		return $token;
+		return $this->symbols["end"];
 	}
 
-	function parseError($str = "", $hash = array())
+	function parseError($str = "", Jison_ParserError $hash = null)
 	{
 		throw new Exception($str);
 	}
 
-	function lexerError($str = "", $hash = array())
+	function lexerError($str = "", Jison_LexerError $hash = null)
 	{
 		throw new Exception($str);
 	}
@@ -49,7 +48,10 @@ class Jison_Base
 		if (empty($this->table)) {
 			throw new Exception("Empty Table");
 		}
-		$stack = array(0);
+		$this->eof = new Jison_ParserSymbol("Eof", 1);
+		$firstAction = new Jison_ParserAction(0, $this->table[0]);
+		$firstCachedAction = new Jison_ParserCachedAction($firstAction);
+		$stack = array($firstCachedAction);
 		$stackCount = 1;
 		$vstack = array(null);
 		$vstackCount = 1;
@@ -65,11 +67,11 @@ class Jison_Base
 		$this->setInput($input);
 
 		while (true) {
-			// retreive state number from top of stack
-			$state = $stack[$stackCount - 1];
+			// retrieve state number from top of stack
+			$state = $stack[$stackCount - 1]->action->state;
 			// use default actions if available
-			if (isset($this->defaultActions[$state])) {
-				$action = $this->defaultActions[$state];
+			if ($state != null && isset($this->defaultActions[$state->index])) {
+				$action = $this->defaultActions[$state->index];
 			} else {
 				if (empty($symbol) == true) {
 					$symbol = $this->parserLex();
@@ -84,28 +86,22 @@ class Jison_Base
 			}
 
 			if ($action == null) {
-				if ($recovering > 0) {
+				if ($recovering == 0) {
 					// Report error
 					$expected = array();
 					foreach($this->table[$state->index]->actions as $p => $item) {
 						if (!empty($this->terminals[$p]) && $p > 2) {
-							$expected[] = $this->terminals[$p];
+							$expected[] = $this->terminals[$p]->name;
 						}
 					}
 
-					$errStr = "Parse error on line " . ($this->yy->lineNo + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals[$symbol]) ? $this->terminals[$symbol] : 'NOTHING') . "'";
+					$errStr = "Parse error on line " . ($this->yy->lineNo + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals[$symbol->index]) ? $this->terminals[$symbol->index]->name : 'NOTHING') . "'";
 
-					$this->parseError($errStr, array(
-						"text"=> $this->match,
-						"token"=> $symbol,
-						"line"=> $this->yy->lineNo,
-						"loc"=> $yy->loc,
-						"expected"=> $expected
-					));
+					$this->parseError($errStr, new Jison_ParserError($this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
 				}
 			}
 
-			if ($state == null || $action == null) {
+			if ($state === null || $action === null) {
 				break;
 			}
 
@@ -113,15 +109,15 @@ class Jison_Base
 				case 1:
 					// shift
 					//$this->shiftCount++;
-					$stack[] = new Jison_ParserCachedAction($symbol, $action);
+					$stack[] = new Jison_ParserCachedAction($action, $symbol);
 					$stackCount++;
 
-					$vstack[] = $this->yy;
+					$vstack[] = clone($this->yy);
 					$vstackCount++;
 
 					$symbol = "";
 					if ($preErrorSymbol == null) { // normal execution/no error
-						$yy = $this->yy;
+						$yy = clone($this->yy);
 						if ($recovering > 0) $recovering--;
 					} else { // error just occurred, resume old lookahead f/ before error
 						$symbol = $preErrorSymbol;
@@ -136,29 +132,35 @@ class Jison_Base
 					$_yy = $vstack[$vstackCount - $len];// default to $S = $1
 					// default location, uses first token for firsts, last for lasts
 
-					if ($this->range != null) {
-
+					if (isset($this->ranges)) {
+						//TODO: add ranges
 					}
 
-					$r = $this->parserPerformAction($_yy, $yy, $action->state->index, $vstack);
+					$r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
 
 					if (isset($r)) {
-						return $r;
+						return $r->text;
 					}
 
 					// pop off stack
-					if ($len > 0) {
-						$stack = array_slice($stack, 0, -1 * $len * 2);
-						$stackCount -= $len * 2;
+					while ($len > 0) {
+						$len--;
 
-						$vstack = array_slice($vstack, 0, -1 * $len);
-						$vstackCount -= $len;
+						array_pop($stack);
+						$stackCount--;
+
+						array_pop($vstack);
+						$vstackCount--;
 					}
 
-					$stack[] = $this->productions[$action->state->index]->symbol; // push nonterminal (reduce)
-					$stackCount++;
-
-					$vstack[] = $_yy;
+					if (is_null($_yy))
+					{
+						$vstack[] = new Jison_ParserValue();
+					}
+					else
+					{
+						$vstack[] = $_yy;
+					}
 					$vstackCount++;
 
 					$nextSymbol = $this->productions[$action->state->index]->symbol;
@@ -166,7 +168,7 @@ class Jison_Base
 					$nextState = $stack[$stackCount - 1]->action->state;
 					$nextAction = $nextState->actions[$nextSymbol->index];
 
-					$stack[] = new ParserCachedAction($nextSymbol, $nextAction);
+					$stack[] = new Jison_ParserCachedAction($nextAction, $nextSymbol);
 					$stackCount++;
 
 					break;
@@ -187,7 +189,7 @@ class Jison_Base
 	public $yy = null;
 	public $match = "";
 	public $matched = "";
-	public $conditionsStack = array();
+	public $conditionStack = array();
 	public $conditionStackCount = 0;
 	public $rules = array();
 	public $conditions = array();
@@ -196,13 +198,8 @@ class Jison_Base
 	public $more;
 	public $input;
 	public $offset;
-	public $ranges = array();
+	public $ranges;
 	public $flex = false;
-
-	function __construct() {
-		$this->eof = new Jison_ParserSymbol("Eof", 1);
-	}
-
 
 	function setInput($input)
 	{
@@ -210,10 +207,11 @@ class Jison_Base
 		$this->more = $this->less = $this->done = false;
 		$this->yy = new Jison_ParserValue();
 		$this->conditionStack = array('INITIAL');
+		$this->conditionStackCount = 1;
 
-		if (isset($this->options->ranges)) {
+		if (isset($this->ranges)) {
 			$loc = $this->yy->loc = new Jison_ParserLocation();
-			$loc->Range(new ParserRange(0, 0));
+			$loc->Range(new Jison_ParserRange(0, 0));
 		} else {
 			$this->yy->loc = new Jison_ParserLocation();
 		}
@@ -356,8 +354,8 @@ class Jison_Base
 			}
 			$this->more = false;
 			$this->input = substr($this->input, $matchCount, strlen($this->input));
-			$ruleIndex = $this->rules[$index];
-			$nextCondition = $this->conditionsStack[$this->conditionStackCount - 1];
+			$ruleIndex = $rules[$index];
+			$nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
 
 			$token = $this->lexerPerformAction($ruleIndex, $nextCondition);
 
@@ -366,7 +364,9 @@ class Jison_Base
 			}
 
 			if (empty($token) == false) {
-				return $token;
+				return $this->symbols[
+					$token
+				];
 			} else {
 				return null;
 			}
@@ -384,7 +384,7 @@ class Jison_Base
 	{
 		$r = $this->next();
 
-		while (empty($r) && $this->done == false) {
+		while (is_null($r) && !$this->done) {
 			$r = $this->next();
 		}
 
@@ -405,11 +405,11 @@ class Jison_Base
 
 	function currentRules()
 	{
-		$peek = $this->conditionStack[$this->conditionStackCount];
+		$peek = $this->conditionStack[$this->conditionStackCount - 1];
 		return $this->conditions[$peek]->rules;
 	}
 
-	function lexerPerformAction(&$yy, $yy_, $avoiding_name_collisions, $YY_START = null) {}
+	protected abstract function lexerPerformAction($avoiding_name_collisions, $YY_START = null);
 }
 
 class Jison_ParserLocation
@@ -472,7 +472,7 @@ class Jison_ParserCachedAction
 	public $action;
 	public $symbol;
 
-	function __construct($action, $symbol)
+	function __construct($action, $symbol = null)
 	{
 		$this->action = $action;
 		$this->symbol = $symbol;
@@ -483,11 +483,13 @@ class Jison_ParserAction
 {
 	public $action;
 	public $state;
+	public $symbol;
 
-	function __construct($action, $state = null)
+	function __construct($action, &$state = null, &$symbol = null)
 	{
 		$this->action = $action;
 		$this->state = $state;
+		$this->symbol = $symbol;
 	}
 }
 
@@ -536,7 +538,7 @@ class Jison_LexerError
 	public $token;
 	public $lineNo;
 
-	public function lexerError($text, $token, $lineNo)
+	public function __construct($text, $token, $lineNo)
 	{
 		$this->text = $text;
 		$this->token = $token;
@@ -554,7 +556,7 @@ class Jison_ParserState
 		$this->index = $index;
 	}
 
-	public function setActions($actions)
+	public function setActions(&$actions)
 	{
 		$this->actions = $actions;
 	}
@@ -569,16 +571,5 @@ class Jison_ParserRange
 	{
 		$this->x = $x;
 		$this->y = $y;
-	}
-}
-
-class Jison_ParserSymbols
-{
-	private $symbolsString = array();
-	private $symbolsInt = array();
-
-	public function add(&$symbol)
-	{
-		$this->symbolsInt[$symbol->index] = $this->symbolsString[$symbol->name] = $symbol;
 	}
 }
