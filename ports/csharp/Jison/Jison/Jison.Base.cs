@@ -149,7 +149,7 @@ namespace Jison
 				switch (action.Action)
 				{
 					case Shift:
-						stack.Push(new ParserCachedAction(symbol, action));
+						stack.Push(new ParserCachedAction(action, symbol));
 						vstack.Push(Yy.Clone());
 
 						symbol = null;
@@ -204,7 +204,7 @@ namespace Jison
 						var nextState = stack.Last().Action.State;
 						var nextAction = nextState.Actions[nextSymbol.Index];
 
-						stack.Push(new ParserCachedAction(nextSymbol, nextAction));
+						stack.Push(new ParserCachedAction(nextAction, nextSymbol));
 
 					break;
 					case Accept:
@@ -404,7 +404,7 @@ namespace Jison
 				_Input = _Input.Substring(match.Length);
                 var ruleIndex = rules[index];
                 var nextCondition = ConditionStack.Peek();
-                dynamic action = LexerPerformAction(ruleIndex, ConditionStack.Peek());
+                dynamic action = LexerPerformAction(ruleIndex, nextCondition);
 				ParserSymbol token = Symbols[action];
 
 				if (Done == true && String.IsNullOrEmpty(_Input) == false)
@@ -672,7 +672,7 @@ namespace Jison
 			Action = action;
 		}
 
-		public ParserCachedAction(ParserSymbol symbol, ParserAction action)
+		public ParserCachedAction(ParserAction action, ParserSymbol symbol)
 		{
 			Action = action;
 			Symbol = symbol;
