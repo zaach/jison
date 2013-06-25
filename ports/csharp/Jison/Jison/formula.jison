@@ -62,8 +62,7 @@
 [A-Za-z]{1,}[A-Za-z_0-9]+			{return 'VARIABLE';}
 [A-Za-z_]+           				{return 'VARIABLE';}
 [0-9]+          			  		{return 'NUMBER';}
-"$"									{/* skip whitespace */}
-" "									{return ' ';}
+"\s"								{/* skip whitespace */}
 [.]									{return 'DECIMAL';}
 ":"									{return ':';}
 ";"									{return ';';}

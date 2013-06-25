@@ -45,9 +45,13 @@ namespace Jison
 		public ParserSymbol ParserLex()
 		{
 			var token = LexerLex();//end = 1
-			token = (token != null ? token : Symbols["end"]);
 
-			return token;
+            if (token != null)
+            {
+                return token;
+            }
+
+			return Symbols["end"];
 		}
 
 		public void ParseError(string error, ParserError hash = null)
@@ -428,12 +432,12 @@ namespace Jison
 		{
 			var r = Next();
 
-			if (r != null)
+			while (r == null)
 			{
-				return r;
-			} else {
-				return LexerLex();
+			    r = Next();
 			}
+
+		    return r;
 		}
 
 		public void Begin(string condition)
