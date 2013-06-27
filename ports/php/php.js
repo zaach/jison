@@ -67,11 +67,13 @@ exec("jison " + process.argv[2], function (error) {
         str = str.replace(new RegExp('default[:][;]', 'g'), '');
         str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
         str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
-        str = str.replace(new RegExp('yystate', 'g'), '$yystate');
-        str = str.replace(new RegExp('yytext', 'g'), '$yytext');
-        str = str.replace(new RegExp('[.]yytext', 'g'), '->yytext');
+        //str = str.replace(new RegExp('yystate', 'g'), '$this->yy->state');
+        //str = str.replace(new RegExp('yytext', 'g'), 'yy->text');
+        str = str.replace(new RegExp('[$]yy[_][.]', 'g'), '$this->yy->');
+        str = str.replace(new RegExp('[$]this[-][>]yy[-][>]yy', 'g'), '$this->yy->');
+        str = str.replace(new RegExp('[.]yytext', 'g'), '->text');
         str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
-        str = str.replace(new RegExp('yy_[.][$]', 'g'), '$yy_->');
+        str = str.replace(new RegExp('yy_[.][$]', 'g'), '$this->yy->');
         str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
         str = str.replace(new RegExp('[$]end', 'g'), 'end');
         str = str.replace(new RegExp('console[.]log'), '');
