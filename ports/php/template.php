@@ -1,11 +1,10 @@
 <?php
 /* Jison base parser */
 
-require_once('base.php');
+/**/require_once('base.php');/**/
+
 /**/class Definition/**/ extends Jison_Base
 {
-	public $type = "Cell";
-
 	function __construct()
     {
         //Setup Parser

@@ -89,7 +89,8 @@ exec("jison " + process.argv[2], function (error) {
 	
 	var option = {
 		parserClass: fileName + 'Definition',
-		fileName: fileName + 'Definition.php'
+		fileName: fileName + 'Definition.php',
+        usingZend: 'false'
 	};
 	
 	var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
@@ -234,20 +235,24 @@ exec("jison " + process.argv[2], function (error) {
 		.replace('new Parser(', 'new ' + option.parserClass + '(')
 
 		.replace('//@@PARSER_INJECT@@',
-		parserInject()
-	)
+            parserInject()
+        )
 
 		.replace('//@@LEXER_INJECT@@',
-		lexerInject()
-	)
+            lexerInject()
+        )
 
 		.replace('//@@ParserPerformActionInjection@@',
-		jsPerformActionToPhp(parserPerformAction)
-	)
+            jsPerformActionToPhp(parserPerformAction)
+        )
 
 		.replace('//@@LexerPerformActionInjection@@',
-		jsPerformActionToPhp(lexerPerformAction, true)
-	);
+            jsPerformActionToPhp(lexerPerformAction, true)
+        );
+
+    if (option.usingZend == 'true') {
+        parserRaw = parserRaw.replace("/**/require_once('base.php');/**/", '');
+    }
 
 	fs.writeFile(option.fileName, parserRaw, function(err) {
 		if (err) {

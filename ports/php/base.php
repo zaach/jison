@@ -8,12 +8,18 @@ abstract class Jison_Base
 	public $productions = array();
 	public $table = array();
 	public $defaultActions = array();
+    public $emptyParserValue;
 	public $version = '0.3.12';
 	public $debug = false;
 	public $none = 0;
 	public $shift = 1;
 	public $reduce = 2;
 	public $accept = 3;
+
+    function __construct()
+    {
+        $this->emptyParserValue = new Jison_ParserValue();
+    }
 
 	function trace()
 	{
@@ -155,7 +161,7 @@ abstract class Jison_Base
 
 					if (is_null($_yy))
 					{
-						$vstack[] = new Jison_ParserValue();
+						$vstack[] = clone($this->emptyParserValue);
 					}
 					else
 					{
@@ -205,7 +211,7 @@ abstract class Jison_Base
 	{
 		$this->input = $input;
 		$this->more = $this->less = $this->done = false;
-		$this->yy = new Jison_ParserValue();
+		$this->yy = clone($this->emptyParserValue);
 		$this->conditionStack = array('INITIAL');
 		$this->conditionStackCount = 1;
 
