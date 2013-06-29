@@ -12,6 +12,8 @@
 
         //Setup Lexer
         //@@LEXER_INJECT@@
+
+	    parent::__construct();
     }
 
     function parserPerformAction(&$thisS, &$yy, $yystate, &$s, $o)

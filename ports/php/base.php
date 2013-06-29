@@ -145,7 +145,7 @@ abstract class Jison_Base
 					$r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
 
 					if (isset($r)) {
-						return $r->text;
+						return $r;
 					}
 
 					// pop off stack
@@ -266,7 +266,7 @@ abstract class Jison_Base
 		$r = $this->yy->loc->range;
 		$oldLinesLength = (isset($oldLines[$oldLinesCount - $linesCount]) ? strlen($oldLines[$oldLinesCount - $linesCount]) : 0);
 
-		$this->yy->loc = new ParserLocation(
+		$this->yy->loc = new Jison_ParserLocation(
 			$this->yy->loc->firstLine,
 			$this->yy->lineNo,
 			$this->yy->loc->firstColumn,
