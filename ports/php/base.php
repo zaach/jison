@@ -341,13 +341,20 @@ abstract class Jison_Base
 		}
 		if ( $match ) {
 			$matchCount = strlen($match[0]);
-			$lineCount = preg_match("/\n.*/", $match[0], $lines);
-
+			$lineCount = preg_match("/(?:\r\n?|\n).*/", $match[0], $lines);
+            $line = ($lines ? $lines[$lineCount - 1] : false);
 			$this->yy->lineNo += $lineCount;
-			$this->yy->loc->firstLine = $this->yy->loc->lastLine;
-			$this->yy->loc->lastLine = $this->yy->lineNo + 1;
-			$this->yy->loc->firstColumn = $this->yy->loc->lastColumn;
-			$this->yy->loc->lastColumn = $lines ? count($lines[$lineCount - 1]) - 1 : $this->yy->loc->lastColumn + $matchCount;
+
+            $this->yy->loc = new Jison_ParserLocation(
+                $this->yy->loc->lastLine,
+                $this->yy->lineNo + 1,
+                $this->yy->loc->lastColumn,
+                ($line ?
+                    count($line) - preg_match("/\r?\n?/", $line, $na) :
+                    $this->yy->loc->lastColumn + $matchCount
+                )
+            );
+
 
 			$this->yy->text .= $match[0];
 			$this->match .= $match[0];
@@ -438,6 +445,11 @@ class Jison_ParserLocation
 	{
 		$this->range = $range;
 	}
+
+    public function __clone()
+    {
+        return new Jison_ParserLocation($this->firstLine, $this->lastLine, $this->firstColumn, $this->lastColumn);
+    }
 }
 
 class Jison_ParserValue
@@ -447,6 +459,18 @@ class Jison_ParserValue
 	public $lineNo = 0;
 	public $value;
 	public $text;
+
+    function __clone() {
+        $clone = new Jison_ParserValue();
+        $clone->leng = $this->leng;
+        if (isset($this->loc)) {
+            $clone->loc = clone $this->loc;
+        }
+        $clone->lineNo = $this->lineNo;
+        $clone->value = $this->value;
+        $clone->text = $this->text;
+        return $clone;
+    }
 }
 
 class Jison_LexerConditions

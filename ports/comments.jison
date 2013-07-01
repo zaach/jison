@@ -1,4 +1,4 @@
-﻿//phpOption parserClass:JisonParser_Html
+﻿//A parser for extracting comments out of a string
 
 //Lexical Grammer
 %lex
