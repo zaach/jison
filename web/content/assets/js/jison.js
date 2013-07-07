@@ -280,7 +280,7 @@ module.exports={
   },
   "devDependencies": {
     "test": ">=0.4.4",
-    "jison": ">=0.4.0",
+    "jison": "git://github.com/GerHobbelt/jison.git",
     "uglify-js": ">=1.3.3",
     "browserify": "2.x.x"
   },
