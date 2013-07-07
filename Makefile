@@ -18,6 +18,11 @@ deploy:
 test:
 	node tests/all-tests.js
 
+examples: web/content/assets/js/calculator.js
+
+web/content/assets/js/calculator.js: examples/calculator.jison
+	lib/cli.js examples/calculator.jison -o web/content/assets/js/calculator.js
+
 
 build: npm-install build_bnf build_lex
 
