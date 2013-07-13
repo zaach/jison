@@ -4,3 +4,4 @@ node_modules
 # Editor backup files
 *.bak
 *~
+web/content/assets/js/jison.js
