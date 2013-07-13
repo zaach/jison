@@ -1,5 +1,6 @@
 {
    "comment": "JSON Math Parser",
+   // JavaScript comments also work
 
    "lex": {
       "rules": [
