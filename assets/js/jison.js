@@ -7,151 +7,6 @@ bnf = require('ebnf-parser');
 // nothing to see here... no file methods for the browser
 
 },{}],5:[function(require,module,exports){
-module.exports={
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
-  "name": "jison",
-  "description": "A parser generator with Bison's API",
-  "version": "0.4.6",
-  "keywords": [
-    "jison",
-    "bison",
-    "yacc",
-    "parser",
-    "generator",
-    "lexer",
-    "flex",
-    "tokenizer",
-    "compiler"
-  ],
-  "preferGlobal": true,
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/zaach/jison.git"
-  },
-  "bugs": {
-    "email": "jison@librelist.com",
-    "url": "http://github.com/zaach/jison/issues"
-  },
-  "main": "lib/jison",
-  "bin": "lib/cli.js",
-  "engines": {
-    "node": ">=0.9"
-  },
-  "dependencies": {
-    "JSONSelect": ">=0.4.0",
-    "esprima": "1.0.x",
-    "escodegen": "0.0.21",
-    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git",
-    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git",
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
-    "nomnom": ">=1.5.2",
-    "cjson": ">=0.2.1"
-  },
-  "devDependencies": {
-    "test": ">=0.4.4",
-    "jison": "git://github.com/GerHobbelt/jison.git",
-    "uglify-js": ">=1.3.3",
-    "browserify": "2.x.x"
-  },
-  "scripts": {
-    "test": "node tests/all-tests.js"
-  },
-  "homepage": "http://jison.org"
-}
-
-},{}],6:[function(require,module,exports){
-/*
- * Introduces a typal object to make classical/prototypal patterns easier
- * Plus some AOP sugar
- *
- * By Zachary Carter <zach@carter.name>
- * MIT Licensed
- * */
-
-var typal = (function () {
-
-var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
-var position = /^(before|after)/;
-
-// basic method layering
-// always returns original method's return value
-function layerMethod(k, fun) {
-    var pos = k.match(position)[0],
-        key = k.replace(position, ''),
-        prop = this[key];
-
-    if (pos === 'after') {
-        this[key] = function () {
-            var ret = prop.apply(this, arguments);
-            var args = [].slice.call(arguments);
-            args.splice(0, 0, ret);
-            fun.apply(this, args);
-            return ret;
-        };
-    } else if (pos === 'before') {
-        this[key] = function () {
-            fun.apply(this, arguments);
-            var ret = prop.apply(this, arguments);
-            return ret;
-        };
-    }
-}
-
-// mixes each argument's own properties into calling object,
-// overwriting them or layering them. i.e. an object method 'meth' is
-// layered by mixin methods 'beforemeth' or 'aftermeth'
-function typal_mix() {
-    var self = this;
-    for(var i=0,o,k; i<arguments.length; i++) {
-        o=arguments[i];
-        if (!o) continue;
-        if (Object.prototype.hasOwnProperty.call(o,'constructor'))
-            this.constructor = o.constructor;
-        if (Object.prototype.hasOwnProperty.call(o,'toString'))
-            this.toString = o.toString;
-        for(k in o) {
-            if (Object.prototype.hasOwnProperty.call(o, k)) {
-                if(k.match(position) && typeof this[k.replace(position, '')] === 'function')
-                    layerMethod.call(this, k, o[k]);
-                else
-                    this[k] = o[k];
-            }
-        }
-    }
-    return this;
-}
-
-return {
-    // extend object with own typalperties of each argument
-    mix: typal_mix,
-
-    // sugar for object begetting and mixing
-    // - Object.create(typal).mix(etc, etc);
-    // + typal.beget(etc, etc);
-    beget: function typal_beget() {
-        return arguments.length ? typal_mix.apply(create(this), arguments) : create(this);
-    },
-
-    // Creates a new Class function based on an object with a constructor method
-    construct: function typal_construct() {
-        var o = typal_mix.apply(create(this), arguments);
-        var constructor = o.constructor;
-        var Klass = o.constructor = function () { return constructor.apply(this, arguments); };
-        Klass.prototype = o;
-        Klass.mix = typal_mix; // allow for easy singleton property extension
-        return Klass;
-    },
-
-    // no op
-    constructor: function typal_constructor() { return this; }
-};
-
-})();
-
-if (typeof exports !== 'undefined')
-    exports.typal = typal;
-
-},{}],7:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -205,7 +60,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],8:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 (function(process){function filter (xs, fn) {
     var res = [];
     for (var i = 0; i < xs.length; i++) {
@@ -383,7 +238,200 @@ exports.relative = function(from, to) {
 };
 
 })(require("__browserify_process"))
-},{"__browserify_process":7}],9:[function(require,module,exports){
+},{"__browserify_process":5}],7:[function(require,module,exports){
+module.exports={
+  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "name": "jison",
+  "description": "A parser generator with Bison's API",
+  "version": "0.4.6",
+  "keywords": [
+    "jison",
+    "bison",
+    "yacc",
+    "parser",
+    "generator",
+    "lexer",
+    "flex",
+    "tokenizer",
+    "compiler"
+  ],
+  "preferGlobal": true,
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zaach/jison.git"
+  },
+  "bugs": {
+    "email": "jison@librelist.com",
+    "url": "http://github.com/zaach/jison/issues"
+  },
+  "main": "lib/jison",
+  "bin": "lib/cli.js",
+  "engines": {
+    "node": ">=0.9"
+  },
+  "dependencies": {
+    "JSONSelect": ">=0.4.0",
+    "esprima": "1.0.x",
+    "escodegen": "0.0.21",
+    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git",
+    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git",
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
+    "nomnom": ">=1.5.2",
+    "cjson": ">=0.2.1"
+  },
+  "devDependencies": {
+    "test": ">=0.4.4",
+    "jison": "git://github.com/GerHobbelt/jison.git",
+    "uglify-js": ">=1.3.3",
+    "browserify": "2.x.x"
+  },
+  "scripts": {
+    "test": "node tests/all-tests.js"
+  },
+  "homepage": "http://jison.org"
+}
+
+},{}],8:[function(require,module,exports){
+/*
+ * Introduces a typal object to make classical/prototypal patterns easier
+ * Plus some AOP sugar
+ *
+ * By Zachary Carter <zach@carter.name>
+ * MIT Licensed
+ * */
+
+var typal = (function () {
+
+var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
+var position = /^(before|after)/;
+
+// basic method layering
+// always returns original method's return value
+function layerMethod(k, fun) {
+    var pos = k.match(position)[0],
+        key = k.replace(position, ''),
+        prop = this[key];
+
+    if (pos === 'after') {
+        this[key] = function () {
+            var ret = prop.apply(this, arguments);
+            var args = [].slice.call(arguments);
+            args.splice(0, 0, ret);
+            fun.apply(this, args);
+            return ret;
+        };
+    } else if (pos === 'before') {
+        this[key] = function () {
+            fun.apply(this, arguments);
+            var ret = prop.apply(this, arguments);
+            return ret;
+        };
+    }
+}
+
+// mixes each argument's own properties into calling object,
+// overwriting them or layering them. i.e. an object method 'meth' is
+// layered by mixin methods 'beforemeth' or 'aftermeth'
+function typal_mix() {
+    var self = this;
+    for(var i=0,o,k; i<arguments.length; i++) {
+        o=arguments[i];
+        if (!o) continue;
+        if (Object.prototype.hasOwnProperty.call(o,'constructor'))
+            this.constructor = o.constructor;
+        if (Object.prototype.hasOwnProperty.call(o,'toString'))
+            this.toString = o.toString;
+        for(k in o) {
+            if (Object.prototype.hasOwnProperty.call(o, k)) {
+                if(k.match(position) && typeof this[k.replace(position, '')] === 'function')
+                    layerMethod.call(this, k, o[k]);
+                else
+                    this[k] = o[k];
+            }
+        }
+    }
+    return this;
+}
+
+return {
+    // extend object with own typalperties of each argument
+    mix: typal_mix,
+
+    // sugar for object begetting and mixing
+    // - Object.create(typal).mix(etc, etc);
+    // + typal.beget(etc, etc);
+    beget: function typal_beget() {
+        return arguments.length ? typal_mix.apply(create(this), arguments) : create(this);
+    },
+
+    // Creates a new Class function based on an object with a constructor method
+    construct: function typal_construct() {
+        var o = typal_mix.apply(create(this), arguments);
+        var constructor = o.constructor;
+        var Klass = o.constructor = function () { return constructor.apply(this, arguments); };
+        Klass.prototype = o;
+        Klass.mix = typal_mix; // allow for easy singleton property extension
+        return Klass;
+    },
+
+    // no op
+    constructor: function typal_constructor() { return this; }
+};
+
+})();
+
+if (typeof exports !== 'undefined')
+    exports.typal = typal;
+
+},{}],9:[function(require,module,exports){
+var bnf = require("./parser").parser,
+    ebnf = require("./ebnf-transform"),
+    jisonlex = require("./lex-parser");
+
+exports.parse = function parse (grammar) { return bnf.parse(grammar); };
+exports.transform = ebnf.transform;
+
+// adds a declaration to the grammar
+bnf.yy.addDeclaration = function (grammar, decl) {
+    if (decl.start) {
+        grammar.start = decl.start;
+    }
+    else if (decl.lex) {
+        grammar.lex = parseLex(decl.lex);
+    }
+    else if (decl.operator) {
+        if (!grammar.operators) {
+            grammar.operators = [];
+        }
+        grammar.operators.push(decl.operator);
+    }
+    else if (decl.include) {
+        if (!grammar.moduleInclude)
+            grammar.moduleInclude = '';
+        grammar.moduleInclude += decl.include;
+    }
+
+};
+
+// helps tokenize comments
+bnf.yy.lexComment = function (lexer) {
+    var ch = lexer.input();
+    if (ch === '/') {
+        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
+        return;
+    } else {
+        lexer.unput('/*');
+        lexer.more();
+    }
+};
+
+// parse an embedded lex section
+var parseLex = function (text) {
+    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
+};
+
+
+},{"./parser":10,"./ebnf-transform":11,"./lex-parser":12}],13:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
 
@@ -980,55 +1028,7 @@ return RegExpLexer;
 module.exports = RegExpLexer;
 
 
-},{"./package.json":10,"./lex-parser":11}],12:[function(require,module,exports){
-var bnf = require("./parser").parser,
-    ebnf = require("./ebnf-transform"),
-    jisonlex = require("./lex-parser");
-
-exports.parse = function parse (grammar) { return bnf.parse(grammar); };
-exports.transform = ebnf.transform;
-
-// adds a declaration to the grammar
-bnf.yy.addDeclaration = function (grammar, decl) {
-    if (decl.start) {
-        grammar.start = decl.start;
-    }
-    else if (decl.lex) {
-        grammar.lex = parseLex(decl.lex);
-    }
-    else if (decl.operator) {
-        if (!grammar.operators) {
-            grammar.operators = [];
-        }
-        grammar.operators.push(decl.operator);
-    }
-    else if (decl.include) {
-        if (!grammar.moduleInclude)
-            grammar.moduleInclude = '';
-        grammar.moduleInclude += decl.include;
-    }
-
-};
-
-// helps tokenize comments
-bnf.yy.lexComment = function (lexer) {
-    var ch = lexer.input();
-    if (ch === '/') {
-        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
-        return;
-    } else {
-        lexer.unput('/*');
-        lexer.more();
-    }
-};
-
-// parse an embedded lex section
-var parseLex = function (text) {
-    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
-};
-
-
-},{"./parser":13,"./ebnf-transform":14,"./lex-parser":11}],15:[function(require,module,exports){
+},{"./package.json":14,"./lex-parser":12}],15:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
@@ -1123,51 +1123,7 @@ if (typeof exports !== 'undefined')
     exports.Set = Set;
 
 
-},{"./typal":6}],10:[function(require,module,exports){
-module.exports={
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
-  "name": "jison-lex",
-  "description": "lexical analyzer generator used by jison",
-  "version": "0.1.0",
-  "keywords": [
-    "jison",
-    "parser",
-    "generator",
-    "lexer",
-    "flex",
-    "tokenizer"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/zaach/jison-lex.git"
-  },
-  "bugs": {
-    "email": "jison@librelist.com",
-    "url": "http://github.com/zaach/jison-lex/issues"
-  },
-  "main": "regexp-lexer",
-  "bin": "cli.js",
-  "engines": {
-    "node": ">=0.4"
-  },
-  "dependencies": {
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
-    "nomnom": ">=1.5.2"
-  },
-  "devDependencies": {
-    "test": ">=0.4.4"
-  },
-  "scripts": {
-    "test": "node tests/all-tests.js"
-  },
-  "directories": {
-    "lib": "lib",
-    "tests": "tests"
-  },
-  "homepage": "http://jison.org"
-}
-
-},{}],2:[function(require,module,exports){
+},{"./typal":8}],2:[function(require,module,exports){
 (function(process){// Jison, an LR(0), SLR(1), LARL(1), LR(1) Parser Generator
 // Zachary Carter <zach@carter.name>
 // MIT X Licensed
@@ -2917,7 +2873,51 @@ return function Parser (g, options) {
 
 
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"./util/regexp-lexer.js":9,"./util/ebnf-parser.js":12,"../package.json":5,"./util/typal":6,"./util/set":15,"esprima":16,"escodegen":17,"JSONSelect":18,"__browserify_process":7}],11:[function(require,module,exports){
+},{"fs":4,"path":6,"./util/ebnf-parser.js":9,"../package.json":7,"./util/regexp-lexer.js":13,"./util/typal":8,"./util/set":15,"esprima":16,"escodegen":17,"JSONSelect":18,"__browserify_process":5}],14:[function(require,module,exports){
+module.exports={
+  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "name": "jison-lex",
+  "description": "lexical analyzer generator used by jison",
+  "version": "0.1.0",
+  "keywords": [
+    "jison",
+    "parser",
+    "generator",
+    "lexer",
+    "flex",
+    "tokenizer"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zaach/jison-lex.git"
+  },
+  "bugs": {
+    "email": "jison@librelist.com",
+    "url": "http://github.com/zaach/jison-lex/issues"
+  },
+  "main": "regexp-lexer",
+  "bin": "cli.js",
+  "engines": {
+    "node": ">=0.4"
+  },
+  "dependencies": {
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
+    "nomnom": ">=1.5.2"
+  },
+  "devDependencies": {
+    "test": ">=0.4.4"
+  },
+  "scripts": {
+    "test": "node tests/all-tests.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "tests": "tests"
+  },
+  "homepage": "http://jison.org"
+}
+
+},{}],12:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.6 */
 /*
   Returns a Parser object of the following structure:
@@ -3915,7 +3915,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"__browserify_process":7}],16:[function(require,module,exports){
+},{"fs":4,"path":6,"__browserify_process":5}],16:[function(require,module,exports){
 (function(){/*
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2012 Mathias Bynens <mathias@qiwi.be>
@@ -8400,7 +8400,7 @@ parseStatement: true, parseSourceElement: true */
     exports.compile = compile;
 })(typeof exports === "undefined" ? (window.JSONSelect = {}) : exports);
 
-},{}],14:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var EBNF = (function(){
     var parser = require('./transform-parser.js');
 
@@ -8514,7 +8514,7 @@ var EBNF = (function(){
 exports.transform = EBNF.transform;
 
 
-},{"./transform-parser.js":19}],13:[function(require,module,exports){
+},{"./transform-parser.js":19}],10:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.6 */
 /*
   Returns a Parser object of the following structure:
@@ -9432,7 +9432,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"./ebnf-transform":14,"__browserify_process":7}],20:[function(require,module,exports){
+},{"fs":4,"path":6,"./ebnf-transform":11,"__browserify_process":5}],20:[function(require,module,exports){
 var EBNF = (function(){
     var parser = require('./transform-parser.js');
 
@@ -9546,7 +9546,55 @@ var EBNF = (function(){
 exports.transform = EBNF.transform;
 
 
-},{"./transform-parser.js":21}],22:[function(require,module,exports){
+},{"./transform-parser.js":21}],3:[function(require,module,exports){
+var bnf = require("./parser").parser,
+    ebnf = require("./ebnf-transform"),
+    jisonlex = require("lex-parser");
+
+exports.parse = function parse (grammar) { return bnf.parse(grammar); };
+exports.transform = ebnf.transform;
+
+// adds a declaration to the grammar
+bnf.yy.addDeclaration = function (grammar, decl) {
+    if (decl.start) {
+        grammar.start = decl.start;
+    }
+    else if (decl.lex) {
+        grammar.lex = parseLex(decl.lex);
+    }
+    else if (decl.operator) {
+        if (!grammar.operators) {
+            grammar.operators = [];
+        }
+        grammar.operators.push(decl.operator);
+    }
+    else if (decl.include) {
+        if (!grammar.moduleInclude)
+            grammar.moduleInclude = '';
+        grammar.moduleInclude += decl.include;
+    }
+
+};
+
+// helps tokenize comments
+bnf.yy.lexComment = function (lexer) {
+    var ch = lexer.input();
+    if (ch === '/') {
+        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
+        return;
+    } else {
+        lexer.unput('/*');
+        lexer.more();
+    }
+};
+
+// parse an embedded lex section
+var parseLex = function (text) {
+    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
+};
+
+
+},{"./parser":22,"./ebnf-transform":20,"lex-parser":23}],22:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.4 */
 /*
   Returns a Parser object of the following structure:
@@ -10457,55 +10505,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"./ebnf-transform":20,"__browserify_process":7}],3:[function(require,module,exports){
-var bnf = require("./parser").parser,
-    ebnf = require("./ebnf-transform"),
-    jisonlex = require("lex-parser");
-
-exports.parse = function parse (grammar) { return bnf.parse(grammar); };
-exports.transform = ebnf.transform;
-
-// adds a declaration to the grammar
-bnf.yy.addDeclaration = function (grammar, decl) {
-    if (decl.start) {
-        grammar.start = decl.start;
-    }
-    else if (decl.lex) {
-        grammar.lex = parseLex(decl.lex);
-    }
-    else if (decl.operator) {
-        if (!grammar.operators) {
-            grammar.operators = [];
-        }
-        grammar.operators.push(decl.operator);
-    }
-    else if (decl.include) {
-        if (!grammar.moduleInclude)
-            grammar.moduleInclude = '';
-        grammar.moduleInclude += decl.include;
-    }
-
-};
-
-// helps tokenize comments
-bnf.yy.lexComment = function (lexer) {
-    var ch = lexer.input();
-    if (ch === '/') {
-        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
-        return;
-    } else {
-        lexer.unput('/*');
-        lexer.more();
-    }
-};
-
-// parse an embedded lex section
-var parseLex = function (text) {
-    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
-};
-
-
-},{"./parser":22,"./ebnf-transform":20,"lex-parser":23}],19:[function(require,module,exports){
+},{"fs":4,"path":6,"./ebnf-transform":20,"__browserify_process":5}],19:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.0 */
 var parser = (function() {
     var parser = {
@@ -11094,660 +11094,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
     }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"__browserify_process":7}],21:[function(require,module,exports){
-(function(process){/* parser generated by jison 0.4.0 */
-var parser = (function() {
-    var parser = {
-        trace: function trace() {},
-        yy: {},
-        symbols_: {
-            "error": 2,
-            "production": 3,
-            "handle": 4,
-            "EOF": 5,
-            "handle_list": 6,
-            "|": 7,
-            "expression_suffix": 8,
-            "expression": 9,
-            "suffix": 10,
-            "symbol": 11,
-            "(": 12,
-            ")": 13,
-            "*": 14,
-            "?": 15,
-            "+": 16,
-            "$accept": 0,
-            "$end": 1
-        },
-        terminals_: {
-            2: "error",
-            5: "EOF",
-            7: "|",
-            11: "symbol",
-            12: "(",
-            13: ")",
-            14: "*",
-            15: "?",
-            16: "+"
-        },
-        productions_: [0, [3, 2],
-            [6, 1],
-            [6, 3],
-            [4, 0],
-            [4, 2],
-            [8, 2],
-            [9, 1],
-            [9, 3],
-            [10, 0],
-            [10, 1],
-            [10, 1],
-            [10, 1]],
-        performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$) {
-
-            var $0 = $$.length - 1;
-            switch (yystate) {
-            case 1:
-                return $$[$0 - 1];
-                break;
-            case 2:
-                this.$ = [$$[$0]];
-                break;
-            case 3:
-                $$[$0 - 2].push($$[$0]);
-                break;
-            case 4:
-                this.$ = [];
-                break;
-            case 5:
-                $$[$0 - 1].push($$[$0]);
-                break;
-            case 6:
-                if ($$[$0]) this.$ = [$$[$0], $$[$0 - 1]];
-                else this.$ = $$[$0 - 1];
-                break;
-            case 7:
-                this.$ = ['symbol', $$[$0]];
-                break;
-            case 8:
-                this.$ = ['()', $$[$0 - 1]];
-                break;
-            }
-        },
-        table: [{
-            3: 1,
-            4: 2,
-            5: [2, 4],
-            11: [2, 4],
-            12: [2, 4]
-        },
-        {
-            1: [3]
-        },
-        {
-            5: [1, 3],
-            8: 4,
-            9: 5,
-            11: [1, 6],
-            12: [1, 7]
-        },
-        {
-            1: [2, 1]
-        },
-        {
-            5: [2, 5],
-            7: [2, 5],
-            11: [2, 5],
-            12: [2, 5],
-            13: [2, 5]
-        },
-        {
-            5: [2, 9],
-            7: [2, 9],
-            10: 8,
-            11: [2, 9],
-            12: [2, 9],
-            13: [2, 9],
-            14: [1, 9],
-            15: [1, 10],
-            16: [1, 11]
-        },
-        {
-            5: [2, 7],
-            7: [2, 7],
-            11: [2, 7],
-            12: [2, 7],
-            13: [2, 7],
-            14: [2, 7],
-            15: [2, 7],
-            16: [2, 7]
-        },
-        {
-            4: 13,
-            6: 12,
-            7: [2, 4],
-            11: [2, 4],
-            12: [2, 4],
-            13: [2, 4]
-        },
-        {
-            5: [2, 6],
-            7: [2, 6],
-            11: [2, 6],
-            12: [2, 6],
-            13: [2, 6]
-        },
-        {
-            5: [2, 10],
-            7: [2, 10],
-            11: [2, 10],
-            12: [2, 10],
-            13: [2, 10]
-        },
-        {
-            5: [2, 11],
-            7: [2, 11],
-            11: [2, 11],
-            12: [2, 11],
-            13: [2, 11]
-        },
-        {
-            5: [2, 12],
-            7: [2, 12],
-            11: [2, 12],
-            12: [2, 12],
-            13: [2, 12]
-        },
-        {
-            7: [1, 15],
-            13: [1, 14]
-        },
-        {
-            7: [2, 2],
-            8: 4,
-            9: 5,
-            11: [1, 6],
-            12: [1, 7],
-            13: [2, 2]
-        },
-        {
-            5: [2, 8],
-            7: [2, 8],
-            11: [2, 8],
-            12: [2, 8],
-            13: [2, 8],
-            14: [2, 8],
-            15: [2, 8],
-            16: [2, 8]
-        },
-        {
-            4: 16,
-            7: [2, 4],
-            11: [2, 4],
-            12: [2, 4],
-            13: [2, 4]
-        },
-        {
-            7: [2, 3],
-            8: 4,
-            9: 5,
-            11: [1, 6],
-            12: [1, 7],
-            13: [2, 3]
-        }],
-        defaultActions: {
-            3: [2, 1]
-        },
-        parseError: function parseError(str, hash) {
-            throw new Error(str);
-        },
-        parse: function parse(input) {
-            var self = this,
-            stack = [0],
-            vstack = [null],
-            lstack = [],
-            table = this.table,
-            yytext = "",
-            yylineno = 0,
-            yyleng = 0,
-            recovering = 0,
-            TERROR = 2,
-            EOF = 1;
-            this.lexer.setInput(input);
-            this.lexer.yy = this.yy;
-            this.yy.lexer = this.lexer;
-            this.yy.parser = this;
-            if (typeof this.lexer.yylloc === "undefined") this.lexer.yylloc = {};
-            var yyloc = this.lexer.yylloc;
-            lstack.push(yyloc);
-            var ranges = this.lexer.options && this.lexer.options.ranges;
-            if (typeof this.yy.parseError === "function") this.parseError = this.yy.parseError;
-            function popStack(n) {
-                stack.length = stack.length - 2 * n;
-                vstack.length = vstack.length - n;
-                lstack.length = lstack.length - n;
-            }
-            function lex() {
-                var token;
-                token = self.lexer.lex() || 1;
-                if (typeof token !== "number") {
-                    token = self.symbols_[token] || token;
-                }
-                return token;
-            }
-            var symbol, preErrorSymbol, state, action, a, r, yyval = {},
-            p, len, newState, expected;
-            while (true) {
-                state = stack[stack.length - 1];
-                if (this.defaultActions[state]) {
-                    action = this.defaultActions[state];
-                } else {
-                    if (symbol === null || typeof symbol === "undefined") {
-                        symbol = lex();
-                    }
-                    action = table[state] && table[state][symbol];
-                }
-                if (typeof action === "undefined" || !action.length || !action[0]) {
-                    var errStr = "";
-                    if (!recovering) {
-                        expected = [];
-                        for (p in table[state])
-                        if (this.terminals_[p] && p > 2) {
-                            expected.push("'" + this.terminals_[p] + "'");
-                        }
-                        if (this.lexer.showPosition) {
-                            errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
-                        } else {
-                            errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1 ? "end of input" : "'" + (this.terminals_[symbol] || symbol) + "'");
-                        }
-                        this.parseError(errStr, {
-                            text: this.lexer.match,
-                            token: this.terminals_[symbol] || symbol,
-                            line: this.lexer.yylineno,
-                            loc: yyloc,
-                            expected: expected
-                        });
-                    }
-                }
-                if (action[0] instanceof Array && action.length > 1) {
-                    throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
-                }
-                switch (action[0]) {
-                case 1:
-                    stack.push(symbol);
-                    vstack.push(this.lexer.yytext);
-                    lstack.push(this.lexer.yylloc);
-                    stack.push(action[1]);
-                    symbol = null;
-                    if (!preErrorSymbol) {
-                        yyleng = this.lexer.yyleng;
-                        yytext = this.lexer.yytext;
-                        yylineno = this.lexer.yylineno;
-                        yyloc = this.lexer.yylloc;
-                        if (recovering > 0) recovering--;
-                    } else {
-                        symbol = preErrorSymbol;
-                        preErrorSymbol = null;
-                    }
-                    break;
-                case 2:
-                    len = this.productions_[action[1]][1];
-                    yyval.$ = vstack[vstack.length - len];
-                    yyval._$ = {
-                        first_line: lstack[lstack.length - (len || 1)].first_line,
-                        last_line: lstack[lstack.length - 1].last_line,
-                        first_column: lstack[lstack.length - (len || 1)].first_column,
-                        last_column: lstack[lstack.length - 1].last_column
-                    };
-                    if (ranges) {
-                        yyval._$.range = [lstack[lstack.length - (len || 1)].range[0], lstack[lstack.length - 1].range[1]];
-                    }
-                    r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
-                    if (typeof r !== "undefined") {
-                        return r;
-                    }
-                    if (len) {
-                        stack = stack.slice(0, -1 * len * 2);
-                        vstack = vstack.slice(0, -1 * len);
-                        lstack = lstack.slice(0, -1 * len);
-                    }
-                    stack.push(this.productions_[action[1]][0]);
-                    vstack.push(yyval.$);
-                    lstack.push(yyval._$);
-                    newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
-                    stack.push(newState);
-                    break;
-                case 3:
-                    return true;
-                }
-            }
-            return true;
-        }
-    };
-    undefined
-    /* generated by jison-lex 0.0.1 */
-    var lexer = (function() {
-        var lexer = {
-            EOF: 1,
-            parseError: function parseError(str, hash) {
-                if (this.yy.parser) {
-                    this.yy.parser.parseError(str, hash);
-                } else {
-                    throw new Error(str);
-                }
-            },
-            setInput: function(input) {
-                this._input = input;
-                this._more = this._less = this.done = false;
-                this.yylineno = this.yyleng = 0;
-                this.yytext = this.matched = this.match = '';
-                this.conditionStack = ['INITIAL'];
-                this.yylloc = {
-                    first_line: 1,
-                    first_column: 0,
-                    last_line: 1,
-                    last_column: 0
-                };
-                if (this.options.ranges) this.yylloc.range = [0, 0];
-                this.offset = 0;
-                return this;
-            },
-            input: function() {
-                var ch = this._input[0];
-                this.yytext += ch;
-                this.yyleng++;
-                this.offset++;
-                this.match += ch;
-                this.matched += ch;
-                var lines = ch.match(/(?:\r\n?|\n).*/g);
-                if (lines) {
-                    this.yylineno++;
-                    this.yylloc.last_line++;
-                } else {
-                    this.yylloc.last_column++;
-                }
-                if (this.options.ranges) this.yylloc.range[1]++;
-
-                this._input = this._input.slice(1);
-                return ch;
-            },
-            unput: function(ch) {
-                var len = ch.length;
-                var lines = ch.split(/(?:\r\n?|\n)/g);
-
-                this._input = ch + this._input;
-                this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
-                //this.yyleng -= len;
-                this.offset -= len;
-                var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-                this.match = this.match.substr(0, this.match.length - 1);
-                this.matched = this.matched.substr(0, this.matched.length - 1);
-
-                if (lines.length - 1) this.yylineno -= lines.length - 1;
-                var r = this.yylloc.range;
-
-                this.yylloc = {
-                    first_line: this.yylloc.first_line,
-                    last_line: this.yylineno + 1,
-                    first_column: this.yylloc.first_column,
-                    last_column: lines ? (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length : this.yylloc.first_column - len
-                };
-
-                if (this.options.ranges) {
-                    this.yylloc.range = [r[0], r[0] + this.yyleng - len];
-                }
-                return this;
-            },
-            more: function() {
-                this._more = true;
-                return this;
-            },
-            less: function(n) {
-                this.unput(this.match.slice(n));
-            },
-            pastInput: function() {
-                var past = this.matched.substr(0, this.matched.length - this.match.length);
-                return (past.length > 20 ? '...' : '') + past.substr(-20).replace(/\n/g, "");
-            },
-            upcomingInput: function() {
-                var next = this.match;
-                if (next.length < 20) {
-                    next += this._input.substr(0, 20 - next.length);
-                }
-                return (next.substr(0, 20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
-            },
-            showPosition: function() {
-                var pre = this.pastInput();
-                var c = new Array(pre.length + 1).join("-");
-                return pre + this.upcomingInput() + "\n" + c + "^";
-            },
-            next: function() {
-                if (this.done) {
-                    return this.EOF;
-                }
-                if (!this._input) this.done = true;
-
-                var token, match, tempMatch, index, col, lines;
-                if (!this._more) {
-                    this.yytext = '';
-                    this.match = '';
-                }
-                var rules = this._currentRules();
-                for (var i = 0; i < rules.length; i++) {
-                    tempMatch = this._input.match(this.rules[rules[i]]);
-                    if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
-                        match = tempMatch;
-                        index = i;
-                        if (!this.options.flex) break;
-                    }
-                }
-                if (match) {
-                    lines = match[0].match(/(?:\r\n?|\n).*/g);
-                    if (lines) this.yylineno += lines.length;
-                    this.yylloc = {
-                        first_line: this.yylloc.last_line,
-                        last_line: this.yylineno + 1,
-                        first_column: this.yylloc.last_column,
-                        last_column: lines ? lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length
-                    };
-                    this.yytext += match[0];
-                    this.match += match[0];
-                    this.matches = match;
-                    this.yyleng = this.yytext.length;
-                    if (this.options.ranges) {
-                        this.yylloc.range = [this.offset, this.offset += this.yyleng];
-                    }
-                    this._more = false;
-                    this._input = this._input.slice(match[0].length);
-                    this.matched += match[0];
-                    token = this.performAction.call(this, this.yy, this, rules[index], this.conditionStack[this.conditionStack.length - 1]);
-                    if (this.done && this._input) this.done = false;
-                    if (token) return token;
-                    else return;
-                }
-                if (this._input === "") {
-                    return this.EOF;
-                } else {
-                    return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
-                        text: "",
-                        token: null,
-                        line: this.yylineno
-                    });
-                }
-            },
-            lex: function lex() {
-                var r = this.next();
-                if (typeof r !== 'undefined') {
-                    return r;
-                } else {
-                    return this.lex();
-                }
-            },
-            begin: function begin(condition) {
-                this.conditionStack.push(condition);
-            },
-            popState: function popState() {
-                return this.conditionStack.pop();
-            },
-            _currentRules: function _currentRules() {
-                return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
-            },
-            topState: function() {
-                return this.conditionStack[this.conditionStack.length - 2];
-            },
-            pushState: function begin(condition) {
-                this.begin(condition);
-            },
-
-            // return the number of states pushed
-            stateStackSize: function stateStackSize() {
-                return this.conditionStack.length;
-            },
-
-            options: {},
-            performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
-
-                var YYSTATE = YY_START;
-                switch ($avoiding_name_collisions) {
-                case 0:
-                    /* skip whitespace */
-                    break;
-                case 1:
-                    return 11;
-                    break;
-                case 2:
-                    return 11;
-                    break;
-                case 3:
-                    return 11;
-                    break;
-                case 4:
-                    return 'bar';
-                    break;
-                case 5:
-                    return 12;
-                    break;
-                case 6:
-                    return 13;
-                    break;
-                case 7:
-                    return 14;
-                    break;
-                case 8:
-                    return 16;
-                    break;
-                case 9:
-                    return 15;
-                    break;
-                case 10:
-                    return 7;
-                    break;
-                case 11:
-                    return 5;
-                    break;
-                }
-            },
-            rules: [/^(?:\s+)/, /^(?:[A-Za-z_]+)/, /^(?:'[^']*')/, /^(?:\\.)/, /^(?:bar)/, /^(?:\()/, /^(?:\))/, /^(?:\*)/, /^(?:\+)/, /^(?:\?)/, /^(?:\|)/, /^(?:$)/],
-            conditions: {
-                "INITIAL": {
-                    "rules": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                    "inclusive": true
-                }
-            }
-        };
-        return lexer;
-    })();
-    parser.lexer = lexer;
-    function Parser() {
-        this.yy = {};
-    }
-    Parser.prototype = parser;
-    parser.Parser = Parser;
-    return new Parser;
-})();
-if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-    exports.parser = parser;
-    exports.Parser = parser.Parser;
-    exports.parse = function() {
-        return parser.parse.apply(parser, arguments);
-    };
-    exports.main = function commonjsMain(args) {
-        if (!args[1]) {
-            console.log('Usage: ' + args[0] + ' FILE');
-            process.exit(1);
-        }
-        var source = require('fs').readFileSync(require('path').normalize(args[1]), "utf8");
-        return exports.parser.parse(source);
-    };
-    if (typeof module !== 'undefined' && require.main === module) {
-        exports.main(process.argv.slice(1));
-    }
-}
-})(require("__browserify_process"))
-},{"fs":4,"path":8,"__browserify_process":7}],24:[function(require,module,exports){
-module.exports={
-  "name": "escodegen",
-  "description": "ECMAScript code generator",
-  "homepage": "http://github.com/Constellation/escodegen.html",
-  "main": "escodegen.js",
-  "bin": {
-    "esgenerate": "./bin/esgenerate.js",
-    "escodegen": "./bin/escodegen.js"
-  },
-  "version": "0.0.21",
-  "engines": {
-    "node": ">=0.4.0"
-  },
-  "maintainers": [
-    {
-      "name": "Yusuke Suzuki",
-      "email": "utatane.tea@gmail.com",
-      "url": "http://github.com/Constellation"
-    }
-  ],
-  "repository": {
-    "type": "git",
-    "url": "http://github.com/Constellation/escodegen.git"
-  },
-  "dependencies": {
-    "esprima": "~1.0.2",
-    "estraverse": "~0.0.4",
-    "source-map": ">= 0.1.2"
-  },
-  "optionalDependencies": {
-    "source-map": ">= 0.1.2"
-  },
-  "devDependencies": {
-    "esprima-moz": "*",
-    "browserify": "*",
-    "q": "*",
-    "bower": "*",
-    "semver": "*"
-  },
-  "licenses": [
-    {
-      "type": "BSD",
-      "url": "http://github.com/Constellation/escodegen/raw/master/LICENSE.BSD"
-    }
-  ],
-  "scripts": {
-    "test": "node test/run.js",
-    "release": "node tools/release.js",
-    "build": "(echo '// Generated by browserify'; ./node_modules/.bin/browserify -i source-map tools/entry-point.js) > escodegen.browser.js"
-  },
-  "readme": "Escodegen ([escodegen](http://github.com/Constellation/escodegen)) is\n[ECMAScript](http://www.ecma-international.org/publications/standards/Ecma-262.htm)\n(also popularly known as [JavaScript](http://en.wikipedia.org/wiki/JavaScript>JavaScript))\ncode generator from [Parser API](https://developer.mozilla.org/en/SpiderMonkey/Parser_API) AST.\nSee [online generator demo](http://constellation.github.com/escodegen/demo/index.html).\n\n\n### Install\n\nEscodegen can be used in a web browser:\n\n    <script src=\"escodegen.browser.js\"></script>\n\nor in a Node.js application via the package manager:\n\n    npm install escodegen\n\n\n### Usage\n\nA simple example: the program\n\n    escodegen.generate({\n        type: 'BinaryExpression',\n        operator: '+',\n        left: { type: 'Literal', value: 40 },\n        right: { type: 'Literal', value: 2 }\n    });\n\nproduces the string `'40 + 2'`\n\nSee the [API page](https://github.com/Constellation/escodegen/wiki/API) for\noptions. To run the tests, execute `npm test` in the root directory.\n\n\n### License\n\n#### Escodegen\n\nCopyright (C) 2012 [Yusuke Suzuki](http://github.com/Constellation)\n (twitter: [@Constellation](http://twitter.com/Constellation)) and other contributors.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\nARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n#### source-map\n\nSourceNodeMocks has a limited interface of mozilla/source-map SourceNode implementations.\n\nCopyright (c) 2009-2011, Mozilla Foundation and contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the names of the Mozilla Foundation nor the names of project\n  contributors may be used to endorse or promote products derived from this\n  software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\n### Status\n\n[![Build Status](https://secure.travis-ci.org/Constellation/escodegen.png)](http://travis-ci.org/Constellation/escodegen)\n",
-  "readmeFilename": "README.md",
-  "bugs": {
-    "url": "https://github.com/Constellation/escodegen/issues"
-  },
-  "_id": "escodegen@0.0.21",
-  "dist": {
-    "shasum": "343ac135a16da32314ae81362b5dd625780a11b8"
-  },
-  "_from": "escodegen@0.0.21",
-  "_resolved": "https://registry.npmjs.org/escodegen/-/escodegen-0.0.21.tgz"
-}
-
-},{}],23:[function(require,module,exports){
+},{"fs":4,"path":6,"__browserify_process":5}],23:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.4 */
 /*
   Returns a Parser object of the following structure:
@@ -12738,7 +12085,978 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":8,"__browserify_process":7}],17:[function(require,module,exports){
+},{"fs":4,"path":6,"__browserify_process":5}],21:[function(require,module,exports){
+(function(process){/* parser generated by jison 0.4.0 */
+var parser = (function() {
+    var parser = {
+        trace: function trace() {},
+        yy: {},
+        symbols_: {
+            "error": 2,
+            "production": 3,
+            "handle": 4,
+            "EOF": 5,
+            "handle_list": 6,
+            "|": 7,
+            "expression_suffix": 8,
+            "expression": 9,
+            "suffix": 10,
+            "symbol": 11,
+            "(": 12,
+            ")": 13,
+            "*": 14,
+            "?": 15,
+            "+": 16,
+            "$accept": 0,
+            "$end": 1
+        },
+        terminals_: {
+            2: "error",
+            5: "EOF",
+            7: "|",
+            11: "symbol",
+            12: "(",
+            13: ")",
+            14: "*",
+            15: "?",
+            16: "+"
+        },
+        productions_: [0, [3, 2],
+            [6, 1],
+            [6, 3],
+            [4, 0],
+            [4, 2],
+            [8, 2],
+            [9, 1],
+            [9, 3],
+            [10, 0],
+            [10, 1],
+            [10, 1],
+            [10, 1]],
+        performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$) {
+
+            var $0 = $$.length - 1;
+            switch (yystate) {
+            case 1:
+                return $$[$0 - 1];
+                break;
+            case 2:
+                this.$ = [$$[$0]];
+                break;
+            case 3:
+                $$[$0 - 2].push($$[$0]);
+                break;
+            case 4:
+                this.$ = [];
+                break;
+            case 5:
+                $$[$0 - 1].push($$[$0]);
+                break;
+            case 6:
+                if ($$[$0]) this.$ = [$$[$0], $$[$0 - 1]];
+                else this.$ = $$[$0 - 1];
+                break;
+            case 7:
+                this.$ = ['symbol', $$[$0]];
+                break;
+            case 8:
+                this.$ = ['()', $$[$0 - 1]];
+                break;
+            }
+        },
+        table: [{
+            3: 1,
+            4: 2,
+            5: [2, 4],
+            11: [2, 4],
+            12: [2, 4]
+        },
+        {
+            1: [3]
+        },
+        {
+            5: [1, 3],
+            8: 4,
+            9: 5,
+            11: [1, 6],
+            12: [1, 7]
+        },
+        {
+            1: [2, 1]
+        },
+        {
+            5: [2, 5],
+            7: [2, 5],
+            11: [2, 5],
+            12: [2, 5],
+            13: [2, 5]
+        },
+        {
+            5: [2, 9],
+            7: [2, 9],
+            10: 8,
+            11: [2, 9],
+            12: [2, 9],
+            13: [2, 9],
+            14: [1, 9],
+            15: [1, 10],
+            16: [1, 11]
+        },
+        {
+            5: [2, 7],
+            7: [2, 7],
+            11: [2, 7],
+            12: [2, 7],
+            13: [2, 7],
+            14: [2, 7],
+            15: [2, 7],
+            16: [2, 7]
+        },
+        {
+            4: 13,
+            6: 12,
+            7: [2, 4],
+            11: [2, 4],
+            12: [2, 4],
+            13: [2, 4]
+        },
+        {
+            5: [2, 6],
+            7: [2, 6],
+            11: [2, 6],
+            12: [2, 6],
+            13: [2, 6]
+        },
+        {
+            5: [2, 10],
+            7: [2, 10],
+            11: [2, 10],
+            12: [2, 10],
+            13: [2, 10]
+        },
+        {
+            5: [2, 11],
+            7: [2, 11],
+            11: [2, 11],
+            12: [2, 11],
+            13: [2, 11]
+        },
+        {
+            5: [2, 12],
+            7: [2, 12],
+            11: [2, 12],
+            12: [2, 12],
+            13: [2, 12]
+        },
+        {
+            7: [1, 15],
+            13: [1, 14]
+        },
+        {
+            7: [2, 2],
+            8: 4,
+            9: 5,
+            11: [1, 6],
+            12: [1, 7],
+            13: [2, 2]
+        },
+        {
+            5: [2, 8],
+            7: [2, 8],
+            11: [2, 8],
+            12: [2, 8],
+            13: [2, 8],
+            14: [2, 8],
+            15: [2, 8],
+            16: [2, 8]
+        },
+        {
+            4: 16,
+            7: [2, 4],
+            11: [2, 4],
+            12: [2, 4],
+            13: [2, 4]
+        },
+        {
+            7: [2, 3],
+            8: 4,
+            9: 5,
+            11: [1, 6],
+            12: [1, 7],
+            13: [2, 3]
+        }],
+        defaultActions: {
+            3: [2, 1]
+        },
+        parseError: function parseError(str, hash) {
+            throw new Error(str);
+        },
+        parse: function parse(input) {
+            var self = this,
+            stack = [0],
+            vstack = [null],
+            lstack = [],
+            table = this.table,
+            yytext = "",
+            yylineno = 0,
+            yyleng = 0,
+            recovering = 0,
+            TERROR = 2,
+            EOF = 1;
+            this.lexer.setInput(input);
+            this.lexer.yy = this.yy;
+            this.yy.lexer = this.lexer;
+            this.yy.parser = this;
+            if (typeof this.lexer.yylloc === "undefined") this.lexer.yylloc = {};
+            var yyloc = this.lexer.yylloc;
+            lstack.push(yyloc);
+            var ranges = this.lexer.options && this.lexer.options.ranges;
+            if (typeof this.yy.parseError === "function") this.parseError = this.yy.parseError;
+            function popStack(n) {
+                stack.length = stack.length - 2 * n;
+                vstack.length = vstack.length - n;
+                lstack.length = lstack.length - n;
+            }
+            function lex() {
+                var token;
+                token = self.lexer.lex() || 1;
+                if (typeof token !== "number") {
+                    token = self.symbols_[token] || token;
+                }
+                return token;
+            }
+            var symbol, preErrorSymbol, state, action, a, r, yyval = {},
+            p, len, newState, expected;
+            while (true) {
+                state = stack[stack.length - 1];
+                if (this.defaultActions[state]) {
+                    action = this.defaultActions[state];
+                } else {
+                    if (symbol === null || typeof symbol === "undefined") {
+                        symbol = lex();
+                    }
+                    action = table[state] && table[state][symbol];
+                }
+                if (typeof action === "undefined" || !action.length || !action[0]) {
+                    var errStr = "";
+                    if (!recovering) {
+                        expected = [];
+                        for (p in table[state])
+                        if (this.terminals_[p] && p > 2) {
+                            expected.push("'" + this.terminals_[p] + "'");
+                        }
+                        if (this.lexer.showPosition) {
+                            errStr = "Parse error on line " + (yylineno + 1) + ":\n" + this.lexer.showPosition() + "\nExpecting " + expected.join(", ") + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                        } else {
+                            errStr = "Parse error on line " + (yylineno + 1) + ": Unexpected " + (symbol == 1 ? "end of input" : "'" + (this.terminals_[symbol] || symbol) + "'");
+                        }
+                        this.parseError(errStr, {
+                            text: this.lexer.match,
+                            token: this.terminals_[symbol] || symbol,
+                            line: this.lexer.yylineno,
+                            loc: yyloc,
+                            expected: expected
+                        });
+                    }
+                }
+                if (action[0] instanceof Array && action.length > 1) {
+                    throw new Error("Parse Error: multiple actions possible at state: " + state + ", token: " + symbol);
+                }
+                switch (action[0]) {
+                case 1:
+                    stack.push(symbol);
+                    vstack.push(this.lexer.yytext);
+                    lstack.push(this.lexer.yylloc);
+                    stack.push(action[1]);
+                    symbol = null;
+                    if (!preErrorSymbol) {
+                        yyleng = this.lexer.yyleng;
+                        yytext = this.lexer.yytext;
+                        yylineno = this.lexer.yylineno;
+                        yyloc = this.lexer.yylloc;
+                        if (recovering > 0) recovering--;
+                    } else {
+                        symbol = preErrorSymbol;
+                        preErrorSymbol = null;
+                    }
+                    break;
+                case 2:
+                    len = this.productions_[action[1]][1];
+                    yyval.$ = vstack[vstack.length - len];
+                    yyval._$ = {
+                        first_line: lstack[lstack.length - (len || 1)].first_line,
+                        last_line: lstack[lstack.length - 1].last_line,
+                        first_column: lstack[lstack.length - (len || 1)].first_column,
+                        last_column: lstack[lstack.length - 1].last_column
+                    };
+                    if (ranges) {
+                        yyval._$.range = [lstack[lstack.length - (len || 1)].range[0], lstack[lstack.length - 1].range[1]];
+                    }
+                    r = this.performAction.call(yyval, yytext, yyleng, yylineno, this.yy, action[1], vstack, lstack);
+                    if (typeof r !== "undefined") {
+                        return r;
+                    }
+                    if (len) {
+                        stack = stack.slice(0, -1 * len * 2);
+                        vstack = vstack.slice(0, -1 * len);
+                        lstack = lstack.slice(0, -1 * len);
+                    }
+                    stack.push(this.productions_[action[1]][0]);
+                    vstack.push(yyval.$);
+                    lstack.push(yyval._$);
+                    newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
+                    stack.push(newState);
+                    break;
+                case 3:
+                    return true;
+                }
+            }
+            return true;
+        }
+    };
+    undefined
+    /* generated by jison-lex 0.0.1 */
+    var lexer = (function() {
+        var lexer = {
+            EOF: 1,
+            parseError: function parseError(str, hash) {
+                if (this.yy.parser) {
+                    this.yy.parser.parseError(str, hash);
+                } else {
+                    throw new Error(str);
+                }
+            },
+            setInput: function(input) {
+                this._input = input;
+                this._more = this._less = this.done = false;
+                this.yylineno = this.yyleng = 0;
+                this.yytext = this.matched = this.match = '';
+                this.conditionStack = ['INITIAL'];
+                this.yylloc = {
+                    first_line: 1,
+                    first_column: 0,
+                    last_line: 1,
+                    last_column: 0
+                };
+                if (this.options.ranges) this.yylloc.range = [0, 0];
+                this.offset = 0;
+                return this;
+            },
+            input: function() {
+                var ch = this._input[0];
+                this.yytext += ch;
+                this.yyleng++;
+                this.offset++;
+                this.match += ch;
+                this.matched += ch;
+                var lines = ch.match(/(?:\r\n?|\n).*/g);
+                if (lines) {
+                    this.yylineno++;
+                    this.yylloc.last_line++;
+                } else {
+                    this.yylloc.last_column++;
+                }
+                if (this.options.ranges) this.yylloc.range[1]++;
+
+                this._input = this._input.slice(1);
+                return ch;
+            },
+            unput: function(ch) {
+                var len = ch.length;
+                var lines = ch.split(/(?:\r\n?|\n)/g);
+
+                this._input = ch + this._input;
+                this.yytext = this.yytext.substr(0, this.yytext.length - len - 1);
+                //this.yyleng -= len;
+                this.offset -= len;
+                var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+                this.match = this.match.substr(0, this.match.length - 1);
+                this.matched = this.matched.substr(0, this.matched.length - 1);
+
+                if (lines.length - 1) this.yylineno -= lines.length - 1;
+                var r = this.yylloc.range;
+
+                this.yylloc = {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.yylineno + 1,
+                    first_column: this.yylloc.first_column,
+                    last_column: lines ? (lines.length === oldLines.length ? this.yylloc.first_column : 0) + oldLines[oldLines.length - lines.length].length - lines[0].length : this.yylloc.first_column - len
+                };
+
+                if (this.options.ranges) {
+                    this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+                }
+                return this;
+            },
+            more: function() {
+                this._more = true;
+                return this;
+            },
+            less: function(n) {
+                this.unput(this.match.slice(n));
+            },
+            pastInput: function() {
+                var past = this.matched.substr(0, this.matched.length - this.match.length);
+                return (past.length > 20 ? '...' : '') + past.substr(-20).replace(/\n/g, "");
+            },
+            upcomingInput: function() {
+                var next = this.match;
+                if (next.length < 20) {
+                    next += this._input.substr(0, 20 - next.length);
+                }
+                return (next.substr(0, 20) + (next.length > 20 ? '...' : '')).replace(/\n/g, "");
+            },
+            showPosition: function() {
+                var pre = this.pastInput();
+                var c = new Array(pre.length + 1).join("-");
+                return pre + this.upcomingInput() + "\n" + c + "^";
+            },
+            next: function() {
+                if (this.done) {
+                    return this.EOF;
+                }
+                if (!this._input) this.done = true;
+
+                var token, match, tempMatch, index, col, lines;
+                if (!this._more) {
+                    this.yytext = '';
+                    this.match = '';
+                }
+                var rules = this._currentRules();
+                for (var i = 0; i < rules.length; i++) {
+                    tempMatch = this._input.match(this.rules[rules[i]]);
+                    if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                        match = tempMatch;
+                        index = i;
+                        if (!this.options.flex) break;
+                    }
+                }
+                if (match) {
+                    lines = match[0].match(/(?:\r\n?|\n).*/g);
+                    if (lines) this.yylineno += lines.length;
+                    this.yylloc = {
+                        first_line: this.yylloc.last_line,
+                        last_line: this.yylineno + 1,
+                        first_column: this.yylloc.last_column,
+                        last_column: lines ? lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length : this.yylloc.last_column + match[0].length
+                    };
+                    this.yytext += match[0];
+                    this.match += match[0];
+                    this.matches = match;
+                    this.yyleng = this.yytext.length;
+                    if (this.options.ranges) {
+                        this.yylloc.range = [this.offset, this.offset += this.yyleng];
+                    }
+                    this._more = false;
+                    this._input = this._input.slice(match[0].length);
+                    this.matched += match[0];
+                    token = this.performAction.call(this, this.yy, this, rules[index], this.conditionStack[this.conditionStack.length - 1]);
+                    if (this.done && this._input) this.done = false;
+                    if (token) return token;
+                    else return;
+                }
+                if (this._input === "") {
+                    return this.EOF;
+                } else {
+                    return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                        text: "",
+                        token: null,
+                        line: this.yylineno
+                    });
+                }
+            },
+            lex: function lex() {
+                var r = this.next();
+                if (typeof r !== 'undefined') {
+                    return r;
+                } else {
+                    return this.lex();
+                }
+            },
+            begin: function begin(condition) {
+                this.conditionStack.push(condition);
+            },
+            popState: function popState() {
+                return this.conditionStack.pop();
+            },
+            _currentRules: function _currentRules() {
+                return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+            },
+            topState: function() {
+                return this.conditionStack[this.conditionStack.length - 2];
+            },
+            pushState: function begin(condition) {
+                this.begin(condition);
+            },
+
+            // return the number of states pushed
+            stateStackSize: function stateStackSize() {
+                return this.conditionStack.length;
+            },
+
+            options: {},
+            performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
+
+                var YYSTATE = YY_START;
+                switch ($avoiding_name_collisions) {
+                case 0:
+                    /* skip whitespace */
+                    break;
+                case 1:
+                    return 11;
+                    break;
+                case 2:
+                    return 11;
+                    break;
+                case 3:
+                    return 11;
+                    break;
+                case 4:
+                    return 'bar';
+                    break;
+                case 5:
+                    return 12;
+                    break;
+                case 6:
+                    return 13;
+                    break;
+                case 7:
+                    return 14;
+                    break;
+                case 8:
+                    return 16;
+                    break;
+                case 9:
+                    return 15;
+                    break;
+                case 10:
+                    return 7;
+                    break;
+                case 11:
+                    return 5;
+                    break;
+                }
+            },
+            rules: [/^(?:\s+)/, /^(?:[A-Za-z_]+)/, /^(?:'[^']*')/, /^(?:\\.)/, /^(?:bar)/, /^(?:\()/, /^(?:\))/, /^(?:\*)/, /^(?:\+)/, /^(?:\?)/, /^(?:\|)/, /^(?:$)/],
+            conditions: {
+                "INITIAL": {
+                    "rules": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                    "inclusive": true
+                }
+            }
+        };
+        return lexer;
+    })();
+    parser.lexer = lexer;
+    function Parser() {
+        this.yy = {};
+    }
+    Parser.prototype = parser;
+    parser.Parser = Parser;
+    return new Parser;
+})();
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
+    exports.parser = parser;
+    exports.Parser = parser.Parser;
+    exports.parse = function() {
+        return parser.parse.apply(parser, arguments);
+    };
+    exports.main = function commonjsMain(args) {
+        if (!args[1]) {
+            console.log('Usage: ' + args[0] + ' FILE');
+            process.exit(1);
+        }
+        var source = require('fs').readFileSync(require('path').normalize(args[1]), "utf8");
+        return exports.parser.parse(source);
+    };
+    if (typeof module !== 'undefined' && require.main === module) {
+        exports.main(process.argv.slice(1));
+    }
+}
+})(require("__browserify_process"))
+},{"fs":4,"path":6,"__browserify_process":5}],24:[function(require,module,exports){
+module.exports={
+  "name": "escodegen",
+  "description": "ECMAScript code generator",
+  "homepage": "http://github.com/Constellation/escodegen.html",
+  "main": "escodegen.js",
+  "bin": {
+    "esgenerate": "./bin/esgenerate.js",
+    "escodegen": "./bin/escodegen.js"
+  },
+  "version": "0.0.21",
+  "engines": {
+    "node": ">=0.4.0"
+  },
+  "maintainers": [
+    {
+      "name": "Yusuke Suzuki",
+      "email": "utatane.tea@gmail.com",
+      "url": "http://github.com/Constellation"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/Constellation/escodegen.git"
+  },
+  "dependencies": {
+    "esprima": "~1.0.2",
+    "estraverse": "~0.0.4",
+    "source-map": ">= 0.1.2"
+  },
+  "optionalDependencies": {
+    "source-map": ">= 0.1.2"
+  },
+  "devDependencies": {
+    "esprima-moz": "*",
+    "browserify": "*",
+    "q": "*",
+    "bower": "*",
+    "semver": "*"
+  },
+  "licenses": [
+    {
+      "type": "BSD",
+      "url": "http://github.com/Constellation/escodegen/raw/master/LICENSE.BSD"
+    }
+  ],
+  "scripts": {
+    "test": "node test/run.js",
+    "release": "node tools/release.js",
+    "build": "(echo '// Generated by browserify'; ./node_modules/.bin/browserify -i source-map tools/entry-point.js) > escodegen.browser.js"
+  },
+  "readme": "Escodegen ([escodegen](http://github.com/Constellation/escodegen)) is\n[ECMAScript](http://www.ecma-international.org/publications/standards/Ecma-262.htm)\n(also popularly known as [JavaScript](http://en.wikipedia.org/wiki/JavaScript>JavaScript))\ncode generator from [Parser API](https://developer.mozilla.org/en/SpiderMonkey/Parser_API) AST.\nSee [online generator demo](http://constellation.github.com/escodegen/demo/index.html).\n\n\n### Install\n\nEscodegen can be used in a web browser:\n\n    <script src=\"escodegen.browser.js\"></script>\n\nor in a Node.js application via the package manager:\n\n    npm install escodegen\n\n\n### Usage\n\nA simple example: the program\n\n    escodegen.generate({\n        type: 'BinaryExpression',\n        operator: '+',\n        left: { type: 'Literal', value: 40 },\n        right: { type: 'Literal', value: 2 }\n    });\n\nproduces the string `'40 + 2'`\n\nSee the [API page](https://github.com/Constellation/escodegen/wiki/API) for\noptions. To run the tests, execute `npm test` in the root directory.\n\n\n### License\n\n#### Escodegen\n\nCopyright (C) 2012 [Yusuke Suzuki](http://github.com/Constellation)\n (twitter: [@Constellation](http://twitter.com/Constellation)) and other contributors.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\nARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n#### source-map\n\nSourceNodeMocks has a limited interface of mozilla/source-map SourceNode implementations.\n\nCopyright (c) 2009-2011, Mozilla Foundation and contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the names of the Mozilla Foundation nor the names of project\n  contributors may be used to endorse or promote products derived from this\n  software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\n### Status\n\n[![Build Status](https://secure.travis-ci.org/Constellation/escodegen.png)](http://travis-ci.org/Constellation/escodegen)\n",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/Constellation/escodegen/issues"
+  },
+  "_id": "escodegen@0.0.21",
+  "dist": {
+    "shasum": "343ac135a16da32314ae81362b5dd625780a11b8"
+  },
+  "_from": "escodegen@0.0.21",
+  "_resolved": "https://registry.npmjs.org/escodegen/-/escodegen-0.0.21.tgz"
+}
+
+},{}],25:[function(require,module,exports){
+(function(){/*
+  Copyright (C) 2012 Yusuke Suzuki <utatane.tea@gmail.com>
+  Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*jslint bitwise:true */
+/*global exports:true, define:true, window:true */
+(function (factory) {
+    'use strict';
+
+    // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
+    // and plain browser loading,
+    if (typeof define === 'function' && define.amd) {
+        define(['exports'], factory);
+    } else if (typeof exports !== 'undefined') {
+        factory(exports);
+    } else {
+        factory((window.estraverse = {}));
+    }
+}(function (exports) {
+    'use strict';
+
+    var Syntax,
+        isArray,
+        VisitorOption,
+        VisitorKeys,
+        wrappers;
+
+    Syntax = {
+        AssignmentExpression: 'AssignmentExpression',
+        ArrayExpression: 'ArrayExpression',
+        BlockStatement: 'BlockStatement',
+        BinaryExpression: 'BinaryExpression',
+        BreakStatement: 'BreakStatement',
+        CallExpression: 'CallExpression',
+        CatchClause: 'CatchClause',
+        ConditionalExpression: 'ConditionalExpression',
+        ContinueStatement: 'ContinueStatement',
+        DebuggerStatement: 'DebuggerStatement',
+        DirectiveStatement: 'DirectiveStatement',
+        DoWhileStatement: 'DoWhileStatement',
+        EmptyStatement: 'EmptyStatement',
+        ExpressionStatement: 'ExpressionStatement',
+        ForStatement: 'ForStatement',
+        ForInStatement: 'ForInStatement',
+        FunctionDeclaration: 'FunctionDeclaration',
+        FunctionExpression: 'FunctionExpression',
+        Identifier: 'Identifier',
+        IfStatement: 'IfStatement',
+        Literal: 'Literal',
+        LabeledStatement: 'LabeledStatement',
+        LogicalExpression: 'LogicalExpression',
+        MemberExpression: 'MemberExpression',
+        NewExpression: 'NewExpression',
+        ObjectExpression: 'ObjectExpression',
+        Program: 'Program',
+        Property: 'Property',
+        ReturnStatement: 'ReturnStatement',
+        SequenceExpression: 'SequenceExpression',
+        SwitchStatement: 'SwitchStatement',
+        SwitchCase: 'SwitchCase',
+        ThisExpression: 'ThisExpression',
+        ThrowStatement: 'ThrowStatement',
+        TryStatement: 'TryStatement',
+        UnaryExpression: 'UnaryExpression',
+        UpdateExpression: 'UpdateExpression',
+        VariableDeclaration: 'VariableDeclaration',
+        VariableDeclarator: 'VariableDeclarator',
+        WhileStatement: 'WhileStatement',
+        WithStatement: 'WithStatement'
+    };
+
+    isArray = Array.isArray;
+    if (!isArray) {
+        isArray = function isArray(array) {
+            return Object.prototype.toString.call(array) === '[object Array]';
+        };
+    }
+
+    VisitorKeys = {
+        AssignmentExpression: ['left', 'right'],
+        ArrayExpression: ['elements'],
+        BlockStatement: ['body'],
+        BinaryExpression: ['left', 'right'],
+        BreakStatement: ['label'],
+        CallExpression: ['callee', 'arguments'],
+        CatchClause: ['param', 'body'],
+        ConditionalExpression: ['test', 'consequent', 'alternate'],
+        ContinueStatement: ['label'],
+        DebuggerStatement: [],
+        DirectiveStatement: [],
+        DoWhileStatement: ['body', 'test'],
+        EmptyStatement: [],
+        ExpressionStatement: ['expression'],
+        ForStatement: ['init', 'test', 'update', 'body'],
+        ForInStatement: ['left', 'right', 'body'],
+        FunctionDeclaration: ['id', 'params', 'body'],
+        FunctionExpression: ['id', 'params', 'body'],
+        Identifier: [],
+        IfStatement: ['test', 'consequent', 'alternate'],
+        Literal: [],
+        LabeledStatement: ['label', 'body'],
+        LogicalExpression: ['left', 'right'],
+        MemberExpression: ['object', 'property'],
+        NewExpression: ['callee', 'arguments'],
+        ObjectExpression: ['properties'],
+        Program: ['body'],
+        Property: ['key', 'value'],
+        ReturnStatement: ['argument'],
+        SequenceExpression: ['expressions'],
+        SwitchStatement: ['discriminant', 'cases'],
+        SwitchCase: ['test', 'consequent'],
+        ThisExpression: [],
+        ThrowStatement: ['argument'],
+        TryStatement: ['block', 'handlers', 'finalizer'],
+        UnaryExpression: ['argument'],
+        UpdateExpression: ['argument'],
+        VariableDeclaration: ['declarations'],
+        VariableDeclarator: ['id', 'init'],
+        WhileStatement: ['test', 'body'],
+        WithStatement: ['object', 'body']
+    };
+
+    VisitorOption = {
+        Break: 1,
+        Skip: 2
+    };
+
+    wrappers = {
+        PropertyWrapper: 'Property'
+    };
+
+    function traverse(top, visitor) {
+        var worklist, leavelist, node, nodeType, ret, current, current2, candidates, candidate, marker = {};
+
+        worklist = [ top ];
+        leavelist = [ null ];
+
+        while (worklist.length) {
+            node = worklist.pop();
+            nodeType = node.type;
+
+            if (node === marker) {
+                node = leavelist.pop();
+                if (visitor.leave) {
+                    ret = visitor.leave(node, leavelist[leavelist.length - 1]);
+                } else {
+                    ret = undefined;
+                }
+                if (ret === VisitorOption.Break) {
+                    return;
+                }
+            } else if (node) {
+                if (wrappers.hasOwnProperty(nodeType)) {
+                    node = node.node;
+                    nodeType = wrappers[nodeType];
+                }
+
+                if (visitor.enter) {
+                    ret = visitor.enter(node, leavelist[leavelist.length - 1]);
+                } else {
+                    ret = undefined;
+                }
+
+                if (ret === VisitorOption.Break) {
+                    return;
+                }
+
+                worklist.push(marker);
+                leavelist.push(node);
+
+                if (ret !== VisitorOption.Skip) {
+                    candidates = VisitorKeys[nodeType];
+                    current = candidates.length;
+                    while ((current -= 1) >= 0) {
+                        candidate = node[candidates[current]];
+                        if (candidate) {
+                            if (isArray(candidate)) {
+                                current2 = candidate.length;
+                                while ((current2 -= 1) >= 0) {
+                                    if (candidate[current2]) {
+                                        if(nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
+                                            worklist.push({type: 'PropertyWrapper', node: candidate[current2]});
+                                        } else {
+                                            worklist.push(candidate[current2]);
+                                        }
+                                    }
+                                }
+                            } else {
+                                worklist.push(candidate);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function replace(top, visitor) {
+        var worklist, leavelist, node, nodeType, target, tuple, ret, current, current2, candidates, candidate, marker = {}, result;
+
+        result = {
+            top: top
+        };
+
+        tuple = [ top, result, 'top' ];
+        worklist = [ tuple ];
+        leavelist = [ tuple ];
+
+        function notify(v) {
+            ret = v;
+        }
+
+        while (worklist.length) {
+            tuple = worklist.pop();
+
+            if (tuple === marker) {
+                tuple = leavelist.pop();
+                ret = undefined;
+                if (visitor.leave) {
+                    node = tuple[0];
+                    target = visitor.leave(tuple[0], leavelist[leavelist.length - 1][0], notify);
+                    if (target !== undefined) {
+                        node = target;
+                    }
+                    tuple[1][tuple[2]] = node;
+                }
+                if (ret === VisitorOption.Break) {
+                    return result.top;
+                }
+            } else if (tuple[0]) {
+                ret = undefined;
+                node = tuple[0];
+
+                nodeType = node.type;
+                if (wrappers.hasOwnProperty(nodeType)) {
+                    tuple[0] = node = node.node;
+                    nodeType = wrappers[nodeType];
+                }
+
+                if (visitor.enter) {
+                    target = visitor.enter(tuple[0], leavelist[leavelist.length - 1][0], notify);
+                    if (target !== undefined) {
+                        node = target;
+                    }
+                    tuple[1][tuple[2]] = node;
+                    tuple[0] = node;
+                }
+
+                if (ret === VisitorOption.Break) {
+                    return result.top;
+                }
+
+                if (tuple[0]) {
+                    worklist.push(marker);
+                    leavelist.push(tuple);
+
+                    if (ret !== VisitorOption.Skip) {
+                        candidates = VisitorKeys[nodeType];
+                        current = candidates.length;
+                        while ((current -= 1) >= 0) {
+                            candidate = node[candidates[current]];
+                            if (candidate) {
+                                if (isArray(candidate)) {
+                                    current2 = candidate.length;
+                                    while ((current2 -= 1) >= 0) {
+                                        if (candidate[current2]) {
+                                            if(nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
+                                                worklist.push([{type: 'PropertyWrapper', node: candidate[current2]}, candidate, current2]);
+                                            } else {
+                                                worklist.push([candidate[current2], candidate, current2]);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    worklist.push([candidate, node, candidates[current]]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result.top;
+    }
+
+    exports.version = '0.0.4';
+    exports.Syntax = Syntax;
+    exports.traverse = traverse;
+    exports.replace = replace;
+    exports.VisitorKeys = VisitorKeys;
+    exports.VisitorOption = VisitorOption;
+}));
+/* vim: set sw=4 ts=4 et tw=80 : */
+
+})()
+},{}],17:[function(require,module,exports){
 (function(global){/*
   Copyright (C) 2012 Michael Ficarra <escodegen.copyright@michael.ficarra.me>
   Copyright (C) 2012 Robert Gust-Bardon <donate@robert.gust-bardon.org>
@@ -14995,325 +15313,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 /* vim: set sw=4 ts=4 et tw=80 : */
 
 })(window)
-},{"./package.json":24,"estraverse":25,"source-map":26}],25:[function(require,module,exports){
-(function(){/*
-  Copyright (C) 2012 Yusuke Suzuki <utatane.tea@gmail.com>
-  Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*jslint bitwise:true */
-/*global exports:true, define:true, window:true */
-(function (factory) {
-    'use strict';
-
-    // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
-    // and plain browser loading,
-    if (typeof define === 'function' && define.amd) {
-        define(['exports'], factory);
-    } else if (typeof exports !== 'undefined') {
-        factory(exports);
-    } else {
-        factory((window.estraverse = {}));
-    }
-}(function (exports) {
-    'use strict';
-
-    var Syntax,
-        isArray,
-        VisitorOption,
-        VisitorKeys,
-        wrappers;
-
-    Syntax = {
-        AssignmentExpression: 'AssignmentExpression',
-        ArrayExpression: 'ArrayExpression',
-        BlockStatement: 'BlockStatement',
-        BinaryExpression: 'BinaryExpression',
-        BreakStatement: 'BreakStatement',
-        CallExpression: 'CallExpression',
-        CatchClause: 'CatchClause',
-        ConditionalExpression: 'ConditionalExpression',
-        ContinueStatement: 'ContinueStatement',
-        DebuggerStatement: 'DebuggerStatement',
-        DirectiveStatement: 'DirectiveStatement',
-        DoWhileStatement: 'DoWhileStatement',
-        EmptyStatement: 'EmptyStatement',
-        ExpressionStatement: 'ExpressionStatement',
-        ForStatement: 'ForStatement',
-        ForInStatement: 'ForInStatement',
-        FunctionDeclaration: 'FunctionDeclaration',
-        FunctionExpression: 'FunctionExpression',
-        Identifier: 'Identifier',
-        IfStatement: 'IfStatement',
-        Literal: 'Literal',
-        LabeledStatement: 'LabeledStatement',
-        LogicalExpression: 'LogicalExpression',
-        MemberExpression: 'MemberExpression',
-        NewExpression: 'NewExpression',
-        ObjectExpression: 'ObjectExpression',
-        Program: 'Program',
-        Property: 'Property',
-        ReturnStatement: 'ReturnStatement',
-        SequenceExpression: 'SequenceExpression',
-        SwitchStatement: 'SwitchStatement',
-        SwitchCase: 'SwitchCase',
-        ThisExpression: 'ThisExpression',
-        ThrowStatement: 'ThrowStatement',
-        TryStatement: 'TryStatement',
-        UnaryExpression: 'UnaryExpression',
-        UpdateExpression: 'UpdateExpression',
-        VariableDeclaration: 'VariableDeclaration',
-        VariableDeclarator: 'VariableDeclarator',
-        WhileStatement: 'WhileStatement',
-        WithStatement: 'WithStatement'
-    };
-
-    isArray = Array.isArray;
-    if (!isArray) {
-        isArray = function isArray(array) {
-            return Object.prototype.toString.call(array) === '[object Array]';
-        };
-    }
-
-    VisitorKeys = {
-        AssignmentExpression: ['left', 'right'],
-        ArrayExpression: ['elements'],
-        BlockStatement: ['body'],
-        BinaryExpression: ['left', 'right'],
-        BreakStatement: ['label'],
-        CallExpression: ['callee', 'arguments'],
-        CatchClause: ['param', 'body'],
-        ConditionalExpression: ['test', 'consequent', 'alternate'],
-        ContinueStatement: ['label'],
-        DebuggerStatement: [],
-        DirectiveStatement: [],
-        DoWhileStatement: ['body', 'test'],
-        EmptyStatement: [],
-        ExpressionStatement: ['expression'],
-        ForStatement: ['init', 'test', 'update', 'body'],
-        ForInStatement: ['left', 'right', 'body'],
-        FunctionDeclaration: ['id', 'params', 'body'],
-        FunctionExpression: ['id', 'params', 'body'],
-        Identifier: [],
-        IfStatement: ['test', 'consequent', 'alternate'],
-        Literal: [],
-        LabeledStatement: ['label', 'body'],
-        LogicalExpression: ['left', 'right'],
-        MemberExpression: ['object', 'property'],
-        NewExpression: ['callee', 'arguments'],
-        ObjectExpression: ['properties'],
-        Program: ['body'],
-        Property: ['key', 'value'],
-        ReturnStatement: ['argument'],
-        SequenceExpression: ['expressions'],
-        SwitchStatement: ['discriminant', 'cases'],
-        SwitchCase: ['test', 'consequent'],
-        ThisExpression: [],
-        ThrowStatement: ['argument'],
-        TryStatement: ['block', 'handlers', 'finalizer'],
-        UnaryExpression: ['argument'],
-        UpdateExpression: ['argument'],
-        VariableDeclaration: ['declarations'],
-        VariableDeclarator: ['id', 'init'],
-        WhileStatement: ['test', 'body'],
-        WithStatement: ['object', 'body']
-    };
-
-    VisitorOption = {
-        Break: 1,
-        Skip: 2
-    };
-
-    wrappers = {
-        PropertyWrapper: 'Property'
-    };
-
-    function traverse(top, visitor) {
-        var worklist, leavelist, node, nodeType, ret, current, current2, candidates, candidate, marker = {};
-
-        worklist = [ top ];
-        leavelist = [ null ];
-
-        while (worklist.length) {
-            node = worklist.pop();
-            nodeType = node.type;
-
-            if (node === marker) {
-                node = leavelist.pop();
-                if (visitor.leave) {
-                    ret = visitor.leave(node, leavelist[leavelist.length - 1]);
-                } else {
-                    ret = undefined;
-                }
-                if (ret === VisitorOption.Break) {
-                    return;
-                }
-            } else if (node) {
-                if (wrappers.hasOwnProperty(nodeType)) {
-                    node = node.node;
-                    nodeType = wrappers[nodeType];
-                }
-
-                if (visitor.enter) {
-                    ret = visitor.enter(node, leavelist[leavelist.length - 1]);
-                } else {
-                    ret = undefined;
-                }
-
-                if (ret === VisitorOption.Break) {
-                    return;
-                }
-
-                worklist.push(marker);
-                leavelist.push(node);
-
-                if (ret !== VisitorOption.Skip) {
-                    candidates = VisitorKeys[nodeType];
-                    current = candidates.length;
-                    while ((current -= 1) >= 0) {
-                        candidate = node[candidates[current]];
-                        if (candidate) {
-                            if (isArray(candidate)) {
-                                current2 = candidate.length;
-                                while ((current2 -= 1) >= 0) {
-                                    if (candidate[current2]) {
-                                        if(nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
-                                            worklist.push({type: 'PropertyWrapper', node: candidate[current2]});
-                                        } else {
-                                            worklist.push(candidate[current2]);
-                                        }
-                                    }
-                                }
-                            } else {
-                                worklist.push(candidate);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    function replace(top, visitor) {
-        var worklist, leavelist, node, nodeType, target, tuple, ret, current, current2, candidates, candidate, marker = {}, result;
-
-        result = {
-            top: top
-        };
-
-        tuple = [ top, result, 'top' ];
-        worklist = [ tuple ];
-        leavelist = [ tuple ];
-
-        function notify(v) {
-            ret = v;
-        }
-
-        while (worklist.length) {
-            tuple = worklist.pop();
-
-            if (tuple === marker) {
-                tuple = leavelist.pop();
-                ret = undefined;
-                if (visitor.leave) {
-                    node = tuple[0];
-                    target = visitor.leave(tuple[0], leavelist[leavelist.length - 1][0], notify);
-                    if (target !== undefined) {
-                        node = target;
-                    }
-                    tuple[1][tuple[2]] = node;
-                }
-                if (ret === VisitorOption.Break) {
-                    return result.top;
-                }
-            } else if (tuple[0]) {
-                ret = undefined;
-                node = tuple[0];
-
-                nodeType = node.type;
-                if (wrappers.hasOwnProperty(nodeType)) {
-                    tuple[0] = node = node.node;
-                    nodeType = wrappers[nodeType];
-                }
-
-                if (visitor.enter) {
-                    target = visitor.enter(tuple[0], leavelist[leavelist.length - 1][0], notify);
-                    if (target !== undefined) {
-                        node = target;
-                    }
-                    tuple[1][tuple[2]] = node;
-                    tuple[0] = node;
-                }
-
-                if (ret === VisitorOption.Break) {
-                    return result.top;
-                }
-
-                if (tuple[0]) {
-                    worklist.push(marker);
-                    leavelist.push(tuple);
-
-                    if (ret !== VisitorOption.Skip) {
-                        candidates = VisitorKeys[nodeType];
-                        current = candidates.length;
-                        while ((current -= 1) >= 0) {
-                            candidate = node[candidates[current]];
-                            if (candidate) {
-                                if (isArray(candidate)) {
-                                    current2 = candidate.length;
-                                    while ((current2 -= 1) >= 0) {
-                                        if (candidate[current2]) {
-                                            if(nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
-                                                worklist.push([{type: 'PropertyWrapper', node: candidate[current2]}, candidate, current2]);
-                                            } else {
-                                                worklist.push([candidate[current2], candidate, current2]);
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    worklist.push([candidate, node, candidates[current]]);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return result.top;
-    }
-
-    exports.version = '0.0.4';
-    exports.Syntax = Syntax;
-    exports.traverse = traverse;
-    exports.replace = replace;
-    exports.VisitorKeys = VisitorKeys;
-    exports.VisitorOption = VisitorOption;
-}));
-/* vim: set sw=4 ts=4 et tw=80 : */
-
-})()
-},{}],26:[function(require,module,exports){
+},{"./package.json":24,"estraverse":25,"source-map":26}],26:[function(require,module,exports){
 /*
  * Copyright 2009-2011 Mozilla Foundation and contributors
  * Licensed under the New BSD license. See LICENSE.txt or:
@@ -16635,183 +16635,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./base64":35,"amdefine":33}],34:[function(require,module,exports){
-/* -*- Mode: js; js-indent-level: 2; -*- */
-/*
- * Copyright 2011 Mozilla Foundation and contributors
- * Licensed under the New BSD license. See LICENSE or:
- * http://opensource.org/licenses/BSD-3-Clause
- */
-if (typeof define !== 'function') {
-    var define = require('amdefine')(module);
-}
-define(function (require, exports, module) {
-
-  /**
-   * Recursive implementation of binary search.
-   *
-   * @param aLow Indices here and lower do not contain the needle.
-   * @param aHigh Indices here and higher do not contain the needle.
-   * @param aNeedle The element being searched for.
-   * @param aHaystack The non-empty array being searched.
-   * @param aCompare Function which takes two elements and returns -1, 0, or 1.
-   */
-  function recursiveSearch(aLow, aHigh, aNeedle, aHaystack, aCompare) {
-    // This function terminates when one of the following is true:
-    //
-    //   1. We find the exact element we are looking for.
-    //
-    //   2. We did not find the exact element, but we can return the next
-    //      closest element that is less than that element.
-    //
-    //   3. We did not find the exact element, and there is no next-closest
-    //      element which is less than the one we are searching for, so we
-    //      return null.
-    var mid = Math.floor((aHigh - aLow) / 2) + aLow;
-    var cmp = aCompare(aNeedle, aHaystack[mid]);
-    if (cmp === 0) {
-      // Found the element we are looking for.
-      return aHaystack[mid];
-    }
-    else if (cmp > 0) {
-      // aHaystack[mid] is greater than our needle.
-      if (aHigh - mid > 1) {
-        // The element is in the upper half.
-        return recursiveSearch(mid, aHigh, aNeedle, aHaystack, aCompare);
-      }
-      // We did not find an exact match, return the next closest one
-      // (termination case 2).
-      return aHaystack[mid];
-    }
-    else {
-      // aHaystack[mid] is less than our needle.
-      if (mid - aLow > 1) {
-        // The element is in the lower half.
-        return recursiveSearch(aLow, mid, aNeedle, aHaystack, aCompare);
-      }
-      // The exact needle element was not found in this haystack. Determine if
-      // we are in termination case (2) or (3) and return the appropriate thing.
-      return aLow < 0
-        ? null
-        : aHaystack[aLow];
-    }
-  }
-
-  /**
-   * This is an implementation of binary search which will always try and return
-   * the next lowest value checked if there is no exact hit. This is because
-   * mappings between original and generated line/col pairs are single points,
-   * and there is an implicit region between each of them, so a miss just means
-   * that you aren't on the very start of a region.
-   *
-   * @param aNeedle The element you are looking for.
-   * @param aHaystack The array that is being searched.
-   * @param aCompare A function which takes the needle and an element in the
-   *     array and returns -1, 0, or 1 depending on whether the needle is less
-   *     than, equal to, or greater than the element, respectively.
-   */
-  exports.search = function search(aNeedle, aHaystack, aCompare) {
-    return aHaystack.length > 0
-      ? recursiveSearch(-1, aHaystack.length, aNeedle, aHaystack, aCompare)
-      : null;
-  };
-
-});
-
-},{"amdefine":33}],31:[function(require,module,exports){
-/* -*- Mode: js; js-indent-level: 2; -*- */
-/*
- * Copyright 2011 Mozilla Foundation and contributors
- * Licensed under the New BSD license. See LICENSE or:
- * http://opensource.org/licenses/BSD-3-Clause
- */
-if (typeof define !== 'function') {
-    var define = require('amdefine')(module);
-}
-define(function (require, exports, module) {
-
-  /**
-   * This is a helper function for getting values from parameter/options
-   * objects.
-   *
-   * @param args The object we are extracting values from
-   * @param name The name of the property we are getting.
-   * @param defaultValue An optional value to return if the property is missing
-   * from the object. If this is not specified and the property is missing, an
-   * error will be thrown.
-   */
-  function getArg(aArgs, aName, aDefaultValue) {
-    if (aName in aArgs) {
-      return aArgs[aName];
-    } else if (arguments.length === 3) {
-      return aDefaultValue;
-    } else {
-      throw new Error('"' + aName + '" is a required argument.');
-    }
-  }
-  exports.getArg = getArg;
-
-  var urlRegexp = /([\w+\-.]+):\/\/((\w+:\w+)@)?([\w.]+)?(:(\d+))?(\S+)?/;
-
-  function urlParse(aUrl) {
-    var match = aUrl.match(urlRegexp);
-    if (!match) {
-      return null;
-    }
-    return {
-      scheme: match[1],
-      auth: match[3],
-      host: match[4],
-      port: match[6],
-      path: match[7]
-    };
-  }
-
-  function join(aRoot, aPath) {
-    var url;
-
-    if (aPath.match(urlRegexp)) {
-      return aPath;
-    }
-
-    if (aPath.charAt(0) === '/' && (url = urlParse(aRoot))) {
-      return aRoot.replace(url.path, '') + aPath;
-    }
-
-    return aRoot.replace(/\/$/, '') + '/' + aPath;
-  }
-  exports.join = join;
-
-  /**
-   * Because behavior goes wacky when you set `__proto__` on objects, we
-   * have to prefix all the strings in our set with an arbitrary character.
-   *
-   * See https://github.com/mozilla/source-map/pull/31 and
-   * https://github.com/mozilla/source-map/issues/30
-   *
-   * @param String aStr
-   */
-  function toSetString(aStr) {
-    return '$' + aStr;
-  }
-  exports.toSetString = toSetString;
-
-  function fromSetString(aStr) {
-    return aStr.substr(1);
-  }
-  exports.fromSetString = fromSetString;
-
-  function relative(aRoot, aPath) {
-    aRoot = aRoot.replace(/\/$/, '');
-    return aPath.indexOf(aRoot + '/') === 0
-      ? aPath.substr(aRoot.length + 1)
-      : aPath;
-  }
-  exports.relative = relative;
-
-});
-
-},{"amdefine":33}],32:[function(require,module,exports){
+},{"./base64":35,"amdefine":33}],32:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -16909,7 +16733,183 @@ define(function (require, exports, module) {
 
 });
 
-},{"./util":31,"amdefine":33}],35:[function(require,module,exports){
+},{"./util":31,"amdefine":33}],31:[function(require,module,exports){
+/* -*- Mode: js; js-indent-level: 2; -*- */
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+if (typeof define !== 'function') {
+    var define = require('amdefine')(module);
+}
+define(function (require, exports, module) {
+
+  /**
+   * This is a helper function for getting values from parameter/options
+   * objects.
+   *
+   * @param args The object we are extracting values from
+   * @param name The name of the property we are getting.
+   * @param defaultValue An optional value to return if the property is missing
+   * from the object. If this is not specified and the property is missing, an
+   * error will be thrown.
+   */
+  function getArg(aArgs, aName, aDefaultValue) {
+    if (aName in aArgs) {
+      return aArgs[aName];
+    } else if (arguments.length === 3) {
+      return aDefaultValue;
+    } else {
+      throw new Error('"' + aName + '" is a required argument.');
+    }
+  }
+  exports.getArg = getArg;
+
+  var urlRegexp = /([\w+\-.]+):\/\/((\w+:\w+)@)?([\w.]+)?(:(\d+))?(\S+)?/;
+
+  function urlParse(aUrl) {
+    var match = aUrl.match(urlRegexp);
+    if (!match) {
+      return null;
+    }
+    return {
+      scheme: match[1],
+      auth: match[3],
+      host: match[4],
+      port: match[6],
+      path: match[7]
+    };
+  }
+
+  function join(aRoot, aPath) {
+    var url;
+
+    if (aPath.match(urlRegexp)) {
+      return aPath;
+    }
+
+    if (aPath.charAt(0) === '/' && (url = urlParse(aRoot))) {
+      return aRoot.replace(url.path, '') + aPath;
+    }
+
+    return aRoot.replace(/\/$/, '') + '/' + aPath;
+  }
+  exports.join = join;
+
+  /**
+   * Because behavior goes wacky when you set `__proto__` on objects, we
+   * have to prefix all the strings in our set with an arbitrary character.
+   *
+   * See https://github.com/mozilla/source-map/pull/31 and
+   * https://github.com/mozilla/source-map/issues/30
+   *
+   * @param String aStr
+   */
+  function toSetString(aStr) {
+    return '$' + aStr;
+  }
+  exports.toSetString = toSetString;
+
+  function fromSetString(aStr) {
+    return aStr.substr(1);
+  }
+  exports.fromSetString = fromSetString;
+
+  function relative(aRoot, aPath) {
+    aRoot = aRoot.replace(/\/$/, '');
+    return aPath.indexOf(aRoot + '/') === 0
+      ? aPath.substr(aRoot.length + 1)
+      : aPath;
+  }
+  exports.relative = relative;
+
+});
+
+},{"amdefine":33}],34:[function(require,module,exports){
+/* -*- Mode: js; js-indent-level: 2; -*- */
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+if (typeof define !== 'function') {
+    var define = require('amdefine')(module);
+}
+define(function (require, exports, module) {
+
+  /**
+   * Recursive implementation of binary search.
+   *
+   * @param aLow Indices here and lower do not contain the needle.
+   * @param aHigh Indices here and higher do not contain the needle.
+   * @param aNeedle The element being searched for.
+   * @param aHaystack The non-empty array being searched.
+   * @param aCompare Function which takes two elements and returns -1, 0, or 1.
+   */
+  function recursiveSearch(aLow, aHigh, aNeedle, aHaystack, aCompare) {
+    // This function terminates when one of the following is true:
+    //
+    //   1. We find the exact element we are looking for.
+    //
+    //   2. We did not find the exact element, but we can return the next
+    //      closest element that is less than that element.
+    //
+    //   3. We did not find the exact element, and there is no next-closest
+    //      element which is less than the one we are searching for, so we
+    //      return null.
+    var mid = Math.floor((aHigh - aLow) / 2) + aLow;
+    var cmp = aCompare(aNeedle, aHaystack[mid]);
+    if (cmp === 0) {
+      // Found the element we are looking for.
+      return aHaystack[mid];
+    }
+    else if (cmp > 0) {
+      // aHaystack[mid] is greater than our needle.
+      if (aHigh - mid > 1) {
+        // The element is in the upper half.
+        return recursiveSearch(mid, aHigh, aNeedle, aHaystack, aCompare);
+      }
+      // We did not find an exact match, return the next closest one
+      // (termination case 2).
+      return aHaystack[mid];
+    }
+    else {
+      // aHaystack[mid] is less than our needle.
+      if (mid - aLow > 1) {
+        // The element is in the lower half.
+        return recursiveSearch(aLow, mid, aNeedle, aHaystack, aCompare);
+      }
+      // The exact needle element was not found in this haystack. Determine if
+      // we are in termination case (2) or (3) and return the appropriate thing.
+      return aLow < 0
+        ? null
+        : aHaystack[aLow];
+    }
+  }
+
+  /**
+   * This is an implementation of binary search which will always try and return
+   * the next lowest value checked if there is no exact hit. This is because
+   * mappings between original and generated line/col pairs are single points,
+   * and there is an implicit region between each of them, so a miss just means
+   * that you aren't on the very start of a region.
+   *
+   * @param aNeedle The element you are looking for.
+   * @param aHaystack The array that is being searched.
+   * @param aCompare A function which takes the needle and an element in the
+   *     array and returns -1, 0, or 1 depending on whether the needle is less
+   *     than, equal to, or greater than the element, respectively.
+   */
+  exports.search = function search(aNeedle, aHaystack, aCompare) {
+    return aHaystack.length > 0
+      ? recursiveSearch(-1, aHaystack.length, aNeedle, aHaystack, aCompare)
+      : null;
+  };
+
+});
+
+},{"amdefine":33}],35:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -17255,5 +17255,5 @@ function amdefine(module, require) {
 module.exports = amdefine;
 
 })(require("__browserify_process"),"/node_modules/escodegen/node_modules/source-map/node_modules/amdefine/amdefine.js")
-},{"path":8,"__browserify_process":7}]},{},[1])
+},{"path":6,"__browserify_process":5}]},{},[1])
 ;
