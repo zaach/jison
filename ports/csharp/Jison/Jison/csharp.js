@@ -21,6 +21,8 @@ exec("jison " + process.argv[2], function (error) {
         console.log(error);
         return;
     }
+    
+    String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
     var fileName = process.argv[2].replace('.jison', ''),
         comments = require(path.resolve(__dirname, '../../../comments.js')),
@@ -86,19 +88,21 @@ exec("jison " + process.argv[2], function (error) {
         return str;
     }
 
-    fileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+    var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
     
     var option = {
-        parserNamespace: 'Jison',
-        parserClass: fileName + 'Definition',
-        fileName: 'Jison.' + fileName + 'Definition.cs'
+    	'using': '',
+        'namespace': 'Jison',
+        'class': FileName,
+        'fileName': FileName + '.cs',
+        'parserValue': ''
     };
 
     var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
     parserDefinition = parserDefinition.split(/\n/g);
     for (var i = 0; i < parserDefinition.length; i++) {
-        if (parserDefinition[i].match('//csOption ')) {
-            parserDefinition[i] = parserDefinition[i].replace('//csOption ', '');
+        if (parserDefinition[i].match('//csOption')) {
+            parserDefinition[i] = parserDefinition[i].replace('//csOption ', '').trim();
             parserDefinition[i] = parserDefinition[i].split(':');
             option[parserDefinition[i][0]] = parserDefinition[i][1];
         }
@@ -228,10 +232,12 @@ exec("jison " + process.argv[2], function (error) {
     }
     
     parserRaw = parserRaw
-        .replace('/**/namespace Jison/**/', 'namespace ' + option.parserNamespace)
-        .replace('/**/class Definition/**/', 'class ' + option.parserClass)
-        .replace('/**/public Definition/**/', 'public ' + option.parserClass)
-        .replace('new Parser(', 'new ' + option.parserClass + '(')
+    	.replace(new RegExp('//@@USING_INJECT@@', 'g'),(option.using ? 'using ' + option.using.split(',').join(';\nusing ') + ';' : ''))
+        .replace(new RegExp('[/][*][*][/]namespace Jison[/][*][*][/]', 'g'), 'namespace ' + option.namespace)
+        .replace(new RegExp('[/][*][*][/]class Parser[/][*][*][/]', 'g'), 'class ' + option.class)
+        .replace(new RegExp('[/][*][*][/]public Parser[/][*][*][/]', 'g'), 'public ' + option.class)
+        .replace(new RegExp('[/][*][*][/]ParserValue[/][*][*][/]', 'g'), (option.parserValue || 'ParserValue'))
+        .replace('new Parser(', 'new ' + option.class + '(')
 
         .replace('//@@PARSER_INJECT@@',
             parserInject()
