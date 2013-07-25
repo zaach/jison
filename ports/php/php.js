@@ -22,6 +22,8 @@ exec("jison " + process.argv[2], function (error) {
         return;
     }
 
+    String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
+
     var fileName = process.argv[2].replace('.jison', ''),
         comments = require(path.resolve(__dirname, '../comments.js')),
         requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
@@ -90,16 +92,16 @@ exec("jison " + process.argv[2], function (error) {
 	
 	
 	var option = {
-		parserClass: fileName + 'Definition',
-		fileName: fileName + 'Definition.php',
-        usingZend: 'false'
+        'namespace': 'Jison',
+        'class': fileName,
+        'fileName': fileName + '.php'
 	};
 	
 	var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
 	parserDefinition = parserDefinition.split(/\n/g);
 	for(var i = 0; i < parserDefinition.length; i++) {
-		if (parserDefinition[i].match('//phpOption ')) {
-			parserDefinition[i] = parserDefinition[i].replace('//phpOption ', '');
+		if (parserDefinition[i].match('//option')) {
+			parserDefinition[i] = parserDefinition[i].replace('//option ', '');
 			parserDefinition[i] = parserDefinition[i].split(':');
 			option[parserDefinition[i][0]] = parserDefinition[i][1];
 		}
@@ -139,7 +141,7 @@ exec("jison " + process.argv[2], function (error) {
 
 		for (var i in this.symbolsByIndex) {
 			var symbol = this.symbolsByIndex[i];
-			result += '\t\t\t$symbol' + symbol.index + ' = new Jison_ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
+			result += '\t\t\t$symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
 			this.symbols.push('\t\t\t$this->symbols[' + symbol.index + '] = $symbol' + symbol.index + '');
 			this.symbols.push('\t\t\t$this->symbols["' + symbol.name + '"] = $symbol' + symbol.index + '');
 
@@ -162,19 +164,19 @@ exec("jison " + process.argv[2], function (error) {
 				if (item.join) { //is array
 					if (item.length == 1) {
 						action = item[0];
-						items.push('\t\t\t\t\t' + j + '=>new Jison_ParserAction($this->' + actions[action] + ')');
+						items.push('\t\t\t\t\t' + j + '=>new ParserAction($this->' + actions[action] + ')');
 					} else {
 						action = item[0];
 						state = item[1];
-						items.push('\t\t\t\t\t' + j + '=>new Jison_ParserAction($this->' + actions[action] + ', $table' + state + ')');
+						items.push('\t\t\t\t\t' + j + '=>new ParserAction($this->' + actions[action] + ', $table' + state + ')');
 					}
 				} else {
 					state = item;
-					items.push('\t\t\t\t\t' + j + '=>new Jison_ParserAction($this->' + actions[action] + ', $table' + state + ')');
+					items.push('\t\t\t\t\t' + j + '=>new ParserAction($this->' + actions[action] + ', $table' + state + ')');
 				}
 			}
 
-			this.tableInstantiation.push('\t\t\t$table' + i + ' = new Jison_ParserState(' + i + ')');
+			this.tableInstantiation.push('\t\t\t$table' + i + ' = new ParserState(' + i + ')');
 			this.tableDefinition.push('\t\t\t$tableDefinition' + i + ' = array(\n\t\t\t\t\n' + items.join(',\n') + '\n\t\t\t\t)');
 			this.tableSetActions.push('\t\t\t$table' + i + '->setActions($tableDefinition' + i + ')');
 			this.table.push('\t\t\t\t\t' + i + '=>$table' + i + '');
@@ -188,7 +190,7 @@ exec("jison " + process.argv[2], function (error) {
 		for (var i in defaultActions) {
 			var action = defaultActions[i][0];
 			var state = defaultActions[i][1];
-			this.defaultActions.push('\t\t\t\t\t' + i + '=>new Jison_ParserAction($this->' + actions[action] +', $table' +  state + ')');
+			this.defaultActions.push('\t\t\t\t\t' + i + '=>new ParserAction($this->' + actions[action] +', $table' +  state + ')');
 		}
 
 		result += '\t\t\t$this->defaultActions = array(\n\t\t\t\t\n' + this.defaultActions.join(',\n') + '\n\t\t\t\t);\n\n';
@@ -198,10 +200,10 @@ exec("jison " + process.argv[2], function (error) {
 			if (production.join) {
 				var symbol = production[0],
 					len = production[1];
-				this.productions.push('\t\t\t\t\t' + i + '=>new Jison_ParserProduction($symbol' + this.symbolsByIndex[symbol].index + ',' + len + ')');
+				this.productions.push('\t\t\t\t\t' + i + '=>new ParserProduction($symbol' + this.symbolsByIndex[symbol].index + ',' + len + ')');
 			} else {
 				var symbol = production;
-				this.productions.push('\t\t\t\t\t' + i + '=>new Jison_ParserProduction($symbol' + this.symbolsByIndex[symbol].index + ')');
+				this.productions.push('\t\t\t\t\t' + i + '=>new ParserProduction($symbol' + this.symbolsByIndex[symbol].index + ')');
 			}
 		}
 
@@ -222,7 +224,7 @@ exec("jison " + process.argv[2], function (error) {
 		result += '\t\t\t$this->rules = array(\n\t\t\t\t\n' + this.rules.join(',\n') + '\n\t\t\t\t);\n\n';
 
 		for (var i in conditions) {
-			this.conditions.push('\t\t\t\t\t"' + i + '"=>new Jison_LexerConditions(array( ' + conditions[i].rules.join(',') + '), ' + conditions[i].inclusive + ')');
+			this.conditions.push('\t\t\t\t\t"' + i + '"=>new LexerConditions(array( ' + conditions[i].rules.join(',') + '), ' + conditions[i].inclusive + ')');
 		}
 
 		result += '\t\t\t$this->conditions = array(\n\t\t\t\t\n' + this.conditions.join(',\n') + '\n\t\t\t\t);\n\n';
@@ -231,10 +233,8 @@ exec("jison " + process.argv[2], function (error) {
 	}
 
 	parserRaw = parserRaw
-		.replace('/**/namespace Jison/**/', 'namespace ' + option.parserNamespace)
-		.replace('/**/class Definition/**/', 'class ' + option.parserClass)
-		.replace('/**/public Definition/**/', 'public ' + option.parserClass)
-		.replace('new Parser(', 'new ' + option.parserClass + '(')
+        .replace('/**/namespace Jison;/**/', 'namespace ' + option.namespace + ';')
+		.replace('/**/class Parser/**/', 'class ' + option.class)
 
 		.replace('//@@PARSER_INJECT@@',
             parserInject()
@@ -251,10 +251,6 @@ exec("jison " + process.argv[2], function (error) {
 		.replace('//@@LexerPerformActionInjection@@',
             jsPerformActionToPhp(lexerPerformAction, true)
         );
-
-    if (option.usingZend == 'true') {
-        parserRaw = parserRaw.replace("/**/require_once('base.php');/**/", '');
-    }
 
 	fs.writeFile(option.fileName, parserRaw, function(err) {
 		if (err) {

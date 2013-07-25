@@ -1,5 +1,5 @@
-﻿//csOption parserValue:Expression
-//csOption namespace:jQuerySheet
+﻿//option parserValue:Expression
+//option namespace:jQuerySheet
 
 /* description: Parses end evaluates mathematical expressions. */
 /* lexical grammar */

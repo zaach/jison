@@ -360,7 +360,7 @@ case 23:
 			//php this.$ = this->callFunction($$[$0-2]);
 			
 			/*cs
-				this.$ = FormulaFunctions.Call($$[$0-2].Value);
+				this.$ = Functions.Call($$[$0-2].Value);
 			*/
 		
 break;
@@ -371,7 +371,7 @@ case 24:
 			//php this.$ = this->callFunction($$[$0-3], $$[$0-1]);
 			
 			/*cs
-				this.$ = FormulaFunctions.Call($$[$0-3].Value, $$[$0-1]);
+				this.$ = Functions.Call($$[$0-3].Value, $$[$0-1]);
 			*/
 		
 break;
@@ -382,7 +382,7 @@ case 28:
 			//php this.$ = this->fixedCellValue($$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.ParseFixed($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0].Value));
 			*/
 		
 break;
@@ -393,7 +393,7 @@ case 29:
 			//php this.$ = this->fixedCellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.ParseFixed($$[$0-2].Value), CellLocation.ParseFixed($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0-2].Value), Location.ParseFixed($$[$0].Value));
 			*/
 		
 break;
@@ -404,7 +404,7 @@ case 30:
 			//php this.$ = this->cellValue($$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.Parse($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0].Value));
 			*/
 		
 break;
@@ -415,7 +415,7 @@ case 31:
 			//php this.$ = this->cellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.Parse($$[$0-2].Value), CellLocation.Parse($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0-2].Value), Location.Parse($$[$0].Value));
 			*/
 		
 break;
@@ -426,7 +426,7 @@ case 32:
 			//php this.$ = this->remoteCellValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.ParseRemote($$[$0-2].Value, $$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-2].Value, $$[$0].Value));
 			*/
 		
 break;
@@ -437,7 +437,7 @@ case 33:
 			//php this.$ = this->remoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(CellLocation.ParseRemote($$[$0-4].Value, $$[$0-2].Value), CellLocation.ParseRemote($$[$0-4].Value, $$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-4].Value, $$[$0-2].Value), Location.ParseRemote($$[$0-4].Value, $$[$0].Value));
 			*/
 		
 break;
