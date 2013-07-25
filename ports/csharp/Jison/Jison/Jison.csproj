@@ -80,6 +80,9 @@
     <Compile Include="Test\Location.cs" />
     <Compile Include="Test\Functions.cs" />
     <Compile Include="Test.cs" />
+    <Compile Include="Test\RowDictionary.cs" />
+    <Compile Include="Test\SpreadsheetDictionary.cs" />
+    <Compile Include="Test\SpreadsheetsDictionary.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">

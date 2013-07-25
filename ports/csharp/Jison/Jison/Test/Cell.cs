@@ -38,16 +38,18 @@ namespace jQuerySheet
 		
 		public Expression UpdateValue()
 		{
-			if (HasFormula && State.Count < 1)
-			{
-				State.Push("Parsing");
+			if (HasFormula && State.Count < 1) {
+				State.Push ("Parsing");
 				CalcCount++;
-				var formula = new Formula();
-				var value = formula.Parse(Formula);
-				State.Pop();
+				var formula = new Formula ();
+				var value = formula.Parse (Formula);
+				State.Pop ();
 				return value;
+			} else {
+				var exp = new Expression();
+				exp.Set(Value);
+				return exp;
 			}
-			return Exp;
 		}
 	}
 }

@@ -8,27 +8,15 @@ namespace jQuerySheet
 	public class Spreadsheet
     {
         static public int ActiveSpreadsheet = 0;
+		static public SpreadsheetsDictionary Spreadsheets;
 
-		static public Dictionary<int, Dictionary<int,Dictionary<int, Cell>>> Spreadsheets = new Dictionary<int, Dictionary<int,Dictionary<int, Cell>>>()
-			{
-				{0, new Dictionary<int, Dictionary<int, Cell>>()
-					{
-						{0, new Dictionary<int, Cell>()
-							{
-								{0, new Cell(0,0,0, "50")},
-								{1, new Cell(0,0,1, "33")}
-							}
-						}
-					}
-				}
-			};
 
-		public Dictionary<int, Dictionary<int,Dictionary<int, Cell>>> Calc()
+		public SpreadsheetsDictionary Calc()
 		{
-			foreach (var Spreadsheet in Spreadsheets) {
-				foreach(Dictionary<int, Cell> row in Spreadsheet) {
-					foreach (Cell cell in row) {
-						cell.UpdateValue();
+			foreach (var Spreadsheet in Spreadsheets.Values) {
+				foreach (var row in Spreadsheet.Values) {
+					foreach (var cell in row) {
+						cell.Value.UpdateValue();
 					}
 				}
 			}
