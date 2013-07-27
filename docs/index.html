@@ -34,7 +34,7 @@
   <li><a href="#custom-scanners">Custom Scanners</a></li>
   <li><a href="#sharing-scope">Sharing Scope</a></li>
   <li><a href="#parsing-algorithms">Parsing algorithms</a></li>
-  <li><a href="#real-world-examples">Real world examples</a></li>
+  <li><a href="#projects-using-jison">Projects using Jison</a></li>
   <li><a href="#contributors">Contributors</a></li>
   <li><a href="#license">License</a></li>
 </ul>
@@ -364,6 +364,17 @@ expect-floats        this.begin('expect');
 
 <p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
 
+<p>Using the JSON format, start conditions are defined with an array before the rule&#8217;s matcher:</p>
+
+<pre><code>{
+  rules: [
+    [['expect'], '[0-9]+"."[0-9]+', 'console.log( "found a float, = " + yytext );']
+  ]
+}
+</code></pre>
+
+<p>The array contains the list of start conditions for the rule.</p>
+
 <h2 id="tracking-locations">Tracking Locations</h2>
 
 <p>Jison&#8217;s lexical analyzer will track line number and column number information for each token and make them available within parser actions.
@@ -384,7 +395,7 @@ The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_n
 
 <p>In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.</p>
 
-<p>Jison is more modular. Instead of pulling code into the generated module, the generated module is expected to be required and used by other modules. This means that if you want to expose functionality to the semantic actions, you can&#8217;t rely on it being available through lexical scoping. Instead, the parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
+<p>Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules.The parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
 
 <p>An example from orderly.js:</p>
 
@@ -402,8 +413,6 @@ var parse = exports.parse = function (input) {
 
 <p>The <code>scope</code> module contains logic for building data structures, which is used within the semantic actions.</p>
 
-<p><em>TODO: More on this.</em></p>
-
 <h2 id="parsing-algorithms">Parsing algorithms</h2>
 <p>Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.</p>
 
@@ -419,7 +428,7 @@ var parse = exports.parse = function (input) {
 <h2 id="license">License</h2>
 
 <blockquote>
-  <p>Copyright (c) 2009 Zachary Carter</p>
+  <p>Copyright (c) 2009-2013 Zachary Carter</p>
 
   <p>Permission is hereby granted, free of
 charge, to any person  obtaining a
@@ -457,7 +466,7 @@ IN THE SOFTWARE.</p>
 
 
     </div>
-  	<p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2010. MIT Licensed.</p>
+  	<p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2013. MIT Licensed.</p>
   	
     <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
 <script type="text/javascript">
