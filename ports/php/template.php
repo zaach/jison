@@ -469,7 +469,7 @@ class ParserValue
     public $leng = 0;
     public $loc;
     public $lineNo = 0;
-    public $value;
+    public $text;
 
     function __clone() {
         $clone = new ParserValue();
@@ -478,7 +478,7 @@ class ParserValue
             $clone->loc = clone $this->loc;
         }
         $clone->lineNo = $this->lineNo;
-        $clone->value = $this->value;
+        $clone->text = $this->text;
         return $clone;
     }
 }
