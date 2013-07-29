@@ -151,7 +151,7 @@
                         //TODO: add ranges
                     }
 
-                    $r = $this->parserPerformAction($_yy->value, $yy, $action->state->index, $vstack, $vstackCount - 1);
+                    $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
 
                     if (isset($r)) {
                         return $r;
@@ -236,7 +236,7 @@
     function input()
     {
         $ch = $this->input[0];
-        $this->yy->value .= $ch;
+        $this->yy->text .= $ch;
         $this->yy->leng++;
         $this->offset++;
         $this->match .= $ch;
@@ -263,7 +263,7 @@
         $linesCount = count($lines);
 
         $this->input = $ch . $this->input;
-        $this->yy->value = substr($this->yy->value, 0, $len - 1);
+        $this->yy->text = substr($this->yy->text, 0, $len - 1);
         //$this->yylen -= $len;
         $this->offset -= $len;
         $oldLines = explode("/(?:\r\n?|\n)/", $this->match);
@@ -333,7 +333,7 @@
         }
 
         if ($this->more == false) {
-            $this->yy->value = '';
+            $this->yy->text = '';
             $this->match = '';
         }
 
@@ -365,12 +365,12 @@
             );
 
 
-            $this->yy->value .= $match[0];
+            $this->yy->text .= $match[0];
             $this->match .= $match[0];
             $this->matches = $match;
             $this->matched .= $match[0];
 
-            $this->yy->leng = strlen($this->yy->value);
+            $this->yy->leng = strlen($this->yy->text);
             if (isset($this->ranges)) {
                 $this->yy->loc->range = new ParserRange($this->offset, $this->offset += $this->yy->leng);
             }
