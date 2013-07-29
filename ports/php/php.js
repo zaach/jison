@@ -96,7 +96,8 @@ exec("jison " + process.argv[2], function (error) {
         'class': fileName,
         'fileName': fileName + '.php',
         'extends': '',
-        'use': ''
+        'use': '',
+        'parserValue': ''
 	};
 	
 	var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
@@ -238,6 +239,7 @@ exec("jison " + process.argv[2], function (error) {
         .replace('/**/namespace Jison;/**/', (option.namespace ? 'namespace ' + option.namespace + ';' : ''))
 		.replace('/**/class Parser/**/', 'class ' + option.class + (option.extends ? ' extends ' + option.extends : ''))
         .replace('/**use**/', (option.use ? 'use ' + option.use : ''))
+        .replace(/[/][*][*]ParserValue[/][*][*][/]/g, (option.parserValue ? option.parserValue : 'ParserValue'))
 
 		.replace('//@@PARSER_INJECT@@',
             parserInject()
