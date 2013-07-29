@@ -1,7 +1,8 @@
 <?php
 /* Jison generated parser */
-
 /**/namespace Jison;/**/
+
+/**use**/
 
 /**/class Parser/**/
 {
