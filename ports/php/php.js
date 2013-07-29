@@ -236,7 +236,7 @@ exec("jison " + process.argv[2], function (error) {
 	}
 
 	parserRaw = parserRaw
-        .replace('/**/namespace Jison;/**/', (option.namespace ? 'namespace ' + option.namespace + ';' : ''))
+        .replace('/**/namespace Jison;/**/', (option.namespace ? 'namespace ' + option.namespace + ';\nuse Expression;\n' : ''))
 		.replace('/**/class Parser/**/', 'class ' + option.class + (option.extends ? ' extends ' + option.extends : ''))
         .replace('/**use**/', (option.use ? 'use ' + option.use : ''))
         .replace(/[/][*][*]ParserValue[/][*][*][/]/g, (option.parserValue ? option.parserValue : 'ParserValue'))
