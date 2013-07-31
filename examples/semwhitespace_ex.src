@@ -1,0 +1,11 @@
+if (a+b):
+	print "this is cool"
+	if (123-b):
+		print "inner"
+	else:
+		print "mas"
+		print "toy grammar"
+	print "another line"
+
+print "end of program"
+
