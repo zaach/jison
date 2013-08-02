@@ -2,18 +2,21 @@
 
 %start prog
 
+%options flex
+%ebnf
+
 %% /* language grammar */
 
 prog
-	: proglist
+	: proglist ENDOFFILE
 	{ console.log("AST: %j", $proglist); }
 	;
 
 proglist
-	: stmt proglist
-	{ $proglist.unshift($stmt); $$ = $proglist; }
-	| ENDOFFILE
-	{ $$ = []; }
+	: proglist stmt
+	{ $proglist.push($stmt); $$ = $proglist; }
+	| stmt
+	{ $$ = [$stmt]; }
 	;
 
 if_stmt
