@@ -150,6 +150,51 @@ exports["test ambiguous named semantic value"] = function() {
     assert.equal(parser.parse('xyx'), "xyx", "return first after reduction");
 };
 
+exports["test previous semantic value lookup ($0)"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["A B", "return $A + $B"] ],
+            "A" :[ ['A x', "$$ = $A+'x'"], ['x', "$$ = $1"] ],
+            "B" :[ ["y", "$$ = $0"] ],
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xxy'), "xxxx", "return first after reduction");
+};
+
+
+exports["test negative semantic value lookup ($-1)"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           ["z", "return 'z';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["G A B", "return $G + $A + $B"] ],
+            "G" :[ ['z', "$$ = $1"] ],
+            "A" :[ ['A x', "$$ = $A+'x'"], ['x', "$$ = $1"] ],
+            "B" :[ ["y", "$$ = $-1"] ],
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('zxy'), "zxz", "return first after reduction");
+};
+
 exports["test Build AST"] = function() {
     var lexData = {
         rules: [
