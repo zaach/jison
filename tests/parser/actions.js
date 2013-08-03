@@ -395,3 +395,48 @@ exports["test next token not shifted if only one action"] = function () {
     assert.ok(parser.parse('(y)y'), "should parse correctly");
 };
 
+exports["test YYACCEPT"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["E", "return $1"] ],
+            "E"   :[ ["B E", "return $1+$2"],
+                      ["x", "$$ = 'EX'"] ],
+            "B"   :[ ["y", "YYACCEPT"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), "EX", "return first token");
+    assert.equal(parser.parse('yx'), true, "return first after reduction");
+};
+
+exports["test YYABORT"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["E", "return $1"] ],
+            "E"   :[ ["B E", "return $1+$2"],
+                      ["x", "$$ = 'EX'"] ],
+            "B"   :[ ["y", "YYABORT"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), "EX", "return first token");
+    assert.equal(parser.parse('yx'), false, "return first after reduction");
+};
