@@ -147,4 +147,30 @@ exports["test compilers test grammar 2"] = function () {
     assert.equal(parser.conflicts, 1, "only one conflict");
 };
 
+exports["test nullables"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           ["z", "return 'z';"],
+           [";", "return ';';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ ';', 'x', 'y', 'z' ],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ 'A ;' ],
+            "A" :[ 'B C' ],
+            "B" :[ 'x' ],
+            "C" :[ 'y', 'D' ],
+            "D" :[ 'F' ],
+            "F" :[ '', 'F z' ],
+        }
+    };
 
+    var parser = new Jison.Parser(grammar, {type: "lr"});
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(parser.parse("x;"), "parse");
+};
