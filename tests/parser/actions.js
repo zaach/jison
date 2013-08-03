@@ -150,6 +150,26 @@ exports["test ambiguous named semantic value"] = function() {
     assert.equal(parser.parse('xyx'), "xyx", "return first after reduction");
 };
 
+exports["test vars that look like named semantic values shouldn't be replaced"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["A", "return $A"] ],
+            "A" :[ ['x A', "var $blah = 'x', blah = 8; $$ = $A + $blah" ],
+                   ['', "$$ = '->'" ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
+};
+
 exports["test previous semantic value lookup ($0)"] = function() {
     var lexData = {
         rules: [
