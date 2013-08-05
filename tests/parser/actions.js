@@ -440,3 +440,23 @@ exports["test YYABORT"] = function() {
     assert.equal(parser.parse('x'), "EX", "return first token");
     assert.equal(parser.parse('yx'), false, "return first after reduction");
 };
+
+exports["test parse params"] = function() {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return first + second;"],
+                     "" ]
+        },
+        parseParams: ["first", "second"]
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('y', "foo", "bar"), "foobar", "semantic action");
+};
