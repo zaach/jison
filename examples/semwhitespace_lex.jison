@@ -24,7 +24,7 @@ spc			[\t \u00a0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u20
 				
 					while (0 < _iemitstack[0]) {
 						this.popState();
-						tokens.push("DEDENT");
+						tokens.unshift("DEDENT");
 						_iemitstack.shift();
 					}
 				    
@@ -42,7 +42,7 @@ spc			[\t \u00a0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u20
 				
 					while (indentation < _iemitstack[0]) {
 						this.popState();
-						tokens.push("DEDENT");
+						tokens.unshift("DEDENT");
 						_iemitstack.shift();
 					}
 					if (tokens.length) return tokens;
