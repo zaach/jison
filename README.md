@@ -39,6 +39,22 @@ This will generate `calculator.js` in your current working directory. This file 
 
 This will print out `4194304`.
 
+Full cli option list:
+
+    Usage: jison [file] [lexfile] [options]
+
+    file        file containing a grammar
+    lexfile     file containing a lexical grammar
+
+    Options:
+       -j, --json                    force jison to expect a grammar in JSON format
+       -o FILE, --outfile FILE       Filename and base module name of the generated parser
+       -t, --debug                   Debug mode
+       -m TYPE, --module-type TYPE   The type of module to generate (commonjs, amd, js)
+       -p TYPE, --parser-type TYPE   The type of algorithm to use for the parser (lr0, slr, lalr, lr)
+       -V, --version                 print version and exit
+
+
 Usage from a CommonJS module
 --------------------------
 
