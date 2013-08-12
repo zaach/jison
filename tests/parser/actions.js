@@ -395,6 +395,70 @@ exports["test next token not shifted if only one action"] = function () {
     assert.ok(parser.parse('(y)y'), "should parse correctly");
 };
 
+exports["test token array LIFO"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return ['b','a'];"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr expr expr", "return $1+$2+$3;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('ac'), "abc", "should return second token");
+};
+
+exports["test symbol aliases"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["expr[alice] expr[bob] expr[carol]", "return $alice+$bob+$carol;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "abc", "should return original string");
+};
+
+exports["test symbol aliases in ebnf"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+$2;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "ab", "should tolerate aliases in subexpression");
+};
 exports["test YYACCEPT"] = function() {
     var lexData = {
         rules: [
