@@ -395,10 +395,10 @@ exports["test next token not shifted if only one action"] = function () {
     assert.ok(parser.parse('(y)y'), "should parse correctly");
 };
 
-exports["test token array FIFO"] = function() {
+exports["test token array LIFO"] = function() {
     var lexData = {
         rules: [
-           ["a", "return ['a','b'];"],
+           ["a", "return ['b','a'];"],
            ["c", "return 'c';"]
         ]
     };
