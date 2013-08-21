@@ -1848,7 +1848,7 @@ case 10:
 			
 			
 			
-				ss[so-3].Set(ss[so-3].ToDouble() <= ss[so-2].ToDouble());
+				ss[so-3].Set(ss[so-3].ToDouble() <= ss[so].ToDouble());
 				thisS = ss[so-3];
 			
 		
@@ -1857,7 +1857,7 @@ case 11:
 			
 			
 			
-				ss[so-3].Set(ss[so-3].ToDouble() >= ss[so-2].ToDouble());
+				ss[so-3].Set(ss[so-3].ToDouble() >= ss[so].ToDouble());
 				thisS = ss[so-3];
 			
 		
@@ -1865,7 +1865,7 @@ break;
 case 12:
 						
 			
-				ss[so-3].Set(ss[so-3].Value != ss[so-2].Value);
+				ss[so-3].Set(ss[so-3].Value != ss[so].Value);
 				thisS = ss[so-3];
 			
 		
@@ -1873,7 +1873,7 @@ break;
 case 13:
 						
 			
-				ss[so-2].Set(ss[so-2].Value != ss[so-1].Value);
+				ss[so-2].Set(ss[so-2].Value != ss[so].Value);
 				thisS = ss[so-2];
 			
 		
@@ -1882,7 +1882,7 @@ case 14:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].ToDouble() > ss[so-1].ToDouble());
+				ss[so-2].Set(ss[so-2].ToDouble() > ss[so].ToDouble());
 				thisS = ss[so-2];
 			
 		
@@ -1891,14 +1891,14 @@ case 15:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].ToDouble() < ss[so-1].ToDouble());
+				ss[so-2].Set(ss[so-2].ToDouble() < ss[so].ToDouble());
 				thisS = ss[so-2];
 			
 		
 break;
 case 16:
 			
-				ss[so-2].Set(ss[so-2].ToDouble() - ss[so-1].ToDouble());
+				ss[so-2].Set(ss[so-2].ToDouble() - ss[so].ToDouble());
 				thisS = ss[so-2];
 			
 		
@@ -1907,7 +1907,7 @@ case 17:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].ToDouble() * ss[so-1].ToDouble());
+				ss[so-2].Set(ss[so-2].ToDouble() * ss[so].ToDouble());
 				thisS = ss[so-2];
 			
 		
@@ -1916,7 +1916,7 @@ case 18:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].ToDouble() / ss[so-1].ToDouble());
+				ss[so-2].Set(ss[so-2].ToDouble() / ss[so].ToDouble());
 				thisS = ss[so-2];
 			
 		
