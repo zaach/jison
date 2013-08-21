@@ -252,7 +252,7 @@ using System.Linq;
 		public string Input()
 		{
 			string ch = _Input[0].ToString();
-			Yy.Value += ch;
+			Yy.Text += ch;
 			Yy.Leng++;
 			Offset++;
 			Match += ch;
@@ -280,7 +280,7 @@ using System.Linq;
 			var lines = Regex.Split(ch, "/(?:\r\n?|\n)/");
 
 			_Input = ch + _Input;
-			Yy.Value = Yy.Value.Substring(0, len - 1);
+			Yy.Text = Yy.Text.Substring(0, len - 1);
 			Offset -= len;
 			var oldLines = Regex.Split(Match, "/(?:\r\n?|\n)/");
 			Match = Match.Substring(0, Match.Length - 1);
@@ -357,7 +357,7 @@ using System.Linq;
 
 			if (_More == false)
 			{
-				Yy.Value = "";
+				Yy.Text = "";
 				Match = "";
 			}
 
@@ -389,11 +389,11 @@ using System.Linq;
 				Yy.Loc.FirstColumn = Yy.Loc.LastColumn;
 				Yy.Loc.LastColumn = lineCount.Length > 0 ? lineCount.Length - 1 : Yy.Loc.LastColumn + match.Length;
 
-				Yy.Value += match;
+				Yy.Text += match;
 				Match += match;
 				Matched += match;
 
-				Yy.Leng = Yy.Value.Length;
+				Yy.Leng = Yy.Text.Length;
 				if (Ranges != null)
 				{
 					Yy.Loc.Range = new ParserRange(Offset, Offset += Yy.Leng);
@@ -700,7 +700,7 @@ using System.Linq;
 
 	public class ParserValue
 	{
-		public string Value;
+		public string Text;
 		public ParserLocation Loc;
 		public int Leng = 0;
 		public int LineNo = 0;
@@ -711,7 +711,7 @@ using System.Linq;
 		
 		public ParserValue(ParserValue parserValue)
 		{
-			Value = parserValue.Value;
+			Text = parserValue.Text;
 			Leng = parserValue.Leng;
 			Loc = parserValue.Loc;
 			LineNo = parserValue.LineNo;

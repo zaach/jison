@@ -139,7 +139,7 @@ case 7:
 			//php this.$ = $$[$0-2] == $$[$0];
 			
 			/*cs
-				$$[$0-2].Set($$[$0-2].Value == $$[$0].Value);
+				$$[$0-2].Set($$[$0-2].Text == $$[$0].Text);
 				this.$ = $$[$0-2];
 			*/
 		
@@ -214,7 +214,7 @@ case 12:
 			//
 			
 			/*cs
-				$$[$0-3].Set($$[$0-3].Value != $$[$0].Value);
+				$$[$0-3].Set($$[$0-3].Text != $$[$0].Text);
 				this.$ = $$[$0-3];
 			*/
 		
@@ -230,7 +230,7 @@ case 13:
 			//
 			
 			/*cs
-				$$[$0-2].Set($$[$0-2].Value != $$[$0].Value);
+				$$[$0-2].Set($$[$0-2].Text != $$[$0].Text);
 				this.$ = $$[$0-2];
 			*/
 		
@@ -360,7 +360,7 @@ case 23:
 			//php this.$ = this->callFunction($$[$0-2]);
 			
 			/*cs
-				this.$ = Functions.Call($$[$0-2].Value);
+				this.$ = Functions.Call($$[$0-2].Text);
 			*/
 		
 break;
@@ -371,7 +371,7 @@ case 24:
 			//php this.$ = this->callFunction($$[$0-3], $$[$0-1]);
 			
 			/*cs
-				this.$ = Functions.Call($$[$0-3].Value, $$[$0-1]);
+				this.$ = Functions.Call($$[$0-3].Text, $$[$0-1]);
 			*/
 		
 break;
@@ -382,7 +382,7 @@ case 28:
 			//php this.$ = this->fixedCellValue($$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0].Text));
 			*/
 		
 break;
@@ -393,7 +393,7 @@ case 29:
 			//php this.$ = this->fixedCellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0-2].Value), Location.ParseFixed($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseFixed($$[$0-2].Text), Location.ParseFixed($$[$0].Text));
 			*/
 		
 break;
@@ -404,7 +404,7 @@ case 30:
 			//php this.$ = this->cellValue($$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0].Text));
 			*/
 		
 break;
@@ -415,7 +415,7 @@ case 31:
 			//php this.$ = this->cellRangeValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0-2].Value), Location.Parse($$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.Parse($$[$0-2].Text), Location.Parse($$[$0].Text));
 			*/
 		
 break;
@@ -426,7 +426,7 @@ case 32:
 			//php this.$ = this->remoteCellValue($$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-2].Value, $$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-2].Text, $$[$0].Text));
 			*/
 		
 break;
@@ -437,7 +437,7 @@ case 33:
 			//php this.$ = this->remoteCellRangeValue($$[$0-4], $$[$0-2], $$[$0]);
 			
 			/*cs
-				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-4].Value, $$[$0-2].Value), Location.ParseRemote($$[$0-4].Value, $$[$0].Value));
+				this.$ = Spreadsheet.CellValue(Location.ParseRemote($$[$0-4].Text, $$[$0-2].Text), Location.ParseRemote($$[$0-4].Text, $$[$0].Text));
 			*/
 		
 break;
@@ -528,7 +528,7 @@ case 40:
 			//php this.$ = $$[$0-2] . '.' . $$[$0];
 			
 			/*cs
-				$$[$0-2].Value += "." + $$[$0].Value;
+				$$[$0-2].Text += "." + $$[$0].Text;
 				$$[$0-2].ToDouble();
 				this.$ = $$[$0-2];
 			*/
@@ -554,7 +554,7 @@ case 42:
 			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
 			
 			/*cs
-				$$[$0-2].Set($$[$0-2].Value + $$[$0-1].Value + $$[$0].Value);
+				$$[$0-2].Set($$[$0-2].Text + $$[$0-1].Text + $$[$0].Text);
 				this.$ = $$[$0-2];
 			*/
       	
@@ -566,7 +566,7 @@ case 43:
 			//php this.$ = $$[$0-2] . $$[$0-1] . $$[$0];
 			
 			/*cs
-				$$[$0-3].Set($$[$0-3].Value + $$[$0-2].Value + $$[$0-1].Value + $$[$0].Value);
+				$$[$0-3].Set($$[$0-3].Text + $$[$0-2].Text + $$[$0-1].Text + $$[$0].Text);
 				this.$ = $$[$0-3];
 			*/
 		

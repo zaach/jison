@@ -1820,7 +1820,7 @@ case 7:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].Value == ss[so].Value);
+				ss[so-2].Set(ss[so-2].Text == ss[so].Text);
 				thisS = ss[so-2];
 			
 		
@@ -1865,7 +1865,7 @@ break;
 case 12:
 						
 			
-				ss[so-3].Set(ss[so-3].Value != ss[so].Value);
+				ss[so-3].Set(ss[so-3].Text != ss[so].Text);
 				thisS = ss[so-3];
 			
 		
@@ -1873,7 +1873,7 @@ break;
 case 13:
 						
 			
-				ss[so-2].Set(ss[so-2].Value != ss[so].Value);
+				ss[so-2].Set(ss[so-2].Text != ss[so].Text);
 				thisS = ss[so-2];
 			
 		
@@ -1954,7 +1954,7 @@ case 23:
 			
 			
 			
-				thisS = Functions.Call(ss[so-2].Value);
+				thisS = Functions.Call(ss[so-2].Text);
 			
 		
 break;
@@ -1962,7 +1962,7 @@ case 24:
 			
 			
 			
-				thisS = Functions.Call(ss[so-3].Value, ss[so-1]);
+				thisS = Functions.Call(ss[so-3].Text, ss[so-1]);
 			
 		
 break;
@@ -1970,7 +1970,7 @@ case 28:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so].Text));
 			
 		
 break;
@@ -1978,7 +1978,7 @@ case 29:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so-2].Value), Location.ParseFixed(ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so-2].Text), Location.ParseFixed(ss[so].Text));
 			
 		
 break;
@@ -1986,7 +1986,7 @@ case 30:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.Parse(ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.Parse(ss[so].Text));
 			
 		
 break;
@@ -1994,7 +1994,7 @@ case 31:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.Parse(ss[so-2].Value), Location.Parse(ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.Parse(ss[so-2].Text), Location.Parse(ss[so].Text));
 			
 		
 break;
@@ -2002,7 +2002,7 @@ case 32:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-2].Value, ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-2].Text, ss[so].Text));
 			
 		
 break;
@@ -2010,7 +2010,7 @@ case 33:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-4].Value, ss[so-2].Value), Location.ParseRemote(ss[so-4].Value, ss[so].Value));
+				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-4].Text, ss[so-2].Text), Location.ParseRemote(ss[so-4].Text, ss[so].Text));
 			
 		
 break;
@@ -2068,7 +2068,7 @@ case 40:
 			
 			
 			
-				ss[so-2].Value += "." + ss[so].Value;
+				ss[so-2].Text += "." + ss[so].Text;
 				ss[so-2].ToDouble();
 				thisS = ss[so-2];
 			
@@ -2085,7 +2085,7 @@ case 42:
 			
 			
 			
-				ss[so-2].Set(ss[so-2].Value + ss[so-1].Value + ss[so].Value);
+				ss[so-2].Set(ss[so-2].Text + ss[so-1].Text + ss[so].Text);
 				thisS = ss[so-2];
 			
       	
@@ -2094,7 +2094,7 @@ case 43:
 			
 			
 			
-				ss[so-3].Set(ss[so-3].Value + ss[so-2].Value + ss[so-1].Value + ss[so].Value);
+				ss[so-3].Set(ss[so-3].Text + ss[so-2].Text + ss[so-1].Text + ss[so].Text);
 				thisS = ss[so-3];
 			
 		
@@ -2315,7 +2315,7 @@ break;
 		public string Input()
 		{
 			string ch = _Input[0].ToString();
-			Yy.Value += ch;
+			Yy.Text += ch;
 			Yy.Leng++;
 			Offset++;
 			Match += ch;
@@ -2343,7 +2343,7 @@ break;
 			var lines = Regex.Split(ch, "/(?:\r\n?|\n)/");
 
 			_Input = ch + _Input;
-			Yy.Value = Yy.Value.Substring(0, len - 1);
+			Yy.Text = Yy.Text.Substring(0, len - 1);
 			Offset -= len;
 			var oldLines = Regex.Split(Match, "/(?:\r\n?|\n)/");
 			Match = Match.Substring(0, Match.Length - 1);
@@ -2420,7 +2420,7 @@ break;
 
 			if (_More == false)
 			{
-				Yy.Value = "";
+				Yy.Text = "";
 				Match = "";
 			}
 
@@ -2452,11 +2452,11 @@ break;
 				Yy.Loc.FirstColumn = Yy.Loc.LastColumn;
 				Yy.Loc.LastColumn = lineCount.Length > 0 ? lineCount.Length - 1 : Yy.Loc.LastColumn + match.Length;
 
-				Yy.Value += match;
+				Yy.Text += match;
 				Match += match;
 				Matched += match;
 
-				Yy.Leng = Yy.Value.Length;
+				Yy.Leng = Yy.Text.Length;
 				if (Ranges != null)
 				{
 					Yy.Loc.Range = new ParserRange(Offset, Offset += Yy.Leng);
@@ -2861,7 +2861,7 @@ break;
 
 	public class ParserValue
 	{
-		public string Value;
+		public string Text;
 		public ParserLocation Loc;
 		public int Leng = 0;
 		public int LineNo = 0;
@@ -2872,7 +2872,7 @@ break;
 		
 		public ParserValue(ParserValue parserValue)
 		{
-			Value = parserValue.Value;
+			Text = parserValue.Text;
 			Leng = parserValue.Leng;
 			Loc = parserValue.Loc;
 			LineNo = parserValue.LineNo;

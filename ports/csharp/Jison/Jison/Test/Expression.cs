@@ -11,7 +11,7 @@ namespace jQuerySheet
 		public Expression(){}
 		public Expression(Expression value)
 		{
-			Value = value.Value;
+			Text = value.Text;
 			Leng = value.Leng;
 			Loc = value.Loc;
 			LineNo = value.LineNo;
@@ -28,14 +28,14 @@ namespace jQuerySheet
 		
 		public Expression(string value)
 		{
-			Value = value;
+			Text = value;
 		}
 		
 		public bool BoolValue;
 		public bool ToBool()
 		{
 			ValueSet = true;
-			BoolValue = Convert.ToBoolean (Value);
+			BoolValue = Convert.ToBoolean (Text);
 			Type = "bool";
 			return BoolValue;
 		}
@@ -50,9 +50,9 @@ namespace jQuerySheet
 		public double ToDouble()
 		{
 			ValueSet = true;
-			if (!String.IsNullOrEmpty (Value) || DoubleValue != 0) {
+			if (!String.IsNullOrEmpty (Text) || DoubleValue != 0) {
 				double num;
-				if (double.TryParse(Value, out num)) {
+				if (double.TryParse(Text, out num)) {
 					DoubleValue = num;
 				} else {
 					DoubleValue = (DoubleValue != 0 ? DoubleValue : 0);
@@ -73,7 +73,7 @@ namespace jQuerySheet
 			}
 			
 			double num;
-			if (double.TryParse(Value, out num))
+			if (double.TryParse(Text, out num))
 			{
 				ValueSet = true;
 				Type = "double";
@@ -99,16 +99,16 @@ namespace jQuerySheet
 		{
 			ValueSet = true;
 			Type = "string";
-			return Value;
+			return Text;
 		}
 		public void Set(string value) {
-			Value = value;
+			Text = value;
 			ValueSet = true;
 			Type = "string";
 		}
 		public void Concat(Expression value)
 		{
-			Value += value.Value;
+			Text += value.Text;
 			Type = "string";
 		}
 		
