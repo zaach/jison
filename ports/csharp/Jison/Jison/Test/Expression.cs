@@ -50,12 +50,12 @@ namespace jQuerySheet
 		public double ToDouble()
 		{
 			ValueSet = true;
-			if (!String.IsNullOrEmpty (Value)) {
+			if (!String.IsNullOrEmpty (Value) || DoubleValue != 0) {
 				double num;
 				if (double.TryParse(Value, out num)) {
 					DoubleValue = num;
 				} else {
-					DoubleValue = 0;
+					DoubleValue = (DoubleValue != 0 ? DoubleValue : 0);
 				}
 				ValueSet = true;
 			} else {
@@ -68,6 +68,7 @@ namespace jQuerySheet
 		{
 			if (Type == "double" || DoubleValue > 0)
 			{
+			    Type = "double";
 				return true;
 			}
 			
@@ -83,11 +84,6 @@ namespace jQuerySheet
 		}
 		public void Add(Expression value)
 		{
-			if (Type == null) {
-				throw new Exception ("Type not set on left expression");
-			} else if (value.Type == null) {
-				throw new Exception ("Type not set on right expression");
-			}
 			value.ToDouble();
 			DoubleValue += value.DoubleValue;
 			Type = "double";
