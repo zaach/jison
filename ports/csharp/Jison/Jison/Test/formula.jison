@@ -214,7 +214,7 @@ expression :
 			//php $$ = ($1 * 1) <= ($4 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() <= $2.ToDouble());
+				$1.Set($1.ToDouble() <= $4.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -226,7 +226,7 @@ expression :
 			//php $$ = ($1 * 1) >= ($4 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() >= $2.ToDouble());
+				$1.Set($1.ToDouble() >= $4.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -243,7 +243,7 @@ expression :
 			//
 			
 			/*cs
-				$1.Set($1.Value != $2.Value);
+				$1.Set($1.Value != $4.Value);
 				$$ = $1;
 			*/
 		}
@@ -259,7 +259,7 @@ expression :
 			//
 			
 			/*cs
-				$1.Set($1.Value != $2.Value);
+				$1.Set($1.Value != $3.Value);
 				$$ = $1;
 			*/
 		}
@@ -271,7 +271,7 @@ expression :
 			//php $$ = ($1 * 1) > ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() > $2.ToDouble());
+				$1.Set($1.ToDouble() > $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -283,7 +283,7 @@ expression :
 			//php $$ = ($1 * 1) < ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() < $2.ToDouble());
+				$1.Set($1.ToDouble() < $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -299,7 +299,7 @@ expression :
 			yy.obj.html.push(null);
 			
 			/*cs
-				$1.Set($1.ToDouble() - $2.ToDouble());
+				$1.Set($1.ToDouble() - $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -314,7 +314,7 @@ expression :
 			//php $$ = ($1 * 1) * ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() * $2.ToDouble());
+				$1.Set($1.ToDouble() * $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -329,7 +329,7 @@ expression :
 			//php $$ = ($1 * 1) / ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() / $2.ToDouble());
+				$1.Set($1.ToDouble() / $3.ToDouble());
 				$$ = $1;
 			*/
 		}
