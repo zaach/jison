@@ -323,3 +323,26 @@ exports["test module include code using generator from parser"] = function () {
 
     assert.equal(parser.parse('y'), 1, "semantic action");
 };
+
+exports["test module include with each generator type"] = function () {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return test();"],
+                     "" ]
+        },
+        moduleInclude: "var TEST_VAR;"
+    };
+
+    var gen = new Jison.Parser(grammar);
+    gen.lexer = new Lexer(lexData);
+    ['generateModule', 'generateAMDModule', 'generateCommonJSModule']
+    .map(function(type) {
+      var source = gen[type]();
+      assert.ok(/TEST_VAR/.test(source), type + " supports module include");
+    });
+};
