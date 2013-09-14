@@ -42,7 +42,8 @@
     "test": "0.6.x",
     "jison": "0.4.x",
     "uglify-js": "~2.4.0",
-    "browserify": "2.x.x"
+    "browserify": "2.x.x",
+    "jsdoc-toolkit" : ">=0.0.2"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
