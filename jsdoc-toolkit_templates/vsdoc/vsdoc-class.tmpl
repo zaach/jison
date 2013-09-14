@@ -1,0 +1,27 @@
+{#
+ # Copyright (c) 2010 Sygic a.s., Jozef Izso.
+ # Published under the MIT License.
+ #}
+/* vsdoc for {+data.alias+} */
+
+(function (window) {
+    <if test="data.memberOf">window.{+data.memberOf+} = window.{+data.memberOf+} || {};</if>
+
+    window.{+data.alias+} = function(<if test="data.params.length">{#
+      #}<for each="param" in="data.params">{+param.name+}<if test="!$param_last">, </if></for></if>){
+        /// <summary>{+vsdocDesc(data.comment.getTag("constructs").toString(), 2)+}</summary>{#
+      #}<if test="data.params.length"><for each="param" in="data.params">
+        /// <param name="{+param.name+}" type="{+param.type+}">{+vsdocDesc(param.desc, 2)+}</param></for></if>{#
+      #}<for each="property" in="data.properties">
+        /// <field name="{+property.name+}" type="{+property.type+}">{+vsdocDesc(property.desc, 2)+}</field></for>
+        /// <returns type="{+data.alias+}"/>
+    };
+
+    var $x = window.{+data.alias+};
+    $x.prototype = {
+        {+callTemplate("vsdoc-methods.tmpl", data)+}
+    };
+
+    $x.__class = "true";
+    $x.__typeName = "{+data.alias+}";
+})(this);

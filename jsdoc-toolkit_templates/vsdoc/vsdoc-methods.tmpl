@@ -1,0 +1,10 @@
+        <for each="method" in="data.methods">
+        {+methodNameEscape(method.name)+}: function(<if test="method.params.length">{#
+      #}<for each="param" in="method.params">{+param.name+}<if test="!$param_last">, </if></for></if>) {
+            /// <summary>{+vsdocDesc(method.desc, 3)+}</summary>{#
+          #}<if test="method.params.length"><for each="param" in="method.params">
+            /// <param name="{+param.name+}" {+documentType(param.type)+}>{+vsdocDesc(param.desc, 3)+}</param></for></if>{#
+          #}<if test="method.returns.length">
+            /// <returns {+documentType(method.returns[0].type)+}>{+vsdocDesc(method.returns[0].desc, 3)+}</returns></if>
+        }<if test="!$method_last">, </if>
+        </for>

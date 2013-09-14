@@ -1,0 +1,4 @@
+<for each="item" in="data">
+  <if test="item.isNamespace">{+callTemplate("vsdoc-ns.tmpl", item)+}</if>
+  <if test="!item.isNamespace && item.alias != '_global_'">{+callTemplate("vsdoc-class.tmpl", item)+}</if>
+</for>

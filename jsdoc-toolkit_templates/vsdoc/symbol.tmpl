@@ -1,0 +1,51 @@
+<symbol alias="{+data.alias+}">
+	<name>{+data.name+}</name>
+	<memberOf>{+data.memberOf+}</memberOf>
+	<isStatic>{+data.isStatic+}</isStatic>
+	<isa>{+data.isa+}</isa>
+	<desc>{+data.desc+}</desc>
+	<classDesc>{+data.classDesc+}</classDesc>
+
+  <constructor>
+    <desc>{+data.comment.getTag("constructs").toString()+}</desc>
+    <params><for each="param" in="data.params">
+        <param>
+          <type>{+param.type+}</type>
+          <name>{+param.name+}</name>
+          <desc>{+xmlEncode(param.desc)+}</desc>
+          <defaultValue>{+param.defaultValue+}</defaultValue>
+        </param></for>
+    </params>
+  </constructor>
+	
+	<methods><for each="method" in="data.methods">
+		<method>
+			<name>{+method.name+}</name>
+			<memberOf>{+method.memberOf+}</memberOf>
+			<isStatic>{+method.isStatic+}</isStatic>
+      <desc>{+xmlEncode(method.desc)+}</desc><if test="method.returns.length">
+      <returns>
+        <type>{+xmlEncode(method.returns[0].type)+}</type>
+        <desc>{+xmlEncode(method.returns[0].desc)+}</desc>
+      </returns></if>
+			<params><for each="param" in="method.params">
+				<param>
+					<type>{+param.type+}</type>
+					<name>{+param.name+}</name>
+					<desc>{+xmlEncode(param.desc)+}</desc>
+					<defaultValue>{+param.defaultValue+}</defaultValue>
+				</param></for>
+			</params>
+		</method></for>
+	</methods>
+	
+	<properties><for each="property" in="data.properties">
+		<property>
+			<name>{+property.name+}</name>
+			<memberOf>{+property.memberOf+}</memberOf>
+			<isStatic>{+property.isStatic+}</isStatic>
+			<desc>{+xmlEncode(property.desc)+}</desc>
+			<type>{+property.type+}</type>
+		</property></for>
+	</properties>
+</symbol>
