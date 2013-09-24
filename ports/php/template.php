@@ -1,492 +1,615 @@
 <?php
 /* Jison generated parser */
+/**/namespace Jison;/**/
 
-class Parser
+/**use**/
+
+/**/class Parser/**/
 {
-	var $symbols_ = array();
-	var $terminals_ = array();
-	var $productions_ = array();
-	var $table = array();
-	var $defaultActions = array();
-	var $version = '0.3.12';
-	var $debug = false;
+    public $symbols = array();
+    public $terminals = array();
+    public $productions = array();
+    public $table = array();
+    public $defaultActions = array();
+    public $version = '0.3.12';
+    public $debug = false;
+    public $none = 0;
+    public $shift = 1;
+    public $reduce = 2;
+    public $accept = 3;
 
-	function __construct()
-	{
-		//ini_set('error_reporting', E_ALL);
-		//ini_set('display_errors', 1);
-		
-		$accept = 'accept';
-		$end = 'end';
-		
-		//parser
-		$this->symbols_ = 		"<@@SYMBOLS@@>";
-		$this->terminals_ = 	"<@@TERMINALS@@>";
-		$this->productions_ = 	"<@@PRODUCTIONS@@>";
-		$this->table = 			"<@@TABLE@@>";
-		$this->defaultActions = "<@@DEFAULT_ACTIONS@@>";
-		
-		//lexer
-		$this->rules = 			"<@@RULES@@>";
-		$this->conditions = 	"<@@CONDITIONS@@>";
-		
-		$this->options =		"<@@OPTIONS@@>";
-	}
-	
-	function trace()
-	{
-		
-	}
-	
-	function parser_performAction(&$thisS, $yytext, $yyleng, $yylineno, $yystate, $S, $_S, $O)
-	{
-		"<@@PARSER_PERFORM_ACTION@@>";
-	}
+    function trace()
+    {
 
-	function parser_lex()
-	{
-		$token = $this->lexer_lex(); // $end = 1
-		$token = (isset($token) ? $token : 1);
-		
-		// if token isn't its numeric value, convert
-		if (isset($this->symbols_[$token]))
-			return $this->symbols_[$token];
-		
-		return $token;
-	}
-	
-	function parseError($str = "", $hash = array())
-	{
-		throw new Exception($str);
-	}
-	
-	function parse($input)
-	{
-		$stack = array(0);
-		$stackCount = 1;
-		
-		$vstack = array(null);
-		$vstackCount = 1;
-		// semantic value stack
-		
-		$lstack = array($this->yyloc);
-		$lstackCount = 1;
-		//location stack
+    }
 
-		$shifts = 0;
-		$reductions = 0;
-		$recovering = 0;
-		$TERROR = 2;
-		
-		$this->setInput($input);
-		
-		$yyval = (object)array();
-		$yyloc = $this->yyloc;
-		$lstack[] = $yyloc;
+    function __construct()
+    {
+        //Setup Parser
+        //@@PARSER_INJECT@@
 
-		while (true) {
-			// retreive state number from top of stack
-			$state = $stack[$stackCount - 1];
-			// use default actions if available
-			if (isset($this->defaultActions[$state])) {
-				$action = $this->defaultActions[$state];		
-			} else {
-				if (empty($symbol) == true) {
-					$symbol = $this->parser_lex();
-				}
-				// read action for current state and first input
-				if (isset($this->table[$state][$symbol])) {
-					$action = $this->table[$state][$symbol];
-				} else {
-					$action = '';
-				}
-			}
+        //Setup Lexer
+        //@@LEXER_INJECT@@
+    }
 
-			if (empty($action) == true) {
-				if (!$recovering) {
-					// Report error
-					$expected = array();
-					foreach($this->table[$state] as $p => $item) {
-						if (!empty($this->terminals_[$p]) && $p > 2) {
-							$expected[] = $this->terminals_[$p];
-						}
-					}
-					
-					$errStr = "Parse error on line " . ($this->yylineno + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals_[$symbol]) ? $this->terminals_[$symbol] : 'NOTHING') . "'";
-			
-					$this->parseError($errStr, array(
-						"text"=> $this->match,
-						"token"=> $symbol,
-						"line"=> $this->yylineno,
-						"loc"=> $yyloc,
-						"expected"=> $expected
-					));
-				}
-	
-				// just recovered from another error
-				if ($recovering == 3) {
-					if ($symbol == $this->EOF) {
-						$this->parseError(isset($errStr) ? $errStr : 'Parsing halted.');
-					}
+    function parserPerformAction(&$thisS, &$yy, $yystate, &$s, $o)
+    {
+        //@@ParserPerformActionInjection@@
+    }
 
-					// discard current lookahead and grab another
-					$yyleng = $this->yyleng;
-					$yytext = $this->yytext;
-					$yylineno = $this->yylineno;
-					$yyloc = $this->yyloc;
-					$symbol = $this->parser_lex();
-				}
-	
-				// try to recover from error
-				while (true) {
-					// check for error recovery rule in this state
-					if (isset($this->table[$state][$TERROR])) {
-						break 2;
-					}
-					if ($state == 0) {
-						$this->parseError(isset($errStr) ? $errStr : 'Parsing halted.');
-					}
-					
-					array_slice($stack, 0, 2);
-					$stackCount -= 2;
-					
-					array_slice($vstack, 0, 1);
-					$vstackCount -= 1;
+    function parserLex()
+    {
+        $token = $this->lexerLex(); // $end = 1
 
-					$state = $stack[$stackCount - 1];
-				}
-	
-				$preErrorSymbol = $symbol; // save the lookahead token
-				$symbol = $TERROR; // insert generic error symbol as new lookahead
-				$state = $stack[$stackCount - 1];
-				if (isset($this->table[$state][$TERROR])) {
-					$action = $this->table[$state][$TERROR];
-				}
-				$recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
-			}
-	
-			// this shouldn't happen, unless resolve defaults are off
-			if (is_array($action[0])) {
-				$this->parseError("Parse Error: multiple actions possible at state: " . $state . ", token: " . $symbol);
-			}
-			
-			switch ($action[0]) {
-				case 1:
-					// shift
-					//$this->shiftCount++;
-					$stack[] = $symbol;
-					$stackCount++;
-					
-					$vstack[] = $this->yytext;
-					$vstackCount++;
-					
-					$lstack[] = $this->yyloc;
-					$lstackCount++;
-					
-					$stack[] = $action[1]; // push state
-					$stackCount++;
+        if (isset($token)) {
+            return $token;
+        }
 
-					$symbol = "";
-					if (empty($preErrorSymbol)) { // normal execution/no error
-						$yyleng = $this->yyleng;
-						$yytext = $this->yytext;
-						$yylineno = $this->yylineno;
-						$yyloc = $this->yyloc;
-						if ($recovering > 0) $recovering--;
-					} else { // error just occurred, resume old lookahead f/ before error
-						$symbol = $preErrorSymbol;
-						$preErrorSymbol = "";
-					}
-					break;
-		
-				case 2:
-					// reduce
-					$len = $this->productions_[$action[1]][1];
-					// perform semantic action
-					$yyval->S = $vstack[$vstackCount - $len];// default to $S = $1
-					// default location, uses first token for firsts, last for lasts
-					$yyval->_S = array(
-                        "first_line"=> 		$lstack[$lstackCount - (isset($len) ? $len : 1)]['first_line'],
-                        "last_line"=> 		$lstack[$lstackCount - 1]['last_line'],
-                        "first_column"=> 	$lstack[$lstackCount - (isset($len) ? $len : 1)]['first_column'],
-                        "last_column"=> 	$lstack[$lstackCount - 1]['last_column']
-                    );
-					
-					$r = $this->parser_performAction($yyval->S, $yytext, $yyleng, $yylineno, $action[1], $vstack, $lstack, $vstackCount - 1);
-					
-					if (isset($r)) {
-						return $r;
-					}
-					
-					// pop off stack
-					if ($len > 0) {
-						$stack = array_slice($stack, 0, -1 * $len * 2);
-						$stackCount -= $len * 2;
-					
-						$vstack = array_slice($vstack, 0, -1 * $len);
-						$vstackCount -= $len;
-						
-						$lstack = array_slice($lstack, 0, -1 * $len);
-						$lstackCount -= $len;
-					}
-					
-					$stack[] = $this->productions_[$action[1]][0]; // push nonterminal (reduce)
-					$stackCount++;
-					
-					$vstack[] = $yyval->S;
-					$vstackCount++;
-					
-					$lstack[] = $yyval->_S;
-					$lstackCount++;
-					
-					// goto new state = table[STATE][NONTERMINAL]
-					$newState = $this->table[$stack[$stackCount - 2]][$stack[$stackCount - 1]];
-					
-					$stack[] = $newState;
-					$stackCount++;
-					
-					break;
-		
-				case 3:
-					// accept
-					return true;
-			}
+        return $this->symbols["end"];
+    }
 
-		}
+    function parseError($str = "", ParserError $hash = null)
+    {
+        throw new Exception($str);
+    }
 
-		return true;
-	}
+    function lexerError($str = "", LexerError $hash = null)
+    {
+        throw new Exception($str);
+    }
+
+    function parse($input)
+    {
+        if (empty($this->table)) {
+            throw new Exception("Empty Table");
+        }
+        $this->eof = new ParserSymbol("Eof", 1);
+        $firstAction = new ParserAction(0, $this->table[0]);
+        $firstCachedAction = new ParserCachedAction($firstAction);
+        $stack = array($firstCachedAction);
+        $stackCount = 1;
+        $vstack = array(null);
+        $vstackCount = 1;
+        $yy = null;
+        $_yy = null;
+        $recovering = 0;
+        $symbol = null;
+        $action = null;
+        $errStr = "";
+        $preErrorSymbol = null;
+        $state = null;
+
+        $this->setInput($input);
+
+        while (true) {
+            // retrieve state number from top of stack
+            $state = $stack[$stackCount - 1]->action->state;
+            // use default actions if available
+            if ($state != null && isset($this->defaultActions[$state->index])) {
+                $action = $this->defaultActions[$state->index];
+            } else {
+                if (empty($symbol) == true) {
+                    $symbol = $this->parserLex();
+                }
+                // read action for current state and first input
+                if (isset($state) && isset($state->actions[$symbol->index])) {
+                    //$action = $this->table[$state][$symbol];
+                    $action = $state->actions[$symbol->index];
+                } else {
+                    $action = null;
+                }
+            }
+
+            if ($action == null) {
+                if ($recovering == 0) {
+                    // Report error
+                    $expected = array();
+                    foreach($this->table[$state->index]->actions as $p => $item) {
+                        if (!empty($this->terminals[$p]) && $p > 2) {
+                            $expected[] = $this->terminals[$p]->name;
+                        }
+                    }
+
+                    $errStr = "Parse error on line " . ($this->yy->lineNo + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals[$symbol->index]) ? $this->terminals[$symbol->index]->name : 'NOTHING') . "'";
+
+                    $this->parseError($errStr, new ParserError($this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
+                }
+            }
+
+            if ($state === null || $action === null) {
+                break;
+            }
+
+            switch ($action->action) {
+                case 1:
+                    // shift
+                    //$this->shiftCount++;
+                    $stack[] = new ParserCachedAction($action, $symbol);
+                    $stackCount++;
+
+                    $vstack[] = clone($this->yy);
+                    $vstackCount++;
+
+                    $symbol = "";
+                    if ($preErrorSymbol == null) { // normal execution/no error
+                        $yy = clone($this->yy);
+                        if ($recovering > 0) $recovering--;
+                    } else { // error just occurred, resume old look ahead f/ before error
+                        $symbol = $preErrorSymbol;
+                        $preErrorSymbol = null;
+                    }
+                    break;
+
+                case 2:
+                    // reduce
+                    $len = $this->productions[$action->state->index]->len;
+                    // perform semantic action
+                    $_yy = $vstack[$vstackCount - $len];// default to $S = $1
+                    // default location, uses first token for firsts, last for lasts
+
+                    if (isset($this->ranges)) {
+                        //TODO: add ranges
+                    }
+
+                    $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
+
+                    if (isset($r)) {
+                        return $r;
+                    }
+
+                    // pop off stack
+                    while ($len > 0) {
+                        $len--;
+
+                        array_pop($stack);
+                        $stackCount--;
+
+                        array_pop($vstack);
+                        $vstackCount--;
+                    }
+
+                    if (is_null($_yy))
+                    {
+                        $vstack[] = new /**/ParserValue/**/();
+                    }
+                    else
+                    {
+                        $vstack[] = $_yy;
+                    }
+                    $vstackCount++;
+
+                    $nextSymbol = $this->productions[$action->state->index]->symbol;
+                    // goto new state = table[STATE][NONTERMINAL]
+                    $nextState = $stack[$stackCount - 1]->action->state;
+                    $nextAction = $nextState->actions[$nextSymbol->index];
+
+                    $stack[] = new ParserCachedAction($nextAction, $nextSymbol);
+                    $stackCount++;
+
+                    break;
+
+                case 3:
+                    // accept
+                    return true;
+            }
+
+        }
+
+        return true;
+    }
 
 
-	/* Jison generated lexer */
-	var $EOF = 1;
-	var $S = "";
-	var $yy = "";
-	var $yylineno = "";
-	var $yyleng = "";
-	var $yytext = "";
-	var $match = "";
-	var $matched = "";
-	var $yyloc = array(
-		"first_line"=> 1,
-		"first_column"=> 0,
-		"last_line"=> 1,
-		"last_column"=> 0,
-		"range"=> array()
-	);
-	var $conditionsStack = array();
-	var $conditionStackCount = 0;
-	var $rules = array();
-	var $conditions = array();
-	var $done = false;
-	var $less;
-	var $more;
-	var $_input;
-	var $options;
-	var $offset;
-	
-	function setInput($input)
-	{
-		$this->_input = $input;
-		$this->more = $this->less = $this->done = false;
-		$this->yylineno = $this->yyleng = 0;
-		$this->yytext = $this->matched = $this->match = '';
-		$this->conditionStack = array('INITIAL');
-		$this->yyloc["first_line"] = 1;
-		$this->yyloc["first_column"] = 0;
-		$this->yyloc["last_line"] = 1;
-		$this->yyloc["last_column"] = 0;
-		if (isset($this->options->ranges)) {
-			$this->yyloc['range'] = array(0,0);
-		}
-		$this->offset = 0;
-		return $this;
-	}
-	
-	function input()
-	{
-		$ch = $this->_input[0];
-		$this->yytext .= $ch;
-		$this->yyleng++;
-		$this->offset++;
-		$this->match .= $ch;
-		$this->matched .= $ch;
-		$lines = preg_match("/(?:\r\n?|\n).*/", $ch);
-		if (count($lines) > 0) {
-			$this->yylineno++;
-			$this->yyloc['last_line']++;
-		} else {
-			$this->yyloc['last_column']++;
-		}
-		if (isset($this->options->ranges)) $this->yyloc['range'][1]++;
-		
-		$this->_input = array_slice($this->_input, 1);
-		return $ch;
-	}
-	
-	function unput($ch)
-	{
-		$len = strlen($ch);
-		$lines = explode("/(?:\r\n?|\n)/", $ch);
-		$linesCount = count($lines);
-		
-		$this->_input = $ch . $this->_input;
-		$this->yytext = substr($this->yytext, 0, $len - 1);
-		//$this->yylen -= $len;
-		$this->offset -= $len;
-		$oldLines = explode("/(?:\r\n?|\n)/", $this->match);
-		$oldLinesCount = count($oldLines);
-		$this->match = substr($this->match, 0, strlen($this->match) - 1);
-		$this->matched = substr($this->matched, 0, strlen($this->matched) - 1);
-		
-		if (($linesCount - 1) > 0) $this->yylineno -= $linesCount - 1;
-		$r = $this->yyloc['range'];
-		$oldLinesLength = (isset($oldLines[$oldLinesCount - $linesCount]) ? strlen($oldLines[$oldLinesCount - $linesCount]) : 0);
-		
-		$this->yyloc["first_line"] = $this->yyloc["first_line"];
-		$this->yyloc["last_line"] = $this->yylineno + 1;
-		$this->yyloc["first_column"] = $this->yyloc['first_column'];
-		$this->yyloc["last_column"] = (empty($lines) ?
-			($linesCount == $oldLinesCount ? $this->yyloc['first_column'] : 0) + $oldLinesLength :
-			$this->yyloc['first_column'] - $len);
-		
-		if (isset($this->options->ranges)) {
-			$this->yyloc['range'] = array($r[0], $r[0] + $this->yyleng - $len);
-		}
-		
-		return $this;
-	}
-	
-	function more()
-	{
-		$this->more = true;
-		return $this;
-	}
-	
-	function pastInput()
-	{
-		$past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
-		return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
-	}
-	
-	function upcomingInput()
-	{
-		$next = $this->match;
-		if (strlen($next) < 20) {
-			$next .= substr($this->_input, 0, 20 - strlen($next));
-		}
-		return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
-	}
-	
-	function showPosition()
-	{
-		$pre = $this->pastInput();
+    /* Jison generated lexer */
+    public $eof;
+    public $yy = null;
+    public $match = "";
+    public $matched = "";
+    public $conditionStack = array();
+    public $conditionStackCount = 0;
+    public $rules = array();
+    public $conditions = array();
+    public $done = false;
+    public $less;
+    public $more;
+    public $input;
+    public $offset;
+    public $ranges;
+    public $flex = false;
 
-		$c = '';
-		for($i = 0, $preLength = strlen($pre); $i < $preLength; $i++) {
-			$c .= '-';
-		}
+    function setInput($input)
+    {
+        $this->input = $input;
+        $this->more = $this->less = $this->done = false;
+        $this->yy = new /**/ParserValue/**/();
+        $this->conditionStack = array('INITIAL');
+        $this->conditionStackCount = 1;
 
-		return $pre . $this->upcomingInput() . "\n" . $c . "^";
-	}
-	
-	function next()
-	{
-		if ($this->done == true) return $this->EOF;
-		
-		if (empty($this->_input)) $this->done = true;
+        if (isset($this->ranges)) {
+            $loc = $this->yy->loc = new ParserLocation();
+            $loc->Range(new ParserRange(0, 0));
+        } else {
+            $this->yy->loc = new ParserLocation();
+        }
+        $this->offset = 0;
+    }
 
-		if ($this->more == false) {
-			$this->yytext = '';
-			$this->match = '';
-		}
+    function input()
+    {
+        $ch = $this->input[0];
+        $this->yy->text .= $ch;
+        $this->yy->leng++;
+        $this->offset++;
+        $this->match .= $ch;
+        $this->matched .= $ch;
+        $lines = preg_match("/(?:\r\n?|\n).*/", $ch);
+        if (count($lines) > 0) {
+            $this->yy->lineNo++;
+            $this->yy->lastLine++;
+        } else {
+            $this->yy->loc->lastColumn++;
+        }
+        if (isset($this->ranges)) {
+            $this->yy->loc->range->y++;
+        }
 
-		$rules = $this->_currentRules();
-		for ($i = 0, $j = count($rules); $i < $j; $i++) {
-			preg_match($this->rules[$rules[$i]], $this->_input, $tempMatch);
+        $this->input = array_slice($this->input, 1);
+        return $ch;
+    }
+
+    function unput($ch)
+    {
+        $len = strlen($ch);
+        $lines = explode("/(?:\r\n?|\n)/", $ch);
+        $linesCount = count($lines);
+
+        $this->input = $ch . $this->input;
+        $this->yy->text = substr($this->yy->text, 0, $len - 1);
+        //$this->yylen -= $len;
+        $this->offset -= $len;
+        $oldLines = explode("/(?:\r\n?|\n)/", $this->match);
+        $oldLinesCount = count($oldLines);
+        $this->match = substr($this->match, 0, strlen($this->match) - 1);
+        $this->matched = substr($this->matched, 0, strlen($this->matched) - 1);
+
+        if (($linesCount - 1) > 0) $this->yy->lineNo -= $linesCount - 1;
+        $r = $this->yy->loc->range;
+        $oldLinesLength = (isset($oldLines[$oldLinesCount - $linesCount]) ? strlen($oldLines[$oldLinesCount - $linesCount]) : 0);
+
+        $this->yy->loc = new ParserLocation(
+            $this->yy->loc->firstLine,
+            $this->yy->lineNo,
+            $this->yy->loc->firstColumn,
+            $this->yy->loc->firstLine,
+            (empty($lines) ?
+                ($linesCount == $oldLinesCount ? $this->yy->loc->firstColumn : 0) + $oldLinesLength :
+                $this->yy->loc->firstColumn - $len)
+        );
+
+        if (isset($this->ranges)) {
+            $this->yy->loc->range = array($r[0], $r[0] + $this->yy->leng - $len);
+        }
+    }
+
+    function more()
+    {
+        $this->more = true;
+    }
+
+    function pastInput()
+    {
+        $past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
+        return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
+    }
+
+    function upcomingInput()
+    {
+        $next = $this->match;
+        if (strlen($next) < 20) {
+            $next .= substr($this->input, 0, 20 - strlen($next));
+        }
+        return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
+    }
+
+    function showPosition()
+    {
+        $pre = $this->pastInput();
+
+        $c = '';
+        for($i = 0, $preLength = strlen($pre); $i < $preLength; $i++) {
+            $c .= '-';
+        }
+
+        return $pre . $this->upcomingInput() . "\n" . $c . "^";
+    }
+
+    function next()
+    {
+        if ($this->done == true) {
+            return $this->eof;
+        }
+
+        if (empty($this->input)) {
+            $this->done = true;
+        }
+
+        if ($this->more == false) {
+            $this->yy->text = '';
+            $this->match = '';
+        }
+
+        $rules = $this->currentRules();
+        for ($i = 0, $j = count($rules); $i < $j; $i++) {
+            preg_match($this->rules[$rules[$i]], $this->input, $tempMatch);
             if ($tempMatch && (empty($match) || count($tempMatch[0]) > count($match[0]))) {
                 $match = $tempMatch;
                 $index = $i;
-                if (isset($this->options->flex) && $this->options->flex == false) break;
+                if (isset($this->flex) && $this->flex == false) {
+                    break;
+                }
             }
-		}
-		if ( $match ) {
-			$matchCount = strlen($match[0]);
-			$lineCount = preg_match("/\n.*/", $match[0], $lines);
+        }
+        if ( $match ) {
+            $matchCount = strlen($match[0]);
+            $lineCount = preg_match("/(?:\r\n?|\n).*/", $match[0], $lines);
+            $line = ($lines ? $lines[$lineCount - 1] : false);
+            $this->yy->lineNo += $lineCount;
 
-			$this->yylineno += $lineCount;
-			$this->yyloc["first_line"] = $this->yyloc['last_line'];
-			$this->yyloc["last_line"] = $this->yylineno + 1;
-			$this->yyloc["first_column"] = $this->yyloc['last_column'];
-			$this->yyloc["last_column"] = $lines ? count($lines[$lineCount - 1]) - 1 : $this->yyloc['last_column'] + $matchCount;
-			
-			$this->yytext .= $match[0];
-			$this->match .= $match[0];
-			$this->matches = $match;
-			$this->yyleng = strlen($this->yytext);
-			if (isset($this->options->ranges)) {
-				$this->yyloc['range'] = array($this->offset, $this->offset += $this->yyleng);
-			}
-			$this->more = false;
-			$this->_input = substr($this->_input, $matchCount, strlen($this->_input));
-			$this->matched .= $match[0];
-			$token = $this->lexer_performAction($this->yy, $this, $rules[$index], $this->conditionStack[$this->conditionStackCount]);
+            $this->yy->loc = new ParserLocation(
+                $this->yy->loc->lastLine,
+                $this->yy->lineNo + 1,
+                $this->yy->loc->lastColumn,
+                ($line ?
+                    count($line) - preg_match("/\r?\n?/", $line, $na) :
+                    $this->yy->loc->lastColumn + $matchCount
+                )
+            );
 
-			if ($this->done == true && empty($this->_input) == false) $this->done = false;
 
-			if (empty($token) == false) {
-				return $token;
-			} else {
-				return;
-			}
-		}
-		
-		if (empty($this->_input)) {
-			return $this->EOF;
-		} else {
-			$this->parseError("Lexical error on line " . ($this->yylineno + 1) . ". Unrecognized text.\n" . $this->showPosition(), array(
-				"text"=> "",
-				"token"=> null,
-				"line"=> $this->yylineno
-			));
-		}
-	}
-	
-	function lexer_lex()
-	{
-		$r = $this->next();
-		
-		while (empty($r) && $this->done == false) {
-			$r = $this->next();
-		}
-		
-		return $r;
-	}
-	
-	function begin($condition)
-	{
-		$this->conditionStackCount++;
-		$this->conditionStack[] = $condition;
-	}
-	
-	function popState()
-	{
-		$this->conditionStackCount--;
-		return array_pop($this->conditionStack);
-	}
-	
-	function _currentRules()
-	{
-		return $this->conditions[
-			$this->conditionStack[
-				$this->conditionStackCount
-			]
-		]['rules'];
-	}
-	
-	function lexer_performAction(&$yy, $yy_, $avoiding_name_collisions, $YY_START = null)
-	{
-		$YYSTATE = $YY_START;
-		"<@@LEXER_PERFORM_ACTION@@>";
-	}
+            $this->yy->text .= $match[0];
+            $this->match .= $match[0];
+            $this->matches = $match;
+            $this->matched .= $match[0];
+
+            $this->yy->leng = strlen($this->yy->text);
+            if (isset($this->ranges)) {
+                $this->yy->loc->range = new ParserRange($this->offset, $this->offset += $this->yy->leng);
+            }
+            $this->more = false;
+            $this->input = substr($this->input, $matchCount, strlen($this->input));
+            $ruleIndex = $rules[$index];
+            $nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
+
+            $token = $this->lexerPerformAction($ruleIndex, $nextCondition);
+
+            if ($this->done == true && empty($this->input) == false) {
+                $this->done = false;
+            }
+
+            if (empty($token) == false) {
+                return $this->symbols[
+                $token
+                ];
+            } else {
+                return null;
+            }
+        }
+
+        if (empty($this->input)) {
+            return $this->eof;
+        } else {
+            $this->lexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), new LexerError("", -1, $this->yy->lineNo));
+            return null;
+        }
+    }
+
+    function lexerLex()
+    {
+        $r = $this->next();
+
+        while (is_null($r) && !$this->done) {
+            $r = $this->next();
+        }
+
+        return $r;
+    }
+
+    function begin($condition)
+    {
+        $this->conditionStackCount++;
+        $this->conditionStack[] = $condition;
+    }
+
+    function popState()
+    {
+        $this->conditionStackCount--;
+        return array_pop($this->conditionStack);
+    }
+
+    function currentRules()
+    {
+        $peek = $this->conditionStack[$this->conditionStackCount - 1];
+        return $this->conditions[$peek]->rules;
+    }
+
+    function LexerPerformAction($avoidingNameCollisions, $YY_START = null)
+    {
+        //@@LexerPerformActionInjection@@
+    }
+}
+
+class ParserLocation
+{
+    public $firstLine = 1;
+    public $lastLine = 0;
+    public $firstColumn = 1;
+    public $lastColumn = 0;
+    public $range;
+
+    public function __construct($firstLine = 1, $lastLine = 0, $firstColumn = 1, $lastColumn = 0)
+    {
+        $this->firstLine = $firstLine;
+        $this->lastLine = $lastLine;
+        $this->firstColumn = $firstColumn;
+        $this->lastColumn = $lastColumn;
+    }
+
+    public function Range($range)
+    {
+        $this->range = $range;
+    }
+
+    public function __clone()
+    {
+        return new ParserLocation($this->firstLine, $this->lastLine, $this->firstColumn, $this->lastColumn);
+    }
+}
+
+class ParserValue
+{
+    public $leng = 0;
+    public $loc;
+    public $lineNo = 0;
+    public $text;
+
+    function __clone() {
+        $clone = new ParserValue();
+        $clone->leng = $this->leng;
+        if (isset($this->loc)) {
+            $clone->loc = clone $this->loc;
+        }
+        $clone->lineNo = $this->lineNo;
+        $clone->text = $this->text;
+        return $clone;
+    }
+}
+
+class LexerConditions
+{
+    public $rules;
+    public $inclusive;
+
+    function __construct($rules, $inclusive)
+    {
+        $this->rules = $rules;
+        $this->inclusive = $inclusive;
+    }
+}
+
+class ParserProduction
+{
+    public $len = 0;
+    public $symbol;
+
+    public function __construct($symbol, $len = 0)
+    {
+        $this->symbol = $symbol;
+        $this->len = $len;
+    }
+}
+
+class ParserCachedAction
+{
+    public $action;
+    public $symbol;
+
+    function __construct($action, $symbol = null)
+    {
+        $this->action = $action;
+        $this->symbol = $symbol;
+    }
+}
+
+class ParserAction
+{
+    public $action;
+    public $state;
+    public $symbol;
+
+    function __construct($action, &$state = null, &$symbol = null)
+    {
+        $this->action = $action;
+        $this->state = $state;
+        $this->symbol = $symbol;
+    }
+}
+
+class ParserSymbol
+{
+    public $name;
+    public $index = -1;
+    public $symbols = array();
+    public $symbolsByName = array();
+
+    function __construct($name, $index)
+    {
+        $this->name = $name;
+        $this->index = $index;
+    }
+
+    public function addAction($a)
+    {
+        $this->symbols[$a->index] = $this->symbolsByName[$a->name] = $a;
+    }
+}
+
+class ParserError
+{
+    public $text;
+    public $state;
+    public $symbol;
+    public $lineNo;
+    public $loc;
+    public $expected;
+
+    function __construct($text, $state, $symbol, $lineNo, $loc, $expected)
+    {
+        $this->text = $text;
+        $this->state = $state;
+        $this->symbol = $symbol;
+        $this->lineNo = $lineNo;
+        $this->loc = $loc;
+        $this->expected = $expected;
+    }
+}
+
+class LexerError
+{
+    public $text;
+    public $token;
+    public $lineNo;
+
+    public function __construct($text, $token, $lineNo)
+    {
+        $this->text = $text;
+        $this->token = $token;
+        $this->lineNo = $lineNo;
+    }
+}
+
+class ParserState
+{
+    public $index;
+    public $actions = array();
+
+    function __construct($index)
+    {
+        $this->index = $index;
+    }
+
+    public function setActions(&$actions)
+    {
+        $this->actions = $actions;
+    }
+}
+
+class ParserRange
+{
+    public $x;
+    public $y;
+
+    function __construct($x, $y)
+    {
+        $this->x = $x;
+        $this->y = $y;
+    }
 }

@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jison", "Jison\Jison.csproj", "{CE2B4CE0-498B-4A1C-89EF-0F299DF67352}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D33A8B72-D61E-4FE4-BC2A-B128A0BF068E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE2B4CE0-498B-4A1C-89EF-0F299DF67352}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE2B4CE0-498B-4A1C-89EF-0F299DF67352}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE2B4CE0-498B-4A1C-89EF-0F299DF67352}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE2B4CE0-498B-4A1C-89EF-0F299DF67352}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
