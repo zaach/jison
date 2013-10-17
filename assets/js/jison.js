@@ -4,9 +4,6 @@ Jison = require('./lib/jison.js');
 bnf = require('ebnf-parser');
 
 },{"./lib/jison.js":2,"ebnf-parser":3}],4:[function(require,module,exports){
-// nothing to see here... no file methods for the browser
-
-},{}],5:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -60,7 +57,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function(process){function filter (xs, fn) {
     var res = [];
     for (var i = 0; i < xs.length; i++) {
@@ -238,7 +235,10 @@ exports.relative = function(from, to) {
 };
 
 })(require("__browserify_process"))
-},{"__browserify_process":5}],7:[function(require,module,exports){
+},{"__browserify_process":4}],6:[function(require,module,exports){
+// nothing to see here... no file methods for the browser
+
+},{}],7:[function(require,module,exports){
 module.exports={
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
@@ -384,6 +384,54 @@ if (typeof exports !== 'undefined')
     exports.typal = typal;
 
 },{}],9:[function(require,module,exports){
+var bnf = require("./parser").parser,
+    ebnf = require("./ebnf-transform"),
+    jisonlex = require("./lex-parser");
+
+exports.parse = function parse (grammar) { return bnf.parse(grammar); };
+exports.transform = ebnf.transform;
+
+// adds a declaration to the grammar
+bnf.yy.addDeclaration = function (grammar, decl) {
+    if (decl.start) {
+        grammar.start = decl.start;
+    }
+    else if (decl.lex) {
+        grammar.lex = parseLex(decl.lex);
+    }
+    else if (decl.operator) {
+        if (!grammar.operators) {
+            grammar.operators = [];
+        }
+        grammar.operators.push(decl.operator);
+    }
+    else if (decl.include) {
+        if (!grammar.moduleInclude)
+            grammar.moduleInclude = '';
+        grammar.moduleInclude += decl.include;
+    }
+
+};
+
+// helps tokenize comments
+bnf.yy.lexComment = function (lexer) {
+    var ch = lexer.input();
+    if (ch === '/') {
+        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
+        return;
+    } else {
+        lexer.unput('/*');
+        lexer.more();
+    }
+};
+
+// parse an embedded lex section
+var parseLex = function (text) {
+    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
+};
+
+
+},{"./parser":10,"./lex-parser":11,"./ebnf-transform":12}],13:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
 
@@ -980,55 +1028,7 @@ return RegExpLexer;
 module.exports = RegExpLexer;
 
 
-},{"./package.json":10,"./lex-parser":11}],12:[function(require,module,exports){
-var bnf = require("./parser").parser,
-    ebnf = require("./ebnf-transform"),
-    jisonlex = require("./lex-parser");
-
-exports.parse = function parse (grammar) { return bnf.parse(grammar); };
-exports.transform = ebnf.transform;
-
-// adds a declaration to the grammar
-bnf.yy.addDeclaration = function (grammar, decl) {
-    if (decl.start) {
-        grammar.start = decl.start;
-    }
-    else if (decl.lex) {
-        grammar.lex = parseLex(decl.lex);
-    }
-    else if (decl.operator) {
-        if (!grammar.operators) {
-            grammar.operators = [];
-        }
-        grammar.operators.push(decl.operator);
-    }
-    else if (decl.include) {
-        if (!grammar.moduleInclude)
-            grammar.moduleInclude = '';
-        grammar.moduleInclude += decl.include;
-    }
-
-};
-
-// helps tokenize comments
-bnf.yy.lexComment = function (lexer) {
-    var ch = lexer.input();
-    if (ch === '/') {
-        lexer.yytext = lexer.yytext.replace(/\*(.|\s)\/\*/, '*$1');
-        return;
-    } else {
-        lexer.unput('/*');
-        lexer.more();
-    }
-};
-
-// parse an embedded lex section
-var parseLex = function (text) {
-    return jisonlex.parse(text.replace(/(?:^%lex)|(?:\/lex$)/g, ''));
-};
-
-
-},{"./parser":13,"./ebnf-transform":14,"./lex-parser":11}],15:[function(require,module,exports){
+},{"./package.json":14,"./lex-parser":11}],15:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
@@ -1123,7 +1123,7 @@ if (typeof exports !== 'undefined')
     exports.Set = Set;
 
 
-},{"./typal":8}],10:[function(require,module,exports){
+},{"./typal":8}],14:[function(require,module,exports){
 module.exports={
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison-lex",
@@ -2917,7 +2917,7 @@ return function Parser (g, options) {
 
 
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"./util/regexp-lexer.js":9,"./util/ebnf-parser.js":12,"../package.json":7,"./util/typal":8,"./util/set":15,"esprima":16,"escodegen":17,"JSONSelect":18,"__browserify_process":5}],11:[function(require,module,exports){
+},{"fs":6,"path":5,"./util/ebnf-parser.js":9,"./util/regexp-lexer.js":13,"../package.json":7,"./util/typal":8,"./util/set":15,"escodegen":16,"esprima":17,"JSONSelect":18,"__browserify_process":4}],11:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.6 */
 /*
   Returns a Parser object of the following structure:
@@ -3915,7 +3915,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"__browserify_process":5}],16:[function(require,module,exports){
+},{"fs":6,"path":5,"__browserify_process":4}],17:[function(require,module,exports){
 (function(){/*
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2012 Mathias Bynens <mathias@qiwi.be>
@@ -7826,121 +7826,7 @@ parseStatement: true, parseSourceElement: true */
 /* vim: set sw=4 ts=4 et tw=80 : */
 
 })()
-},{}],19:[function(require,module,exports){
-var EBNF = (function(){
-    var parser = require('./transform-parser.js');
-
-    var transformExpression = function(e, opts, emit) {
-        var type = e[0], value = e[1], name;
-
-        if (type === 'symbol') {
-            if (e[1][0] === '\\') emit (e[1][1]);
-            else if (e[1][0] === '\'') emit (e[1].substring(1, e[1].length-1));
-            else emit (e[1]);
-        } else if (type === "+") {
-            name = opts.production + "_repetition_plus" + opts.repid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            var list = transformExpressionList([value], opts);
-            opts.grammar[name] = [
-                [list, "$$ = [$1];"],
-                [
-                    name + " " + list,
-                    "$1.push($2);"
-                ]
-            ];
-        } else if (type === "*") {
-            name = opts.production + "_repetition" + opts.repid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            opts.grammar[name] = [
-                ["", "$$ = [];"],
-                [
-                    name + " " + transformExpressionList([value], opts),
-                    "$1.push($2);"
-                ]
-            ];
-        } else if (type ==="?") {
-            name = opts.production + "_option" + opts.optid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            opts.grammar[name] = [
-                "", transformExpressionList([value], opts)
-            ];
-        } else if (type === "()") {
-            if (value.length == 1) {
-                emit(transformExpressionList(value[0], opts));
-            } else {
-                name = opts.production + "_group" + opts.groupid++;
-                emit(name);
-
-                opts = optsForProduction(name, opts.grammar);
-                opts.grammar[name] = value.map(function(handle) {
-                    return transformExpressionList(handle, opts);
-                });
-            }
-        }
-    };
-
-    var transformExpressionList = function(list, opts) {
-        return list.reduce (function (tot, e) {
-            transformExpression (e, opts, function (i) { tot.push(i); });
-            return tot;
-        }, []).
-        join(" ");
-    };
-
-    var optsForProduction = function(id, grammar) {
-        return {
-            production: id,
-            repid: 0,
-            groupid: 0,
-            optid: 0,
-            grammar: grammar
-        };
-    };
-
-    var transformProduction = function(id, production, grammar) {
-        var transform_opts = optsForProduction(id, grammar);
-        return production.map(function (handle) {
-            var action = null, opts = null;
-            if (typeof(handle) !== 'string')
-                action = handle[1],
-                opts = handle[2],
-                handle = handle[0];
-            var expressions = parser.parse(handle);
-
-            handle = transformExpressionList(expressions, transform_opts);
-
-            var ret = [handle];
-            if (action) ret.push(action);
-            if (opts) ret.push(opts);
-            if (ret.length == 1) return ret[0];
-            else return ret;
-        });
-    };
-
-    var transformGrammar = function(grammar) {
-        Object.keys(grammar).forEach(function(id) {
-            grammar[id] = transformProduction(id, grammar[id], grammar);
-        });
-    };
-
-    return {
-        transform: function (ebnf) {
-            transformGrammar(ebnf);
-            return ebnf;
-        }
-    };
-})();
-
-exports.transform = EBNF.transform;
-
-
-},{"./transform-parser.js":20}],18:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 /*! Copyright (c) 2011, Lloyd Hilaiel, ISC License */
 /*
  * This is the JSONSelect reference implementation, in javascript.  This
@@ -8514,7 +8400,235 @@ exports.transform = EBNF.transform;
     exports.compile = compile;
 })(typeof exports === "undefined" ? (window.JSONSelect = {}) : exports);
 
-},{}],21:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
+var EBNF = (function(){
+    var parser = require('./transform-parser.js');
+
+    var transformExpression = function(e, opts, emit) {
+        var type = e[0], value = e[1], name;
+
+        if (type === 'symbol') {
+            if (e[1][0] === '\\') emit (e[1][1]);
+            else if (e[1][0] === '\'') emit (e[1].substring(1, e[1].length-1));
+            else emit (e[1]);
+        } else if (type === "+") {
+            name = opts.production + "_repetition_plus" + opts.repid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [list, "$$ = [$1];"],
+                [
+                    name + " " + list,
+                    "$1.push($2);"
+                ]
+            ];
+        } else if (type === "*") {
+            name = opts.production + "_repetition" + opts.repid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            opts.grammar[name] = [
+                ["", "$$ = [];"],
+                [
+                    name + " " + transformExpressionList([value], opts),
+                    "$1.push($2);"
+                ]
+            ];
+        } else if (type ==="?") {
+            name = opts.production + "_option" + opts.optid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            opts.grammar[name] = [
+                "", transformExpressionList([value], opts)
+            ];
+        } else if (type === "()") {
+            if (value.length == 1) {
+                emit(transformExpressionList(value[0], opts));
+            } else {
+                name = opts.production + "_group" + opts.groupid++;
+                emit(name);
+
+                opts = optsForProduction(name, opts.grammar);
+                opts.grammar[name] = value.map(function(handle) {
+                    return transformExpressionList(handle, opts);
+                });
+            }
+        }
+    };
+
+    var transformExpressionList = function(list, opts) {
+        return list.reduce (function (tot, e) {
+            transformExpression (e, opts, function (i) { tot.push(i); });
+            return tot;
+        }, []).
+        join(" ");
+    };
+
+    var optsForProduction = function(id, grammar) {
+        return {
+            production: id,
+            repid: 0,
+            groupid: 0,
+            optid: 0,
+            grammar: grammar
+        };
+    };
+
+    var transformProduction = function(id, production, grammar) {
+        var transform_opts = optsForProduction(id, grammar);
+        return production.map(function (handle) {
+            var action = null, opts = null;
+            if (typeof(handle) !== 'string')
+                action = handle[1],
+                opts = handle[2],
+                handle = handle[0];
+            var expressions = parser.parse(handle);
+
+            handle = transformExpressionList(expressions, transform_opts);
+
+            var ret = [handle];
+            if (action) ret.push(action);
+            if (opts) ret.push(opts);
+            if (ret.length == 1) return ret[0];
+            else return ret;
+        });
+    };
+
+    var transformGrammar = function(grammar) {
+        Object.keys(grammar).forEach(function(id) {
+            grammar[id] = transformProduction(id, grammar[id], grammar);
+        });
+    };
+
+    return {
+        transform: function (ebnf) {
+            transformGrammar(ebnf);
+            return ebnf;
+        }
+    };
+})();
+
+exports.transform = EBNF.transform;
+
+
+},{"./transform-parser.js":20}],12:[function(require,module,exports){
+var EBNF = (function(){
+    var parser = require('./transform-parser.js');
+
+    var transformExpression = function(e, opts, emit) {
+        var type = e[0], value = e[1], name;
+
+        if (type === 'symbol') {
+            if (e[1][0] === '\\') emit (e[1][1]);
+            else if (e[1][0] === '\'') emit (e[1].substring(1, e[1].length-1));
+            else emit (e[1]);
+        } else if (type === "+") {
+            name = opts.production + "_repetition_plus" + opts.repid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [list, "$$ = [$1];"],
+                [
+                    name + " " + list,
+                    "$1.push($2);"
+                ]
+            ];
+        } else if (type === "*") {
+            name = opts.production + "_repetition" + opts.repid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            opts.grammar[name] = [
+                ["", "$$ = [];"],
+                [
+                    name + " " + transformExpressionList([value], opts),
+                    "$1.push($2);"
+                ]
+            ];
+        } else if (type ==="?") {
+            name = opts.production + "_option" + opts.optid++;
+            emit(name);
+
+            opts = optsForProduction(name, opts.grammar);
+            opts.grammar[name] = [
+                "", transformExpressionList([value], opts)
+            ];
+        } else if (type === "()") {
+            if (value.length == 1) {
+                emit(transformExpressionList(value[0], opts));
+            } else {
+                name = opts.production + "_group" + opts.groupid++;
+                emit(name);
+
+                opts = optsForProduction(name, opts.grammar);
+                opts.grammar[name] = value.map(function(handle) {
+                    return transformExpressionList(handle, opts);
+                });
+            }
+        }
+    };
+
+    var transformExpressionList = function(list, opts) {
+        return list.reduce (function (tot, e) {
+            transformExpression (e, opts, function (i) { tot.push(i); });
+            return tot;
+        }, []).
+        join(" ");
+    };
+
+    var optsForProduction = function(id, grammar) {
+        return {
+            production: id,
+            repid: 0,
+            groupid: 0,
+            optid: 0,
+            grammar: grammar
+        };
+    };
+
+    var transformProduction = function(id, production, grammar) {
+        var transform_opts = optsForProduction(id, grammar);
+        return production.map(function (handle) {
+            var action = null, opts = null;
+            if (typeof(handle) !== 'string')
+                action = handle[1],
+                opts = handle[2],
+                handle = handle[0];
+            var expressions = parser.parse(handle);
+
+            handle = transformExpressionList(expressions, transform_opts);
+
+            var ret = [handle];
+            if (action) ret.push(action);
+            if (opts) ret.push(opts);
+            if (ret.length == 1) return ret[0];
+            else return ret;
+        });
+    };
+
+    var transformGrammar = function(grammar) {
+        Object.keys(grammar).forEach(function(id) {
+            grammar[id] = transformProduction(id, grammar[id], grammar);
+        });
+    };
+
+    return {
+        transform: function (ebnf) {
+            transformGrammar(ebnf);
+            return ebnf;
+        }
+    };
+})();
+
+exports.transform = EBNF.transform;
+
+
+},{"./transform-parser.js":21}],22:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.4 */
 /*
   Returns a Parser object of the following structure:
@@ -9425,7 +9539,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"./ebnf-transform":19,"__browserify_process":5}],3:[function(require,module,exports){
+},{"fs":6,"path":5,"./ebnf-transform":19,"__browserify_process":4}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("lex-parser");
@@ -9473,121 +9587,7 @@ var parseLex = function (text) {
 };
 
 
-},{"./parser":21,"./ebnf-transform":19,"lex-parser":22}],14:[function(require,module,exports){
-var EBNF = (function(){
-    var parser = require('./transform-parser.js');
-
-    var transformExpression = function(e, opts, emit) {
-        var type = e[0], value = e[1], name;
-
-        if (type === 'symbol') {
-            if (e[1][0] === '\\') emit (e[1][1]);
-            else if (e[1][0] === '\'') emit (e[1].substring(1, e[1].length-1));
-            else emit (e[1]);
-        } else if (type === "+") {
-            name = opts.production + "_repetition_plus" + opts.repid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            var list = transformExpressionList([value], opts);
-            opts.grammar[name] = [
-                [list, "$$ = [$1];"],
-                [
-                    name + " " + list,
-                    "$1.push($2);"
-                ]
-            ];
-        } else if (type === "*") {
-            name = opts.production + "_repetition" + opts.repid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            opts.grammar[name] = [
-                ["", "$$ = [];"],
-                [
-                    name + " " + transformExpressionList([value], opts),
-                    "$1.push($2);"
-                ]
-            ];
-        } else if (type ==="?") {
-            name = opts.production + "_option" + opts.optid++;
-            emit(name);
-
-            opts = optsForProduction(name, opts.grammar);
-            opts.grammar[name] = [
-                "", transformExpressionList([value], opts)
-            ];
-        } else if (type === "()") {
-            if (value.length == 1) {
-                emit(transformExpressionList(value[0], opts));
-            } else {
-                name = opts.production + "_group" + opts.groupid++;
-                emit(name);
-
-                opts = optsForProduction(name, opts.grammar);
-                opts.grammar[name] = value.map(function(handle) {
-                    return transformExpressionList(handle, opts);
-                });
-            }
-        }
-    };
-
-    var transformExpressionList = function(list, opts) {
-        return list.reduce (function (tot, e) {
-            transformExpression (e, opts, function (i) { tot.push(i); });
-            return tot;
-        }, []).
-        join(" ");
-    };
-
-    var optsForProduction = function(id, grammar) {
-        return {
-            production: id,
-            repid: 0,
-            groupid: 0,
-            optid: 0,
-            grammar: grammar
-        };
-    };
-
-    var transformProduction = function(id, production, grammar) {
-        var transform_opts = optsForProduction(id, grammar);
-        return production.map(function (handle) {
-            var action = null, opts = null;
-            if (typeof(handle) !== 'string')
-                action = handle[1],
-                opts = handle[2],
-                handle = handle[0];
-            var expressions = parser.parse(handle);
-
-            handle = transformExpressionList(expressions, transform_opts);
-
-            var ret = [handle];
-            if (action) ret.push(action);
-            if (opts) ret.push(opts);
-            if (ret.length == 1) return ret[0];
-            else return ret;
-        });
-    };
-
-    var transformGrammar = function(grammar) {
-        Object.keys(grammar).forEach(function(id) {
-            grammar[id] = transformProduction(id, grammar[id], grammar);
-        });
-    };
-
-    return {
-        transform: function (ebnf) {
-            transformGrammar(ebnf);
-            return ebnf;
-        }
-    };
-})();
-
-exports.transform = EBNF.transform;
-
-
-},{"./transform-parser.js":23}],13:[function(require,module,exports){
+},{"./parser":22,"./ebnf-transform":19,"lex-parser":23}],10:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.6 */
 /*
   Returns a Parser object of the following structure:
@@ -10505,7 +10505,7 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"./ebnf-transform":14,"__browserify_process":5}],20:[function(require,module,exports){
+},{"fs":6,"path":5,"./ebnf-transform":12,"__browserify_process":4}],21:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.0 */
 var parser = (function() {
     var parser = {
@@ -10834,7 +10834,7 @@ var parser = (function() {
             return true;
         }
     };
-    undefined
+
     /* generated by jison-lex 0.0.1 */
     var lexer = (function() {
         var lexer = {
@@ -11094,7 +11094,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
     }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"__browserify_process":5}],22:[function(require,module,exports){
+},{"fs":6,"path":5,"__browserify_process":4}],23:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.4 */
 /*
   Returns a Parser object of the following structure:
@@ -12085,7 +12085,71 @@ if (typeof module !== 'undefined' && require.main === module) {
 }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"__browserify_process":5}],23:[function(require,module,exports){
+},{"fs":6,"path":5,"__browserify_process":4}],24:[function(require,module,exports){
+module.exports={
+  "name": "escodegen",
+  "description": "ECMAScript code generator",
+  "homepage": "http://github.com/Constellation/escodegen.html",
+  "main": "escodegen.js",
+  "bin": {
+    "esgenerate": "./bin/esgenerate.js",
+    "escodegen": "./bin/escodegen.js"
+  },
+  "version": "0.0.21",
+  "engines": {
+    "node": ">=0.4.0"
+  },
+  "maintainers": [
+    {
+      "name": "Yusuke Suzuki",
+      "email": "utatane.tea@gmail.com",
+      "url": "http://github.com/Constellation"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/Constellation/escodegen.git"
+  },
+  "dependencies": {
+    "esprima": "~1.0.2",
+    "estraverse": "~0.0.4",
+    "source-map": ">= 0.1.2"
+  },
+  "optionalDependencies": {
+    "source-map": ">= 0.1.2"
+  },
+  "devDependencies": {
+    "esprima-moz": "*",
+    "browserify": "*",
+    "q": "*",
+    "bower": "*",
+    "semver": "*"
+  },
+  "licenses": [
+    {
+      "type": "BSD",
+      "url": "http://github.com/Constellation/escodegen/raw/master/LICENSE.BSD"
+    }
+  ],
+  "scripts": {
+    "test": "node test/run.js",
+    "release": "node tools/release.js",
+    "build": "(echo '// Generated by browserify'; ./node_modules/.bin/browserify -i source-map tools/entry-point.js) > escodegen.browser.js"
+  },
+  "readme": "Escodegen ([escodegen](http://github.com/Constellation/escodegen)) is\n[ECMAScript](http://www.ecma-international.org/publications/standards/Ecma-262.htm)\n(also popularly known as [JavaScript](http://en.wikipedia.org/wiki/JavaScript>JavaScript))\ncode generator from [Parser API](https://developer.mozilla.org/en/SpiderMonkey/Parser_API) AST.\nSee [online generator demo](http://constellation.github.com/escodegen/demo/index.html).\n\n\n### Install\n\nEscodegen can be used in a web browser:\n\n    <script src=\"escodegen.browser.js\"></script>\n\nor in a Node.js application via the package manager:\n\n    npm install escodegen\n\n\n### Usage\n\nA simple example: the program\n\n    escodegen.generate({\n        type: 'BinaryExpression',\n        operator: '+',\n        left: { type: 'Literal', value: 40 },\n        right: { type: 'Literal', value: 2 }\n    });\n\nproduces the string `'40 + 2'`\n\nSee the [API page](https://github.com/Constellation/escodegen/wiki/API) for\noptions. To run the tests, execute `npm test` in the root directory.\n\n\n### License\n\n#### Escodegen\n\nCopyright (C) 2012 [Yusuke Suzuki](http://github.com/Constellation)\n (twitter: [@Constellation](http://twitter.com/Constellation)) and other contributors.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\nARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n#### source-map\n\nSourceNodeMocks has a limited interface of mozilla/source-map SourceNode implementations.\n\nCopyright (c) 2009-2011, Mozilla Foundation and contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the names of the Mozilla Foundation nor the names of project\n  contributors may be used to endorse or promote products derived from this\n  software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\n### Status\n\n[![Build Status](https://secure.travis-ci.org/Constellation/escodegen.png)](http://travis-ci.org/Constellation/escodegen)\n",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/Constellation/escodegen/issues"
+  },
+  "_id": "escodegen@0.0.21",
+  "dist": {
+    "shasum": "343ac135a16da32314ae81362b5dd625780a11b8"
+  },
+  "_from": "escodegen@0.0.21",
+  "_resolved": "https://registry.npmjs.org/escodegen/-/escodegen-0.0.21.tgz"
+}
+
+},{}],20:[function(require,module,exports){
 (function(process){/* parser generated by jison 0.4.0 */
 var parser = (function() {
     var parser = {
@@ -12414,7 +12478,7 @@ var parser = (function() {
             return true;
         }
     };
-
+    undefined
     /* generated by jison-lex 0.0.1 */
     var lexer = (function() {
         var lexer = {
@@ -12674,71 +12738,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
     }
 }
 })(require("__browserify_process"))
-},{"fs":4,"path":6,"__browserify_process":5}],24:[function(require,module,exports){
-module.exports={
-  "name": "escodegen",
-  "description": "ECMAScript code generator",
-  "homepage": "http://github.com/Constellation/escodegen.html",
-  "main": "escodegen.js",
-  "bin": {
-    "esgenerate": "./bin/esgenerate.js",
-    "escodegen": "./bin/escodegen.js"
-  },
-  "version": "0.0.21",
-  "engines": {
-    "node": ">=0.4.0"
-  },
-  "maintainers": [
-    {
-      "name": "Yusuke Suzuki",
-      "email": "utatane.tea@gmail.com",
-      "url": "http://github.com/Constellation"
-    }
-  ],
-  "repository": {
-    "type": "git",
-    "url": "http://github.com/Constellation/escodegen.git"
-  },
-  "dependencies": {
-    "esprima": "~1.0.2",
-    "estraverse": "~0.0.4",
-    "source-map": ">= 0.1.2"
-  },
-  "optionalDependencies": {
-    "source-map": ">= 0.1.2"
-  },
-  "devDependencies": {
-    "esprima-moz": "*",
-    "browserify": "*",
-    "q": "*",
-    "bower": "*",
-    "semver": "*"
-  },
-  "licenses": [
-    {
-      "type": "BSD",
-      "url": "http://github.com/Constellation/escodegen/raw/master/LICENSE.BSD"
-    }
-  ],
-  "scripts": {
-    "test": "node test/run.js",
-    "release": "node tools/release.js",
-    "build": "(echo '// Generated by browserify'; ./node_modules/.bin/browserify -i source-map tools/entry-point.js) > escodegen.browser.js"
-  },
-  "readme": "Escodegen ([escodegen](http://github.com/Constellation/escodegen)) is\n[ECMAScript](http://www.ecma-international.org/publications/standards/Ecma-262.htm)\n(also popularly known as [JavaScript](http://en.wikipedia.org/wiki/JavaScript>JavaScript))\ncode generator from [Parser API](https://developer.mozilla.org/en/SpiderMonkey/Parser_API) AST.\nSee [online generator demo](http://constellation.github.com/escodegen/demo/index.html).\n\n\n### Install\n\nEscodegen can be used in a web browser:\n\n    <script src=\"escodegen.browser.js\"></script>\n\nor in a Node.js application via the package manager:\n\n    npm install escodegen\n\n\n### Usage\n\nA simple example: the program\n\n    escodegen.generate({\n        type: 'BinaryExpression',\n        operator: '+',\n        left: { type: 'Literal', value: 40 },\n        right: { type: 'Literal', value: 2 }\n    });\n\nproduces the string `'40 + 2'`\n\nSee the [API page](https://github.com/Constellation/escodegen/wiki/API) for\noptions. To run the tests, execute `npm test` in the root directory.\n\n\n### License\n\n#### Escodegen\n\nCopyright (C) 2012 [Yusuke Suzuki](http://github.com/Constellation)\n (twitter: [@Constellation](http://twitter.com/Constellation)) and other contributors.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in the\n    documentation and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\nARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY\nDIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\nON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF\nTHIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n#### source-map\n\nSourceNodeMocks has a limited interface of mozilla/source-map SourceNode implementations.\n\nCopyright (c) 2009-2011, Mozilla Foundation and contributors\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\n* Neither the names of the Mozilla Foundation nor the names of project\n  contributors may be used to endorse or promote products derived from this\n  software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n\n### Status\n\n[![Build Status](https://secure.travis-ci.org/Constellation/escodegen.png)](http://travis-ci.org/Constellation/escodegen)\n",
-  "readmeFilename": "README.md",
-  "bugs": {
-    "url": "https://github.com/Constellation/escodegen/issues"
-  },
-  "_id": "escodegen@0.0.21",
-  "dist": {
-    "shasum": "343ac135a16da32314ae81362b5dd625780a11b8"
-  },
-  "_from": "escodegen@0.0.21",
-  "_resolved": "https://registry.npmjs.org/escodegen/-/escodegen-0.0.21.tgz"
-}
-
-},{}],17:[function(require,module,exports){
+},{"fs":6,"path":5,"__browserify_process":4}],16:[function(require,module,exports){
 (function(global){/*
   Copyright (C) 2012 Michael Ficarra <escodegen.copyright@michael.ficarra.me>
   Copyright (C) 2012 Robert Gust-Bardon <donate@robert.gust-bardon.org>
@@ -14995,7 +14995,7 @@ module.exports={
 /* vim: set sw=4 ts=4 et tw=80 : */
 
 })(window)
-},{"./package.json":24,"source-map":25,"estraverse":26}],26:[function(require,module,exports){
+},{"./package.json":24,"estraverse":25,"source-map":26}],25:[function(require,module,exports){
 (function(){/*
   Copyright (C) 2012 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -15313,7 +15313,7 @@ module.exports={
 /* vim: set sw=4 ts=4 et tw=80 : */
 
 })()
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 /*
  * Copyright 2009-2011 Mozilla Foundation and contributors
  * Licensed under the New BSD license. See LICENSE.txt or:
@@ -15323,7 +15323,7 @@ exports.SourceMapGenerator = require('./source-map/source-map-generator').Source
 exports.SourceMapConsumer = require('./source-map/source-map-consumer').SourceMapConsumer;
 exports.SourceNode = require('./source-map/source-node').SourceNode;
 
-},{"./source-map/source-map-generator":27,"./source-map/source-node":28,"./source-map/source-map-consumer":29}],27:[function(require,module,exports){
+},{"./source-map/source-map-consumer":27,"./source-map/source-map-generator":28,"./source-map/source-node":29}],28:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -15706,362 +15706,7 @@ define(function (require, exports, module) {
 
 });
 
-},{"./base64-vlq":30,"./util":31,"./array-set":32,"amdefine":33}],28:[function(require,module,exports){
-/* -*- Mode: js; js-indent-level: 2; -*- */
-/*
- * Copyright 2011 Mozilla Foundation and contributors
- * Licensed under the New BSD license. See LICENSE or:
- * http://opensource.org/licenses/BSD-3-Clause
- */
-if (typeof define !== 'function') {
-    var define = require('amdefine')(module);
-}
-define(function (require, exports, module) {
-
-  var SourceMapGenerator = require('./source-map-generator').SourceMapGenerator;
-  var util = require('./util');
-
-  /**
-   * SourceNodes provide a way to abstract over interpolating/concatenating
-   * snippets of generated JavaScript source code while maintaining the line and
-   * column information associated with the original source code.
-   *
-   * @param aLine The original line number.
-   * @param aColumn The original column number.
-   * @param aSource The original source's filename.
-   * @param aChunks Optional. An array of strings which are snippets of
-   *        generated JS, or other SourceNodes.
-   * @param aName The original identifier.
-   */
-  function SourceNode(aLine, aColumn, aSource, aChunks, aName) {
-    this.children = [];
-    this.sourceContents = {};
-    this.line = aLine === undefined ? null : aLine;
-    this.column = aColumn === undefined ? null : aColumn;
-    this.source = aSource === undefined ? null : aSource;
-    this.name = aName === undefined ? null : aName;
-    if (aChunks != null) this.add(aChunks);
-  }
-
-  /**
-   * Creates a SourceNode from generated code and a SourceMapConsumer.
-   *
-   * @param aGeneratedCode The generated code
-   * @param aSourceMapConsumer The SourceMap for the generated code
-   */
-  SourceNode.fromStringWithSourceMap =
-    function SourceNode_fromStringWithSourceMap(aGeneratedCode, aSourceMapConsumer) {
-      // The SourceNode we want to fill with the generated code
-      // and the SourceMap
-      var node = new SourceNode();
-
-      // The generated code
-      // Processed fragments are removed from this array.
-      var remainingLines = aGeneratedCode.split('\n');
-
-      // We need to remember the position of "remainingLines"
-      var lastGeneratedLine = 1, lastGeneratedColumn = 0;
-
-      // The generate SourceNodes we need a code range.
-      // To extract it current and last mapping is used.
-      // Here we store the last mapping.
-      var lastMapping = null;
-
-      aSourceMapConsumer.eachMapping(function (mapping) {
-        if (lastMapping === null) {
-          // We add the generated code until the first mapping
-          // to the SourceNode without any mapping.
-          // Each line is added as separate string.
-          while (lastGeneratedLine < mapping.generatedLine) {
-            node.add(remainingLines.shift() + "\n");
-            lastGeneratedLine++;
-          }
-          if (lastGeneratedColumn < mapping.generatedColumn) {
-            var nextLine = remainingLines[0];
-            node.add(nextLine.substr(0, mapping.generatedColumn));
-            remainingLines[0] = nextLine.substr(mapping.generatedColumn);
-            lastGeneratedColumn = mapping.generatedColumn;
-          }
-        } else {
-          // We add the code from "lastMapping" to "mapping":
-          // First check if there is a new line in between.
-          if (lastGeneratedLine < mapping.generatedLine) {
-            var code = "";
-            // Associate full lines with "lastMapping"
-            do {
-              code += remainingLines.shift() + "\n";
-              lastGeneratedLine++;
-              lastGeneratedColumn = 0;
-            } while (lastGeneratedLine < mapping.generatedLine);
-            // When we reached the correct line, we add code until we
-            // reach the correct column too.
-            if (lastGeneratedColumn < mapping.generatedColumn) {
-              var nextLine = remainingLines[0];
-              code += nextLine.substr(0, mapping.generatedColumn);
-              remainingLines[0] = nextLine.substr(mapping.generatedColumn);
-              lastGeneratedColumn = mapping.generatedColumn;
-            }
-            // Create the SourceNode.
-            addMappingWithCode(lastMapping, code);
-          } else {
-            // There is no new line in between.
-            // Associate the code between "lastGeneratedColumn" and
-            // "mapping.generatedColumn" with "lastMapping"
-            var nextLine = remainingLines[0];
-            var code = nextLine.substr(0, mapping.generatedColumn -
-                                          lastGeneratedColumn);
-            remainingLines[0] = nextLine.substr(mapping.generatedColumn -
-                                                lastGeneratedColumn);
-            lastGeneratedColumn = mapping.generatedColumn;
-            addMappingWithCode(lastMapping, code);
-          }
-        }
-        lastMapping = mapping;
-      }, this);
-      // We have processed all mappings.
-      // Associate the remaining code in the current line with "lastMapping"
-      // and add the remaining lines without any mapping
-      addMappingWithCode(lastMapping, remainingLines.join("\n"));
-
-      // Copy sourcesContent into SourceNode
-      aSourceMapConsumer.sources.forEach(function (sourceFile) {
-        var content = aSourceMapConsumer.sourceContentFor(sourceFile);
-        if (content) {
-          node.setSourceContent(sourceFile, content);
-        }
-      });
-
-      return node;
-
-      function addMappingWithCode(mapping, code) {
-        if (mapping.source === undefined) {
-          node.add(code);
-        } else {
-          node.add(new SourceNode(mapping.originalLine,
-                                  mapping.originalColumn,
-                                  mapping.source,
-                                  code,
-                                  mapping.name));
-        }
-      }
-    };
-
-  /**
-   * Add a chunk of generated JS to this source node.
-   *
-   * @param aChunk A string snippet of generated JS code, another instance of
-   *        SourceNode, or an array where each member is one of those things.
-   */
-  SourceNode.prototype.add = function SourceNode_add(aChunk) {
-    if (Array.isArray(aChunk)) {
-      aChunk.forEach(function (chunk) {
-        this.add(chunk);
-      }, this);
-    }
-    else if (aChunk instanceof SourceNode || typeof aChunk === "string") {
-      if (aChunk) {
-        this.children.push(aChunk);
-      }
-    }
-    else {
-      throw new TypeError(
-        "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
-      );
-    }
-    return this;
-  };
-
-  /**
-   * Add a chunk of generated JS to the beginning of this source node.
-   *
-   * @param aChunk A string snippet of generated JS code, another instance of
-   *        SourceNode, or an array where each member is one of those things.
-   */
-  SourceNode.prototype.prepend = function SourceNode_prepend(aChunk) {
-    if (Array.isArray(aChunk)) {
-      for (var i = aChunk.length-1; i >= 0; i--) {
-        this.prepend(aChunk[i]);
-      }
-    }
-    else if (aChunk instanceof SourceNode || typeof aChunk === "string") {
-      this.children.unshift(aChunk);
-    }
-    else {
-      throw new TypeError(
-        "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
-      );
-    }
-    return this;
-  };
-
-  /**
-   * Walk over the tree of JS snippets in this node and its children. The
-   * walking function is called once for each snippet of JS and is passed that
-   * snippet and the its original associated source's line/column location.
-   *
-   * @param aFn The traversal function.
-   */
-  SourceNode.prototype.walk = function SourceNode_walk(aFn) {
-    this.children.forEach(function (chunk) {
-      if (chunk instanceof SourceNode) {
-        chunk.walk(aFn);
-      }
-      else {
-        if (chunk !== '') {
-          aFn(chunk, { source: this.source,
-                       line: this.line,
-                       column: this.column,
-                       name: this.name });
-        }
-      }
-    }, this);
-  };
-
-  /**
-   * Like `String.prototype.join` except for SourceNodes. Inserts `aStr` between
-   * each of `this.children`.
-   *
-   * @param aSep The separator.
-   */
-  SourceNode.prototype.join = function SourceNode_join(aSep) {
-    var newChildren;
-    var i;
-    var len = this.children.length;
-    if (len > 0) {
-      newChildren = [];
-      for (i = 0; i < len-1; i++) {
-        newChildren.push(this.children[i]);
-        newChildren.push(aSep);
-      }
-      newChildren.push(this.children[i]);
-      this.children = newChildren;
-    }
-    return this;
-  };
-
-  /**
-   * Call String.prototype.replace on the very right-most source snippet. Useful
-   * for trimming whitespace from the end of a source node, etc.
-   *
-   * @param aPattern The pattern to replace.
-   * @param aReplacement The thing to replace the pattern with.
-   */
-  SourceNode.prototype.replaceRight = function SourceNode_replaceRight(aPattern, aReplacement) {
-    var lastChild = this.children[this.children.length - 1];
-    if (lastChild instanceof SourceNode) {
-      lastChild.replaceRight(aPattern, aReplacement);
-    }
-    else if (typeof lastChild === 'string') {
-      this.children[this.children.length - 1] = lastChild.replace(aPattern, aReplacement);
-    }
-    else {
-      this.children.push(''.replace(aPattern, aReplacement));
-    }
-    return this;
-  };
-
-  /**
-   * Set the source content for a source file. This will be added to the SourceMapGenerator
-   * in the sourcesContent field.
-   *
-   * @param aSourceFile The filename of the source file
-   * @param aSourceContent The content of the source file
-   */
-  SourceNode.prototype.setSourceContent =
-    function SourceNode_setSourceContent(aSourceFile, aSourceContent) {
-      this.sourceContents[util.toSetString(aSourceFile)] = aSourceContent;
-    };
-
-  /**
-   * Walk over the tree of SourceNodes. The walking function is called for each
-   * source file content and is passed the filename and source content.
-   *
-   * @param aFn The traversal function.
-   */
-  SourceNode.prototype.walkSourceContents =
-    function SourceNode_walkSourceContents(aFn) {
-      this.children.forEach(function (chunk) {
-        if (chunk instanceof SourceNode) {
-          chunk.walkSourceContents(aFn);
-        }
-      }, this);
-      Object.keys(this.sourceContents).forEach(function (sourceFileKey) {
-        aFn(util.fromSetString(sourceFileKey), this.sourceContents[sourceFileKey]);
-      }, this);
-    };
-
-  /**
-   * Return the string representation of this source node. Walks over the tree
-   * and concatenates all the various snippets together to one string.
-   */
-  SourceNode.prototype.toString = function SourceNode_toString() {
-    var str = "";
-    this.walk(function (chunk) {
-      str += chunk;
-    });
-    return str;
-  };
-
-  /**
-   * Returns the string representation of this source node along with a source
-   * map.
-   */
-  SourceNode.prototype.toStringWithSourceMap = function SourceNode_toStringWithSourceMap(aArgs) {
-    var generated = {
-      code: "",
-      line: 1,
-      column: 0
-    };
-    var map = new SourceMapGenerator(aArgs);
-    var sourceMappingActive = false;
-    this.walk(function (chunk, original) {
-      generated.code += chunk;
-      if (original.source !== null
-          && original.line !== null
-          && original.column !== null) {
-        map.addMapping({
-          source: original.source,
-          original: {
-            line: original.line,
-            column: original.column
-          },
-          generated: {
-            line: generated.line,
-            column: generated.column
-          },
-          name: original.name
-        });
-        sourceMappingActive = true;
-      } else if (sourceMappingActive) {
-        map.addMapping({
-          generated: {
-            line: generated.line,
-            column: generated.column
-          }
-        });
-        sourceMappingActive = false;
-      }
-      chunk.split('').forEach(function (ch) {
-        if (ch === '\n') {
-          generated.line++;
-          generated.column = 0;
-        } else {
-          generated.column++;
-        }
-      });
-    });
-    this.walkSourceContents(function (sourceFile, sourceContent) {
-      map.setSourceContent(sourceFile, sourceContent);
-    });
-
-    return { code: generated.code, map: map };
-  };
-
-  exports.SourceNode = SourceNode;
-
-});
-
-},{"./source-map-generator":27,"./util":31,"amdefine":33}],29:[function(require,module,exports){
+},{"./base64-vlq":30,"./util":31,"./array-set":32,"amdefine":33}],27:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -16489,7 +16134,362 @@ define(function (require, exports, module) {
 
 });
 
-},{"./util":31,"./binary-search":34,"./array-set":32,"./base64-vlq":30,"amdefine":33}],33:[function(require,module,exports){
+},{"./array-set":32,"./base64-vlq":30,"./util":31,"./binary-search":34,"amdefine":33}],29:[function(require,module,exports){
+/* -*- Mode: js; js-indent-level: 2; -*- */
+/*
+ * Copyright 2011 Mozilla Foundation and contributors
+ * Licensed under the New BSD license. See LICENSE or:
+ * http://opensource.org/licenses/BSD-3-Clause
+ */
+if (typeof define !== 'function') {
+    var define = require('amdefine')(module);
+}
+define(function (require, exports, module) {
+
+  var SourceMapGenerator = require('./source-map-generator').SourceMapGenerator;
+  var util = require('./util');
+
+  /**
+   * SourceNodes provide a way to abstract over interpolating/concatenating
+   * snippets of generated JavaScript source code while maintaining the line and
+   * column information associated with the original source code.
+   *
+   * @param aLine The original line number.
+   * @param aColumn The original column number.
+   * @param aSource The original source's filename.
+   * @param aChunks Optional. An array of strings which are snippets of
+   *        generated JS, or other SourceNodes.
+   * @param aName The original identifier.
+   */
+  function SourceNode(aLine, aColumn, aSource, aChunks, aName) {
+    this.children = [];
+    this.sourceContents = {};
+    this.line = aLine === undefined ? null : aLine;
+    this.column = aColumn === undefined ? null : aColumn;
+    this.source = aSource === undefined ? null : aSource;
+    this.name = aName === undefined ? null : aName;
+    if (aChunks != null) this.add(aChunks);
+  }
+
+  /**
+   * Creates a SourceNode from generated code and a SourceMapConsumer.
+   *
+   * @param aGeneratedCode The generated code
+   * @param aSourceMapConsumer The SourceMap for the generated code
+   */
+  SourceNode.fromStringWithSourceMap =
+    function SourceNode_fromStringWithSourceMap(aGeneratedCode, aSourceMapConsumer) {
+      // The SourceNode we want to fill with the generated code
+      // and the SourceMap
+      var node = new SourceNode();
+
+      // The generated code
+      // Processed fragments are removed from this array.
+      var remainingLines = aGeneratedCode.split('\n');
+
+      // We need to remember the position of "remainingLines"
+      var lastGeneratedLine = 1, lastGeneratedColumn = 0;
+
+      // The generate SourceNodes we need a code range.
+      // To extract it current and last mapping is used.
+      // Here we store the last mapping.
+      var lastMapping = null;
+
+      aSourceMapConsumer.eachMapping(function (mapping) {
+        if (lastMapping === null) {
+          // We add the generated code until the first mapping
+          // to the SourceNode without any mapping.
+          // Each line is added as separate string.
+          while (lastGeneratedLine < mapping.generatedLine) {
+            node.add(remainingLines.shift() + "\n");
+            lastGeneratedLine++;
+          }
+          if (lastGeneratedColumn < mapping.generatedColumn) {
+            var nextLine = remainingLines[0];
+            node.add(nextLine.substr(0, mapping.generatedColumn));
+            remainingLines[0] = nextLine.substr(mapping.generatedColumn);
+            lastGeneratedColumn = mapping.generatedColumn;
+          }
+        } else {
+          // We add the code from "lastMapping" to "mapping":
+          // First check if there is a new line in between.
+          if (lastGeneratedLine < mapping.generatedLine) {
+            var code = "";
+            // Associate full lines with "lastMapping"
+            do {
+              code += remainingLines.shift() + "\n";
+              lastGeneratedLine++;
+              lastGeneratedColumn = 0;
+            } while (lastGeneratedLine < mapping.generatedLine);
+            // When we reached the correct line, we add code until we
+            // reach the correct column too.
+            if (lastGeneratedColumn < mapping.generatedColumn) {
+              var nextLine = remainingLines[0];
+              code += nextLine.substr(0, mapping.generatedColumn);
+              remainingLines[0] = nextLine.substr(mapping.generatedColumn);
+              lastGeneratedColumn = mapping.generatedColumn;
+            }
+            // Create the SourceNode.
+            addMappingWithCode(lastMapping, code);
+          } else {
+            // There is no new line in between.
+            // Associate the code between "lastGeneratedColumn" and
+            // "mapping.generatedColumn" with "lastMapping"
+            var nextLine = remainingLines[0];
+            var code = nextLine.substr(0, mapping.generatedColumn -
+                                          lastGeneratedColumn);
+            remainingLines[0] = nextLine.substr(mapping.generatedColumn -
+                                                lastGeneratedColumn);
+            lastGeneratedColumn = mapping.generatedColumn;
+            addMappingWithCode(lastMapping, code);
+          }
+        }
+        lastMapping = mapping;
+      }, this);
+      // We have processed all mappings.
+      // Associate the remaining code in the current line with "lastMapping"
+      // and add the remaining lines without any mapping
+      addMappingWithCode(lastMapping, remainingLines.join("\n"));
+
+      // Copy sourcesContent into SourceNode
+      aSourceMapConsumer.sources.forEach(function (sourceFile) {
+        var content = aSourceMapConsumer.sourceContentFor(sourceFile);
+        if (content) {
+          node.setSourceContent(sourceFile, content);
+        }
+      });
+
+      return node;
+
+      function addMappingWithCode(mapping, code) {
+        if (mapping.source === undefined) {
+          node.add(code);
+        } else {
+          node.add(new SourceNode(mapping.originalLine,
+                                  mapping.originalColumn,
+                                  mapping.source,
+                                  code,
+                                  mapping.name));
+        }
+      }
+    };
+
+  /**
+   * Add a chunk of generated JS to this source node.
+   *
+   * @param aChunk A string snippet of generated JS code, another instance of
+   *        SourceNode, or an array where each member is one of those things.
+   */
+  SourceNode.prototype.add = function SourceNode_add(aChunk) {
+    if (Array.isArray(aChunk)) {
+      aChunk.forEach(function (chunk) {
+        this.add(chunk);
+      }, this);
+    }
+    else if (aChunk instanceof SourceNode || typeof aChunk === "string") {
+      if (aChunk) {
+        this.children.push(aChunk);
+      }
+    }
+    else {
+      throw new TypeError(
+        "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
+      );
+    }
+    return this;
+  };
+
+  /**
+   * Add a chunk of generated JS to the beginning of this source node.
+   *
+   * @param aChunk A string snippet of generated JS code, another instance of
+   *        SourceNode, or an array where each member is one of those things.
+   */
+  SourceNode.prototype.prepend = function SourceNode_prepend(aChunk) {
+    if (Array.isArray(aChunk)) {
+      for (var i = aChunk.length-1; i >= 0; i--) {
+        this.prepend(aChunk[i]);
+      }
+    }
+    else if (aChunk instanceof SourceNode || typeof aChunk === "string") {
+      this.children.unshift(aChunk);
+    }
+    else {
+      throw new TypeError(
+        "Expected a SourceNode, string, or an array of SourceNodes and strings. Got " + aChunk
+      );
+    }
+    return this;
+  };
+
+  /**
+   * Walk over the tree of JS snippets in this node and its children. The
+   * walking function is called once for each snippet of JS and is passed that
+   * snippet and the its original associated source's line/column location.
+   *
+   * @param aFn The traversal function.
+   */
+  SourceNode.prototype.walk = function SourceNode_walk(aFn) {
+    this.children.forEach(function (chunk) {
+      if (chunk instanceof SourceNode) {
+        chunk.walk(aFn);
+      }
+      else {
+        if (chunk !== '') {
+          aFn(chunk, { source: this.source,
+                       line: this.line,
+                       column: this.column,
+                       name: this.name });
+        }
+      }
+    }, this);
+  };
+
+  /**
+   * Like `String.prototype.join` except for SourceNodes. Inserts `aStr` between
+   * each of `this.children`.
+   *
+   * @param aSep The separator.
+   */
+  SourceNode.prototype.join = function SourceNode_join(aSep) {
+    var newChildren;
+    var i;
+    var len = this.children.length;
+    if (len > 0) {
+      newChildren = [];
+      for (i = 0; i < len-1; i++) {
+        newChildren.push(this.children[i]);
+        newChildren.push(aSep);
+      }
+      newChildren.push(this.children[i]);
+      this.children = newChildren;
+    }
+    return this;
+  };
+
+  /**
+   * Call String.prototype.replace on the very right-most source snippet. Useful
+   * for trimming whitespace from the end of a source node, etc.
+   *
+   * @param aPattern The pattern to replace.
+   * @param aReplacement The thing to replace the pattern with.
+   */
+  SourceNode.prototype.replaceRight = function SourceNode_replaceRight(aPattern, aReplacement) {
+    var lastChild = this.children[this.children.length - 1];
+    if (lastChild instanceof SourceNode) {
+      lastChild.replaceRight(aPattern, aReplacement);
+    }
+    else if (typeof lastChild === 'string') {
+      this.children[this.children.length - 1] = lastChild.replace(aPattern, aReplacement);
+    }
+    else {
+      this.children.push(''.replace(aPattern, aReplacement));
+    }
+    return this;
+  };
+
+  /**
+   * Set the source content for a source file. This will be added to the SourceMapGenerator
+   * in the sourcesContent field.
+   *
+   * @param aSourceFile The filename of the source file
+   * @param aSourceContent The content of the source file
+   */
+  SourceNode.prototype.setSourceContent =
+    function SourceNode_setSourceContent(aSourceFile, aSourceContent) {
+      this.sourceContents[util.toSetString(aSourceFile)] = aSourceContent;
+    };
+
+  /**
+   * Walk over the tree of SourceNodes. The walking function is called for each
+   * source file content and is passed the filename and source content.
+   *
+   * @param aFn The traversal function.
+   */
+  SourceNode.prototype.walkSourceContents =
+    function SourceNode_walkSourceContents(aFn) {
+      this.children.forEach(function (chunk) {
+        if (chunk instanceof SourceNode) {
+          chunk.walkSourceContents(aFn);
+        }
+      }, this);
+      Object.keys(this.sourceContents).forEach(function (sourceFileKey) {
+        aFn(util.fromSetString(sourceFileKey), this.sourceContents[sourceFileKey]);
+      }, this);
+    };
+
+  /**
+   * Return the string representation of this source node. Walks over the tree
+   * and concatenates all the various snippets together to one string.
+   */
+  SourceNode.prototype.toString = function SourceNode_toString() {
+    var str = "";
+    this.walk(function (chunk) {
+      str += chunk;
+    });
+    return str;
+  };
+
+  /**
+   * Returns the string representation of this source node along with a source
+   * map.
+   */
+  SourceNode.prototype.toStringWithSourceMap = function SourceNode_toStringWithSourceMap(aArgs) {
+    var generated = {
+      code: "",
+      line: 1,
+      column: 0
+    };
+    var map = new SourceMapGenerator(aArgs);
+    var sourceMappingActive = false;
+    this.walk(function (chunk, original) {
+      generated.code += chunk;
+      if (original.source !== null
+          && original.line !== null
+          && original.column !== null) {
+        map.addMapping({
+          source: original.source,
+          original: {
+            line: original.line,
+            column: original.column
+          },
+          generated: {
+            line: generated.line,
+            column: generated.column
+          },
+          name: original.name
+        });
+        sourceMappingActive = true;
+      } else if (sourceMappingActive) {
+        map.addMapping({
+          generated: {
+            line: generated.line,
+            column: generated.column
+          }
+        });
+        sourceMappingActive = false;
+      }
+      chunk.split('').forEach(function (ch) {
+        if (ch === '\n') {
+          generated.line++;
+          generated.column = 0;
+        } else {
+          generated.column++;
+        }
+      });
+    });
+    this.walkSourceContents(function (sourceFile, sourceContent) {
+      map.setSourceContent(sourceFile, sourceContent);
+    });
+
+    return { code: generated.code, map: map };
+  };
+
+  exports.SourceNode = SourceNode;
+
+});
+
+},{"./source-map-generator":28,"./util":31,"amdefine":33}],33:[function(require,module,exports){
 (function(process,__filename){/** vim: et:ts=4:sw=4:sts=4
  * @license amdefine 0.0.5 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -16791,7 +16791,7 @@ function amdefine(module, require) {
 module.exports = amdefine;
 
 })(require("__browserify_process"),"/node_modules/escodegen/node_modules/source-map/node_modules/amdefine/amdefine.js")
-},{"path":6,"__browserify_process":5}],30:[function(require,module,exports){
+},{"path":5,"__browserify_process":4}],30:[function(require,module,exports){
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
