@@ -481,6 +481,15 @@ class ParserValue
         $clone->text = $this->text;
         return $clone;
     }
+
+	public function value() {
+		if ($this->text instanceof ParserValue) return $this->text->value();
+		return $this->text;
+	}
+
+	public function __toString() {
+		return (string) $this->value();
+	}
 }
 
 class LexerConditions
