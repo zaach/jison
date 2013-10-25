@@ -386,9 +386,7 @@
             }
 
             if (empty($token) == false) {
-                return $this->symbols[
-                $token
-                ];
+	            if (isset($this->symbols[$token])) return $this->symbols[$token];
             } else {
                 return null;
             }
