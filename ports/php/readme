@@ -4,7 +4,7 @@ Description: A jison wrapper that first processes a jison file and then injects 
 
 DIRECTIONS:
 1. After you've downloaded jison & node.js, navigate in command line interface to the folder that contains the ".jison" file that you want to process
-2. Process the ".jison" file like this "nodejs /location_of_jison/ports/php/php.js my_jison_file.jison path_to_template.php"
+2. Process the ".jison" file like this "nodejs /location_of_jison/ports/php/php.js my_jison_file.jison [path_to_template.php]"
 
 CONFIGURATION:
 Configuration takes advantage of the commenting in javascript so as not to conflict with.
