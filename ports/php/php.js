@@ -112,7 +112,7 @@ exec("jison " + process.argv[2], function (error) {
 	
 	console.log(option);
 	
-	var parserRaw = fs.readFileSync(__dirname + "/template.php", "utf8");
+	var parserRaw = fs.readFileSync(process.argv[3] ? process.argv[3] : (__dirname + "/template.php"), "utf8");
 
 	function parserInject() {
 		var result = '\n';
