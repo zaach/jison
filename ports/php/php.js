@@ -60,6 +60,11 @@ exec("jison " + process.argv[2], function (error) {
         return str;
     }
 
+    function escape(str) {
+        return str
+            .replace("\"","\\\"");
+    }
+
     function jsPerformActionToPhp(str) {
         str = jsFnBody(str);
         str = str.replace("var $0 = $$.length - 1;", '');
@@ -144,9 +149,9 @@ exec("jison " + process.argv[2], function (error) {
 
 		for (var i in this.symbolsByIndex) {
 			var symbol = this.symbolsByIndex[i];
-			result += '\t\t\t$symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
+			result += '\t\t\t$symbol' + symbol.index + ' = new ParserSymbol("' + escape(symbol.name) + '", ' + symbol.index + ');\n';
 			this.symbols.push('\t\t\t$this->symbols[' + symbol.index + '] = $symbol' + symbol.index + '');
-			this.symbols.push('\t\t\t$this->symbols["' + symbol.name + '"] = $symbol' + symbol.index + '');
+			this.symbols.push('\t\t\t$this->symbols["' + escape(symbol.name) + '"] = $symbol' + symbol.index + '');
 
 		}
 
