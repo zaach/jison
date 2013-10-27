@@ -70,7 +70,7 @@ exec("jison " + process.argv[2], function (error) {
         str = str.replace("var $0 = $$.length - 1;", '');
         str = str.replace("var YYSTATE=YY_START", '');
         str = str.replace(new RegExp('[$]0', 'g'), '$o');
-        str = str.replace(new RegExp('[$][$]', 'g'), '$s');
+        str = str.replace(new RegExp('[$][$](\\[(.+?)\\])', 'g'), '$$s$1->value()');
         str = str.replace(new RegExp('default[:][;]', 'g'), '');
         str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
         str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
