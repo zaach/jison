@@ -6,17 +6,17 @@
 
 /**/class Parser/**/
 {
-    public $symbols = array();
-    public $terminals = array();
-    public $productions = array();
-    public $table = array();
-    public $defaultActions = array();
-    public $version = '0.3.12';
-    public $debug = false;
-    public $none = 0;
-    public $shift = 1;
-    public $reduce = 2;
-    public $accept = 3;
+    protected $symbols = array();
+    protected $terminals = array();
+    protected $productions = array();
+    protected $table = array();
+    protected $defaultActions = array();
+    protected $version = '0.3.12';
+    protected $debug = false;
+    protected $none = 0;
+    protected $shift = 1;
+    protected $reduce = 2;
+    protected $accept = 3;
 
     function trace()
     {
@@ -200,21 +200,21 @@
 
 
     /* Jison generated lexer */
-    public $eof;
-    public $yy = null;
-    public $match = "";
-    public $matched = "";
-    public $conditionStack = array();
-    public $conditionStackCount = 0;
-    public $rules = array();
-    public $conditions = array();
-    public $done = false;
-    public $less;
-    public $more;
-    public $input;
-    public $offset;
-    public $ranges;
-    public $flex = false;
+    protected $eof;
+    protected $yy = null;
+    protected $match = "";
+    protected $matched = "";
+    protected $conditionStack = array();
+    protected $conditionStackCount = 0;
+    protected $rules = array();
+    protected $conditions = array();
+    protected $done = false;
+    protected $less;
+    protected $more;
+    protected $input;
+    protected $offset;
+    protected $ranges;
+    protected $flex = false;
 
     function setInput($input)
     {
