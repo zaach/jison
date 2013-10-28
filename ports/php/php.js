@@ -221,7 +221,7 @@ exec("jison " + process.argv[2], function (error) {
 			this.conditions = [];
 
 		for (var i in rules) {
-			this.rules.push('\t\t\t\t\t' + i + '=>"/' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '\\"') + '/"');
+			this.rules.push('\t\t\t\t\t' + i + '=>"' + rules[i].replace(/"/g, '\\"') + 'u"');
 		}
 
 		result += '\t\t\t$this->rules = array(\n\t\t\t\t\n' + this.rules.join(',\n') + '\n\t\t\t\t);\n\n';
