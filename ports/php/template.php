@@ -48,14 +48,14 @@
         return $this->symbols["end"];
     }
 
-    function parseError($str = "", ParserError $hash = null)
+    function parseError(ParserError $error)
     {
-        throw new Exception($str);
+        throw $error;
     }
 
-    function lexerError($str = "", LexerError $hash = null)
+    function lexerError(LexerError $error)
     {
-        throw new Exception($str);
+        throw $error;
     }
 
     function parse($input)
@@ -112,7 +112,7 @@
 
                     $errStr = "Parse error on line " . ($this->yy->lineNo + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals[$symbol->index]) ? $this->terminals[$symbol->index]->name : 'NOTHING') . "'";
 
-                    $this->parseError($errStr, new ParserError($this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
+                    $this->parseError(new ParserError($errStr,$this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
                 }
             }
 
@@ -394,7 +394,7 @@
         if ($this->input == '' || $this->input === false) {
             return $this->eof;
         } else {
-            $this->lexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), new LexerError("", -1, $this->yy->lineNo));
+            $this->lexerError(new LexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), "", -1, $this->yy->lineNo));
             return null;
         }
     }
@@ -558,7 +558,7 @@ class ParserSymbol
     }
 }
 
-class ParserError
+class ParserError extends \Exception
 {
     public $text;
     public $state;
@@ -567,8 +567,9 @@ class ParserError
     public $loc;
     public $expected;
 
-    function __construct($text, $state, $symbol, $lineNo, $loc, $expected)
+    function __construct($msg,$text, $state, $symbol, $lineNo, $loc, $expected)
     {
+	    parent::__construct($msg);
         $this->text = $text;
         $this->state = $state;
         $this->symbol = $symbol;
@@ -578,14 +579,15 @@ class ParserError
     }
 }
 
-class LexerError
+class LexerError extends \Exception
 {
     public $text;
     public $token;
     public $lineNo;
 
-    public function __construct($text, $token, $lineNo)
+    public function __construct($msg, $text, $token, $lineNo)
     {
+	    parent::__construct($msg);
         $this->text = $text;
         $this->token = $token;
         $this->lineNo = $lineNo;
