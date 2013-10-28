@@ -328,7 +328,7 @@
             return $this->eof;
         }
 
-        if (empty($this->input)) {
+        if ($this->input == '' || $this->input === false) {
             $this->done = true;
         }
 
@@ -380,8 +380,7 @@
             $nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
 
             $token = $this->lexerPerformAction($ruleIndex, $nextCondition);
-
-            if ($this->done == true && empty($this->input) == false) {
+            if ($this->done == true && $this->input != '' && $this->input !== false) {
                 $this->done = false;
             }
 
@@ -392,7 +391,7 @@
             }
         }
 
-        if (empty($this->input)) {
+        if ($this->input == '' || $this->input === false) {
             return $this->eof;
         } else {
             $this->lexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), new LexerError("", -1, $this->yy->lineNo));
