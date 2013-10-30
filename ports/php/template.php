@@ -48,15 +48,17 @@
         return $this->symbols["end"];
     }
 
-    function parseError(ParserError $error)
-    {
+    protected function parseError(ParserError $error) {
         throw $error;
     }
 
-    function lexerError(LexerError $error)
-    {
+    protected function lexerError(LexerError $error) {
         throw $error;
     }
+
+	protected function runTimeError(RunTimeError $error) {
+		throw $error;
+	}
 
     function parse($input)
     {
@@ -150,10 +152,20 @@
                     if (isset($this->ranges)) {
                         //TODO: add ranges
                     }
+	                try {
+                        $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
+	                }
+		            catch (RunTimeError $error) {
+			            $newError = new RunTimeError($error->getMessage(). "\n". $this->showPosition());
+			            $newError->text = $this->match;
+			            $newError->state = $state;
+			            $newError->symbol = $symbol;
+			            $newError->lineNo = $this->yy->lineNo;
+			            $newError->loc = $this->yy->loc;
+			            throw $newError;
+		            }
 
-                    $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
-
-                    if (isset($r)) {
+	                if (isset($r)) {
                         return $r;
                     }
 
@@ -295,31 +307,31 @@
         $this->more = true;
     }
 
-    function pastInput()
+    function pastInput($len)
     {
-        $past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
-        return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
+        $past = mb_substr($this->matched, 0, mb_strlen($this->matched,'utf8') - mb_strlen($this->match,'utf8'),'utf8');
+        return (mb_strlen($past,'utf8') > $len ? '...' : '') . str_replace("\n", "", mb_substr($past, -$len, NULL, 'utf8'));
     }
 
-    function upcomingInput()
+    function upcomingInput($len)
     {
         $next = $this->match;
-        if (strlen($next) < 20) {
-            $next .= substr($this->input, 0, 20 - strlen($next));
+        if (mb_strlen($next,'utf8') < $len) {
+            $next .= mb_substr($this->input, 0, $len - mb_strlen($next,'utf8'));
         }
-        return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
+        return str_replace("\n", "", mb_substr($next, 0, $len,'utf8') . (mb_strlen($next,'utf8') > $len ? '...' : ''));
     }
 
-    function showPosition()
+    function showPosition($len = 20)
     {
-        $pre = $this->pastInput();
+        $pre = $this->pastInput($len);
 
         $c = '';
-        for($i = 0, $preLength = strlen($pre); $i < $preLength; $i++) {
+        for($i = 0, $preLength = mb_strlen($pre, 'utf8'); $i < $preLength; $i++) {
             $c .= '-';
         }
 
-        return $pre . $this->upcomingInput() . "\n" . $c . "^";
+        return $pre . $this->upcomingInput($len) . "\n" . $c . "^";
     }
 
     function next()
@@ -558,7 +570,18 @@ class ParserSymbol
     }
 }
 
-class ParserError extends \Exception
+class JisonError extends \Exception {
+}
+
+class RunTimeError extends JisonError {
+    public $text;
+    public $state;
+    public $symbol;
+    public $lineNo;
+    public $loc;
+}
+
+class ParserError extends JisonError
 {
     public $text;
     public $state;
@@ -579,7 +602,7 @@ class ParserError extends \Exception
     }
 }
 
-class LexerError extends \Exception
+class LexerError extends JisonError
 {
     public $text;
     public $token;
