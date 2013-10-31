@@ -76,7 +76,11 @@ exec("jison " + process.argv[2], function (error) {
 		if (isLex) {
 		    str = str
 		        .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
-		            return arguments[1] + symbols[arguments[3]] + ';';
+                    var symbol = symbols[arguments[3]];
+                    if (symbol) {
+		                return arguments[1] + symbol + ';';
+                    }
+                    return arguments[1] + '"' + arguments[3] + '";';
 		        });
 		}
 		str = comments.parse(str);

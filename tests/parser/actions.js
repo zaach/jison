@@ -150,6 +150,71 @@ exports["test ambiguous named semantic value"] = function() {
     assert.equal(parser.parse('xyx'), "xyx", "return first after reduction");
 };
 
+exports["test vars that look like named semantic values shouldn't be replaced"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["A", "return $A"] ],
+            "A" :[ ['x A', "var $blah = 'x', blah = 8; $$ = $A + $blah" ],
+                   ['', "$$ = '->'" ] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xx'), "->xx", "return first after reduction");
+};
+
+exports["test previous semantic value lookup ($0)"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["A B", "return $A + $B"] ],
+            "A" :[ ['A x', "$$ = $A+'x'"], ['x', "$$ = $1"] ],
+            "B" :[ ["y", "$$ = $0"] ],
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('xxy'), "xxxx", "return first after reduction");
+};
+
+
+exports["test negative semantic value lookup ($-1)"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           ["z", "return 'z';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "S" :[ ["G A B", "return $G + $A + $B"] ],
+            "G" :[ ['z', "$$ = $1"] ],
+            "A" :[ ['A x', "$$ = $A+'x'"], ['x', "$$ = $1"] ],
+            "B" :[ ["y", "$$ = $-1"] ],
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('zxy'), "zxz", "return first after reduction");
+};
+
 exports["test Build AST"] = function() {
     var lexData = {
         rules: [
@@ -330,3 +395,112 @@ exports["test next token not shifted if only one action"] = function () {
     assert.ok(parser.parse('(y)y'), "should parse correctly");
 };
 
+exports["test YYACCEPT"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["E", "return $1"] ],
+            "E"   :[ ["B E", "return $1+$2"],
+                      ["x", "$$ = 'EX'"] ],
+            "B"   :[ ["y", "YYACCEPT"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), "EX", "return first token");
+    assert.equal(parser.parse('yx'), true, "return first after reduction");
+};
+
+exports["test YYABORT"] = function() {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["E", "return $1"] ],
+            "E"   :[ ["B E", "return $1+$2"],
+                      ["x", "$$ = 'EX'"] ],
+            "B"   :[ ["y", "YYABORT"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('x'), "EX", "return first token");
+    assert.equal(parser.parse('yx'), false, "return first after reduction");
+};
+
+exports["test parse params"] = function() {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return first + second;"],
+                     "" ]
+        },
+        parseParams: ["first", "second"]
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+
+    assert.equal(parser.parse('y', "foo", "bar"), "foobar", "semantic action");
+};
+
+exports["test symbol aliases"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["expr[alice] expr[bob] expr[carol]", "return $alice+$bob+$carol;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "abc", "should return original string");
+};
+
+exports["test symbol aliases in ebnf"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+$2;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "ab", "should tolerate aliases in subexpression");
+};

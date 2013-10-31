@@ -15,6 +15,8 @@
     }
 %}
 
+%ebnf
+
 %right ASSIGN
 %left OR
 %nonassoc EQUALITY GREATER
@@ -27,7 +29,7 @@
 
 pgm
     : cdl MAIN LBRACE vdl el RBRACE ENDOFFILE
-        {{$$ = ['PROGRAM',{},$1,$4,$5]; return $$;}}
+        {{$$ = ['PROGRAM',{},$1,$4,$5]; console.log(JSON.stringify($$, null, 4)); return $$; }}
     ;
 
 cdl
@@ -38,8 +40,8 @@ cdl
     ;
 
 c
-    : CLASS id EXTENDS id LBRACE vdl mdl RBRACE
-        {{$$ = ['CLASS_DECL',{},$2,$4,$6,$7];}}
+    : CLASS id[class_name] EXTENDS id[base_class] LBRACE vdl mdl RBRACE
+        {{$$ = ['CLASS_DECL',{},$class_name,$base_class,$vdl,$mdl];}}
     ;
 
 vdl

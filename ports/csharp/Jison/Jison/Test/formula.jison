@@ -168,7 +168,7 @@ expression :
 			//php $$ = $1 == $3;
 			
 			/*cs
-				$1.Set($1.Value == $3.Value);
+				$1.Set($1.Text == $3.Text);
 				$$ = $1;
 			*/
 		}
@@ -214,7 +214,7 @@ expression :
 			//php $$ = ($1 * 1) <= ($4 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() <= $2.ToDouble());
+				$1.Set($1.ToDouble() <= $4.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -226,7 +226,7 @@ expression :
 			//php $$ = ($1 * 1) >= ($4 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() >= $2.ToDouble());
+				$1.Set($1.ToDouble() >= $4.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -243,7 +243,7 @@ expression :
 			//
 			
 			/*cs
-				$1.Set($1.Value != $2.Value);
+				$1.Set($1.Text != $4.Text);
 				$$ = $1;
 			*/
 		}
@@ -259,7 +259,7 @@ expression :
 			//
 			
 			/*cs
-				$1.Set($1.Value != $2.Value);
+				$1.Set($1.Text != $3.Text);
 				$$ = $1;
 			*/
 		}
@@ -271,7 +271,7 @@ expression :
 			//php $$ = ($1 * 1) > ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() > $2.ToDouble());
+				$1.Set($1.ToDouble() > $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -283,7 +283,7 @@ expression :
 			//php $$ = ($1 * 1) < ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() < $2.ToDouble());
+				$1.Set($1.ToDouble() < $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -299,7 +299,7 @@ expression :
 			yy.obj.html.push(null);
 			
 			/*cs
-				$1.Set($1.ToDouble() - $2.ToDouble());
+				$1.Set($1.ToDouble() - $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -314,7 +314,7 @@ expression :
 			//php $$ = ($1 * 1) * ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() * $2.ToDouble());
+				$1.Set($1.ToDouble() * $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -329,7 +329,7 @@ expression :
 			//php $$ = ($1 * 1) / ($3 * 1);
 			
 			/*cs
-				$1.Set($1.ToDouble() / $2.ToDouble());
+				$1.Set($1.ToDouble() / $3.ToDouble());
 				$$ = $1;
 			*/
 		}
@@ -389,7 +389,7 @@ expression :
 			//php $$ = $this->callFunction($1);
 			
 			/*cs
-				$$ = Functions.Call($1.Value);
+				$$ = Functions.Call($1.Text);
 			*/
 		}
 	| FUNCTION '(' expseq ')'
@@ -400,7 +400,7 @@ expression :
 			//php $$ = $this->callFunction($1, $3);
 			
 			/*cs
-				$$ = Functions.Call($1.Value, $3);
+				$$ = Functions.Call($1.Text, $3);
 			*/
 		}
 	| cell
@@ -417,7 +417,7 @@ cell :
 			//php $$ = $this->fixedCellValue($1);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Value));
+				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Text));
 			*/
 		}
 	| FIXEDCELL ':' FIXEDCELL
@@ -428,7 +428,7 @@ cell :
 			//php $$ = $this->fixedCellRangeValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Value), Location.ParseFixed($3.Value));
+				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Text), Location.ParseFixed($3.Text));
 			*/
 		}
 	| CELL
@@ -439,7 +439,7 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.Parse($1.Value));
+				$$ = Spreadsheet.CellValue(Location.Parse($1.Text));
 			*/
 		}
 	| CELL ':' CELL
@@ -450,7 +450,7 @@ cell :
 			//php $$ = $this->cellRangeValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.Parse($1.Value), Location.Parse($3.Value));
+				$$ = Spreadsheet.CellValue(Location.Parse($1.Text), Location.Parse($3.Text));
 			*/
 		}
 	| SHEET '!' CELL
@@ -461,7 +461,7 @@ cell :
 			//php $$ = $this->remoteCellValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Value, $3.Value));
+				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Text, $3.Text));
 			*/
 		}
 	| SHEET '!' CELL ':' CELL
@@ -472,7 +472,7 @@ cell :
 			//php $$ = $this->remoteCellRangeValue($1, $3, $5);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Value, $3.Value), Location.ParseRemote($1.Value, $5.Value));
+				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Text, $3.Text), Location.ParseRemote($1.Text, $5.Text));
 			*/
 		}
 ;
@@ -573,7 +573,7 @@ number :
 			//php $$ = $1 . '.' . $3;
 			
 			/*cs
-				$1.Value += "." + $3.Value;
+				$1.Text += "." + $3.Text;
 				$1.ToDouble();
 				$$ = $1;
 			*/
@@ -601,7 +601,7 @@ error :
 			//php $$ = $1 . $2 . $3;
 			
 			/*cs
-				$1.Set($1.Value + $2.Value + $3.Value);
+				$1.Set($1.Text + $2.Text + $3.Text);
 				$$ = $1;
 			*/
       	}
@@ -612,7 +612,7 @@ error :
 			//php $$ = $2 . $3 . $4;
 			
 			/*cs
-				$1.Set($1.Value + $2.Value + $3.Value + $4.Value);
+				$1.Set($1.Text + $2.Text + $3.Text + $4.Text);
 				$$ = $1;
 			*/
 		}

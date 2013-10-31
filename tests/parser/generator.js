@@ -299,3 +299,50 @@ exports["test generated parser instance creation"] = function () {
 
     assert.notEqual(parser.blah, p.blah, "shouldn't inherit props");
 };
+
+exports["test module include code using generator from parser"] = function () {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return test();"],
+                     "" ]
+        },
+        moduleInclude: "function test(val) { return 1; }"
+    };
+
+    var gen = new Jison.Parser(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateCommonJSModule();
+    var exports = {};
+    eval(parserSource);
+
+    assert.equal(parser.parse('y'), 1, "semantic action");
+};
+
+exports["test module include with each generator type"] = function () {
+    var lexData = {
+        rules: [
+           ["y", "return 'y';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "E"   :[ ["E y", "return test();"],
+                     "" ]
+        },
+        moduleInclude: "var TEST_VAR;"
+    };
+
+    var gen = new Jison.Parser(grammar);
+    gen.lexer = new Lexer(lexData);
+    ['generateModule', 'generateAMDModule', 'generateCommonJSModule']
+    .map(function(type) {
+      var source = gen[type]();
+      assert.ok(/TEST_VAR/.test(source), type + " supports module include");
+    });
+};

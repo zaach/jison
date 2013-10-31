@@ -47,8 +47,16 @@ namespace jQuerySheet
 				return value;
 			} else {
 				var exp = new Expression();
-				exp.Set(Value);
-				return exp;
+			    double num;
+                if (double.TryParse(Value, out num))
+                {
+                    exp.Set(num);
+                }
+                else
+                {
+                    exp.Set(Value);
+                }
+			    return exp;
 			}
 		}
 	}

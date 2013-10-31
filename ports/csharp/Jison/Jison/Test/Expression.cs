@@ -11,7 +11,7 @@ namespace jQuerySheet
 		public Expression(){}
 		public Expression(Expression value)
 		{
-			Value = value.Value;
+			Text = value.Text;
 			Leng = value.Leng;
 			Loc = value.Loc;
 			LineNo = value.LineNo;
@@ -28,14 +28,14 @@ namespace jQuerySheet
 		
 		public Expression(string value)
 		{
-			Value = value;
+			Text = value;
 		}
 		
 		public bool BoolValue;
 		public bool ToBool()
 		{
 			ValueSet = true;
-			BoolValue = Convert.ToBoolean (Value);
+			BoolValue = Convert.ToBoolean (Text);
 			Type = "bool";
 			return BoolValue;
 		}
@@ -50,12 +50,12 @@ namespace jQuerySheet
 		public double ToDouble()
 		{
 			ValueSet = true;
-			if (!String.IsNullOrEmpty (Value)) {
+			if (!String.IsNullOrEmpty (Text) || DoubleValue != 0) {
 				double num;
-				if (double.TryParse(Value, out num)) {
+				if (double.TryParse(Text, out num)) {
 					DoubleValue = num;
 				} else {
-					DoubleValue = 0;
+					DoubleValue = (DoubleValue != 0 ? DoubleValue : 0);
 				}
 				ValueSet = true;
 			} else {
@@ -68,11 +68,12 @@ namespace jQuerySheet
 		{
 			if (Type == "double" || DoubleValue > 0)
 			{
+			    Type = "double";
 				return true;
 			}
 			
 			double num;
-			if (double.TryParse(Value, out num))
+			if (double.TryParse(Text, out num))
 			{
 				ValueSet = true;
 				Type = "double";
@@ -83,11 +84,6 @@ namespace jQuerySheet
 		}
 		public void Add(Expression value)
 		{
-			if (Type == null) {
-				throw new Exception ("Type not set on left expression");
-			} else if (value.Type == null) {
-				throw new Exception ("Type not set on right expression");
-			}
 			value.ToDouble();
 			DoubleValue += value.DoubleValue;
 			Type = "double";
@@ -103,16 +99,16 @@ namespace jQuerySheet
 		{
 			ValueSet = true;
 			Type = "string";
-			return Value;
+			return Text;
 		}
 		public void Set(string value) {
-			Value = value;
+			Text = value;
 			ValueSet = true;
 			Type = "string";
 		}
 		public void Concat(Expression value)
 		{
-			Value += value.Value;
+			Text += value.Text;
 			Type = "string";
 		}
 		

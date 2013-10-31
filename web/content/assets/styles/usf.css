@@ -5,6 +5,12 @@ a img { border: 0px; }
   width: 100%;
 }
 
+#content {
+    max-width: 2600px;
+    margin: 0 auto;
+    padding: 0 1em;
+}
+
 #intro {
   font-size: 2em;
   -moz-border-radius: 8px;
