@@ -1,105 +1,96 @@
 ﻿var fs = require('fs'),
     util = require('util'),
     exec = require('child_process').exec,
+    spawn = require('child_process').spawn,
     path = require('path');
 
 GLOBAL.convertToSyntax = function (types, body) {
-    if (types['php'] || types['PHP']) {
-        return body;
-    }
-    return '';
+	if (types['php'] || types['PHP']) {
+		return body;
+	}
+	return '';
 };
 
-function puts(error, stdout, stderr) {
-    util.puts(stdout);
-}
 
-console.log("Executing: " + "jison " + process.argv[2]);
+function createPHPFile(jisonFileName) {
+	String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-exec("jison " + process.argv[2], function (error) {
-    if (error) {
-        console.log(error);
-        return;
-    }
+	var fileName = jisonFileName.replace('.jison', ''),
+		comments = require(path.resolve(__dirname, '../comments.js')),
+		requirePath = path.resolve(jisonFileName).replace('.jison', '') + '.js';
 
-    String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
+	console.log("Opening newly created jison js file: " + fileName + '.js');
 
-    var fileName = process.argv[2].replace('.jison', ''),
-        comments = require(path.resolve(__dirname, '../comments.js')),
-        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
-    
-    console.log("Opening newly created jison js file: " + fileName + '.js');
+	var Parser = require(requirePath),
+		symbols = Parser.parser.symbols_,
+		terminals = Parser.parser.terminals_,
+		productions = Parser.parser.productions_,
+		table = Parser.parser.table,
+		defaultActions = Parser.parser.defaultActions,
+	//turn regex into string
+		rules = [];
 
-    var Parser = require(requirePath),
-        symbols = Parser.parser.symbols_,
-        terminals = Parser.parser.terminals_,
-        productions = Parser.parser.productions_,
-        table = Parser.parser.table,
-        defaultActions = Parser.parser.defaultActions,
-        //turn regex into string
-        rules = [];
-    
-    for (var i = 0; i < Parser.parser.lexer.rules.length; i++) {
-        rules.push(Parser.parser.lexer.rules[i].toString());
-    }
+	for (var i = 0; i < Parser.parser.lexer.rules.length; i++) {
+		rules.push(Parser.parser.lexer.rules[i].toString());
+	}
 
-    var conditions = Parser.parser.lexer.conditions,
-        options = Parser.parser.lexer.options,
-        parserPerformAction = Parser.parser.performAction.toString(),
-        lexerPerformAction = Parser.parser.lexer.performAction.toString();
+	var conditions = Parser.parser.lexer.conditions,
+		options = Parser.parser.lexer.options,
+		parserPerformAction = Parser.parser.performAction.toString(),
+		lexerPerformAction = Parser.parser.lexer.performAction.toString();
 
-    function jsFnBody(str) {
-        str = str.split('{');
-        str.shift();
-        str = str.join('{');
+	function jsFnBody(str) {
+		str = str.split('{');
+		str.shift();
+		str = str.join('{');
 
-        str = str.split('}');
-        str.pop();
-        str = str.join('}');
+		str = str.split('}');
+		str.pop();
+		str = str.join('}');
 
-        return str;
-    }
+		return str;
+	}
 
-    function jsPerformActionToPhp(str) {
-        str = jsFnBody(str);
-        str = str.replace("var $0 = $$.length - 1;", '');
-        str = str.replace("var YYSTATE=YY_START", '');
-        str = str.replace(new RegExp('[$]0', 'g'), '$o');
-        str = str.replace(new RegExp('[$][$]', 'g'), '$s');
-        str = str.replace(new RegExp('default[:][;]', 'g'), '');
-        str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
-        str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
-        str = str.replace(new RegExp('yystate', 'g'), '$yystate');
-        //str = str.replace(new RegExp('yytext', 'g'), 'yy->text');
-        str = str.replace(new RegExp('[$]yy[_][.]', 'g'), '$this->yy->');
-        str = str.replace(new RegExp('[$]this[-][>]yy[-][>]yy', 'g'), '$this->yy->');
-        str = str.replace(new RegExp('[.]yytext', 'g'), '->text');
-        str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
-        str = str.replace(new RegExp('yy_[.][$]', 'g'), '$this->yy->');
-        str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
-        str = str.replace(new RegExp('[$]end', 'g'), 'end');
-        str = str.replace(new RegExp('console[.]log'), '');
-        str = str.replace(new RegExp('[$]avoiding_name_collisions'), '$avoidingNameCollisions');
-	
+	function jsPerformActionToPhp(str) {
+		str = jsFnBody(str);
+		str = str.replace("var $0 = $$.length - 1;", '');
+		str = str.replace("var YYSTATE=YY_START", '');
+		str = str.replace(new RegExp('[$]0', 'g'), '$o');
+		str = str.replace(new RegExp('[$][$]', 'g'), '$s');
+		str = str.replace(new RegExp('default[:][;]', 'g'), '');
+		str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
+		str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
+		str = str.replace(new RegExp('yystate', 'g'), '$yystate');
+		//str = str.replace(new RegExp('yytext', 'g'), 'yy->text');
+		str = str.replace(new RegExp('[$]yy[_][.]', 'g'), '$this->yy->');
+		str = str.replace(new RegExp('[$]this[-][>]yy[-][>]yy', 'g'), '$this->yy->');
+		str = str.replace(new RegExp('[.]yytext', 'g'), '->text');
+		str = str.replace(new RegExp('yy[.]', 'g'), 'yy->');
+		str = str.replace(new RegExp('yy_[.][$]', 'g'), '$this->yy->');
+		str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
+		str = str.replace(new RegExp('[$]end', 'g'), 'end');
+		str = str.replace(new RegExp('console[.]log'), '');
+		str = str.replace(new RegExp('[$]avoiding_name_collisions'), '$avoidingNameCollisions');
+
 		str = comments.parse(str);
 
 		str = str.replace(/(\d)\n/g, function () {
-            return arguments[1] + ';\n';
-        });
+			return arguments[1] + ';\n';
+		});
 
-        return str;
+		return str;
 	}
-	
-	
+
+
 	var option = {
-        'namespace': 'Jison',
-        'class': fileName,
-        'fileName': fileName + '.php',
-        'extends': '',
-        'use': '',
-        'parserValue': ''
+		'namespace': 'Jison',
+		'class': fileName,
+		'fileName': fileName + '.php',
+		'extends': '',
+		'use': '',
+		'parserValue': ''
 	};
-	
+
 	var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
 	parserDefinition = parserDefinition.split(/\n/g);
 	for(var i = 0; i < parserDefinition.length; i++) {
@@ -109,9 +100,7 @@ exec("jison " + process.argv[2], function (error) {
 			option[parserDefinition[i][0]] = parserDefinition[i][1];
 		}
 	}
-	
-	console.log(option);
-	
+
 	var parserRaw = fs.readFileSync(__dirname + "/template.php", "utf8");
 
 	function parserInject() {
@@ -139,8 +128,6 @@ exec("jison " + process.argv[2], function (error) {
 				index: symbols[i]
 			};
 		}
-
-		console.log(this.symbolsByIndex);
 
 		for (var i in this.symbolsByIndex) {
 			var symbol = this.symbolsByIndex[i];
@@ -236,26 +223,26 @@ exec("jison " + process.argv[2], function (error) {
 	}
 
 	parserRaw = parserRaw
-        .replace('/**/namespace Jison;/**/', (option.namespace ? 'namespace ' + option.namespace + ';\nuse Exception;\n' : ''))
+		.replace('/**/namespace Jison;/**/', (option.namespace ? 'namespace ' + option.namespace + ';\nuse Exception;\n' : ''))
 		.replace('/**/class Parser/**/', 'class ' + option.class + (option.extends ? ' extends ' + option.extends : ''))
-        .replace('/**use**/', (option.use ? 'use ' + option.use : ''))
-        .replace(/[/][*][*][/]ParserValue[/][*][*][/]/g, (option.parserValue ? option.parserValue : 'ParserValue'))
+		.replace('/**use**/', (option.use ? 'use ' + option.use : ''))
+		.replace(/[/][*][*][/]ParserValue[/][*][*][/]/g, (option.parserValue ? option.parserValue : 'ParserValue'))
 
 		.replace('//@@PARSER_INJECT@@',
-            parserInject()
-        )
+			parserInject()
+		)
 
 		.replace('//@@LEXER_INJECT@@',
-            lexerInject()
-        )
+			lexerInject()
+		)
 
 		.replace('//@@ParserPerformActionInjection@@',
-            jsPerformActionToPhp(parserPerformAction)
-        )
+			jsPerformActionToPhp(parserPerformAction)
+		)
 
 		.replace('//@@LexerPerformActionInjection@@',
-            jsPerformActionToPhp(lexerPerformAction, true)
-        );
+			jsPerformActionToPhp(lexerPerformAction, true)
+		);
 
 	fs.writeFile(option.fileName, parserRaw, function(err) {
 		if (err) {
@@ -265,4 +252,21 @@ exec("jison " + process.argv[2], function (error) {
 			console.log("Please Note: The php version of the jison parser is only an ATTEMPTED conversion");
 		}
 	});
+}
+
+
+console.log("Executing: " + "jison " + process.argv[2]);
+
+var spawnedJison = spawn("jison", [process.argv[2]]);
+
+spawnedJison.stdout.on('data', function (data) {
+	console.log(data.toString());
+});
+
+spawnedJison.on('exit', function(code) {
+	if (code != 0) {
+		console.log('Failed: ' + code);
+	} else {
+		createPHPFile(process.argv[2]);
+	}
 });
