@@ -1,4 +1,7 @@
 
+.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules clean superclean
+
+
 all: build test
 
 site: npm-install
@@ -10,7 +13,7 @@ preview:
 	cd web/ && nanoc view &
 	open http://localhost:3000/jison/
 
-deploy:
+deploy: site
 	-rm -r ./gh-pages/*
 	cp -r web/output/jison/* ./gh-pages/
 	-cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages
@@ -37,11 +40,11 @@ JISON_DEPS = \
 	lib/util/transform-parser.js
 
 
-build_bnf: $(JISON_DEPS)
+build_bnf: $(JISON_DEPS) submodules
 	NODE_PATH=lib/util  node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	cat modules/ebnf-parser/parser.js > lib/util/parser.js
 
-build_lex: $(JISON_DEPS)
+build_lex: $(JISON_DEPS) submodules
 	NODE_PATH=lib/util  node lib/cli.js -o modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	cat modules/lex-parser/lex-parser.js > lib/util/lex-parser.js
 
@@ -52,13 +55,13 @@ lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
 lib/util/package.json: modules/jison-lex/package.json
 	cat modules/jison-lex/package.json > $@
 
-lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js
+lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
 	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' > $@
 
-lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js
+lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
 	cat modules/ebnf-parser/ebnf-transform.js > $@
 
-lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js
+lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
 	cat modules/ebnf-parser/transform-parser.js > $@
 
 
