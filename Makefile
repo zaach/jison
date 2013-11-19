@@ -1,10 +1,7 @@
 
-.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules clean superclean
-
-
 all: build test
 
-site: npm-install
+site: npm-install build
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
@@ -85,3 +82,7 @@ superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 	-rm -rf web/output/
 
+
+
+
+.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules clean superclean
