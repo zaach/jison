@@ -72,6 +72,11 @@ submodules:
 
 
 clean:
+	cd modules/ebnf-parser && make clean
+	cd modules/jison-lex && make clean
+	cd modules/jison2json && make clean
+	cd modules/json2jison && make clean
+	cd modules/lex-parser && make clean
 	-@rm lib/util/regexp-lexer.js
 	-@rm lib/util/package.json
 	-@rm lib/util/ebnf-parser.js
@@ -79,6 +84,11 @@ clean:
 	-@rm lib/util/transform-parser.js
 
 superclean: clean
+	cd modules/ebnf-parser && make superclean
+	cd modules/jison-lex && make superclean
+	cd modules/jison2json && make superclean
+	cd modules/json2jison && make superclean
+	cd modules/lex-parser && make superclean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 	-rm -rf web/output/
 
