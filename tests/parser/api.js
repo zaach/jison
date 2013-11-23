@@ -22,7 +22,6 @@ exports["test tokens as a string"] = function () {
     };
 
     var parser = new Jison.Parser(grammar);
-    console.log(parser);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
