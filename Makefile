@@ -3,6 +3,7 @@ all: build test
 
 site: npm-install build examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
+	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
@@ -69,6 +70,11 @@ submodules:
 	cd modules/json2jison && make
 	cd modules/lex-parser && make
 
+
+git:
+	-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
+	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
+	-git pull --all; git push --all
 
 
 clean:
