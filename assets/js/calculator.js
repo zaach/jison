@@ -151,6 +151,13 @@ parse: function parse(input) {
 
     var ranges = this.lexer.options && this.lexer.options.ranges;
 
+    if (this.pre_parse) {
+        this.pre_parse(this.yy);
+    }
+    if (this.yy.pre_parse) {
+        this.yy.pre_parse(this.yy);
+    }
+
     if (typeof this.yy.parseError === 'function') {
         this.parseError = this.yy.parseError;
     } else {
