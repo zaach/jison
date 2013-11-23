@@ -60,7 +60,7 @@ function typal_mix() {
 }
 
 return {
-    // extend object with own typalperties of each argument
+    // extend object with own properties of each argument
     mix: typal_mix,
 
     // sugar for object begetting and mixing
