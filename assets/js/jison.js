@@ -2873,14 +2873,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this) ;
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -3973,14 +3973,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this) ;
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -4585,14 +4585,14 @@ RegExpLexer.prototype = {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this) ;
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -5564,14 +5564,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this) ;
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -8252,14 +8252,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this);
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -9156,14 +9156,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this);
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
@@ -18786,14 +18786,14 @@ lex:function lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.bind(this)();
+            r = this.options.pre_lex.call(this);
         }
         while (!r) {
             r = this.next();
         };
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.bind(this)(r) || r;
+            r = this.options.post_lex.call(this, r) || r;
         }
         return r;
     },
