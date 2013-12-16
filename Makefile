@@ -27,7 +27,7 @@ web/content/assets/js/calculator.js: examples/calculator.jison
 
 build: npm-install build_bnf build_lex
 
-npm-install:
+npm-install: submodules-npm-install
 	npm install
 
 JISON_DEPS = \
@@ -71,6 +71,14 @@ submodules:
 	cd modules/lex-parser && make
 
 
+submodules-npm-install:
+	cd modules/ebnf-parser && make npm-install
+	cd modules/jison-lex && make npm-install
+	cd modules/jison2json && make npm-install
+	cd modules/json2jison && make npm-install
+	cd modules/lex-parser && make npm-install
+
+
 git:
 	-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
 	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
@@ -101,4 +109,4 @@ superclean: clean
 
 
 
-.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules clean superclean
+.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean
