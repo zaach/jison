@@ -91,11 +91,11 @@ clean:
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
 	cd modules/lex-parser && make clean
-	-@rm lib/util/regexp-lexer.js
-	-@rm lib/util/package.json
-	-@rm lib/util/ebnf-parser.js
-	-@rm lib/util/ebnf-transform.js
-	-@rm lib/util/transform-parser.js
+	-@rm -f lib/util/regexp-lexer.js
+	-@rm -f lib/util/package.json
+	-@rm -f lib/util/ebnf-parser.js
+	-@rm -f lib/util/ebnf-transform.js
+	-@rm -f lib/util/transform-parser.js
 
 superclean: clean
 	cd modules/ebnf-parser && make superclean
