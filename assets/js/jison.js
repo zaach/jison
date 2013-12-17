@@ -12185,11 +12185,7 @@ module.exports={
     "url": "https://github.com/Constellation/escodegen/issues"
   },
   "_id": "escodegen@0.0.21",
-  "dist": {
-    "shasum": "343ac135a16da32314ae81362b5dd625780a11b8"
-  },
-  "_from": "escodegen@0.0.21",
-  "_resolved": "https://registry.npmjs.org/escodegen/-/escodegen-0.0.21.tgz"
+  "_from": "escodegen@0.0.21"
 }
 
 },{}],35:[function(require,module,exports){
