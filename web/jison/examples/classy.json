@@ -40,7 +40,7 @@
             ["\\)",        "return 'RPAREN';"],
             [";",          "return 'SEMICOLON';"],
             ["\\s+",       "/* skip whitespace */"],
-            [".",          "throw 'Illegal character: '+yytext;"],
+            [".",          "throw 'Illegal character: ' + yytext;"],
             ["$",          "return 'ENDOFFILE';"]
         ]
     },

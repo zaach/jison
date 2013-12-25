@@ -80,10 +80,10 @@
         "t": [["NATTYPE",
                 "$$ = ['NAT_TYPE',{}];"],
               ["id",
-                "$$ = $1"]],
+                "$$ = $1;"]],
 
         "id": [["ID",
-                    "$$ = ['AST_ID',{val:yytext}]"]],
+                    "$$ = ['AST_ID',{val:yytext}];"]],
         "el": [["e SEMICOLON el",
                     "$$ = prependChild($3, $1);"],
                ["e SEMICOLON",
