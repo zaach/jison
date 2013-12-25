@@ -121,7 +121,7 @@ function genLex (lex) {
     return s.join('');
 }
 function genLexRegex (regex) {
-    return regex.match(/\\b$/) ? '"'+regex.replace(/\\b$/, '')+'"' : regex;
+    return regex.match(/^[a-zA-Z0-9_-]+$/) ? '"' + regex + '"' : regex;
 }
 function genLexRule (rule) {
     return rule.match(/\\}/) ? '%{'+rule+'}%' : '{'+rule+'}';
