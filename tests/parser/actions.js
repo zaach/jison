@@ -505,7 +505,7 @@ exports["test symbol aliases in ebnf"] = function() {
     assert.equal(parser.parse('abc'), "ab", "should tolerate aliases in subexpression");
 };
 
-exports["test symbol aliases for literal tokens"] = function() {
+exports["test symbol aliases for terminals"] = function() {
     var lexData = {
         rules: [
            ["a", "return 'a';"],
