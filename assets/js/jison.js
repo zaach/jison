@@ -2268,7 +2268,7 @@ case 16 :
 break;
 case 17 : 
 /* rule : start_conditions regex action */
-  this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1],$$[$0]];  
+  this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
 break;
 case 18 : 
 /* action : { action_body } */
@@ -2699,11 +2699,11 @@ parse: function parse(input) {
 }};
 
 
-function encodeRE(s) {
+function encodeRE (s) {
     return s.replace(/([.*+?^${}()|[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
 }
 
-function prepareString(s) {
+function prepareString (s) {
     // unescape slashes
     s = s.replace(/\\\\/g, "\\");
     s = encodeRE(s);
