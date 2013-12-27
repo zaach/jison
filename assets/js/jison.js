@@ -295,7 +295,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
             if (typeof handle[1] === 'string' || handle.length == 3) {
                 // semantic action specified
-                var action = ['case', productions.length + 1, ':', '\n/*! Production::', symbol, ':'];
+                var action = ['case', productions.length + 1, ':', '\n/*! Production::    ', symbol, ':'];
                 action = action.concat(rhs);
                 action = action.concat('*/\n', handle[1], '\nbreak;');
                 action = action.join(' ');
@@ -2182,7 +2182,7 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
-/*! Production:: lex : definitions %% rules epilogue */
+/*! Production::     lex : definitions %% rules epilogue */
  
           this.$ = { rules: $$[$0-1] };
           if ($$[$0-3][0]) this.$.macros = $$[$0-3][0];
@@ -2196,19 +2196,19 @@ case 1 :
          
 break;
 case 2 : 
-/*! Production:: epilogue : EOF */
+/*! Production::     epilogue : EOF */
   this.$ = null;  
 break;
 case 3 : 
-/*! Production:: epilogue : %% EOF */
+/*! Production::     epilogue : %% EOF */
   this.$ = null;  
 break;
 case 4 : 
-/*! Production:: epilogue : %% CODE EOF */
+/*! Production::     epilogue : %% CODE EOF */
   this.$ = $$[$0-1];  
 break;
 case 5 : 
-/*! Production:: definitions : definition definitions */
+/*! Production::     definitions : definition definitions */
  
           this.$ = $$[$0];
           if ('length' in $$[$0-1]) {
@@ -2223,181 +2223,181 @@ case 5 :
          
 break;
 case 6 : 
-/*! Production:: definitions : ACTION definitions */
+/*! Production::     definitions : ACTION definitions */
   yy.actionInclude += $$[$0-1]; this.$ = $$[$0];  
 break;
 case 7 : 
-/*! Production:: definitions :  */
+/*! Production::     definitions :  */
   yy.actionInclude = ''; this.$ = [null,null];  
 break;
 case 8 : 
-/*! Production:: definition : NAME regex */
+/*! Production::     definition : NAME regex */
   this.$ = [$$[$0-1], $$[$0]];  
 break;
 case 9 : 
-/*! Production:: definition : START_INC names_inclusive */
+/*! Production::     definition : START_INC names_inclusive */
   this.$ = $$[$0];  
 break;
 case 10 : 
-/*! Production:: definition : START_EXC names_exclusive */
+/*! Production::     definition : START_EXC names_exclusive */
   this.$ = $$[$0];  
 break;
 case 11 : 
-/*! Production:: names_inclusive : START_COND */
+/*! Production::     names_inclusive : START_COND */
   this.$ = {}; this.$[$$[$0]] = 0;  
 break;
 case 12 : 
-/*! Production:: names_inclusive : names_inclusive START_COND */
+/*! Production::     names_inclusive : names_inclusive START_COND */
   this.$ = $$[$0-1]; this.$[$$[$0]] = 0;  
 break;
 case 13 : 
-/*! Production:: names_exclusive : START_COND */
+/*! Production::     names_exclusive : START_COND */
   this.$ = {}; this.$[$$[$0]] = 1;  
 break;
 case 14 : 
-/*! Production:: names_exclusive : names_exclusive START_COND */
+/*! Production::     names_exclusive : names_exclusive START_COND */
   this.$ = $$[$0-1]; this.$[$$[$0]] = 1;  
 break;
 case 15 : 
-/*! Production:: rules : rules rule */
+/*! Production::     rules : rules rule */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
 case 16 : 
-/*! Production:: rules : rule */
+/*! Production::     rules : rule */
   this.$ = [$$[$0]];  
 break;
 case 17 : 
-/*! Production:: rule : start_conditions regex action */
+/*! Production::     rule : start_conditions regex action */
   this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
 break;
 case 18 : 
-/*! Production:: action : { action_body } */
+/*! Production::     action : { action_body } */
  this.$ = $$[$0-1]; 
 break;
 case 19 : 
-/*! Production:: action : ACTION */
+/*! Production::     action : ACTION */
  this.$ = $$[$0]; 
 break;
 case 20 : 
-/*! Production:: action_body :  */
+/*! Production::     action_body :  */
  this.$ = ''; 
 break;
 case 21 : 
-/*! Production:: action_body : action_comments_body */
+/*! Production::     action_body : action_comments_body */
  this.$ = $$[$0]; 
 break;
 case 22 : 
-/*! Production:: action_body : action_body { action_body } action_comments_body */
+/*! Production::     action_body : action_body { action_body } action_comments_body */
  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
 case 23 : 
-/*! Production:: action_body : action_body { action_body } */
+/*! Production::     action_body : action_body { action_body } */
  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
 case 24 : 
-/*! Production:: action_comments_body : ACTION_BODY */
+/*! Production::     action_comments_body : ACTION_BODY */
   this.$ = yytext;  
 break;
 case 25 : 
-/*! Production:: action_comments_body : action_comments_body ACTION_BODY */
+/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
   this.$ = $$[$0-1] + $$[$0];  
 break;
 case 26 : 
-/*! Production:: start_conditions : < name_list > */
+/*! Production::     start_conditions : < name_list > */
   this.$ = $$[$0-1];  
 break;
 case 27 : 
-/*! Production:: start_conditions : < * > */
+/*! Production::     start_conditions : < * > */
   this.$ = ['*'];  
 break;
 case 29 : 
-/*! Production:: name_list : NAME */
+/*! Production::     name_list : NAME */
   this.$ = [$$[$0]];  
 break;
 case 30 : 
-/*! Production:: name_list : name_list , NAME */
+/*! Production::     name_list : name_list , NAME */
   this.$ = $$[$0-2]; this.$.push($$[$0]);  
 break;
 case 31 : 
-/*! Production:: regex : regex_list */
+/*! Production::     regex : regex_list */
  
           this.$ = $$[$0];
          
 break;
 case 32 : 
-/*! Production:: regex_list : regex_list | regex_concat */
+/*! Production::     regex_list : regex_list | regex_concat */
   this.$ = $$[$0-2] + '|' + $$[$0];  
 break;
 case 33 : 
-/*! Production:: regex_list : regex_list | */
+/*! Production::     regex_list : regex_list | */
   this.$ = $$[$0-1] + '|';  
 break;
 case 35 : 
-/*! Production:: regex_list :  */
+/*! Production::     regex_list :  */
   this.$ = '';  
 break;
 case 36 : 
-/*! Production:: regex_concat : regex_concat regex_base */
+/*! Production::     regex_concat : regex_concat regex_base */
   this.$ = $$[$0-1] + $$[$0];  
 break;
 case 38 : 
-/*! Production:: regex_base : ( regex_list ) */
+/*! Production::     regex_base : ( regex_list ) */
   this.$ = '(' + $$[$0-1] + ')';  
 break;
 case 39 : 
-/*! Production:: regex_base : SPECIAL_GROUP regex_list ) */
+/*! Production::     regex_base : SPECIAL_GROUP regex_list ) */
   this.$ = $$[$0-2] + $$[$0-1] + ')';  
 break;
 case 40 : 
-/*! Production:: regex_base : regex_base + */
+/*! Production::     regex_base : regex_base + */
   this.$ = $$[$0-1] + '+';  
 break;
 case 41 : 
-/*! Production:: regex_base : regex_base * */
+/*! Production::     regex_base : regex_base * */
   this.$ = $$[$0-1] + '*';  
 break;
 case 42 : 
-/*! Production:: regex_base : regex_base ? */
+/*! Production::     regex_base : regex_base ? */
   this.$ = $$[$0-1] + '?';  
 break;
 case 43 : 
-/*! Production:: regex_base : / regex_base */
+/*! Production::     regex_base : / regex_base */
   this.$ = '(?=' + $$[$0] + ')';  
 break;
 case 44 : 
-/*! Production:: regex_base : /! regex_base */
+/*! Production::     regex_base : /! regex_base */
   this.$ = '(?!' + $$[$0] + ')';  
 break;
 case 46 : 
-/*! Production:: regex_base : regex_base range_regex */
+/*! Production::     regex_base : regex_base range_regex */
   this.$ = $$[$0-1] + $$[$0];  
 break;
 case 48 : 
-/*! Production:: regex_base : . */
+/*! Production::     regex_base : . */
   this.$ = '.';  
 break;
 case 49 : 
-/*! Production:: regex_base : ^ */
+/*! Production::     regex_base : ^ */
   this.$ = '^';  
 break;
 case 50 : 
-/*! Production:: regex_base : $ */
+/*! Production::     regex_base : $ */
   this.$ = '$';  
 break;
 case 54 : 
-/*! Production:: any_group_regex : ANY_GROUP_REGEX */
+/*! Production::     any_group_regex : ANY_GROUP_REGEX */
   this.$ = yytext;  
 break;
 case 55 : 
-/*! Production:: escape_char : ESCAPE_CHAR */
+/*! Production::     escape_char : ESCAPE_CHAR */
   this.$ = yytext;  
 break;
 case 56 : 
-/*! Production:: range_regex : RANGE_REGEX */
+/*! Production::     range_regex : RANGE_REGEX */
   this.$ = yytext;  
 break;
 case 57 : 
-/*! Production:: string : STRING_LIT */
+/*! Production::     string : STRING_LIT */
   this.$ = prepareString(yytext.substr(1, yytext.length - 2));  
 break;
 }
@@ -3603,75 +3603,75 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
-/*! Production:: spec : declaration_list %% grammar optional_end_block EOF */
+/*! Production::     spec : declaration_list %% grammar optional_end_block EOF */
  this.$ = $$[$0-4]; return extend(this.$, $$[$0-2]); 
 break;
 case 2 : 
-/*! Production:: spec : declaration_list %% grammar %% CODE EOF */
+/*! Production::     spec : declaration_list %% grammar %% CODE EOF */
  this.$ = $$[$0-5]; yy.addDeclaration(this.$,{include: $$[$0-1]}); return extend(this.$, $$[$0-3]); 
 break;
 case 5 : 
-/*! Production:: declaration_list : declaration_list declaration */
+/*! Production::     declaration_list : declaration_list declaration */
  this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
 case 6 : 
-/*! Production:: declaration_list :  */
+/*! Production::     declaration_list :  */
  this.$ = {}; 
 break;
 case 7 : 
-/*! Production:: declaration : START id */
+/*! Production::     declaration : START id */
  this.$ = {start: $$[$0]}; 
 break;
 case 8 : 
-/*! Production:: declaration : LEX_BLOCK */
+/*! Production::     declaration : LEX_BLOCK */
  this.$ = {lex: $$[$0]}; 
 break;
 case 9 : 
-/*! Production:: declaration : operator */
+/*! Production::     declaration : operator */
  this.$ = {operator: $$[$0]}; 
 break;
 case 10 : 
-/*! Production:: declaration : ACTION */
+/*! Production::     declaration : ACTION */
  this.$ = {include: $$[$0]}; 
 break;
 case 11 : 
-/*! Production:: declaration : parse_param */
+/*! Production::     declaration : parse_param */
  this.$ = {parseParam: $$[$0]}; 
 break;
 case 12 : 
-/*! Production:: parse_param : PARSE_PARAM token_list */
+/*! Production::     parse_param : PARSE_PARAM token_list */
  this.$ = $$[$0]; 
 break;
 case 13 : 
-/*! Production:: operator : associativity token_list */
+/*! Production::     operator : associativity token_list */
  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
 case 14 : 
-/*! Production:: associativity : LEFT */
+/*! Production::     associativity : LEFT */
  this.$ = 'left'; 
 break;
 case 15 : 
-/*! Production:: associativity : RIGHT */
+/*! Production::     associativity : RIGHT */
  this.$ = 'right'; 
 break;
 case 16 : 
-/*! Production:: associativity : NONASSOC */
+/*! Production::     associativity : NONASSOC */
  this.$ = 'nonassoc'; 
 break;
 case 17 : 
-/*! Production:: token_list : token_list symbol */
+/*! Production::     token_list : token_list symbol */
  this.$ = $$[$0-1]; this.$.push($$[$0]); 
 break;
 case 18 : 
-/*! Production:: token_list : symbol */
+/*! Production::     token_list : symbol */
  this.$ = [$$[$0]]; 
 break;
 case 19 : 
-/*! Production:: grammar : production_list */
+/*! Production::     grammar : production_list */
  this.$ = $$[$0]; 
 break;
 case 20 : 
-/*! Production:: production_list : production_list production */
+/*! Production::     production_list : production_list production */
  
             this.$ = $$[$0-1];
             if ($$[$0][0] in this.$)
@@ -3681,23 +3681,23 @@ case 20 :
          
 break;
 case 21 : 
-/*! Production:: production_list : production */
+/*! Production::     production_list : production */
  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
 case 22 : 
-/*! Production:: production : id : handle_list ; */
+/*! Production::     production : id : handle_list ; */
  this.$ = [$$[$0-3], $$[$0-1]]; 
 break;
 case 23 : 
-/*! Production:: handle_list : handle_list | handle_action */
+/*! Production::     handle_list : handle_list | handle_action */
  this.$ = $$[$0-2]; this.$.push($$[$0]); 
 break;
 case 24 : 
-/*! Production:: handle_list : handle_action */
+/*! Production::     handle_list : handle_action */
  this.$ = [$$[$0]]; 
 break;
 case 25 : 
-/*! Production:: handle_action : handle prec action */
+/*! Production::     handle_action : handle prec action */
  
             this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
             if($$[$0]) this.$.push($$[$0]);
@@ -3706,103 +3706,103 @@ case 25 :
          
 break;
 case 26 : 
-/*! Production:: handle : handle expression_suffix */
+/*! Production::     handle : handle expression_suffix */
  this.$ = $$[$0-1]; this.$.push($$[$0]); 
 break;
 case 27 : 
-/*! Production:: handle :  */
+/*! Production::     handle :  */
  this.$ = []; 
 break;
 case 28 : 
-/*! Production:: handle_sublist : handle_sublist | handle */
+/*! Production::     handle_sublist : handle_sublist | handle */
  this.$ = $$[$0-2]; this.$.push($$[$0].join(' ')); 
 break;
 case 29 : 
-/*! Production:: handle_sublist : handle */
+/*! Production::     handle_sublist : handle */
  this.$ = [$$[$0].join(' ')]; 
 break;
 case 30 : 
-/*! Production:: expression_suffix : expression suffix ALIAS */
+/*! Production::     expression_suffix : expression suffix ALIAS */
  this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";  
 break;
 case 31 : 
-/*! Production:: expression_suffix : expression suffix */
+/*! Production::     expression_suffix : expression suffix */
  this.$ = $$[$0-1] + $$[$0];  
 break;
 case 32 : 
-/*! Production:: expression : ID */
+/*! Production::     expression : ID */
  this.$ = $$[$0];  
 break;
 case 33 : 
-/*! Production:: expression : STRING */
+/*! Production::     expression : STRING */
  this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0];  
 break;
 case 34 : 
-/*! Production:: expression : ( handle_sublist ) */
+/*! Production::     expression : ( handle_sublist ) */
  this.$ = '(' + $$[$0-1].join(' | ') + ')';  
 break;
 case 35 : 
-/*! Production:: suffix :  */
+/*! Production::     suffix :  */
  this.$ = '' 
 break;
 case 39 : 
-/*! Production:: prec : PREC symbol */
+/*! Production::     prec : PREC symbol */
  this.$ = {prec: $$[$0]}; 
 break;
 case 40 : 
-/*! Production:: prec :  */
+/*! Production::     prec :  */
  this.$ = null; 
 break;
 case 41 : 
-/*! Production:: symbol : id */
+/*! Production::     symbol : id */
  this.$ = $$[$0]; 
 break;
 case 42 : 
-/*! Production:: symbol : STRING */
+/*! Production::     symbol : STRING */
  this.$ = yytext; 
 break;
 case 43 : 
-/*! Production:: id : ID */
+/*! Production::     id : ID */
  this.$ = yytext; 
 break;
 case 44 : 
-/*! Production:: action : { action_body } */
+/*! Production::     action : { action_body } */
  this.$ = $$[$0-1]; 
 break;
 case 45 : 
-/*! Production:: action : ACTION */
+/*! Production::     action : ACTION */
  this.$ = $$[$0]; 
 break;
 case 46 : 
-/*! Production:: action : ARROW_ACTION */
+/*! Production::     action : ARROW_ACTION */
  this.$ = '$$ =' + $$[$0] + ';'; 
 break;
 case 47 : 
-/*! Production:: action :  */
+/*! Production::     action :  */
  this.$ = ''; 
 break;
 case 48 : 
-/*! Production:: action_body :  */
+/*! Production::     action_body :  */
  this.$ = ''; 
 break;
 case 49 : 
-/*! Production:: action_body : action_comments_body */
+/*! Production::     action_body : action_comments_body */
  this.$ = $$[$0]; 
 break;
 case 50 : 
-/*! Production:: action_body : action_body { action_body } action_comments_body */
+/*! Production::     action_body : action_body { action_body } action_comments_body */
  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
 case 51 : 
-/*! Production:: action_body : action_body { action_body } */
+/*! Production::     action_body : action_body { action_body } */
  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
 case 52 : 
-/*! Production:: action_comments_body : ACTION_BODY */
+/*! Production::     action_comments_body : ACTION_BODY */
   this.$ = yytext;  
 break;
 case 53 : 
-/*! Production:: action_comments_body : action_comments_body ACTION_BODY */
+/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
   this.$ = $$[$0-1] + $$[$0];  
 break;
 }
