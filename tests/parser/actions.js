@@ -474,7 +474,7 @@ exports["test symbol aliases"] = function() {
             "pgm" :[ ["expr[alice] expr[bob] expr[carol]", "return $alice+$bob+$carol;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
-                         ["c", "$$ = 'c';"] ]
+                        ["c", "$$ = 'c';"] ]
         }
     };
 
@@ -496,11 +496,30 @@ exports["test symbol aliases in ebnf"] = function() {
             "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+$2;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
-                         ["c", "$$ = 'c';"] ]
+                        ["c", "$$ = 'c';"] ]
         }
     };
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
     assert.equal(parser.parse('abc'), "ab", "should tolerate aliases in subexpression");
+};
+
+exports["test symbol aliases for literal tokens"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["a[alice] b[bob] c[carol]", "return $alice+$bob+$carol;"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "abc", "should return original string");
 };
