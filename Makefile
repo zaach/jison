@@ -1,7 +1,9 @@
 
 all: build test
 
-site: npm-install build examples
+site: web/content/assets/js/jison.js
+
+web/content/assets/js/jison.js:	npm-install build examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
@@ -12,17 +14,17 @@ preview:
 	open http://localhost:3000/jison/
 
 deploy: site
-	-rm -r ./gh-pages/*
+	-rm -rf ./gh-pages/*
 	cp -r web/output/jison/* ./gh-pages/
-	-cd ./gh-pages && git add . && git commit -m 'Deploy site updates' && git push origin gh-pages
+	-cd ./gh-pages ; git checkout gh-pages ; git add . --all && git commit -m 'Deploy site updates' && git push origin gh-pages
 
 test:
 	node tests/all-tests.js
 
 examples: web/content/assets/js/calculator.js
 
-web/content/assets/js/calculator.js: examples/calculator.jison
-	lib/cli.js examples/calculator.jison -o web/content/assets/js/calculator.js
+web/content/assets/js/calculator.js: examples/calculator.jison build
+	node lib/cli.js examples/calculator.jison -o $@
 
 
 build: npm-install build_bnf build_lex
@@ -42,21 +44,19 @@ build_bnf: lib/util/parser.js
 
 lib/util/parser.js: $(JISON_DEPS) submodules \
 					npm-install \
-					lib/cli.js modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+					lib/cli.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
-	NODE_PATH=lib/util  node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	cat modules/ebnf-parser/parser.js > $@
+	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 
 build_lex: lib/util/lex-parser.js
 
 lib/util/lex-parser.js: $(JISON_DEPS) submodules \
 						npm-install \
-						lib/cli.js modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+						lib/cli.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
-	NODE_PATH=lib/util  node lib/cli.js -o modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
-	cat modules/lex-parser/lex-parser.js > $@
+	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
@@ -106,6 +106,14 @@ clean:
 	-rm -f $(JISON_DEPS)
 	-rm -f lib/util/parser.js lib/util/lex-parser.js
 
+#
+# When you've run `make superclean` you must run `make` and `make deploy` to regenerate all content again.
+#
+# The 'superclean' target is to be used when you need to update/edit the jison code generators and want to
+# make sure that jison is rebuilt from scratch.
+# The 'superclean' target is also useful in the above context for it enables you to find the 'originals'
+# of each part of the generator (lexer & parser) as all derived copies have been killed.
+#
 superclean: clean
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison-lex && make superclean
@@ -114,6 +122,10 @@ superclean: clean
 	cd modules/lex-parser && make superclean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 	-rm -rf web/output/
+	-rm -rf web/tmp/
+	-rm -rf ./gh-pages/*
+	-rm -f web/content/assets/js/calculator.js
+	-rm -f web/content/assets/js/jison.js
 
 
 

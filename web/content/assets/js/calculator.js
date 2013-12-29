@@ -106,6 +106,14 @@
                               optional: true ==> lexer regexes are tested in order and for each matching
                                                  regex the action code is invoked; the lexer terminates
                                                  the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
   }
 */
 var calculator = (function(){
@@ -120,34 +128,60 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 
 var $0 = $$.length - 1;
 switch (yystate) {
-case 1: typeof console !== 'undefined' ? console.log($$[$0-1]) : print($$[$0-1]);
-          return $$[$0-1]; 
+case 1 : 
+/*! Production::     expressions : e EOF */
+  typeof console !== 'undefined' ? console.log($$[$0-1]) : print($$[$0-1]);
+          return $$[$0-1];  
 break;
-case 2:this.$ = $$[$0-2]+$$[$0];
+case 2 : 
+/*! Production::     e : e + e */
+ this.$ = $$[$0-2]+$$[$0]; 
 break;
-case 3:this.$ = $$[$0-2]-$$[$0];
+case 3 : 
+/*! Production::     e : e - e */
+ this.$ = $$[$0-2]-$$[$0]; 
 break;
-case 4:this.$ = $$[$0-2]*$$[$0];
+case 4 : 
+/*! Production::     e : e * e */
+ this.$ = $$[$0-2]*$$[$0]; 
 break;
-case 5:this.$ = $$[$0-2]/$$[$0];
+case 5 : 
+/*! Production::     e : e / e */
+ this.$ = $$[$0-2]/$$[$0]; 
 break;
-case 6:this.$ = Math.pow($$[$0-2], $$[$0]);
+case 6 : 
+/*! Production::     e : e ^ e */
+ this.$ = Math.pow($$[$0-2], $$[$0]); 
 break;
-case 7:
+case 7 : 
+/*! Production::     e : e ! */
+ 
           this.$ = (function fact (n) { return n == 0 ? 1 : fact(n-1) * n; })($$[$0-1]);
-        
+         
 break;
-case 8:this.$ = $$[$0-1]/100;
+case 8 : 
+/*! Production::     e : e % */
+ this.$ = $$[$0-1]/100; 
 break;
-case 9:this.$ = -$$[$0];
+case 9 : 
+/*! Production::     e : - e */
+ this.$ = -$$[$0]; 
 break;
-case 10:this.$ = $$[$0-1];
+case 10 : 
+/*! Production::     e : ( e ) */
+ this.$ = $$[$0-1]; 
 break;
-case 11:this.$ = Number(yytext);
+case 11 : 
+/*! Production::     e : NUMBER */
+ this.$ = Number(yytext); 
 break;
-case 12:this.$ = Math.E;
+case 12 : 
+/*! Production::     e : E */
+ this.$ = Math.E; 
 break;
-case 13:this.$ = Math.PI;
+case 13 : 
+/*! Production::     e : PI */
+ this.$ = Math.PI; 
 break;
 }
 },
@@ -456,7 +490,7 @@ ERROR:2,
 
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
-            this.yy.parser.parseError(str, hash);
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new Error(str);
         }
@@ -465,7 +499,7 @@ parseError:function parseError(str, hash) {
 // resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._backtrack = this.done = false;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -551,12 +585,14 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
                 line: this.yylineno
-            });
-
+            }) || this.ERROR);
         }
         return this;
     },
@@ -664,6 +700,11 @@ test_match:function (match, indexed_rule) {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
         }
         return false;
     },
@@ -718,13 +759,15 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            // we cannot recover from a lexer error: we consider the input completely lexed:
-            this.done = true;
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
+            if (token === this.ERROR || token === this.EOF) {
+                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
+                this.done = true;
+            }
         }
     },
 
@@ -794,35 +837,80 @@ performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
-case 0:/* skip whitespace */
+case 0 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \s+ */ 
+ /* skip whitespace */ 
 break;
-case 1:return 15;
+case 1 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
+ return 15; 
 break;
-case 2:return 8;
+case 2 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \* */ 
+ return 8; 
 break;
-case 3:return 9;
+case 3 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \/ */ 
+ return 9; 
 break;
-case 4:return 7;
+case 4 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       - */ 
+ return 7; 
 break;
-case 5:return 6;
+case 5 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \+ */ 
+ return 6; 
 break;
-case 6:return 10;
+case 6 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \^ */ 
+ return 10; 
 break;
-case 7:return 11;
+case 7 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       ! */ 
+ return 11; 
 break;
-case 8:return 12;
+case 8 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       % */ 
+ return 12; 
 break;
-case 9:return 13;
+case 9 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \( */ 
+ return 13; 
 break;
-case 10:return 14;
+case 10 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \) */ 
+ return 14; 
 break;
-case 11:return 17;
+case 11 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       PI */ 
+ return 17; 
 break;
-case 12:return 16;
+case 12 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       E */ 
+ return 16; 
 break;
-case 13:return 5;
+case 13 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       $ */ 
+ return 5; 
 break;
-case 14:return 'INVALID';
+case 14 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       . */ 
+ return 'INVALID'; 
 break;
 }
 },
