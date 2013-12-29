@@ -2777,7 +2777,10 @@ input:function () {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -2964,7 +2967,15 @@ test_match:function (match, indexed_rule) {
 
 // return next match in input
 next:function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -2976,8 +2987,7 @@ next:function () {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -3010,6 +3020,8 @@ next:function () {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -3017,10 +3029,13 @@ next:function () {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
+            return token;
         }
     },
 
@@ -3383,7 +3398,7 @@ break;
 case 58 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       %options\b */ 
- yy.options = {}; this.begin('options'); 
+ if (!yy.options) { yy.options = {}; } this.begin('options'); 
 break;
 case 59 : 
 /*! Conditions:: indented trail rules INITIAL */ 
@@ -4208,7 +4223,10 @@ input:function () {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -4395,7 +4413,15 @@ test_match:function (match, indexed_rule) {
 
 // return next match in input
 next:function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -4407,8 +4433,7 @@ next:function () {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -4441,6 +4466,8 @@ next:function () {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -4448,10 +4475,13 @@ next:function () {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
+            return token;
         }
     },
 
@@ -4775,8 +4805,8 @@ if (typeof module !== 'undefined' && require.main === module) {
 var RegExpLexer = (function () {
 "use strict";
 
-var lexParser = require('lex-parser');
-var version = require('./package.json').version;
+var lexParser = require("./lex-parser");
+var version = require("./package.json").version;
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(rules, macros, actions, tokens, startConditions, caseless) {
@@ -4970,7 +5000,10 @@ RegExpLexer.prototype = {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -5157,7 +5190,15 @@ RegExpLexer.prototype = {
 
     // return next match in input
     next: function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -5169,8 +5210,7 @@ RegExpLexer.prototype = {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -5203,6 +5243,8 @@ RegExpLexer.prototype = {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -5210,10 +5252,13 @@ RegExpLexer.prototype = {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
+            return token;
         }
     },
 
@@ -5379,7 +5424,7 @@ return RegExpLexer;
 module.exports = RegExpLexer;
 
 
-},{"./package.json":6,"lex-parser":36}],9:[function(require,module,exports){
+},{"./lex-parser":5,"./package.json":6}],9:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
@@ -5982,7 +6027,10 @@ input:function () {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -6169,7 +6217,15 @@ test_match:function (match, indexed_rule) {
 
 // return next match in input
 next:function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -6181,8 +6237,7 @@ next:function () {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -6215,6 +6270,8 @@ next:function () {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -6222,10 +6279,13 @@ next:function () {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
+            return token;
         }
     },
 
@@ -8249,6 +8309,14 @@ var process=require("__browserify_process");/* parser generated by jison 0.4.13 
                               optional: true ==> lexer regexes are tested in order and for each matching
                                                  regex the action code is invoked; the lexer terminates
                                                  the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
   }
 */
 var bnf = (function(){
@@ -8795,7 +8863,7 @@ ERROR:2,
 
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
-            this.yy.parser.parseError(str, hash);
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new Error(str);
         }
@@ -8804,7 +8872,7 @@ parseError:function parseError(str, hash) {
 // resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._backtrack = this.done = false;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -8890,12 +8958,14 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
                 line: this.yylineno
-            });
-
+            }) || this.ERROR);
         }
         return this;
     },
@@ -9003,6 +9073,11 @@ test_match:function (match, indexed_rule) {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
         }
         return false;
     },
@@ -9057,13 +9132,16 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            // we cannot recover from a lexer error: we consider the input completely lexed:
-            this.done = true;
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
+            if (token === this.ERROR || token === this.EOF) {
+                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
+                this.done = true;
+            }
+            return token;
         }
     },
 
@@ -9127,7 +9205,7 @@ pushState:function pushState(condition) {
 stateStackSize:function stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
+options: {"easy_keyword_rules":true},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 /**/) {
 
@@ -9220,37 +9298,37 @@ case 16 :
 break;
 case 17 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %ebnf */ 
+/*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
 case 18 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %prec */ 
+/*! Rule::       %prec\b */ 
  return 47; 
 break;
 case 19 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %start */ 
+/*! Rule::       %start\b */ 
  return 13; 
 break;
 case 20 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %left */ 
+/*! Rule::       %left\b */ 
  return 21; 
 break;
 case 21 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %right */ 
+/*! Rule::       %right\b */ 
  return 22; 
 break;
 case 22 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %nonassoc */ 
+/*! Rule::       %nonassoc\b */ 
  return 23; 
 break;
 case 23 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %parse-param */ 
+/*! Rule::       %parse-param\b */ 
  return 18; 
 break;
 case 24 : 
@@ -9350,7 +9428,7 @@ case 42 :
 break;
 }
 },
-rules: [/^(?:%%)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\+)/,/^(?:\s+)/,/^(?:\/\/.*)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:"[^"]+")/,/^(?:'[^']+')/,/^(?::)/,/^(?:;)/,/^(?:\|)/,/^(?:%%)/,/^(?:%ebnf)/,/^(?:%prec)/,/^(?:%start)/,/^(?:%left)/,/^(?:%right)/,/^(?:%nonassoc)/,/^(?:%parse-param)/,/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,/^(?:%[a-zA-Z]+[^\r\n]*)/,/^(?:<[a-zA-Z]*>)/,/^(?:\{\{[\w\W]*?\}\})/,/^(?:%\{(.|\r|\n)*?%\})/,/^(?:\{)/,/^(?:->.*)/,/^(?:.)/,/^(?:$)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:(.|\n|\r)+)/],
+rules: [/^(?:%%)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\+)/,/^(?:\s+)/,/^(?:\/\/.*)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:"[^"]+")/,/^(?:'[^']+')/,/^(?::)/,/^(?:;)/,/^(?:\|)/,/^(?:%%)/,/^(?:%ebnf\b)/,/^(?:%prec\b)/,/^(?:%start\b)/,/^(?:%left\b)/,/^(?:%right\b)/,/^(?:%nonassoc\b)/,/^(?:%parse-param\b)/,/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,/^(?:%[a-zA-Z]+[^\r\n]*)/,/^(?:<[a-zA-Z]*>)/,/^(?:\{\{[\w\W]*?\}\})/,/^(?:%\{(.|\r|\n)*?%\})/,/^(?:\{)/,/^(?:->.*)/,/^(?:.)/,/^(?:$)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:(.|\n|\r)+)/],
 conditions: {"bnf":{"rules":[0,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true},"ebnf":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true},"action":{"rules":[32,33,34,35,36,37,38,39,40,41],"inclusive":false},"code":{"rules":[32,42],"inclusive":false},"INITIAL":{"rules":[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true}}
 };
 return lexer;
@@ -9489,6 +9567,14 @@ var process=require("__browserify_process");/* parser generated by jison 0.4.13 
                               optional: true ==> lexer regexes are tested in order and for each matching
                                                  regex the action code is invoked; the lexer terminates
                                                  the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
   }
 */
 var ebnf = (function(){
@@ -9846,7 +9932,7 @@ ERROR:2,
 
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
-            this.yy.parser.parseError(str, hash);
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new Error(str);
         }
@@ -9855,7 +9941,7 @@ parseError:function parseError(str, hash) {
 // resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._backtrack = this.done = false;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -9941,12 +10027,14 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
                 line: this.yylineno
-            });
-
+            }) || this.ERROR);
         }
         return this;
     },
@@ -10054,6 +10142,11 @@ test_match:function (match, indexed_rule) {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
         }
         return false;
     },
@@ -10108,13 +10201,16 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            // we cannot recover from a lexer error: we consider the input completely lexed:
-            this.done = true;
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
+            if (token === this.ERROR || token === this.EOF) {
+                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
+                this.done = true;
+            }
+            return token;
         }
     },
 
@@ -19899,6 +19995,7 @@ next:function () {
                 // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
                 this.done = true;
             }
+            return token;
         }
     },
 
@@ -19962,7 +20059,7 @@ pushState:function pushState(condition) {
 stateStackSize:function stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
+options: {"easy_keyword_rules":true},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 /**/) {
 
@@ -20260,17 +20357,17 @@ case 57 :
 break;
 case 58 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %options */ 
- yy.options = {}; this.begin('options'); 
+/*! Rule::       %options\b */ 
+ if (!yy.options) { yy.options = {}; } this.begin('options'); 
 break;
 case 59 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %s */ 
+/*! Rule::       %s\b */ 
  this.begin('start_condition'); return 14; 
 break;
 case 60 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %x */ 
+/*! Rule::       %x\b */ 
  this.begin('start_condition'); return 16; 
 break;
 case 61 : 
@@ -20315,7 +20412,7 @@ case 68 :
 break;
 }
 },
-rules: [/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:>)/,/^(?:,)/,/^(?:\*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:%%)/,/^(?:[a-zA-Z0-9_]+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:\s*(\r\n|\n|\r)+)/,/^(?:\{)/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:.+)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:\|)/,/^(?:\[(\\\\|\\\]|[^\]])*\])/,/^(?:\(\?:)/,/^(?:\(\?=)/,/^(?:\(\?!)/,/^(?:\()/,/^(?:\))/,/^(?:\+)/,/^(?:\*)/,/^(?:\?)/,/^(?:\^)/,/^(?:,)/,/^(?:<<EOF>>)/,/^(?:<)/,/^(?:\/!)/,/^(?:\/)/,/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,/^(?:\\.)/,/^(?:\$)/,/^(?:\.)/,/^(?:%options)/,/^(?:%s)/,/^(?:%x)/,/^(?:%%)/,/^(?:\{\d+(,\s?\d+|,)?\})/,/^(?:\{([a-zA-Z_][a-zA-Z0-9_-]*)\})/,/^(?:\{)/,/^(?:\})/,/^(?:.)/,/^(?:$)/,/^(?:(.|(\r\n|\n|\r))+)/],
+rules: [/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:>)/,/^(?:,)/,/^(?:\*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:%%)/,/^(?:[a-zA-Z0-9_]+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:\s*(\r\n|\n|\r)+)/,/^(?:\{)/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:.+)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:\|)/,/^(?:\[(\\\\|\\\]|[^\]])*\])/,/^(?:\(\?:)/,/^(?:\(\?=)/,/^(?:\(\?!)/,/^(?:\()/,/^(?:\))/,/^(?:\+)/,/^(?:\*)/,/^(?:\?)/,/^(?:\^)/,/^(?:,)/,/^(?:<<EOF>>)/,/^(?:<)/,/^(?:\/!)/,/^(?:\/)/,/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,/^(?:\\.)/,/^(?:\$)/,/^(?:\.)/,/^(?:%options\b)/,/^(?:%s\b)/,/^(?:%x\b)/,/^(?:%%)/,/^(?:\{\d+(,\s?\d+|,)?\})/,/^(?:\{([a-zA-Z_][a-zA-Z0-9_-]*)\})/,/^(?:\{)/,/^(?:\})/,/^(?:.)/,/^(?:$)/,/^(?:(.|(\r\n|\n|\r))+)/],
 conditions: {"code":{"rules":[67,68],"inclusive":false},"start_condition":{"rules":[22,23,24,25,67],"inclusive":false},"options":{"rules":[18,19,20,21,67],"inclusive":false},"conditions":{"rules":[9,10,11,12,67],"inclusive":false},"action":{"rules":[0,1,2,3,4,5,6,7,8,67],"inclusive":false},"indented":{"rules":[27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"trail":{"rules":[26,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"rules":{"rules":[13,14,15,16,17,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"INITIAL":{"rules":[29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true}}
 };
 return lexer;
