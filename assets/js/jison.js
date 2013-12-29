@@ -2342,6 +2342,9 @@ case 31 :
 /*! Production::     regex : regex_list */
  
           this.$ = $$[$0];
+          if (yy.options && yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
+              this.$ += "\\b";
+          }
          
 break;
 case 32 : 
@@ -3081,7 +3084,7 @@ pushState:function pushState(condition) {
 stateStackSize:function stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
+options: {"easy_keyword_rules":true},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 /**/) {
 
@@ -3245,22 +3248,22 @@ break;
 case 31 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
- /* empty */ 
+ /* ignore */ 
 break;
 case 32 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\/.* */ 
- /* empty */ 
+ /* ignore */ 
 break;
 case 33 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       {BR}+ */ 
- /* ignore */ 
+ /* empty */ 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \s+ */ 
- /* ignore */ 
+ /* empty */ 
 break;
 case 35 : 
 /*! Conditions:: indented trail rules INITIAL */ 
@@ -3379,17 +3382,17 @@ case 57 :
 break;
 case 58 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %options */ 
+/*! Rule::       %options\b */ 
  yy.options = {}; this.begin('options'); 
 break;
 case 59 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %s */ 
+/*! Rule::       %s\b */ 
  this.begin('start_condition'); return 14; 
 break;
 case 60 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %x */ 
+/*! Rule::       %x\b */ 
  this.begin('start_condition'); return 16; 
 break;
 case 61 : 
@@ -3434,7 +3437,7 @@ case 68 :
 break;
 }
 },
-rules: [/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:>)/,/^(?:,)/,/^(?:\*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:%%)/,/^(?:[a-zA-Z0-9_]+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:\s*(\r\n|\n|\r)+)/,/^(?:\{)/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:.+)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:\|)/,/^(?:\[(\\\\|\\\]|[^\]])*\])/,/^(?:\(\?:)/,/^(?:\(\?=)/,/^(?:\(\?!)/,/^(?:\()/,/^(?:\))/,/^(?:\+)/,/^(?:\*)/,/^(?:\?)/,/^(?:\^)/,/^(?:,)/,/^(?:<<EOF>>)/,/^(?:<)/,/^(?:\/!)/,/^(?:\/)/,/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,/^(?:\\.)/,/^(?:\$)/,/^(?:\.)/,/^(?:%options)/,/^(?:%s)/,/^(?:%x)/,/^(?:%%)/,/^(?:\{\d+(,\s?\d+|,)?\})/,/^(?:\{([a-zA-Z_][a-zA-Z0-9_-]*)\})/,/^(?:\{)/,/^(?:\})/,/^(?:.)/,/^(?:$)/,/^(?:(.|(\r\n|\n|\r))+)/],
+rules: [/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:>)/,/^(?:,)/,/^(?:\*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:%%)/,/^(?:[a-zA-Z0-9_]+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:\s*(\r\n|\n|\r)+)/,/^(?:\{)/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,/^(?:.+)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:(\r\n|\n|\r)+)/,/^(?:\s+)/,/^(?:([a-zA-Z_][a-zA-Z0-9_-]*))/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:\|)/,/^(?:\[(\\\\|\\\]|[^\]])*\])/,/^(?:\(\?:)/,/^(?:\(\?=)/,/^(?:\(\?!)/,/^(?:\()/,/^(?:\))/,/^(?:\+)/,/^(?:\*)/,/^(?:\?)/,/^(?:\^)/,/^(?:,)/,/^(?:<<EOF>>)/,/^(?:<)/,/^(?:\/!)/,/^(?:\/)/,/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,/^(?:\\.)/,/^(?:\$)/,/^(?:\.)/,/^(?:%options\b)/,/^(?:%s\b)/,/^(?:%x\b)/,/^(?:%%)/,/^(?:\{\d+(,\s?\d+|,)?\})/,/^(?:\{([a-zA-Z_][a-zA-Z0-9_-]*)\})/,/^(?:\{)/,/^(?:\})/,/^(?:.)/,/^(?:$)/,/^(?:(.|(\r\n|\n|\r))+)/],
 conditions: {"code":{"rules":[67,68],"inclusive":false},"start_condition":{"rules":[22,23,24,25,67],"inclusive":false},"options":{"rules":[18,19,20,21,67],"inclusive":false},"conditions":{"rules":[9,10,11,12,67],"inclusive":false},"action":{"rules":[0,1,2,3,4,5,6,7,8,67],"inclusive":false},"indented":{"rules":[27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"trail":{"rules":[26,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"rules":{"rules":[13,14,15,16,17,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true},"INITIAL":{"rules":[29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67],"inclusive":true}}
 };
 return lexer;
@@ -4512,7 +4515,7 @@ pushState:function pushState(condition) {
 stateStackSize:function stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
+options: {"easy_keyword_rules":true},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 /**/) {
 
@@ -4605,37 +4608,37 @@ case 16 :
 break;
 case 17 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %ebnf */ 
+/*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
 case 18 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %prec */ 
+/*! Rule::       %prec\b */ 
  return 47; 
 break;
 case 19 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %start */ 
+/*! Rule::       %start\b */ 
  return 13; 
 break;
 case 20 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %left */ 
+/*! Rule::       %left\b */ 
  return 21; 
 break;
 case 21 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %right */ 
+/*! Rule::       %right\b */ 
  return 22; 
 break;
 case 22 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %nonassoc */ 
+/*! Rule::       %nonassoc\b */ 
  return 23; 
 break;
 case 23 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
-/*! Rule::       %parse-param */ 
+/*! Rule::       %parse-param\b */ 
  return 18; 
 break;
 case 24 : 
@@ -4735,7 +4738,7 @@ case 42 :
 break;
 }
 },
-rules: [/^(?:%%)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\+)/,/^(?:\s+)/,/^(?:\/\/.*)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:"[^"]+")/,/^(?:'[^']+')/,/^(?::)/,/^(?:;)/,/^(?:\|)/,/^(?:%%)/,/^(?:%ebnf)/,/^(?:%prec)/,/^(?:%start)/,/^(?:%left)/,/^(?:%right)/,/^(?:%nonassoc)/,/^(?:%parse-param)/,/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,/^(?:%[a-zA-Z]+[^\r\n]*)/,/^(?:<[a-zA-Z]*>)/,/^(?:\{\{[\w\W]*?\}\})/,/^(?:%\{(.|\r|\n)*?%\})/,/^(?:\{)/,/^(?:->.*)/,/^(?:.)/,/^(?:$)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:(.|\n|\r)+)/],
+rules: [/^(?:%%)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\+)/,/^(?:\s+)/,/^(?:\/\/.*)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:"[^"]+")/,/^(?:'[^']+')/,/^(?::)/,/^(?:;)/,/^(?:\|)/,/^(?:%%)/,/^(?:%ebnf\b)/,/^(?:%prec\b)/,/^(?:%start\b)/,/^(?:%left\b)/,/^(?:%right\b)/,/^(?:%nonassoc\b)/,/^(?:%parse-param\b)/,/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,/^(?:%[a-zA-Z]+[^\r\n]*)/,/^(?:<[a-zA-Z]*>)/,/^(?:\{\{[\w\W]*?\}\})/,/^(?:%\{(.|\r|\n)*?%\})/,/^(?:\{)/,/^(?:->.*)/,/^(?:.)/,/^(?:$)/,/^(?:\/\*(.|\n|\r)*?\*\/)/,/^(?:\/\/.*)/,/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,/^(?:"(\\\\|\\"|[^"])*")/,/^(?:'(\\\\|\\'|[^'])*')/,/^(?:[/"'][^{}/"']+)/,/^(?:[^{}/"']+)/,/^(?:\{)/,/^(?:\})/,/^(?:(.|\n|\r)+)/],
 conditions: {"bnf":{"rules":[0,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true},"ebnf":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true},"action":{"rules":[32,33,34,35,36,37,38,39,40,41],"inclusive":false},"code":{"rules":[32,42],"inclusive":false},"INITIAL":{"rules":[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"inclusive":true}}
 };
 return lexer;
@@ -4772,8 +4775,8 @@ if (typeof module !== 'undefined' && require.main === module) {
 var RegExpLexer = (function () {
 "use strict";
 
-var lexParser = require("./lex-parser");
-var version = require("./package.json").version;
+var lexParser = require('lex-parser');
+var version = require('./package.json').version;
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(rules, macros, actions, tokens, startConditions, caseless) {
@@ -5376,7 +5379,7 @@ return RegExpLexer;
 module.exports = RegExpLexer;
 
 
-},{"./lex-parser":5,"./package.json":6}],9:[function(require,module,exports){
+},{"./package.json":6,"lex-parser":36}],9:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
@@ -5580,6 +5583,14 @@ var process=require("__browserify_process");/* parser generated by jison 0.4.13 
                               optional: true ==> lexer regexes are tested in order and for each matching
                                                  regex the action code is invoked; the lexer terminates
                                                  the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
   }
 */
 var ebnf = (function(){
@@ -5937,7 +5948,7 @@ ERROR:2,
 
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
-            this.yy.parser.parseError(str, hash);
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new Error(str);
         }
@@ -5946,7 +5957,7 @@ parseError:function parseError(str, hash) {
 // resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._backtrack = this.done = false;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -6032,12 +6043,14 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
                 line: this.yylineno
-            });
-
+            }) || this.ERROR);
         }
         return this;
     },
@@ -6145,6 +6158,11 @@ test_match:function (match, indexed_rule) {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
         }
         return false;
     },
@@ -6199,13 +6217,15 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            // we cannot recover from a lexer error: we consider the input completely lexed:
-            this.done = true;
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
+            if (token === this.ERROR || token === this.EOF) {
+                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
+                this.done = true;
+            }
         }
     },
 
@@ -8105,7 +8125,11 @@ bnf.yy.addDeclaration = function (grammar, decl) {
             grammar.moduleInclude = '';
         grammar.moduleInclude += decl.include;
     }
-
+    else if (decl.actionInclude) {
+        if (!grammar.actionInclude)
+            grammar.actionInclude = '';
+        grammar.actionInclude += decl.actionInclude;
+    }
 };
 
 // parse an embedded lex section
@@ -8227,12 +8251,12 @@ var process=require("__browserify_process");/* parser generated by jison 0.4.13 
                                                  the scan when a token is returned by the action code.
   }
 */
-var parser = (function(){
+var bnf = (function(){
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"spec":3,"declaration_list":4,"%%":5,"grammar":6,"optional_end_block":7,"EOF":8,"CODE":9,"declaration":10,"START":11,"id":12,"LEX_BLOCK":13,"operator":14,"ACTION":15,"parse_param":16,"PARSE_PARAM":17,"token_list":18,"associativity":19,"LEFT":20,"RIGHT":21,"NONASSOC":22,"symbol":23,"production_list":24,"production":25,":":26,"handle_list":27,";":28,"|":29,"handle_action":30,"handle":31,"prec":32,"action":33,"expression_suffix":34,"handle_sublist":35,"expression":36,"suffix":37,"ALIAS":38,"ID":39,"STRING":40,"(":41,")":42,"*":43,"?":44,"+":45,"PREC":46,"{":47,"action_body":48,"}":49,"ARROW_ACTION":50,"action_comments_body":51,"ACTION_BODY":52,"$accept":0,"$end":1},
-terminals_: {2:"error",5:"%%",8:"EOF",9:"CODE",11:"START",13:"LEX_BLOCK",15:"ACTION",17:"PARSE_PARAM",20:"LEFT",21:"RIGHT",22:"NONASSOC",26:":",28:";",29:"|",38:"ALIAS",39:"ID",40:"STRING",41:"(",42:")",43:"*",44:"?",45:"+",46:"PREC",47:"{",49:"}",50:"ARROW_ACTION",52:"ACTION_BODY"},
-productions_: [0,[3,5],[3,6],[7,0],[7,1],[4,2],[4,0],[10,2],[10,1],[10,1],[10,1],[10,1],[16,2],[14,2],[19,1],[19,1],[19,1],[18,2],[18,1],[6,1],[24,2],[24,1],[25,4],[27,3],[27,1],[30,3],[31,2],[31,0],[35,3],[35,1],[34,3],[34,2],[36,1],[36,1],[36,3],[37,0],[37,1],[37,1],[37,1],[32,2],[32,0],[23,1],[23,1],[12,1],[33,3],[33,1],[33,1],[33,0],[48,0],[48,1],[48,5],[48,4],[51,1],[51,2]],
+symbols_: {"error":2,"spec":3,"declaration_list":4,"%%":5,"grammar":6,"optional_end_block":7,"EOF":8,"CODE":9,"optional_action_header_block":10,"ACTION":11,"declaration":12,"START":13,"id":14,"LEX_BLOCK":15,"operator":16,"parse_param":17,"PARSE_PARAM":18,"token_list":19,"associativity":20,"LEFT":21,"RIGHT":22,"NONASSOC":23,"symbol":24,"production_list":25,"production":26,":":27,"handle_list":28,";":29,"|":30,"handle_action":31,"handle":32,"prec":33,"action":34,"expression_suffix":35,"handle_sublist":36,"expression":37,"suffix":38,"ALIAS":39,"ID":40,"STRING":41,"(":42,")":43,"*":44,"?":45,"+":46,"PREC":47,"{":48,"action_body":49,"}":50,"ARROW_ACTION":51,"action_comments_body":52,"ACTION_BODY":53,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"%%",8:"EOF",9:"CODE",11:"ACTION",13:"START",15:"LEX_BLOCK",18:"PARSE_PARAM",21:"LEFT",22:"RIGHT",23:"NONASSOC",27:":",29:";",30:"|",39:"ALIAS",40:"ID",41:"STRING",42:"(",43:")",44:"*",45:"?",46:"+",47:"PREC",48:"{",50:"}",51:"ARROW_ACTION",53:"ACTION_BODY"},
+productions_: [0,[3,5],[3,6],[7,0],[7,1],[10,0],[10,2],[4,2],[4,0],[12,2],[12,1],[12,1],[12,1],[12,1],[17,2],[16,2],[20,1],[20,1],[20,1],[19,2],[19,1],[6,2],[25,2],[25,1],[26,4],[28,3],[28,1],[31,3],[32,2],[32,0],[36,3],[36,1],[35,3],[35,2],[37,1],[37,1],[37,3],[38,0],[38,1],[38,1],[38,1],[33,2],[33,0],[24,1],[24,1],[14,1],[34,3],[34,1],[34,1],[34,0],[49,0],[49,1],[49,5],[49,4],[52,1],[52,2]],
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */
 /**/) {
 /* this == yyval */
@@ -8248,66 +8272,74 @@ case 2 :
  this.$ = $$[$0-5]; yy.addDeclaration(this.$,{include: $$[$0-1]}); return extend(this.$, $$[$0-3]); 
 break;
 case 5 : 
+/*! Production::     optional_action_header_block :  */
+ this.$ = {}; 
+break;
+case 6 : 
+/*! Production::     optional_action_header_block : optional_action_header_block ACTION */
+ this.$ = $$[$0-1]; yy.addDeclaration(this.$,{actionInclude: $$[$0]}); 
+break;
+case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
  this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
-case 6 : 
+case 8 : 
 /*! Production::     declaration_list :  */
  this.$ = {}; 
 break;
-case 7 : 
+case 9 : 
 /*! Production::     declaration : START id */
  this.$ = {start: $$[$0]}; 
 break;
-case 8 : 
+case 10 : 
 /*! Production::     declaration : LEX_BLOCK */
  this.$ = {lex: $$[$0]}; 
 break;
-case 9 : 
+case 11 : 
 /*! Production::     declaration : operator */
  this.$ = {operator: $$[$0]}; 
 break;
-case 10 : 
+case 12 : 
 /*! Production::     declaration : ACTION */
  this.$ = {include: $$[$0]}; 
 break;
-case 11 : 
+case 13 : 
 /*! Production::     declaration : parse_param */
  this.$ = {parseParam: $$[$0]}; 
 break;
-case 12 : 
+case 14 : 
 /*! Production::     parse_param : PARSE_PARAM token_list */
  this.$ = $$[$0]; 
 break;
-case 13 : 
+case 15 : 
 /*! Production::     operator : associativity token_list */
  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
-case 14 : 
+case 16 : 
 /*! Production::     associativity : LEFT */
  this.$ = 'left'; 
 break;
-case 15 : 
+case 17 : 
 /*! Production::     associativity : RIGHT */
  this.$ = 'right'; 
 break;
-case 16 : 
+case 18 : 
 /*! Production::     associativity : NONASSOC */
  this.$ = 'nonassoc'; 
 break;
-case 17 : 
+case 19 : 
 /*! Production::     token_list : token_list symbol */
  this.$ = $$[$0-1]; this.$.push($$[$0]); 
 break;
-case 18 : 
+case 20 : 
 /*! Production::     token_list : symbol */
  this.$ = [$$[$0]]; 
 break;
-case 19 : 
-/*! Production::     grammar : production_list */
- this.$ = $$[$0]; 
+case 21 : 
+/*! Production::     grammar : optional_action_header_block production_list */
+ this.$ = $$[$0-1]; this.$.grammar = $$[$0]; 
 break;
-case 20 : 
+case 22 : 
 /*! Production::     production_list : production_list production */
  
             this.$ = $$[$0-1];
@@ -8317,23 +8349,23 @@ case 20 :
                 this.$[$$[$0][0]] = $$[$0][1];
          
 break;
-case 21 : 
+case 23 : 
 /*! Production::     production_list : production */
  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
-case 22 : 
+case 24 : 
 /*! Production::     production : id : handle_list ; */
  this.$ = [$$[$0-3], $$[$0-1]]; 
 break;
-case 23 : 
+case 25 : 
 /*! Production::     handle_list : handle_list | handle_action */
  this.$ = $$[$0-2]; this.$.push($$[$0]); 
 break;
-case 24 : 
+case 26 : 
 /*! Production::     handle_list : handle_action */
  this.$ = [$$[$0]]; 
 break;
-case 25 : 
+case 27 : 
 /*! Production::     handle_action : handle prec action */
  
             this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
@@ -8342,110 +8374,110 @@ case 25 :
             if (this.$.length === 1) this.$ = this.$[0];
          
 break;
-case 26 : 
+case 28 : 
 /*! Production::     handle : handle expression_suffix */
  this.$ = $$[$0-1]; this.$.push($$[$0]); 
 break;
-case 27 : 
+case 29 : 
 /*! Production::     handle :  */
  this.$ = []; 
 break;
-case 28 : 
+case 30 : 
 /*! Production::     handle_sublist : handle_sublist | handle */
  this.$ = $$[$0-2]; this.$.push($$[$0].join(' ')); 
 break;
-case 29 : 
+case 31 : 
 /*! Production::     handle_sublist : handle */
  this.$ = [$$[$0].join(' ')]; 
 break;
-case 30 : 
+case 32 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
  this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";  
 break;
-case 31 : 
+case 33 : 
 /*! Production::     expression_suffix : expression suffix */
  this.$ = $$[$0-1] + $$[$0];  
 break;
-case 32 : 
+case 34 : 
 /*! Production::     expression : ID */
  this.$ = $$[$0];  
 break;
-case 33 : 
+case 35 : 
 /*! Production::     expression : STRING */
  this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0];  
 break;
-case 34 : 
+case 36 : 
 /*! Production::     expression : ( handle_sublist ) */
  this.$ = '(' + $$[$0-1].join(' | ') + ')';  
 break;
-case 35 : 
+case 37 : 
 /*! Production::     suffix :  */
  this.$ = '' 
 break;
-case 39 : 
+case 41 : 
 /*! Production::     prec : PREC symbol */
  this.$ = {prec: $$[$0]}; 
 break;
-case 40 : 
+case 42 : 
 /*! Production::     prec :  */
  this.$ = null; 
 break;
-case 41 : 
+case 43 : 
 /*! Production::     symbol : id */
  this.$ = $$[$0]; 
 break;
-case 42 : 
+case 44 : 
 /*! Production::     symbol : STRING */
  this.$ = yytext; 
 break;
-case 43 : 
+case 45 : 
 /*! Production::     id : ID */
  this.$ = yytext; 
 break;
-case 44 : 
+case 46 : 
 /*! Production::     action : { action_body } */
  this.$ = $$[$0-1]; 
 break;
-case 45 : 
+case 47 : 
 /*! Production::     action : ACTION */
  this.$ = $$[$0]; 
 break;
-case 46 : 
+case 48 : 
 /*! Production::     action : ARROW_ACTION */
  this.$ = '$$ =' + $$[$0] + ';'; 
 break;
-case 47 : 
+case 49 : 
 /*! Production::     action :  */
  this.$ = ''; 
 break;
-case 48 : 
+case 50 : 
 /*! Production::     action_body :  */
  this.$ = ''; 
 break;
-case 49 : 
+case 51 : 
 /*! Production::     action_body : action_comments_body */
  this.$ = $$[$0]; 
 break;
-case 50 : 
+case 52 : 
 /*! Production::     action_body : action_body { action_body } action_comments_body */
  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
-case 51 : 
+case 53 : 
 /*! Production::     action_body : action_body { action_body } */
  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0]; 
 break;
-case 52 : 
+case 54 : 
 /*! Production::     action_comments_body : ACTION_BODY */
   this.$ = yytext;  
 break;
-case 53 : 
+case 55 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
   this.$ = $$[$0-1] + $$[$0];  
 break;
 }
 },
-table: [{3:1,4:2,5:[2,6],11:[2,6],13:[2,6],15:[2,6],17:[2,6],20:[2,6],21:[2,6],22:[2,6]},{1:[3]},{5:[1,3],10:4,11:[1,5],13:[1,6],14:7,15:[1,8],16:9,17:[1,11],19:10,20:[1,12],21:[1,13],22:[1,14]},{6:15,12:18,24:16,25:17,39:[1,19]},{5:[2,5],11:[2,5],13:[2,5],15:[2,5],17:[2,5],20:[2,5],21:[2,5],22:[2,5]},{12:20,39:[1,19]},{5:[2,8],11:[2,8],13:[2,8],15:[2,8],17:[2,8],20:[2,8],21:[2,8],22:[2,8]},{5:[2,9],11:[2,9],13:[2,9],15:[2,9],17:[2,9],20:[2,9],21:[2,9],22:[2,9]},{5:[2,10],11:[2,10],13:[2,10],15:[2,10],17:[2,10],20:[2,10],21:[2,10],22:[2,10]},{5:[2,11],11:[2,11],13:[2,11],15:[2,11],17:[2,11],20:[2,11],21:[2,11],22:[2,11]},{12:23,18:21,23:22,39:[1,19],40:[1,24]},{12:23,18:25,23:22,39:[1,19],40:[1,24]},{39:[2,14],40:[2,14]},{39:[2,15],40:[2,15]},{39:[2,16],40:[2,16]},{5:[1,27],7:26,8:[2,3]},{5:[2,19],8:[2,19],12:18,25:28,39:[1,19]},{5:[2,21],8:[2,21],39:[2,21]},{26:[1,29]},{5:[2,43],11:[2,43],13:[2,43],15:[2,43],17:[2,43],20:[2,43],21:[2,43],22:[2,43],26:[2,43],28:[2,43],29:[2,43],39:[2,43],40:[2,43],47:[2,43],50:[2,43]},{5:[2,7],11:[2,7],13:[2,7],15:[2,7],17:[2,7],20:[2,7],21:[2,7],22:[2,7]},{5:[2,13],11:[2,13],12:23,13:[2,13],15:[2,13],17:[2,13],20:[2,13],21:[2,13],22:[2,13],23:30,39:[1,19],40:[1,24]},{5:[2,18],11:[2,18],13:[2,18],15:[2,18],17:[2,18],20:[2,18],21:[2,18],22:[2,18],39:[2,18],40:[2,18]},{5:[2,41],11:[2,41],13:[2,41],15:[2,41],17:[2,41],20:[2,41],21:[2,41],22:[2,41],28:[2,41],29:[2,41],39:[2,41],40:[2,41],47:[2,41],50:[2,41]},{5:[2,42],11:[2,42],13:[2,42],15:[2,42],17:[2,42],20:[2,42],21:[2,42],22:[2,42],28:[2,42],29:[2,42],39:[2,42],40:[2,42],47:[2,42],50:[2,42]},{5:[2,12],11:[2,12],12:23,13:[2,12],15:[2,12],17:[2,12],20:[2,12],21:[2,12],22:[2,12],23:30,39:[1,19],40:[1,24]},{8:[1,31]},{8:[2,4],9:[1,32]},{5:[2,20],8:[2,20],39:[2,20]},{15:[2,27],27:33,28:[2,27],29:[2,27],30:34,31:35,39:[2,27],40:[2,27],41:[2,27],46:[2,27],47:[2,27],50:[2,27]},{5:[2,17],11:[2,17],13:[2,17],15:[2,17],17:[2,17],20:[2,17],21:[2,17],22:[2,17],39:[2,17],40:[2,17]},{1:[2,1]},{8:[1,36]},{28:[1,37],29:[1,38]},{28:[2,24],29:[2,24]},{15:[2,40],28:[2,40],29:[2,40],32:39,34:40,36:42,39:[1,43],40:[1,44],41:[1,45],46:[1,41],47:[2,40],50:[2,40]},{1:[2,2]},{5:[2,22],8:[2,22],39:[2,22]},{15:[2,27],28:[2,27],29:[2,27],30:46,31:35,39:[2,27],40:[2,27],41:[2,27],46:[2,27],47:[2,27],50:[2,27]},{15:[1,49],28:[2,47],29:[2,47],33:47,47:[1,48],50:[1,50]},{15:[2,26],28:[2,26],29:[2,26],39:[2,26],40:[2,26],41:[2,26],42:[2,26],46:[2,26],47:[2,26],50:[2,26]},{12:23,23:51,39:[1,19],40:[1,24]},{15:[2,35],28:[2,35],29:[2,35],37:52,38:[2,35],39:[2,35],40:[2,35],41:[2,35],42:[2,35],43:[1,53],44:[1,54],45:[1,55],46:[2,35],47:[2,35],50:[2,35]},{15:[2,32],28:[2,32],29:[2,32],38:[2,32],39:[2,32],40:[2,32],41:[2,32],42:[2,32],43:[2,32],44:[2,32],45:[2,32],46:[2,32],47:[2,32],50:[2,32]},{15:[2,33],28:[2,33],29:[2,33],38:[2,33],39:[2,33],40:[2,33],41:[2,33],42:[2,33],43:[2,33],44:[2,33],45:[2,33],46:[2,33],47:[2,33],50:[2,33]},{29:[2,27],31:57,35:56,39:[2,27],40:[2,27],41:[2,27],42:[2,27]},{28:[2,23],29:[2,23]},{28:[2,25],29:[2,25]},{47:[2,48],48:58,49:[2,48],51:59,52:[1,60]},{28:[2,45],29:[2,45]},{28:[2,46],29:[2,46]},{15:[2,39],28:[2,39],29:[2,39],47:[2,39],50:[2,39]},{15:[2,31],28:[2,31],29:[2,31],38:[1,61],39:[2,31],40:[2,31],41:[2,31],42:[2,31],46:[2,31],47:[2,31],50:[2,31]},{15:[2,36],28:[2,36],29:[2,36],38:[2,36],39:[2,36],40:[2,36],41:[2,36],42:[2,36],46:[2,36],47:[2,36],50:[2,36]},{15:[2,37],28:[2,37],29:[2,37],38:[2,37],39:[2,37],40:[2,37],41:[2,37],42:[2,37],46:[2,37],47:[2,37],50:[2,37]},{15:[2,38],28:[2,38],29:[2,38],38:[2,38],39:[2,38],40:[2,38],41:[2,38],42:[2,38],46:[2,38],47:[2,38],50:[2,38]},{29:[1,63],42:[1,62]},{29:[2,29],34:40,36:42,39:[1,43],40:[1,44],41:[1,45],42:[2,29]},{47:[1,65],49:[1,64]},{47:[2,49],49:[2,49],52:[1,66]},{47:[2,52],49:[2,52],52:[2,52]},{15:[2,30],28:[2,30],29:[2,30],39:[2,30],40:[2,30],41:[2,30],42:[2,30],46:[2,30],47:[2,30],50:[2,30]},{15:[2,34],28:[2,34],29:[2,34],38:[2,34],39:[2,34],40:[2,34],41:[2,34],42:[2,34],43:[2,34],44:[2,34],45:[2,34],46:[2,34],47:[2,34],50:[2,34]},{29:[2,27],31:67,39:[2,27],40:[2,27],41:[2,27],42:[2,27]},{28:[2,44],29:[2,44]},{47:[2,48],48:68,49:[2,48],51:59,52:[1,60]},{47:[2,53],49:[2,53],52:[2,53]},{29:[2,28],34:40,36:42,39:[1,43],40:[1,44],41:[1,45],42:[2,28]},{47:[1,65],49:[1,69]},{47:[2,51],49:[2,51],51:70,52:[1,60]},{47:[2,50],49:[2,50],52:[1,66]}],
-defaultActions: {31:[2,1],36:[2,2]},
+table: [{3:1,4:2,5:[2,8],11:[2,8],13:[2,8],15:[2,8],18:[2,8],21:[2,8],22:[2,8],23:[2,8]},{1:[3]},{5:[1,3],11:[1,8],12:4,13:[1,5],15:[1,6],16:7,17:9,18:[1,11],20:10,21:[1,12],22:[1,13],23:[1,14]},{6:15,10:16,11:[2,5],40:[2,5]},{5:[2,7],11:[2,7],13:[2,7],15:[2,7],18:[2,7],21:[2,7],22:[2,7],23:[2,7]},{14:17,40:[1,18]},{5:[2,10],11:[2,10],13:[2,10],15:[2,10],18:[2,10],21:[2,10],22:[2,10],23:[2,10]},{5:[2,11],11:[2,11],13:[2,11],15:[2,11],18:[2,11],21:[2,11],22:[2,11],23:[2,11]},{5:[2,12],11:[2,12],13:[2,12],15:[2,12],18:[2,12],21:[2,12],22:[2,12],23:[2,12]},{5:[2,13],11:[2,13],13:[2,13],15:[2,13],18:[2,13],21:[2,13],22:[2,13],23:[2,13]},{14:21,19:19,24:20,40:[1,18],41:[1,22]},{14:21,19:23,24:20,40:[1,18],41:[1,22]},{40:[2,16],41:[2,16]},{40:[2,17],41:[2,17]},{40:[2,18],41:[2,18]},{5:[1,25],7:24,8:[2,3]},{11:[1,27],14:29,25:26,26:28,40:[1,18]},{5:[2,9],11:[2,9],13:[2,9],15:[2,9],18:[2,9],21:[2,9],22:[2,9],23:[2,9]},{5:[2,45],11:[2,45],13:[2,45],15:[2,45],18:[2,45],21:[2,45],22:[2,45],23:[2,45],27:[2,45],29:[2,45],30:[2,45],40:[2,45],41:[2,45],48:[2,45],51:[2,45]},{5:[2,15],11:[2,15],13:[2,15],14:21,15:[2,15],18:[2,15],21:[2,15],22:[2,15],23:[2,15],24:30,40:[1,18],41:[1,22]},{5:[2,20],11:[2,20],13:[2,20],15:[2,20],18:[2,20],21:[2,20],22:[2,20],23:[2,20],40:[2,20],41:[2,20]},{5:[2,43],11:[2,43],13:[2,43],15:[2,43],18:[2,43],21:[2,43],22:[2,43],23:[2,43],29:[2,43],30:[2,43],40:[2,43],41:[2,43],48:[2,43],51:[2,43]},{5:[2,44],11:[2,44],13:[2,44],15:[2,44],18:[2,44],21:[2,44],22:[2,44],23:[2,44],29:[2,44],30:[2,44],40:[2,44],41:[2,44],48:[2,44],51:[2,44]},{5:[2,14],11:[2,14],13:[2,14],14:21,15:[2,14],18:[2,14],21:[2,14],22:[2,14],23:[2,14],24:30,40:[1,18],41:[1,22]},{8:[1,31]},{8:[2,4],9:[1,32]},{5:[2,21],8:[2,21],14:29,26:33,40:[1,18]},{11:[2,6],40:[2,6]},{5:[2,23],8:[2,23],40:[2,23]},{27:[1,34]},{5:[2,19],11:[2,19],13:[2,19],15:[2,19],18:[2,19],21:[2,19],22:[2,19],23:[2,19],40:[2,19],41:[2,19]},{1:[2,1]},{8:[1,35]},{5:[2,22],8:[2,22],40:[2,22]},{11:[2,29],28:36,29:[2,29],30:[2,29],31:37,32:38,40:[2,29],41:[2,29],42:[2,29],47:[2,29],48:[2,29],51:[2,29]},{1:[2,2]},{29:[1,39],30:[1,40]},{29:[2,26],30:[2,26]},{11:[2,42],29:[2,42],30:[2,42],33:41,35:42,37:44,40:[1,45],41:[1,46],42:[1,47],47:[1,43],48:[2,42],51:[2,42]},{5:[2,24],8:[2,24],40:[2,24]},{11:[2,29],29:[2,29],30:[2,29],31:48,32:38,40:[2,29],41:[2,29],42:[2,29],47:[2,29],48:[2,29],51:[2,29]},{11:[1,51],29:[2,49],30:[2,49],34:49,48:[1,50],51:[1,52]},{11:[2,28],29:[2,28],30:[2,28],40:[2,28],41:[2,28],42:[2,28],43:[2,28],47:[2,28],48:[2,28],51:[2,28]},{14:21,24:53,40:[1,18],41:[1,22]},{11:[2,37],29:[2,37],30:[2,37],38:54,39:[2,37],40:[2,37],41:[2,37],42:[2,37],43:[2,37],44:[1,55],45:[1,56],46:[1,57],47:[2,37],48:[2,37],51:[2,37]},{11:[2,34],29:[2,34],30:[2,34],39:[2,34],40:[2,34],41:[2,34],42:[2,34],43:[2,34],44:[2,34],45:[2,34],46:[2,34],47:[2,34],48:[2,34],51:[2,34]},{11:[2,35],29:[2,35],30:[2,35],39:[2,35],40:[2,35],41:[2,35],42:[2,35],43:[2,35],44:[2,35],45:[2,35],46:[2,35],47:[2,35],48:[2,35],51:[2,35]},{30:[2,29],32:59,36:58,40:[2,29],41:[2,29],42:[2,29],43:[2,29]},{29:[2,25],30:[2,25]},{29:[2,27],30:[2,27]},{48:[2,50],49:60,50:[2,50],52:61,53:[1,62]},{29:[2,47],30:[2,47]},{29:[2,48],30:[2,48]},{11:[2,41],29:[2,41],30:[2,41],48:[2,41],51:[2,41]},{11:[2,33],29:[2,33],30:[2,33],39:[1,63],40:[2,33],41:[2,33],42:[2,33],43:[2,33],47:[2,33],48:[2,33],51:[2,33]},{11:[2,38],29:[2,38],30:[2,38],39:[2,38],40:[2,38],41:[2,38],42:[2,38],43:[2,38],47:[2,38],48:[2,38],51:[2,38]},{11:[2,39],29:[2,39],30:[2,39],39:[2,39],40:[2,39],41:[2,39],42:[2,39],43:[2,39],47:[2,39],48:[2,39],51:[2,39]},{11:[2,40],29:[2,40],30:[2,40],39:[2,40],40:[2,40],41:[2,40],42:[2,40],43:[2,40],47:[2,40],48:[2,40],51:[2,40]},{30:[1,65],43:[1,64]},{30:[2,31],35:42,37:44,40:[1,45],41:[1,46],42:[1,47],43:[2,31]},{48:[1,67],50:[1,66]},{48:[2,51],50:[2,51],53:[1,68]},{48:[2,54],50:[2,54],53:[2,54]},{11:[2,32],29:[2,32],30:[2,32],40:[2,32],41:[2,32],42:[2,32],43:[2,32],47:[2,32],48:[2,32],51:[2,32]},{11:[2,36],29:[2,36],30:[2,36],39:[2,36],40:[2,36],41:[2,36],42:[2,36],43:[2,36],44:[2,36],45:[2,36],46:[2,36],47:[2,36],48:[2,36],51:[2,36]},{30:[2,29],32:69,40:[2,29],41:[2,29],42:[2,29],43:[2,29]},{29:[2,46],30:[2,46]},{48:[2,50],49:70,50:[2,50],52:61,53:[1,62]},{48:[2,55],50:[2,55],53:[2,55]},{30:[2,30],35:42,37:44,40:[1,45],41:[1,46],42:[1,47],43:[2,30]},{48:[1,67],50:[1,71]},{48:[2,53],50:[2,53],52:72,53:[1,62]},{48:[2,52],50:[2,52],53:[1,68]}],
+defaultActions: {31:[2,1],35:[2,2]},
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -8746,7 +8778,10 @@ var ebnf = false;
 
 // transform ebnf to bnf if necessary
 function extend(json, grammar) {
-    json.bnf = ebnf ? transform(grammar) : grammar;
+    json.bnf = ebnf ? transform(grammar.grammar) : grammar.grammar;
+    if (grammar.actionInclude) {
+        json.actionInclude = grammar.actionInclude;
+    }
     return json;
 }
 
@@ -9106,27 +9141,27 @@ break;
 case 1 : 
 /*! Conditions:: ebnf */ 
 /*! Rule::       \( */ 
- return 41; 
+ return 42; 
 break;
 case 2 : 
 /*! Conditions:: ebnf */ 
 /*! Rule::       \) */ 
- return 42; 
+ return 43; 
 break;
 case 3 : 
 /*! Conditions:: ebnf */ 
 /*! Rule::       \* */ 
- return 43; 
+ return 44; 
 break;
 case 4 : 
 /*! Conditions:: ebnf */ 
 /*! Rule::       \? */ 
- return 44; 
+ return 45; 
 break;
 case 5 : 
 /*! Conditions:: ebnf */ 
 /*! Rule::       \+ */ 
- return 45; 
+ return 46; 
 break;
 case 6 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
@@ -9146,37 +9181,37 @@ break;
 case 9 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       \[{id}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 38; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39; 
 break;
 case 10 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       {id} */ 
- return 39; 
+ return 40; 
 break;
 case 11 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 40; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
 break;
 case 12 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 40; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
 break;
 case 13 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       : */ 
- return 26; 
+ return 27; 
 break;
 case 14 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       ; */ 
- return 28; 
+ return 29; 
 break;
 case 15 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       \| */ 
- return 29; 
+ return 30; 
 break;
 case 16 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
@@ -9191,37 +9226,37 @@ break;
 case 18 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %prec */ 
- return 46; 
+ return 47; 
 break;
 case 19 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %start */ 
- return 11; 
+ return 13; 
 break;
 case 20 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %left */ 
- return 20; 
+ return 21; 
 break;
 case 21 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %right */ 
- return 21; 
+ return 22; 
 break;
 case 22 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %nonassoc */ 
- return 22; 
+ return 23; 
 break;
 case 23 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %parse-param */ 
- return 17; 
+ return 18; 
 break;
 case 24 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
- return 13; 
+ return 15; 
 break;
 case 25 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
@@ -9236,22 +9271,22 @@ break;
 case 27 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 15; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 11; 
 break;
 case 28 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 15; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 11; 
 break;
 case 29 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       \{ */ 
- yy.depth = 0; this.pushState('action'); return 47; 
+ yy.depth = 0; this.pushState('action'); return 48; 
 break;
 case 30 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 50; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 51; 
 break;
 case 31 : 
 /*! Conditions:: bnf ebnf INITIAL */ 
@@ -9266,47 +9301,47 @@ break;
 case 33 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
- return 52; 
+ return 53; 
 break;
 case 34 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/\/.* */ 
- return 52; 
+ return 53; 
 break;
 case 35 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 52; // regexp with braces or quotes (and no spaces) 
+ return 53; // regexp with braces or quotes (and no spaces) 
 break;
 case 36 : 
 /*! Conditions:: action */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- return 52; 
+ return 53; 
 break;
 case 37 : 
 /*! Conditions:: action */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- return 52; 
+ return 53; 
 break;
 case 38 : 
 /*! Conditions:: action */ 
 /*! Rule::       [/"'][^{}/"']+ */ 
- return 52; 
+ return 53; 
 break;
 case 39 : 
 /*! Conditions:: action */ 
 /*! Rule::       [^{}/"']+ */ 
- return 52; 
+ return 53; 
 break;
 case 40 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
- yy.depth++; return 47; 
+ yy.depth++; return 48; 
 break;
 case 41 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth == 0) { this.popState(); } else { yy.depth--; } return 49; 
+ if (yy.depth == 0) { this.popState(); } else { yy.depth--; } return 50; 
 break;
 case 42 : 
 /*! Conditions:: code */ 
@@ -9330,9 +9365,9 @@ return new Parser;
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = parser;
-exports.Parser = parser.Parser;
-exports.parse = function () { return parser.parse.apply(parser, arguments); };
+exports.parser = bnf;
+exports.Parser = bnf.Parser;
+exports.parse = function () { return bnf.parse.apply(bnf, arguments); };
 exports.main = function commonjsMain(args) {
     if (!args[1]) {
         console.log('Usage: '+args[0]+' FILE');
@@ -9468,23 +9503,41 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 
 var $0 = $$.length - 1;
 switch (yystate) {
-case 1: return $$[$0-1]; 
+case 1 : 
+/*! Production::     production : handle EOF */
+  return $$[$0-1];  
 break;
-case 2: this.$ = [$$[$0]]; 
+case 2 : 
+/*! Production::     handle_list : handle */
+  this.$ = [$$[$0]];  
 break;
-case 3: $$[$0-2].push($$[$0]); 
+case 3 : 
+/*! Production::     handle_list : handle_list | handle */
+  $$[$0-2].push($$[$0]);  
 break;
-case 4: this.$ = []; 
+case 4 : 
+/*! Production::     handle :  */
+  this.$ = [];  
 break;
-case 5: $$[$0-1].push($$[$0]); 
+case 5 : 
+/*! Production::     handle : handle expression_suffix */
+  $$[$0-1].push($$[$0]);  
 break;
-case 6: this.$ = ['xalias', $$[$0-1], $$[$0-2], $$[$0]]; 
+case 6 : 
+/*! Production::     expression_suffix : expression suffix ALIAS */
+  this.$ = ['xalias', $$[$0-1], $$[$0-2], $$[$0]];  
 break;
-case 7: if ($$[$0]) this.$ = [$$[$0], $$[$0-1]]; else this.$ = $$[$0-1]; 
+case 7 : 
+/*! Production::     expression_suffix : expression suffix */
+  if ($$[$0]) this.$ = [$$[$0], $$[$0-1]]; else this.$ = $$[$0-1];  
 break;
-case 8: this.$ = ['symbol', $$[$0]]; 
+case 8 : 
+/*! Production::     expression : symbol */
+  this.$ = ['symbol', $$[$0]];  
 break;
-case 9: this.$ = ['()', $$[$0-1]]; 
+case 9 : 
+/*! Production::     expression : ( handle_list ) */
+  this.$ = ['()', $$[$0-1]];  
 break;
 }
 },
@@ -10131,35 +10184,74 @@ performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START
 
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
-case 0:/* skip whitespace */
+case 0 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \s+ */ 
+ /* skip whitespace */ 
 break;
-case 1:return 12;
+case 1 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       {id} */ 
+ return 12; 
 break;
-case 2:yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 11;
+case 2 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \[{id}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 11; 
 break;
-case 3:return 12;
+case 3 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       '[^']*' */ 
+ return 12; 
 break;
-case 4:return 12;
+case 4 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \. */ 
+ return 12; 
 break;
-case 5:return 'bar';
+case 5 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       bar */ 
+ return 'bar'; 
 break;
-case 6:return 13;
+case 6 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \( */ 
+ return 13; 
 break;
-case 7:return 14;
+case 7 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \) */ 
+ return 14; 
 break;
-case 8:return 15;
+case 8 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \* */ 
+ return 15; 
 break;
-case 9:return 16;
+case 9 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \? */ 
+ return 16; 
 break;
-case 10:return 7;
+case 10 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \| */ 
+ return 7; 
 break;
-case 11:return 17;
+case 11 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \+ */ 
+ return 17; 
 break;
-case 12:return 5;
+case 12 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       $ */ 
+ return 5; 
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:'[^']*')/,/^(?:\.)/,/^(?:bar\b)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\|)/,/^(?:\+)/,/^(?:$)/],
+rules: [/^(?:\s+)/,/^(?:([a-zA-Z][a-zA-Z0-9_-]*))/,/^(?:\[([a-zA-Z][a-zA-Z0-9_-]*)\])/,/^(?:'[^']*')/,/^(?:\.)/,/^(?:bar)/,/^(?:\()/,/^(?:\))/,/^(?:\*)/,/^(?:\?)/,/^(?:\|)/,/^(?:\+)/,/^(?:$)/],
 conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12],"inclusive":true}}
 };
 return lexer;
@@ -18965,6 +19057,14 @@ var process=require("__browserify_process");/* parser generated by jison 0.4.13 
                               optional: true ==> lexer regexes are tested in order and for each matching
                                                  regex the action code is invoked; the lexer terminates
                                                  the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
   }
 */
 var lexParser = (function(){
@@ -19120,6 +19220,9 @@ case 31 :
 /*! Production::     regex : regex_list */
  
           this.$ = $$[$0];
+          if (yy.options && yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
+              this.$ += "\\b";
+          }
          
 break;
 case 32 : 
@@ -19518,7 +19621,7 @@ ERROR:2,
 
 parseError:function parseError(str, hash) {
         if (this.yy.parser) {
-            this.yy.parser.parseError(str, hash);
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new Error(str);
         }
@@ -19527,7 +19630,7 @@ parseError:function parseError(str, hash) {
 // resets the lexer, sets new input
 setInput:function (input) {
         this._input = input;
-        this._more = this._backtrack = this.done = false;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
@@ -19613,12 +19716,14 @@ reject:function () {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
-            this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
                 line: this.yylineno
-            });
-
+            }) || this.ERROR);
         }
         return this;
     },
@@ -19726,6 +19831,11 @@ test_match:function (match, indexed_rule) {
                 this[k] = backup[k];
             }
             return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
         }
         return false;
     },
@@ -19780,13 +19890,15 @@ next:function () {
         if (this._input === "") {
             return this.EOF;
         } else {
-            // we cannot recover from a lexer error: we consider the input completely lexed:
-            this.done = true;
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
+            if (token === this.ERROR || token === this.EOF) {
+                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
+                this.done = true;
+            }
         }
     },
 
@@ -20014,22 +20126,22 @@ break;
 case 31 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
- /* empty */ 
+ /* ignore */ 
 break;
 case 32 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\/.* */ 
- /* empty */ 
+ /* ignore */ 
 break;
 case 33 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       {BR}+ */ 
- /* ignore */ 
+ /* empty */ 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \s+ */ 
- /* ignore */ 
+ /* empty */ 
 break;
 case 35 : 
 /*! Conditions:: indented trail rules INITIAL */ 
