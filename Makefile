@@ -38,13 +38,25 @@ JISON_DEPS = \
 	lib/util/transform-parser.js
 
 
-build_bnf: $(JISON_DEPS) submodules
-	NODE_PATH=lib/util  node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	cat modules/ebnf-parser/parser.js > lib/util/parser.js
+build_bnf: lib/util/parser.js
 
-build_lex: $(JISON_DEPS) submodules
+lib/util/parser.js: $(JISON_DEPS) submodules \
+					npm-install \
+					lib/cli.js modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	NODE_PATH=lib/util  node lib/cli.js -o modules/ebnf-parser/parser.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	cat modules/ebnf-parser/parser.js > $@
+
+build_lex: lib/util/lex-parser.js
+
+lib/util/lex-parser.js: $(JISON_DEPS) submodules \
+						npm-install \
+						lib/cli.js modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 	NODE_PATH=lib/util  node lib/cli.js -o modules/lex-parser/lex-parser.js modules/lex-parser/lex.y modules/lex-parser/lex.l
-	cat modules/lex-parser/lex-parser.js > lib/util/lex-parser.js
+	cat modules/lex-parser/lex-parser.js > $@
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
@@ -91,7 +103,8 @@ clean:
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
 	cd modules/lex-parser && make clean
-	-@rm -f $(JISON_DEPS)
+	-rm -f $(JISON_DEPS)
+	-rm -f lib/util/parser.js lib/util/lex-parser.js
 
 superclean: clean
 	cd modules/ebnf-parser && make superclean
@@ -105,4 +118,5 @@ superclean: clean
 
 
 
-.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean
+.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
+
