@@ -2847,7 +2847,8 @@ reject:function () {
             this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR);
         }
         return this;
@@ -3027,7 +3028,8 @@ next:function () {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -4293,7 +4295,8 @@ reject:function () {
             this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR);
         }
         return this;
@@ -4473,7 +4476,8 @@ next:function () {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -5070,7 +5074,8 @@ RegExpLexer.prototype = {
             this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR);
         }
         return this;
@@ -5250,7 +5255,8 @@ RegExpLexer.prototype = {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -6097,7 +6103,8 @@ reject:function () {
             this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
                 text: this.match,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR);
         }
         return this;
@@ -6277,7 +6284,8 @@ next:function () {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
                 text: this.match + this._input,
                 token: null,
-                line: this.yylineno
+                line: this.yylineno,
+                loc: this.yyloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -8897,7 +8905,10 @@ input:function () {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -9084,7 +9095,15 @@ test_match:function (match, indexed_rule) {
 
 // return next match in input
 next:function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -9096,8 +9115,7 @@ next:function () {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -9130,6 +9148,8 @@ next:function () {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -9137,9 +9157,11 @@ next:function () {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
             return token;
         }
@@ -9966,7 +9988,10 @@ input:function () {
         this.offset++;
         this.match += ch;
         this.matched += ch;
-        var lines = ch.match(/(?:\r\n?|\n).*/g);
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the LF:
+        // the CR is hence 'assigned' to the previous line.
+        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -10153,7 +10178,15 @@ test_match:function (match, indexed_rule) {
 
 // return next match in input
 next:function () {
+        function clear() {
+            this.yytext = '';
+            this.match = '';
+            this._more = false;
+            this._backtrack = false;
+        }
+
         if (this.done) {
+            clear.call(this);
             return this.EOF;
         }
         if (!this._input) {
@@ -10165,8 +10198,7 @@ next:function () {
             tempMatch,
             index;
         if (!this._more) {
-            this.yytext = '';
-            this.match = '';
+            clear.call(this);
         }
         var rules = this._currentRules();
         for (var i = 0; i < rules.length; i++) {
@@ -10199,6 +10231,8 @@ next:function () {
             return false;
         }
         if (this._input === "") {
+            clear.call(this);
+            this.done = true;
             return this.EOF;
         } else {
             token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
@@ -10206,9 +10240,11 @@ next:function () {
                 token: null,
                 line: this.yylineno
             }) || this.ERROR;
-            if (token === this.ERROR || token === this.EOF) {
-                // we cannot recover from a lexer error that parseError() did not 'recover' for us: we consider the input completely lexed:
-                this.done = true;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
             }
             return token;
         }
