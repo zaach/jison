@@ -2970,7 +2970,9 @@ test_match:function (match, indexed_rule) {
 next:function () {
         function clear() {
             this.yytext = '';
+            this.yyleng = 0;
             this.match = '';
+            this.matches = false;
             this._more = false;
             this._backtrack = false;
         }
@@ -4418,7 +4420,9 @@ test_match:function (match, indexed_rule) {
 next:function () {
         function clear() {
             this.yytext = '';
+            this.yyleng = 0;
             this.match = '';
+            this.matches = false;
             this._more = false;
             this._backtrack = false;
         }
@@ -5197,7 +5201,9 @@ RegExpLexer.prototype = {
     next: function () {
         function clear() {
             this.yytext = '';
+            this.yyleng = 0;
             this.match = '';
+            this.matches = false;
             this._more = false;
             this._backtrack = false;
         }
