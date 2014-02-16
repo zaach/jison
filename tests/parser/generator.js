@@ -25,7 +25,7 @@ exports["test amd module generator"] = function() {
 
     var parserSource = gen.generateAMDModule();
     var parser = null,
-        define = function(deps, callback){
+        define = function(callback){
             // temporary AMD-style define function, for testing.
             parser = callback();
         };
