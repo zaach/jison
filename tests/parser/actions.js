@@ -408,7 +408,8 @@ exports["test token array LIFO"] = function() {
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
                          ["c", "$$ = 'c';"] ]
-        }
+        },
+        options: { tokenStack: true }
     };
 
     var parser = new Jison.Parser(grammar);
