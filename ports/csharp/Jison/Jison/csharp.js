@@ -93,11 +93,11 @@ exec("jison " + process.argv[2], function (error) {
     }
 
     var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-    
+    var ClassName = FileName.replace(/^.*[\\\/]/, '').charAt(0).toUpperCase() + FileName.replace(/^.*[\\\/]/, '').slice(1);
     var option = {
     	'using': '',
         'namespace': 'Jison',
-        'class': FileName,
+        'class': ClassName,
         'fileName': FileName + '.cs',
         'parserValue': ''
     };
