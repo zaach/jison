@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 //@@USING_INJECT@@
 
-/**/namespace Jison/**/
+/**/namespace Jison/**//**extends**/
 {
 	public /**/class Parser/**/
 	{
@@ -218,24 +218,22 @@ using System.Linq;
 		public ParserSymbol Eof = new ParserSymbol("Eof", 1);
 		public /**/ParserValue/**/ Yy = new /**/ParserValue/**/();
 		public string Match = "";
-		public string Matched = "";
 		public Stack<string> ConditionStack;
 		public Dictionary<int, Regex> Rules;
 		public Dictionary<string, LexerConditions> Conditions;
 		public bool Done = false;
 		public bool Less;
 		public bool _More;
-		public string _Input;
+        public InputReader _Input;
 		public int Offset;
 		public Dictionary<int, ParserRange>Ranges;
 		public bool Flex = false;
 
 		public void SetInput(string input)
 		{
-			_Input = input;
+            _Input = new InputReader(input);
 			_More = Less = Done = false;
 			Yy.LineNo = Yy.Leng = 0;
-			Matched = Match = "";
 			ConditionStack = new Stack<string>();
 			ConditionStack.Push("INITIAL");
 
@@ -251,12 +249,11 @@ using System.Linq;
 
 		public string Input()
 		{
-			string ch = _Input[0].ToString();
+		    string ch = _Input.Ch();
 			Yy.Text += ch;
 			Yy.Leng++;
 			Offset++;
 			Match += ch;
-			Matched += ch;
 			Match lines = Regex.Match(ch, "/(?:\r\n?|\n).*/");
 			if (lines.Success) {
 				Yy.LineNo++;
@@ -270,7 +267,6 @@ using System.Linq;
 				Yy.Loc.Range.Y++;
 			}
 
-			_Input = _Input.Substring(1);
 			return ch;
 		}
 
@@ -279,12 +275,12 @@ using System.Linq;
 			int len = ch.Length;
 			var lines = Regex.Split(ch, "/(?:\r\n?|\n)/");
 
-			_Input = ch + _Input;
+            //TODO: not really compatible??
+			_Input.unCh(ch.Length);
 			Yy.Text = Yy.Text.Substring(0, len - 1);
 			Offset -= len;
 			var oldLines = Regex.Split(Match, "/(?:\r\n?|\n)/");
 			Match = Match.Substring(0, Match.Length - 1);
-			Matched = Matched.Substring(0, Matched.Length - 1);
 
 			if ((lines.Length - 1) > 0) Yy.LineNo -= lines.Length - 1;
 			var r = Yy.Loc.Range;
@@ -316,8 +312,8 @@ using System.Linq;
 
 		public string PastInput()
 		{
-			var past = Matched.Substring(0, Matched.Length - Match.Length);
-			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(-20), "/\n/", "") : "");
+			var past = _Input.ToString().Substring(0, _Input.Position - Match.Length);
+			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(20), "/\n/", "") : "");
 		}
 
 		public string UpcomingInput()
@@ -325,7 +321,7 @@ using System.Linq;
 			var next = Match;
 			if (next.Length < 20)
 			{
-				next += _Input.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
+				next += _Input.ToString().Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
 			}
 			return Regex.Replace(next.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length)) + (next.Length > 20 ? "..." : ""), "/\n/", "");
 		}
@@ -350,7 +346,7 @@ using System.Linq;
 				return Eof;
 			}
 
-			if (String.IsNullOrEmpty(_Input))
+			if (_Input.Done)
 			{
 				Done = true;
 			}
@@ -369,8 +365,8 @@ using System.Linq;
 			for (int i = 0; i < rules.Count; i++)
 			{
 				rule = Rules[rules[i]];
-				var tempMatch = rule.Match(_Input);
-				if (tempMatch.Success == true && (match != null || tempMatch.Length > match.Length)) {
+				var tempMatch = _Input.Match(rule);
+				if (tempMatch.Success && tempMatch.Length > match.Length) {
 					match = tempMatch.Value;
 					matched = true;
 					index = i;
@@ -391,7 +387,6 @@ using System.Linq;
 
 				Yy.Text += match;
 				Match += match;
-				Matched += match;
 
 				Yy.Leng = Yy.Text.Length;
 				if (Ranges != null)
@@ -399,13 +394,13 @@ using System.Linq;
 					Yy.Loc.Range = new ParserRange(Offset, Offset += Yy.Leng);
 				}
 				_More = false;
-				_Input = _Input.Substring(match.Length);
+				_Input.AddMatch(match);
                 var ruleIndex = rules[index];
                 var nextCondition = ConditionStack.Peek();
                 dynamic action = LexerPerformAction(ruleIndex, nextCondition);
 				ParserSymbol token = Symbols[action];
 
-				if (Done == true && String.IsNullOrEmpty(_Input) == false)
+				if (Done == true || _Input.Done)
 				{
 					Done = false;
 				}
@@ -417,7 +412,7 @@ using System.Linq;
 				}
 			}
 
-			if (String.IsNullOrEmpty(_Input)) {
+			if (_Input.Done) {
 				return Symbols["EOF"];
 			} else
 			{
@@ -747,4 +742,57 @@ using System.Linq;
 			}
 		}
 	}
+
+
+    public class InputReader
+    {
+	
+		public bool Done = false;
+		public string Input;
+        public int Length;
+        public JList<string> Matches = new JList<string>();
+        public int Position = 0;
+
+        public InputReader(string input)
+        {
+            Input = input;
+            Length = input.Length;
+        }
+
+        public void AddMatch (string match) {
+			Matches.Push(match);
+			Position += match.Length;
+			Done = (Position >= Length);
+		}
+
+        public string Ch()
+        {
+			var ch = Input[Position].ToString();
+			AddMatch(ch);
+			return ch;
+		}
+
+		public void unCh(int chLength)
+		{
+			Position -= chLength;
+		    Position = Math.Max(0, Position);
+			Done = (Position >= Length);
+		}
+
+		public string Substring(int start, int end) {
+			start = (start != 0 ? Position + start : Position);
+			end = (end != 0 ? start + end : Length);
+			return Input.Substring(start, end);
+		}
+
+		public Match Match(Regex rule) {
+		    var match = rule.Match(Input, Position);
+		    return match;
+		}
+
+        public new string ToString()
+        {
+            return String.Join("", Matches.ToArray());
+        }
+    }
 }
