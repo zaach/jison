@@ -377,7 +377,7 @@
 
             $token = $this->lexerPerformAction($ruleIndex, $nextCondition);
 
-            if ($this->done == true || $this->input->done) {
+            if ($this->done == true && !$this->input->done) {
                 $this->done = false;
             }
 
@@ -651,8 +651,10 @@ class InputReader
 	}
 
 	public function match($rule) {
-		preg_match($rule, $this->input, $match, null, $this->position);
-		return $match;
+		if (preg_match($rule, $this->input, $match, null, $this->position)) {
+			return $match;
+		}
+		return null;
 	}
 
     public function toString()
