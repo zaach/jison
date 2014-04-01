@@ -120,7 +120,7 @@ Special thanks to Jarred Ligatti, Manuel E. Bermúdez
 License
 -------
 
-> Copyright (c) 2012 Zachary Carter
+> Copyright (c) 2009-2014 Zachary Carter
 >
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a
