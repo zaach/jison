@@ -24,9 +24,9 @@ exec("jison " + process.argv[2], function (error) {
     
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    var fileName = process.argv[2].replace('.jison', ''),
+    var fileName = process.argv[2].replace(/(.jison|.json)/, '')
         comments = require(path.resolve(__dirname, '../../../comments.js')),
-        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
+        requirePath = fileName + '.js';
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
@@ -93,22 +93,25 @@ exec("jison " + process.argv[2], function (error) {
     }
 
     var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-    
+    var ClassName = FileName.replace(/^.*[\\\/]/, '').charAt(0).toUpperCase() + FileName.replace(/^.*[\\\/]/, '').slice(1);
     var option = {
     	'using': '',
         'namespace': 'Jison',
-        'class': FileName,
+        'class': ClassName,
         'fileName': FileName + '.cs',
         'parserValue': ''
     };
 
-    var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
-    parserDefinition = parserDefinition.split(/\n/g);
-    for (var i = 0; i < parserDefinition.length; i++) {
-        if (parserDefinition[i].match('//option')) {
-            parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
-            parserDefinition[i] = parserDefinition[i].split(':');
-            option[parserDefinition[i][0]] = parserDefinition[i][1];
+
+    if (fileName.search(/jison/) !== -1) {
+        var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
+        parserDefinition = parserDefinition.split(/\n/g);
+        for (var i = 0; i < parserDefinition.length; i++) {
+            if (parserDefinition[i].match('//option')) {
+                parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
+                parserDefinition[i] = parserDefinition[i].split(':');
+                option[parserDefinition[i][0]] = parserDefinition[i][1];
+            }
         }
     }
 
