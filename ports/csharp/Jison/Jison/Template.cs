@@ -6,7 +6,7 @@ using System.Linq;
 
 /**/namespace Jison/**/
 {
-	public /**/class Parser/**/
+	public /**/class Parser/**//**extends**/
 	{
 		public ParserSymbols Symbols;
 		public Dictionary<int, ParserSymbol> Terminals;

@@ -99,6 +99,7 @@ exec("jison " + process.argv[2], function (error) {
         'namespace': 'Jison',
         'class': FileName,
         'fileName': FileName + '.cs',
+        'extends': '',
         'parserValue': ''
     };
 
@@ -240,6 +241,7 @@ exec("jison " + process.argv[2], function (error) {
         .replace(new RegExp('[/][*][*][/]namespace Jison[/][*][*][/]', 'g'), 'namespace ' + option.namespace)
         .replace(new RegExp('[/][*][*][/]class Parser[/][*][*][/]', 'g'), 'class ' + option.class)
         .replace(new RegExp('[/][*][*][/]public Parser[/][*][*][/]', 'g'), 'public ' + option.class)
+        .replace(new RegExp('[/][*][*]extends[*][*][/]', 'g'), ' : ' + option.extends)
         .replace(new RegExp('[/][*][*][/]ParserValue[/][*][*][/]', 'g'), (option.parserValue || 'ParserValue'))
         .replace('new Parser(', 'new ' + option.class + '(')
 
