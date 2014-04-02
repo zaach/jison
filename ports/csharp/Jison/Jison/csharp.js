@@ -99,7 +99,7 @@ exec("jison " + process.argv[2], function (error) {
         'namespace': 'Jison',
         'class': FileName,
         'fileName': FileName + '.cs',
-        'extends': '',
+		'extends': '',
         'parserValue': ''
     };
 
@@ -222,7 +222,7 @@ exec("jison " + process.argv[2], function (error) {
         this.conditions = [];
         
         for (var i in rules) {
-            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '""') + '")}');
+            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"\\G' + rules[i].substring(2, rules[i].length - 1).replace(/"/g, '""') + '")}');
         }
 
         result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';
@@ -240,8 +240,8 @@ exec("jison " + process.argv[2], function (error) {
     	.replace(new RegExp('//@@USING_INJECT@@', 'g'),(option.using ? 'using ' + option.using.split(',').join(';\nusing ') + ';' : ''))
         .replace(new RegExp('[/][*][*][/]namespace Jison[/][*][*][/]', 'g'), 'namespace ' + option.namespace)
         .replace(new RegExp('[/][*][*][/]class Parser[/][*][*][/]', 'g'), 'class ' + option.class)
+        .replace(new RegExp('[/][*][*]extends[*][*][/]', 'g'), (option.extends ? ' : ' + option.extends : ''))
         .replace(new RegExp('[/][*][*][/]public Parser[/][*][*][/]', 'g'), 'public ' + option.class)
-        .replace(new RegExp('[/][*][*]extends[*][*][/]', 'g'), ' : ' + option.extends)
         .replace(new RegExp('[/][*][*][/]ParserValue[/][*][*][/]', 'g'), (option.parserValue || 'ParserValue'))
         .replace('new Parser(', 'new ' + option.class + '(')
 

@@ -203,7 +203,6 @@
     public $eof;
     public $yy = null;
     public $match = "";
-    public $matched = "";
     public $conditionStack = array();
     public $conditionStackCount = 0;
     public $rules = array();
@@ -211,14 +210,14 @@
     public $done = false;
     public $less;
     public $more;
-    public $input;
+	public $input;
     public $offset;
     public $ranges;
     public $flex = false;
 
     function setInput($input)
     {
-        $this->input = $input;
+        $this->input = new InputReader($input);
         $this->more = $this->less = $this->done = false;
         $this->yy = new /**/ParserValue/**/();
         $this->conditionStack = array('INITIAL');
@@ -235,12 +234,11 @@
 
     function input()
     {
-        $ch = $this->input[0];
+        $ch = $this->input->ch();
         $this->yy->text .= $ch;
         $this->yy->leng++;
         $this->offset++;
         $this->match .= $ch;
-        $this->matched .= $ch;
         $lines = preg_match("/(?:\r\n?|\n).*/", $ch);
         if (count($lines) > 0) {
             $this->yy->lineNo++;
@@ -252,7 +250,6 @@
             $this->yy->loc->range->y++;
         }
 
-        $this->input = array_slice($this->input, 1);
         return $ch;
     }
 
@@ -262,14 +259,13 @@
         $lines = explode("/(?:\r\n?|\n)/", $ch);
         $linesCount = count($lines);
 
-        $this->input = $ch . $this->input;
+        $this->input->unCh($len);
         $this->yy->text = substr($this->yy->text, 0, $len - 1);
         //$this->yylen -= $len;
         $this->offset -= $len;
         $oldLines = explode("/(?:\r\n?|\n)/", $this->match);
         $oldLinesCount = count($oldLines);
         $this->match = substr($this->match, 0, strlen($this->match) - 1);
-        $this->matched = substr($this->matched, 0, strlen($this->matched) - 1);
 
         if (($linesCount - 1) > 0) $this->yy->lineNo -= $linesCount - 1;
         $r = $this->yy->loc->range;
@@ -297,7 +293,8 @@
 
     function pastInput()
     {
-        $past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
+	    $matched = $this->input->toString();
+        $past = substr($matched, 0, strlen($matched) - strlen($this->match));
         return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
     }
 
@@ -305,7 +302,7 @@
     {
         $next = $this->match;
         if (strlen($next) < 20) {
-            $next .= substr($this->input, 0, 20 - strlen($next));
+            $next .= substr($this->input->toString(), 0, 20 - strlen($next));
         }
         return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
     }
@@ -328,7 +325,7 @@
             return $this->eof;
         }
 
-        if (empty($this->input)) {
+        if ($this->input->done) {
             $this->done = true;
         }
 
@@ -339,7 +336,7 @@
 
         $rules = $this->currentRules();
         for ($i = 0, $j = count($rules); $i < $j; $i++) {
-            preg_match($this->rules[$rules[$i]], $this->input, $tempMatch);
+	        $tempMatch = $this->input->match($this->rules[$rules[$i]]);
             if ($tempMatch && (empty($match) || count($tempMatch[0]) > count($match[0]))) {
                 $match = $tempMatch;
                 $index = $i;
@@ -368,33 +365,32 @@
             $this->yy->text .= $match[0];
             $this->match .= $match[0];
             $this->matches = $match;
-            $this->matched .= $match[0];
 
             $this->yy->leng = strlen($this->yy->text);
             if (isset($this->ranges)) {
                 $this->yy->loc->range = new ParserRange($this->offset, $this->offset += $this->yy->leng);
             }
             $this->more = false;
-            $this->input = substr($this->input, $matchCount, strlen($this->input));
+	        $this->input->addMatch($match[0]);
             $ruleIndex = $rules[$index];
             $nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
 
             $token = $this->lexerPerformAction($ruleIndex, $nextCondition);
 
-            if ($this->done == true && empty($this->input) == false) {
+            if ($this->done == true && !$this->input->done) {
                 $this->done = false;
             }
 
             if (empty($token) == false) {
                 return $this->symbols[
-                $token
+                    $token
                 ];
             } else {
                 return null;
             }
         }
 
-        if (empty($this->input)) {
+        if ($this->input->done) {
             return $this->eof;
         } else {
             $this->lexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), new LexerError("", -1, $this->yy->lineNo));
@@ -611,5 +607,58 @@ class ParserRange
     {
         $this->x = $x;
         $this->y = $y;
+    }
+}
+
+class InputReader
+{
+	public $done = false;
+	public $input;
+	public $length;
+	public $matches = array();
+	public $position = 0;
+
+	public function __construct($input)
+	{
+		$this->input = $input;
+		$this->length = strlen($input);
+	}
+
+	public function addMatch($match) {
+		$this->matches[] = $match;
+		$this->position += strlen($match);
+		$this->done = ($this->position >= $this->length);
+	}
+
+    public function ch()
+	{
+		$ch = $this->input{$this->position};
+		$this->addMatch($ch);
+		return $ch;
+	}
+
+	public function unCh($chLength)
+	{
+		$this->position -= $chLength;
+		$this->position = max(0, $this->position);
+		$this->done = ($this->position >= $this->length);
+	}
+
+	public function substring($start, $end) {
+		$start = ($start != 0 ? $this->position + $start : $this->position);
+		$end = ($end != 0 ? $start + $end : $this->length);
+		return substr($this->input, $start, $end);
+	}
+
+	public function match($rule) {
+		if (preg_match($rule, $this->input, $match, null, $this->position)) {
+			return $match;
+		}
+		return null;
+	}
+
+    public function toString()
+	{
+        return implode('', $this->matches);
     }
 }
