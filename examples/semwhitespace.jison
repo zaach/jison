@@ -2,8 +2,9 @@
 
 %start prog
 
-%options flex
 %ebnf
+
+%options token-stack
 
 %% /* language grammar */
 

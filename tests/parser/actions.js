@@ -409,7 +409,7 @@ exports["test token array LIFO"] = function() {
                         ["b", "$$ = 'b';"],
                          ["c", "$$ = 'c';"] ]
         },
-        options: { tokenStack: true }
+        options: { 'token-stack': true }
     };
 
     var parser = new Jison.Parser(grammar);
