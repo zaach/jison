@@ -3,7 +3,7 @@ all: build test
 
 site: web/content/assets/js/jison.js
 
-web/content/assets/js/jison.js:	npm-install build examples
+web/content/assets/js/jison.js: npm-install build examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
