@@ -395,6 +395,28 @@ exports["test next token not shifted if only one action"] = function () {
     assert.ok(parser.parse('(y)y'), "should parse correctly");
 };
 
+exports["test token array LIFO"] = function() {
+    var lexData = {
+        rules: [
+           ["a", "return ['b','a'];"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr expr expr", "return $1+$2+$3;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                         ["c", "$$ = 'c';"] ]
+        },
+        options: { 'token-stack': true }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('ac'), "abc", "should return second token");
+};
+
 exports["test YYACCEPT"] = function() {
     var lexData = {
         rules: [
