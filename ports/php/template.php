@@ -300,11 +300,15 @@
 
     function upcomingInput()
     {
-        $next = $this->match;
-        if (strlen($next) < 20) {
-            $next .= substr($this->input->toString(), 0, 20 - strlen($next));
+        if (!$this->done) {
+            $next = $this->match;
+            if (strlen($next) < 20) {
+                $next .= substr($this->input->toString(), 0, 20 - strlen($next));
+            }
+            return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
+        } else {
+            return "";
         }
-        return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
     }
 
     function showPosition()
