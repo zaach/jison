@@ -374,6 +374,23 @@ expect-floats        this.begin('expect');
 "."         console.log( "found a dot" );
 </code></pre>
 
+<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condtion then <em>only</em> rules that match the current start condition will be considered</p>
+
+<p>Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:</p>
+
+<pre><code>%x string
+
+%%
+["]               this.begin("string");
+&lt;string&gt;[^"\n]*   return "STRING";
+&lt;string&gt;[\n]      return "NEWLINE_IN_STRING";
+&lt;string&gt;&lt;&lt;EOF&gt;&gt;   return "EOF_IN_STRING";
+&lt;string&gt;["]       this.popState();
+
+[.\n]+      /* skip over text not in quotes */
+&lt;&lt;EOF&gt;&gt;     return "EOF";
+</code></pre>
+
 <p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
 
 <p>Using the JSON format, start conditions are defined with an array before the rule&#8217;s matcher:</p>
