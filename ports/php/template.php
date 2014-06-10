@@ -460,7 +460,9 @@ class ParserLocation
 
     public function __clone()
     {
-        return new ParserLocation($this->firstLine, $this->lastLine, $this->firstColumn, $this->lastColumn);
+        if (isset($this->range)) {
+            $this->range = clone $this->range;
+        }
     }
 }
 
@@ -472,14 +474,9 @@ class ParserValue
     public $text;
 
     function __clone() {
-        $clone = new ParserValue();
-        $clone->leng = $this->leng;
         if (isset($this->loc)) {
-            $clone->loc = clone $this->loc;
+            $this->loc = clone $this->loc;
         }
-        $clone->lineNo = $this->lineNo;
-        $clone->text = $this->text;
-        return $clone;
     }
 }
 
