@@ -103,6 +103,18 @@ parser.parse("adfe34bc zxg");
 // throws lexical error
 </code></pre>
 
+<p>Alternatively, if you want to use the Jison file format but not generate a static JavaScript file for it, you could use a snippet like this:</p>
+
+<pre></code>// myparser.js
+var fs = require("fs");
+var jison = require("jison");
+
+var bnf = fs.readFileSync("grammar.jison", "utf8");
+var parser = new jison.Parser(bnf);
+
+module.exports = parser;
+</code></pre>
+
 <h2 id="using-the-generated-parser">Using the Generated Parser</h2>
 <p>Once you have generated the parser and saved it, you no longer need Jison or any other dependencies.</p>
 
@@ -362,6 +374,23 @@ expect-floats        this.begin('expect');
 "."         console.log( "found a dot" );
 </code></pre>
 
+<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condtion then <em>only</em> rules that match the current start condition will be considered</p>
+
+<p>Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:</p>
+
+<pre><code>%x string
+
+%%
+["]               this.begin("string");
+&lt;string&gt;[^"\n]*   return "STRING";
+&lt;string&gt;[\n]      return "NEWLINE_IN_STRING";
+&lt;string&gt;&lt;&lt;EOF&gt;&gt;   return "EOF_IN_STRING";
+&lt;string&gt;["]       this.popState();
+
+[.\n]+      /* skip over text not in quotes */
+&lt;&lt;EOF&gt;&gt;     return "EOF";
+</code></pre>
+
 <p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
 
 <p>Using the JSON format, start conditions are defined with an array before the rule&#8217;s matcher:</p>
@@ -384,12 +413,68 @@ The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_n
 
 <p>You don&#8217;t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
 
-<pre><code>parser.lexer = {lex: function () { return 'NIL'; }, setInput: function (str) {} }
+<pre><code>parser.lexer = {
+    lex: function () {
+        return 'NIL';
+    },
+    setInput: function (str) {
+    }
+};
 </code></pre>
 
 <p>This lexer would simply return <code>NIL</code> tokens <em>ad infinitum</em>.</p>
 
-<p><em>TODO: more examples</em></p>
+<p>The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace</p>
+
+<pre><code>// myscanner.js
+function new AlphabetScanner() {
+    var text = "";
+    this.yytext = "";
+    this.yyloc = {
+        first_column: 0,
+        first_line: 1,
+        last_line: 1,
+        last_column: 0
+    };
+    this.yylloc = this.yyloc;
+    this.setInput = function(text_) {
+        text = text_;
+    };
+    this.lex = function() {
+        // Return the EOF token when we run out of text.
+        if (text === "") {
+            return "EOF";
+        }
+
+        // Consume a single character and increment our column numbers.
+        var c = text.charAt(0);
+        text = text.substring(1);
+        this.yytext = c;
+        this.yyloc.first_column++;
+        this.yyloc.last_column++;
+
+        if (c === "\n") {
+            // Increment our line number when we hit newlines.
+            this.yyloc.first_line++;
+            this.yyloc.last_line++;
+            // Try to keep lexing because we aren't interested
+            // in newlines.
+            return this.lex();
+        } else if (/[a-z]/.test(c)) {
+            return "LOWER_CASE";
+        } else if (/[A-Z]/.test(c)) {
+            return "UPPER_CASE";
+        } else if (/\s/.test(c)) {
+            // Try to keep lexing because we aren't interested
+            // in whitespace.
+            return this.lex();
+        } else {
+            return "INVALID";
+        }
+    };
+}
+parser.lexer = new AlphabetScanner();
+</code></pre>
 
 <h2 id="sharing-scope">Sharing Scope</h2>
 
