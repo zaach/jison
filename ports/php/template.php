@@ -17,6 +17,7 @@
     public $shift = 1;
     public $reduce = 2;
     public $accept = 3;
+    public $unputStack = array();
 
     function trace()
     {
@@ -255,23 +256,27 @@
 
     function unput($ch)
     {
+        $yy = new /**/ParserValue/**/();
+
         $len = strlen($ch);
         $lines = explode("/(?:\r\n?|\n)/", $ch);
         $linesCount = count($lines);
 
         $this->input->unCh($len);
-        $this->yy->text = substr($this->yy->text, 0, $len - 1);
+        $yy->text = substr($this->yy->text, 0, $len - 1);
         //$this->yylen -= $len;
         $this->offset -= $len;
         $oldLines = explode("/(?:\r\n?|\n)/", $this->match);
         $oldLinesCount = count($oldLines);
         $this->match = substr($this->match, 0, strlen($this->match) - 1);
 
-        if (($linesCount - 1) > 0) $this->yy->lineNo -= $linesCount - 1;
+        if (($linesCount - 1) > 0) {
+            $yy->lineNo = $this->yy->lineNo - $linesCount - 1;
+        }
         $r = $this->yy->loc->range;
         $oldLinesLength = (isset($oldLines[$oldLinesCount - $linesCount]) ? strlen($oldLines[$oldLinesCount - $linesCount]) : 0);
 
-        $this->yy->loc = new ParserLocation(
+        $yy->loc = new ParserLocation(
             $this->yy->loc->firstLine,
             $this->yy->lineNo,
             $this->yy->loc->firstColumn,
@@ -282,8 +287,10 @@
         );
 
         if (isset($this->ranges)) {
-            $this->yy->loc->range = array($r[0], $r[0] + $this->yy->leng - $len);
+            $yy->loc->range = array($r[0], $r[0] + $this->yy->leng - $len);
         }
+
+        $this->unputStack[] = $yy;
     }
 
     function more()
@@ -325,6 +332,9 @@
 
     function next()
     {
+        if ($yy = array_pop($this->unputStack)) {
+            $this->yy = $yy;
+        }
         if ($this->done == true) {
             return $this->eof;
         }
