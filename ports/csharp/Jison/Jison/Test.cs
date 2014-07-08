@@ -34,7 +34,8 @@ namespace jQuerySheet
 
 		    var parsedCell = Spreadsheet.Spreadsheets[0][0][2];
 		    var value = parsedCell.UpdateValue();
-		    value = value;
+            Console.Write(value.ToDouble());
+		    Console.Read();
 		}
 	}
 }

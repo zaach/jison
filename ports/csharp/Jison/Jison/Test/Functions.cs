@@ -39,7 +39,7 @@ namespace jQuerySheet
 				return firstChild;
 		    }
 
-			value.ToDouble ();
+			value.ToDouble();
 			return value;
 		}
 	}

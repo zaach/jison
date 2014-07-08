@@ -489,6 +489,18 @@ using System.Linq;
 			LastColumn = lastColumn;
 			Range = range;
 		}
+
+	    public ParserLocation Clone()
+	    {
+	        var parserLocation = new ParserLocation(FirstLine, LastLine,FirstColumn,LastColumn);
+
+	        if (Range != null)
+	        {
+	            parserLocation.Range = Range.Clone();
+	        }
+
+	        return parserLocation;
+	    }
 	}
 
 	public class LexerConditions
@@ -651,6 +663,12 @@ using System.Linq;
 			X = x;
 			Y = y;
 		}
+
+	    public ParserRange Clone()
+	    {
+	        var parserRange = new ParserRange(X, Y);
+            return parserRange;
+	    }
 	}
 
 	public class ParserSymbols
@@ -703,18 +721,22 @@ using System.Linq;
 		public ParserValue()
 		{
 		}
-		
-		public ParserValue(ParserValue parserValue)
-		{
-			Text = parserValue.Text;
-			Leng = parserValue.Leng;
-			Loc = parserValue.Loc;
-			LineNo = parserValue.LineNo;
-		}
+
+        public ParserValue(string text, ParserLocation loc, int leng, int lineNo)
+        {
+            Text = text;
+            Loc = loc;
+            Leng = leng;
+            LineNo = lineNo;
+        }
 		
 		public ParserValue Clone()
 		{
-			return new ParserValue(this);
+			var parserValue =  new ParserValue();
+		    parserValue.Text = this.Text;
+
+
+		    return parserValue;
 		}
 	}
 

@@ -85,11 +85,15 @@ exec("jison " + process.argv[2], function (error) {
 		}
 		str = comments.parse(str);
 
-        str = str.replace(/(\d)\n/g, function () {
+        str = str.replace(/(\d)(\n|\r\n)/g, function () {
             return arguments[1] + ';\n';
         });
 
         return str;
+    }
+
+    function capitaliseFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
     var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
@@ -97,14 +101,14 @@ exec("jison " + process.argv[2], function (error) {
     var option = {
     	'using': '',
         'namespace': 'Jison',
-        'class': FileName,
+        'class': capitaliseFirstLetter(FileName.split(/[/\\]/g).pop()),
         'fileName': FileName + '.cs',
 		'extends': '',
         'parserValue': ''
     };
 
     var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
-    parserDefinition = parserDefinition.split(/\n/g);
+    parserDefinition = parserDefinition.split(/(\n|\r\n)/g);
     for (var i = 0; i < parserDefinition.length; i++) {
         if (parserDefinition[i].match('//option')) {
             parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();

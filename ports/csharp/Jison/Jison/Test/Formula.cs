@@ -1729,42 +1729,42 @@ namespace jQuerySheet
 			
 			Rules = new Dictionary<int, Regex>
 				{
-					{0, new Regex(@"^(?:\s+)")},
-					{1, new Regex(@"^(?:""(\\[""]|[^""])*"")")},
-					{2, new Regex(@"^(?:'(\\[']|[^'])*')")},
-					{3, new Regex(@"^(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))")},
-					{4, new Regex(@"^(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))")},
-					{5, new Regex(@"^(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)")},
-					{6, new Regex(@"^(?:SHEET[0-9]+)")},
-					{7, new Regex(@"^(?:\$[A-Za-z]+\$[0-9]+)")},
-					{8, new Regex(@"^(?:[A-Za-z]+[0-9]+)")},
-					{9, new Regex(@"^(?:[A-Za-z]+(?=[(]))")},
-					{10, new Regex(@"^(?:[A-Za-z]{1,}[A-Za-z_0-9]+)")},
-					{11, new Regex(@"^(?:[A-Za-z_]+)")},
-					{12, new Regex(@"^(?:[0-9]+)")},
-					{13, new Regex(@"^(?:\\s)")},
-					{14, new Regex(@"^(?:[.])")},
-					{15, new Regex(@"^(?::)")},
-					{16, new Regex(@"^(?:;)")},
-					{17, new Regex(@"^(?:,)")},
-					{18, new Regex(@"^(?:\*)")},
-					{19, new Regex(@"^(?:\/)")},
-					{20, new Regex(@"^(?:-)")},
-					{21, new Regex(@"^(?:\+)")},
-					{22, new Regex(@"^(?:\^)")},
-					{23, new Regex(@"^(?:\()")},
-					{24, new Regex(@"^(?:\))")},
-					{25, new Regex(@"^(?:>)")},
-					{26, new Regex(@"^(?:<)")},
-					{27, new Regex(@"^(?:NOT\b)")},
-					{28, new Regex(@"^(?:E\b)")},
-					{29, new Regex(@"^(?:"")")},
-					{30, new Regex(@"^(?:')")},
-					{31, new Regex(@"^(?:!)")},
-					{32, new Regex(@"^(?:=)")},
-					{33, new Regex(@"^(?:%)")},
-					{34, new Regex(@"^(?:[#])")},
-					{35, new Regex(@"^(?:$)")}
+					{0, new Regex(@"\G(?:\s+)")},
+					{1, new Regex(@"\G(?:""(\\[""]|[^""])*"")")},
+					{2, new Regex(@"\G(?:'(\\[']|[^'])*')")},
+					{3, new Regex(@"\G(?:[A-Za-z]{1,}[A-Za-z_0-9]+(?=[(]))")},
+					{4, new Regex(@"\G(?:([0]?[1-9]|1[0-2])[:][0-5][0-9]([:][0-5][0-9])?[ ]?(AM|am|aM|Am|PM|pm|pM|Pm))")},
+					{5, new Regex(@"\G(?:([0]?[0-9]|1[0-9]|2[0-3])[:][0-5][0-9]([:][0-5][0-9])?)")},
+					{6, new Regex(@"\G(?:SHEET[0-9]+)")},
+					{7, new Regex(@"\G(?:\$[A-Za-z]+\$[0-9]+)")},
+					{8, new Regex(@"\G(?:[A-Za-z]+[0-9]+)")},
+					{9, new Regex(@"\G(?:[A-Za-z]+(?=[(]))")},
+					{10, new Regex(@"\G(?:[A-Za-z]{1,}[A-Za-z_0-9]+)")},
+					{11, new Regex(@"\G(?:[A-Za-z_]+)")},
+					{12, new Regex(@"\G(?:[0-9]+)")},
+					{13, new Regex(@"\G(?:\\s)")},
+					{14, new Regex(@"\G(?:[.])")},
+					{15, new Regex(@"\G(?::)")},
+					{16, new Regex(@"\G(?:;)")},
+					{17, new Regex(@"\G(?:,)")},
+					{18, new Regex(@"\G(?:\*)")},
+					{19, new Regex(@"\G(?:\/)")},
+					{20, new Regex(@"\G(?:-)")},
+					{21, new Regex(@"\G(?:\+)")},
+					{22, new Regex(@"\G(?:\^)")},
+					{23, new Regex(@"\G(?:\()")},
+					{24, new Regex(@"\G(?:\))")},
+					{25, new Regex(@"\G(?:>)")},
+					{26, new Regex(@"\G(?:<)")},
+					{27, new Regex(@"\G(?:NOT\b)")},
+					{28, new Regex(@"\G(?:E\b)")},
+					{29, new Regex(@"\G(?:"")")},
+					{30, new Regex(@"\G(?:')")},
+					{31, new Regex(@"\G(?:!)")},
+					{32, new Regex(@"\G(?:=)")},
+					{33, new Regex(@"\G(?:%)")},
+					{34, new Regex(@"\G(?:[#])")},
+					{35, new Regex(@"\G(?:$)")}
 				};
 
 			Conditions = new Dictionary<string, LexerConditions>
@@ -1793,10 +1793,12 @@ case 2:
 		
 break;
 case 3:
-					
+			//
+		
 break;
 case 4:
-					
+			//
+		
 break;
 case 5:
 			
@@ -1842,7 +1844,8 @@ case 8:
 		
 break;
 case 9:
-					
+			//
+		
 break;
 case 10:
 			
@@ -1863,7 +1866,8 @@ case 11:
 		
 break;
 case 12:
-						
+			//
+			
 			
 				ss[so-3].Set(ss[so-3].Text != ss[so].Text);
 				thisS = ss[so-3];
@@ -1871,7 +1875,8 @@ case 12:
 		
 break;
 case 13:
-						
+			//
+			
 			
 				ss[so-2].Set(ss[so-2].Text != ss[so].Text);
 				thisS = ss[so-2];
@@ -2281,24 +2286,22 @@ break;
 		public ParserSymbol Eof = new ParserSymbol("Eof", 1);
 		public Expression Yy = new Expression();
 		public string Match = "";
-		public string Matched = "";
 		public Stack<string> ConditionStack;
 		public Dictionary<int, Regex> Rules;
 		public Dictionary<string, LexerConditions> Conditions;
 		public bool Done = false;
 		public bool Less;
 		public bool _More;
-		public string _Input;
+        public InputReader _Input;
 		public int Offset;
 		public Dictionary<int, ParserRange>Ranges;
 		public bool Flex = false;
 
 		public void SetInput(string input)
 		{
-			_Input = input;
+            _Input = new InputReader(input);
 			_More = Less = Done = false;
 			Yy.LineNo = Yy.Leng = 0;
-			Matched = Match = "";
 			ConditionStack = new Stack<string>();
 			ConditionStack.Push("INITIAL");
 
@@ -2314,12 +2317,11 @@ break;
 
 		public string Input()
 		{
-			string ch = _Input[0].ToString();
+		    string ch = _Input.Ch();
 			Yy.Text += ch;
 			Yy.Leng++;
 			Offset++;
 			Match += ch;
-			Matched += ch;
 			Match lines = Regex.Match(ch, "/(?:\r\n?|\n).*/");
 			if (lines.Success) {
 				Yy.LineNo++;
@@ -2333,7 +2335,6 @@ break;
 				Yy.Loc.Range.Y++;
 			}
 
-			_Input = _Input.Substring(1);
 			return ch;
 		}
 
@@ -2342,12 +2343,12 @@ break;
 			int len = ch.Length;
 			var lines = Regex.Split(ch, "/(?:\r\n?|\n)/");
 
-			_Input = ch + _Input;
+            //TODO: not really compatible??
+			_Input.unCh(ch.Length);
 			Yy.Text = Yy.Text.Substring(0, len - 1);
 			Offset -= len;
 			var oldLines = Regex.Split(Match, "/(?:\r\n?|\n)/");
 			Match = Match.Substring(0, Match.Length - 1);
-			Matched = Matched.Substring(0, Matched.Length - 1);
 
 			if ((lines.Length - 1) > 0) Yy.LineNo -= lines.Length - 1;
 			var r = Yy.Loc.Range;
@@ -2379,8 +2380,8 @@ break;
 
 		public string PastInput()
 		{
-			var past = Matched.Substring(0, Matched.Length - Match.Length);
-			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(-20), "/\n/", "") : "");
+			var past = _Input.ToString().Substring(0, _Input.Position - Match.Length);
+			return (past.Length > 20 ? "..." + Regex.Replace(past.Substring(20), "/\n/", "") : "");
 		}
 
 		public string UpcomingInput()
@@ -2388,7 +2389,7 @@ break;
 			var next = Match;
 			if (next.Length < 20)
 			{
-				next += _Input.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
+				next += _Input.ToString().Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length));
 			}
 			return Regex.Replace(next.Substring(0, (next.Length > 20 ? 20 - next.Length : next.Length)) + (next.Length > 20 ? "..." : ""), "/\n/", "");
 		}
@@ -2413,7 +2414,7 @@ break;
 				return Eof;
 			}
 
-			if (String.IsNullOrEmpty(_Input))
+			if (_Input.Done)
 			{
 				Done = true;
 			}
@@ -2432,8 +2433,8 @@ break;
 			for (int i = 0; i < rules.Count; i++)
 			{
 				rule = Rules[rules[i]];
-				var tempMatch = rule.Match(_Input);
-				if (tempMatch.Success == true && (match != null || tempMatch.Length > match.Length)) {
+				var tempMatch = _Input.Match(rule);
+				if (tempMatch.Success && tempMatch.Length > match.Length) {
 					match = tempMatch.Value;
 					matched = true;
 					index = i;
@@ -2454,7 +2455,6 @@ break;
 
 				Yy.Text += match;
 				Match += match;
-				Matched += match;
 
 				Yy.Leng = Yy.Text.Length;
 				if (Ranges != null)
@@ -2462,13 +2462,13 @@ break;
 					Yy.Loc.Range = new ParserRange(Offset, Offset += Yy.Leng);
 				}
 				_More = false;
-				_Input = _Input.Substring(match.Length);
+				_Input.AddMatch(match);
                 var ruleIndex = rules[index];
                 var nextCondition = ConditionStack.Peek();
                 dynamic action = LexerPerformAction(ruleIndex, nextCondition);
 				ParserSymbol token = Symbols[action];
 
-				if (Done == true && String.IsNullOrEmpty(_Input) == false)
+				if (Done == true || _Input.Done)
 				{
 					Done = false;
 				}
@@ -2480,7 +2480,7 @@ break;
 				}
 			}
 
-			if (String.IsNullOrEmpty(_Input)) {
+			if (_Input.Done) {
 				return Symbols["EOF"];
 			} else
 			{
@@ -2655,6 +2655,18 @@ break;
 			LastColumn = lastColumn;
 			Range = range;
 		}
+
+	    public ParserLocation Clone()
+	    {
+	        var parserLocation = new ParserLocation(FirstLine, LastLine,FirstColumn,LastColumn);
+
+	        if (Range != null)
+	        {
+	            parserLocation.Range = Range.Clone();
+	        }
+
+	        return parserLocation;
+	    }
 	}
 
 	public class LexerConditions
@@ -2817,6 +2829,12 @@ break;
 			X = x;
 			Y = y;
 		}
+
+	    public ParserRange Clone()
+	    {
+	        var parserRange = new ParserRange(X, Y);
+            return parserRange;
+	    }
 	}
 
 	public class ParserSymbols
@@ -2869,18 +2887,22 @@ break;
 		public ParserValue()
 		{
 		}
-		
-		public ParserValue(ParserValue parserValue)
-		{
-			Text = parserValue.Text;
-			Leng = parserValue.Leng;
-			Loc = parserValue.Loc;
-			LineNo = parserValue.LineNo;
-		}
+
+        public ParserValue(string text, ParserLocation loc, int leng, int lineNo)
+        {
+            Text = text;
+            Loc = loc;
+            Leng = leng;
+            LineNo = lineNo;
+        }
 		
 		public ParserValue Clone()
 		{
-			return new ParserValue(this);
+			var parserValue =  new ParserValue();
+		    parserValue.Text = this.Text;
+
+
+		    return parserValue;
 		}
 	}
 
@@ -2908,4 +2930,57 @@ break;
 			}
 		}
 	}
+
+
+    public class InputReader
+    {
+	
+		public bool Done = false;
+		public string Input;
+        public int Length;
+        public JList<string> Matches = new JList<string>();
+        public int Position = 0;
+
+        public InputReader(string input)
+        {
+            Input = input;
+            Length = input.Length;
+        }
+
+        public void AddMatch (string match) {
+			Matches.Push(match);
+			Position += match.Length;
+			Done = (Position >= Length);
+		}
+
+        public string Ch()
+        {
+			var ch = Input[Position].ToString();
+			AddMatch(ch);
+			return ch;
+		}
+
+		public void unCh(int chLength)
+		{
+			Position -= chLength;
+		    Position = Math.Max(0, Position);
+			Done = (Position >= Length);
+		}
+
+		public string Substring(int start, int end) {
+			start = (start != 0 ? Position + start : Position);
+			end = (end != 0 ? start + end : Length);
+			return Input.Substring(start, end);
+		}
+
+		public Match Match(Regex rule) {
+		    var match = rule.Match(Input, Position);
+		    return match;
+		}
+
+        public new string ToString()
+        {
+            return String.Join("", Matches.ToArray());
+        }
+    }
 }
