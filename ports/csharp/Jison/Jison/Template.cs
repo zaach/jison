@@ -20,6 +20,7 @@ using System.Linq;
 		public const int Shift = 1;
 		public const int Reduce = 2;
 		public const int Accept = 3;
+        public JList</**/ParserValue/**/> UnputStack = new JList</**/ParserValue/**/>();
 
 		public void Trace()
 		{
@@ -272,20 +273,23 @@ using System.Linq;
 
 		public void Unput(string ch)
 		{
+            var yy = new /**/ParserValue/**/();
 			int len = ch.Length;
 			var lines = Regex.Split(ch, "/(?:\r\n?|\n)/");
 
-            //TODO: not really compatible??
 			_Input.unCh(ch.Length);
-			Yy.Text = Yy.Text.Substring(0, len - 1);
+		    yy.Text = Yy.Text.Substring(0, len - 1);
 			Offset -= len;
 			var oldLines = Regex.Split(Match, "/(?:\r\n?|\n)/");
 			Match = Match.Substring(0, Match.Length - 1);
 
-			if ((lines.Length - 1) > 0) Yy.LineNo -= lines.Length - 1;
+		    if ((lines.Length - 1) > 0)
+		    {
+		        yy.LineNo -= Yy.LineNo - lines.Length - 1;
+		    }
 			var r = Yy.Loc.Range;
 
-			Yy.Loc = new ParserLocation(
+			yy.Loc = new ParserLocation(
 				Yy.Loc.FirstLine,
 				Yy.LineNo + 1,
 				Yy.Loc.FirstColumn,
@@ -301,8 +305,10 @@ using System.Linq;
 			);
 
 			if (Ranges.Count > 0) {
-				Yy.Loc.Range = new ParserRange(r.X, r.X + Yy.Leng - len);
+				yy.Loc.Range = new ParserRange(r.X, r.X + Yy.Leng - len);
 			}
+
+            UnputStack.Push(yy);
 		}
 
 		public void More()
@@ -341,7 +347,12 @@ using System.Linq;
 
 		public ParserSymbol Next()
 		{
-			if (Done == true)
+		    if (UnputStack.Count > 0)
+		    {
+		        Yy = UnputStack.Pop();
+		    }
+
+		    if (Done == true)
 			{
 				return Eof;
 			}
@@ -747,9 +758,17 @@ using System.Linq;
 			Add(item);
 		}
 
-		public void Pop()
+		public T Pop()
 		{
-			RemoveAt(Count - 1);
+		    var i = Math.Max(0, Count);
+		    if (i == 0)
+		    {
+		        return null;
+		    }
+
+		    var val = this[i];
+			RemoveAt(i);
+		    return val;
 		}
 
 		new public T this[int index]
