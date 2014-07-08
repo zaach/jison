@@ -85,19 +85,22 @@ exec("jison " + process.argv[2], function (error) {
 		}
 		str = comments.parse(str);
 
-        str = str.replace(/(\d)\n/g, function () {
+        str = str.replace(/(\d)(\n|\r\n)/g, function () {
             return arguments[1] + ';\n';
         });
 
         return str;
     }
 
+    function capitaliseFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
     var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-    var ClassName = FileName.replace(/^.*[\\\/]/, '').charAt(0).toUpperCase() + FileName.replace(/^.*[\\\/]/, '').slice(1);
     var option = {
     	'using': '',
         'namespace': 'Jison',
-        'class': ClassName,
+        'class': capitaliseFirstLetter(FileName.split(/[/\\]/g).pop()),
         'fileName': FileName + '.cs',
 		'extends': '',
         'parserValue': ''
@@ -238,7 +241,7 @@ exec("jison " + process.argv[2], function (error) {
 
         return result;
     }
-
+    
     parserRaw = parserRaw
     	.replace(new RegExp('//@@USING_INJECT@@', 'g'),(option.using ? 'using ' + option.using.split(',').join(';\nusing ') + ';' : ''))
         .replace(new RegExp('[/][*][*][/]namespace Jison[/][*][*][/]', 'g'), 'namespace ' + option.namespace)
