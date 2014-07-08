@@ -416,3 +416,32 @@ exports["test intance creation"] = function () {
     assert.notEqual(parser.blah, parser2.blah, "should not inherit");
 };
 
+exports["test reentrant parsing"] = function () {
+    var grammar = {
+        bnf: {
+            "S" :['A EOF'],
+            "A" :['x A',
+                  'B',
+                  'C'
+                 ],
+            "B" :[['y', 'return "foo";']],
+            "C" :[['w', 'return yy.parser.parse("xxxy") + "bar";']]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["w", "return 'w';"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           ["$", "return 'EOF';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var result = parser.parse('xxw');
+    assert.equal(result, "foobar");
+};
+

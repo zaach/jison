@@ -46,74 +46,72 @@ exec("jison " + process.argv[2], function (error) {
     var conditions = Parser.parser.lexer.conditions,
         options = Parser.parser.lexer.options,
         parserPerformAction = Parser.parser.performAction.toString(),
-        lexerPerformAction = Parser.parser.lexer.performAction.toString();
+        lexerPerformAction = Parser.parser.lexer.performAction.toString(),
 
-    function jsFnBody(str) {
-        str = str.split('{');
-        str.shift();
-        str = str.join('{');
-
-        str = str.split('}');
-        str.pop();
-        str = str.join('}');
-
-        return str;
-    }
-
-    function jsPerformActionToCs(str, isLex) {
-        str = jsFnBody(str);
-        str = str.replace("var $0 = $$.length - 1;", '');
-        str = str.replace("var YYSTATE=YY_START", '');
-        str = str.replace(new RegExp('[$]0', 'g'), 'so');
-        str = str.replace(new RegExp('[$][$]', 'g'), 'ss');
-        str = str.replace(new RegExp('default[:][;]', 'g'), '');
-        str = str.replace(new RegExp('this[.][$]', 'g'), 'thisS');
-        str = str.replace(new RegExp('[.]yytext', 'g'), '.yytext');
-        str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
-        str = str.replace(new RegExp('[$]end', 'g'), 'end');
-        str = str.replace(new RegExp('console[.]log'), '');
-        str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoidingNameCollisions');
-		if (isLex) {
-		    str = str
-		        .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
-                    var symbol = symbols[arguments[3]];
-                    if (symbol) {
-		                return arguments[1] + symbol + ';';
-                    }
-                    return arguments[1] + '"' + arguments[3] + '";';
-		        });
-		}
-		str = comments.parse(str);
-
-        str = str.replace(/(\d)(\n|\r\n)/g, function () {
-            return arguments[1] + ';\n';
-        });
-
-        return str;
-    }
-
-    function capitaliseFirstLetter(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
-    }
-
-    var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+        jsFnBody = function (str) {
+            str = str.split('{');
+            str.shift();
+            str = str.join('{');
     
-    var option = {
-    	'using': '',
-        'namespace': 'Jison',
-        'class': capitaliseFirstLetter(FileName.split(/[/\\]/g).pop()),
-        'fileName': FileName + '.cs',
-		'extends': '',
-        'parserValue': ''
-    };
+            str = str.split('}');
+            str.pop();
+            str = str.join('}');
+    
+            return str;
+        },
 
-    var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
-    parserDefinition = parserDefinition.split(/(\n|\r\n)/g);
-    for (var i = 0; i < parserDefinition.length; i++) {
-        if (parserDefinition[i].match('//option')) {
-            parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
-            parserDefinition[i] = parserDefinition[i].split(':');
-            option[parserDefinition[i][0]] = parserDefinition[i][1];
+        jsPerformActionToCs = function (str, isLex) {
+            str = jsFnBody(str);
+            str = str.replace("var $0 = $$.length - 1;", '');
+            str = str.replace("var YYSTATE=YY_START", '');
+            str = str.replace(new RegExp('[$]0', 'g'), 'so');
+            str = str.replace(new RegExp('[$][$]', 'g'), 'ss');
+            str = str.replace(new RegExp('default[:][;]', 'g'), '');
+            str = str.replace(new RegExp('this[.][$]', 'g'), 'thisS');
+            str = str.replace(new RegExp('[.]yytext', 'g'), '.yytext');
+            str = str.replace(new RegExp('[$]accept', 'g'), 'accept');
+            str = str.replace(new RegExp('[$]end', 'g'), 'end');
+            str = str.replace(new RegExp('console[.]log'), '');
+            str = str.replace(new RegExp('[$]avoiding_name_collisions'), 'avoidingNameCollisions');
+            if (isLex) {
+                str = str
+                    .replace(/(return[ ]+)(['"])([a-zA-Z0-9]+)(['"][;])/g, function() {
+                        var symbol = symbols[arguments[3]];
+                        if (symbol) {
+                            return arguments[1] + symbol + ';';
+                        }
+                        return arguments[1] + '"' + arguments[3] + '";';
+                    });
+            }
+            str = comments.parse(str);
+    
+            str = str.replace(/(\d)(\n|\r\n)/g, function () {
+                return arguments[1] + ';\n';
+            });
+    
+            return str;
+        },
+
+        FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1),
+        ClassName = FileName.replace(/^.*[\\\/]/, '').charAt(0).toUpperCase() + FileName.replace(/^.*[\\\/]/, '').slice(1),
+        option = {
+            'using': '',
+            'namespace': 'Jison',
+            'class': ClassName,
+            'fileName': FileName + '.cs',
+		    'extends': '',
+            'parserValue': ''
+        };
+        
+    if (fileName.search(/jison/) !== -1) {
+        var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
+        parserDefinition = parserDefinition.split(/\n/g);
+        for (var i = 0; i < parserDefinition.length; i++) {
+            if (parserDefinition[i].match('//option')) {
+                parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
+                parserDefinition[i] = parserDefinition[i].split(':');
+                option[parserDefinition[i][0]] = parserDefinition[i][1];
+            }
         }
     }
 
@@ -226,7 +224,7 @@ exec("jison " + process.argv[2], function (error) {
         this.conditions = [];
         
         for (var i in rules) {
-            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"\\G' + rules[i].substring(2, rules[i].length - 1).replace(/"/g, '""') + '")}');
+            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '""') + '")}');
         }
 
         result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';
