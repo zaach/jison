@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Jison;
 
-namespace jQuerySheet
+namespace Sheet
 {
 	public static class Functions
 	{

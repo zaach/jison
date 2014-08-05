@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace jQuerySheet
+namespace Sheet
 {
 	public class Cell
 	{
@@ -15,6 +15,7 @@ namespace jQuerySheet
 		public DateTime CalcLast = new DateTime();
 		public int CalcCount = 0;
 		public Stack<string> State = new Stack<string>();
+	    public Row Parent;
 
         public Cell()
         {
@@ -40,6 +41,7 @@ namespace jQuerySheet
 				State.Push ("Parsing");
 				CalcCount++;
 				var formula = new Formula();
+                formula.Setup(this);
 				var value = formula.Parse (Formula);
 				State.Pop ();
 				return value;

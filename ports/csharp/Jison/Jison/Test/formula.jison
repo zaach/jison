@@ -1,5 +1,6 @@
 ﻿//option parserValue:Expression
-//option namespace:jQuerySheet
+//option namespace:Sheet
+//option extends:FormulaBase
 
 /* description: Parses end evaluates mathematical expressions. */
 /* lexical grammar */
@@ -204,7 +205,10 @@ expression :
 		{
 			//js
 			$$ = yy.handler.number.apply(yy.obj, [$2]);
-			//
+			
+			/*cs
+				$$ = $2;
+			*/
 		}
 	| expression '<' '=' expression
 		{
@@ -417,7 +421,7 @@ cell :
 			//php $$ = $this->fixedCellValue($1);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.ParseFixed($1.Text));
 			*/
 		}
 	| FIXEDCELL ':' FIXEDCELL
@@ -428,7 +432,7 @@ cell :
 			//php $$ = $this->fixedCellRangeValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseFixed($1.Text), Location.ParseFixed($3.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.ParseFixed($1.Text), MySpreadsheet.ParseFixed($3.Text));
 			*/
 		}
 	| CELL
@@ -439,7 +443,7 @@ cell :
 			//php $$ = $this->cellValue($1);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.Parse($1.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.Parse($1.Text));
 			*/
 		}
 	| CELL ':' CELL
@@ -450,7 +454,7 @@ cell :
 			//php $$ = $this->cellRangeValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.Parse($1.Text), Location.Parse($3.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.Parse($1.Text), MySpreadsheet.Parse($3.Text));
 			*/
 		}
 	| SHEET '!' CELL
@@ -461,7 +465,7 @@ cell :
 			//php $$ = $this->remoteCellValue($1, $3);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Text, $3.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.ParseRemote($1.Text, $3.Text));
 			*/
 		}
 	| SHEET '!' CELL ':' CELL
@@ -472,7 +476,7 @@ cell :
 			//php $$ = $this->remoteCellRangeValue($1, $3, $5);
 			
 			/*cs
-				$$ = Spreadsheet.CellValue(Location.ParseRemote($1.Text, $3.Text), Location.ParseRemote($1.Text, $5.Text));
+				$$ = MySpreadsheets.CellValue(MySpreadsheet.ParseRemote($1.Text, $3.Text), MySpreadsheet.ParseRemote($1.Text, $5.Text));
 			*/
 		}
 ;

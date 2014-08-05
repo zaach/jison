@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 
-namespace jQuerySheet
+namespace Sheet
 {
-	public class Formula
+	public class Formula : FormulaBase
 	{
 		public ParserSymbols Symbols;
 		public Dictionary<int, ParserSymbol> Terminals;
@@ -1846,7 +1846,7 @@ case 8:
 break;
 case 9:
 			//
-		
+                thisS = ss[so - 1];
 break;
 case 10:
 			
@@ -1976,47 +1976,47 @@ case 28:
 			
 			
 			
-				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so].Text));
+				thisS = MySpreadsheets.CellValue(MySpreadsheet.ParseFixed(ss[so].Text));
 			
 		
 break;
 case 29:
-			
-			
-			
-				thisS = Spreadsheet.CellValue(Location.ParseFixed(ss[so-2].Text), Location.ParseFixed(ss[so].Text));
+
+
+
+                thisS = MySpreadsheets.CellValue(MySpreadsheet.ParseFixed(ss[so - 2].Text), MySpreadsheet.ParseFixed(ss[so].Text));
 			
 		
 break;
 case 30:
-			
-			
-			
-				thisS = Spreadsheet.CellValue(Location.Parse(ss[so].Text));
+
+
+
+                thisS = MySpreadsheets.CellValue(MySpreadsheet.Parse(ss[so].Text));
 			
 		
 break;
 case 31:
-			
-			
-			
-				thisS = Spreadsheet.CellValue(Location.Parse(ss[so-2].Text), Location.Parse(ss[so].Text));
+
+
+
+                thisS = MySpreadsheets.CellValue(MySpreadsheet.Parse(ss[so - 2].Text), MySpreadsheet.Parse(ss[so].Text));
 			
 		
 break;
 case 32:
-			
-			
-			
-				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-2].Text, ss[so].Text));
+
+
+
+                thisS = MySpreadsheets.CellValue(MySpreadsheet.ParseRemote(ss[so - 2].Text, ss[so].Text));
 			
 		
 break;
 case 33:
-			
-			
-			
-				thisS = Spreadsheet.CellValue(Location.ParseRemote(ss[so-4].Text, ss[so-2].Text), Location.ParseRemote(ss[so-4].Text, ss[so].Text));
+
+
+
+                thisS = MySpreadsheets.CellValue(MySpreadsheet.ParseRemote(ss[so - 4].Text, ss[so - 2].Text), MySpreadsheet.ParseRemote(ss[so - 4].Text, ss[so].Text));
 			
 		
 break;
