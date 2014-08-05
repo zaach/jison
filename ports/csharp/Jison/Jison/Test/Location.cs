@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace jQuerySheet
+namespace Sheet
 {
 	public class Location
 	{
@@ -48,26 +48,6 @@ namespace jQuerySheet
 		
 		static readonly public Regex Cell = new Regex("^([A-Z]+)([0-9]+)");
 		
-		public static Location Parse(string id)
-		{
-			return new Location(id);
-		}
-		
-		public static Location ParseRemote(string sheet, string id)
-		{
-			return new Location(sheet, id);
-		}
-		
-		public static Location ParseFixed(string id)
-		{
-			return new Location(id, true);
-		}
-		
-		public static Location ParseRemoteFixed(string sheet, string id)
-		{
-			return new Location(sheet, id, true);
-		}
-		
 		public void ParseCellId(string id)
 		{
 			var match = Cell.Match(id);
@@ -76,7 +56,6 @@ namespace jQuerySheet
 				Col = Alphabet[match.Groups[1].Value];
 				Row = Convert.ToInt32(match.Groups[2].Value) - 1;
 			}
-			Sheet = Spreadsheet.ActiveSpreadsheet;
 		}
 		
 		public void ParseSheetId(string sheet)
@@ -85,9 +64,10 @@ namespace jQuerySheet
 			Sheet = Convert.ToInt32(sheet);
 		}
 		
-		public Location(string id)
+		public Location(Spreadsheet spreadsheet, string id)
 		{
 			ParseCellId(id);
+            Sheet = spreadsheet.Index;
 		}
 		
 		public Location(string sheet, string id)

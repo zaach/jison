@@ -1,73 +1,67 @@
-﻿using System;
-using System.Text;
-using System.Threading.Tasks;
+using System;
 using System.Collections.Generic;
 
-namespace jQuerySheet
+namespace Sheet
 {
-	public class Spreadsheet
-    {
-        static public int ActiveSpreadsheet = 0;
-		static public SpreadsheetsDictionary Spreadsheets;
-
-
-		public SpreadsheetsDictionary Calc()
+	public class Spreadsheet : Dictionary<int, Row>
+	{
+	    public Spreadsheets Parent;
+        public int Index;
+		public int RowIndex = -1;
+		public Row AddRow()
 		{
-			foreach (var Spreadsheet in Spreadsheets.Values) {
-				foreach (var row in Spreadsheet.Values) {
-					foreach (var cell in row) {
-						cell.Value.UpdateValue();
-					}
-				}
-			}
-
-			return Spreadsheets;
+			var row = new Row();
+			RowIndex++;
+		    row.Parent = this;
+            Add(RowIndex, row);
+            return row;
 		}
 
-		public static DateTime CalcLast;
-
-		public static Expression UpdateCellValue(Cell cell)
+        public Cell this[string colString, int rowInt]
         {
-            if (cell.HasFormula && cell.State.Count < 1)
-            {
-                cell.State.Push("Parsing");
-				cell.CalcCount++;
-				cell.CalcLast = CalcLast;
-                var formula = new Formula();
-                var value = formula.Parse(cell.Formula);
-                cell.State.Pop();
-                return value;
+            get {
+                var row = this[rowInt - 1];
+
+                var colInt = Location.Alphabet[colString];
+                var cell = row[colInt];
+                return cell;
             }
-            return cell.Exp;
         }
 
-		public static Expression CellValue(int spreadsheet, int row, int col)
-	    {
-            var cell = Spreadsheets[spreadsheet][row][col];
-            var value = UpdateCellValue(cell);
-            return value;
-	    }
-
-		public static Expression CellValue(Location loc)
+        public Cell this[int colInt, int rowInt]
         {
-            var cell = Spreadsheets[loc.Sheet][loc.Row][loc.Col];
-            var value = UpdateCellValue(cell);
-            return value;
-        }
-
-		public static Expression CellValue(Location locStart, Location locEnd)
-        {
-			var range = new Expression();
-
-            for (var row = locStart.Row; row <= locEnd.Row; row++)
+            get
             {
-                for (var col = locStart.Col; col <= locEnd.Col; col++)
-                {
-                    range.Push(Spreadsheets[locStart.Sheet][row][col].UpdateValue());
-                }
+                var row = this[rowInt];
+                var cell = row[colInt];
+                return cell;
             }
-
-            return range;
         }
-    }
+
+        public Spreadsheet(int index)
+            : base() {
+                Index = index;
+        }
+
+        public Location Parse(string id)
+        {
+            return new Location(this, id);
+        }
+
+        public Location ParseRemote(string sheet, string id)
+        {
+            return new Location(sheet, id);
+        }
+
+        public Location ParseFixed(string id)
+        {
+            return new Location(id, true);
+        }
+
+        public Location ParseRemoteFixed(string sheet, string id)
+        {
+            return new Location(sheet, id, true);
+        }
+	}
 }
+
