@@ -374,7 +374,7 @@ expect-floats        this.begin('expect');
 "."         console.log( "found a dot" );
 </code></pre>
 
-<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condtion then <em>only</em> rules that match the current start condition will be considered</p>
+<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condition then <em>only</em> rules that match the current start condition will be considered</p>
 
 <p>Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:</p>
 
@@ -427,7 +427,7 @@ The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_n
 <p>The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace</p>
 
 <pre><code>// myscanner.js
-function new AlphabetScanner() {
+function AlphabetScanner() {
     var text = "";
     this.yytext = "";
     this.yyloc = {
