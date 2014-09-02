@@ -26,10 +26,10 @@
   },
   "dependencies": {
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
-    "nomnom": ">=1.5.2"
+    "nomnom": ">=1.8.0"
   },
   "devDependencies": {
-    "test": ">=0.4.4"
+    "test": ">=0.6.0"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
