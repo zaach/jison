@@ -1,7 +1,7 @@
 Jison
 =====
-* [issues](http://github.com/zaach/jison/issues)
-* [discuss](mailto:jison@librelist.com)
+* [Issues](http://github.com/zaach/jison/issues)
+* [Discuss](mailto:jison@librelist.com)
 
 [![build status](https://secure.travis-ci.org/zaach/jison.png)](http://travis-ci.org/zaach/jison)
 
@@ -21,7 +21,7 @@ Using npm:
     npm install jison -g
 
 Usage from the command line
------------------------
+---------------------------
 
 Clone the github repository for examples:
 
@@ -56,9 +56,9 @@ Full cli option list:
 
 
 Usage from a CommonJS module
---------------------------
+----------------------------
 
-You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment's load path:
+You can generate parsers programatically from JavaScript as well. Assuming Jison is in your CommonJS environment's load path:
 
     // mygenerator.js
     var Parser = require("jison").Parser;
@@ -106,7 +106,7 @@ Run tests with:
     make test
 
 Projects using Jison
-------------------
+--------------------
 
 View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
