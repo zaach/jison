@@ -3514,7 +3514,7 @@ module.exports={
     "node": ">=0.4"
   },
   "dependencies": {
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
     "nomnom": ">=1.5.2"
   },
   "devDependencies": {
@@ -20521,15 +20521,15 @@ module.exports={
     "JSONSelect": ">=0.4.0",
     "esprima": "1.0.x",
     "escodegen": "0.0.21",
-    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git",
-    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git",
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git",
+    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git#master",
+    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
     "nomnom": ">=1.5.2",
     "cjson": ">=0.2.1"
   },
   "devDependencies": {
     "test": ">=0.6.0",
-    "jison": "git://github.com/GerHobbelt/jison.git",
+    "jison": "git://github.com/GerHobbelt/jison.git#master",
     "uglify-js": ">=2.4.0",
     "browserify": "2.x.x"
   },
