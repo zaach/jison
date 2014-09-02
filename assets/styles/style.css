@@ -21,6 +21,10 @@ pre {
     -webkit-border-radius: 1em;
 }
 
+pre code {
+    white-space: pre-wrap;
+}
+
 #header, #main, #content {
     max-width: 600px;
     margin: 0 auto;
