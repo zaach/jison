@@ -24,9 +24,9 @@ exec("jison " + process.argv[2], function (error) {
     
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    var fileName = process.argv[2].replace(/(.jison|.json)/, '')
+    var fileName = process.argv[2].replace('.jison', ''),
         comments = require(path.resolve(__dirname, '../../../comments.js')),
-        requirePath = fileName + '.js';
+        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
@@ -96,7 +96,7 @@ exec("jison " + process.argv[2], function (error) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
-    var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
+    var FileName = capitaliseFirstLetter(fileName);
     var option = {
     	'using': '',
         'namespace': 'Jison',
