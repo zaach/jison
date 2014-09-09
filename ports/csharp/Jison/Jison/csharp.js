@@ -24,9 +24,10 @@ exec("jison " + process.argv[2], function (error) {
     
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    var fileName = process.argv[2].replace('.jison', ''),
+    var jisonFileName = process.argv[2],
+		fileName = jisonFileName.replace('.jison', ''),
         comments = require(path.resolve(__dirname, '../../../comments.js')),
-        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
+        requirePath = path.resolve(jisonFileName).replace('.jison', '') + '.js';
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
@@ -106,10 +107,10 @@ exec("jison " + process.argv[2], function (error) {
         'parserValue': ''
     };
 
-
-    if (fileName.search(/jison/) !== -1) {
+    if (jisonFileName.match(/jison$/i)) {
         var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
         parserDefinition = parserDefinition.split(/\n/g);
+
         for (var i = 0; i < parserDefinition.length; i++) {
             if (parserDefinition[i].match('//option')) {
                 parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
@@ -119,7 +120,11 @@ exec("jison " + process.argv[2], function (error) {
         }
     }
 
-    console.log(option);
+	console.log("\nUsing options:");
+	for (i in option) {
+		console.log(i + ' = ' + option[i]);
+	}
+	console.log("\n");
 
     var parserRaw = fs.readFileSync(__dirname + "/Template.cs", "utf8");
 
