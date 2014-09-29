@@ -211,7 +211,7 @@
     public $done = false;
     public $less;
     public $more;
-	public $input;
+    public $input;
     public $offset;
     public $ranges;
     public $flex = false;
@@ -300,7 +300,7 @@
 
     function pastInput()
     {
-	    $matched = $this->input->toString();
+        $matched = $this->input->toString();
         $past = substr($matched, 0, strlen($matched) - strlen($this->match));
         return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
     }
@@ -350,7 +350,7 @@
 
         $rules = $this->currentRules();
         for ($i = 0, $j = count($rules); $i < $j; $i++) {
-	        $tempMatch = $this->input->match($this->rules[$rules[$i]]);
+            $tempMatch = $this->input->match($this->rules[$rules[$i]]);
             if ($tempMatch && (empty($match) || count($tempMatch[0]) > count($match[0]))) {
                 $match = $tempMatch;
                 $index = $i;
@@ -385,7 +385,7 @@
                 $this->yy->loc->range = new ParserRange($this->offset, $this->offset += $this->yy->leng);
             }
             $this->more = false;
-	        $this->input->addMatch($match[0]);
+            $this->input->addMatch($match[0]);
             $ruleIndex = $rules[$index];
             $nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
 
@@ -623,53 +623,53 @@ class ParserRange
 
 class InputReader
 {
-	public $done = false;
-	public $input;
-	public $length;
-	public $matches = array();
-	public $position = 0;
+    public $done = false;
+    public $input;
+    public $length;
+    public $matches = array();
+    public $position = 0;
 
-	public function __construct($input)
-	{
-		$this->input = $input;
-		$this->length = strlen($input);
-	}
+    public function __construct($input)
+    {
+        $this->input = $input;
+        $this->length = strlen($input);
+    }
 
-	public function addMatch($match) {
-		$this->matches[] = $match;
-		$this->position += strlen($match);
-		$this->done = ($this->position >= $this->length);
-	}
+    public function addMatch($match) {
+        $this->matches[] = $match;
+        $this->position += strlen($match);
+        $this->done = ($this->position >= $this->length);
+    }
 
     public function ch()
-	{
-		$ch = $this->input{$this->position};
-		$this->addMatch($ch);
-		return $ch;
-	}
+    {
+        $ch = $this->input{$this->position};
+        $this->addMatch($ch);
+        return $ch;
+    }
 
-	public function unCh($chLength)
-	{
-		$this->position -= $chLength;
-		$this->position = max(0, $this->position);
-		$this->done = ($this->position >= $this->length);
-	}
+    public function unCh($chLength)
+    {
+        $this->position -= $chLength;
+        $this->position = max(0, $this->position);
+        $this->done = ($this->position >= $this->length);
+    }
 
-	public function substring($start, $end) {
-		$start = ($start != 0 ? $this->position + $start : $this->position);
-		$end = ($end != 0 ? $start + $end : $this->length);
-		return substr($this->input, $start, $end);
-	}
+    public function substring($start, $end) {
+        $start = ($start != 0 ? $this->position + $start : $this->position);
+        $end = ($end != 0 ? $start + $end : $this->length);
+        return substr($this->input, $start, $end);
+    }
 
-	public function match($rule) {
-		if (preg_match($rule, $this->input, $match, null, $this->position)) {
-			return $match;
-		}
-		return null;
-	}
+    public function match($rule) {
+        if (preg_match($rule, $this->input, $match, null, $this->position)) {
+            return $match;
+        }
+        return null;
+    }
 
     public function toString()
-	{
+    {
         return implode('', $this->matches);
     }
 }
