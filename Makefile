@@ -105,6 +105,7 @@ clean:
 	cd modules/lex-parser && make clean
 	-rm -f $(JISON_DEPS)
 	-rm -f lib/util/parser.js lib/util/lex-parser.js
+	-rm -rf node_modules/
 
 #
 # When you've run `make superclean` you must run `make` and `make deploy` to regenerate all content again.
