@@ -188,8 +188,9 @@ RegExpLexer.prototype = {
         }
 
         lines = match[0].match(/(?:\r\n?|\n).*/g);
-        if (lines)
+        if (lines) {
             this.yylineno += lines.length;
+        }
         this.yylloc = {
             first_line: this.yylloc.last_line,
             last_line: this.yylineno + 1,
@@ -214,8 +215,6 @@ RegExpLexer.prototype = {
             this.done = false;
         }
         if (token) {
-            if (this.options.backtrack_lexer)
-                delete backup;
             return token;
         }
 
