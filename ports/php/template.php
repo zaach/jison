@@ -287,7 +287,7 @@
         );
 
         if (isset($this->ranges)) {
-            $yy->loc->range = array($r[0], $r[0] + $this->yy->leng - $len);
+            $yy->loc->range = array($r->x, $r->y + $this->yy->leng - $len);
         }
 
         $this->unputStack[] = $yy;
