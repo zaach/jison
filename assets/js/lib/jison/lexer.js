@@ -73,7 +73,7 @@ function buildActions (dict, tokens) {
 
     this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks);
     var fun = actions.join("\n");
-    "yytext yyleng yylineno".split(' ').forEach(function (yy) {
+    "yytext yyleng yylineno yylloc".split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp("("+yy+")", "g"), "yy_.$1");
     });
 
