@@ -1,5 +1,9 @@
 {
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
   "name": "jison",
   "description": "A parser generator with Bison's API",
   "version": "0.4.15",
@@ -24,7 +28,9 @@
     "url": "http://github.com/zaach/jison/issues"
   },
   "main": "lib/jison",
-  "bin": "lib/cli.js",
+  "bin": {
+    "jison": "lib/cli.js"
+  },
   "engines": {
     "node": ">=0.9"
   },
