@@ -1,0 +1,15 @@
+{
+  "asi"      : false,
+  "lastsemic": false,
+  "boss"     : false,
+  "browser"  : true,
+  "curly"    : false,
+  "debug"    : true,
+  "devel"    : true,
+  "eqeqeq"   : false,
+  "eqnull"   : true,
+  "expr"     : true,
+  "laxbreak" : true,
+  "quotmark" : "single",
+  "validthis": true
+}
