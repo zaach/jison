@@ -215,6 +215,8 @@ RegExpLexer.prototype = {
             this.done = false;
         }
         if (token) {
+            if (this.options.backtrack_lexer)
+                delete backup;
             return token;
         }
 
