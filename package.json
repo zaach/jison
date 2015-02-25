@@ -1,5 +1,9 @@
 {
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
   "name": "jison",
   "description": "A parser generator with Bison's API",
   "version": "0.4.15",
@@ -24,25 +28,27 @@
     "url": "http://github.com/zaach/jison/issues"
   },
   "main": "lib/jison",
-  "bin": "lib/cli.js",
+  "bin": {
+    "jison": "lib/cli.js"
+  },
   "engines": {
     "node": ">=0.9"
   },
   "dependencies": {
     "JSONSelect": ">=0.4.0",
-    "esprima": ">=1.2.2",
-    "escodegen": ">=1.4.1",
+    "esprima": ">=2.0.0",
+    "escodegen": ">=1.6.1",
     "jison-lex": "git://github.com/GerHobbelt/jison-lex.git#master",
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
-    "nomnom": ">=1.8.0",
+    "nomnom": ">=1.8.1",
     "cjson": ">=0.3.0"
   },
   "devDependencies": {
     "test": ">=0.6.0",
     "jison": "git://github.com/GerHobbelt/jison.git#master",
-    "uglify-js": ">=2.4.15",
-    "browserify": "6.x.x"
+    "uglify-js": ">=2.4.16",
+    "browserify": "8.x.x"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
