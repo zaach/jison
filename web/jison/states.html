@@ -1,24 +1,24 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!DOCTYPE html>
+<html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <title>Jison, parse table visualation page</title>
 
-    <script src="../js/excanvas.compiled.js"></script>
-    <script src="../js/jquery-1.4.2.min.js"></script>
-    <script src="../js/jquery-ui-1.7.2.min.js"></script>
-    <script src="../js/jsPlumb-0.0.3-min.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/json2.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/es5.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/lexer.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/typal.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/set.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/util/bnf-parser.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison/bnf.js"></script>
-    <script src="http://github.com/zaach/jison/raw/master/lib/jison.js"></script>
+    <script src="http://explorercanvas.googlecode.com/svn-history/r48/tags/m3/excanvas.compiled.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/jquery.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script>
+    <script src="https://raw.github.com/sporritt/jsPlumb/master/archive/jsPlumb-0.0.3-min.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/json2.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/es5.js"></script>
+
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/lexer.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/typal.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/set.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/bnf-parser.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/bnf.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison.js"></script>
+
     <script>
       function run () {
         var parser = buildGrammar($("#grammar").val());
@@ -110,4 +110,4 @@
 
     </div>
   </body>
-</head>
+</html>
