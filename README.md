@@ -99,11 +99,8 @@ For more information on creating grammars and using the generated parsers, read 
 
 How to contribute
 -----------------
-Fork, make your changes, run tests and/or add tests then send a pull request.
 
-Run tests with:
-
-    make test
+See [CONTRIBUTING.md](https://github.com/zaach/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
 
 Projects using Jison
 ------------------
