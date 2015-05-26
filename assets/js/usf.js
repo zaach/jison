@@ -11,7 +11,6 @@ $(function () {
 
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
-
     $("#examples").change(function(ev) {
       var file = this.options[this.selectedIndex].value;
       $(document.body).addClass("loading");
@@ -70,7 +69,7 @@ function processGrammar () {
             self.toggleClass("open");
           do_click = false;
         }
-      }, 200);
+      }, 350);
     }
     $(".action").on("click", click_handler);
     $(".state").on("click", click_handler);

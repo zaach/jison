@@ -188,8 +188,9 @@ RegExpLexer.prototype = {
         }
 
         lines = match[0].match(/(?:\r\n?|\n).*/g);
-        if (lines)
+        if (lines) {
             this.yylineno += lines.length;
+        }
         this.yylloc = {
             first_line: this.yylloc.last_line,
             last_line: this.yylineno + 1,
@@ -203,8 +204,9 @@ RegExpLexer.prototype = {
         this.matches = match;
         this.yyleng = this.yytext.length;
         if (this.options.ranges) {
-            this.yylloc.range = [this.offset, this.offset += this.yyleng];
+            this.yylloc.range = [this.offset, this.offset + this.yyleng];
         }
+        this.offset += this.yyleng;
         this._more = false;
         this._input = this._input.slice(match[0].length);
         this.matched += match[0];
