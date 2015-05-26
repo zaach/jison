@@ -1,0 +1,15 @@
+[submodule "modules/jison-lex"]
+	path = modules/jison-lex
+	url = git@github.com:GerHobbelt/jison-lex.git
+[submodule "modules/ebnf-parser"]
+	path = modules/ebnf-parser
+	url = git@github.com:GerHobbelt/ebnf-parser.git
+[submodule "modules/lex-parser"]
+	path = modules/lex-parser
+	url = git@github.com:GerHobbelt/lex-parser.git
+[submodule "modules/jison2json"]
+	path = modules/jison2json
+	url = git@github.com:GerHobbelt/jison2json.git
+[submodule "modules/json2jison"]
+	path = modules/json2jison
+	url = git@github.com:GerHobbelt/json2jison.git

@@ -1,9 +1,9 @@
 
 /* description: ClassyLang grammar. Very classy. */
-/* 
+/*
   To build parser:
 
-    $ ./bin/jison examples/classy.jison examples/classy.jisonlex 
+    $ ./bin/jison examples/classy.jison examples/classy.jisonlex
 
 */
 
@@ -26,7 +26,7 @@ pgm
 
 cdl
     : c cdl
-    | 
+    |
     ;
 
 c
@@ -35,12 +35,12 @@ c
 
 vdl
     : VAR t id SEMICOLON vdl
-    | 
+    |
     ;
 
 mdl
     : t id LPAREN t id RPAREN LBRACE vdl el RBRACE mdl
-    | 
+    |
     ;
 
 t

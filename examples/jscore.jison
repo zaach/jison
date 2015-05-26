@@ -57,7 +57,7 @@ ElementList
     ;
 
 ElisionOpt
-    : 
+    :
     | Elision
     ;
 
@@ -482,12 +482,12 @@ IterationStatement
     ;
 
 ExprOpt
-    : 
+    :
     | Expr
     ;
 
 ExprNoInOpt
-    : 
+    :
     | ExprNoIn
     ;
 
@@ -526,7 +526,7 @@ CaseBlock
     ;
 
 CaseClausesOpt
-    : 
+    :
     | CaseClauses
     ;
 
@@ -583,12 +583,12 @@ FormalParameterList
     ;
 
 FunctionBody
-    : 
+    :
     | SourceElements
     ;
 
 Program
-    : 
+    :
     | SourceElements
     ;
 

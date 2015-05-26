@@ -23,21 +23,21 @@ Configuration takes advantage of the commenting in javascript so as not to confl
 EXAMPLE:
 contents
  : content
-	{$$ = $1;} //<--this is left alone
+    {$$ = $1;} //<--this is left alone
  | contents content
-	{
-	    //js
-		$$ = join($1, $2); //<--this is stripped in the php parser, no action taken in the javascript parser
-		
-		//php $$ = $SomeClass->someMethod($1, $2); //<-- this is uncommented from the php parser, no action taken in the javascript parser
+    {
+        //js
+        $$ = join($1, $2); //<--this is stripped in the php parser, no action taken in the javascript parser
 
-		/*php
-		    $$ = $SomeClass->someMethod($1, $2); //<-- this is uncommented from the php parser, no action taken in the javascript parser
-		*/
+        //php $$ = $SomeClass->someMethod($1, $2); //<-- this is uncommented from the php parser, no action taken in the javascript parser
+
+        /*php
+            $$ = $SomeClass->someMethod($1, $2); //<-- this is uncommented from the php parser, no action taken in the javascript parser
+        */
 
         /* If you'd like to just strip out the javascript and do nothing else, you can do the following: */
-		//js
-		    $$ = join($1, $2); //<--this is stripped in the php parser, no action taken in the javascript parser
-		//
-	}
+        //js
+            $$ = join($1, $2); //<--this is stripped in the php parser, no action taken in the javascript parser
+        //
+    }
  ;

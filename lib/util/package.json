@@ -1,0 +1,42 @@
+{
+  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "name": "jison-lex",
+  "description": "lexical analyzer generator used by jison",
+  "version": "0.3.4",
+  "keywords": [
+    "jison",
+    "parser",
+    "generator",
+    "lexer",
+    "flex",
+    "tokenizer"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zaach/jison-lex.git"
+  },
+  "bugs": {
+    "email": "jison@librelist.com",
+    "url": "http://github.com/zaach/jison-lex/issues"
+  },
+  "main": "regexp-lexer",
+  "bin": "cli.js",
+  "engines": {
+    "node": ">=0.4"
+  },
+  "dependencies": {
+    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
+    "nomnom": ">=1.8.1"
+  },
+  "devDependencies": {
+    "test": ">=0.6.0"
+  },
+  "scripts": {
+    "test": "node tests/all-tests.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "tests": "tests"
+  },
+  "homepage": "http://jison.org"
+}

@@ -21,7 +21,7 @@ Jison takes a context-free grammar as input and outputs a JavaScript file capabl
 * [Projects using Jison](#projects-using-jison)
 * [Contributors](#contributors)
 * [License](#license)
- 
+
 Installation
 ------------
 Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
@@ -56,7 +56,7 @@ You can generate parsers programatically from JavaScript as well. Assuming Jison
 
     // mygenerator.js
     var Parser = require("jison").Parser;
-    
+
     var grammar = {
         "lex": {
             "rules": [
@@ -64,23 +64,23 @@ You can generate parsers programatically from JavaScript as well. Assuming Jison
                ["[a-f0-9]+", "return 'HEX';"]
             ]
         },
-    
+
         "bnf": {
             "hex_strings" :[ "hex_strings HEX",
                              "HEX" ]
         }
     };
-    
+
     var parser = new Parser(grammar);
-    
+
     // generate source, ready to be written to disk
     var parserSource = parser.generate();
-    
+
     // you can also use the parser directly from memory
-    
+
     parser.parse("adfe34bc e82a");
     // returns true
-    
+
     parser.parse("adfe34bc zxg");
     // throws lexical error
 
@@ -88,7 +88,7 @@ Using the Generated Parser
 --------------------------
 Once you have generated the parser and saved it, you no longer need Jison or any other dependencies.
 
-As demonstrated before, the parser can be used from the command line:    
+As demonstrated before, the parser can be used from the command line:
 
     node calculator.js testcalc
 
@@ -96,20 +96,20 @@ Though, more ideally, the parser will be a dependency of another module. You can
 
     // mymodule.js
     var parser = require("./calculator").parser;
-    
+
     function exec (input) {
         return parser.parse(input);
     }
 
     var twenty = exec("4 * 5");
-    
+
 Or more succinctly:
 
     // mymodule.js
     function exec (input) {
         return require("./calculator").parse(input);
     }
-    
+
     var twenty = exec("4 * 5");
 
 Using the Parser from the Web
@@ -142,9 +142,9 @@ And could be used like so:
     <script>
       var myCalculator = {};
     </script>
-    
+
     <script src="calc.js"></script>
-    
+
     <script>
       myCalculator.parser.parse("42 / 0");
     </script>
@@ -166,7 +166,7 @@ Other helpful sections:
 
 Specifying a Language
 ---------------------
-The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar. 
+The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar.
 
 For example, here is the grammar for the calculator parser:
 
@@ -250,17 +250,17 @@ which compiles down to this JSON representation used directly by Jison:
                ["$",                       "return 'EOF';"]
             ]
         },
-    
+
         "operators": [
             ["left", "+", "-"],
             ["left", "*", "/"],
             ["left", "^"],
             ["left", "UMINUS"]
         ],
-    
+
         "bnf": {
             "expressions" :[[ "e EOF",   "print($1); return $1;"  ]],
-    
+
             "e" :[[ "e + e",   "$$ = $1 + $3;" ],
                   [ "e - e",   "$$ = $1 - $3;" ],
                   [ "e * e",   "$$ = $1 * $3;" ],
@@ -290,7 +290,7 @@ More examples can be found in the [`examples/`](http://github.com/zaach/jison/tr
 
 Lexical Analysis
 ----------------
-Jison includes a rather rudimentary scanner generator, though **any module that supports the basic scanner API could be used** in its place. 
+Jison includes a rather rudimentary scanner generator, though **any module that supports the basic scanner API could be used** in its place.
 
 The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. Several [metacharacters have been added](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison), but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:
 
@@ -369,7 +369,7 @@ Jison supports inline code blocks like Bison, but also exposes state that can be
 An example from orderly.js:
 
     var parser = require("./orderly/parse").parser;
-    
+
     // set parser's shared scope
     parser.yy = require("./orderly/scope");
 
@@ -385,7 +385,7 @@ Parsing algorithms
 ------------------
 Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.
 
-**LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.*
+**LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.**
 
 Projects using Jison
 --------------------
@@ -400,36 +400,36 @@ License
 -------
 
 > Copyright (c) 2009-2013 Zachary Carter
-> 
+>
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a
 > copy of this software and associated
 > documentation  files (the "Software"),
-> to deal in the Software without 
+> to deal in the Software without
 > restriction, including without
 > limitation the rights to use,  copy,
 > modify, merge, publish, distribute,
 > sublicense, and/or sell  copies of the
 > Software, and to permit persons to
 > whom the  Software is furnished to do
-> so, subject to the following 
+> so, subject to the following
 > conditions:
-> 
+>
 >  The above copyright notice and this
 > permission notice shall be  included
 > in all copies or substantial portions
 > of the Software.
-> 
+>
 >  THE SOFTWARE IS PROVIDED "AS IS",
 > WITHOUT WARRANTY OF ANY KIND,  EXPRESS
 > OR IMPLIED, INCLUDING BUT NOT LIMITED
 > TO THE WARRANTIES  OF MERCHANTABILITY,
-> FITNESS FOR A PARTICULAR PURPOSE AND 
+> FITNESS FOR A PARTICULAR PURPOSE AND
 > NONINFRINGEMENT. IN NO EVENT SHALL THE
 > AUTHORS OR COPYRIGHT  HOLDERS BE
 > LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 > LIABILITY,  WHETHER IN AN ACTION OF
-> CONTRACT, TORT OR OTHERWISE, ARISING 
+> CONTRACT, TORT OR OTHERWISE, ARISING
 > FROM, OUT OF OR IN CONNECTION WITH THE
 > SOFTWARE OR THE USE OR  OTHER DEALINGS
 > IN THE SOFTWARE.

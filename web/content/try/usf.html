@@ -1,19 +1,29 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <title>Jison, parse table visualation page</title>
-    <link href="/jison/assets/styles/usf.css" type="text/css" rel="stylesheet" media="screen" />
+    <link rel="stylesheet" href="../../assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+    <link href="../../assets/styles/usf.css" type="text/css" rel="stylesheet" media="screen" />
   </head>
 
   <body>
   <div id="container">
-    <h2>Jison</h2>
-      <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
-    <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br /> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="/jison/assets/images/usflogo.png" alt="USF" /></a> </p>
+    <div id="header">
+      <h1><a href="../../">Jison</a></h1>
+    </div>
+    <ul id="nav">
+      <li><a href="../../docs/">docs</a></li>
+      <li><a href="../../demos/">demos</a></li>
+      <li><a href="../../try/">try</a></li>
+      <li><a href="../../docs/#installation">install</a></li>
+      <li><a href="../../community/">community</a></li>
+    </ul>
+    <div id="content">
+      <p><a href="http://github.com/zaach/jison">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
+      <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the interface.<br /> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="../../assets/pngs/usflogo.png" alt="USF" /></a> </p>
 
     <h2>Input</h2>
 
@@ -23,13 +33,13 @@
     <p>
     Load an example:
     <select id="examples">
-      <option value="basic.jison" selected="true">Basic</option>
-      <option value="basic2.jison">Basic #2</option>
-      <option value="dism.jison">DISM</option>
-      <option value="dism_lr0.jison">DISM in LR(0)</option>
-      <option value="precedence.jison">Precedence operators</option>
-      <option value="reduce_conflict.jison">Reduce-Reduce conflict</option>
-      <option value="ansic.jison">ANSI C</option>
+      <option value="../../examples/basic.jison" selected="selected">Basic</option>
+      <option value="../../examples/basic2.jison">Basic #2</option>
+      <option value="../../examples/dism.jison">DISM</option>
+      <option value="../../examples/dism_lr0.jison">DISM in LR(0)</option>
+      <option value="../../examples/precedence.jison">Precedence operators</option>
+      <option value="../../examples/reduce_conflict.jison">Reduce-Reduce conflict</option>
+      <option value="../../examples/ansic.jison">ANSI C</option>
     </select>
     </p>
 
@@ -72,21 +82,21 @@ T
       <textarea id="source" rows="8" cols="80"></textarea><br/>
       <button id="parse_btn">Parse source</button>
       <h3>Result</h3>
-      <textarea id="out" readonly="true" rows="5" cols="80"/></textarea>
+      <textarea id="out" readonly="readonly" rows="5" cols="80"></textarea>
     </div>
 
     <div id="loading"></div>
 
     <p>
-      <small><i>Zach Carter (zcarter@mail.usf.edu) 2009</i><small>
+      <small><i>Zach Carter (zcarter@mail.usf.edu) 2009</i></small>
     </p>
 
   </div>
 
-    <script src="/jison/assets/js/jquery.js"></script>
-    <script src="/jison/assets/js/json2.js"></script>
-    <script src="/jison/assets/js/es5.js"></script>
-    <script src="/jison/assets/js/jison.js"></script>
-    <script src="/jison/assets/js/usf.js"></script>
+    <script src="../../assets/js/jquery.js"></script>
+    <script src="../../assets/js/json2.js"></script>
+    <script src="../../assets/js/es5.js"></script>
+    <script src="../../assets/js/jison.js"></script>
+    <script src="../../assets/js/usf.js"></script>
   </body>
-</head>
+</html>

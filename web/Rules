@@ -49,7 +49,7 @@ route '/jison/assets/js/*' do
 end
 
 route '/jison/assets/pngs/*' do
-  item.identifier.gsub('/pngs/', '/images/').gsub(/\/$/, '') + '.png'
+  item.identifier.gsub(/\/$/, '') + '.png'
 end
 
 

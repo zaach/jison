@@ -25,10 +25,16 @@ exports["test amd module generator"] = function() {
 
     var parserSource = gen.generateAMDModule();
     var parser = null,
-        define = function(callback){
+        define = function(deps, callback) {
             // temporary AMD-style define function, for testing.
-            parser = callback();
+            if (!callback) {
+                // no deps array:
+                parser = deps();
+            } else {
+                parser = callback();
+            }
         };
+    console.log('generated: ', parserSource);
     eval(parserSource);
 
     assert.ok(parser.parse(input));
@@ -139,7 +145,7 @@ exports["test module generator with namespaced module name"] = function () {
     var gen = new Jison.Generator(grammar);
     gen.lexer = new Lexer(lexData);
 
-    var parserSource = gen.generateModule({moduleName: "compiler.parser"});
+    var parserSource = gen.generate({moduleName: "compiler.parser"});
     eval(parserSource);
 
     assert.ok(compiler.parser.parse(input));

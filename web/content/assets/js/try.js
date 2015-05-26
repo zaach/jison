@@ -1,74 +1,142 @@
 (function ($) {
 
+var worker = new Worker('../assets/js/worker.js');
+
 var parser,
     parser2;
 
 //IE, mainly
-if(typeof console === 'undefined'){
+if (typeof console === 'undefined') {
     console = {};
-    console.log = function (str) {$("#out").html(uneval(str))};
+    console.log = function (str) {
+        $("#out").html(uneval(str));
+    };
 }
 // noop
-print = function (){}
+print = function () {};
 
-var printOut = function (str) { $("#out").html(str); };
+var printOut = function (str) {
+    $("#out").html(str);
+};
+
+function debounce(timeout, fn) {
+    var timer;
+
+    return function() {
+        clearTimeout(timer);
+
+        timer = setTimeout(function() {
+            fn();
+            timer = null;
+        }, timeout);
+    };
+}
 
 $(document).ready(function () {
-    $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
     $("#examples").change(function(ev) {
         var file = this.options[this.selectedIndex].value;
         $(document.body).addClass("loading");
-        $.get("/jison/examples/"+file, function (data) {
+        $.get(file, function (data) {
                 $("#grammar").val(data);
                 $(document.body).removeClass("loading");
+                processGrammar();
             });
     });
-
+    
+    // recompile the grammar using a web worker,
+    // as the user types
+    var onChange = debounce(700, processGrammar);
+    $('#grammar').bind('input propertychange', onChange);
+    processGrammar();
 });
 
-function processGrammar () {
-    var type = "lalr";
-
-    var grammar = $("#grammar").val();
-    try {
-        var cfg = JSON.parse(grammar);
-    } catch(e) {
+function processGrammar() {
+    function onError(e) {
+        console.log(e);
+        $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n" + e.stack)
+        .removeClass('good')
+        .removeClass('warning')
+        .addClass('bad');
+    }
+    
+    function onSuccess(result) {
         try {
-            var cfg = bnf.parse(grammar);
+            parser = Jison.Generator(result.cfg, {type: result.type});
         } catch (e) {
-            $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n"+e).addClass('bad');
-            return;
+            return onError(e);
         }
-    }
+        
+        $("#out").removeClass("good").removeClass("bad").html('');
+        $("#gen_out").removeClass("good").removeClass("bad").removeClass('warning');
+        if (!parser.conflicts) {
+            $("#gen_out").html('Generated successfully!').addClass('good');
+        } else {
+            $("#gen_out").html('Conflicts encountered:<br/>').addClass('bad');
+        }
 
-    Jison.print = function () {};
-    parser = Jison.Generator(cfg, {type: type});
-
-    $("#out").removeClass("good").removeClass("bad").html('');
-    $("#gen_out").removeClass("good").removeClass("bad");
-    if (!parser.conflicts) {
-        $("#gen_out").html('Generated successfully!').addClass('good');
-    } else {
-        $("#gen_out").html('Conflicts encountered:<br/>').addClass('bad');
-    }
-
-    $("#download_btn").click(function () {
-            window.location.href = "data:application/javascript;charset=utf-8;base64,"+Base64.encode(parser.generate());
+        $("#download_btn").click(function () {
+            window.location.href = "data:application/javascript;charset=utf-8;base64," + Base64.encode(parser.generate());
         }).removeAttr('disabled');
 
-    parser.resolutions.forEach(function (res) {
-        var r = res[2];
-        if (!r.bydefault) return;
-        $("#gen_out").append(r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action);
-    });
+        parser.resolutions.forEach(function (res) {
+            var r = res[2];
+            if (!r.bydefault) return;
+            $("#gen_out").append(r.msg + "\n" + "(" + r.s + ", " + r.r + ") -> " + r.action);
+        });
 
-    parser2 = parser.createParser();
+        parser2 = parser.createParser();
+    }    
+    
+    // for newer browsers
+    function callWorker(grammar) {
+        worker.addEventListener('error', onError);
+        worker.addEventListener('message', function(e) {
+            onSuccess(e.data.result);
+        });
+
+        // ask the web worker to parse the grammar for us    
+        worker.postMessage(grammar);
+    }
+    
+    // for older browsers (IE <=9, Android <=4.3)
+    function callNonWorker(grammar) {
+        Jison.print = function () {};
+        var cfg;
+
+        try {
+            cfg = JSON.parse(grammar);
+        } catch (e) {
+            try { 
+                cfg = bnf.parse(grammar);
+            } catch (e) {
+                return onError(e);
+            }
+        }
+        
+        onSuccess({cfg: cfg, type: 'lalr'});
+    }
+    
+    $("#gen_out").html("Parsing...")
+    .removeClass('good')
+    .removeClass('bad')
+    .addClass('warning');
+    $('#download_btn').attr('disabled', true);
+      
+    var grammar = $("#grammar").val();
+      
+    if (typeof Worker !== 'undefined') {
+        callWorker(grammar);
+    } else {
+        callNonWorker(grammar);
+    }
 }
 
-function runParser () {
-    if (!parser) processGrammar();
+function runParser() {
+    if (!parser) {
+        processGrammar();
+    }
     printOut("Parsing...");
     var source = $("#source").val();
     try {
