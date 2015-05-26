@@ -5,3 +5,4 @@ node_modules
 *.bak
 *~
 web/content/assets/js/jison.js
+web/crash.log
