@@ -997,7 +997,7 @@ lrGeneratorMixin.createParser = function createParser () {
     var p = parser.beget();
     p.yy = {};
 
-    p.init({
+    p.__init({
         table: this.table,
         productions_: this.productions_,
         symbols_: this.symbols_,
@@ -1204,7 +1204,7 @@ parser.parse = function parse (input) {
     return true;
 };
 
-parser.init = function parser_init (dict) {
+parser.__init = function parser_init (dict) {
     this.table = dict.table;
     this.performAction = dict.performAction;
     this.productions_ = dict.productions_;

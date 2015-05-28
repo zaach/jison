@@ -40,6 +40,7 @@
 </ul>
 
 <h2 id="installation">Installation</h2>
+
 <p>Jison can be installed for <a href="http://nodejs.org">Node</a> using <a href="http://github.com/isaacs/npm/"><code>npm</code></a></p>
 
 <p>Using npm:</p>
@@ -105,7 +106,7 @@ parser.parse("adfe34bc zxg");
 
 <p>Alternatively, if you want to use the Jison file format but not generate a static JavaScript file for it, you could use a snippet like this:</p>
 
-<pre></code>// myparser.js
+<pre><code>// myparser.js
 var fs = require("fs");
 var jison = require("jison");
 
@@ -203,6 +204,7 @@ var parserSource = parser.generate({moduleName: "myCalculator.parser"});
 </ul>
 
 <h2 id="specifying-a-language">Specifying a Language</h2>
+
 <p>The process of parsing a language involves two phases: <strong>lexical analysis</strong> (tokenizing) and <strong>parsing</strong>, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar.</p>
 
 <p>For example, here is the grammar for the calculator parser:</p>
@@ -330,6 +332,7 @@ e
 <p>More examples can be found in the <a href="http://github.com/zaach/jison/tree/master/examples/"><code>examples/</code></a> and <a href="http://github.com/zaach/jison/tree/master/tests/parser/"><code>tests/parser/</code></a> directories.</p>
 
 <h2 id="lexical-analysis">Lexical Analysis</h2>
+
 <p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place.</p>
 
 <p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. Several <a href="https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison">metacharacters have been added</a>, but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:</p>
@@ -374,7 +377,7 @@ expect-floats        this.begin('expect');
 "."         console.log( "found a dot" );
 </code></pre>
 
-<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condition then <em>only</em> rules that match the current start condition will be considered</p>
+<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condition then <em>only</em> rules that match the current start condition will be considered.</p>
 
 <p>Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:</p>
 
@@ -387,8 +390,8 @@ expect-floats        this.begin('expect');
 &lt;string&gt;&lt;&lt;EOF&gt;&gt;   return "EOF_IN_STRING";
 &lt;string&gt;["]       this.popState();
 
-[.\n]+      /* skip over text not in quotes */
-&lt;&lt;EOF&gt;&gt;     return "EOF";
+[.\n]+            /* skip over text not in quotes */
+&lt;&lt;EOF&gt;&gt;           return "EOF";
 </code></pre>
 
 <p>Additionaly, use <code>this.popState()</code> within an action to revert to the previous state.</p>
@@ -414,17 +417,16 @@ The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_n
 <p>You don’t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
 
 <pre><code>parser.lexer = {
-    lex: function () {
-        return 'NIL';
-    },
-    setInput: function (str) {
-    }
+	lex: function () { 
+		return 'NIL'; 
+	}, 
+	setInput: function (str) {} 
 };
 </code></pre>
 
 <p>This lexer would simply return <code>NIL</code> tokens <em>ad infinitum</em>.</p>
 
-<p>The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace</p>
+<p>The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace:</p>
 
 <pre><code>// myscanner.js
 function AlphabetScanner() {
@@ -499,11 +501,13 @@ var parse = exports.parse = function (input) {
 <p>The <code>scope</code> module contains logic for building data structures, which is used within the semantic actions.</p>
 
 <h2 id="parsing-algorithms">Parsing algorithms</h2>
+
 <p>Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.</p>
 
 <p><strong>LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.</strong></p>
 
 <h2 id="projects-using-jison">Projects using Jison</h2>
+
 <p>View them on the <a href="https://github.com/zaach/jison/wiki/ProjectsUsingJison">wiki</a>, or add your own.</p>
 
 <h2 id="contributors">Contributors</h2>
