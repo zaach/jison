@@ -1,9 +1,11 @@
 
 all: build test
 
+prep: npm-install
+
 site: web/content/assets/js/jison.js
 
-web/content/assets/js/jison.js: npm-install build examples
+web/content/assets/js/jison.js: build examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
@@ -27,7 +29,7 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 	node lib/cli.js examples/calculator.jison -o $@
 
 
-build: npm-install build_bnf build_lex
+build: build_bnf build_lex
 
 npm-install: submodules-npm-install
 	npm install
@@ -43,7 +45,6 @@ JISON_DEPS = \
 build_bnf: lib/util/parser.js
 
 lib/util/parser.js: $(JISON_DEPS) submodules \
-					npm-install \
 					lib/cli.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
@@ -52,7 +53,6 @@ lib/util/parser.js: $(JISON_DEPS) submodules \
 build_lex: lib/util/lex-parser.js
 
 lib/util/lex-parser.js: $(JISON_DEPS) submodules \
-						npm-install \
 						lib/cli.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
@@ -131,5 +131,5 @@ superclean: clean
 
 
 
-.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
 
