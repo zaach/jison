@@ -116,7 +116,7 @@
                               `this` refers to the Lexer object.
   }
 */
-var calculator = (function(){
+var calculator = (function () {
 var __expand__ = function (k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
@@ -714,14 +714,14 @@ parseError: function parseError(str, hash) {
 parse: function parse(input) {
     var self = this,
         stack = [0],
-        tstack = [], // token stack
-        vstack = [null], // semantic value stack
-        lstack = [], // location stack
+        
+        vstack = [null],    // semantic value stack
+        lstack = [],        // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
         yyleng = 0,
-        recovering = 0,
+
         TERROR = 2,
         EOF = 1;
 
@@ -812,106 +812,34 @@ parse: function parse(input) {
 
             // handle parse error
             if (typeof action === 'undefined' || !action.length || !action[0]) {
-                var error_rule_depth;
                 var errStr = '';
 
-                // Return the rule stack depth where the nearest error rule can be found.
-                // Return FALSE when no error recovery rule was found.
-                function locateNearestErrorRecoveryRule(state) {
-                    var stack_probe = stack.length - 1;
-                    var depth = 0;
-
-                    // try to recover from error
-                    for (;;) {
-                        // check for error recovery rule in this state
-                        if ((TERROR.toString()) in table[state]) {
-                            return depth;
-                        }
-                        if (state === 0 || stack_probe < 2) {
-                            return false; // No suitable error recovery rule available.
-                        }
-                        stack_probe -= 2; // popStack(1): [symbol, action]
-                        state = stack[stack_probe];
-                        ++depth;
+                // Report error
+                expected = [];
+                for (p in table[state]) {
+                    if (this.terminals_[p] && p > TERROR) {
+                        expected.push("'" + this.terminals_[p] + "'");
                     }
                 }
-
-                if (!recovering) {
-                    // first see if there's any chance at hitting an error recovery rule:
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
-
-                    // Report error
-                    expected = [];
-                    for (p in table[state]) {
-                        if (this.terminals_[p] && p > TERROR) {
-                            expected.push("'" + this.terminals_[p] + "'");
-                        }
-                    }
-                    if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
-                    } else {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
-                                 (symbol == EOF ? "end of input" :
-                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
-                    }
-                    a = this.parseError(errStr, p = {
-                        text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
-                        line: lexer.yylineno,
-                        loc: yyloc,
-                        expected: expected,
-                        recoverable: (error_rule_depth !== false)
-                    });
-                    if (!p.recoverable) {
-                        retval = a;
-                        break;
-                    }
-                } else if (preErrorSymbol !== EOF) {
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
+                if (lexer.showPosition) {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                } else {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
+                             (symbol == EOF ? "end of input" :
+                              ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
-
-                // just recovered from another error
-                if (recovering == 3) {
-                    if (symbol === EOF || preErrorSymbol === EOF) {
-                        retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
-                            text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
-                            line: lexer.yylineno,
-                            loc: yyloc,
-                            expected: expected,
-                            recoverable: false
-                        });
-                        break;
-                    }
-
-                    // discard current lookahead and grab another
-                    yyleng = lexer.yyleng;
-                    yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
-                    symbol = lex();
-                }
-
-                // try to recover from error
-                if (error_rule_depth === false) {
-                    retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
-                        text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
-                        line: lexer.yylineno,
-                        loc: yyloc,
-                        expected: expected,
-                        recoverable: false
-                    });
-                    break;
-                }
-                popStack(error_rule_depth);
-
-                preErrorSymbol = (symbol == TERROR ? null : symbol); // save the lookahead token
-                symbol = TERROR;         // insert generic error symbol as new lookahead
-                state = stack[stack.length - 1];
-                action = table[state] && table[state][TERROR];
-                recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
+                // we cannot recover from the error!
+                retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
+                    text: lexer.match,
+                    token: this.terminals_[symbol] || symbol,
+                    line: lexer.yylineno,
+                    loc: yyloc,
+                    expected: expected,
+                    recoverable: false
+                });
+                break;
             }
+
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
@@ -940,9 +868,7 @@ parse: function parse(input) {
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
-                    if (recovering > 0) {
-                        recovering--;
-                    }
+
                 } else {
                     // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
@@ -1060,9 +986,29 @@ input:function () {
         this.match += ch;
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
-        // On CRLF, the linenumber is incremented when you fetch the LF:
-        // the CR is hence 'assigned' to the previous line.
-        var lines = this._input.match(/^(?:\r[^\n]|\r$|\n)/);
+        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
+        // and we advance immediately past the LF as well, returning both together as if 
+        // it was all a single 'character' only.
+        var slice_len = 1;
+        var lines = false;
+        if (ch === '\n') {
+            lines = true;
+        } else if (ch === '\r') {
+            lines = true;
+            var ch2 = this._input[1];
+            if (ch2 === '\n') {
+                slice_len++;
+                ch += ch2;
+                this.yytext += ch2;
+                this.yyleng++;
+                this.offset++;
+                this.match += ch2;
+                this.matched += ch2;
+                if (this.options.ranges) {
+                    this.yylloc.range[1]++;
+                }
+            }
+        } 
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -1073,7 +1019,7 @@ input:function () {
             this.yylloc.range[1]++;
         }
 
-        this._input = this._input.slice(1);
+        this._input = this._input.slice(slice_len);
         return ch;
     },
 
@@ -1522,6 +1468,7 @@ function Parser () {
 Parser.prototype = parser;parser.Parser = Parser;
 return new Parser;
 })();
+
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
