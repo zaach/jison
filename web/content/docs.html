@@ -361,7 +361,7 @@ Consider the following example of a scanner that simply scans all double-quote d
     [.\n]+            /* skip over text not in quotes */
     <<EOF>>           return "EOF";
 
-Additionaly, use `this.popState()` within an action to revert to the previous state.
+Additionally, use `this.popState()` within an action to revert to the previous state.
 
 Using the JSON format, start conditions are defined with an array before the rule's matcher:
 
@@ -449,7 +449,7 @@ Sharing Scope
 
 In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.
 
-Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules.The parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
+Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules. The parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
 
 An example from orderly.js:
 
