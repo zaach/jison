@@ -7,3 +7,5 @@ node_modules
 
 # Generated web content directories (nanoc output)
 web/tmp/
+web/crash.log
+
