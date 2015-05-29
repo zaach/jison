@@ -2,15 +2,43 @@
 # You can build each example to its own directory in ./output/<example>
 # 
 
-JISON=node ../lib/cli.js
+JISON = node ../lib/cli.js -o ./output/$@/
 
-all:
+ALL_TARGETS =  													\
+			ansic 												\
+			basic 												\
+			basic2 												\
+			basic2_lex 											\
+			basic_lex 											\
+			calculator 											\
+			calculator_json 									\
+			classy 												\
+			classy_ast 											\
+			comments 											\
+			dism 												\
+			dism_lr0 											\
+			formula 											\
+			handlebars 											\
+			inherited_y 										\
+			jscore 												\
+			json_js 											\
+			json_ast_js 										\
+			lambdacalc 											\
+			nv_classy_ast 										\
+			phraser 											\
+			precedence 											\
+			reduce_conflict 									\
+			semwhitespace 										\
+			tikiwikiparser
 
-.PHONY: 
+
+all: $(ALL_TARGETS)
+
+.PHONY: $(ALL_TARGETS)
 
 
 ansic:
-	$(JISON) ./$@.jison -o ./output/$@/
+	$(JISON) ./$@.jison
 
 basic:
 	$(JISON) ./$@.jison
@@ -31,16 +59,11 @@ calculator_json:
 	$(JISON) ./calculator.json
 
 classy:
-	$(JISON) ./$@.jison
+	$(JISON) ./$@.jison ./classy.jisonlex
 
-classy.jisonlex:
-	$(JISON) ./classy.jisonlex
-
+# test input file: classy_test.src
 classy_ast:
 	$(JISON) ./$@.jison
-
-classy_test.src:
-	$(JISON) ./classy_test.src
 
 comments:
 	$(JISON) ./$@.jison
@@ -51,33 +74,27 @@ dism:
 dism_lr0:
 	$(JISON) ./$@.jison
 
-documentation--custom-lexer-NIL
-	$(JISON) ./documentation--custom-lexer-NIL.js
-
-documentation--custom-lexer-ULcase
-	$(JISON) ./documentation--custom-lexer-ULcase.js
-
-documentation--mygenerator
-	$(JISON) ./documentation--mygenerator.js
+# ./documentation--custom-lexer-NIL.js
+# ./documentation--custom-lexer-ULcase.js
+# ./documentation--mygenerator.js
 
 formula:
 	$(JISON) ./$@.jison
 
 handlebars:
-	$(JISON) ./handlebars.jison.l
-	$(JISON) ./handlebars.jison.y
+#	$(JISON) ./handlebars.jison.y ./handlebars.jison.l
 
-inherited.y:
+inherited_y:
 	$(JISON) ./inherited.y
 
 jscore:
 	$(JISON) ./$@.jison
 
-json.js:
-	$(JISON) ./json.js
+json_js:
+#	$(JISON) ./json.js
 
-json_ast.js:
-	$(JISON) ./json_ast.js
+json_ast_js:
+#	$(JISON) ./json_ast.js
 
 lambdacalc:
 	$(JISON) ./$@.jison
@@ -94,14 +111,9 @@ precedence:
 reduce_conflict:
 	$(JISON) ./$@.jison
 
+# input tst file:  ./semwhitespace_ex.src
 semwhitespace:
-	$(JISON) ./$@.jison
-
-semwhitespace_ex.src:
-	$(JISON) ./semwhitespace_ex.src
-
-semwhitespace_lex:
-	$(JISON) ./$@.jison
+	$(JISON) ./$@.jison semwhitespace_lex.jison
 
 tikiwikiparser:
 	$(JISON) ./$@.jison
