@@ -69,7 +69,7 @@ inMustache
   ;
 
 params
-2  : params param { $1.push($2); $$ = $1; }
+  : params param { $1.push($2); $$ = $1; }
   | param { $$ = [$1]; }
   ;
 

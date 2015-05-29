@@ -82,3 +82,8 @@ table tr:hover td {
   background: #fee;
   border: 2px solid red;
 }
+
+.warning {
+  background: #feffef;
+  border: 2px solid yellow;
+}
