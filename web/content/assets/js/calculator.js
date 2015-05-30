@@ -1342,82 +1342,54 @@ case 0 :
 /*! Rule::       \s+ */ 
  /* skip whitespace */ 
 break;
-case 1 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
- return 15; 
-break;
-case 2 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \* */ 
- return 8; 
-break;
-case 3 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \/ */ 
- return 9; 
-break;
-case 4 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       - */ 
- return 7; 
-break;
-case 5 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \+ */ 
- return 6; 
-break;
-case 6 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \^ */ 
- return 10; 
-break;
-case 7 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       ! */ 
- return 11; 
-break;
-case 8 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       % */ 
- return 12; 
-break;
-case 9 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \( */ 
- return 13; 
-break;
-case 10 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \) */ 
- return 14; 
-break;
-case 11 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       PI */ 
- return 17; 
-break;
-case 12 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       E */ 
- return 16; 
-break;
-case 13 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       $ */ 
- return 5; 
-break;
-case 14 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       . */ 
- return 'INVALID'; 
-break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
 }
 },
 simpleCaseActionClusters: {
 
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
+   1 : 15,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \* */ 
+   2 : 8,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \/ */ 
+   3 : 9,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       - */ 
+   4 : 7,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \+ */ 
+   5 : 6,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \^ */ 
+   6 : 10,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       ! */ 
+   7 : 11,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       % */ 
+   8 : 12,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \( */ 
+   9 : 13,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \) */ 
+   10 : 14,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       PI */ 
+   11 : 17,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       E */ 
+   12 : 16,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       $ */ 
+   13 : 5,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       . */ 
+   14 : 'INVALID'
 },
 rules: [
 /^(?:\s+)/,

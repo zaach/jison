@@ -5,7 +5,7 @@ prep: npm-install
 
 site: web/content/assets/js/jison.js
 
-web/content/assets/js/jison.js: build examples
+web/content/assets/js/jison.js: build test examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
