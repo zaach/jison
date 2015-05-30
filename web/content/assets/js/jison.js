@@ -1921,6 +1921,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
     type: "LALR(1)",
 
     afterconstructor: function (grammar, options) {
+        console.log('afterconstructor: ', arguments);
         if (this.DEBUG) {
             this.mix(lrGeneratorDebug, lalrGeneratorDebug); // mixin debug methods
         }
@@ -1970,7 +1971,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
         return q;
     },
     goPath: function LALR_goPath (p, w) {
-        var q = parseInt(p, 10),t,
+        var q = parseInt(p, 10), t,
             path = [];
         for (var i = 0; i < w.length; i++) {
             t = w[i] ? q + ":" + w[i] : '';
@@ -1983,7 +1984,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
         }
         return {path: path, endState: q};
     },
-    // every disjoint reduction of a nonterminal becomes a produciton in G'
+    // every disjoint reduction of a nonterminal becomes a production in G'
     buildNewGrammar: function LALR_buildNewGrammar () {
         var self = this,
             newg = this.newg;
@@ -2003,7 +2004,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
                     newg.productions.push(p);
                     newg.nonterminals[symbol].productions.push(p);
 
-                    // store the transition that get's 'backed up to' after reduction on path
+                    // store the transition that gets 'backed up to' after reduction on path
                     var handle = item.production.handle.join(' ');
                     var goes = self.states.item(pathInfo.endState).goes;
                     if (!goes[handle]) {
@@ -2101,7 +2102,7 @@ var lr1 = lrLookaheadGenerator.beget({
     },
     Item: lrGeneratorMixin.Item.prototype.construct({
         afterconstructor: function () {
-            this.id = this.production.id+'a'+this.dotPosition+'a'+this.follows.sort().join(',');
+            this.id = this.production.id + 'a' + this.dotPosition + 'a' + this.follows.sort().join(',');
         },
         eq: function (e) {
             return e.id === this.id;

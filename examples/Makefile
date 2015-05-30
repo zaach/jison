@@ -11,6 +11,7 @@ ALL_TARGETS =  													\
 			basic2_lex 											\
 			basic_lex 											\
 			calculator 											\
+			calc_LA_on_demand									\
 			calculator_json 									\
 			classy 												\
 			classy_ast 											\
@@ -53,6 +54,9 @@ basic_lex:
 	$(JISON) ./$@.jison
 
 calculator:
+	$(JISON) ./$@.jison
+
+calc_LA_on_demand:
 	$(JISON) ./$@.jison
 
 calculator_json:

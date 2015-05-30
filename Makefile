@@ -49,6 +49,9 @@ examples/basic_lex: build
 examples/calculator: build
 	cd examples/ && make calculator
 
+examples/calc_LA_on_demand: build
+	cd examples/ && make calc_LA_on_demand
+
 examples/calculator_json: build
 	cd examples/ && make calculator_json
 
