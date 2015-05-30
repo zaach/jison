@@ -23,10 +23,88 @@ deploy: site
 test:
 	node tests/all-tests.js
 
-examples: web/content/assets/js/calculator.js
+examples: web/content/assets/js/calculator.js examples_directory
 
 web/content/assets/js/calculator.js: examples/calculator.jison build
 	node lib/cli.js examples/calculator.jison -o $@
+
+examples_directory: build
+	cd examples/ && make all
+
+examples/ansic: build
+	cd examples/ && make ansic
+
+examples/basic: build
+	cd examples/ && make basic
+
+examples/basic2: build
+	cd examples/ && make basic2
+
+examples/basic2_lex: build
+	cd examples/ && make basic2_lex
+
+examples/basic_lex: build
+	cd examples/ && make basic_lex
+
+examples/calculator: build
+	cd examples/ && make calculator
+
+examples/calculator_json: build
+	cd examples/ && make calculator_json
+
+examples/classy: build
+	cd examples/ && make classy
+
+examples/classy_ast: build
+	cd examples/ && make classy_ast
+
+examples/comments: build
+	cd examples/ && make comments
+
+examples/dism: build
+	cd examples/ && make dism
+
+examples/dism_lr0: build
+	cd examples/ && make dism_lr0
+
+examples/formula: build
+	cd examples/ && make formula
+
+examples/handlebars: build
+	cd examples/ && make handlebars
+
+examples/inherited_y: build
+	cd examples/ && make inherited_y
+
+examples/jscore: build
+	cd examples/ && make jscore
+
+examples/json_js: build
+	cd examples/ && make json_js
+
+examples/json_ast_js: build
+	cd examples/ && make json_ast_js
+
+examples/lambdacalc: build
+	cd examples/ && make lambdacalc
+
+examples/nv_classy_ast: build
+	cd examples/ && make nv_classy_ast
+
+examples/phraser: build
+	cd examples/ && make phraser
+
+examples/precedence: build
+	cd examples/ && make precedence
+
+examples/reduce_conflict: build
+	cd examples/ && make reduce_conflict
+
+examples/semwhitespace: build
+	cd examples/ && make semwhitespace
+
+examples/tikiwikiparser: build
+	cd examples/ && make tikiwikiparser
 
 
 build: build_bnf build_lex
