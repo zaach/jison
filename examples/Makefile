@@ -35,7 +35,12 @@ ALL_TARGETS =  													\
 
 all: $(ALL_TARGETS)
 
-.PHONY: $(ALL_TARGETS)
+.PHONY: all clean superclean $(ALL_TARGETS)
+
+clean:
+	-rm -rf output/
+
+superclean: clean
 
 
 ansic:

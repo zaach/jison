@@ -31,6 +31,7 @@
 %right '!'
 %right '%'
 %left UMINUS
+%token INVALID
 
 %start expressions
 

@@ -28,8 +28,10 @@ examples: web/content/assets/js/calculator.js examples_directory
 web/content/assets/js/calculator.js: examples/calculator.jison build
 	node lib/cli.js examples/calculator.jison -o $@
 
+
 examples_directory: build
 	cd examples/ && make all
+
 
 examples/ansic: build
 	cd examples/ && make ansic
@@ -179,6 +181,7 @@ git:
 
 
 clean:
+	cd examples/ && make clean
 	cd modules/ebnf-parser && make clean
 	cd modules/jison-lex && make clean
 	cd modules/jison2json && make clean
@@ -197,6 +200,7 @@ clean:
 # of each part of the generator (lexer & parser) as all derived copies have been killed.
 #
 superclean: clean
+	cd examples/ && make superclean
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison-lex && make superclean
 	cd modules/jison2json && make superclean
