@@ -40,7 +40,7 @@
     "jison-lex": "git://github.com/GerHobbelt/jison-lex.git#master",
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
-    "nomnom": ">=1.8.1",
+    "nomnom": "git://github.com/GerHobbelt/nomnom.git#master",
     "cjson": ">=0.3.1"
   },
   "devDependencies": {
