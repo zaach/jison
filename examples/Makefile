@@ -2,7 +2,7 @@
 # You can build each example to its own directory in ./output/<example>
 # 
 
-JISON = node ../lib/cli.js -o ./output/$@/
+JISON = node ../lib/cli.js -o ./output/$@/ --main
 
 ALL_TARGETS =  													\
 			ansic 												\
