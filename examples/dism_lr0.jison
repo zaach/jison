@@ -1,7 +1,13 @@
 
 /* author: Jay Ligatti */
 
+%parser-type lr0X
+
 %%
+
+pgm
+    : instlist
+    ;
 
 instlist
     : instlist label COLON inst
