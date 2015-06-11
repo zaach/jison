@@ -9,14 +9,14 @@ var parser,
 if (typeof console === 'undefined') {
     console = {};
     console.log = function (str) {
-        $("#out").html(uneval(str));
+        $("#out").text(uneval(str));
     };
 }
 // noop
 print = function () {};
 
 var printOut = function (str) {
-    $("#out").html(str);
+    $("#out").text(str);
 };
 
 function debounce(timeout, fn) {
@@ -33,6 +33,7 @@ function debounce(timeout, fn) {
 }
 
 $(document).ready(function () {
+    //$("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
 
     $("#examples").change(function(ev) {
@@ -55,7 +56,7 @@ $(document).ready(function () {
 function processGrammar() {
     function onError(e) {
         console.log(e);
-        $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n" + e.stack)
+        $("#gen_out").text("Oops. Make sure your grammar is in the correct format.\n" + e.stack)
         .removeClass('good')
         .removeClass('warning')
         .addClass('bad');
@@ -71,9 +72,9 @@ function processGrammar() {
         $("#out").removeClass("good").removeClass("bad").html('');
         $("#gen_out").removeClass("good").removeClass("bad").removeClass('warning');
         if (!parser.conflicts) {
-            $("#gen_out").html('Generated successfully!').addClass('good');
+        $("#gen_out").text('Generated successfully!').addClass('good');
         } else {
-            $("#gen_out").html('Conflicts encountered:<br/>').addClass('bad');
+        $("#gen_out").text('Conflicts encountered:\n').addClass('bad');
         }
 
         $("#download_btn").click(function () {
