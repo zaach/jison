@@ -6,6 +6,7 @@
 
 %options token-stack
 
+
 %% /* language grammar */
 
 prog

@@ -1,6 +1,9 @@
 
 /* description: Parses and executes mathematical expressions. */
 
+%options onDemandLookahead
+
+
 /* lexical grammar */
 %lex
 %%
@@ -31,7 +34,6 @@
 %right '!'
 %right '%'
 %left UMINUS
-%token INVALID
 
 %start expressions
 
