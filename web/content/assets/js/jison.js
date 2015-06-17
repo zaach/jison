@@ -1147,39 +1147,49 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
 lrGeneratorMixin.generateAMDModule = function generateAMDModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var module = this.generateModule_();
-    var out = generateGenericHeaderComment() + '\n\ndefine(function (require) {\n'
-        + module.commonCode
-        + '\nvar parser = ' + module.moduleCode
-        + "\n" + this.moduleInclude
-        + (this.lexer && this.lexer.generateModule ?
-          '\n' + this.lexer.generateModule() +
-          '\nparser.lexer = lexer;' : '')
-        + '\nreturn parser;'
-        + '\n});';
+    var out = [
+        generateGenericHeaderComment(), 
+        '', 
+        'define(function (require) {',
+        module.commonCode,
+        'var parser = ' + module.moduleCode,
+        this.moduleInclude,
+        (this.lexer && this.lexer.generateModule ?
+          this.lexer.generateModule() +
+          'parser.lexer = lexer;' : ''),
+        'return parser;',
+        '});'
+    ];
 
-    return out;
+    return out.join('\n') + '\n';
 };
 
 lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || "parser";
-    var main;
-    if (opt.noMain) {
-      main = "";
-    } else {
-      main = "\nexports.main = "+ String(opt.moduleMain || commonjsMain) + ";"
-        + "\nif (typeof module !== 'undefined' && require.main === module) {\n"
-        + "  exports.main(process.argv.slice(1));\n}";
+    var main = [];
+    if (!opt.noMain) {
+        main = main.concat([
+            "exports.main = " + String(opt.moduleMain || commonjsMain) + ";",
+            "if (typeof module !== 'undefined' && require.main === module) {",
+            "  exports.main(process.argv.slice(1));",
+            "}"
+        ]);
     }
-    var out = this.generateModule(opt)
-        + "\n\n\nif (typeof require !== 'undefined' && typeof exports !== 'undefined') {"
-        + "\nexports.parser = " + moduleName + ";"
-        + "\nexports.Parser = " + moduleName + ".Parser;"
-        + "\nexports.parse = function () { return " + moduleName + ".parse.apply(" + moduleName + ", arguments); };"
-        + main
-        + "\n}";
-
-    return out;
+    var out = [
+        this.generateModule(opt),
+        "",
+        "",
+        "if (typeof require !== 'undefined' && typeof exports !== 'undefined') {",
+        "exports.parser = " + moduleName + ";",
+        "exports.Parser = " + moduleName + ".Parser;",
+        "exports.parse = function () {",
+        "  return " + moduleName + ".parse.apply(" + moduleName + ", arguments);",
+        "};",
+        main.join("\n"),
+        "}"
+    ];
+    return out.join("\n") + "\n";
 };
 
 lrGeneratorMixin.generateModule = function generateModule (opt) {
@@ -1196,7 +1206,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
                 return "var " + subModuleName + ";\n"
                     + "(function (" + subModuleName + ") {\n"
                     + _generateNamespace(namespaces, subModuleName, callback)
-                    + "})(" + subModuleName + (previousNamespace == null ? "" : " = " + moduleName) + " || (" + moduleName + " = {}));\n";
+                    + "\n})(" + subModuleName + (previousNamespace == null ? "" : " = " + moduleName) + " || (" + moduleName + " = {}));\n";
             }
             return callback(moduleName);
         }
@@ -1213,29 +1223,28 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
 
 
 lrGeneratorMixin.generateModuleExpr = function generateModuleExpr () {
-    var out = '';
+    var out = [];
     var module = this.generateModule_();
 
-    out += "(function () {\n";
-    out += module.commonCode;
-    out += "\nvar parser = " + module.moduleCode;
-    out += "\n" + this.moduleInclude;
+    out.push("(function () {");
+    out.push(module.commonCode);
+    out.push("var parser = " + module.moduleCode);
+    out.push(this.moduleInclude);
     if (this.lexer && this.lexer.generateModule) {
-        out += this.lexer.generateModule();
-        out += "\nparser.lexer = lexer;";
+        out.push(this.lexer.generateModule());
+        out.push("parser.lexer = lexer;");
     }
-    out += ["",
+    out = out.concat(["",
             "function Parser () {",
             "  this.yy = {};",
             "}",
             "Parser.prototype = parser;",
             "parser.Parser = Parser;",
             "",
-            "return new Parser;",
+            "return new Parser();",
             "})();"
-    ].join("\n");
-
-    return out;
+    ]);
+    return out.join("\n") + "\n";
 };
 
 function removeFeatureMarkers (fn) {
@@ -1486,7 +1495,7 @@ function commonjsMain (args) {
         console.log('Usage: ' + args[0] + ' FILE');
         process.exit(1);
     }
-    var source = require('fs').readFileSync(require('path').normalize(args[1]), "utf8");
+    var source = require('fs').readFileSync(require('path').normalize(args[1]), 'utf8');
     return exports.parser.parse(source);
 }
 
@@ -2265,9 +2274,9 @@ Jison.Generator = function Jison_Generator (g, options) {
 };
 
 return function Parser (g, options) {
-        var gen = Jison.Generator(g, options);
-        return gen.createParser();
-    };
+    var gen = Jison.Generator(g, options);
+    return gen.createParser();
+};
 
 })();
 
@@ -4550,6 +4559,7 @@ function prepareString (s) {
     return s;
 };
 
+
 /* generated by jison-lex 0.3.4 */
 var lexer = (function () {
 var lexer = ({
@@ -5540,22 +5550,28 @@ conditions: {
 return lexer;
 })();
 parser.lexer = lexer;
+
 function Parser () {
   this.yy = {};
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
 
-return new Parser;
+return new Parser();
 })();
+
 
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = lexParser;
 exports.Parser = lexParser.Parser;
-exports.parse = function () { return lexParser.parse.apply(lexParser, arguments); };
+exports.parse = function () {
+  return lexParser.parse.apply(lexParser, arguments);
+};
+
 }
+
 },{}],6:[function(require,module,exports){
 module.exports={
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
@@ -7619,6 +7635,7 @@ function extend(json, grammar) {
     return json;
 }
 
+
 /* generated by jison-lex 0.3.4 */
 var lexer = (function () {
 var lexer = ({
@@ -8489,22 +8506,28 @@ conditions: {
 return lexer;
 })();
 parser.lexer = lexer;
+
 function Parser () {
   this.yy = {};
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
 
-return new Parser;
+return new Parser();
 })();
+
 
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = parser;
 exports.Parser = parser.Parser;
-exports.parse = function () { return parser.parse.apply(parser, arguments); };
+exports.parse = function () {
+  return parser.parse.apply(parser, arguments);
+};
+
 }
+
 },{"./ebnf-transform":4}],8:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
