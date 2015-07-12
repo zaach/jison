@@ -116,7 +116,7 @@
                               `this` refers to the Lexer object.
   }
 */
-var calculator = (function(){
+var calculator = (function () {
 var __expand__ = function (k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
@@ -714,14 +714,15 @@ parseError: function parseError(str, hash) {
 parse: function parse(input) {
     var self = this,
         stack = [0],
-        tstack = [], // token stack
-        vstack = [null], // semantic value stack
-        lstack = [], // location stack
+
+        vstack = [null],    // semantic value stack
+        lstack = [],        // location stack
         table = this.table,
         yytext = '',
         yylineno = 0,
         yyleng = 0,
-        recovering = 0,
+
+        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -769,7 +770,6 @@ parse: function parse(input) {
         lstack.length = lstack.length - n;
     }
 
-_token_stack:
     function lex() {
         var token;
         token = lexer.lex() || EOF;
@@ -784,7 +784,7 @@ _token_stack:
     var preErrorSymbol = null;
     var state, action, a, r;
     var yyval = {};
-    var p, len, newState;
+    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
     var retval = false;
 
@@ -795,9 +795,26 @@ _token_stack:
         sharedState.yy.pre_parse.call(this, sharedState.yy);
     }
 
+
+
+    function collect_expected_token_set(state) {
+        var tokenset = [];
+        for (var p in table[state]) {
+            if (p > TERROR) {
+                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
+                    tokenset.push(self.terminal_descriptions_[p]);
+                }
+                else if (self.terminals_[p]) {
+                    tokenset.push("'" + self.terminals_[p] + "'");
+                }
+            }
+        }
+        return tokenset;
+    }
+
     try {
         for (;;) {
-            // retreive state number from top of stack
+            // retrieve state number from top of stack
             state = stack[stack.length - 1];
 
             // use default actions if available
@@ -813,109 +830,34 @@ _token_stack:
 
             // handle parse error
             if (typeof action === 'undefined' || !action.length || !action[0]) {
-                var error_rule_depth;
-                var errStr = '';
+                var errStr;
 
-                // Return the rule stack depth where the nearest error rule can be found.
-                // Return FALSE when no error recovery rule was found.
-                function locateNearestErrorRecoveryRule(state) {
-                    var stack_probe = stack.length - 1;
-                    var depth = 0;
-
-                    // try to recover from error
-                    for (;;) {
-                        // check for error recovery rule in this state
-                        if ((TERROR.toString()) in table[state]) {
-                            return depth;
-                        }
-                        if (state === 0 || stack_probe < 2) {
-                            return false; // No suitable error recovery rule available.
-                        }
-                        stack_probe -= 2; // popStack(1): [symbol, action]
-                        state = stack[stack_probe];
-                        ++depth;
-                    }
+                // Report error
+                expected = collect_expected_token_set(state);
+                if (lexer.showPosition) {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                } else {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
+                             (symbol === EOF ? "end of input" :
+                              ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
-
-                if (!recovering) {
-                    // first see if there's any chance at hitting an error recovery rule:
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
-
-                    // Report error
-                    expected = [];
-                    for (p in table[state]) {
-                        if (this.terminals_[p] && p > TERROR) {
-                            expected.push("'" + this.terminals_[p] + "'");
-                        }
-                    }
-                    if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
-                    } else {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
-                                 (symbol == EOF ? "end of input" :
-                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
-                    }
-                    a = this.parseError(errStr, p = {
-                        text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
-                        line: lexer.yylineno,
-                        loc: yyloc,
-                        expected: expected,
-                        recoverable: (error_rule_depth !== false)
-                    });
-                    if (!p.recoverable) {
-                        retval = a;
-                        break;
-                    }
-                } else if (preErrorSymbol !== EOF) {
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
-                }
-
-                // just recovered from another error
-                if (recovering == 3) {
-                    if (symbol === EOF || preErrorSymbol === EOF) {
-                        retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
-                            text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
-                            line: lexer.yylineno,
-                            loc: yyloc,
-                            expected: expected,
-                            recoverable: false
-                        });
-                        break;
-                    }
-
-                    // discard current lookahead and grab another
-                    yyleng = lexer.yyleng;
-                    yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
-                    symbol = lex();
-                }
-
-                // try to recover from error
-                if (error_rule_depth === false) {
-                    retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
-                        text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
-                        line: lexer.yylineno,
-                        loc: yyloc,
-                        expected: expected,
-                        recoverable: false
-                    });
-                    break;
-                }
-                popStack(error_rule_depth);
-
-                preErrorSymbol = (symbol == TERROR ? null : symbol); // save the lookahead token
-                symbol = TERROR;         // insert generic error symbol as new lookahead
-                state = stack[stack.length - 1];
-                action = table[state] && table[state][TERROR];
-                recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
+                // we cannot recover from the error!
+                error_signaled = true;
+                retval = this.parseError(errStr, {
+                    text: lexer.match,
+                    token: this.terminals_[symbol] || symbol,
+                    line: lexer.yylineno,
+                    loc: yyloc,
+                    expected: expected,
+                    recoverable: false
+                });
+                break;
             }
+
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
+                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -941,9 +883,7 @@ _token_stack:
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
-                    if (recovering > 0) {
-                        recovering--;
-                    }
+
                 } else {
                     // error just occurred, resume old lookahead f/ before error
                     symbol = preErrorSymbol;
@@ -955,35 +895,38 @@ _token_stack:
                 // reduce
                 //this.reductionCount++;
 
-                len = this.productions_[action[1]][1];
+                this_production = this.productions_[action[1]]; 
+                len = this_production[1];
+                lstack_end = lstack.length;
+                lstack_begin = lstack_end - (len1 || 1);
+                lstack_end--;
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
                 // default location, uses first token for firsts, last for lasts
                 yyval._$ = {
-                    first_line: lstack[lstack.length - (len || 1)].first_line,
-                    last_line: lstack[lstack.length - 1].last_line,
-                    first_column: lstack[lstack.length - (len || 1)].first_column,
-                    last_column: lstack[lstack.length - 1].last_column
+                    first_line: lstack[lstack_begin].first_line,
+                    last_line: lstack[lstack_end].last_line,
+                    first_column: lstack[lstack_begin].first_column,
+                    last_column: lstack[lstack_end].last_column
                 };
                 if (ranges) {
-                  yyval._$.range = [lstack[lstack.length - (len || 1)].range[0], lstack[lstack.length - 1].range[1]];
+                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
                 r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
+                    error_signaled = true;
                     break;
                 }
 
                 // pop off stack
                 if (len) {
-                    stack = stack.slice(0, -1 * len * 2);
-                    vstack = vstack.slice(0, -1 * len);
-                    lstack = lstack.slice(0, -1 * len);
+                    popStack(len);
                 }
 
-                stack.push(this.productions_[action[1]][0]);    // push nonterminal (reduce)
+                stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
                 lstack.push(yyval._$);
                 // goto new state = table[STATE][NONTERMINAL]
@@ -994,10 +937,14 @@ _token_stack:
             case 3:
                 // accept
                 retval = true;
+                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
+            if (!error_signaled) {
+                // b0rk b0rk b0rk!
+            }
             break;
         }
     } finally {

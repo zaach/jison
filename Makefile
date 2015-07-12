@@ -1,9 +1,11 @@
 
 all: build test
 
+prep: npm-install
+
 site: web/content/assets/js/jison.js
 
-web/content/assets/js/jison.js: npm-install build examples
+web/content/assets/js/jison.js: build test examples
 	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
@@ -21,13 +23,96 @@ deploy: site
 test:
 	node tests/all-tests.js
 
-examples: web/content/assets/js/calculator.js
+examples: web/content/assets/js/calculator.js examples_directory
 
 web/content/assets/js/calculator.js: examples/calculator.jison build
 	node lib/cli.js examples/calculator.jison -o $@
 
 
-build: npm-install build_bnf build_lex
+examples_directory: build
+	cd examples/ && make all
+
+
+examples/ansic: build
+	cd examples/ && make ansic
+
+examples/basic: build
+	cd examples/ && make basic
+
+examples/basic2: build
+	cd examples/ && make basic2
+
+examples/basic2_lex: build
+	cd examples/ && make basic2_lex
+
+examples/basic_lex: build
+	cd examples/ && make basic_lex
+
+examples/calculator: build
+	cd examples/ && make calculator
+
+examples/calc_LA_on_demand: build
+	cd examples/ && make calc_LA_on_demand
+
+examples/calculator_json: build
+	cd examples/ && make calculator_json
+
+examples/classy: build
+	cd examples/ && make classy
+
+examples/classy_ast: build
+	cd examples/ && make classy_ast
+
+examples/comments: build
+	cd examples/ && make comments
+
+examples/dism: build
+	cd examples/ && make dism
+
+examples/dism_lr0: build
+	cd examples/ && make dism_lr0
+
+examples/formula: build
+	cd examples/ && make formula
+
+examples/handlebars: build
+	cd examples/ && make handlebars
+
+examples/inherited_y: build
+	cd examples/ && make inherited_y
+
+examples/jscore: build
+	cd examples/ && make jscore
+
+examples/json_js: build
+	cd examples/ && make json_js
+
+examples/json_ast_js: build
+	cd examples/ && make json_ast_js
+
+examples/lambdacalc: build
+	cd examples/ && make lambdacalc
+
+examples/nv_classy_ast: build
+	cd examples/ && make nv_classy_ast
+
+examples/phraser: build
+	cd examples/ && make phraser
+
+examples/precedence: build
+	cd examples/ && make precedence
+
+examples/reduce_conflict: build
+	cd examples/ && make reduce_conflict
+
+examples/semwhitespace: build
+	cd examples/ && make semwhitespace
+
+examples/tikiwikiparser: build
+	cd examples/ && make tikiwikiparser
+
+
+build: build_bnf build_lex
 
 npm-install: submodules-npm-install
 	npm install
@@ -43,7 +128,6 @@ JISON_DEPS = \
 build_bnf: lib/util/parser.js
 
 lib/util/parser.js: $(JISON_DEPS) submodules \
-					npm-install \
 					lib/cli.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
@@ -52,7 +136,6 @@ lib/util/parser.js: $(JISON_DEPS) submodules \
 build_lex: lib/util/lex-parser.js
 
 lib/util/lex-parser.js: $(JISON_DEPS) submodules \
-						npm-install \
 						lib/cli.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
@@ -98,6 +181,7 @@ git:
 
 
 clean:
+	cd examples/ && make clean
 	cd modules/ebnf-parser && make clean
 	cd modules/jison-lex && make clean
 	cd modules/jison2json && make clean
@@ -116,6 +200,7 @@ clean:
 # of each part of the generator (lexer & parser) as all derived copies have been killed.
 #
 superclean: clean
+	cd examples/ && make superclean
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison-lex && make superclean
 	cd modules/jison2json && make superclean
@@ -131,5 +216,5 @@ superclean: clean
 
 
 
-.PHONY: all site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
 

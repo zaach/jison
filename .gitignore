@@ -4,5 +4,8 @@ node_modules
 # Editor backup files
 *.bak
 *~
-web/content/assets/js/jison.js
+
+# Generated web content directories (nanoc output)
+web/tmp/
 web/crash.log
+

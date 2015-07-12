@@ -24,6 +24,7 @@ Jison takes a context-free grammar as input and outputs a JavaScript file capabl
 
 Installation
 ------------
+
 Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
 
 Using npm:
@@ -83,6 +84,18 @@ You can generate parsers programatically from JavaScript as well. Assuming Jison
 
     parser.parse("adfe34bc zxg");
     // throws lexical error
+
+Alternatively, if you want to use the Jison file format but not generate a static JavaScript file for it, you could use a snippet like this:
+
+    // myparser.js
+    var fs = require("fs");
+    var jison = require("jison");
+
+    var bnf = fs.readFileSync("grammar.jison", "utf8");
+    var parser = new jison.Parser(bnf);
+
+    module.exports = parser;
+
 
 Using the Generated Parser
 --------------------------
@@ -166,6 +179,7 @@ Other helpful sections:
 
 Specifying a Language
 ---------------------
+
 The process of parsing a language involves two phases: **lexical analysis** (tokenizing) and **parsing**, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar.
 
 For example, here is the grammar for the calculator parser:
@@ -290,6 +304,7 @@ More examples can be found in the [`examples/`](http://github.com/zaach/jison/tr
 
 Lexical Analysis
 ----------------
+
 Jison includes a rather rudimentary scanner generator, though **any module that supports the basic scanner API could be used** in its place.
 
 The format of the [input file](http://dinosaur.compilertools.net/flex/flex_6.html#SEC6) (including macro support) and the style of the [pattern matchers](http://dinosaur.compilertools.net/flex/flex_7.html#SEC7) are modeled after Flex. Several [metacharacters have been added](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison), but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:
@@ -330,7 +345,23 @@ A recently added feature are **[start conditions](http://dinosaur.compilertools.
 
     "."         console.log( "found a dot" );
 
-Additionaly, use `this.popState()` within an action to revert to the previous state.
+If you use `%x` instead of `%s` to declare your start condition then _only_ rules that match the current start condition will be considered.
+
+Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:
+
+    %x string
+
+    %%
+    ["]               this.begin("string");
+    <string>[^"\n]*   return "STRING";
+    <string>[\n]      return "NEWLINE_IN_STRING";
+    <string><<EOF>>   return "EOF_IN_STRING";
+    <string>["]       this.popState();
+
+    [.\n]+            /* skip over text not in quotes */
+    <<EOF>>           return "EOF";
+
+Additionally, use `this.popState()` within an action to revert to the previous state.
 
 Using the JSON format, start conditions are defined with an array before the rule's matcher:
 
@@ -353,18 +384,72 @@ Custom Scanners
 
 You don't have to use the builtin Jison lexical scanner. An object with a `lex` and a `setInput` function would suffice, e.g.:
 
-    parser.lexer = {lex: function () { return 'NIL'; }, setInput: function (str) {} }
+    parser.lexer = {
+		lex: function () { 
+			return 'NIL'; 
+		}, 
+		setInput: function (str) {} 
+	};
 
 This lexer would simply return `NIL` tokens *ad infinitum*.
 
-*TODO: more examples*
+The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace:
+
+    // myscanner.js
+    function AlphabetScanner() {
+        var text = "";
+        this.yytext = "";
+        this.yyloc = {
+            first_column: 0,
+            first_line: 1,
+            last_line: 1,
+            last_column: 0
+        };
+        this.yylloc = this.yyloc;
+        this.setInput = function(text_) {
+            text = text_;
+        };
+        this.lex = function() {
+            // Return the EOF token when we run out of text.
+            if (text === "") {
+                return "EOF";
+            }
+
+            // Consume a single character and increment our column numbers.
+            var c = text.charAt(0);
+            text = text.substring(1);
+            this.yytext = c;
+            this.yyloc.first_column++;
+            this.yyloc.last_column++;
+
+            if (c === "\n") {
+                // Increment our line number when we hit newlines.
+                this.yyloc.first_line++;
+                this.yyloc.last_line++;
+                // Try to keep lexing because we aren't interested
+                // in newlines.
+                return this.lex();
+            } else if (/[a-z]/.test(c)) {
+                return "LOWER_CASE";
+            } else if (/[A-Z]/.test(c)) {
+                return "UPPER_CASE";
+            } else if (/\s/.test(c)) {
+                // Try to keep lexing because we aren't interested
+                // in whitespace.
+                return this.lex();
+            } else {
+                return "INVALID";
+            }
+        };
+    }
+    parser.lexer = new AlphabetScanner();
 
 Sharing Scope
 ------------
 
 In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.
 
-Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules.The parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
+Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules. The parser has a `yy` property which is exposed to actions as the `yy` free variable. Any functionality attached to this property is available in both lexical and semantic actions through the `yy` free variable.
 
 An example from orderly.js:
 
@@ -383,12 +468,14 @@ The `scope` module contains logic for building data structures, which is used wi
 
 Parsing algorithms
 ------------------
+
 Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.
 
 **LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.**
 
 Projects using Jison
 --------------------
+
 View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
 Contributors
@@ -436,3 +523,4 @@ License
 
 
   [1]: http://dinosaur.compilertools.net/bison/bison_4.html
+
