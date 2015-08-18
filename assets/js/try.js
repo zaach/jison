@@ -6,12 +6,12 @@ var parser,
 //IE, mainly
 if(typeof console === 'undefined'){
     console = {};
-    console.log = function (str) {$("#out").html(uneval(str))};
+    console.log = function (str) {$("#out").text(uneval(str))};
 }
 // noop
 print = function (){}
 
-var printOut = function (str) { $("#out").html(str); };
+var printOut = function (str) { $("#out").text(str); };
 
 $(document).ready(function () {
     $("#process_btn").click(processGrammar);
@@ -38,7 +38,7 @@ function processGrammar () {
         try {
             var cfg = bnf.parse(grammar);
         } catch (e) {
-            $("#gen_out").html("Oops. Make sure your grammar is in the correct format.\n"+e).addClass('bad');
+            $("#gen_out").text("Oops. Make sure your grammar is in the correct format.\n"+e).addClass('bad');
             return;
         }
     }
@@ -49,9 +49,9 @@ function processGrammar () {
     $("#out").removeClass("good").removeClass("bad").html('');
     $("#gen_out").removeClass("good").removeClass("bad");
     if (!parser.conflicts) {
-        $("#gen_out").html('Generated successfully!').addClass('good');
+        $("#gen_out").text('Generated successfully!').addClass('good');
     } else {
-        $("#gen_out").html('Conflicts encountered:<br/>').addClass('bad');
+        $("#gen_out").text('Conflicts encountered:\n').addClass('bad');
     }
 
     $("#download_btn").click(function () {
