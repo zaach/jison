@@ -2,6 +2,9 @@ var Jison = require("../setup").Jison,
     Lexer = require("../setup").Lexer,
     assert = require("assert");
 
+var fs = require('fs');
+var path = require('path');
+
 exports["test amd module generator"] = function() {
     var lexData = {
         rules: [
@@ -345,4 +348,34 @@ exports["test module include with each generator type"] = function () {
       var source = gen[type]();
       assert.ok(/TEST_VAR/.test(source), type + " supports module include");
     });
+};
+
+// test for issue #246
+exports["test compiling a parser/lexer"] = function () {
+    var grammar =
+      '// Simple "happy happy joy joy" parser, written by Nolan Lawson\n' +
+      '// Based on the song of the same name.\n\n' +
+      '%lex\n%%\n\n\\s+                   /* skip whitespace */\n' +
+      '("happy")             return \'happy\'\n' +
+      '("joy")               return \'joy\'\n' +
+      '<<EOF>>               return \'EOF\'\n\n' +
+      '/lex\n\n%start expressions\n\n' +
+      '%ebnf\n\n%%\n\n' +
+      'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
+      'e\n    : phrase+ \'joy\'? -> $1 + \' \' + yytext \n    ;\n\n' +
+      'phrase\n    : \'happy\' \'happy\' \'joy\' \'joy\' ' +
+      ' -> [$1, $2, $3, $4].join(\' \'); \n    ;';
+
+    var parser = new Jison.Parser(grammar);
+    var generated = parser.generate();
+
+    var tmpFile = path.resolve(__dirname, 'tmp-parser.js');
+    fs.writeFileSync(tmpFile, generated);
+    var parser2 = require('./tmp-parser');
+
+    assert.ok(parser.parse('happy happy joy joy joy') === 'happy happy joy joy joy',
+      'original parser works');
+    assert.ok(parser2.parse('happy happy joy joy joy') === 'happy happy joy joy joy',
+      'generated parser works');
+    fs.unlinkSync(tmpFile);
 };
