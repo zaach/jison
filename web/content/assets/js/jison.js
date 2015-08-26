@@ -1553,6 +1553,7 @@ lrGeneratorMixin.createParser = function createParser () {
     }
 
     // backwards compatibility
+    p.lexer = this.lexer;
     p.generate = bind('generate');
     p.generateAMDModule = bind('generateAMDModule');
     p.generateModule = bind('generateModule');
@@ -1573,7 +1574,13 @@ function parseError (str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 }
 
@@ -4292,7 +4299,13 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -7367,7 +7380,13 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 },
 parse: function parse(input) {
