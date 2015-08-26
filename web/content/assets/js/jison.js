@@ -18685,8 +18685,8 @@ module.exports={
   "devDependencies": {
     "test": ">=0.6.0",
     "jison": "git://github.com/GerHobbelt/jison.git#master",
-    "uglify-js": ">=2.4.23",
-    "browserify": ">=10.2.6"
+    "uglify-js": ">=2.4.24",
+    "browserify": ">=11.0.1"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
