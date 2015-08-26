@@ -1362,7 +1362,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
     var commonCode = tableCode.commonCode;
 
     // Generate the module creation code
-    var moduleCode = "{";
+    var moduleCode = "{\n";
     moduleCode += [
         "trace: " + String(this.trace || parser.trace),
         "yy: {}",
@@ -1375,7 +1375,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
         "parseError: " + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
         "parse: " + parseFn
         ].join(",\n");
-    moduleCode += "};";
+    moduleCode += "\n};";
 
     return { commonCode: commonCode, moduleCode: moduleCode }
 };
@@ -2646,7 +2646,8 @@ var __expand__ = function (k, v, o) {
     $V5=[5,11,12,14,16],
     $V6=[5,8,11,22,27,33,36,38,41,42,46,47,48,51,52,53,55],
     $V7=[22,24];
-var parser = {trace: function trace() { },
+var parser = {
+trace: function trace() { },
 yy: {},
 symbols_: {
   "error": 2,
@@ -4558,7 +4559,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}};
+}
+};
 
 
 function encodeRE (s) {
@@ -5770,7 +5772,8 @@ var __expand__ = function (k, v, o) {
     $Vb=[11,37,44,45,54,55,56,57,58,59,60,61,62],
     $Vc=[37,45,55,56],
     $Vd=[62,64];
-var parser = {trace: function trace() { },
+var parser = {
+trace: function trace() { },
 yy: {},
 symbols_: {
   "error": 2,
@@ -7639,7 +7642,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}};
+}
+};
 
 var transform = require('./ebnf-transform').transform;
 var ebnf = false;
