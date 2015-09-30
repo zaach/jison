@@ -8,7 +8,11 @@
 
 var typal = (function () {
 
-var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
+var create = Object.create || function (o) { 
+    function F() {} 
+    F.prototype = o; 
+    return new F(); 
+};
 var position = /^(before|after)/;
 
 // basic method layering
@@ -74,14 +78,18 @@ return {
     construct: function typal_construct() {
         var o = typal_mix.apply(create(this), arguments);
         var constructor = o.constructor;
-        var Klass = o.constructor = function () { return constructor.apply(this, arguments); };
+        var Klass = o.constructor = function () { 
+            return constructor.apply(this, arguments); 
+        };
         Klass.prototype = o;
         Klass.mix = typal_mix; // allow for easy singleton property extension
         return Klass;
     },
 
     // no op
-    constructor: function typal_constructor() { return this; }
+    constructor: function typal_constructor() { 
+        return this; 
+    }
 };
 
 })();
