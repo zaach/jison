@@ -496,7 +496,7 @@ exports["test symbol aliases"] = function() {
             "pgm" :[ ["expr[alice] expr[bob] expr[carol]", "return $alice+$bob+$carol;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
-                         ["c", "$$ = 'c';"] ]
+                        ["c", "$$ = 'c';"] ]
         }
     };
 
@@ -518,7 +518,7 @@ exports["test symbol aliases in ebnf"] = function() {
             "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+$2;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
-                         ["c", "$$ = 'c';"] ]
+                        ["c", "$$ = 'c';"] ]
         }
     };
 
