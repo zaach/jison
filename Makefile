@@ -146,13 +146,13 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules \
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' > $@
+	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require(['"]lex-parser["'])/require(".\/lex-parser")/' > $@
 
 lib/util/package.json: modules/jison-lex/package.json
 	cat modules/jison-lex/package.json > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' > $@
+	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require(['"]lex-parser["'])/require(".\/lex-parser")/' > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
 	cat modules/ebnf-parser/ebnf-transform.js > $@

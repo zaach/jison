@@ -5138,7 +5138,7 @@ break;
 case 66 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       . */ 
- throw new Error("unsupported input character: " + yy_.yytext); /* b0rk on bad characters */ 
+ throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */ 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -8176,8 +8176,8 @@ case 41 :
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            console.log("unsupported input character: ", yy_.yytext, yyloc);
-                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yyloc)); /* b0rk on bad characters */
+                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yyloc);
+                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */
                                          
 break;
 case 45 : 
@@ -15229,8 +15229,8 @@ case 41 :
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            console.log("unsupported input character: ", yy_.yytext, yyloc);
-                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yyloc)); /* b0rk on bad characters */
+                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yyloc);
+                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */
                                          
 break;
 case 45 : 
@@ -19420,7 +19420,7 @@ break;
 case 66 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       . */ 
- throw new Error("unsupported input character: " + yy_.yytext); /* b0rk on bad characters */ 
+ throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */ 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
