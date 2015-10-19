@@ -30,7 +30,13 @@ ALL_TARGETS =  													\
 			precedence 											\
 			reduce_conflict 									\
 			semwhitespace 										\
-			tikiwikiparser
+			tikiwikiparser 										\
+			mermaid												\
+			dot 												\
+			flow 												\
+			gantt 												\
+			grammar 											\
+			lex
 
 
 all: $(ALL_TARGETS)
@@ -126,4 +132,22 @@ semwhitespace:
 
 tikiwikiparser:
 	$(JISON) ./$@.jison
+
+mermaid:
+	$(JISON) ./$@.jison
+
+dot:
+	$(JISON) ./$@.jison
+
+flow:
+	$(JISON) ./$@.jison
+
+gantt:
+	$(JISON) ./$@.jison
+
+grammar:
+	$(JISON) ./$@.jison
+
+lex:
+	$(JISON) ./$@.jison lex_grammar.jisonlex
 
