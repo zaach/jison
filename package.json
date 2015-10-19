@@ -41,13 +41,13 @@
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
     "nomnom": "git://github.com/GerHobbelt/nomnom.git#master",
-    "cjson": ">=0.3.1"
+    "cjson": ">=0.3.2"
   },
   "devDependencies": {
     "test": ">=0.6.0",
     "jison": "git://github.com/GerHobbelt/jison.git#master",
-    "uglify-js": ">=2.4.24",
-    "browserify": ">=11.0.1"
+    "uglify-js": ">=2.5.0",
+    "browserify": ">=11.2.0"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
