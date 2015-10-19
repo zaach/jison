@@ -4711,7 +4711,7 @@ reject:function () {
                 text: this.match,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR);
         }
         return this;
@@ -4895,7 +4895,7 @@ next:function () {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -5138,7 +5138,7 @@ break;
 case 66 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       . */ 
- throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */ 
+ throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */ 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -5258,11 +5258,11 @@ simpleCaseActionClusters: {
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:[/"'][^{}/"']+)/,
-/^(?:[^{}/"']+)/,
+/^(?:[\/"'][^{}\/"']+)/,
+/^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
@@ -7795,7 +7795,7 @@ reject:function () {
                 text: this.match,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR);
         }
         return this;
@@ -7979,7 +7979,7 @@ next:function () {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -8176,8 +8176,8 @@ case 41 :
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yyloc);
-                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */
+                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yylloc);
+                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
 case 45 : 
@@ -8329,11 +8329,11 @@ rules: [
 /^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ /]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:[/"'][^{}/"']+)/,
-/^(?:[^{}/"']+)/,
+/^(?:[\/"'][^{}\/"']+)/,
+/^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:(.|\n|\r)+)/
@@ -8557,7 +8557,7 @@ exports.parse = function () {
 
 'use strict';
 
-var lexParser = require('lex-parser');
+var lexParser = require('./lex-parser');
 var version = require('./package.json').version;
 
 // expand macros and convert matchers to RegExp's
@@ -8930,7 +8930,7 @@ RegExpLexer.prototype = {
                 text: this.match,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR);
         }
         return this;
@@ -9114,7 +9114,7 @@ RegExpLexer.prototype = {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -9342,7 +9342,7 @@ RegExpLexer.generate = generate;
 module.exports = RegExpLexer;
 
 
-},{"./package.json":6,"lex-parser":24}],9:[function(require,module,exports){
+},{"./lex-parser":5,"./package.json":6}],9:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
@@ -10293,7 +10293,7 @@ reject:function () {
                 text: this.match,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR);
         }
         return this;
@@ -10477,7 +10477,7 @@ next:function () {
                 text: this.match + this._input,
                 token: null,
                 line: this.yylineno,
-                loc: this.yyloc
+                loc: this.yylloc
             }) || this.ERROR;
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
@@ -11975,7 +11975,9 @@ function drainQueue() {
         currentQueue = queue;
         queue = [];
         while (++queueIndex < len) {
-            currentQueue[queueIndex].run();
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
         }
         queueIndex = -1;
         len = queue.length;
@@ -12027,7 +12029,6 @@ process.binding = function (name) {
     throw new Error('process.binding is not supported');
 };
 
-// TODO(shtylman)
 process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
@@ -12834,7 +12835,8 @@ var __expand__ = function (k, v, o) {
     $Vb=[11,37,44,45,54,55,56,57,58,59,60,61,62],
     $Vc=[37,45,55,56],
     $Vd=[62,64];
-var parser = {trace: function trace() { },
+var parser = {
+trace: function trace() { },
 yy: {},
 symbols_: {
   "error": 2,
@@ -14444,7 +14446,13 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -14571,10 +14579,10 @@ parse: function parse(input) {
                 // Report error
                 expected = collect_expected_token_set(state);
                 if (lexer.showPosition) {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
                 } else {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
-                             (symbol === EOF ? "end of input" :
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
+                             (symbol === EOF ? 'end of input' :
                               ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
                 // we cannot recover from the error!
@@ -14697,7 +14705,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}};
+}
+};
 
 var transform = require('./ebnf-transform').transform;
 var ebnf = false;
@@ -14711,6 +14720,7 @@ function extend(json, grammar) {
     }
     return json;
 }
+
 
 /* generated by jison-lex 0.3.4 */
 var lexer = (function () {
@@ -15229,8 +15239,8 @@ case 41 :
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yyloc);
-                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */
+                                            console.log("unsupported input character: ", yy_.yytext, yyloc);
+                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yyloc)); /* b0rk on bad characters */
                                          
 break;
 case 45 : 
@@ -15582,20 +15592,28 @@ conditions: {
 return lexer;
 })();
 parser.lexer = lexer;
+
 function Parser () {
   this.yy = {};
 }
-Parser.prototype = parser;parser.Parser = Parser;
-return new Parser;
+Parser.prototype = parser;
+parser.Parser = Parser;
+
+return new Parser();
 })();
+
 
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = bnf;
 exports.Parser = bnf.Parser;
-exports.parse = function () { return bnf.parse.apply(bnf, arguments); };
+exports.parse = function () {
+  return bnf.parse.apply(bnf, arguments);
+};
+
 }
+
 },{"./ebnf-transform":21}],23:[function(require,module,exports){
 /* parser generated by jison 0.4.15 */
 /*
@@ -15727,7 +15745,8 @@ var __expand__ = function (k, v, o) {
     $V1=[5,7,11,12,13,14,15,16],
     $V2=[7,12,13],
     $V3=[5,7,11,12,13];
-var parser = {trace: function trace() { },
+var parser = {
+trace: function trace() { },
 yy: {},
 symbols_: {
   "error": 2,
@@ -16053,7 +16072,13 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -16180,10 +16205,10 @@ parse: function parse(input) {
                 // Report error
                 expected = collect_expected_token_set(state);
                 if (lexer.showPosition) {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
                 } else {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
-                             (symbol === EOF ? "end of input" :
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
+                             (symbol === EOF ? 'end of input' :
                               ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
                 // we cannot recover from the error!
@@ -16306,7 +16331,9 @@ parse: function parse(input) {
     }
 
     return retval;
-}};
+}
+};
+
 /* generated by jison-lex 0.3.4 */
 var lexer = (function () {
 var lexer = ({
@@ -16788,20 +16815,28 @@ conditions: {
 return lexer;
 })();
 parser.lexer = lexer;
+
 function Parser () {
   this.yy = {};
 }
-Parser.prototype = parser;parser.Parser = Parser;
-return new Parser;
+Parser.prototype = parser;
+parser.Parser = Parser;
+
+return new Parser();
 })();
+
 
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = ebnf;
 exports.Parser = ebnf.Parser;
-exports.parse = function () { return ebnf.parse.apply(ebnf, arguments); };
+exports.parse = function () {
+  return ebnf.parse.apply(ebnf, arguments);
+};
+
 }
+
 },{}],24:[function(require,module,exports){
 /* parser generated by jison 0.4.15 */
 /*
@@ -16937,7 +16972,8 @@ var __expand__ = function (k, v, o) {
     $V5=[5,11,12,14,16],
     $V6=[5,8,11,22,27,33,36,38,41,42,46,47,48,51,52,53,55],
     $V7=[22,24];
-var parser = {trace: function trace() { },
+var parser = {
+trace: function trace() { },
 yy: {},
 symbols_: {
   "error": 2,
@@ -18590,7 +18626,13 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        throw new Error(str);
+        function _parseError (msg, hash) {
+            this.message = msg;
+            this.hash = hash;
+        }
+        _parseError.prototype = new Error();
+
+        throw new _parseError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -18717,10 +18759,10 @@ parse: function parse(input) {
                 // Report error
                 expected = collect_expected_token_set(state);
                 if (lexer.showPosition) {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + "\nExpecting " + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
                 } else {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ": Unexpected " +
-                             (symbol === EOF ? "end of input" :
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
+                             (symbol === EOF ? 'end of input' :
                               ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
                 // we cannot recover from the error!
@@ -18843,7 +18885,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}};
+}
+};
 
 
 function encodeRE (s) {
@@ -18856,6 +18899,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
+
 
 /* generated by jison-lex 0.3.4 */
 var lexer = (function () {
@@ -19420,7 +19464,7 @@ break;
 case 66 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       . */ 
- throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yyloc)); /* b0rk on bad characters */ 
+ throw new Error("unsupported input character: " + yy_.yytext); /* b0rk on bad characters */ 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -19847,20 +19891,28 @@ conditions: {
 return lexer;
 })();
 parser.lexer = lexer;
+
 function Parser () {
   this.yy = {};
 }
-Parser.prototype = parser;parser.Parser = Parser;
-return new Parser;
+Parser.prototype = parser;
+parser.Parser = Parser;
+
+return new Parser();
 })();
+
 
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 exports.parser = lexParser;
 exports.Parser = lexParser.Parser;
-exports.parse = function () { return lexParser.parse.apply(lexParser, arguments); };
+exports.parse = function () {
+  return lexParser.parse.apply(lexParser, arguments);
+};
+
 }
+
 },{}],25:[function(require,module,exports){
 module.exports={
   "author": {
@@ -19905,13 +19957,13 @@ module.exports={
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
     "nomnom": "git://github.com/GerHobbelt/nomnom.git#master",
-    "cjson": ">=0.3.1"
+    "cjson": ">=0.3.2"
   },
   "devDependencies": {
     "test": ">=0.6.0",
     "jison": "git://github.com/GerHobbelt/jison.git#master",
-    "uglify-js": ">=2.4.24",
-    "browserify": ">=11.0.1"
+    "uglify-js": ">=2.5.0",
+    "browserify": ">=11.2.0"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
