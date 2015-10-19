@@ -28,7 +28,7 @@
 "-"               return 'LINE';
 ">>"              return 'OPENARROW';
 ">"               return 'ARROW';
-:[^\r\n]+         return 'MESSAGE';
+":"[^\r\n]+       return 'MESSAGE';
 <<EOF>>           return 'EOF';
 .                 return 'INVALID';
 
