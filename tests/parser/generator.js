@@ -37,7 +37,7 @@ exports["test amd module generator"] = function() {
                 parser = callback();
             }
         };
-    console.log('generated: ', parserSource);
+    //console.log('generated: ', parserSource);
     eval(parserSource);
 
     assert.ok(parser.parse(input));

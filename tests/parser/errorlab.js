@@ -139,7 +139,7 @@ exports["test throws error despite recovery rule"] = function() {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {debug: true});
+    var parser = new Jison.Parser(grammar /*, {debug: true} */);
     parser.lexer = new Lexer(lexData2);
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
