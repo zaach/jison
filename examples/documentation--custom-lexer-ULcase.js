@@ -5,13 +5,13 @@
 function AlphabetScanner() {
     var text = "";
     this.yytext = "";
-    this.yyloc = {
+    this.yylloc = {
         first_column: 0,
         first_line: 1,
         last_line: 1,
         last_column: 0
     };
-    this.yylloc = this.yyloc;
+    this.yylloc = this.yylloc;
     this.setInput = function(text_) {
         text = text_;
     };
@@ -25,13 +25,13 @@ function AlphabetScanner() {
         var c = text.charAt(0);
         text = text.substring(1);
         this.yytext = c;
-        this.yyloc.first_column++;
-        this.yyloc.last_column++;
+        this.yylloc.first_column++;
+        this.yylloc.last_column++;
 
         if (c === "\n") {
             // Increment our line number when we hit newlines.
-            this.yyloc.first_line++;
-            this.yyloc.last_line++;
+            this.yylloc.first_line++;
+            this.yylloc.last_line++;
             // Try to keep lexing because we aren't interested
             // in newlines.
             return this.lex();

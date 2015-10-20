@@ -1,7 +1,7 @@
 
 /* author: Jay Ligatti */
 
-%parser-type lr0X
+%parser-type lr0
 
 %%
 
