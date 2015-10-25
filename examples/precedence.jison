@@ -3,11 +3,23 @@
 
 %lex
 
+%options ranges
+%options unicode=7
+%options xregexp
+
+
+digits          [0-9]
+alpha           [a-zA-Z]|{digits}
+space           " "
+whitespace      \s
+
+
 %include precedence.prelude1.js
 
 %%
-\s+             {/* skip whitespace */}
-[0-9]+          %include "precedence.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+{whitespace}+   {/* skip whitespace */}
+[{digits}]+     %include "precedence.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+[{digits}{alpha}]+     { console.log("buggerit millenium hands and shrimp!"); }
 
 "+"             {return '+';}
 "-"             {return '-';}
