@@ -515,7 +515,7 @@ exports["test symbol aliases in ebnf"] = function() {
     };
     var grammar = {
         ebnf: {
-            "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+$2;"] ],
+            "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+", "return $alice+'['+$2.join(',')+']';"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
                         ["c", "$$ = 'c';"] ]
@@ -524,7 +524,7 @@ exports["test symbol aliases in ebnf"] = function() {
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
-    assert.equal(parser.parse('abc'), "ab", "should tolerate aliases in subexpression");
+    assert.equal(parser.parse('abc'), "a[b,c]", "should tolerate aliases in subexpression");
 };
 
 exports["test symbol aliases for terminals"] = function() {

@@ -104,6 +104,11 @@ inherited_y:
 	$(JISON) ./inherited.y
 
 # build *AND* run the test:
+issue-254:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
 issue-293:
 	$(JISON) ./$@.jison
 	node ./output/$@/$@.js
