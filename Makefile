@@ -128,21 +128,20 @@ JISON_DEPS = \
 
 build_bnf: lib/util/parser.js
 
-lib/util/parser.js: $(JISON_DEPS) submodules \
-					lib/cli.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	@[ -d  node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
+					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 
 build_lex: lib/util/lex-parser.js
 
-lib/util/lex-parser.js: $(JISON_DEPS) submodules \
-						lib/cli.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
+						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
+
+prep_util_dir:
 	@[ -d  node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
-	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
@@ -219,5 +218,5 @@ superclean: clean
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir
 
