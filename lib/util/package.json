@@ -2,6 +2,7 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
+  "license": "MIT",
   "version": "0.3.4-100",
   "keywords": [
     "jison",
