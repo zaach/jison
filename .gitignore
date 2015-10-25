@@ -9,3 +9,6 @@ node_modules
 web/tmp/
 web/crash.log
 
+# ignore the compiler output for any examples:            
+/examples/output
+
