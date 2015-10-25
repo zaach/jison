@@ -22,6 +22,7 @@ ALL_TARGETS =  													\
 			handlebars 											\
 			inherited_y 										\
 			jscore 												\
+			issue-293											\
 			json_js 											\
 			json_ast_js 										\
 			lambdacalc 											\
@@ -101,6 +102,11 @@ handlebars:
 
 inherited_y:
 	$(JISON) ./inherited.y
+
+# build *AND* run the test:
+issue-293:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
 
 jscore:
 	$(JISON) ./$@.jison
