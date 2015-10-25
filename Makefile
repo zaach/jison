@@ -1,5 +1,6 @@
 
-all: build test
+all: build test examples/issue-293 
+# examples/issue-254 
 
 prep: npm-install
 
@@ -81,6 +82,14 @@ examples/handlebars: build
 
 examples/inherited_y: build
 	cd examples/ && make inherited_y
+
+# build *AND* run the test:
+examples/issue-254:
+	cd examples/ && make issue-254
+
+# build *AND* run the test:
+examples/issue-293:
+	cd examples/ && make issue-293
 
 examples/jscore: build
 	cd examples/ && make jscore
