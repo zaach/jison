@@ -9,6 +9,7 @@ bogus
         NUMBER DEFINE PROCEDURE BLOCK BEGIN OUTPUT CELL IF THEN LOOP INVALID MU_LOOP AT MOST
         TIMES ABORT END QUIT AND YES NO IDENT '.' QUOTE '[' ']' '(' ')'
         '{' '}' ':' ';' ',' '+' '*'  '<=' '<' '>' '=' INVALID
+        EOF
     ;
 
 
