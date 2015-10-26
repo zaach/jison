@@ -199,6 +199,16 @@ submodules-bump:
 	cd modules/json2jison && make bump
 	cd modules/lex-parser && make bump
 
+git-tag:
+	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
+
+submodules-git-tag:
+	cd modules/ebnf-parser && make git-tag
+	cd modules/jison-lex && make git-tag
+	cd modules/jison2json && make git-tag
+	cd modules/json2jison && make git-tag
+	cd modules/lex-parser && make git-tag
+
 
 git:
 	#-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
@@ -242,4 +252,4 @@ superclean: clean
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag
