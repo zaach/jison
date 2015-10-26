@@ -393,37 +393,38 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 if (action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*/)) {
                     var count = {},
                         names = {};
+
+                    // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
+                    // we therefor allow access to both the original (non)terminal and the alias.
+                    //
+                    // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
+                    // where N is a number representing the number of this particular occurrence of the given 
+                    // (non)terminal.
+                    //
+                    // For example, given this (intentionally contrived) production:
+                    //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias] 
+                    // all the items can be accessed as:
+                    //     $1 $2 $3 $4 $5
+                    //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
+                    //     $elem $elem2 $another_elem $elem3 $another_elem2
+                    //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
+                    //     $alias $another_alias $alias2 $alias3 $another_alias2
+                    // where each line above is equivalent to the top-most line. Note the numbers postfixed to
+                    // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
+                    // the postfix numbering is independent.
+                    function addName (s) {
+                        if (names[s]) {
+                            names[s + (++count[s])] = i + 1;
+                        } else {
+                            names[s] = i + 1;
+                            names[s + '1'] = i + 1;
+                            count[s] = 1;
+                        }
+                    }
+
                     for (i = 0; i < rhs.length; i++) {
                         // check for aliased names, e.g., id[alias]
                         rhs_i = aliased[i];
-
-                        // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
-                        // we therefor allow access to both the original (non)terminal and the alias.
-                        //
-                        // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
-                        // where N is a number representing the number of this particular occurrence of the given 
-                        // (non)terminal.
-                        //
-                        // For example, given this (intentionally contrived) production:
-                        //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias] 
-                        // all the items can be accessed as:
-                        //     $1 $2 $3 $4 $5
-                        //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
-                        //     $elem $elem2 $another_elem $elem3 $another_elem2
-                        //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
-                        //     $alias $another_alias $alias2 $alias3 $another_alias2
-                        // where each line above is equivalent to the top-most line. Note the numbers postfixed to
-                        // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
-                        // the postfix numbering is independent.
-                        function addName (s) {
-                            if (names[s]) {
-                                names[s + (++count[s])] = i + 1;
-                            } else {
-                                names[s] = i + 1;
-                                names[s + '1'] = i + 1;
-                                count[s] = 1;
-                            }
-                        }
                         addName(rhs_i);
                         if (rhs_i !== rhs[i]) {
                             addName(rhs[i]);
@@ -2441,6 +2442,9 @@ bnf.yy.addDeclaration = function (grammar, decl) {
         for (var i = 0; i < decl.options.length; i++) {
             grammar.options[decl.options[i][0]] = decl.options[i][1];
         }
+    } else if (decl.unknownDecl) {
+      if (!grammar.unknownDecls) grammar.unknownDecls = [];
+      grammar.unknownDecls.push(decl.unknownDecl);
     }
     else if (decl.actionInclude) {
         if (!grammar.actionInclude)
@@ -2454,7 +2458,6 @@ var parseLex = function (text) {
     text = text.replace(/(?:^%lex)|(?:\/lex$)/g, '');
     return jisonlex.parse(text);
 };
-
 
 },{"./ebnf-transform":4,"./lex-parser":5,"./parser":7}],4:[function(require,module,exports){
 var EBNF = (function(){
@@ -2777,7 +2780,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.15-101 */
+/* parser generated by jison 0.4.15-102 */
 /*
   Returns a Parser object of the following structure:
 
@@ -2922,18 +2925,18 @@ function __expand__(k, v, o) {
   return o;
 }
 
-var $V0=[6,12,14,16,18,64],
-    $V1=[18,25,36,39,41,44,45,49,50,51,54,55,60,62,63],
-    $V2=[6,12,14,16,18,25,36,40,64],
-    $V3=[6,12,14,16,18,25,36,39,40,41,44,45,49,50,51,54,55,60,62,63,64],
-    $V4=[36,40],
-    $V5=[6,12,14,16,18,25,33,36,39,40,41,42,43,44,45,49,50,51,54,55,60,61,62,63,64],
-    $V6=[6,12,14,16,18,21,64],
-    $V7=[6,9,12,14,16,18,25,30,36,39,41,44,45,49,50,51,54,55,60,62,63,64,71],
-    $V8=[6,9,18,25,30,36,39,41,44,45,49,50,51,54,55,60,62,63],
-    $V9=[54,57],
-    $Va=[9,71],
-    $Vb=[25,27];
+var $V0=[6,12,14,16,18,21,65],
+    $V1=[18,26,37,40,42,45,46,50,51,52,55,56,61,63,64],
+    $V2=[6,12,14,16,18,21,26,37,41,65],
+    $V3=[6,12,14,16,18,21,26,37,40,41,42,45,46,50,51,52,55,56,61,63,64,65],
+    $V4=[37,41],
+    $V5=[6,12,14,16,18,21,26,34,37,40,41,42,43,44,45,46,50,51,52,55,56,61,62,63,64,65],
+    $V6=[6,12,14,16,18,21,22,65],
+    $V7=[6,9,12,14,16,18,21,26,31,37,40,42,45,46,50,51,52,55,56,61,63,64,65,72],
+    $V8=[6,9,18,26,31,37,40,42,45,46,50,51,52,55,56,61,63,64],
+    $V9=[55,58],
+    $Va=[9,72],
+    $Vb=[26,28];
 
 var parser = {
 trace: function trace() { },
@@ -2959,60 +2962,61 @@ symbols_: {
   "ACTION": 18,
   "include_macro_code": 19,
   "options": 20,
-  "START_COND": 21,
-  "rule": 22,
-  "start_conditions": 23,
-  "action": 24,
-  "{": 25,
-  "action_body": 26,
-  "}": 27,
-  "action_comments_body": 28,
-  "ACTION_BODY": 29,
-  "<": 30,
-  "name_list": 31,
-  ">": 32,
-  "*": 33,
-  ",": 34,
-  "regex_list": 35,
-  "|": 36,
-  "regex_concat": 37,
-  "regex_base": 38,
-  "(": 39,
-  ")": 40,
-  "SPECIAL_GROUP": 41,
-  "+": 42,
-  "?": 43,
-  "/": 44,
-  "/!": 45,
-  "name_expansion": 46,
-  "range_regex": 47,
-  "any_group_regex": 48,
-  ".": 49,
-  "^": 50,
-  "$": 51,
-  "string": 52,
-  "escape_char": 53,
-  "NAME_BRACE": 54,
-  "REGEX_SET_START": 55,
-  "regex_set": 56,
-  "REGEX_SET_END": 57,
-  "regex_set_atom": 58,
-  "REGEX_SET": 59,
-  "ESCAPE_CHAR": 60,
-  "RANGE_REGEX": 61,
-  "STRING_LIT": 62,
-  "CHARACTER_LIT": 63,
-  "OPTIONS": 64,
-  "option_list": 65,
-  "OPTIONS_END": 66,
-  "option": 67,
-  "=": 68,
-  "OPTION_VALUE": 69,
-  "optional_module_code_chunk": 70,
-  "INCLUDE": 71,
-  "PATH": 72,
-  "module_code_chunk": 73,
-  "CODE": 74,
+  "UNKNOWN_DECL": 21,
+  "START_COND": 22,
+  "rule": 23,
+  "start_conditions": 24,
+  "action": 25,
+  "{": 26,
+  "action_body": 27,
+  "}": 28,
+  "action_comments_body": 29,
+  "ACTION_BODY": 30,
+  "<": 31,
+  "name_list": 32,
+  ">": 33,
+  "*": 34,
+  ",": 35,
+  "regex_list": 36,
+  "|": 37,
+  "regex_concat": 38,
+  "regex_base": 39,
+  "(": 40,
+  ")": 41,
+  "SPECIAL_GROUP": 42,
+  "+": 43,
+  "?": 44,
+  "/": 45,
+  "/!": 46,
+  "name_expansion": 47,
+  "range_regex": 48,
+  "any_group_regex": 49,
+  ".": 50,
+  "^": 51,
+  "$": 52,
+  "string": 53,
+  "escape_char": 54,
+  "NAME_BRACE": 55,
+  "REGEX_SET_START": 56,
+  "regex_set": 57,
+  "REGEX_SET_END": 58,
+  "regex_set_atom": 59,
+  "REGEX_SET": 60,
+  "ESCAPE_CHAR": 61,
+  "RANGE_REGEX": 62,
+  "STRING_LIT": 63,
+  "CHARACTER_LIT": 64,
+  "OPTIONS": 65,
+  "option_list": 66,
+  "OPTIONS_END": 67,
+  "option": 68,
+  "=": 69,
+  "OPTION_VALUE": 70,
+  "optional_module_code_chunk": 71,
+  "INCLUDE": 72,
+  "PATH": 73,
+  "module_code_chunk": 74,
+  "CODE": 75,
   "$accept": 0,
   "$end": 1
 },
@@ -3024,40 +3028,41 @@ terminals_: {
   14: "START_INC",
   16: "START_EXC",
   18: "ACTION",
-  21: "START_COND",
-  25: "{",
-  27: "}",
-  29: "ACTION_BODY",
-  30: "<",
-  32: ">",
-  33: "*",
-  34: ",",
-  36: "|",
-  39: "(",
-  40: ")",
-  41: "SPECIAL_GROUP",
-  42: "+",
-  43: "?",
-  44: "/",
-  45: "/!",
-  49: ".",
-  50: "^",
-  51: "$",
-  54: "NAME_BRACE",
-  55: "REGEX_SET_START",
-  57: "REGEX_SET_END",
-  59: "REGEX_SET",
-  60: "ESCAPE_CHAR",
-  61: "RANGE_REGEX",
-  62: "STRING_LIT",
-  63: "CHARACTER_LIT",
-  64: "OPTIONS",
-  66: "OPTIONS_END",
-  68: "=",
-  69: "OPTION_VALUE",
-  71: "INCLUDE",
-  72: "PATH",
-  74: "CODE"
+  21: "UNKNOWN_DECL",
+  22: "START_COND",
+  26: "{",
+  28: "}",
+  30: "ACTION_BODY",
+  31: "<",
+  33: ">",
+  34: "*",
+  35: ",",
+  37: "|",
+  40: "(",
+  41: ")",
+  42: "SPECIAL_GROUP",
+  43: "+",
+  44: "?",
+  45: "/",
+  46: "/!",
+  50: ".",
+  51: "^",
+  52: "$",
+  55: "NAME_BRACE",
+  56: "REGEX_SET_START",
+  58: "REGEX_SET_END",
+  60: "REGEX_SET",
+  61: "ESCAPE_CHAR",
+  62: "RANGE_REGEX",
+  63: "STRING_LIT",
+  64: "CHARACTER_LIT",
+  65: "OPTIONS",
+  67: "OPTIONS_END",
+  69: "=",
+  70: "OPTION_VALUE",
+  72: "INCLUDE",
+  73: "PATH",
+  75: "CODE"
 },
 productions_: [
   0,
@@ -3110,6 +3115,10 @@ productions_: [
     1
   ],
   [
+    11,
+    1
+  ],
+  [
     15,
     1
   ],
@@ -3134,63 +3143,63 @@ productions_: [
     1
   ],
   [
-    22,
+    23,
     3
   ],
   [
-    24,
+    25,
     3
   ],
   [
-    24,
+    25,
     1
   ],
   [
-    24,
+    25,
     1
   ],
   [
-    26,
+    27,
     0
   ],
   [
-    26,
+    27,
     1
   ],
   [
-    26,
+    27,
     5
   ],
   [
-    26,
+    27,
     4
   ],
   [
-    28,
+    29,
     1
   ],
   [
-    28,
+    29,
     2
   ],
   [
-    23,
+    24,
     3
   ],
   [
-    23,
+    24,
     3
   ],
   [
-    23,
+    24,
     0
   ],
   [
-    31,
+    32,
     1
   ],
   [
-    31,
+    32,
     3
   ],
   [
@@ -3198,115 +3207,87 @@ productions_: [
     1
   ],
   [
-    35,
+    36,
     3
   ],
   [
-    35,
+    36,
     2
   ],
   [
-    35,
+    36,
     1
   ],
   [
-    35,
+    36,
     0
   ],
   [
-    37,
+    38,
     2
   ],
   [
-    37,
+    38,
     1
   ],
   [
-    38,
+    39,
     3
   ],
   [
-    38,
+    39,
     3
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
+    39,
     2
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
+    39,
     1
   ],
   [
-    38,
-    1
-  ],
-  [
-    46,
-    1
-  ],
-  [
-    48,
-    3
-  ],
-  [
-    56,
-    2
-  ],
-  [
-    56,
-    1
-  ],
-  [
-    58,
-    1
-  ],
-  [
-    58,
-    1
-  ],
-  [
-    53,
+    39,
     1
   ],
   [
@@ -3314,11 +3295,39 @@ productions_: [
     1
   ],
   [
-    52,
+    49,
+    3
+  ],
+  [
+    57,
+    2
+  ],
+  [
+    57,
     1
   ],
   [
-    52,
+    59,
+    1
+  ],
+  [
+    59,
+    1
+  ],
+  [
+    54,
+    1
+  ],
+  [
+    48,
+    1
+  ],
+  [
+    53,
+    1
+  ],
+  [
+    53,
     1
   ],
   [
@@ -3326,23 +3335,23 @@ productions_: [
     3
   ],
   [
-    65,
+    66,
     2
   ],
   [
-    65,
+    66,
     1
   ],
   [
-    67,
+    68,
     1
   ],
   [
-    67,
+    68,
     3
   ],
   [
-    67,
+    68,
     3
   ],
   [
@@ -3362,19 +3371,19 @@ productions_: [
     2
   ],
   [
-    73,
+    74,
     1
   ],
   [
-    73,
+    74,
     2
   ],
   [
-    70,
+    71,
     1
   ],
   [
-    70,
+    71,
     0
   ]
 ],
@@ -3389,6 +3398,7 @@ case 1 :
           this.$ = { rules: $$[$0-1] };
           if ($$[$0-3][0]) this.$.macros = $$[$0-3][0];
           if ($$[$0-3][1]) this.$.startConditions = $$[$0-3][1];
+          if ($$[$0-3][2]) this.$.unknownDecls = $$[$0-3][2];
           if ($$[$0] && $$[$0].trim() !== '') this.$.moduleInclude = $$[$0];
           if (yy.options) this.$.options = yy.options;
           if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
@@ -3405,9 +3415,9 @@ case 2 :
 break;
 case 3 : 
 /*! Production::     epilogue : %% extra_lexer_module_code EOF */
- case 20 : 
+ case 21 : 
 /*! Production::     action : { action_body } */
- case 29 : 
+ case 30 : 
 /*! Production::     start_conditions : < name_list > */
   this.$ = $$[$0-1];  
 break;
@@ -3423,11 +3433,14 @@ case 5 :
             if ('length' in $$[$0-1]) {
               this.$[0] = this.$[0] || {};
               this.$[0][$$[$0-1][0]] = $$[$0-1][1];
-            } else {
+            } else if ($$[$0-1].type === 'names') {
               this.$[1] = this.$[1] || {};
-              for (var name in $$[$0-1]) {
-                this.$[1][name] = $$[$0-1][name];
+              for (var name in $$[$0-1].names) {
+                this.$[1][name] = $$[$0-1].names[name];
               }
+            } else if ($$[$0-1].type === 'unknown') {
+              this.$[2] = this.$[2] || [];
+              this.$[2].push($$[$0-1].body);
             }
           }
          
@@ -3444,23 +3457,23 @@ case 8 :
 /*! Production::     definition : START_INC names_inclusive */
  case 9 : 
 /*! Production::     definition : START_EXC names_exclusive */
- case 21 : 
-/*! Production::     action : ACTION */
  case 22 : 
+/*! Production::     action : ACTION */
+ case 23 : 
 /*! Production::     action : include_macro_code */
- case 24 : 
+ case 25 : 
 /*! Production::     action_body : action_comments_body */
- case 27 : 
+ case 28 : 
 /*! Production::     action_comments_body : ACTION_BODY */
- case 62 : 
-/*! Production::     escape_char : ESCAPE_CHAR */
  case 63 : 
+/*! Production::     escape_char : ESCAPE_CHAR */
+ case 64 : 
 /*! Production::     range_regex : RANGE_REGEX */
- case 72 : 
+ case 73 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk */
- case 76 : 
+ case 77 : 
 /*! Production::     module_code_chunk : CODE */
- case 78 : 
+ case 79 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
   this.$ = $$[$0];  
 break;
@@ -3471,72 +3484,76 @@ case 10 :
   yy.actionInclude += $$[$0]; this.$ = null;  
 break;
 case 13 : 
-/*! Production::     names_inclusive : START_COND */
-  this.$ = {}; this.$[$$[$0]] = 0;  
+/*! Production::     definition : UNKNOWN_DECL */
+  this.$ = {type: 'unknown', body: $$[$0]};  
 break;
 case 14 : 
-/*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0-1]; this.$[$$[$0]] = 0;  
+/*! Production::     names_inclusive : START_COND */
+  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
 break;
 case 15 : 
-/*! Production::     names_exclusive : START_COND */
-  this.$ = {}; this.$[$$[$0]] = 1;  
+/*! Production::     names_inclusive : names_inclusive START_COND */
+  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 0;  
 break;
 case 16 : 
-/*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0-1]; this.$[$$[$0]] = 1;  
+/*! Production::     names_exclusive : START_COND */
+  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
 break;
 case 17 : 
+/*! Production::     names_exclusive : names_exclusive START_COND */
+  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 1;  
+break;
+case 18 : 
 /*! Production::     rules : rules rule */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
-case 18 : 
+case 19 : 
 /*! Production::     rules : rule */
- case 32 : 
+ case 33 : 
 /*! Production::     name_list : NAME */
   this.$ = [$$[$0]];  
 break;
-case 19 : 
+case 20 : 
 /*! Production::     rule : start_conditions regex action */
   this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
 break;
-case 23 : 
+case 24 : 
 /*! Production::     action_body :  */
- case 38 : 
+ case 39 : 
 /*! Production::     regex_list :  */
- case 79 : 
+ case 80 : 
 /*! Production::     optional_module_code_chunk :  */
   this.$ = '';  
 break;
-case 25 : 
+case 26 : 
 /*! Production::     action_body : action_body { action_body } action_comments_body */
   this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 26 : 
+case 27 : 
 /*! Production::     action_body : action_body { action_body } */
   this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 28 : 
+case 29 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
- case 39 : 
+ case 40 : 
 /*! Production::     regex_concat : regex_concat regex_base */
- case 49 : 
+ case 50 : 
 /*! Production::     regex_base : regex_base range_regex */
- case 58 : 
+ case 59 : 
 /*! Production::     regex_set : regex_set_atom regex_set */
- case 77 : 
+ case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
   this.$ = $$[$0-1] + $$[$0];  
 break;
-case 30 : 
+case 31 : 
 /*! Production::     start_conditions : < * > */
   this.$ = ['*'];  
 break;
-case 33 : 
+case 34 : 
 /*! Production::     name_list : name_list , NAME */
   this.$ = $$[$0-2]; this.$.push($$[$0]);  
 break;
-case 34 : 
+case 35 : 
 /*! Production::     regex : regex_list */
  
           this.$ = $$[$0];
@@ -3545,79 +3562,79 @@ case 34 :
           }
          
 break;
-case 35 : 
+case 36 : 
 /*! Production::     regex_list : regex_list | regex_concat */
   this.$ = $$[$0-2] + '|' + $$[$0];  
 break;
-case 36 : 
+case 37 : 
 /*! Production::     regex_list : regex_list | */
   this.$ = $$[$0-1] + '|';  
 break;
-case 41 : 
+case 42 : 
 /*! Production::     regex_base : ( regex_list ) */
   this.$ = '(' + $$[$0-1] + ')';  
 break;
-case 42 : 
+case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ) */
   this.$ = $$[$0-2] + $$[$0-1] + ')';  
 break;
-case 43 : 
+case 44 : 
 /*! Production::     regex_base : regex_base + */
   this.$ = $$[$0-1] + '+';  
 break;
-case 44 : 
+case 45 : 
 /*! Production::     regex_base : regex_base * */
   this.$ = $$[$0-1] + '*';  
 break;
-case 45 : 
+case 46 : 
 /*! Production::     regex_base : regex_base ? */
   this.$ = $$[$0-1] + '?';  
 break;
-case 46 : 
+case 47 : 
 /*! Production::     regex_base : / regex_base */
   this.$ = '(?=' + $$[$0] + ')';  
 break;
-case 47 : 
+case 48 : 
 /*! Production::     regex_base : /! regex_base */
   this.$ = '(?!' + $$[$0] + ')';  
 break;
-case 51 : 
+case 52 : 
 /*! Production::     regex_base : . */
   this.$ = '.';  
 break;
-case 52 : 
+case 53 : 
 /*! Production::     regex_base : ^ */
   this.$ = '^';  
 break;
-case 53 : 
+case 54 : 
 /*! Production::     regex_base : $ */
   this.$ = '$';  
 break;
-case 57 : 
+case 58 : 
 /*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
- case 73 : 
+ case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
   this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 61 : 
+case 62 : 
 /*! Production::     regex_set_atom : name_expansion */
   this.$ = '{[' + $$[$0] + ']}';  
 break;
-case 64 : 
+case 65 : 
 /*! Production::     string : STRING_LIT */
   this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
 break;
-case 69 : 
+case 70 : 
 /*! Production::     option : NAME */
   yy.options[$$[$0]] = true;  
 break;
-case 70 : 
+case 71 : 
 /*! Production::     option : NAME = OPTION_VALUE */
- case 71 : 
+ case 72 : 
 /*! Production::     option : NAME = NAME */
   yy.options[$$[$0-2]] = $$[$0];  
 break;
-case 74 : 
+case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
   
             var fs = require('fs');
@@ -3626,7 +3643,7 @@ case 74 :
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
          
 break;
-case 75 : 
+case 76 : 
 /*! Production::     include_macro_code : INCLUDE error */
   
             console.error("%include MUST be followed by a valid file path"); 
@@ -3638,7 +3655,7 @@ table: [
   __expand__($V0, [
       2,
       4
-    ], {3:1,4:2,71:[
+    ], {3:1,4:2,72:[
       2,
       4
     ]
@@ -3673,23 +3690,27 @@ table: [
     ],
     19: 9,
     20: 10,
-    64: [
-      1,
-      12
-    ],
-    71: [
+    21: [
       1,
       11
+    ],
+    65: [
+      1,
+      13
+    ],
+    72: [
+      1,
+      12
     ]
   },
   {
     6: [
       1,
-      13
+      14
     ]
   },
   {
-    5: 14,
+    5: 15,
     6: [
       2,
       6
@@ -3713,77 +3734,81 @@ table: [
     ],
     19: 9,
     20: 10,
-    64: [
-      1,
-      12
-    ],
-    71: [
+    21: [
       1,
       11
+    ],
+    65: [
+      1,
+      13
+    ],
+    72: [
+      1,
+      12
     ]
   },
-  __expand__([6,12,14,16,18,36,64], [
+  __expand__([6,12,14,16,18,21,37,65], [
       2,
-      38
-    ], {13:15,35:16,37:17,38:18,46:23,48:24,52:28,53:29,39:[
-      1,
-      19
-    ],41:[
+      39
+    ], {13:16,36:17,38:18,39:19,47:24,49:25,53:29,54:30,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ],71:[
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      38
+      39
     ]
   }),
   {
-    15: 35,
-    21: [
+    15: 36,
+    22: [
       1,
-      36
+      37
     ]
   },
   {
-    17: 37,
-    21: [
+    17: 38,
+    22: [
       1,
-      38
+      39
     ]
   },
   __expand__($V0, [
       2,
       10
-    ], {71:[
+    ], {72:[
       2,
       10
     ]
@@ -3791,7 +3816,7 @@ table: [
   __expand__($V0, [
       2,
       11
-    ], {71:[
+    ], {72:[
       2,
       11
     ]
@@ -3799,38 +3824,46 @@ table: [
   __expand__($V0, [
       2,
       12
-    ], {71:[
+    ], {72:[
       2,
       12
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      13
+    ], {72:[
+      2,
+      13
     ]
   }),
   {
     2: [
       1,
-      40
+      41
     ],
-    72: [
+    73: [
       1,
-      39
+      40
     ]
   },
   {
     12: [
       1,
-      43
+      44
     ],
-    65: 41,
-    67: 42
+    66: 42,
+    68: 43
   },
   __expand__($V1, [
       2,
-      31
-    ], {7:44,22:45,23:46,30:[
+      32
+    ], {7:45,23:46,24:47,31:[
       1,
-      47
-    ],71:[
+      48
+    ],72:[
       2,
-      31
+      32
     ]
   }),
   {
@@ -3842,179 +3875,175 @@ table: [
   __expand__($V0, [
       2,
       7
-    ], {71:[
+    ], {72:[
       2,
       7
     ]
   }),
-  __expand__([6,12,14,16,18,25,64], [
+  __expand__([6,12,14,16,18,21,26,65], [
       2,
-      34
-    ], {36:[
+      35
+    ], {37:[
       1,
-      48
-    ],71:[
+      49
+    ],72:[
       2,
-      34
+      35
     ]
   }),
   __expand__($V2, [
       2,
-      37
-    ], {46:23,48:24,52:28,53:29,38:49,39:[
-      1,
-      19
-    ],41:[
+      38
+    ], {47:24,49:25,53:29,54:30,39:50,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ],71:[
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      37
+      38
     ]
   }),
   __expand__($V3, [
       2,
-      40
-    ], {47:53,33:[
+      41
+    ], {48:54,34:[
       1,
-      51
-    ],42:[
-      1,
-      50
+      52
     ],43:[
       1,
-      52
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
+      2,
+      41
+    ]
+  }),
+  __expand__($V4, [
+      2,
+      39
+    ], {38:18,39:19,47:24,49:25,53:29,54:30,36:56,40:[
+      1,
+      20
+    ],42:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],46:[
+      1,
+      23
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],52:[
+      1,
+      28
+    ],55:[
+      1,
+      31
+    ],56:[
+      1,
+      32
     ],61:[
       1,
-      54
-    ],71:[
-      2,
-      40
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
     ]
   }),
   __expand__($V4, [
       2,
-      38
-    ], {37:17,38:18,46:23,48:24,52:28,53:29,35:55,39:[
-      1,
-      19
-    ],41:[
+      39
+    ], {38:18,39:19,47:24,49:25,53:29,54:30,36:57,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ]
-  }),
-  __expand__($V4, [
-      2,
-      38
-    ], {37:17,38:18,46:23,48:24,52:28,53:29,35:56,39:[
-      1,
-      19
-    ],41:[
-      1,
-      20
-    ],44:[
-      1,
-      21
-    ],45:[
-      1,
-      22
-    ],49:[
-      1,
-      25
-    ],50:[
-      1,
-      26
-    ],51:[
-      1,
-      27
-    ],54:[
-      1,
-      30
-    ],55:[
-      1,
-      31
-    ],60:[
+    ],64:[
       1,
       34
-    ],62:[
-      1,
-      32
-    ],63:[
-      1,
-      33
     ]
   }),
   {
-    38: 57,
-    39: [
-      1,
-      19
-    ],
-    41: [
+    39: 58,
+    40: [
       1,
       20
     ],
-    44: [
+    42: [
       1,
       21
     ],
@@ -4022,12 +4051,12 @@ table: [
       1,
       22
     ],
-    46: 23,
-    48: 24,
-    49: [
+    46: [
       1,
-      25
+      23
     ],
+    47: 24,
+    49: 25,
     50: [
       1,
       26
@@ -4036,40 +4065,40 @@ table: [
       1,
       27
     ],
-    52: 28,
-    53: 29,
-    54: [
+    52: [
       1,
-      30
+      28
     ],
+    53: 29,
+    54: 30,
     55: [
       1,
       31
     ],
-    60: [
-      1,
-      34
-    ],
-    62: [
+    56: [
       1,
       32
+    ],
+    61: [
+      1,
+      35
     ],
     63: [
       1,
       33
+    ],
+    64: [
+      1,
+      34
     ]
   },
   {
-    38: 58,
-    39: [
-      1,
-      19
-    ],
-    41: [
+    39: 59,
+    40: [
       1,
       20
     ],
-    44: [
+    42: [
       1,
       21
     ],
@@ -4077,12 +4106,12 @@ table: [
       1,
       22
     ],
-    46: 23,
-    48: 24,
-    49: [
+    46: [
       1,
-      25
+      23
     ],
+    47: 24,
+    49: 25,
     50: [
       1,
       26
@@ -4091,49 +4120,45 @@ table: [
       1,
       27
     ],
-    52: 28,
-    53: 29,
-    54: [
+    52: [
       1,
-      30
+      28
     ],
+    53: 29,
+    54: 30,
     55: [
       1,
       31
     ],
-    60: [
-      1,
-      34
-    ],
-    62: [
+    56: [
       1,
       32
+    ],
+    61: [
+      1,
+      35
     ],
     63: [
       1,
       33
+    ],
+    64: [
+      1,
+      34
     ]
   },
   __expand__($V5, [
       2,
-      48
-    ], {71:[
+      49
+    ], {72:[
       2,
-      48
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      50
-    ], {71:[
-      2,
-      50
+      49
     ]
   }),
   __expand__($V5, [
       2,
       51
-    ], {71:[
+    ], {72:[
       2,
       51
     ]
@@ -4141,7 +4166,7 @@ table: [
   __expand__($V5, [
       2,
       52
-    ], {71:[
+    ], {72:[
       2,
       52
     ]
@@ -4149,7 +4174,7 @@ table: [
   __expand__($V5, [
       2,
       53
-    ], {71:[
+    ], {72:[
       2,
       53
     ]
@@ -4157,7 +4182,7 @@ table: [
   __expand__($V5, [
       2,
       54
-    ], {71:[
+    ], {72:[
       2,
       54
     ]
@@ -4165,292 +4190,292 @@ table: [
   __expand__($V5, [
       2,
       55
-    ], {71:[
+    ], {72:[
       2,
       55
     ]
   }),
-  __expand__([6,12,14,16,18,25,33,36,39,40,41,42,43,44,45,49,50,51,54,55,57,59,60,61,62,63,64], [
+  __expand__($V5, [
       2,
       56
-    ], {71:[
+    ], {72:[
       2,
       56
+    ]
+  }),
+  __expand__([6,12,14,16,18,21,26,34,37,40,41,42,43,44,45,46,50,51,52,55,56,58,60,61,62,63,64,65], [
+      2,
+      57
+    ], {72:[
+      2,
+      57
     ]
   }),
   {
-    46: 62,
-    54: [
+    47: 63,
+    55: [
       1,
-      30
+      31
     ],
-    56: 59,
-    58: 60,
-    59: [
+    57: 60,
+    59: 61,
+    60: [
       1,
-      61
+      62
     ]
   },
   __expand__($V5, [
       2,
-      64
-    ], {71:[
-      2,
-      64
-    ]
-  }),
-  __expand__($V5, [
-      2,
       65
-    ], {71:[
+    ], {72:[
       2,
       65
     ]
   }),
   __expand__($V5, [
       2,
-      62
-    ], {71:[
+      66
+    ], {72:[
       2,
-      62
+      66
     ]
   }),
-  __expand__($V0, [
+  __expand__($V5, [
       2,
-      8
-    ], {21:[
-      1,
       63
-    ],71:[
+    ], {72:[
+      2,
+      63
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      8
+    ], {22:[
+      1,
+      64
+    ],72:[
       2,
       8
     ]
   }),
   __expand__($V6, [
       2,
-      13
-    ], {71:[
+      14
+    ], {72:[
       2,
-      13
+      14
     ]
   }),
   __expand__($V0, [
       2,
       9
-    ], {21:[
+    ], {22:[
       1,
-      64
-    ],71:[
+      65
+    ],72:[
       2,
       9
     ]
   }),
   __expand__($V6, [
       2,
-      15
-    ], {71:[
+      16
+    ], {72:[
       2,
-      15
-    ]
-  }),
-  __expand__($V7, [
-      2,
-      74
-    ], {74:[
-      2,
-      74
+      16
     ]
   }),
   __expand__($V7, [
       2,
       75
-    ], {74:[
+    ], {75:[
       2,
       75
+    ]
+  }),
+  __expand__($V7, [
+      2,
+      76
+    ], {75:[
+      2,
+      76
     ]
   }),
   {
-    66: [
+    67: [
       1,
-      65
+      66
     ]
   },
   {
     12: [
       1,
-      43
+      44
     ],
-    65: 66,
-    66: [
-      2,
-      68
-    ],
-    67: 42
-  },
-  __expand__([12,66], [
+    66: 67,
+    67: [
       2,
       69
-    ], {68:[
+    ],
+    68: 43
+  },
+  __expand__([12,67], [
+      2,
+      70
+    ], {69:[
       1,
-      67
+      68
     ]
   }),
   __expand__($V1, [
       2,
-      31
-    ], {23:46,8:68,22:69,6:[
+      32
+    ], {24:47,8:69,23:70,6:[
       1,
-      71
+      72
     ],9:[
       1,
-      70
-    ],30:[
+      71
+    ],31:[
       1,
-      47
-    ],71:[
+      48
+    ],72:[
       2,
-      31
+      32
     ]
   }),
   __expand__($V8, [
       2,
-      18
-    ], {71:[
+      19
+    ], {72:[
       2,
-      18
+      19
     ]
   }),
-  __expand__([18,25,36], [
+  __expand__([18,26,37], [
       2,
-      38
-    ], {35:16,37:17,38:18,46:23,48:24,52:28,53:29,13:72,39:[
-      1,
-      19
-    ],41:[
+      39
+    ], {36:17,38:18,39:19,47:24,49:25,53:29,54:30,13:73,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ],71:[
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      38
+      39
     ]
   }),
   {
     12: [
       1,
-      75
+      76
     ],
-    31: 73,
-    33: [
+    32: 74,
+    34: [
       1,
-      74
+      75
     ]
   },
   __expand__($V2, [
       2,
-      36
-    ], {38:18,46:23,48:24,52:28,53:29,37:76,39:[
-      1,
-      19
-    ],41:[
+      37
+    ], {39:19,47:24,49:25,53:29,54:30,38:77,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ],71:[
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      36
+      37
     ]
   }),
   __expand__($V3, [
       2,
-      39
-    ], {47:53,33:[
-      1,
-      51
-    ],42:[
-      1,
-      50
-    ],43:[
+      40
+    ], {48:54,34:[
       1,
       52
-    ],61:[
+    ],43:[
       1,
-      54
-    ],71:[
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
       2,
-      39
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      43
-    ], {71:[
-      2,
-      43
+      40
     ]
   }),
   __expand__($V5, [
       2,
       44
-    ], {71:[
+    ], {72:[
       2,
       44
     ]
@@ -4458,164 +4483,172 @@ table: [
   __expand__($V5, [
       2,
       45
-    ], {71:[
+    ], {72:[
       2,
       45
     ]
   }),
   __expand__($V5, [
       2,
-      49
-    ], {71:[
+      46
+    ], {72:[
       2,
-      49
+      46
     ]
   }),
   __expand__($V5, [
       2,
-      63
-    ], {71:[
+      50
+    ], {72:[
       2,
-      63
+      50
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      64
+    ], {72:[
+      2,
+      64
     ]
   }),
   {
-    36: [
+    37: [
       1,
-      48
+      49
     ],
-    40: [
-      1,
-      77
-    ]
-  },
-  {
-    36: [
-      1,
-      48
-    ],
-    40: [
+    41: [
       1,
       78
     ]
   },
-  __expand__($V3, [
-      2,
-      46
-    ], {47:53,33:[
-      1,
-      51
-    ],42:[
-      1,
-      50
-    ],43:[
-      1,
-      52
-    ],61:[
-      1,
-      54
-    ],71:[
-      2,
-      46
-    ]
-  }),
-  __expand__($V3, [
-      2,
-      47
-    ], {47:53,33:[
-      1,
-      51
-    ],42:[
-      1,
-      50
-    ],43:[
-      1,
-      52
-    ],61:[
-      1,
-      54
-    ],71:[
-      2,
-      47
-    ]
-  }),
   {
-    57: [
+    37: [
+      1,
+      49
+    ],
+    41: [
       1,
       79
     ]
   },
-  {
-    46: 62,
-    54: [
-      1,
-      30
-    ],
-    56: 80,
-    57: [
+  __expand__($V3, [
       2,
-      59
-    ],
-    58: 60,
-    59: [
+      47
+    ], {48:54,34:[
       1,
-      61
+      52
+    ],43:[
+      1,
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
+      2,
+      47
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      48
+    ], {48:54,34:[
+      1,
+      52
+    ],43:[
+      1,
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
+      2,
+      48
+    ]
+  }),
+  {
+    58: [
+      1,
+      80
+    ]
+  },
+  {
+    47: 63,
+    55: [
+      1,
+      31
+    ],
+    57: 81,
+    58: [
+      2,
+      60
+    ],
+    59: 61,
+    60: [
+      1,
+      62
     ]
   },
   __expand__($V9, [
       2,
-      60
-    ], {59:[
+      61
+    ], {60:[
       2,
-      60
+      61
     ]
   }),
   __expand__($V9, [
       2,
-      61
-    ], {59:[
+      62
+    ], {60:[
       2,
-      61
+      62
     ]
   }),
   __expand__($V6, [
       2,
-      14
-    ], {71:[
+      15
+    ], {72:[
       2,
-      14
+      15
     ]
   }),
   __expand__($V6, [
       2,
-      16
-    ], {71:[
+      17
+    ], {72:[
       2,
-      16
+      17
     ]
   }),
   __expand__($V0, [
       2,
-      66
-    ], {71:[
+      67
+    ], {72:[
       2,
-      66
+      67
     ]
   }),
   {
-    66: [
+    67: [
       2,
-      67
+      68
     ]
   },
   {
     12: [
       1,
-      82
+      83
     ],
-    69: [
+    70: [
       1,
-      81
+      82
     ]
   },
   {
@@ -4626,10 +4659,10 @@ table: [
   },
   __expand__($V8, [
       2,
-      17
-    ], {71:[
+      18
+    ], {72:[
       2,
-      17
+      18
     ]
   }),
   {
@@ -4640,136 +4673,126 @@ table: [
   },
   __expand__($Va, [
       2,
-      79
-    ], {10:83,70:84,73:85,74:[
+      80
+    ], {10:84,71:85,74:86,75:[
       1,
-      86
+      87
     ]
   }),
   {
     18: [
       1,
+      90
+    ],
+    19: 91,
+    25: 88,
+    26: [
+      1,
       89
     ],
-    19: 90,
-    24: 87,
-    25: [
+    72: [
       1,
-      88
-    ],
-    71: [
-      1,
-      11
+      12
     ]
   },
   {
-    32: [
-      1,
-      91
-    ],
-    34: [
+    33: [
       1,
       92
-    ]
-  },
-  {
-    32: [
+    ],
+    35: [
       1,
       93
     ]
   },
   {
-    32: [
+    33: [
+      1,
+      94
+    ]
+  },
+  {
+    33: [
       2,
-      32
+      33
     ],
-    34: [
+    35: [
       2,
-      32
+      33
     ]
   },
   __expand__($V2, [
       2,
-      35
-    ], {46:23,48:24,52:28,53:29,38:49,39:[
-      1,
-      19
-    ],41:[
+      36
+    ], {47:24,49:25,53:29,54:30,39:50,40:[
       1,
       20
-    ],44:[
+    ],42:[
       1,
       21
     ],45:[
       1,
       22
-    ],49:[
+    ],46:[
       1,
-      25
+      23
     ],50:[
       1,
       26
     ],51:[
       1,
       27
-    ],54:[
+    ],52:[
       1,
-      30
+      28
     ],55:[
       1,
       31
-    ],60:[
-      1,
-      34
-    ],62:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
     ],63:[
       1,
       33
-    ],71:[
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      35
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      41
-    ], {71:[
-      2,
-      41
+      36
     ]
   }),
   __expand__($V5, [
       2,
       42
-    ], {71:[
+    ], {72:[
       2,
       42
     ]
   }),
   __expand__($V5, [
       2,
-      57
-    ], {71:[
+      43
+    ], {72:[
       2,
-      57
+      43
     ]
   }),
-  {
-    57: [
+  __expand__($V5, [
+      2,
+      58
+    ], {72:[
       2,
       58
     ]
-  },
+  }),
   {
-    12: [
+    58: [
       2,
-      70
-    ],
-    66: [
-      2,
-      70
+      59
     ]
   },
   {
@@ -4777,96 +4800,106 @@ table: [
       2,
       71
     ],
-    66: [
+    67: [
       2,
       71
     ]
   },
   {
-    9: [
-      1,
-      94
-    ]
-  },
-  {
-    9: [
+    12: [
       2,
       72
     ],
-    19: 95,
-    71: [
+    67: [
+      2,
+      72
+    ]
+  },
+  {
+    9: [
       1,
-      11
+      95
+    ]
+  },
+  {
+    9: [
+      2,
+      73
+    ],
+    19: 96,
+    72: [
+      1,
+      12
     ]
   },
   __expand__($Va, [
       2,
-      78
-    ], {74:[
+      79
+    ], {75:[
       1,
-      96
+      97
     ]
   }),
   __expand__($Va, [
       2,
-      76
-    ], {74:[
+      77
+    ], {75:[
       2,
-      76
+      77
     ]
   }),
   __expand__($V8, [
       2,
-      19
-    ], {71:[
+      20
+    ], {72:[
       2,
-      19
+      20
     ]
   }),
   __expand__($Vb, [
       2,
-      23
-    ], {26:97,28:98,29:[
+      24
+    ], {27:98,29:99,30:[
       1,
-      99
-    ]
-  }),
-  __expand__($V8, [
-      2,
-      21
-    ], {71:[
-      2,
-      21
+      100
     ]
   }),
   __expand__($V8, [
       2,
       22
-    ], {71:[
+    ], {72:[
       2,
       22
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      23
+    ], {72:[
+      2,
+      23
     ]
   }),
   __expand__($V1, [
       2,
-      29
-    ], {71:[
+      30
+    ], {72:[
       2,
-      29
+      30
     ]
   }),
   {
     12: [
       1,
-      100
+      101
     ]
   },
   __expand__($V1, [
       2,
-      30
-    ], {71:[
+      31
+    ], {72:[
       2,
-      30
+      31
     ]
   }),
   {
@@ -4877,141 +4910,141 @@ table: [
   },
   __expand__($Va, [
       2,
-      79
-    ], {70:84,73:85,10:101,74:[
+      80
+    ], {71:85,74:86,10:102,75:[
       1,
-      86
+      87
     ]
   }),
   __expand__($Va, [
       2,
-      77
-    ], {74:[
+      78
+    ], {75:[
       2,
-      77
+      78
     ]
   }),
   {
-    25: [
+    26: [
+      1,
+      104
+    ],
+    28: [
       1,
       103
-    ],
-    27: [
-      1,
-      102
     ]
   },
   __expand__($Vb, [
       2,
-      24
-    ], {29:[
+      25
+    ], {30:[
       1,
-      104
+      105
     ]
   }),
   __expand__($Vb, [
       2,
-      27
-    ], {29:[
+      28
+    ], {30:[
       2,
-      27
+      28
     ]
   }),
   {
-    32: [
+    33: [
       2,
-      33
+      34
     ],
-    34: [
+    35: [
       2,
-      33
+      34
     ]
   },
   {
     9: [
       2,
-      73
+      74
     ]
   },
   __expand__($V8, [
       2,
-      20
-    ], {71:[
+      21
+    ], {72:[
       2,
-      20
+      21
     ]
   }),
   __expand__($Vb, [
       2,
-      23
-    ], {28:98,26:105,29:[
+      24
+    ], {29:99,27:106,30:[
       1,
-      99
+      100
     ]
   }),
   __expand__($Vb, [
       2,
-      28
-    ], {29:[
+      29
+    ], {30:[
       2,
-      28
+      29
     ]
   }),
   {
-    25: [
+    26: [
       1,
-      103
+      104
     ],
-    27: [
+    28: [
       1,
-      106
+      107
     ]
   },
   __expand__($Vb, [
       2,
-      26
-    ], {28:107,29:[
+      27
+    ], {29:108,30:[
       1,
-      99
+      100
     ]
   }),
   __expand__($Vb, [
       2,
-      25
-    ], {29:[
+      26
+    ], {30:[
       1,
-      104
+      105
     ]
   })
 ],
 defaultActions: {
-  14: [
+  15: [
     2,
     5
   ],
-  66: [
+  67: [
     2,
-    67
+    68
   ],
-  68: [
+  69: [
     2,
     1
   ],
-  70: [
+  71: [
     2,
     2
   ],
-  80: [
+  81: [
     2,
-    58
+    59
   ],
-  94: [
+  95: [
     2,
     3
   ],
-  101: [
+  102: [
     2,
-    73
+    74
   ]
 },
 parseError: function parseError(str, hash) {
@@ -5352,7 +5385,7 @@ function prepareString (s) {
 };
 
 
-/* generated by jison-lex 0.3.4-100 */
+/* generated by jison-lex 0.3.4-102 */
 var lexer = (function () {
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
@@ -5770,22 +5803,22 @@ switch($avoiding_name_collisions) {
 case 2 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 29; // regexp with braces or quotes (and no spaces) 
+ return 30; // regexp with braces or quotes (and no spaces) 
 break;
 case 7 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
- yy.depth++; return 25; 
+ yy.depth++; return 26; 
 break;
 case 8 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 27; 
+ if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 28; 
 break;
 case 10 : 
 /*! Conditions:: conditions */ 
 /*! Rule::       > */ 
- this.popState(); return 32; 
+ this.popState(); return 33; 
 break;
 case 13 : 
 /*! Conditions:: rules */ 
@@ -5810,22 +5843,22 @@ break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 69; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 70; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 69; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 70; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 66; 
+ this.popState(); return 67; 
 break;
 case 24 : 
 /*! Conditions:: options */ 
 /*! Rule::       \s+{BR}+ */ 
- this.popState(); return 66; 
+ this.popState(); return 67; 
 break;
 case 25 : 
 /*! Conditions:: options */ 
@@ -5855,7 +5888,7 @@ break;
 case 31 : 
 /*! Conditions:: indented */ 
 /*! Rule::       \{ */ 
- yy.depth = 0; this.begin('action'); return 25; 
+ yy.depth = 0; this.begin('action'); return 26; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -5887,7 +5920,7 @@ case 34 :
                                             this.pushState('trail'); 
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path'); 
-                                            return 71;
+                                            return 72;
                                          
 break;
 case 35 : 
@@ -5918,42 +5951,42 @@ break;
 case 41 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 62; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 63; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 62; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 63; 
 break;
 case 43 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \[ */ 
- this.pushState('set'); return 55; 
+ this.pushState('set'); return 56; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       < */ 
- this.begin('conditions'); return 30; 
+ this.begin('conditions'); return 31; 
 break;
 case 57 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/! */ 
- return 45;                    // treated as `(?!atom)` 
+ return 46;                    // treated as `(?!atom)` 
 break;
 case 58 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/ */ 
- return 44;                     // treated as `(?=atom)`  
+ return 45;                     // treated as `(?=atom)`  
 break;
 case 60 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 60; 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 61; 
 break;
 case 63 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       %options\b */ 
- if (!yy.options) { yy.options = {}; } this.begin('options'); return 64; 
+ if (!yy.options) { yy.options = {}; } this.begin('options'); return 65; 
 break;
 case 64 : 
 /*! Conditions:: indented trail rules INITIAL */ 
@@ -5968,14 +6001,15 @@ break;
 case 66 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 71; 
+ this.pushState('path'); return 72; 
 break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
 /*! Rule::       %{NAME}[^\r\n]+ */ 
   
                                             /* ignore unrecognized decl */
-                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                            return 21;
                                          
 break;
 case 68 : 
@@ -5991,12 +6025,12 @@ break;
 case 77 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
- this.popState('set'); return 57; 
+ this.popState('set'); return 58; 
 break;
 case 79 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 74;      // the bit of CODE just before EOF... 
+ return 75;      // the bit of CODE just before EOF... 
 break;
 case 80 : 
 /*! Conditions:: path */ 
@@ -6006,12 +6040,12 @@ break;
 case 81 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 72; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
 case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 72; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
 case 83 : 
 /*! Conditions:: path */ 
@@ -6021,7 +6055,7 @@ break;
 case 84 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 72; 
+ this.popState(); return 73; 
 break;
 case 85 : 
 /*! Conditions:: * */ 
@@ -6039,118 +6073,118 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 29,
+   0 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 29,
+   1 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 29,
+   3 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 29,
+   4 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 29,
+   5 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 29,
+   6 : 30,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
    9 : 12,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
-   11 : 34,
+   11 : 35,
   /*! Conditions:: conditions */ 
   /*! Rule::       \* */ 
-   12 : 33,
+   12 : 34,
   /*! Conditions:: rules */ 
   /*! Rule::       [a-zA-Z0-9_]+ */ 
-   17 : 63,
+   17 : 64,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
    18 : 12,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   19 : 68,
+   19 : 69,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 69,
+   22 : 70,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   26 : 21,
+   26 : 22,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       {ID} */ 
    40 : 12,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \| */ 
-   44 : 36,
+   44 : 37,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 41,
+   45 : 42,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \(\?= */ 
-   46 : 41,
+   46 : 42,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \(\?! */ 
-   47 : 41,
+   47 : 42,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \( */ 
-   48 : 39,
+   48 : 40,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \) */ 
-   49 : 40,
+   49 : 41,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \+ */ 
-   50 : 42,
+   50 : 43,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \* */ 
-   51 : 33,
+   51 : 34,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \? */ 
-   52 : 43,
+   52 : 44,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \^ */ 
-   53 : 50,
+   53 : 51,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       , */ 
-   54 : 34,
+   54 : 35,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       <<EOF>> */ 
-   55 : 51,
+   55 : 52,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 60,
+   59 : 61,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \$ */ 
-   61 : 51,
+   61 : 52,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \. */ 
-   62 : 49,
+   62 : 50,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 61,
+   69 : 62,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \{{ID}\} */ 
-   70 : 54,
+   70 : 55,
   /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
-   71 : 54,
+   71 : 55,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \{ */ 
-   72 : 25,
+   72 : 26,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \} */ 
-   73 : 27,
+   73 : 28,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
    75 : 9,
   /*! Conditions:: set */ 
   /*! Rule::       (\\\\|\\\]|[^\]])+ */ 
-   76 : 59,
+   76 : 60,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   78 : 74
+   78 : 75
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -6550,11 +6584,15 @@ exports.parse = function () {
 
 },{"fs":12}],6:[function(require,module,exports){
 module.exports={
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-100",
+  "version": "0.3.4-102",
   "keywords": [
     "jison",
     "parser",
@@ -6594,7 +6632,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.15-101 */
+/* parser generated by jison 0.4.15-102 */
 /*
   Returns a Parser object of the following structure:
 
@@ -6739,22 +6777,22 @@ function __expand__(k, v, o) {
   return o;
 }
 
-var $V0=[5,11,14,16,18,23,30,32,35,36,37],
-    $V1=[11,62],
-    $V2=[5,11,14,16,18,23,30,32,35,36,37,42,62],
-    $V3=[5,11,14,16,18,23,30,32,35,36,37,44,62],
-    $V4=[5,11,14,16,18,23,30,32,35,36,37,44,51,52,62,69,72],
-    $V5=[5,8,11,14,16,18,23,30,32,35,36,37,51,52,62,76],
-    $V6=[8,76],
+var $V0=[5,11,14,16,18,23,24,31,33,36,37,38],
+    $V1=[11,63],
+    $V2=[5,11,14,16,18,23,24,31,33,36,37,38,43,63],
+    $V3=[5,11,14,16,18,23,24,31,33,36,37,38,45,63],
+    $V4=[5,11,14,16,18,23,24,31,33,36,37,38,45,52,53,63,70,73],
+    $V5=[5,8,11,14,16,18,23,24,31,33,36,37,38,52,53,63,77],
+    $V6=[8,77],
     $V7=[5,8],
-    $V8=[5,11,14,16,18,23,30,32,35,36,37,42,44,62],
-    $V9=[11,44,51,52,62,63,68,69,72],
-    $Va=[11,51,52,69,72],
-    $Vb=[11,44,51,52,62,63,64,68,69,72],
-    $Vc=[11,44,51,52,61,62,63,64,68,69,72],
-    $Vd=[11,44,51,52,61,62,63,64,65,66,67,68,69,72],
-    $Ve=[44,52,62,63],
-    $Vf=[69,71];
+    $V8=[5,11,14,16,18,23,24,31,33,36,37,38,43,45,63],
+    $V9=[11,45,52,53,63,64,69,70,73],
+    $Va=[11,52,53,70,73],
+    $Vb=[11,45,52,53,63,64,65,69,70,73],
+    $Vc=[11,45,52,53,62,63,64,65,69,70,73],
+    $Vd=[11,45,52,53,62,63,64,65,66,67,68,69,70,73],
+    $Ve=[45,53,63,64],
+    $Vf=[70,72];
 
 var parser = {
 trace: function trace() { },
@@ -6782,63 +6820,64 @@ symbols_: {
   "parse_param": 20,
   "parser_type": 21,
   "options": 22,
-  "OPTIONS": 23,
-  "option_list": 24,
-  "OPTIONS_END": 25,
-  "option": 26,
-  "NAME": 27,
-  "=": 28,
-  "OPTION_VALUE": 29,
-  "PARSE_PARAM": 30,
-  "token_list": 31,
-  "PARSER_TYPE": 32,
-  "symbol": 33,
-  "associativity": 34,
-  "LEFT": 35,
-  "RIGHT": 36,
-  "NONASSOC": 37,
-  "full_token_definition": 38,
-  "optional_token_type": 39,
-  "optional_token_value": 40,
-  "optional_token_description": 41,
-  "TOKEN_TYPE": 42,
-  "INTEGER": 43,
-  "STRING": 44,
-  "id_list": 45,
-  "token_id": 46,
-  "production_list": 47,
-  "production": 48,
-  ":": 49,
-  "handle_list": 50,
-  ";": 51,
-  "|": 52,
-  "handle_action": 53,
-  "handle": 54,
-  "prec": 55,
-  "action": 56,
-  "expression_suffix": 57,
-  "handle_sublist": 58,
-  "expression": 59,
-  "suffix": 60,
-  "ALIAS": 61,
-  "ID": 62,
-  "(": 63,
-  ")": 64,
-  "*": 65,
-  "?": 66,
-  "+": 67,
-  "PREC": 68,
-  "{": 69,
-  "action_body": 70,
-  "}": 71,
-  "ARROW_ACTION": 72,
-  "action_comments_body": 73,
-  "ACTION_BODY": 74,
-  "optional_module_code_chunk": 75,
-  "INCLUDE": 76,
-  "PATH": 77,
-  "module_code_chunk": 78,
-  "CODE": 79,
+  "UNKNOWN_DECL": 23,
+  "OPTIONS": 24,
+  "option_list": 25,
+  "OPTIONS_END": 26,
+  "option": 27,
+  "NAME": 28,
+  "=": 29,
+  "OPTION_VALUE": 30,
+  "PARSE_PARAM": 31,
+  "token_list": 32,
+  "PARSER_TYPE": 33,
+  "symbol": 34,
+  "associativity": 35,
+  "LEFT": 36,
+  "RIGHT": 37,
+  "NONASSOC": 38,
+  "full_token_definition": 39,
+  "optional_token_type": 40,
+  "optional_token_value": 41,
+  "optional_token_description": 42,
+  "TOKEN_TYPE": 43,
+  "INTEGER": 44,
+  "STRING": 45,
+  "id_list": 46,
+  "token_id": 47,
+  "production_list": 48,
+  "production": 49,
+  ":": 50,
+  "handle_list": 51,
+  ";": 52,
+  "|": 53,
+  "handle_action": 54,
+  "handle": 55,
+  "prec": 56,
+  "action": 57,
+  "expression_suffix": 58,
+  "handle_sublist": 59,
+  "expression": 60,
+  "suffix": 61,
+  "ALIAS": 62,
+  "ID": 63,
+  "(": 64,
+  ")": 65,
+  "*": 66,
+  "?": 67,
+  "+": 68,
+  "PREC": 69,
+  "{": 70,
+  "action_body": 71,
+  "}": 72,
+  "ARROW_ACTION": 73,
+  "action_comments_body": 74,
+  "ACTION_BODY": 75,
+  "optional_module_code_chunk": 76,
+  "INCLUDE": 77,
+  "PATH": 78,
+  "module_code_chunk": 79,
+  "CODE": 80,
   "$accept": 0,
   "$end": 1
 },
@@ -6850,37 +6889,38 @@ terminals_: {
   14: "START",
   16: "LEX_BLOCK",
   18: "TOKEN",
-  23: "OPTIONS",
-  25: "OPTIONS_END",
-  27: "NAME",
-  28: "=",
-  29: "OPTION_VALUE",
-  30: "PARSE_PARAM",
-  32: "PARSER_TYPE",
-  35: "LEFT",
-  36: "RIGHT",
-  37: "NONASSOC",
-  42: "TOKEN_TYPE",
-  43: "INTEGER",
-  44: "STRING",
-  49: ":",
-  51: ";",
-  52: "|",
-  61: "ALIAS",
-  62: "ID",
-  63: "(",
-  64: ")",
-  65: "*",
-  66: "?",
-  67: "+",
-  68: "PREC",
-  69: "{",
-  71: "}",
-  72: "ARROW_ACTION",
-  74: "ACTION_BODY",
-  76: "INCLUDE",
-  77: "PATH",
-  79: "CODE"
+  23: "UNKNOWN_DECL",
+  24: "OPTIONS",
+  26: "OPTIONS_END",
+  28: "NAME",
+  29: "=",
+  30: "OPTION_VALUE",
+  31: "PARSE_PARAM",
+  33: "PARSER_TYPE",
+  36: "LEFT",
+  37: "RIGHT",
+  38: "NONASSOC",
+  43: "TOKEN_TYPE",
+  44: "INTEGER",
+  45: "STRING",
+  50: ":",
+  52: ";",
+  53: "|",
+  62: "ALIAS",
+  63: "ID",
+  64: "(",
+  65: ")",
+  66: "*",
+  67: "?",
+  68: "+",
+  69: "PREC",
+  70: "{",
+  72: "}",
+  73: "ARROW_ACTION",
+  75: "ACTION_BODY",
+  77: "INCLUDE",
+  78: "PATH",
+  80: "CODE"
 },
 productions_: [
   0,
@@ -6953,27 +6993,31 @@ productions_: [
     1
   ],
   [
+    13,
+    1
+  ],
+  [
     22,
     3
   ],
   [
-    24,
+    25,
     2
   ],
   [
-    24,
+    25,
     1
   ],
   [
-    26,
+    27,
     1
   ],
   [
-    26,
+    27,
     3
   ],
   [
-    26,
+    27,
     3
   ],
   [
@@ -6989,23 +7033,23 @@ productions_: [
     2
   ],
   [
-    34,
+    35,
     1
   ],
   [
-    34,
+    35,
     1
   ],
   [
-    34,
+    35,
     1
   ],
   [
-    31,
+    32,
     2
   ],
   [
-    31,
+    32,
     1
   ],
   [
@@ -7017,18 +7061,10 @@ productions_: [
     1
   ],
   [
-    38,
+    39,
     4
   ],
   [
-    39,
-    0
-  ],
-  [
-    39,
-    1
-  ],
-  [
     40,
     0
   ],
@@ -7045,11 +7081,11 @@ productions_: [
     1
   ],
   [
-    45,
-    2
+    42,
+    0
   ],
   [
-    45,
+    42,
     1
   ],
   [
@@ -7058,6 +7094,14 @@ productions_: [
   ],
   [
     46,
+    1
+  ],
+  [
+    47,
+    2
+  ],
+  [
+    47,
     1
   ],
   [
@@ -7065,80 +7109,28 @@ productions_: [
     2
   ],
   [
-    47,
+    48,
     2
-  ],
-  [
-    47,
-    1
   ],
   [
     48,
+    1
+  ],
+  [
+    49,
     4
   ],
   [
-    50,
+    51,
     3
   ],
   [
-    50,
+    51,
     1
-  ],
-  [
-    53,
-    3
   ],
   [
     54,
-    2
-  ],
-  [
-    54,
-    0
-  ],
-  [
-    58,
     3
-  ],
-  [
-    58,
-    1
-  ],
-  [
-    57,
-    3
-  ],
-  [
-    57,
-    2
-  ],
-  [
-    59,
-    1
-  ],
-  [
-    59,
-    1
-  ],
-  [
-    59,
-    3
-  ],
-  [
-    60,
-    0
-  ],
-  [
-    60,
-    1
-  ],
-  [
-    60,
-    1
-  ],
-  [
-    60,
-    1
   ],
   [
     55,
@@ -7149,11 +7141,63 @@ productions_: [
     0
   ],
   [
-    33,
+    59,
+    3
+  ],
+  [
+    59,
     1
   ],
   [
-    33,
+    58,
+    3
+  ],
+  [
+    58,
+    2
+  ],
+  [
+    60,
+    1
+  ],
+  [
+    60,
+    1
+  ],
+  [
+    60,
+    3
+  ],
+  [
+    61,
+    0
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    56,
+    2
+  ],
+  [
+    56,
+    0
+  ],
+  [
+    34,
+    1
+  ],
+  [
+    34,
     1
   ],
   [
@@ -7161,47 +7205,47 @@ productions_: [
     1
   ],
   [
-    56,
+    57,
     3
   ],
   [
-    56,
+    57,
     1
   ],
   [
-    56,
+    57,
     1
   ],
   [
-    56,
+    57,
     1
   ],
   [
-    56,
+    57,
     0
   ],
   [
-    70,
+    71,
     0
   ],
   [
-    70,
+    71,
     1
   ],
   [
-    70,
+    71,
     5
   ],
   [
-    70,
+    71,
     4
   ],
   [
-    73,
+    74,
     1
   ],
   [
-    73,
+    74,
     2
   ],
   [
@@ -7221,19 +7265,19 @@ productions_: [
     2
   ],
   [
-    78,
+    79,
     1
   ],
   [
-    78,
+    79,
     2
   ],
   [
-    75,
+    76,
     1
   ],
   [
-    75,
+    76,
     0
   ]
 ],
@@ -7246,7 +7290,6 @@ case 1 :
 /*! Production::     spec : declaration_list %% grammar optional_end_block EOF */
  
             this.$ = $$[$0-4];
-console.log("parser options decl list: ", this.$);
             if ($$[$0-1] && $$[$0-1].trim() !== '') {
                 yy.addDeclaration(this.$, { include: $$[$0-1] });
             }
@@ -7255,35 +7298,35 @@ console.log("parser options decl list: ", this.$);
 break;
 case 3 : 
 /*! Production::     optional_end_block : %% extra_parser_module_code */
- case 24 : 
-/*! Production::     parse_param : PARSE_PARAM token_list */
  case 25 : 
+/*! Production::     parse_param : PARSE_PARAM token_list */
+ case 26 : 
 /*! Production::     parser_type : PARSER_TYPE symbol */
- case 43 : 
-/*! Production::     token_id : TOKEN_TYPE id */
  case 44 : 
+/*! Production::     token_id : TOKEN_TYPE id */
+ case 45 : 
 /*! Production::     token_id : id */
- case 58 : 
+ case 59 : 
 /*! Production::     expression : ID */
- case 67 : 
-/*! Production::     symbol : id */
  case 68 : 
-/*! Production::     symbol : STRING */
+/*! Production::     symbol : id */
  case 69 : 
+/*! Production::     symbol : STRING */
+ case 70 : 
 /*! Production::     id : ID */
- case 71 : 
-/*! Production::     action : ACTION */
  case 72 : 
+/*! Production::     action : ACTION */
+ case 73 : 
 /*! Production::     action : include_macro_code */
- case 76 : 
+ case 77 : 
 /*! Production::     action_body : action_comments_body */
- case 79 : 
+ case 80 : 
 /*! Production::     action_comments_body : ACTION_BODY */
- case 81 : 
+ case 82 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk */
- case 85 : 
+ case 86 : 
 /*! Production::     module_code_chunk : CODE */
- case 87 : 
+ case 88 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
   this.$ = $$[$0];  
 break;
@@ -7338,64 +7381,67 @@ case 16 :
 break;
 case 17 : 
 /*! Production::     declaration : options */
-  this.$ = {options: $$[$0]}; console.log("parser options decl: ", this.$);
- 
+  this.$ = {options: $$[$0]};  
 break;
 case 18 : 
+/*! Production::     declaration : UNKNOWN_DECL */
+  this.$ = {unknownDecl: $$[$0]};  
+break;
+case 19 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
- case 70 : 
+ case 71 : 
 /*! Production::     action : { action_body } */
   this.$ = $$[$0-1];  
 break;
-case 19 : 
+case 20 : 
 /*! Production::     option_list : option_list option */
- case 30 : 
+ case 31 : 
 /*! Production::     token_list : token_list symbol */
- case 32 : 
+ case 33 : 
 /*! Production::     full_token_definitions : full_token_definitions full_token_definition */
- case 41 : 
+ case 42 : 
 /*! Production::     id_list : id_list id */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
-case 20 : 
+case 21 : 
 /*! Production::     option_list : option */
- case 31 : 
+ case 32 : 
 /*! Production::     token_list : symbol */
- case 33 : 
+ case 34 : 
 /*! Production::     full_token_definitions : full_token_definition */
- case 42 : 
+ case 43 : 
 /*! Production::     id_list : id */
- case 50 : 
+ case 51 : 
 /*! Production::     handle_list : handle_action */
   this.$ = [$$[$0]];  
 break;
-case 21 : 
+case 22 : 
 /*! Production::     option : NAME */
   this.$ = [$$[$0], true];  
 break;
-case 22 : 
+case 23 : 
 /*! Production::     option : NAME = OPTION_VALUE */
- case 23 : 
+ case 24 : 
 /*! Production::     option : NAME = NAME */
   this.$ = [$$[$0-2], $$[$0]];  
 break;
-case 26 : 
+case 27 : 
 /*! Production::     operator : associativity token_list */
   this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
 break;
-case 27 : 
+case 28 : 
 /*! Production::     associativity : LEFT */
   this.$ = 'left';  
 break;
-case 28 : 
+case 29 : 
 /*! Production::     associativity : RIGHT */
   this.$ = 'right';  
 break;
-case 29 : 
+case 30 : 
 /*! Production::     associativity : NONASSOC */
   this.$ = 'nonassoc';  
 break;
-case 34 : 
+case 35 : 
 /*! Production::     full_token_definition : optional_token_type id optional_token_value optional_token_description */
  
             this.$ = {id: $$[$0-2]};
@@ -7410,22 +7456,22 @@ case 34 :
             }
          
 break;
-case 35 : 
+case 36 : 
 /*! Production::     optional_token_type :  */
- case 37 : 
+ case 38 : 
 /*! Production::     optional_token_value :  */
- case 39 : 
+ case 40 : 
 /*! Production::     optional_token_description :  */
   this.$ = false;  
 break;
-case 45 : 
+case 46 : 
 /*! Production::     grammar : optional_action_header_block production_list */
  
             this.$ = $$[$0-1];
             this.$.grammar = $$[$0];
          
 break;
-case 46 : 
+case 47 : 
 /*! Production::     production_list : production_list production */
  
             this.$ = $$[$0-1];
@@ -7436,22 +7482,22 @@ case 46 :
             }
          
 break;
-case 47 : 
+case 48 : 
 /*! Production::     production_list : production */
   this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
 break;
-case 48 : 
+case 49 : 
 /*! Production::     production : id : handle_list ; */
  this.$ = [$$[$0-3], $$[$0-1]]; 
 break;
-case 49 : 
+case 50 : 
 /*! Production::     handle_list : handle_list | handle_action */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0]);
          
 break;
-case 51 : 
+case 52 : 
 /*! Production::     handle_action : handle prec action */
  
             this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
@@ -7466,49 +7512,49 @@ case 51 :
             }
          
 break;
-case 52 : 
+case 53 : 
 /*! Production::     handle : handle expression_suffix */
  
             this.$ = $$[$0-1];
             this.$.push($$[$0]);
          
 break;
-case 53 : 
+case 54 : 
 /*! Production::     handle :  */
  
             this.$ = [];
          
 break;
-case 54 : 
+case 55 : 
 /*! Production::     handle_sublist : handle_sublist | handle */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0].join(' '));
          
 break;
-case 55 : 
+case 56 : 
 /*! Production::     handle_sublist : handle */
  
             this.$ = [$$[$0].join(' ')];
          
 break;
-case 56 : 
+case 57 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
  
             this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";
          
 break;
-case 57 : 
+case 58 : 
 /*! Production::     expression_suffix : expression suffix */
- case 80 : 
+ case 81 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
- case 86 : 
+ case 87 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
  
             this.$ = $$[$0-1] + $$[$0];
          
 break;
-case 59 : 
+case 60 : 
 /*! Production::     expression : STRING */
  
             // Re-encode the string *anyway* as it will
@@ -7522,51 +7568,51 @@ case 59 :
             }
          
 break;
-case 60 : 
+case 61 : 
 /*! Production::     expression : ( handle_sublist ) */
  
             this.$ = '(' + $$[$0-1].join(' | ') + ')';
          
 break;
-case 61 : 
+case 62 : 
 /*! Production::     suffix :  */
- case 74 : 
-/*! Production::     action :  */
  case 75 : 
+/*! Production::     action :  */
+ case 76 : 
 /*! Production::     action_body :  */
- case 88 : 
+ case 89 : 
 /*! Production::     optional_module_code_chunk :  */
   this.$ = '';  
 break;
-case 65 : 
+case 66 : 
 /*! Production::     prec : PREC symbol */
  
             this.$ = { prec: $$[$0] };
          
 break;
-case 66 : 
+case 67 : 
 /*! Production::     prec :  */
  
             this.$ = null;
          
 break;
-case 73 : 
+case 74 : 
 /*! Production::     action : ARROW_ACTION */
   this.$ = '$$ =' + $$[$0] + ';';  
 break;
-case 77 : 
+case 78 : 
 /*! Production::     action_body : action_body { action_body } action_comments_body */
   this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 78 : 
+case 79 : 
 /*! Production::     action_body : action_body { action_body } */
   this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 82 : 
+case 83 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
   this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 83 : 
+case 84 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
   
             var fs = require('fs');
@@ -7575,7 +7621,7 @@ case 83 :
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
          
 break;
-case 84 : 
+case 85 : 
 /*! Production::     include_macro_code : INCLUDE error */
   
             console.error("%include MUST be followed by a valid file path"); 
@@ -7587,7 +7633,7 @@ table: [
   __expand__($V0, [
       2,
       8
-    ], {3:1,4:2,76:[
+    ], {3:1,4:2,77:[
       2,
       8
     ]
@@ -7626,21 +7672,21 @@ table: [
     22: 13,
     23: [
       1,
-      18
+      14
     ],
-    30: [
-      1,
-      16
-    ],
-    32: [
-      1,
-      17
-    ],
-    34: 14,
-    35: [
+    24: [
       1,
       19
     ],
+    31: [
+      1,
+      17
+    ],
+    33: [
+      1,
+      18
+    ],
+    35: 15,
     36: [
       1,
       20
@@ -7649,15 +7695,19 @@ table: [
       1,
       21
     ],
-    76: [
+    38: [
       1,
-      15
+      22
+    ],
+    77: [
+      1,
+      16
     ]
   },
   __expand__($V1, [
       2,
       4
-    ], {6:22,10:23,76:[
+    ], {6:23,10:24,77:[
       2,
       4
     ]
@@ -7665,22 +7715,22 @@ table: [
   __expand__($V0, [
       2,
       7
-    ], {76:[
+    ], {77:[
       2,
       7
     ]
   }),
   {
-    15: 24,
-    62: [
+    15: 25,
+    63: [
       1,
-      25
+      26
     ]
   },
   __expand__($V0, [
       2,
       10
-    ], {76:[
+    ], {77:[
       2,
       10
     ]
@@ -7688,28 +7738,28 @@ table: [
   __expand__($V0, [
       2,
       11
-    ], {76:[
+    ], {77:[
       2,
       11
     ]
   }),
   {
-    19: 26,
-    38: 27,
+    19: 27,
     39: 28,
-    42: [
+    40: 29,
+    43: [
       1,
-      29
+      30
     ],
-    62: [
+    63: [
       2,
-      35
+      36
     ]
   },
   __expand__($V0, [
       2,
       13
-    ], {76:[
+    ], {77:[
       2,
       13
     ]
@@ -7717,7 +7767,7 @@ table: [
   __expand__($V0, [
       2,
       14
-    ], {76:[
+    ], {77:[
       2,
       14
     ]
@@ -7725,7 +7775,7 @@ table: [
   __expand__($V0, [
       2,
       15
-    ], {76:[
+    ], {77:[
       2,
       15
     ]
@@ -7733,7 +7783,7 @@ table: [
   __expand__($V0, [
       2,
       16
-    ], {76:[
+    ], {77:[
       2,
       16
     ]
@@ -7741,103 +7791,111 @@ table: [
   __expand__($V0, [
       2,
       17
-    ], {76:[
+    ], {77:[
       2,
       17
     ]
   }),
+  __expand__($V0, [
+      2,
+      18
+    ], {77:[
+      2,
+      18
+    ]
+  }),
   {
-    15: 32,
-    31: 30,
-    33: 31,
-    44: [
+    15: 33,
+    32: 31,
+    34: 32,
+    45: [
       1,
-      33
+      34
     ],
-    62: [
+    63: [
       1,
-      25
+      26
     ]
   },
   {
     2: [
       1,
-      35
+      36
     ],
-    77: [
+    78: [
+      1,
+      35
+    ]
+  },
+  {
+    15: 33,
+    32: 37,
+    34: 32,
+    45: [
       1,
       34
-    ]
-  },
-  {
-    15: 32,
-    31: 36,
-    33: 31,
-    44: [
-      1,
-      33
     ],
-    62: [
+    63: [
       1,
-      25
+      26
     ]
   },
   {
-    15: 32,
-    33: 37,
-    44: [
+    15: 33,
+    34: 38,
+    45: [
       1,
-      33
+      34
     ],
-    62: [
+    63: [
       1,
-      25
+      26
     ]
   },
   {
-    24: 38,
-    26: 39,
-    27: [
+    25: 39,
+    27: 40,
+    28: [
       1,
-      40
+      41
     ]
   },
   {
-    44: [
-      2,
-      27
-    ],
-    62: [
-      2,
-      27
-    ]
-  },
-  {
-    44: [
+    45: [
       2,
       28
     ],
-    62: [
+    63: [
       2,
       28
     ]
   },
   {
-    44: [
+    45: [
       2,
       29
     ],
-    62: [
+    63: [
       2,
       29
+    ]
+  },
+  {
+    45: [
+      2,
+      30
+    ],
+    63: [
+      2,
+      30
     ]
   },
   {
     5: [
       1,
-      42
+      43
     ],
-    7: 41,
+    7: 42,
     8: [
       2,
       2
@@ -7846,203 +7904,203 @@ table: [
   {
     11: [
       1,
-      44
+      45
     ],
-    12: 45,
-    15: 47,
-    47: 43,
-    48: 46,
-    62: [
+    12: 46,
+    15: 48,
+    48: 44,
+    49: 47,
+    63: [
       1,
-      25
+      26
     ],
-    76: [
+    77: [
       1,
-      15
+      16
     ]
   },
   __expand__($V0, [
       2,
       9
-    ], {76:[
+    ], {77:[
       2,
       9
     ]
   }),
-  __expand__([5,11,14,16,18,23,30,32,35,36,37,42,43,44,49,51,52,62,69,72], [
+  __expand__([5,11,14,16,18,23,24,31,33,36,37,38,43,44,45,50,52,53,63,70,73], [
       2,
-      69
-    ], {76:[
+      70
+    ], {77:[
       2,
-      69
+      70
     ]
   }),
   __expand__($V0, [
       2,
       12
-    ], {39:28,38:48,42:[
+    ], {40:29,39:49,43:[
       1,
-      29
-    ],62:[
+      30
+    ],63:[
       2,
-      35
-    ],76:[
+      36
+    ],77:[
       2,
       12
     ]
   }),
   __expand__($V2, [
       2,
-      33
-    ], {76:[
+      34
+    ], {77:[
       2,
-      33
+      34
     ]
   }),
   {
-    15: 49,
-    62: [
+    15: 50,
+    63: [
       1,
-      25
+      26
     ]
   },
   {
-    62: [
+    63: [
       2,
-      36
+      37
     ]
   },
   __expand__($V0, [
       2,
+      27
+    ], {15:33,34:51,45:[
+      1,
+      34
+    ],63:[
+      1,
       26
-    ], {15:32,33:50,44:[
-      1,
-      33
-    ],62:[
-      1,
-      25
-    ],76:[
+    ],77:[
       2,
-      26
+      27
     ]
   }),
   __expand__($V3, [
       2,
-      31
-    ], {76:[
+      32
+    ], {77:[
       2,
-      31
-    ]
-  }),
-  __expand__($V4, [
-      2,
-      67
-    ], {76:[
-      2,
-      67
+      32
     ]
   }),
   __expand__($V4, [
       2,
       68
-    ], {76:[
+    ], {77:[
       2,
       68
     ]
   }),
-  __expand__($V5, [
+  __expand__($V4, [
       2,
-      83
-    ], {79:[
+      69
+    ], {77:[
       2,
-      83
+      69
     ]
   }),
   __expand__($V5, [
       2,
       84
-    ], {79:[
+    ], {80:[
       2,
       84
     ]
   }),
-  __expand__($V0, [
+  __expand__($V5, [
       2,
-      24
-    ], {15:32,33:50,44:[
-      1,
-      33
-    ],62:[
-      1,
-      25
-    ],76:[
+      85
+    ], {80:[
       2,
-      24
+      85
     ]
   }),
   __expand__($V0, [
       2,
       25
-    ], {76:[
+    ], {15:33,34:51,45:[
+      1,
+      34
+    ],63:[
+      1,
+      26
+    ],77:[
       2,
       25
     ]
   }),
+  __expand__($V0, [
+      2,
+      26
+    ], {77:[
+      2,
+      26
+    ]
+  }),
   {
-    25: [
+    26: [
       1,
-      51
+      52
     ],
-    26: 52,
-    27: [
+    27: 53,
+    28: [
       1,
-      40
+      41
     ]
   },
   {
-    25: [
-      2,
-      20
-    ],
-    27: [
-      2,
-      20
-    ]
-  },
-  __expand__([25,27], [
+    26: [
       2,
       21
-    ], {28:[
+    ],
+    28: [
+      2,
+      21
+    ]
+  },
+  __expand__([26,28], [
+      2,
+      22
+    ], {29:[
       1,
-      53
+      54
     ]
   }),
   {
     8: [
       1,
-      54
+      55
     ]
   },
   __expand__($V6, [
       2,
-      88
-    ], {9:55,75:56,78:57,79:[
+      89
+    ], {9:56,76:57,79:58,80:[
       1,
-      58
+      59
     ]
   }),
   __expand__($V7, [
       2,
-      45
-    ], {15:47,48:59,62:[
+      46
+    ], {15:48,49:60,63:[
       1,
-      25
+      26
     ]
   }),
   __expand__($V1, [
       2,
       5
-    ], {76:[
+    ], {77:[
       2,
       5
     ]
@@ -8050,78 +8108,78 @@ table: [
   __expand__($V1, [
       2,
       6
-    ], {76:[
+    ], {77:[
       2,
       6
     ]
   }),
   __expand__($V7, [
       2,
-      47
-    ], {62:[
+      48
+    ], {63:[
       2,
-      47
+      48
     ]
   }),
   {
-    49: [
+    50: [
       1,
-      60
+      61
     ]
   },
   __expand__($V2, [
       2,
-      32
-    ], {76:[
+      33
+    ], {77:[
       2,
-      32
+      33
     ]
   }),
   __expand__($V8, [
       2,
-      37
-    ], {40:61,43:[
+      38
+    ], {41:62,44:[
       1,
-      62
-    ],76:[
+      63
+    ],77:[
       2,
-      37
+      38
     ]
   }),
   __expand__($V3, [
       2,
-      30
-    ], {76:[
+      31
+    ], {77:[
       2,
-      30
+      31
     ]
   }),
   __expand__($V0, [
       2,
-      18
-    ], {76:[
+      19
+    ], {77:[
       2,
-      18
+      19
     ]
   }),
   {
-    25: [
+    26: [
       2,
-      19
+      20
     ],
-    27: [
+    28: [
       2,
-      19
+      20
     ]
   },
   {
-    27: [
+    28: [
+      1,
+      65
+    ],
+    30: [
       1,
       64
-    ],
-    29: [
-      1,
-      63
     ]
   },
   {
@@ -8139,535 +8197,535 @@ table: [
   {
     8: [
       2,
-      81
+      82
     ],
-    12: 65,
-    76: [
+    12: 66,
+    77: [
       1,
-      15
-    ]
-  },
-  __expand__($V6, [
-      2,
-      87
-    ], {79:[
-      1,
-      66
-    ]
-  }),
-  __expand__($V6, [
-      2,
-      85
-    ], {79:[
-      2,
-      85
-    ]
-  }),
-  __expand__($V7, [
-      2,
-      46
-    ], {62:[
-      2,
-      46
-    ]
-  }),
-  __expand__($V9, [
-      2,
-      53
-    ], {50:67,53:68,54:69,76:[
-      2,
-      53
-    ]
-  }),
-  __expand__($V2, [
-      2,
-      39
-    ], {41:70,44:[
-      1,
-      71
-    ],76:[
-      2,
-      39
-    ]
-  }),
-  __expand__($V8, [
-      2,
-      38
-    ], {76:[
-      2,
-      38
-    ]
-  }),
-  {
-    25: [
-      2,
-      22
-    ],
-    27: [
-      2,
-      22
-    ]
-  },
-  {
-    25: [
-      2,
-      23
-    ],
-    27: [
-      2,
-      23
+      16
     ]
   },
   __expand__($V6, [
       2,
       88
-    ], {75:56,78:57,9:72,79:[
+    ], {80:[
       1,
-      58
+      67
     ]
   }),
   __expand__($V6, [
       2,
       86
-    ], {79:[
+    ], {80:[
       2,
       86
     ]
   }),
+  __expand__($V7, [
+      2,
+      47
+    ], {63:[
+      2,
+      47
+    ]
+  }),
+  __expand__($V9, [
+      2,
+      54
+    ], {51:68,54:69,55:70,77:[
+      2,
+      54
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      40
+    ], {42:71,45:[
+      1,
+      72
+    ],77:[
+      2,
+      40
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      39
+    ], {77:[
+      2,
+      39
+    ]
+  }),
   {
-    51: [
-      1,
-      73
+    26: [
+      2,
+      23
     ],
-    52: [
-      1,
-      74
+    28: [
+      2,
+      23
     ]
   },
   {
-    51: [
+    26: [
       2,
-      50
+      24
     ],
+    28: [
+      2,
+      24
+    ]
+  },
+  __expand__($V6, [
+      2,
+      89
+    ], {76:57,79:58,9:73,80:[
+      1,
+      59
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      87
+    ], {80:[
+      2,
+      87
+    ]
+  }),
+  {
+    52: [
+      1,
+      74
+    ],
+    53: [
+      1,
+      75
+    ]
+  },
+  {
     52: [
       2,
-      50
+      51
+    ],
+    53: [
+      2,
+      51
     ]
   },
   __expand__($Va, [
       2,
-      66
-    ], {55:75,57:76,59:78,44:[
-      1,
-      80
-    ],62:[
-      1,
-      79
-    ],63:[
+      67
+    ], {56:76,58:77,60:79,45:[
       1,
       81
-    ],68:[
+    ],63:[
       1,
-      77
-    ],76:[
+      80
+    ],64:[
+      1,
+      82
+    ],69:[
+      1,
+      78
+    ],77:[
       2,
-      66
+      67
     ]
   }),
   __expand__($V2, [
       2,
-      34
-    ], {76:[
+      35
+    ], {77:[
       2,
-      34
+      35
     ]
   }),
   __expand__($V2, [
       2,
-      40
-    ], {76:[
+      41
+    ], {77:[
       2,
-      40
+      41
     ]
   }),
   {
     8: [
       2,
-      82
+      83
     ]
   },
   __expand__($V7, [
       2,
-      48
-    ], {62:[
+      49
+    ], {63:[
       2,
-      48
+      49
     ]
   }),
   __expand__($V9, [
       2,
-      53
-    ], {54:69,53:82,76:[
+      54
+    ], {55:70,54:83,77:[
       2,
-      53
+      54
     ]
   }),
-  __expand__([51,52], [
+  __expand__([52,53], [
       2,
-      74
-    ], {56:83,12:86,11:[
+      75
+    ], {57:84,12:87,11:[
+      1,
+      86
+    ],70:[
       1,
       85
-    ],69:[
+    ],73:[
       1,
-      84
-    ],72:[
+      88
+    ],77:[
       1,
-      87
-    ],76:[
-      1,
-      15
+      16
     ]
   }),
   __expand__($Vb, [
       2,
-      52
-    ], {76:[
+      53
+    ], {77:[
       2,
-      52
+      53
     ]
   }),
   {
-    15: 32,
-    33: 88,
-    44: [
+    15: 33,
+    34: 89,
+    45: [
       1,
-      33
+      34
     ],
-    62: [
+    63: [
       1,
-      25
+      26
     ]
   },
   __expand__($Vc, [
       2,
-      61
-    ], {60:89,65:[
-      1,
-      90
-    ],66:[
+      62
+    ], {61:90,66:[
       1,
       91
     ],67:[
       1,
       92
-    ],76:[
+    ],68:[
+      1,
+      93
+    ],77:[
       2,
-      61
-    ]
-  }),
-  __expand__($Vd, [
-      2,
-      58
-    ], {76:[
-      2,
-      58
+      62
     ]
   }),
   __expand__($Vd, [
       2,
       59
-    ], {76:[
+    ], {77:[
       2,
       59
+    ]
+  }),
+  __expand__($Vd, [
+      2,
+      60
+    ], {77:[
+      2,
+      60
     ]
   }),
   __expand__($Ve, [
       2,
-      53
-    ], {58:93,54:94,64:[
+      54
+    ], {59:94,55:95,65:[
       2,
-      53
-    ]
-  }),
-  {
-    51: [
-      2,
-      49
-    ],
-    52: [
-      2,
-      49
-    ]
-  },
-  {
-    51: [
-      2,
-      51
-    ],
-    52: [
-      2,
-      51
-    ]
-  },
-  __expand__($Vf, [
-      2,
-      75
-    ], {70:95,73:96,74:[
-      1,
-      97
-    ]
-  }),
-  {
-    51: [
-      2,
-      71
-    ],
-    52: [
-      2,
-      71
-    ]
-  },
-  {
-    51: [
-      2,
-      72
-    ],
-    52: [
-      2,
-      72
-    ]
-  },
-  {
-    51: [
-      2,
-      73
-    ],
-    52: [
-      2,
-      73
-    ]
-  },
-  __expand__($Va, [
-      2,
-      65
-    ], {76:[
-      2,
-      65
-    ]
-  }),
-  __expand__($Vb, [
-      2,
-      57
-    ], {61:[
-      1,
-      98
-    ],76:[
-      2,
-      57
-    ]
-  }),
-  __expand__($Vc, [
-      2,
-      62
-    ], {76:[
-      2,
-      62
-    ]
-  }),
-  __expand__($Vc, [
-      2,
-      63
-    ], {76:[
-      2,
-      63
-    ]
-  }),
-  __expand__($Vc, [
-      2,
-      64
-    ], {76:[
-      2,
-      64
+      54
     ]
   }),
   {
     52: [
-      1,
-      100
+      2,
+      50
     ],
-    64: [
-      1,
-      99
+    53: [
+      2,
+      50
     ]
   },
   {
-    44: [
-      1,
-      80
-    ],
     52: [
       2,
-      55
+      52
     ],
-    57: 76,
-    59: 78,
-    62: [
-      1,
-      79
-    ],
-    63: [
-      1,
-      81
-    ],
-    64: [
+    53: [
       2,
-      55
-    ]
-  },
-  {
-    69: [
-      1,
-      102
-    ],
-    71: [
-      1,
-      101
+      52
     ]
   },
   __expand__($Vf, [
       2,
       76
-    ], {74:[
+    ], {71:96,74:97,75:[
       1,
-      103
+      98
     ]
   }),
-  __expand__($Vf, [
+  {
+    52: [
       2,
-      79
-    ], {74:[
+      72
+    ],
+    53: [
       2,
-      79
+      72
+    ]
+  },
+  {
+    52: [
+      2,
+      73
+    ],
+    53: [
+      2,
+      73
+    ]
+  },
+  {
+    52: [
+      2,
+      74
+    ],
+    53: [
+      2,
+      74
+    ]
+  },
+  __expand__($Va, [
+      2,
+      66
+    ], {77:[
+      2,
+      66
     ]
   }),
   __expand__($Vb, [
       2,
-      56
-    ], {76:[
+      58
+    ], {62:[
+      1,
+      99
+    ],77:[
+      2,
+      58
+    ]
+  }),
+  __expand__($Vc, [
+      2,
+      63
+    ], {77:[
+      2,
+      63
+    ]
+  }),
+  __expand__($Vc, [
+      2,
+      64
+    ], {77:[
+      2,
+      64
+    ]
+  }),
+  __expand__($Vc, [
+      2,
+      65
+    ], {77:[
+      2,
+      65
+    ]
+  }),
+  {
+    53: [
+      1,
+      101
+    ],
+    65: [
+      1,
+      100
+    ]
+  },
+  {
+    45: [
+      1,
+      81
+    ],
+    53: [
       2,
       56
+    ],
+    58: 77,
+    60: 79,
+    63: [
+      1,
+      80
+    ],
+    64: [
+      1,
+      82
+    ],
+    65: [
+      2,
+      56
+    ]
+  },
+  {
+    70: [
+      1,
+      103
+    ],
+    72: [
+      1,
+      102
+    ]
+  },
+  __expand__($Vf, [
+      2,
+      77
+    ], {75:[
+      1,
+      104
+    ]
+  }),
+  __expand__($Vf, [
+      2,
+      80
+    ], {75:[
+      2,
+      80
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      57
+    ], {77:[
+      2,
+      57
     ]
   }),
   __expand__($Vd, [
       2,
-      60
-    ], {76:[
+      61
+    ], {77:[
       2,
-      60
+      61
     ]
   }),
   __expand__($Ve, [
       2,
-      53
-    ], {54:104,64:[
+      54
+    ], {55:105,65:[
       2,
-      53
+      54
     ]
   }),
   {
-    51: [
-      2,
-      70
-    ],
     52: [
       2,
-      70
+      71
+    ],
+    53: [
+      2,
+      71
     ]
   },
   __expand__($Vf, [
       2,
-      75
-    ], {73:96,70:105,74:[
+      76
+    ], {74:97,71:106,75:[
       1,
-      97
+      98
     ]
   }),
   __expand__($Vf, [
       2,
-      80
-    ], {74:[
+      81
+    ], {75:[
       2,
-      80
+      81
     ]
   }),
   {
-    44: [
-      1,
-      80
-    ],
-    52: [
-      2,
-      54
-    ],
-    57: 76,
-    59: 78,
-    62: [
-      1,
-      79
-    ],
-    63: [
+    45: [
       1,
       81
     ],
-    64: [
+    53: [
       2,
-      54
+      55
+    ],
+    58: 77,
+    60: 79,
+    63: [
+      1,
+      80
+    ],
+    64: [
+      1,
+      82
+    ],
+    65: [
+      2,
+      55
     ]
   },
   {
-    69: [
+    70: [
       1,
-      102
+      103
     ],
-    71: [
+    72: [
       1,
-      106
+      107
     ]
   },
   __expand__($Vf, [
       2,
-      78
-    ], {73:107,74:[
+      79
+    ], {74:108,75:[
       1,
-      97
+      98
     ]
   }),
   __expand__($Vf, [
       2,
-      77
-    ], {74:[
+      78
+    ], {75:[
       1,
-      103
+      104
     ]
   })
 ],
 defaultActions: {
-  29: [
+  30: [
     2,
-    36
-  ],
-  54: [
-    2,
-    1
+    37
   ],
   55: [
     2,
+    1
+  ],
+  56: [
+    2,
     3
   ],
-  72: [
+  73: [
     2,
-    82
+    83
   ]
 },
 parseError: function parseError(str, hash) {
@@ -9009,7 +9067,7 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-100 */
+/* generated by jison-lex 0.3.4-102 */
 var lexer = (function () {
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
@@ -9447,22 +9505,22 @@ break;
 case 11 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 29; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 30; 
 break;
 case 12 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 29; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 30; 
 break;
 case 14 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 25; 
+ this.popState(); return 26; 
 break;
 case 15 : 
 /*! Conditions:: options */ 
 /*! Rule::       \s+{BR}+ */ 
- this.popState(); return 25; 
+ this.popState(); return 26; 
 break;
 case 16 : 
 /*! Conditions:: options */ 
@@ -9487,17 +9545,17 @@ break;
 case 20 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 61; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 62; 
 break;
 case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 44; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 45; 
 break;
 case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 44; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 45; 
 break;
 case 28 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -9522,12 +9580,12 @@ break;
 case 39 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %options\b */ 
- this.pushState('options'); return 23; 
+ this.pushState('options'); return 24; 
 break;
 case 41 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 76; 
+ this.pushState('path'); return 77; 
 break;
 case 42 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -9535,12 +9593,13 @@ case 42 :
   
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
+                                            return 23;
                                          
 break;
 case 43 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 42; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 43; 
 break;
 case 44 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -9555,50 +9614,49 @@ break;
 case 46 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
- yy.depth = 0; this.pushState('action'); return 69; 
+ yy.depth = 0; this.pushState('action'); return 70; 
 break;
 case 47 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 72; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 73; 
 break;
 case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 43; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 44; 
 break;
 case 49 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 43; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 44; 
 break;
 case 50 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yylloc);
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
 case 54 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 74; // regexp with braces or quotes (and no spaces) 
+ return 75; // regexp with braces or quotes (and no spaces) 
 break;
 case 59 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
- yy.depth++; return 69; 
+ yy.depth++; return 70; 
 break;
 case 60 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 71; 
+ if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 72; 
 break;
 case 62 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 79;      // the bit of CODE just before EOF... 
+ return 80;      // the bit of CODE just before EOF... 
 break;
 case 63 : 
 /*! Conditions:: path */ 
@@ -9608,12 +9666,12 @@ break;
 case 64 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 77; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 78; 
 break;
 case 65 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 77; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 78; 
 break;
 case 66 : 
 /*! Conditions:: path */ 
@@ -9623,7 +9681,7 @@ break;
 case 67 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 77; 
+ this.popState(); return 78; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -9633,64 +9691,64 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   4 : 63,
+   4 : 64,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   5 : 64,
+   5 : 65,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   6 : 65,
+   6 : 66,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   7 : 66,
+   7 : 67,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   8 : 67,
+   8 : 68,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   9 : 27,
+   9 : 28,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   10 : 28,
+   10 : 29,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   13 : 29,
+   13 : 30,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   21 : 62,
+   21 : 63,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
    24 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   25 : 49,
+   25 : 50,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   26 : 51,
+   26 : 52,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   27 : 52,
+   27 : 53,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   31 : 32,
+   31 : 33,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   32 : 68,
+   32 : 69,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
    33 : 14,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   34 : 35,
+   34 : 36,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   35 : 36,
+   35 : 37,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   36 : 37,
+   36 : 38,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   38 : 30,
+   38 : 31,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
    40 : 16,
@@ -9699,25 +9757,25 @@ simpleCaseActionClusters: {
    51 : 8,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   52 : 74,
+   52 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   53 : 74,
+   53 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   55 : 74,
+   55 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   56 : 74,
+   56 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   57 : 74,
+   57 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   58 : 74,
+   58 : 75,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   61 : 79
+   61 : 80
 },
 rules: [
 /^(?:\r|\n)/,
@@ -12202,10 +12260,10 @@ simpleCaseActionClusters: {
   /*! Rule::       {ID} */ 
    1 : 12,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       '[^']+' */ 
+  /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
    3 : 12,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       '[^']+' */ 
+  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
    4 : 12,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \. */ 
@@ -12236,8 +12294,8 @@ rules: [
 /^(?:\s+)/,
 /^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
 /^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:'[^']+')/,
-/^(?:'[^']+')/,
+/^(?:'((\\'|(?!').)*)')/,
+/^(?:"((\\"|(?!").)*)")/,
 /^(?:\.)/,
 /^(?:\()/,
 /^(?:\))/,
@@ -22393,7 +22451,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.15-101",
+  "version": "0.4.15-102",
   "license": "MIT",
   "keywords": [
     "jison",
