@@ -138,7 +138,7 @@ generator.processGrammar = function processGrammarDef (grammar) {
         console.log("processGrammar: ", JSON.stringify({
             bnf: bnf,
             tokens: tokens,
-            productions 
+            productions: productions 
         }, null, 2));
     }
     if (tokens) {
@@ -10163,8 +10163,8 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
             rules[i][1] = String(rules[i][1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
         }
         action = rules[i][1];
-        if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
+        if (tokens && action.match(/return '(?:\\'|[^']+)+'/)) {
+            action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
         }
         
         var code = ['\n/*! Conditions::'];
@@ -10173,7 +10173,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         code = code.concat(rules[i][0]);
         code = code.concat('*/', '\n');
         
-        var match_nr = /^return\s+('[^\']+'|\d+)\s*;?$/.exec(action.trim());
+        var match_nr = /^return\s+('(?:\\'|[^']+)+'|\d+)\s*;?$/.exec(action.trim());
         if (match_nr) {
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {

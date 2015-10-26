@@ -735,7 +735,7 @@ Another way to resolve ambiguity would be to use *aliases* in square brackets, f
 
 ```
  exp:    ...
-         | exp[left] '+' exp[right]
+         | exp\[left] '+' exp\[right]
              { $$ = $left + $right; }
 ```
 
@@ -761,7 +761,7 @@ An example:
 
 ``` plain
 test
-: subrule[alt] subrule[wicked_middle] subrule[alt] '?'[alt]
+: subrule\[alt] subrule\[wicked_middle] subrule\[alt] '?'\[alt]
 %{
     // These are all unambiguous and legal to address $1, $2, $3 and $4:
     //
@@ -786,7 +786,7 @@ test
 >
 > ```
 > exp:    ...
->          | exp[exp] '+' exp[exp]
+>          | exp\[exp] '+' exp\[exp]
 >              { $$ = $exp1 + $exp3 /* 3? Are we sure about this? */; }
 > ```
 > 
@@ -809,7 +809,185 @@ test
 
 Jison now supports EBNF syntax, showcased [here](https://gist.github.com/1659274).
 
+
+
+
+
+
+
+## Extended BNF: how it works and what to keep in mind when using this
+
+EBNF is accepted by the jison grammar engine and transposed to a *BNF* grammar using equivalence transforms for each of the EBNF `*`, `+`, `?` and `(...)` operators.
+
+
+
+For these EBNF wildcards & groups the following treatment must be kept in mind:
+
+- Only the outermost wild-carded group's label or index is addressable in your action. That group
+  is translated to a single nonterminal, e.g.
+
+  ```
+  rule: A (B C D E)?
+  ```
+
+  becomes
+
+  ```
+  rule: A subrule_option0
+
+  subrule_option0: /* nil */ | B C D E;
+  ```
+
+  hence your action block for rule `rule` will only have `$1` and `$2` (the `subrule_option0` nonterminal) to play with.
+
+  As jison allows labeling the wildcarded group, such an alias might keep things more readable:
+
+  ```
+  rule: A (B C D E)?\[choice]
+  ```
+
+  becomes
+
+  ```
+  rule: A subrule_option0\[choice]
+
+  subrule_option0: /* nil */ | B C D E;
+  ```
+
+  **WARNING**: it's illegal to attempt to access `$B`, `$C` et al from your `rule`'s action code block and very bad things will happen you.
+
+  + vanilla zaach/jison will not translate those references and your code will be *TOAST*.
+
+  + GerHobbelt/jison analyzes your action code chunk and attempts to locate all your `$whatever` and `@whatever` references in there and barfs a hairball (i.e. fails at jison compile time) with a big fat error message if you do.
+
+    >
+    > Do note that we are a little dumb scanner, so we *will* recognize those references even when they sit in a nice cozy **comment** in there!
+    >
+
+- `(...)*`, `(...)+` and `(...)?` are the wildcarded ones and will be rewritten to equivalent BNF rules.
+
+  You MAY nest these constructs.
+
+- The `(...)` group is also recognized (no wildcard operator there): it will be unrolled. Unless there's a label attacked to it. In that case it's rewritten.
+
+  Hence
+
+  ```
+  rule: A (B C D E)
+  ```
+
+  becomes
+
+  ```
+  rule: A B C D E;
+  ```
+ 
+  while
+
+  ```
+  rule: A (B C D E)\[groupies]
+  ```
+
+  becomes
+
+  ```
+  rule: A subrule\[groupies]
+
+  subrule: B C D E;
+  ```
+
+  so be aware that a little change like that can play havoc on your (*action*) code: the former, unrolled, grouping gives you
+  access to all it terms (nonterminals and terminals alike), while the labeled a.k.a. aliased version *hides* those inner terms from you.
+
+- In order to have something decent to work with in your action code, every *wildcard* or non-wilcarded group 
+  which is not unrolled will collect all its terms' values (`yytext`) as
+  produced by the lexer and store it in an array, thus constructing a *Poor Man's AST*:
+
+  ```
+  rule: A (B C+ (D E)\[hoobahop])?\[choice]
+  ```
+
+  becomes
+
+  ```
+  rule: A subrule_option0\[choice]
+
+  subrule_option0: /* nil */ | subrule_option1;
+
+  subrule_option1: B C+ (D E)\[hoobahop];
+  ```
+
+  which becomes
+
+  ```
+  rule: A subrule_option0\[choice]
+
+  subrule_option0: /* nil */ | subrule_option0;
+
+  subrule_option1: B subrule_series1 hoobahop_group0;
+
+  subrule_series1: subrule_series1 C | C;
+
+  hoobahop_group0: D E;
+  ```
+
+  which will deliver in your `$choice` reference an array shaped like this 
+  (comments show the origin of each bit):
+
+  ```
+  // subrule_option0
+  \[
+    // **Note**:
+    // as this is choice, you get only the value 
+    //
+    //     undefined
+    // 
+    // when you've hit the **nil** epsilon choice instead!
+    
+    // subrule_option1: 
+    \[
+      B,
+      // subrule_series1
+      \[
+        // the EBNF rewriter is smart enough to see that there's
+        // only 1(one) term in this one: `C` so no extra arrays-in-array
+        // for you here:
+        C,
+        C,
+        ...
+      ], 
+      // hoobahop_group0
+      \[
+        D,
+        E
+      ]
+    ]
+  ]
+  ```
+
+
+
+### BIG FAT WARNING:
+
+The above is written for the GerHobbelt fork as currently EBNF support in vanilla zaach/jison is ever so slightly b0rked.
+
+But that's not what this warning is about!
+
+As I (Gerhobbelt) write this, I wonder if this **really** **really** is the truth. It *may* be that the current bleeding edge
+(master branch) still has a few, ahh..., sub-optimalities in reality compared to the above.
+
+**To Be Checked**
+
+
+
+
+ 
+
+
+
+
 ---
+
 
 Some improvements have been made for parser and lexer grammars in Jison 0.3 (demonstrated in the FlooP/BlooP example below.)
 
