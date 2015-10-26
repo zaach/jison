@@ -19,7 +19,7 @@
 %%
 
 function_call
-    : IDENTIFIER "(" (expression[e1] ("," expression[e2])* )? ")"
+    : IDENTIFIER ("(" (expression[e1] ("," expression[e2])* )? ")")
         {
             console.log($1);
             console.log($3);
