@@ -1,5 +1,5 @@
 
-all: build test examples/issue-293 examples/issue-254 
+all: build test examples/issue-293 examples/issue-254
 
 prep: npm-install
 
@@ -17,9 +17,9 @@ preview:
 	open http://localhost:3000/jison/
 
 deploy: site
-	-rm -rf ./gh-pages/*
-	cp -r web/output/jison/* ./gh-pages/
-	-cd ./gh-pages ; git checkout gh-pages ; git add . --all && git commit -m 'Deploy site updates' && git push origin gh-pages
+	#-rm -rf ./gh-pages/*
+	#cp -r web/output/jison/* ./gh-pages/
+	#-cd ./gh-pages ; git checkout gh-pages ; git add . --all && git commit -m 'Deploy site updates' && git push origin gh-pages
 
 test:
 	node tests/all-tests.js
@@ -184,8 +184,24 @@ submodules-npm-install:
 	cd modules/lex-parser && make npm-install
 
 
+# increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
+#
+# Generally when I want to bump jison up one build number, then the submodules should also be bumped.
+# This is less relevant for the jison2json and json2jison tools as they probably won't have changed,
+# but hey, this way the build numbers stay nicely in sync!   :-)
+bump: submodules-bump
+	npm version --no-git-tag-version prerelease
+
+submodules-bump:
+	cd modules/ebnf-parser && make bump
+	cd modules/jison-lex && make bump
+	cd modules/jison2json && make bump
+	cd modules/json2jison && make bump
+	cd modules/lex-parser && make bump
+
+
 git:
-	-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
+	#-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
 	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
 	-git pull --all; git push --all
 
@@ -219,12 +235,11 @@ superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 	-rm -rf web/output/
 	-rm -rf web/tmp/
-	-rm -rf ./gh-pages/*
+	#-rm -rf ./gh-pages/*
 	-rm -f web/content/assets/js/calculator.js
 	-rm -f web/content/assets/js/jison.js
 
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir
-
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump
