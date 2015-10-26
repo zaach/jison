@@ -523,11 +523,29 @@ Deviations from Flex / Bison
 
 
 
+
+
+
 ## Lex Patterns
 
 
 
 ### Literal tokens
+
+>
+> #### WARNING: vanilla zaach/jison has 'easy keyword' support turned *on* all the time
+>
+> The section currently describes the GerHobbelt fork which has the 
+>
+> ```
+> %options easy_keyword_rules
+> ``` 
+>
+> feature while vanilla jison has not (at least not a pullreq for this is posted by me (@GerHobbelt) and accepted.
+>
+> Hence vanilla jison will work as if you *implicitly* specified `%options easy_keyword_rules` in every lexer of yours.
+>
+
 
 When the lexer 'easy keyword' option has been turned on in your lexer file / section using 
 
@@ -772,12 +790,52 @@ test
 >              { $$ = $exp1 + $exp3 /* 3? Are we sure about this? */; }
 > ```
 > 
+> If you wonder, [RTFC: vanilla](https://github.com/zaach/jison/blob/master/lib/jison.js#L279) vs. [RTFC: GerHobbelt](https://github.com/GerHobbelt/jison/blob/master/lib/jison.js#L385)
+>
+> 
+> ---
+> 
+>
+> #### WARNING: vanilla zaach/jison doesn't behave the same when it comes to mixing aliases and nonterminal names.
+>
+> The section currently describes the GerHobbelt fork. With vanilla zaach/jison the safe rule of thumb here is that when you specify an *alias* for a nonterminal, then you SHOULD NOT USE the nonterminal name itself any more in your action code.
+>
+> RTFC to compare and check each's behaviour here: [vanilla](https://github.com/zaach/jison/blob/master/lib/jison.js#L279) vs. [GerHobbelt](https://github.com/GerHobbelt/jison/blob/master/lib/jison.js#L385) 
+>
 
 
 
 ## Extended BNF
 
 Jison now supports EBNF syntax, showcased [here](https://gist.github.com/1659274).
+
+---
+
+Some improvements have been made for parser and lexer grammars in Jison 0.3 (demonstrated in the FlooP/BlooP example below.)
+
+For lexers:
+
+* Patterns may use unquoted characters instead of strings
+* Two new options, `%options flex case-insensitive`
+ * `flex`: the rule with the longest match is used, and no word boundary patterns are added
+ * `case-insensitive`: all patterns are case insensitive
+* User code section is included in the generated module
+
+For parsers:
+
+* Arrow syntax for semantic actions
+* EBNF syntax (enabled using the `%ebnf` declaration)
+ * Operators include repetition (`*`), non-empty repetition (`+`), grouping (`()`), alternation within groups (`|`), and option (`?`)
+* User code section and code blocks are included in the generated module
+
+Also, Robert Plummer has created a [PHP port](https://github.com/zaach/jison/tree/master/ports/php) of Jison's parser.
+
+See the grammar below for more examples.
+
+---
+
+
+
 
 
 

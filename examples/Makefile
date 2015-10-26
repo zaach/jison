@@ -10,6 +10,7 @@ ALL_TARGETS =  													\
 			basic2 												\
 			basic2_lex 											\
 			basic_lex 											\
+			bloop 												\
 			calculator 											\
 			calc_LA_on_demand									\
 			calculator_json 									\
@@ -65,6 +66,13 @@ basic2_lex:
 
 basic_lex:
 	$(JISON) ./$@.jison
+
+bloop:
+	$(JISON) ./$@.y ./floop.l
+
+# cannot compile a lexer on its own, so we provide a bogus grammar to go with that.
+floop:
+	$(JISON) floop-standalone.y ./$@.l
 
 calculator:
 	$(JISON) ./$@.jison
