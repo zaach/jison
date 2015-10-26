@@ -17,7 +17,9 @@
       <li><a href="../community/">community</a></li>
     </ul>
     <div id="content">
-      <link href="../assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
+      
+
+  <link href="../assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
 
   <div id="try">
     <h1>Try Jison Online</h1>
@@ -52,7 +54,7 @@
 ")"                   return ')'
 "PI"                  return 'PI'
 "E"                   return 'E'
-<<EOF>>               return 'EOF'
+&lt;&lt;EOF&gt;&gt;               return 'EOF'
 .                     return 'INVALID'
 
 /lex
@@ -127,6 +129,7 @@ e
   <script src="../assets/js/es5.js"></script>
   <script src="../assets/js/jison.js"></script>
   <script src="../assets/js/try.js"></script>
+
     </div>
     <p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2013. MIT Licensed.</p>
 

@@ -3,7 +3,7 @@
 Jison = require('./lib/jison.js');
 bnf = require('ebnf-parser');
 
-},{"./lib/jison.js":2,"ebnf-parser":20}],2:[function(require,module,exports){
+},{"./lib/jison.js":2,"ebnf-parser":19}],2:[function(require,module,exports){
 (function (process){
 // Jison, an LR(0), SLR(1), LARL(1), LR(1) Parser Generator
 // Zachary Carter <zach@carter.name>
@@ -13,13 +13,15 @@ var typal      = require('./util/typal').typal;
 var Set        = require('./util/set').Set;
 var Lexer      = require('./util/regexp-lexer.js');
 var ebnfParser = require('./util/ebnf-parser.js');
-var JSONSelect = require('JSONSelect');
+//var JSONSelect = require('JSONSelect');
 //var esprima    = require('esprima');
 //var escodegen  = require('escodegen');
 var assert     = require('assert');
 
 
 var version = require('../package.json').version;
+
+var devDebug = 0;
 
 var Jison = exports.Jison = exports;
 Jison.version = version;
@@ -132,7 +134,13 @@ generator.processGrammar = function processGrammarDef (grammar) {
     if (!grammar.bnf && grammar.ebnf) {
         bnf = grammar.bnf = ebnfParser.transform(grammar.ebnf);
     }
-
+    if (devDebug) {
+        console.log("processGrammar: ", JSON.stringify({
+            bnf: bnf,
+            tokens: tokens,
+            productions: productions 
+        }, null, 2));
+    }
     if (tokens) {
         if (typeof tokens === 'string') {
             tokens = tokens.trim().split(' ');
@@ -149,7 +157,7 @@ generator.processGrammar = function processGrammarDef (grammar) {
     // build productions from cfg
     this.buildProductions(bnf, productions, nonterminals, symbols, operators);
 
-    //console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, '\n###################################### TOKENS\n', tokens, '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, '\n###################################### LEX\n', grammar.lex, '\n###################################### GRAMMAR\n', grammar);
+    if (devDebug > 1) console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, '\n###################################### TOKENS\n', tokens, '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, '\n###################################### LEX\n', grammar.lex, '\n###################################### GRAMMAR\n', grammar);
     if (tokens && this.terminals.length !== tokens.length) {
         self.trace('Warning: declared tokens differ from tokens found in rules.');
         self.trace(this.terminals);
@@ -250,6 +258,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         } else {
             prods = bnf[symbol].slice(0);
         }
+        if (devDebug) console.log("\ngenerator.buildProductions: ", symbol, JSON.stringify(prods, null, 2));
 
         prods.forEach(buildProduction);
     }
@@ -283,18 +292,80 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     this.performAction = 'function anonymous(' + parameters + ') {\n' + actions + '\n}';
 
+    // Cope with literal symbols in the string, including *significant whitespace* tokens
+    // as used in a rule like this: `rule: A ' ' B;` which should produce 3 tokens for the
+    // rhs: ['A', ' ', 'B']
+    function splitStringIntoSymbols(rhs) {
+        // when there's no literal tokens in there, we can fast-track this baby:
+        rhs = rhs.trim();
+        var pos1 = rhs.indexOf("'");
+        var pos2 = rhs.indexOf('"');
+        if (pos1 < 0 && pos2 < 0) {
+            return rhs.split(' ');
+        } else {
+            // rhs has at least one literal: we will need to parse the rhs into tokens
+            // with a little more effort now.
+            var tokens = [];
+            while (pos1 >= 0 || pos2 >= 0) {
+                var pos = pos1;
+                var marker = "'";
+                if (pos >= 0 && pos2 >= 0 && pos2 < pos) {
+                    pos = pos2;
+                    marker = '"';
+                }
+                var ls = rhs.substr(0, pos).trim();
+                if (ls.length > 0) {
+                    tokens.push.apply(tokens, ls.split(' '));
+                }
+                rhs = rhs.substr(pos + 1);
+                // now find the matching end marker.
+                // 
+                // As mentioned elsewhere in the code comments, we DO NOT cope with 'weird'
+                // literal tokens which are designed to break this scheme, i.e. literals
+                // containing *both* quote types, e.g. `rule: A '"\'' B;`
+                // 
+                // Besides, those won't make it through the lexer unscathed either, given the
+                // current STRING rules there: see `bnf.l`:
+                // 
+                //      '"'[^"]+'"'             ... return 'STRING';
+                //      "'"[^']+"'"             ... return 'STRING';
+                // 
+                // so it's like Chamberlain said: we can all go back to sleep now. ;-)
+                pos = rhs.indexOf(marker);
+                if (pos < 0) {
+                    throw new Error("internal error parsing literal token(s) in grammar rule");
+                }
+                ls = rhs.substr(0, pos);
+                tokens.push(ls);
+
+                rhs = rhs.substr(pos + 1).trim();
+
+                pos1 = rhs.indexOf("'");
+                pos2 = rhs.indexOf('"');
+            }
+            // Now, outside the loop, we're left with the remainder of the rhs, which does NOT
+            // contain any literal tokens.
+            if (rhs.length > 0) {
+                tokens.push.apply(tokens, rhs.split(' '));
+            }
+        }
+        return tokens;
+    }
+
     function buildProduction (handle) {
         var r, rhs, i;
+        if (devDebug) console.log("\nbuildProduction: ", JSON.stringify(handle, null, 2));
+
         if (handle.constructor === Array) {
             var aliased = [],
                 rhs_i;
             rhs = (typeof handle[0] === 'string') ?
-                      handle[0].trim().split(' ') :
+                      splitStringIntoSymbols(handle[0]) :
                       handle[0].slice(0);
 
             for (i = 0; i < rhs.length; i++) {
                 // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = rhs[i].match(/\[[a-zA-Z][a-zA-Z0-9_-]*\]/);
+                rhs_i = rhs[i].match(/\[[a-zA-Z_][a-zA-Z0-9_]*\]/);
                 if (rhs_i) {
                     rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
                     rhs[i] = rhs[i].substr(0, rhs[i].indexOf('['));
@@ -319,48 +390,49 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 var actionHash;
 
                 // replace named semantic values ($nonterminal)
-                if (action.match(/[$@][a-zA-Z][a-zA-Z0-9_]*/)) {
+                if (action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*/)) {
                     var count = {},
                         names = {};
+
+                    // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
+                    // we therefor allow access to both the original (non)terminal and the alias.
+                    //
+                    // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
+                    // where N is a number representing the number of this particular occurrence of the given 
+                    // (non)terminal.
+                    //
+                    // For example, given this (intentionally contrived) production:
+                    //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias] 
+                    // all the items can be accessed as:
+                    //     $1 $2 $3 $4 $5
+                    //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
+                    //     $elem $elem2 $another_elem $elem3 $another_elem2
+                    //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
+                    //     $alias $another_alias $alias2 $alias3 $another_alias2
+                    // where each line above is equivalent to the top-most line. Note the numbers postfixed to
+                    // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
+                    // the postfix numbering is independent.
+                    function addName (s) {
+                        if (names[s]) {
+                            names[s + (++count[s])] = i + 1;
+                        } else {
+                            names[s] = i + 1;
+                            names[s + '1'] = i + 1;
+                            count[s] = 1;
+                        }
+                    }
+
                     for (i = 0; i < rhs.length; i++) {
                         // check for aliased names, e.g., id[alias]
                         rhs_i = aliased[i];
-
-                        // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
-                        // we therefor allow access to both the original (non)terminal and the alias.
-                        //
-                        // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
-                        // where N is a number representing the number of this particular occurrence of the given 
-                        // (non)terminal.
-                        //
-                        // For example, given this (intentionally contrived) production:
-                        //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias] 
-                        // all the items can be accessed as:
-                        //     $1 $2 $3 $4 $5
-                        //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
-                        //     $elem $elem2 $another_elem $elem3 $another_elem2
-                        //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
-                        //     $alias $another_alias $alias2 $alias3 $another_alias2
-                        // where each line above is equivalent to the top-most line. Note the numbers postfixed to
-                        // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
-                        // the postfix numbering is independent.
-                        function addName (s) {
-                            if (names[s]) {
-                                names[s + (++count[s])] = i + 1;
-                            } else {
-                                names[s] = i + 1;
-                                names[s + '1'] = i + 1;
-                                count[s] = 1;
-                            }
-                        }
                         addName(rhs_i);
                         if (rhs_i !== rhs[i]) {
                             addName(rhs[i]);
                         }
                     }
-                    action = action.replace(/\$([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
+                    action = action.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
                             return names[pl] ? '$' + names[pl] : str;
-                        }).replace(/@([a-zA-Z][a-zA-Z0-9_]*)/g, function (str, pl) {
+                        }).replace(/@([a-zA-Z_][a-zA-Z0-9_]*\b)/g, function (str, pl) {
                             return names[pl] ? '@' + names[pl] : str;
                         });
                 }
@@ -369,11 +441,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     .replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, 'this._$')
 
                     // replace semantic value references ($n) with stack value (stack[n])
-                    .replace(/\$(-?\d+)/g, function (_, n) {
+                    .replace(/\$(-?\d+)\b/g, function (_, n) {
                         return '$$[$0' + (parseInt(n, 10) - rhs.length || '') + ']';
                     })
                     // same as above for location references (@n)
-                    .replace(/@(-?\d+)/g, function (_, n) {
+                    .replace(/@(-?\d+)\b/g, function (_, n) {
                         return '_$[$0' + (n - rhs.length || '') + ']';
                     });
                 actionHash = mkHashIndex(action);
@@ -398,8 +470,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } else {
             // no action -> don't care about aliases; strip them.
-            handle = handle.replace(/\[[a-zA-Z_][a-zA-Z0-9_-]*\]/g, '');
-            rhs = handle.trim().split(' ');
+            handle = handle.replace(/\[[a-zA-Z_][a-zA-Z0-9_]*\]/g, '');
+            rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 if (rhs[i] === 'error') {
                     her = true;
@@ -408,7 +480,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     addSymbol(rhs[i]);
                 }
             }
-            r = new Production(symbol, rhs, productions.length+1);
+            r = new Production(symbol, rhs, productions.length + 1);
         }
         if (r.precedence === 0) {
             // set precedence
@@ -490,7 +562,7 @@ lookaheadMixin.followSets = function followSets () {
         cont = false;
 
         productions.forEach(function Follow_prod_forEach (production, k) {
-            //self.trace(production.symbol,nonterminals[production.symbol].follows);
+            //self.trace(production.symbol, nonterminals[production.symbol].follows);
             // q is used in Simple LALR algorithm determine follows in context
             var q;
             var ctx = !!self.go_;
@@ -867,11 +939,11 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                     var gotoState = itemSet.edges[stackSymbol];
                     if (nonterminals[stackSymbol]) {
                         // store state to go to after a reduce
-                        //self.trace(k, stackSymbol, 'g'+gotoState);
+                        //self.trace(k, stackSymbol, 'g' + gotoState);
                         state[self.symbols_[stackSymbol]] = gotoState;
                     } else {
-                        //self.trace(k, stackSymbol, 's'+gotoState);
-                        state[self.symbols_[stackSymbol]] = [s,gotoState];
+                        //self.trace(k, stackSymbol, 's' + gotoState);
+                        state[self.symbols_[stackSymbol]] = [s, gotoState];
                     }
                 }
             });
@@ -1008,7 +1080,8 @@ function generateGenericHeaderComment() {
         + "\n"
         + "  Parser.prototype: {\n"
         + "    yy: {},\n"
-        + "    trace: function(),\n"
+        + "    trace: function(errorMessage, errorHash),\n"
+        + "    JisonParserError: function(msg, hash),\n"
         + "    symbols_: {associative list: name ==> number},\n"
         + "    terminals_: {associative list: number ==> name},\n"
         + "    productions_: [...],\n"
@@ -1021,11 +1094,14 @@ function generateGenericHeaderComment() {
         + "\n"
         + "    lexer: {\n"
         + "        EOF: 1,\n"
+        + "        ERROR: 2,\n"
+        + "        JisonLexerError: function(msg, hash),\n"
         + "        parseError: function(str, hash),\n"
         + "        setInput: function(input),\n"
         + "        input: function(),\n"
         + "        unput: function(str),\n"
         + "        more: function(),\n"
+        + "        reject: function(),\n"
         + "        less: function(n),\n"
         + "        pastInput: function(),\n"
         + "        upcomingInput: function(),\n"
@@ -1125,7 +1201,10 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
     var code = "";
 
     // check for illegal identifier
-    if (!opt.moduleName || !opt.moduleName.match(/^[A-Za-z_$][A-Za-z0-9_$\.]*$/)) {
+    if (!opt.moduleName || !opt.moduleName.match(/^[a-zA-Z_$][a-zA-Z0-9_$\.]*$/)) {
+        if (opt.debug) {
+            console.warn("WARNING: The specified moduleName '" + opt.moduleName + "' is illegal (only characters [a-zA-Z0-9_$] and '.' dot are accepted); using the default moduleName 'parser' instead.");
+        }
         opt.moduleName = "parser";
     }
     switch (opt.moduleType) {
@@ -1153,13 +1232,17 @@ lrGeneratorMixin.generateAMDModule = function generateAMDModule (opt) {
         'define(function (require) {',
         module.commonCode,
         'var parser = ' + module.moduleCode,
-        this.moduleInclude,
-        (this.lexer && this.lexer.generateModule ?
-          this.lexer.generateModule() +
-          'parser.lexer = lexer;' : ''),
-        'return parser;',
-        '});'
+        this.moduleInclude
     ];
+    if (this.lexer && this.lexer.generateModule) {
+      out.push(this.lexer.generateModule());
+      out.push('parser.lexer = lexer;');
+      if (this.options.ranges) {
+        out.push("parser.lexer.options.ranges = true;");
+      }
+    }
+    out.push('return parser;');
+    out.push('});');
 
     return out.join('\n') + '\n';
 };
@@ -1233,6 +1316,9 @@ lrGeneratorMixin.generateModuleExpr = function generateModuleExpr () {
     if (this.lexer && this.lexer.generateModule) {
         out.push(this.lexer.generateModule());
         out.push("parser.lexer = lexer;");
+        if (this.options.ranges) {
+            out.push("parser.lexer.options.ranges = true;");
+        }
     }
     out = out.concat(["",
             "function Parser () {",
@@ -1240,6 +1326,7 @@ lrGeneratorMixin.generateModuleExpr = function generateModuleExpr () {
             "}",
             "Parser.prototype = parser;",
             "parser.Parser = Parser;",
+            "// parser.JisonParserError = JisonParserError;",
             "",
             "return new Parser();",
             "})();"
@@ -1365,6 +1452,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
     var moduleCode = "{\n";
     moduleCode += [
         "trace: " + String(this.trace || parser.trace),
+        "JisonParserError: JisonParserError",
         "yy: {}",
         "symbols_: " + JSON.stringify(this.symbols_, null, 2),
         "terminals_: " + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, "$1:"),
@@ -1383,7 +1471,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
 // Generate code that represents the specified parser table
 lrGeneratorMixin.generateTableCode = function (table) {
     var moduleCode = JSON.stringify(table, null, 2);
-    var variables = [createObjectCode];
+    var variables = [];
+    var usesCompressor = false;
 
     // Don't surround numerical property name numbers in quotes
     moduleCode = moduleCode.replace(/"([0-9]+)"(?=:)/g, "$1");
@@ -1425,6 +1514,7 @@ lrGeneratorMixin.generateTableCode = function (table) {
             keyValues = keyValues.length ? ', {' + keyValues.join(',') + '}' : '';
             // Create the function call `__expand__(keys, value, remainder)`
             object = '__expand__([' + keys[frequentValue].join(',') + '], ' + frequentValue + keyValues + ')';
+            usesCompressor = true;
         }
         return object;
     });
@@ -1455,22 +1545,52 @@ lrGeneratorMixin.generateTableCode = function (table) {
         return listId;
     });
 
+    var prelude = [
+        "// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript",
+        "// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript",
+        "function JisonParserError(msg, hash) {",
+        "    this.message = msg;",
+        "    this.hash = hash;",
+        "    var stacktrace = (new Error(msg)).stack;",
+        "    if (stacktrace) {",
+        "      this.stack = stacktrace;",
+        "    }",
+        "}",
+        "JisonParserError.prototype = Object.create(Error.prototype);",
+        "JisonParserError.prototype.constructor = JisonParserError;",
+        "JisonParserError.prototype.name = 'JisonParserError';",
+        "",
+    ];
+
+    // Only include the expender function when it's actually used 
+    // (tiny grammars don't have much state duplication, so this shaves off 
+    // another couple bytes off the generated output)
+    if (usesCompressor) {
+        prelude.push(createObjectCode.toString().replace('createObjectCode', '__expand__'));
+        prelude.push('');
+    }
+
+    if (variables.length > 0) {
+        prelude.push('var ' + variables.join(',\n    ') + ';');
+        prelude.push('');
+    }
+
     // Return the variable initialization code and the table code
     return {
-        commonCode: 'var ' + variables.join(',\n    ') + ';',
+        commonCode: prelude.join('\n'),
         moduleCode: moduleCode
     };
 };
 
 // Function that extends an object with the given value for all given keys
 // e.g., __expand__([1, 3, 4], [6, 7], { x: 1, y: 2 }) = { 1: [6, 7]; 3: [6, 7], 4: [6, 7], x: 1, y: 2 }
-var createObjectCode = '__expand__ = function (k, v, o) {\n'
-    + '  o = o || {};\n'
-    + '  for (var l = k.length; l--; ) {\n'
-    + '    o[k[l]] = v;\n'
-    + '  }\n'
-    + '  return o;\n'
-    + '}';
+function createObjectCode(k, v, o) {
+  o = o || {};
+  for (var l = k.length; l--; ) {
+    o[k[l]] = v;
+  }
+  return o;
+}
 
 // Creates a variable with a unique name
 function createVariable() {
@@ -1579,13 +1699,7 @@ function parseError (str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        function _parseError (msg, hash) {
-            this.message = msg;
-            this.hash = hash;
-        }
-        _parseError.prototype = new Error();
-
-        throw new _parseError(str, hash);
+        throw new this.JisonParserError(str, hash);
     }
 }
 
@@ -1602,7 +1716,6 @@ parser.parse = function parse (input) {
         yylineno = 0,
         yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -1638,11 +1751,10 @@ parser.parse = function parse (input) {
 
     var ranges = lexer.options && lexer.options.ranges;
 
+    // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } else {
-        this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
-    }
+    } 
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -1767,7 +1879,6 @@ _handle_error_with_recovery:                // run this code when the grammar in
                                  (symbol === EOF ? 'end of input' :
                                   ("'" + (this.terminals_[symbol] || symbol) + "'"));
                     }
-                    error_signaled = true;
                     a = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -1787,7 +1898,6 @@ _handle_error_with_recovery:                // run this code when the grammar in
                 // just recovered from another error
                 if (recovering === 3) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
-                        error_signaled = true;
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -1809,7 +1919,6 @@ _handle_error_with_recovery:                // run this code when the grammar in
 
                 // try to recover from error
                 if (error_rule_depth === false) {
-                    error_signaled = true;
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -1844,7 +1953,6 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                               ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
                 // we cannot recover from the error!
-                error_signaled = true;
                 retval = this.parseError(errStr, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -1859,7 +1967,6 @@ _handle_error_end_of_section:                  // this concludes the error recov
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
-                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -1921,7 +2028,6 @@ _handle_error_end_of_section:                  // this concludes the error recov
 
                 if (typeof r !== 'undefined') {
                     retval = r;
-                    error_signaled = true;
                     break;
                 }
 
@@ -1941,14 +2047,10 @@ _handle_error_end_of_section:                  // this concludes the error recov
             case 3:
                 // accept
                 retval = true;
-                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
-            if (!error_signaled) {
-                // b0rk b0rk b0rk!
-            }
             break;
         }
     } finally {
@@ -2293,7 +2395,7 @@ return function Parser (g, options) {
 })();
 
 }).call(this,require('_process'))
-},{"../package.json":25,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"JSONSelect":12,"_process":17,"assert":14,"fs":13,"path":16}],3:[function(require,module,exports){
+},{"../package.json":24,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"_process":16,"assert":13,"fs":12,"path":15}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("./lex-parser");
@@ -2336,9 +2438,13 @@ bnf.yy.addDeclaration = function (grammar, decl) {
 
     } else if (decl.options) {
         if (!grammar.options) grammar.options = {};
+        // last occurrence of %option wins:
         for (var i = 0; i < decl.options.length; i++) {
-            grammar.options[decl.options[i]] = true;
+            grammar.options[decl.options[i][0]] = decl.options[i][1];
         }
+    } else if (decl.unknownDecl) {
+      if (!grammar.unknownDecls) grammar.unknownDecls = [];
+      grammar.unknownDecls.push(decl.unknownDecl);
     }
     else if (decl.actionInclude) {
         if (!grammar.actionInclude)
@@ -2353,112 +2459,188 @@ var parseLex = function (text) {
     return jisonlex.parse(text);
 };
 
-
 },{"./ebnf-transform":4,"./lex-parser":5,"./parser":7}],4:[function(require,module,exports){
 var EBNF = (function(){
     var parser = require('./transform-parser.js');
+    //var assert = require('assert');
+
+    var devDebug = 0;
+
+    function generatePushAction(handle, offset) {
+        var terms = handle.terms;
+        var rv = [];
+
+        for (var i = 0, len = terms.length; i < len; i++) {
+            rv.push('$' + (i + offset));
+        }
+        rv = rv.join(', ');
+        // and make sure we contain a term series unambiguously, i.e. anything more complex than
+        // a single term inside an EBNF check is produced as an array so we can differentiate
+        // between */+/? EBNF operator results and groups of tokens per individual match.
+        if (len > 1) {
+            rv = '[' + rv + ']';
+        }
+        return rv;
+    }
 
     var transformExpression = function(e, opts, emit) {
         var type = e[0], 
             value = e[1], 
-            name = false;
+            name = false,
+            has_transformed = 0;
 
         if (type === 'xalias') {
             type = e[1];
             value = e[2];
             name = e[3];
             if (type) {
-                e = e.slice(1, 2);
+                e = e.slice(1);
             } else {
                 e = value;
                 type = e[0];
                 value = e[1];
             }
+            if (devDebug > 3) console.log('xalias: ', e, type, value, name);
         }
 
         if (type === 'symbol') {
             var n;
-            if (e[1][0] === '\\') {
-                n = e[1][1];
-            }            
-            else if (e[1][0] === '\'') {
-                n = e[1].substring(1, e[1].length - 1);
-            }
-            else {
+            // if (e[1][0] === '\\') {
+            //     n = e[1][1];
+            // }            
+            // else if (e[1][0] === '\'') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else if (e[1][0] === '"') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else {
                 n = e[1];
-            }
+            // }
+            if (devDebug > 2) console.log('symbol EMIT: ', n + (name ? '[' + name + ']' : ''));
             emit(n + (name ? '[' + name + ']' : ''));
         } else if (type === '+') {
             if (!name) {
                 name = opts.production + '_repetition_plus' + opts.repid++;
             }
+            if (devDebug > 2) console.log('+ EMIT name: ', name);
             emit(name);
+
+            has_transformed = 1;
 
             opts = optsForProduction(name, opts.grammar);
             var list = transformExpressionList([value], opts);
             opts.grammar[name] = [
                 [
-                    list,
-                    '$$ = [$1];'
+                    list.fragment,
+                    '$$ = [' + generatePushAction(list, 1) + '];'
                 ],
                 [
-                    name + ' ' + list,
-                    '$1.push($2);'
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
                 ]
             ];
         } else if (type === '*') {
             if (!name) {
                 name = opts.production + '_repetition' + opts.repid++;
             }
+            if (devDebug > 2) console.log('* EMIT name: ', name);
             emit(name);
 
+            has_transformed = 1;
+            
             opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
             opts.grammar[name] = [
                 [
                     '',
                     '$$ = [];'
                 ],
                 [
-                    name + ' ' + transformExpressionList([value], opts),
-                    '$1.push($2);'
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
                 ]
             ];
         } else if (type === '?') {
             if (!name) {
                 name = opts.production + '_option' + opts.optid++;
             }
+            if (devDebug > 2) console.log('? EMIT name: ', name);
             emit(name);
 
+            has_transformed = 1;
+            
             opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            // you want to be able to check if 0 or 1 occurrences were recognized: since jison
+            // by default *copies* the lexer token value, i.e. `$$ = $1` is the default action,
+            // we will need to set the action up explicitly in case of the 0-count match: 
+            // `$$ = undefined`.
+            // 
+            // Note that we MUST return an array as the
+            // '1 occurrence' match CAN carry multiple terms, e.g. in constructs like 
+            // `(T1 T2 T3)?`.
             opts.grammar[name] = [
-                '', 
-                transformExpressionList([value], opts)
+                [
+                    '',
+                    '$$ = undefined;'
+                ],
+                [
+                    list.fragment,
+                    '$$ = ' + generatePushAction(list, 1) + ';'
+                ]
             ];
         } else if (type === '()') {
             if (value.length === 1) {
-                emit(transformExpressionList(value[0], opts));
+                var list = transformExpressionList(value[0], opts);
+                if (list.first_transformed_term_index) {
+                    has_transformed = list.first_transformed_term_index;
+                }
+                if (devDebug > 2) console.log('group EMIT len=1: ', list);
+                emit(list);
             } else {
                 if (!name) {
                     name = opts.production + '_group' + opts.groupid++;
                 }
+                if (devDebug > 2) console.log('group EMIT name: ', name);
                 emit(name);
+
+                has_transformed = 1;
 
                 opts = optsForProduction(name, opts.grammar);
                 opts.grammar[name] = value.map(function(handle) {
-                    return transformExpressionList(handle, opts);
+                    var list = transformExpressionList(handle, opts);
+                    return list.fragment;
                 });
             }
         }
+        
+        return has_transformed;
     };
 
     var transformExpressionList = function(list, opts) {
-        return list.reduce (function (tot, e) {
-            transformExpression (e, opts, function (i) {
-                tot.push(i);
+        var first_transformed_term_index = false;
+        var terms = list.reduce(function (tot, e) {
+            var ci = tot.length;
+
+            var has_transformed = transformExpression(e, opts, function (name) {
+                if (name.terms) {
+                    tot.push.apply(tot, name.terms);
+                } else {
+                    tot.push(name);
+                }
             });
+
+            if (has_transformed) {
+                first_transformed_term_index = ci + has_transformed;
+            }
             return tot;
-        }, []).
-        join(' ');
+        }, []);
+        return {
+            fragment: terms.join(' '),
+            terms: terms,
+            first_transformed_term_index: first_transformed_term_index              // 1-based index
+        };
     };
 
     var optsForProduction = function(id, grammar) {
@@ -2483,15 +2665,93 @@ var EBNF = (function(){
             }
             var expressions = parser.parse(handle);
 
-            handle = transformExpressionList(expressions, transform_opts);
+            if (devDebug > 1) console.log("\n================\nEBNF transform expressions:\n ", handle, opts, JSON.stringify(expressions, null, 2));
 
-            var ret = [handle];
+            var list = transformExpressionList(expressions, transform_opts);
+
+            var ret = [list.fragment];
             if (action) {
+                // make sure the action doesn't address any inner items.
+                if (list.first_transformed_term_index) {
+                    var rhs = list.fragment;
+                    // seek out all names and aliases; strip out literal tokens first as those cannot serve as $names:
+                    var alist = list.terms; // rhs.replace(/'[^']+'/g, '~').replace(/"[^"]+"/g, '~').split(' ');
+                    // we also know at which index the first transformation occurred:
+                    var first_index = list.first_transformed_term_index - 1;
+                    if (devDebug > 2) console.log("alist ~ rhs rule terms: ", alist, rhs);
+
+                    var alias_re = /\[[a-zA-Z_][a-zA-Z0-9_]*\]/;
+                    var term_re = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+                    // and collect the PERMITTED aliases: the names of the terms and all the remaining aliases
+                    var good_aliases = {};
+                    var alias_cnt = {};
+
+                    // WARNING: this replicates the knowledge/code of jison.js::addName()
+                    function addName(s, i) {
+                        if (good_aliases[s]) {
+                            good_aliases[s + (++alias_cnt[s])] = i + 1;
+                        } else {
+                            good_aliases[s] = i + 1;
+                            good_aliases[s + '1'] = i + 1;
+                            alias_cnt[s] = 1;
+                        }
+                    }
+
+                    for (var i = 0, len = alist.length; i < len; i++) {
+                        var term = alist[i];
+                        var alias = term.match(alias_re);
+                        if (alias) {
+                            addName(alias[0].substr(1, alias[0].length - 2), i);
+                            term = term.replace(alias_re, '');
+                        }
+                        if (term.match(term_re)) {
+                            addName(term, i);
+                        }
+                    }
+                    if (devDebug > 2) console.log("good_aliases: ", good_aliases);
+                    
+                    // now scan the action for all named and numeric semantic values ($nonterminal / $1)
+                    var named_spots = action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*\b/g);
+                    var numbered_spots = action.match(/[$@][0-9]+\b/g);
+                    var max_term_index = list.terms.length;
+                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);                    
+                    if (devDebug > 2) console.log("ACTION numbered_spots: ", numbered_spots);
+
+                    if (named_spots) {
+                        for (var i = 0, len = named_spots.length; i < len; i++) {
+                            var n = named_spots[i].substr(1);
+                            if (!good_aliases[n]) {
+                                throw new Error("The action block references the named alias '" + n + "' " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "it probably got removed by the EBNF rule rewrite process.\n" +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                            //assert(good_aliases[n] <= max_term_index, "max term index");
+                        }
+                    }
+                    if (numbered_spots) {
+                        for (var i = 0, len = numbered_spots.length; i < len; i++) {
+                            var n = parseInt(numbered_spots[i].substr(1));
+                            if (n > max_term_index) {
+                                var n_suffixes = [ "st", "nd", "rd", "th" ];
+                                throw new Error("The action block references the " + n + n_suffixes[Math.max(0, Math.min(3, n - 1))] + " term, " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                        }
+                    }
+                }
                 ret.push(action);
             }
             if (opts) {
                 ret.push(opts);
             }
+            if (devDebug > 1) console.log("\n\nEBNF tx result:\n ", JSON.stringify(list, null, 2), JSON.stringify(ret, null, 2));
+
             if (ret.length === 1) {
                 return ret[0];
             } else {
@@ -2508,7 +2768,9 @@ var EBNF = (function(){
 
     return {
         transform: function (ebnf) {
+            if (devDebug > 0) console.log("EBNF:\n ", JSON.stringify(ebnf, null, 2));
             transformGrammar(ebnf);
+            if (devDebug > 0) console.log("\n\nEBNF after transformation:\n ", JSON.stringify(ebnf, null, 2));
             return ebnf;
         }
     };
@@ -2518,7 +2780,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.15 */
+/* parser generated by jison 0.4.15-102 */
 /*
   Returns a Parser object of the following structure:
 
@@ -2528,7 +2790,8 @@ exports.transform = EBNF.transform;
 
   Parser.prototype: {
     yy: {},
-    trace: function(),
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
     symbols_: {associative list: name ==> number},
     terminals_: {associative list: number ==> name},
     productions_: [...],
@@ -2541,11 +2804,14 @@ exports.transform = EBNF.transform;
 
     lexer: {
         EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
         parseError: function(str, hash),
         setInput: function(input),
         input: function(),
         unput: function(str),
         more: function(),
+        reject: function(),
         less: function(n),
         pastInput: function(),
         upcomingInput: function(),
@@ -2637,193 +2903,431 @@ exports.transform = EBNF.transform;
   }
 */
 var lexParser = (function () {
-var __expand__ = function (k, v, o) {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
     o[k[l]] = v;
   }
   return o;
-},
-    $V0=[11,23,34,37,39,42,43,47,48,49,52,53,54,56,57],
-    $V1=[5,11,13,15,17],
-    $V2=[5,11,13,15,17,23,34,38],
-    $V3=[5,11,13,15,17,23,34,37,38,39,42,43,47,48,49,52,53,54,56,57],
-    $V4=[34,38],
-    $V5=[5,11,13,15,17,23,31,34,37,38,39,40,41,42,43,47,48,49,52,53,54,55,56,57],
-    $V6=[5,11,13,15,17,19],
-    $V7=[5,8,11,13,15,17,23,28,34,37,39,42,43,47,48,49,52,53,54,56,57,59],
-    $V8=[5,8,11,23,28,34,37,39,42,43,47,48,49,52,53,54,56,57],
-    $V9=[8,59],
-    $Va=[23,25];
+}
+
+var $V0=[6,12,14,16,18,21,65],
+    $V1=[18,26,37,40,42,45,46,50,51,52,55,56,61,63,64],
+    $V2=[6,12,14,16,18,21,26,37,41,65],
+    $V3=[6,12,14,16,18,21,26,37,40,41,42,45,46,50,51,52,55,56,61,63,64,65],
+    $V4=[37,41],
+    $V5=[6,12,14,16,18,21,26,34,37,40,41,42,43,44,45,46,50,51,52,55,56,61,62,63,64,65],
+    $V6=[6,12,14,16,18,21,22,65],
+    $V7=[6,9,12,14,16,18,21,26,31,37,40,42,45,46,50,51,52,55,56,61,63,64,65,72],
+    $V8=[6,9,18,26,31,37,40,42,45,46,50,51,52,55,56,61,63,64],
+    $V9=[55,58],
+    $Va=[9,72],
+    $Vb=[26,28];
+
 var parser = {
 trace: function trace() { },
+JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
   "error": 2,
   "lex": 3,
-  "definitions": 4,
-  "%%": 5,
-  "rules": 6,
-  "epilogue": 7,
-  "EOF": 8,
-  "extra_lexer_module_code": 9,
-  "definition": 10,
-  "ACTION": 11,
-  "include_macro_code": 12,
-  "NAME": 13,
-  "regex": 14,
-  "START_INC": 15,
-  "names_inclusive": 16,
-  "START_EXC": 17,
-  "names_exclusive": 18,
-  "START_COND": 19,
-  "rule": 20,
-  "start_conditions": 21,
-  "action": 22,
-  "{": 23,
-  "action_body": 24,
-  "}": 25,
-  "action_comments_body": 26,
-  "ACTION_BODY": 27,
-  "<": 28,
-  "name_list": 29,
-  ">": 30,
-  "*": 31,
-  ",": 32,
-  "regex_list": 33,
-  "|": 34,
-  "regex_concat": 35,
-  "regex_base": 36,
-  "(": 37,
-  ")": 38,
-  "SPECIAL_GROUP": 39,
-  "+": 40,
-  "?": 41,
-  "/": 42,
-  "/!": 43,
-  "name_expansion": 44,
-  "range_regex": 45,
-  "any_group_regex": 46,
-  ".": 47,
-  "^": 48,
-  "$": 49,
-  "string": 50,
-  "escape_char": 51,
-  "NAME_BRACE": 52,
-  "ANY_GROUP_REGEX": 53,
-  "ESCAPE_CHAR": 54,
-  "RANGE_REGEX": 55,
-  "STRING_LIT": 56,
-  "CHARACTER_LIT": 57,
-  "optional_module_code_chunk": 58,
-  "INCLUDE": 59,
-  "PATH": 60,
-  "module_code_chunk": 61,
-  "CODE": 62,
+  "init": 4,
+  "definitions": 5,
+  "%%": 6,
+  "rules": 7,
+  "epilogue": 8,
+  "EOF": 9,
+  "extra_lexer_module_code": 10,
+  "definition": 11,
+  "NAME": 12,
+  "regex": 13,
+  "START_INC": 14,
+  "names_inclusive": 15,
+  "START_EXC": 16,
+  "names_exclusive": 17,
+  "ACTION": 18,
+  "include_macro_code": 19,
+  "options": 20,
+  "UNKNOWN_DECL": 21,
+  "START_COND": 22,
+  "rule": 23,
+  "start_conditions": 24,
+  "action": 25,
+  "{": 26,
+  "action_body": 27,
+  "}": 28,
+  "action_comments_body": 29,
+  "ACTION_BODY": 30,
+  "<": 31,
+  "name_list": 32,
+  ">": 33,
+  "*": 34,
+  ",": 35,
+  "regex_list": 36,
+  "|": 37,
+  "regex_concat": 38,
+  "regex_base": 39,
+  "(": 40,
+  ")": 41,
+  "SPECIAL_GROUP": 42,
+  "+": 43,
+  "?": 44,
+  "/": 45,
+  "/!": 46,
+  "name_expansion": 47,
+  "range_regex": 48,
+  "any_group_regex": 49,
+  ".": 50,
+  "^": 51,
+  "$": 52,
+  "string": 53,
+  "escape_char": 54,
+  "NAME_BRACE": 55,
+  "REGEX_SET_START": 56,
+  "regex_set": 57,
+  "REGEX_SET_END": 58,
+  "regex_set_atom": 59,
+  "REGEX_SET": 60,
+  "ESCAPE_CHAR": 61,
+  "RANGE_REGEX": 62,
+  "STRING_LIT": 63,
+  "CHARACTER_LIT": 64,
+  "OPTIONS": 65,
+  "option_list": 66,
+  "OPTIONS_END": 67,
+  "option": 68,
+  "=": 69,
+  "OPTION_VALUE": 70,
+  "optional_module_code_chunk": 71,
+  "INCLUDE": 72,
+  "PATH": 73,
+  "module_code_chunk": 74,
+  "CODE": 75,
   "$accept": 0,
   "$end": 1
 },
 terminals_: {
   2: "error",
-  5: "%%",
-  8: "EOF",
-  11: "ACTION",
-  13: "NAME",
-  15: "START_INC",
-  17: "START_EXC",
-  19: "START_COND",
-  23: "{",
-  25: "}",
-  27: "ACTION_BODY",
-  28: "<",
-  30: ">",
-  31: "*",
-  32: ",",
-  34: "|",
-  37: "(",
-  38: ")",
-  39: "SPECIAL_GROUP",
-  40: "+",
-  41: "?",
-  42: "/",
-  43: "/!",
-  47: ".",
-  48: "^",
-  49: "$",
-  52: "NAME_BRACE",
-  53: "ANY_GROUP_REGEX",
-  54: "ESCAPE_CHAR",
-  55: "RANGE_REGEX",
-  56: "STRING_LIT",
-  57: "CHARACTER_LIT",
-  59: "INCLUDE",
-  60: "PATH",
-  62: "CODE"
+  6: "%%",
+  9: "EOF",
+  12: "NAME",
+  14: "START_INC",
+  16: "START_EXC",
+  18: "ACTION",
+  21: "UNKNOWN_DECL",
+  22: "START_COND",
+  26: "{",
+  28: "}",
+  30: "ACTION_BODY",
+  31: "<",
+  33: ">",
+  34: "*",
+  35: ",",
+  37: "|",
+  40: "(",
+  41: ")",
+  42: "SPECIAL_GROUP",
+  43: "+",
+  44: "?",
+  45: "/",
+  46: "/!",
+  50: ".",
+  51: "^",
+  52: "$",
+  55: "NAME_BRACE",
+  56: "REGEX_SET_START",
+  58: "REGEX_SET_END",
+  60: "REGEX_SET",
+  61: "ESCAPE_CHAR",
+  62: "RANGE_REGEX",
+  63: "STRING_LIT",
+  64: "CHARACTER_LIT",
+  65: "OPTIONS",
+  67: "OPTIONS_END",
+  69: "=",
+  70: "OPTION_VALUE",
+  72: "INCLUDE",
+  73: "PATH",
+  75: "CODE"
 },
 productions_: [
   0,
   [
     3,
-    4
+    5
   ],
   [
-    7,
+    8,
     1
   ],
   [
-    7,
+    8,
     3
-  ],
-  [
-    4,
-    2
-  ],
-  [
-    4,
-    2
-  ],
-  [
-    4,
-    2
   ],
   [
     4,
     0
   ],
   [
-    10,
+    5,
     2
   ],
   [
-    10,
+    5,
+    0
+  ],
+  [
+    11,
     2
   ],
   [
-    10,
+    11,
     2
   ],
   [
-    16,
+    11,
+    2
+  ],
+  [
+    11,
     1
   ],
   [
-    16,
-    2
-  ],
-  [
-    18,
+    11,
     1
   ],
   [
-    18,
+    11,
+    1
+  ],
+  [
+    11,
+    1
+  ],
+  [
+    15,
+    1
+  ],
+  [
+    15,
     2
   ],
   [
-    6,
+    17,
+    1
+  ],
+  [
+    17,
     2
   ],
   [
-    6,
+    7,
+    2
+  ],
+  [
+    7,
+    1
+  ],
+  [
+    23,
+    3
+  ],
+  [
+    25,
+    3
+  ],
+  [
+    25,
+    1
+  ],
+  [
+    25,
+    1
+  ],
+  [
+    27,
+    0
+  ],
+  [
+    27,
+    1
+  ],
+  [
+    27,
+    5
+  ],
+  [
+    27,
+    4
+  ],
+  [
+    29,
+    1
+  ],
+  [
+    29,
+    2
+  ],
+  [
+    24,
+    3
+  ],
+  [
+    24,
+    3
+  ],
+  [
+    24,
+    0
+  ],
+  [
+    32,
+    1
+  ],
+  [
+    32,
+    3
+  ],
+  [
+    13,
+    1
+  ],
+  [
+    36,
+    3
+  ],
+  [
+    36,
+    2
+  ],
+  [
+    36,
+    1
+  ],
+  [
+    36,
+    0
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    39,
+    3
+  ],
+  [
+    39,
+    3
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    2
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    39,
+    1
+  ],
+  [
+    47,
+    1
+  ],
+  [
+    49,
+    3
+  ],
+  [
+    57,
+    2
+  ],
+  [
+    57,
+    1
+  ],
+  [
+    59,
+    1
+  ],
+  [
+    59,
+    1
+  ],
+  [
+    54,
+    1
+  ],
+  [
+    48,
+    1
+  ],
+  [
+    53,
+    1
+  ],
+  [
+    53,
     1
   ],
   [
@@ -2831,203 +3335,55 @@ productions_: [
     3
   ],
   [
-    22,
+    66,
+    2
+  ],
+  [
+    66,
+    1
+  ],
+  [
+    68,
+    1
+  ],
+  [
+    68,
     3
   ],
   [
-    22,
-    1
-  ],
-  [
-    22,
-    1
-  ],
-  [
-    24,
-    0
-  ],
-  [
-    24,
-    1
-  ],
-  [
-    24,
-    5
-  ],
-  [
-    24,
-    4
-  ],
-  [
-    26,
-    1
-  ],
-  [
-    26,
-    2
-  ],
-  [
-    21,
+    68,
     3
   ],
   [
-    21,
+    10,
+    1
+  ],
+  [
+    10,
     3
   ],
   [
-    21,
-    0
-  ],
-  [
-    29,
-    1
-  ],
-  [
-    29,
-    3
-  ],
-  [
-    14,
-    1
-  ],
-  [
-    33,
-    3
-  ],
-  [
-    33,
+    19,
     2
   ],
   [
-    33,
-    1
-  ],
-  [
-    33,
-    0
-  ],
-  [
-    35,
+    19,
     2
   ],
   [
-    35,
+    74,
     1
   ],
   [
-    36,
-    3
-  ],
-  [
-    36,
-    3
-  ],
-  [
-    36,
+    74,
     2
   ],
   [
-    36,
-    2
-  ],
-  [
-    36,
-    2
-  ],
-  [
-    36,
-    2
-  ],
-  [
-    36,
-    2
-  ],
-  [
-    36,
+    71,
     1
   ],
   [
-    36,
-    2
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    36,
-    1
-  ],
-  [
-    44,
-    1
-  ],
-  [
-    46,
-    1
-  ],
-  [
-    51,
-    1
-  ],
-  [
-    45,
-    1
-  ],
-  [
-    50,
-    1
-  ],
-  [
-    50,
-    1
-  ],
-  [
-    9,
-    1
-  ],
-  [
-    9,
-    3
-  ],
-  [
-    12,
-    2
-  ],
-  [
-    12,
-    2
-  ],
-  [
-    61,
-    1
-  ],
-  [
-    61,
-    2
-  ],
-  [
-    58,
-    1
-  ],
-  [
-    58,
+    71,
     0
   ]
 ],
@@ -3037,11 +3393,12 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
-/*! Production::     lex : definitions %% rules epilogue */
+/*! Production::     lex : init definitions %% rules epilogue */
  
           this.$ = { rules: $$[$0-1] };
           if ($$[$0-3][0]) this.$.macros = $$[$0-3][0];
           if ($$[$0-3][1]) this.$.startConditions = $$[$0-3][1];
+          if ($$[$0-3][2]) this.$.unknownDecls = $$[$0-3][2];
           if ($$[$0] && $$[$0].trim() !== '') this.$.moduleInclude = $$[$0];
           if (yy.options) this.$.options = yy.options;
           if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
@@ -3052,136 +3409,151 @@ case 1 :
 break;
 case 2 : 
 /*! Production::     epilogue : EOF */
+ case 12 : 
+/*! Production::     definition : options */
   this.$ = null;  
 break;
 case 3 : 
 /*! Production::     epilogue : %% extra_lexer_module_code EOF */
- case 18 : 
+ case 21 : 
 /*! Production::     action : { action_body } */
- case 27 : 
+ case 30 : 
 /*! Production::     start_conditions : < name_list > */
   this.$ = $$[$0-1];  
 break;
 case 4 : 
+/*! Production::     init :  */
+  yy.actionInclude = '';  
+break;
+case 5 : 
 /*! Production::     definitions : definition definitions */
  
           this.$ = $$[$0];
-          if ('length' in $$[$0-1]) {
-            this.$[0] = this.$[0] || {};
-            this.$[0][$$[$0-1][0]] = $$[$0-1][1];
-          } else {
-            this.$[1] = this.$[1] || {};
-            for (var name in $$[$0-1]) {
-              this.$[1][name] = $$[$0-1][name];
+          if ($$[$0-1] != null) {
+            if ('length' in $$[$0-1]) {
+              this.$[0] = this.$[0] || {};
+              this.$[0][$$[$0-1][0]] = $$[$0-1][1];
+            } else if ($$[$0-1].type === 'names') {
+              this.$[1] = this.$[1] || {};
+              for (var name in $$[$0-1].names) {
+                this.$[1][name] = $$[$0-1].names[name];
+              }
+            } else if ($$[$0-1].type === 'unknown') {
+              this.$[2] = this.$[2] || [];
+              this.$[2].push($$[$0-1].body);
             }
           }
          
 break;
-case 5 : 
-/*! Production::     definitions : ACTION definitions */
- case 6 : 
-/*! Production::     definitions : include_macro_code definitions */
-  yy.actionInclude += $$[$0-1]; this.$ = $$[$0];  
+case 6 : 
+/*! Production::     definitions :  */
+  this.$ = [null, null];  
 break;
 case 7 : 
-/*! Production::     definitions :  */
-  yy.actionInclude = ''; this.$ = [null, null];  
-break;
-case 8 : 
 /*! Production::     definition : NAME regex */
   this.$ = [$$[$0-1], $$[$0]];  
 break;
-case 9 : 
+case 8 : 
 /*! Production::     definition : START_INC names_inclusive */
- case 10 : 
+ case 9 : 
 /*! Production::     definition : START_EXC names_exclusive */
- case 19 : 
-/*! Production::     action : ACTION */
- case 20 : 
-/*! Production::     action : include_macro_code */
  case 22 : 
-/*! Production::     action_body : action_comments_body */
+/*! Production::     action : ACTION */
+ case 23 : 
+/*! Production::     action : include_macro_code */
  case 25 : 
+/*! Production::     action_body : action_comments_body */
+ case 28 : 
 /*! Production::     action_comments_body : ACTION_BODY */
- case 55 : 
-/*! Production::     any_group_regex : ANY_GROUP_REGEX */
- case 56 : 
+ case 63 : 
 /*! Production::     escape_char : ESCAPE_CHAR */
- case 57 : 
-/*! Production::     range_regex : RANGE_REGEX */
- case 60 : 
-/*! Production::     extra_lexer_module_code : optional_module_code_chunk */
  case 64 : 
+/*! Production::     range_regex : RANGE_REGEX */
+ case 73 : 
+/*! Production::     extra_lexer_module_code : optional_module_code_chunk */
+ case 77 : 
 /*! Production::     module_code_chunk : CODE */
- case 66 : 
+ case 79 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
   this.$ = $$[$0];  
 break;
-case 11 : 
-/*! Production::     names_inclusive : START_COND */
-  this.$ = {}; this.$[$$[$0]] = 0;  
-break;
-case 12 : 
-/*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0-1]; this.$[$$[$0]] = 0;  
+case 10 : 
+/*! Production::     definition : ACTION */
+ case 11 : 
+/*! Production::     definition : include_macro_code */
+  yy.actionInclude += $$[$0]; this.$ = null;  
 break;
 case 13 : 
-/*! Production::     names_exclusive : START_COND */
-  this.$ = {}; this.$[$$[$0]] = 1;  
+/*! Production::     definition : UNKNOWN_DECL */
+  this.$ = {type: 'unknown', body: $$[$0]};  
 break;
 case 14 : 
-/*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0-1]; this.$[$$[$0]] = 1;  
+/*! Production::     names_inclusive : START_COND */
+  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
 break;
 case 15 : 
+/*! Production::     names_inclusive : names_inclusive START_COND */
+  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 0;  
+break;
+case 16 : 
+/*! Production::     names_exclusive : START_COND */
+  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
+break;
+case 17 : 
+/*! Production::     names_exclusive : names_exclusive START_COND */
+  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 1;  
+break;
+case 18 : 
 /*! Production::     rules : rules rule */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
-case 16 : 
+case 19 : 
 /*! Production::     rules : rule */
- case 30 : 
+ case 33 : 
 /*! Production::     name_list : NAME */
   this.$ = [$$[$0]];  
 break;
-case 17 : 
+case 20 : 
 /*! Production::     rule : start_conditions regex action */
   this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
 break;
-case 21 : 
+case 24 : 
 /*! Production::     action_body :  */
- case 36 : 
+ case 39 : 
 /*! Production::     regex_list :  */
- case 67 : 
+ case 80 : 
 /*! Production::     optional_module_code_chunk :  */
   this.$ = '';  
 break;
-case 23 : 
+case 26 : 
 /*! Production::     action_body : action_body { action_body } action_comments_body */
   this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 24 : 
+case 27 : 
 /*! Production::     action_body : action_body { action_body } */
   this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 26 : 
+case 29 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
- case 37 : 
+ case 40 : 
 /*! Production::     regex_concat : regex_concat regex_base */
- case 47 : 
+ case 50 : 
 /*! Production::     regex_base : regex_base range_regex */
- case 65 : 
+ case 59 : 
+/*! Production::     regex_set : regex_set_atom regex_set */
+ case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
   this.$ = $$[$0-1] + $$[$0];  
 break;
-case 28 : 
+case 31 : 
 /*! Production::     start_conditions : < * > */
   this.$ = ['*'];  
 break;
-case 31 : 
+case 34 : 
 /*! Production::     name_list : name_list , NAME */
   this.$ = $$[$0-2]; this.$.push($$[$0]);  
 break;
-case 32 : 
+case 35 : 
 /*! Production::     regex : regex_list */
  
           this.$ = $$[$0];
@@ -3190,63 +3562,79 @@ case 32 :
           }
          
 break;
-case 33 : 
+case 36 : 
 /*! Production::     regex_list : regex_list | regex_concat */
   this.$ = $$[$0-2] + '|' + $$[$0];  
 break;
-case 34 : 
+case 37 : 
 /*! Production::     regex_list : regex_list | */
   this.$ = $$[$0-1] + '|';  
 break;
-case 39 : 
+case 42 : 
 /*! Production::     regex_base : ( regex_list ) */
   this.$ = '(' + $$[$0-1] + ')';  
 break;
-case 40 : 
+case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ) */
   this.$ = $$[$0-2] + $$[$0-1] + ')';  
 break;
-case 41 : 
+case 44 : 
 /*! Production::     regex_base : regex_base + */
   this.$ = $$[$0-1] + '+';  
 break;
-case 42 : 
+case 45 : 
 /*! Production::     regex_base : regex_base * */
   this.$ = $$[$0-1] + '*';  
 break;
-case 43 : 
+case 46 : 
 /*! Production::     regex_base : regex_base ? */
   this.$ = $$[$0-1] + '?';  
 break;
-case 44 : 
+case 47 : 
 /*! Production::     regex_base : / regex_base */
   this.$ = '(?=' + $$[$0] + ')';  
 break;
-case 45 : 
+case 48 : 
 /*! Production::     regex_base : /! regex_base */
   this.$ = '(?!' + $$[$0] + ')';  
 break;
-case 49 : 
+case 52 : 
 /*! Production::     regex_base : . */
   this.$ = '.';  
 break;
-case 50 : 
+case 53 : 
 /*! Production::     regex_base : ^ */
   this.$ = '^';  
 break;
-case 51 : 
+case 54 : 
 /*! Production::     regex_base : $ */
   this.$ = '$';  
 break;
 case 58 : 
-/*! Production::     string : STRING_LIT */
-  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
-break;
-case 61 : 
+/*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
+ case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
   this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
 case 62 : 
+/*! Production::     regex_set_atom : name_expansion */
+  this.$ = '{[' + $$[$0] + ']}';  
+break;
+case 65 : 
+/*! Production::     string : STRING_LIT */
+  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
+break;
+case 70 : 
+/*! Production::     option : NAME */
+  yy.options[$$[$0]] = true;  
+break;
+case 71 : 
+/*! Production::     option : NAME = OPTION_VALUE */
+ case 72 : 
+/*! Production::     option : NAME = NAME */
+  yy.options[$$[$0-2]] = $$[$0];  
+break;
+case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
   
             var fs = require('fs');
@@ -3255,7 +3643,7 @@ case 62 :
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
          
 break;
-case 63 : 
+case 76 : 
 /*! Production::     include_macro_code : INCLUDE error */
   
             console.error("%include MUST be followed by a valid file path"); 
@@ -3264,542 +3652,513 @@ break;
 }
 },
 table: [
-  {
-    3: 1,
-    4: 2,
-    5: [
+  __expand__($V0, [
       2,
-      7
-    ],
-    10: 3,
-    11: [
-      1,
       4
-    ],
-    12: 5,
-    13: [
-      1,
-      6
-    ],
-    15: [
-      1,
-      7
-    ],
-    17: [
-      1,
-      8
-    ],
-    59: [
-      1,
-      9
+    ], {3:1,4:2,72:[
+      2,
+      4
     ]
-  },
+  }),
   {
     1: [
       3
     ]
   },
   {
-    5: [
-      1,
-      10
-    ]
-  },
-  {
-    4: 11,
-    5: [
+    5: 3,
+    6: [
       2,
-      7
+      6
     ],
-    10: 3,
-    11: [
+    11: 4,
+    12: [
       1,
-      4
+      5
     ],
-    12: 5,
-    13: [
+    14: [
       1,
       6
     ],
-    15: [
+    16: [
       1,
       7
     ],
-    17: [
+    18: [
       1,
       8
     ],
-    59: [
+    19: 9,
+    20: 10,
+    21: [
       1,
-      9
+      11
+    ],
+    65: [
+      1,
+      13
+    ],
+    72: [
+      1,
+      12
     ]
   },
   {
-    4: 12,
-    5: [
-      2,
-      7
-    ],
-    10: 3,
-    11: [
+    6: [
       1,
-      4
-    ],
-    12: 5,
-    13: [
-      1,
-      6
-    ],
-    15: [
-      1,
-      7
-    ],
-    17: [
-      1,
-      8
-    ],
-    59: [
-      1,
-      9
+      14
     ]
   },
   {
-    4: 13,
-    5: [
+    5: 15,
+    6: [
       2,
-      7
+      6
     ],
-    10: 3,
-    11: [
+    11: 4,
+    12: [
       1,
-      4
+      5
     ],
-    12: 5,
-    13: [
+    14: [
       1,
       6
     ],
-    15: [
+    16: [
       1,
       7
     ],
-    17: [
+    18: [
       1,
       8
     ],
-    59: [
+    19: 9,
+    20: 10,
+    21: [
       1,
-      9
+      11
+    ],
+    65: [
+      1,
+      13
+    ],
+    72: [
+      1,
+      12
     ]
   },
-  __expand__([5,11,13,15,17,34], [
+  __expand__([6,12,14,16,18,21,37,65], [
       2,
-      36
-    ], {14:14,33:15,35:16,36:17,44:22,46:23,50:27,51:28,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
+      39
+    ], {13:16,36:17,38:18,39:19,47:24,49:25,53:29,54:30,40:[
       1,
       20
-    ],43:[
+    ],42:[
       1,
       21
-    ],47:[
+    ],45:[
       1,
-      24
-    ],48:[
+      22
+    ],46:[
       1,
-      25
-    ],49:[
+      23
+    ],50:[
       1,
       26
+    ],51:[
+      1,
+      27
     ],52:[
       1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
+      28
+    ],55:[
       1,
       31
-    ],57:[
+    ],56:[
       1,
       32
-    ],59:[
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
+    ],72:[
       2,
-      36
+      39
     ]
   }),
   {
-    16: 34,
-    19: [
-      1,
-      35
-    ]
-  },
-  {
-    18: 36,
-    19: [
+    15: 36,
+    22: [
       1,
       37
     ]
   },
   {
-    2: [
+    17: 38,
+    22: [
       1,
       39
-    ],
-    60: [
-      1,
-      38
     ]
   },
   __expand__($V0, [
       2,
-      29
-    ], {6:40,20:41,21:42,28:[
-      1,
-      43
-    ],59:[
+      10
+    ], {72:[
       2,
-      29
+      10
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      11
+    ], {72:[
+      2,
+      11
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      12
+    ], {72:[
+      2,
+      12
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      13
+    ], {72:[
+      2,
+      13
     ]
   }),
   {
-    5: [
-      2,
-      4
+    2: [
+      1,
+      41
+    ],
+    73: [
+      1,
+      40
     ]
   },
   {
-    5: [
+    12: [
+      1,
+      44
+    ],
+    66: 42,
+    68: 43
+  },
+  __expand__($V1, [
+      2,
+      32
+    ], {7:45,23:46,24:47,31:[
+      1,
+      48
+    ],72:[
+      2,
+      32
+    ]
+  }),
+  {
+    6: [
       2,
       5
     ]
   },
-  {
-    5: [
+  __expand__($V0, [
       2,
-      6
-    ]
-  },
-  __expand__($V1, [
+      7
+    ], {72:[
       2,
-      8
-    ], {59:[
-      2,
-      8
+      7
     ]
   }),
-  __expand__([5,11,13,15,17,23], [
+  __expand__([6,12,14,16,18,21,26,65], [
       2,
-      32
-    ], {34:[
+      35
+    ], {37:[
       1,
-      44
-    ],59:[
+      49
+    ],72:[
       2,
-      32
+      35
     ]
   }),
   __expand__($V2, [
       2,
-      35
-    ], {44:22,46:23,50:27,51:28,36:45,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
+      38
+    ], {47:24,49:25,53:29,54:30,39:50,40:[
       1,
       20
-    ],43:[
+    ],42:[
       1,
       21
-    ],47:[
+    ],45:[
       1,
-      24
-    ],48:[
+      22
+    ],46:[
       1,
-      25
-    ],49:[
+      23
+    ],50:[
       1,
       26
+    ],51:[
+      1,
+      27
     ],52:[
       1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
+      28
+    ],55:[
       1,
       31
-    ],57:[
+    ],56:[
       1,
       32
-    ],59:[
-      2,
+    ],61:[
+      1,
       35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
+    ],72:[
+      2,
+      38
     ]
   }),
   __expand__($V3, [
       2,
-      38
-    ], {45:49,31:[
+      41
+    ], {48:54,34:[
       1,
-      47
-    ],40:[
+      52
+    ],43:[
       1,
-      46
-    ],41:[
+      51
+    ],44:[
       1,
-      48
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
+      2,
+      41
+    ]
+  }),
+  __expand__($V4, [
+      2,
+      39
+    ], {38:18,39:19,47:24,49:25,53:29,54:30,36:56,40:[
+      1,
+      20
+    ],42:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],46:[
+      1,
+      23
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],52:[
+      1,
+      28
     ],55:[
       1,
-      50
-    ],59:[
-      2,
-      38
+      31
+    ],56:[
+      1,
+      32
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
     ]
   }),
   __expand__($V4, [
       2,
-      36
-    ], {35:16,36:17,44:22,46:23,50:27,51:28,33:51,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
+      39
+    ], {38:18,39:19,47:24,49:25,53:29,54:30,36:57,40:[
       1,
       20
-    ],43:[
-      1,
-      21
-    ],47:[
-      1,
-      24
-    ],48:[
-      1,
-      25
-    ],49:[
-      1,
-      26
-    ],52:[
-      1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
-      1,
-      31
-    ],57:[
-      1,
-      32
-    ]
-  }),
-  __expand__($V4, [
-      2,
-      36
-    ], {35:16,36:17,44:22,46:23,50:27,51:28,33:52,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
     ],42:[
       1,
-      20
-    ],43:[
-      1,
       21
-    ],47:[
+    ],45:[
       1,
-      24
-    ],48:[
+      22
+    ],46:[
       1,
-      25
-    ],49:[
+      23
+    ],50:[
       1,
       26
+    ],51:[
+      1,
+      27
     ],52:[
       1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
+      28
+    ],55:[
       1,
       31
-    ],57:[
+    ],56:[
       1,
       32
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
     ]
   }),
   {
-    36: 53,
-    37: [
-      1,
-      18
-    ],
-    39: [
-      1,
-      19
-    ],
-    42: [
+    39: 58,
+    40: [
       1,
       20
     ],
-    43: [
+    42: [
       1,
       21
     ],
-    44: 22,
-    46: 23,
-    47: [
+    45: [
       1,
-      24
+      22
     ],
-    48: [
+    46: [
       1,
-      25
+      23
     ],
-    49: [
+    47: 24,
+    49: 25,
+    50: [
       1,
       26
     ],
-    50: 27,
-    51: 28,
+    51: [
+      1,
+      27
+    ],
     52: [
       1,
-      29
+      28
     ],
-    53: [
-      1,
-      30
-    ],
-    54: [
-      1,
-      33
-    ],
-    56: [
+    53: 29,
+    54: 30,
+    55: [
       1,
       31
     ],
-    57: [
+    56: [
       1,
       32
+    ],
+    61: [
+      1,
+      35
+    ],
+    63: [
+      1,
+      33
+    ],
+    64: [
+      1,
+      34
     ]
   },
   {
-    36: 54,
-    37: [
-      1,
-      18
-    ],
-    39: [
-      1,
-      19
-    ],
-    42: [
+    39: 59,
+    40: [
       1,
       20
     ],
-    43: [
+    42: [
       1,
       21
     ],
-    44: 22,
-    46: 23,
-    47: [
+    45: [
       1,
-      24
+      22
     ],
-    48: [
+    46: [
       1,
-      25
+      23
     ],
-    49: [
+    47: 24,
+    49: 25,
+    50: [
       1,
       26
     ],
-    50: 27,
-    51: 28,
+    51: [
+      1,
+      27
+    ],
     52: [
       1,
-      29
+      28
     ],
-    53: [
-      1,
-      30
-    ],
-    54: [
-      1,
-      33
-    ],
-    56: [
+    53: 29,
+    54: 30,
+    55: [
       1,
       31
     ],
-    57: [
+    56: [
       1,
       32
+    ],
+    61: [
+      1,
+      35
+    ],
+    63: [
+      1,
+      33
+    ],
+    64: [
+      1,
+      34
     ]
   },
   __expand__($V5, [
       2,
-      46
-    ], {59:[
-      2,
-      46
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      48
-    ], {59:[
-      2,
-      48
-    ]
-  }),
-  __expand__($V5, [
+      49
+    ], {72:[
       2,
       49
-    ], {59:[
-      2,
-      49
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      50
-    ], {59:[
-      2,
-      50
     ]
   }),
   __expand__($V5, [
       2,
       51
-    ], {59:[
+    ], {72:[
       2,
       51
     ]
@@ -3807,7 +4166,7 @@ table: [
   __expand__($V5, [
       2,
       52
-    ], {59:[
+    ], {72:[
       2,
       52
     ]
@@ -3815,7 +4174,7 @@ table: [
   __expand__($V5, [
       2,
       53
-    ], {59:[
+    ], {72:[
       2,
       53
     ]
@@ -3823,7 +4182,7 @@ table: [
   __expand__($V5, [
       2,
       54
-    ], {59:[
+    ], {72:[
       2,
       54
     ]
@@ -3831,349 +4190,467 @@ table: [
   __expand__($V5, [
       2,
       55
-    ], {59:[
+    ], {72:[
       2,
       55
     ]
   }),
   __expand__($V5, [
       2,
-      58
-    ], {59:[
+      56
+    ], {72:[
       2,
-      58
+      56
+    ]
+  }),
+  __expand__([6,12,14,16,18,21,26,34,37,40,41,42,43,44,45,46,50,51,52,55,56,58,60,61,62,63,64,65], [
+      2,
+      57
+    ], {72:[
+      2,
+      57
+    ]
+  }),
+  {
+    47: 63,
+    55: [
+      1,
+      31
+    ],
+    57: 60,
+    59: 61,
+    60: [
+      1,
+      62
+    ]
+  },
+  __expand__($V5, [
+      2,
+      65
+    ], {72:[
+      2,
+      65
     ]
   }),
   __expand__($V5, [
       2,
-      59
-    ], {59:[
+      66
+    ], {72:[
       2,
-      59
+      66
     ]
   }),
   __expand__($V5, [
-      2,
-      56
-    ], {59:[
-      2,
-      56
-    ]
-  }),
-  __expand__($V1, [
-      2,
-      9
-    ], {19:[
-      1,
-      55
-    ],59:[
-      2,
-      9
-    ]
-  }),
-  __expand__($V6, [
-      2,
-      11
-    ], {59:[
-      2,
-      11
-    ]
-  }),
-  __expand__($V1, [
-      2,
-      10
-    ], {19:[
-      1,
-      56
-    ],59:[
-      2,
-      10
-    ]
-  }),
-  __expand__($V6, [
-      2,
-      13
-    ], {59:[
-      2,
-      13
-    ]
-  }),
-  __expand__($V7, [
-      2,
-      62
-    ], {62:[
-      2,
-      62
-    ]
-  }),
-  __expand__($V7, [
       2,
       63
-    ], {62:[
+    ], {72:[
       2,
       63
     ]
   }),
   __expand__($V0, [
       2,
-      29
-    ], {21:42,7:57,20:58,5:[
-      1,
-      60
-    ],8:[
-      1,
-      59
-    ],28:[
-      1,
-      43
-    ],59:[
-      2,
-      29
-    ]
-  }),
-  __expand__($V8, [
-      2,
-      16
-    ], {59:[
-      2,
-      16
-    ]
-  }),
-  __expand__([11,23,34], [
-      2,
-      36
-    ], {33:15,35:16,36:17,44:22,46:23,50:27,51:28,14:61,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
-      1,
-      20
-    ],43:[
-      1,
-      21
-    ],47:[
-      1,
-      24
-    ],48:[
-      1,
-      25
-    ],49:[
-      1,
-      26
-    ],52:[
-      1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
-      1,
-      31
-    ],57:[
-      1,
-      32
-    ],59:[
-      2,
-      36
-    ]
-  }),
-  {
-    13: [
+      8
+    ], {22:[
       1,
       64
-    ],
-    29: 62,
-    31: [
-      1,
-      63
-    ]
-  },
-  __expand__($V2, [
+    ],72:[
       2,
-      34
-    ], {36:17,44:22,46:23,50:27,51:28,35:65,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
-      1,
-      20
-    ],43:[
-      1,
-      21
-    ],47:[
-      1,
-      24
-    ],48:[
-      1,
-      25
-    ],49:[
-      1,
-      26
-    ],52:[
-      1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
-      1,
-      31
-    ],57:[
-      1,
-      32
-    ],59:[
-      2,
-      34
+      8
     ]
   }),
-  __expand__($V3, [
+  __expand__($V6, [
       2,
-      37
-    ], {45:49,31:[
+      14
+    ], {72:[
+      2,
+      14
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      9
+    ], {22:[
       1,
-      47
-    ],40:[
-      1,
-      46
-    ],41:[
-      1,
-      48
-    ],55:[
-      1,
-      50
-    ],59:[
+      65
+    ],72:[
       2,
-      37
+      9
     ]
   }),
-  __expand__($V5, [
+  __expand__($V6, [
       2,
-      41
-    ], {59:[
+      16
+    ], {72:[
       2,
-      41
+      16
     ]
   }),
-  __expand__($V5, [
+  __expand__($V7, [
       2,
-      42
-    ], {59:[
+      75
+    ], {75:[
       2,
-      42
+      75
     ]
   }),
-  __expand__($V5, [
+  __expand__($V7, [
       2,
-      43
-    ], {59:[
+      76
+    ], {75:[
       2,
-      43
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      47
-    ], {59:[
-      2,
-      47
-    ]
-  }),
-  __expand__($V5, [
-      2,
-      57
-    ], {59:[
-      2,
-      57
+      76
     ]
   }),
   {
-    34: [
-      1,
-      44
-    ],
-    38: [
+    67: [
       1,
       66
     ]
   },
   {
-    34: [
+    12: [
       1,
       44
     ],
-    38: [
+    66: 67,
+    67: [
+      2,
+      69
+    ],
+    68: 43
+  },
+  __expand__([12,67], [
+      2,
+      70
+    ], {69:[
       1,
-      67
+      68
+    ]
+  }),
+  __expand__($V1, [
+      2,
+      32
+    ], {24:47,8:69,23:70,6:[
+      1,
+      72
+    ],9:[
+      1,
+      71
+    ],31:[
+      1,
+      48
+    ],72:[
+      2,
+      32
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      19
+    ], {72:[
+      2,
+      19
+    ]
+  }),
+  __expand__([18,26,37], [
+      2,
+      39
+    ], {36:17,38:18,39:19,47:24,49:25,53:29,54:30,13:73,40:[
+      1,
+      20
+    ],42:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],46:[
+      1,
+      23
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],52:[
+      1,
+      28
+    ],55:[
+      1,
+      31
+    ],56:[
+      1,
+      32
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
+    ],72:[
+      2,
+      39
+    ]
+  }),
+  {
+    12: [
+      1,
+      76
+    ],
+    32: 74,
+    34: [
+      1,
+      75
+    ]
+  },
+  __expand__($V2, [
+      2,
+      37
+    ], {39:19,47:24,49:25,53:29,54:30,38:77,40:[
+      1,
+      20
+    ],42:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],46:[
+      1,
+      23
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],52:[
+      1,
+      28
+    ],55:[
+      1,
+      31
+    ],56:[
+      1,
+      32
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
+      33
+    ],64:[
+      1,
+      34
+    ],72:[
+      2,
+      37
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      40
+    ], {48:54,34:[
+      1,
+      52
+    ],43:[
+      1,
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
+      2,
+      40
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      44
+    ], {72:[
+      2,
+      44
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      45
+    ], {72:[
+      2,
+      45
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      46
+    ], {72:[
+      2,
+      46
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      50
+    ], {72:[
+      2,
+      50
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      64
+    ], {72:[
+      2,
+      64
+    ]
+  }),
+  {
+    37: [
+      1,
+      49
+    ],
+    41: [
+      1,
+      78
+    ]
+  },
+  {
+    37: [
+      1,
+      49
+    ],
+    41: [
+      1,
+      79
     ]
   },
   __expand__($V3, [
       2,
-      44
-    ], {45:49,31:[
-      1,
       47
-    ],40:[
+    ], {48:54,34:[
       1,
-      46
-    ],41:[
+      52
+    ],43:[
       1,
-      48
-    ],55:[
+      51
+    ],44:[
       1,
-      50
-    ],59:[
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
       2,
-      44
+      47
     ]
   }),
   __expand__($V3, [
       2,
-      45
-    ], {45:49,31:[
-      1,
-      47
-    ],40:[
-      1,
-      46
-    ],41:[
-      1,
       48
-    ],55:[
+    ], {48:54,34:[
       1,
-      50
-    ],59:[
+      52
+    ],43:[
+      1,
+      51
+    ],44:[
+      1,
+      53
+    ],62:[
+      1,
+      55
+    ],72:[
       2,
-      45
+      48
+    ]
+  }),
+  {
+    58: [
+      1,
+      80
+    ]
+  },
+  {
+    47: 63,
+    55: [
+      1,
+      31
+    ],
+    57: 81,
+    58: [
+      2,
+      60
+    ],
+    59: 61,
+    60: [
+      1,
+      62
+    ]
+  },
+  __expand__($V9, [
+      2,
+      61
+    ], {60:[
+      2,
+      61
+    ]
+  }),
+  __expand__($V9, [
+      2,
+      62
+    ], {60:[
+      2,
+      62
     ]
   }),
   __expand__($V6, [
       2,
-      12
-    ], {59:[
+      15
+    ], {72:[
       2,
-      12
+      15
     ]
   }),
   __expand__($V6, [
       2,
-      14
-    ], {59:[
+      17
+    ], {72:[
       2,
-      14
+      17
     ]
   }),
+  __expand__($V0, [
+      2,
+      67
+    ], {72:[
+      2,
+      67
+    ]
+  }),
+  {
+    67: [
+      2,
+      68
+    ]
+  },
+  {
+    12: [
+      1,
+      83
+    ],
+    70: [
+      1,
+      82
+    ]
+  },
   {
     1: [
       2,
@@ -4182,10 +4659,10 @@ table: [
   },
   __expand__($V8, [
       2,
-      15
-    ], {59:[
+      18
+    ], {72:[
       2,
-      15
+      18
     ]
   }),
   {
@@ -4194,201 +4671,235 @@ table: [
       2
     ]
   },
-  __expand__($V9, [
+  __expand__($Va, [
       2,
-      67
-    ], {9:68,58:69,61:70,62:[
+      80
+    ], {10:84,71:85,74:86,75:[
       1,
-      71
+      87
     ]
   }),
   {
-    11: [
+    18: [
       1,
-      74
+      90
     ],
-    12: 75,
-    22: 72,
-    23: [
+    19: 91,
+    25: 88,
+    26: [
       1,
-      73
+      89
     ],
-    59: [
+    72: [
       1,
-      9
+      12
     ]
   },
   {
-    30: [
+    33: [
       1,
-      76
+      92
     ],
-    32: [
+    35: [
       1,
-      77
+      93
     ]
   },
   {
-    30: [
+    33: [
       1,
-      78
+      94
     ]
   },
   {
-    30: [
+    33: [
       2,
-      30
+      33
     ],
-    32: [
+    35: [
       2,
-      30
+      33
     ]
   },
   __expand__($V2, [
       2,
-      33
-    ], {44:22,46:23,50:27,51:28,36:45,37:[
-      1,
-      18
-    ],39:[
-      1,
-      19
-    ],42:[
+      36
+    ], {47:24,49:25,53:29,54:30,39:50,40:[
       1,
       20
-    ],43:[
+    ],42:[
       1,
       21
-    ],47:[
+    ],45:[
       1,
-      24
-    ],48:[
+      22
+    ],46:[
       1,
-      25
-    ],49:[
+      23
+    ],50:[
       1,
       26
+    ],51:[
+      1,
+      27
     ],52:[
       1,
-      29
-    ],53:[
-      1,
-      30
-    ],54:[
-      1,
-      33
-    ],56:[
+      28
+    ],55:[
       1,
       31
-    ],57:[
+    ],56:[
       1,
       32
-    ],59:[
-      2,
+    ],61:[
+      1,
+      35
+    ],63:[
+      1,
       33
+    ],64:[
+      1,
+      34
+    ],72:[
+      2,
+      36
     ]
   }),
   __expand__($V5, [
       2,
-      39
-    ], {59:[
+      42
+    ], {72:[
       2,
-      39
+      42
     ]
   }),
   __expand__($V5, [
       2,
-      40
-    ], {59:[
+      43
+    ], {72:[
       2,
-      40
+      43
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      58
+    ], {72:[
+      2,
+      58
     ]
   }),
   {
-    8: [
-      1,
-      79
+    58: [
+      2,
+      59
     ]
   },
   {
-    8: [
+    12: [
       2,
-      60
+      71
     ],
-    12: 80,
-    59: [
-      1,
-      9
+    67: [
+      2,
+      71
     ]
   },
-  __expand__($V9, [
+  {
+    12: [
       2,
-      66
-    ], {62:[
+      72
+    ],
+    67: [
+      2,
+      72
+    ]
+  },
+  {
+    9: [
       1,
-      81
+      95
     ]
-  }),
-  __expand__($V9, [
+  },
+  {
+    9: [
       2,
-      64
-    ], {62:[
-      2,
-      64
+      73
+    ],
+    19: 96,
+    72: [
+      1,
+      12
     ]
-  }),
-  __expand__($V8, [
+  },
+  __expand__($Va, [
       2,
-      17
-    ], {59:[
-      2,
-      17
+      79
+    ], {75:[
+      1,
+      97
     ]
   }),
   __expand__($Va, [
       2,
-      21
-    ], {24:82,26:83,27:[
+      77
+    ], {75:[
+      2,
+      77
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      20
+    ], {72:[
+      2,
+      20
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      24
+    ], {27:98,29:99,30:[
       1,
-      84
+      100
     ]
   }),
   __expand__($V8, [
       2,
-      19
-    ], {59:[
+      22
+    ], {72:[
       2,
-      19
+      22
     ]
   }),
   __expand__($V8, [
       2,
-      20
-    ], {59:[
+      23
+    ], {72:[
       2,
-      20
+      23
     ]
   }),
-  __expand__($V0, [
+  __expand__($V1, [
       2,
-      27
-    ], {59:[
+      30
+    ], {72:[
       2,
-      27
+      30
     ]
   }),
   {
-    13: [
+    12: [
       1,
-      85
+      101
     ]
   },
-  __expand__($V0, [
+  __expand__($V1, [
       2,
-      28
-    ], {59:[
+      31
+    ], {72:[
       2,
-      28
+      31
     ]
   }),
   {
@@ -4397,156 +4908,150 @@ table: [
       3
     ]
   },
-  __expand__($V9, [
+  __expand__($Va, [
       2,
-      67
-    ], {58:69,61:70,9:86,62:[
-      1,
-      71
-    ]
-  }),
-  __expand__($V9, [
-      2,
-      65
-    ], {62:[
-      2,
-      65
-    ]
-  }),
-  {
-    23: [
-      1,
-      88
-    ],
-    25: [
+      80
+    ], {71:85,74:86,10:102,75:[
       1,
       87
     ]
-  },
+  }),
   __expand__($Va, [
       2,
-      22
-    ], {27:[
+      78
+    ], {75:[
+      2,
+      78
+    ]
+  }),
+  {
+    26: [
       1,
-      89
+      104
+    ],
+    28: [
+      1,
+      103
+    ]
+  },
+  __expand__($Vb, [
+      2,
+      25
+    ], {30:[
+      1,
+      105
     ]
   }),
-  __expand__($Va, [
+  __expand__($Vb, [
       2,
-      25
-    ], {27:[
+      28
+    ], {30:[
       2,
-      25
+      28
     ]
   }),
   {
-    30: [
+    33: [
       2,
-      31
+      34
     ],
-    32: [
+    35: [
       2,
-      31
+      34
     ]
   },
   {
-    8: [
+    9: [
       2,
-      61
+      74
     ]
   },
   __expand__($V8, [
       2,
-      18
-    ], {59:[
-      2,
-      18
-    ]
-  }),
-  __expand__($Va, [
+      21
+    ], {72:[
       2,
       21
-    ], {26:83,24:90,27:[
-      1,
-      84
     ]
   }),
-  __expand__($Va, [
+  __expand__($Vb, [
       2,
-      26
-    ], {27:[
+      24
+    ], {29:99,27:106,30:[
+      1,
+      100
+    ]
+  }),
+  __expand__($Vb, [
       2,
-      26
+      29
+    ], {30:[
+      2,
+      29
     ]
   }),
   {
-    23: [
+    26: [
       1,
-      88
+      104
     ],
-    25: [
+    28: [
       1,
-      91
+      107
     ]
   },
-  __expand__($Va, [
+  __expand__($Vb, [
       2,
-      24
-    ], {26:92,27:[
+      27
+    ], {29:108,30:[
       1,
-      84
+      100
     ]
   }),
-  __expand__($Va, [
+  __expand__($Vb, [
       2,
-      23
-    ], {27:[
+      26
+    ], {30:[
       1,
-      89
+      105
     ]
   })
 ],
 defaultActions: {
-  11: [
-    2,
-    4
-  ],
-  12: [
+  15: [
     2,
     5
   ],
-  13: [
+  67: [
     2,
-    6
+    68
   ],
-  57: [
+  69: [
     2,
     1
   ],
-  59: [
+  71: [
     2,
     2
   ],
-  79: [
+  81: [
+    2,
+    59
+  ],
+  95: [
     2,
     3
   ],
-  86: [
+  102: [
     2,
-    61
+    74
   ]
 },
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        function _parseError (msg, hash) {
-            this.message = msg;
-            this.hash = hash;
-        }
-        _parseError.prototype = new Error();
-
-        throw new _parseError(str, hash);
+        throw new this.JisonParserError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -4560,7 +5065,6 @@ parse: function parse(input) {
         yylineno = 0,
         yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -4596,11 +5100,10 @@ parse: function parse(input) {
 
     var ranges = lexer.options && lexer.options.ranges;
 
+    // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } else {
-        this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
-    }
+    } 
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -4704,7 +5207,6 @@ parse: function parse(input) {
                                  (symbol === EOF ? 'end of input' :
                                   ("'" + (this.terminals_[symbol] || symbol) + "'"));
                     }
-                    error_signaled = true;
                     a = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -4724,7 +5226,6 @@ parse: function parse(input) {
                 // just recovered from another error
                 if (recovering === 3) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
-                        error_signaled = true;
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -4746,7 +5247,6 @@ parse: function parse(input) {
 
                 // try to recover from error
                 if (error_rule_depth === false) {
-                    error_signaled = true;
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -4769,7 +5269,6 @@ parse: function parse(input) {
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
-                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -4831,7 +5330,6 @@ parse: function parse(input) {
 
                 if (typeof r !== 'undefined') {
                     retval = r;
-                    error_signaled = true;
                     break;
                 }
 
@@ -4851,14 +5349,10 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
-            if (!error_signaled) {
-                // b0rk b0rk b0rk!
-            }
             break;
         }
     } finally {
@@ -4891,8 +5385,22 @@ function prepareString (s) {
 };
 
 
-/* generated by jison-lex 0.3.4 */
+/* generated by jison-lex 0.3.4-102 */
 var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
 var lexer = ({
 
 EOF:1,
@@ -4903,7 +5411,7 @@ parseError:function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new Error(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -5287,6 +5795,7 @@ options: {
   "easy_keyword_rules": true,
   "ranges": true
 },
+JisonLexerError: JisonLexerError,
 performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
@@ -5294,22 +5803,22 @@ switch($avoiding_name_collisions) {
 case 2 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 27; // regexp with braces or quotes (and no spaces) 
+ return 30; // regexp with braces or quotes (and no spaces) 
 break;
 case 7 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
- yy.depth++; return 23; 
+ yy.depth++; return 26; 
 break;
 case 8 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 25; 
+ if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 28; 
 break;
 case 10 : 
 /*! Conditions:: conditions */ 
 /*! Rule::       > */ 
- this.popState(); return 30; 
+ this.popState(); return 33; 
 break;
 case 13 : 
 /*! Conditions:: rules */ 
@@ -5329,64 +5838,69 @@ break;
 case 16 : 
 /*! Conditions:: rules */ 
 /*! Rule::       %% */ 
- this.begin('code'); return 5; 
-break;
-case 18 : 
-/*! Conditions:: options */ 
-/*! Rule::       {NAME} */ 
- yy.options[yy_.yytext] = true; 
-break;
-case 19 : 
-/*! Conditions:: options */ 
-/*! Rule::       {BR}+ */ 
- this.popState(); 
+ this.begin('code'); return 6; 
 break;
 case 20 : 
 /*! Conditions:: options */ 
-/*! Rule::       \s+{BR}+ */ 
- this.popState(); 
+/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 70; 
 break;
 case 21 : 
+/*! Conditions:: options */ 
+/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 70; 
+break;
+case 23 : 
+/*! Conditions:: options */ 
+/*! Rule::       {BR}+ */ 
+ this.popState(); return 67; 
+break;
+case 24 : 
+/*! Conditions:: options */ 
+/*! Rule::       \s+{BR}+ */ 
+ this.popState(); return 67; 
+break;
+case 25 : 
 /*! Conditions:: options */ 
 /*! Rule::       \s+ */ 
  /* empty */ 
 break;
-case 23 : 
+case 27 : 
 /*! Conditions:: start_condition */ 
 /*! Rule::       {BR}+ */ 
  this.popState(); 
 break;
-case 24 : 
+case 28 : 
 /*! Conditions:: start_condition */ 
 /*! Rule::       \s+{BR}+ */ 
  this.popState(); 
 break;
-case 25 : 
+case 29 : 
 /*! Conditions:: start_condition */ 
 /*! Rule::       \s+ */ 
  /* empty */ 
 break;
-case 26 : 
+case 30 : 
 /*! Conditions:: trail */ 
 /*! Rule::       \s*{BR}+ */ 
  this.begin('rules'); 
 break;
-case 27 : 
+case 31 : 
 /*! Conditions:: indented */ 
 /*! Rule::       \{ */ 
- yy.depth = 0; this.begin('action'); return 23; 
+ yy.depth = 0; this.begin('action'); return 26; 
 break;
-case 28 : 
+case 32 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 11; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 18; 
 break;
-case 29 : 
+case 33 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 11; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 18; 
 break;
-case 30 : 
+case 34 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %include\b */ 
  
@@ -5406,123 +5920,144 @@ case 30 :
                                             this.pushState('trail'); 
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path'); 
-                                            return 59;
+                                            return 72;
                                          
 break;
-case 31 : 
+case 35 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .+ */ 
- this.begin('rules'); return 11; 
+ this.begin('rules'); return 18; 
 break;
-case 32 : 
+case 36 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* ignore */ 
 break;
-case 33 : 
+case 37 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/\/.* */ 
  /* ignore */ 
 break;
-case 34 : 
+case 38 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* empty */ 
 break;
-case 35 : 
+case 39 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \s+ */ 
  /* empty */ 
 break;
-case 37 : 
+case 41 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 56; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 63; 
 break;
-case 38 : 
+case 42 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 56; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 63; 
 break;
-case 52 : 
+case 43 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       < */ 
- this.begin('conditions'); return 28; 
+/*! Rule::       \[ */ 
+ this.pushState('set'); return 56; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 54; 
+/*! Rule::       < */ 
+ this.begin('conditions'); return 31; 
 break;
-case 59 : 
+case 57 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %options\b */ 
- if (!yy.options) { yy.options = {}; } this.begin('options'); return false; 
+/*! Rule::       \/! */ 
+ return 46;                    // treated as `(?!atom)` 
+break;
+case 58 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \/ */ 
+ return 45;                     // treated as `(?=atom)`  
 break;
 case 60 : 
 /*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %s\b */ 
- this.begin('start_condition'); return 15; 
-break;
-case 61 : 
-/*! Conditions:: indented trail rules INITIAL */ 
-/*! Rule::       %x\b */ 
- this.begin('start_condition'); return 17; 
-break;
-case 62 : 
-/*! Conditions:: INITIAL trail code */ 
-/*! Rule::       %include\b */ 
- this.pushState('path'); return 59; 
+/*! Rule::       \\. */ 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 61; 
 break;
 case 63 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %options\b */ 
+ if (!yy.options) { yy.options = {}; } this.begin('options'); return 65; 
+break;
+case 64 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %s\b */ 
+ this.begin('start_condition'); return 14; 
+break;
+case 65 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %x\b */ 
+ this.begin('start_condition'); return 16; 
+break;
+case 66 : 
+/*! Conditions:: INITIAL trail code */ 
+/*! Rule::       %include\b */ 
+ this.pushState('path'); return 72; 
+break;
+case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
 /*! Rule::       %{NAME}[^\r\n]+ */ 
   
                                             /* ignore unrecognized decl */
-                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                            return 21;
                                          
 break;
-case 64 : 
+case 68 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       %% */ 
- this.begin('rules'); return 5; 
+ this.begin('rules'); return 6; 
 break;
-case 69 : 
+case 74 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       . */ 
  throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */ 
 break;
-case 72 : 
+case 77 : 
+/*! Conditions:: set */ 
+/*! Rule::       \] */ 
+ this.popState('set'); return 58; 
+break;
+case 79 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 62;      // the bit of CODE just before EOF... 
+ return 75;      // the bit of CODE just before EOF... 
 break;
-case 73 : 
+case 80 : 
 /*! Conditions:: path */ 
 /*! Rule::       [\r\n] */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 74 : 
+case 81 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 60; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
-case 75 : 
+case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 60; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
-case 76 : 
+case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       \s+ */ 
  // skip whitespace in the line 
 break;
-case 77 : 
+case 84 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 60; 
+ this.popState(); return 73; 
 break;
-case 78 : 
+case 85 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
   
@@ -5538,112 +6073,118 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 27,
+   0 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 27,
+   1 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 27,
+   3 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 27,
+   4 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 27,
+   5 : 30,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 27,
+   6 : 30,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
-   9 : 13,
+   9 : 12,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
-   11 : 32,
+   11 : 35,
   /*! Conditions:: conditions */ 
   /*! Rule::       \* */ 
-   12 : 31,
+   12 : 34,
   /*! Conditions:: rules */ 
   /*! Rule::       [a-zA-Z0-9_]+ */ 
-   17 : 57,
+   17 : 64,
+  /*! Conditions:: options */ 
+  /*! Rule::       {NAME} */ 
+   18 : 12,
+  /*! Conditions:: options */ 
+  /*! Rule::       = */ 
+   19 : 69,
+  /*! Conditions:: options */ 
+  /*! Rule::       [^\s\r\n]+ */ 
+   22 : 70,
   /*! Conditions:: start_condition */ 
-  /*! Rule::       {NAME} */ 
-   22 : 19,
+  /*! Rule::       {ID} */ 
+   26 : 22,
   /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       {NAME} */ 
-   36 : 13,
+  /*! Rule::       {ID} */ 
+   40 : 12,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \| */ 
-   39 : 34,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \[(\\\\|\\\]|[^\]])*\] */ 
-   40 : 53,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \(\?: */ 
-   41 : 39,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \(\?= */ 
-   42 : 39,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \(\?! */ 
-   43 : 39,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \( */ 
    44 : 37,
   /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?: */ 
+   45 : 42,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?= */ 
+   46 : 42,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?! */ 
+   47 : 42,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \( */ 
+   48 : 40,
+  /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \) */ 
-   45 : 38,
+   49 : 41,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \+ */ 
-   46 : 40,
+   50 : 43,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \* */ 
-   47 : 31,
+   51 : 34,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \? */ 
-   48 : 41,
+   52 : 44,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \^ */ 
-   49 : 48,
+   53 : 51,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       , */ 
-   50 : 32,
+   54 : 35,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       <<EOF>> */ 
-   51 : 49,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \/! */ 
-   53 : 43,
-  /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \/ */ 
-   54 : 42,
+   55 : 52,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   55 : 54,
+   59 : 61,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \$ */ 
-   57 : 49,
+   61 : 52,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \. */ 
-   58 : 47,
+   62 : 50,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   65 : 55,
+   69 : 62,
   /*! Conditions:: indented trail rules INITIAL */ 
-  /*! Rule::       \{{NAME}\} */ 
-   66 : 52,
+  /*! Rule::       \{{ID}\} */ 
+   70 : 55,
+  /*! Conditions:: set options */ 
+  /*! Rule::       \{{ID}\} */ 
+   71 : 55,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \{ */ 
-   67 : 23,
+   72 : 26,
   /*! Conditions:: indented trail rules INITIAL */ 
   /*! Rule::       \} */ 
-   68 : 25,
+   73 : 28,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   70 : 8,
+   75 : 9,
+  /*! Conditions:: set */ 
+  /*! Rule::       (\\\\|\\\]|[^\]])+ */ 
+   76 : 60,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   71 : 62
+   78 : 75
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -5665,10 +6206,14 @@ rules: [
 /^(?:%%)/,
 /^(?:[a-zA-Z0-9_]+)/,
 /^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:=)/,
+/^(?:"(\\\\|\\"|[^"])*")/,
+/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:[^\s\r\n]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\s+(\r\n|\n|\r)+)/,
 /^(?:\s+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\s+(\r\n|\n|\r)+)/,
 /^(?:\s+)/,
@@ -5682,11 +6227,11 @@ rules: [
 /^(?:\/\/.*)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\s+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:\[)/,
 /^(?:\|)/,
-/^(?:\[(\\\\|\\\]|[^\]])*\])/,
 /^(?:\(\?:)/,
 /^(?:\(\?=)/,
 /^(?:\(\?!)/,
@@ -5712,11 +6257,14 @@ rules: [
 /^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\})/,
+/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
+/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
 /^(?:$)/,
+/^(?:(\\\\|\\\]|[^\]])+)/,
+/^(?:\])/,
 /^(?:[^\r\n]*(\r|\n)+)/,
 /^(?:[^\r\n]+)/,
 /^(?:[\r\n])/,
@@ -5729,23 +6277,23 @@ rules: [
 conditions: {
   "code": {
     "rules": [
-      62,
-      63,
-      70,
-      71,
-      72,
-      78
+      66,
+      67,
+      75,
+      78,
+      79,
+      85
     ],
     "inclusive": false
   },
   "start_condition": {
     "rules": [
-      22,
-      23,
-      24,
-      25,
-      70,
-      78
+      26,
+      27,
+      28,
+      29,
+      75,
+      85
     ],
     "inclusive": false
   },
@@ -5755,8 +6303,13 @@ conditions: {
       19,
       20,
       21,
-      70,
-      78
+      22,
+      23,
+      24,
+      25,
+      71,
+      75,
+      85
     ],
     "inclusive": false
   },
@@ -5766,8 +6319,8 @@ conditions: {
       10,
       11,
       12,
-      70,
-      78
+      75,
+      85
     ],
     "inclusive": false
   },
@@ -5782,29 +6335,35 @@ conditions: {
       6,
       7,
       8,
-      70,
-      78
+      75,
+      85
     ],
     "inclusive": false
   },
   "path": {
     "rules": [
-      70,
-      73,
-      74,
+      75,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85
+    ],
+    "inclusive": false
+  },
+  "set": {
+    "rules": [
+      71,
       75,
       76,
       77,
-      78
+      85
     ],
     "inclusive": false
   },
   "indented": {
     "rules": [
-      27,
-      28,
-      29,
-      30,
       31,
       32,
       33,
@@ -5836,25 +6395,25 @@ conditions: {
       59,
       60,
       61,
+      62,
+      63,
       64,
       65,
-      66,
-      67,
       68,
       69,
       70,
-      78
+      72,
+      73,
+      74,
+      75,
+      85
     ],
     "inclusive": true
   },
   "trail": {
     "rules": [
-      26,
-      29,
-      32,
+      30,
       33,
-      34,
-      35,
       36,
       37,
       38,
@@ -5890,7 +6449,11 @@ conditions: {
       68,
       69,
       70,
-      78
+      72,
+      73,
+      74,
+      75,
+      85
     ],
     "inclusive": true
   },
@@ -5901,11 +6464,7 @@ conditions: {
       15,
       16,
       17,
-      29,
-      32,
       33,
-      34,
-      35,
       36,
       37,
       38,
@@ -5932,25 +6491,25 @@ conditions: {
       59,
       60,
       61,
+      62,
       63,
       64,
       65,
-      66,
       67,
       68,
       69,
       70,
-      78
+      72,
+      73,
+      74,
+      75,
+      85
     ],
     "inclusive": true
   },
   "INITIAL": {
     "rules": [
-      29,
-      32,
       33,
-      34,
-      35,
       36,
       37,
       38,
@@ -5986,12 +6545,17 @@ conditions: {
       68,
       69,
       70,
-      78
+      72,
+      73,
+      74,
+      75,
+      85
     ],
     "inclusive": true
   }
 }
 });
+// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -6001,6 +6565,7 @@ function Parser () {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -6017,12 +6582,17 @@ exports.parse = function () {
 
 }
 
-},{"fs":13}],6:[function(require,module,exports){
+},{"fs":12}],6:[function(require,module,exports){
 module.exports={
-  "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
+  "author": {
+    "name": "Zach Carter",
+    "email": "zach@carter.name",
+    "url": "http://zaa.ch"
+  },
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
-  "version": "0.3.4",
+  "license": "MIT",
+  "version": "0.3.4-102",
   "keywords": [
     "jison",
     "parser",
@@ -6062,7 +6632,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.15 */
+/* parser generated by jison 0.4.15-102 */
 /*
   Returns a Parser object of the following structure:
 
@@ -6072,7 +6642,8 @@ module.exports={
 
   Parser.prototype: {
     yy: {},
-    trace: function(),
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
     symbols_: {associative list: name ==> number},
     terminals_: {associative list: number ==> name},
     productions_: [...],
@@ -6085,11 +6656,14 @@ module.exports={
 
     lexer: {
         EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
         parseError: function(str, hash),
         setInput: function(input),
         input: function(),
         unput: function(str),
         more: function(),
+        reject: function(),
         less: function(n),
         pastInput: function(),
         upcomingInput: function(),
@@ -6181,31 +6755,48 @@ module.exports={
   }
 */
 var parser = (function () {
-var __expand__ = function (k, v, o) {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
     o[k[l]] = v;
   }
   return o;
-},
-    $V0=[5,11,14,16,18,23,25,26,29,30,31],
-    $V1=[11,56],
-    $V2=[5,11,14,16,18,23,25,26,29,30,31,36,56],
-    $V3=[5,11,14,16,18,23,25,26,29,30,31,38,56],
-    $V4=[5,11,14,16,18,23,25,26,29,30,31,38,45,46,56,63,66],
-    $V5=[5,8,11,14,16,18,23,25,26,29,30,31,45,46,56,70],
-    $V6=[8,70],
+}
+
+var $V0=[5,11,14,16,18,23,24,31,33,36,37,38],
+    $V1=[11,63],
+    $V2=[5,11,14,16,18,23,24,31,33,36,37,38,43,63],
+    $V3=[5,11,14,16,18,23,24,31,33,36,37,38,45,63],
+    $V4=[5,11,14,16,18,23,24,31,33,36,37,38,45,52,53,63,70,73],
+    $V5=[5,8,11,14,16,18,23,24,31,33,36,37,38,52,53,63,77],
+    $V6=[8,77],
     $V7=[5,8],
-    $V8=[5,11,14,16,18,23,25,26,29,30,31,36,38,56],
-    $V9=[11,38,45,46,56,57,62,63,66],
-    $Va=[11,45,46,63,66],
-    $Vb=[11,38,45,46,56,57,58,62,63,66],
-    $Vc=[11,38,45,46,55,56,57,58,62,63,66],
-    $Vd=[11,38,45,46,55,56,57,58,59,60,61,62,63,66],
-    $Ve=[38,46,56,57],
-    $Vf=[63,65];
+    $V8=[5,11,14,16,18,23,24,31,33,36,37,38,43,45,63],
+    $V9=[11,45,52,53,63,64,69,70,73],
+    $Va=[11,52,53,70,73],
+    $Vb=[11,45,52,53,63,64,65,69,70,73],
+    $Vc=[11,45,52,53,62,63,64,65,69,70,73],
+    $Vd=[11,45,52,53,62,63,64,65,66,67,68,69,70,73],
+    $Ve=[45,53,63,64],
+    $Vf=[70,72];
+
 var parser = {
 trace: function trace() { },
+JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
   "error": 2,
@@ -6229,57 +6820,64 @@ symbols_: {
   "parse_param": 20,
   "parser_type": 21,
   "options": 22,
-  "OPTIONS": 23,
-  "token_list": 24,
-  "PARSE_PARAM": 25,
-  "PARSER_TYPE": 26,
-  "symbol": 27,
-  "associativity": 28,
-  "LEFT": 29,
-  "RIGHT": 30,
-  "NONASSOC": 31,
-  "full_token_definition": 32,
-  "optional_token_type": 33,
-  "optional_token_value": 34,
-  "optional_token_description": 35,
-  "TOKEN_TYPE": 36,
-  "INTEGER": 37,
-  "STRING": 38,
-  "id_list": 39,
-  "token_id": 40,
-  "production_list": 41,
-  "production": 42,
-  ":": 43,
-  "handle_list": 44,
-  ";": 45,
-  "|": 46,
-  "handle_action": 47,
-  "handle": 48,
-  "prec": 49,
-  "action": 50,
-  "expression_suffix": 51,
-  "handle_sublist": 52,
-  "expression": 53,
-  "suffix": 54,
-  "ALIAS": 55,
-  "ID": 56,
-  "(": 57,
-  ")": 58,
-  "*": 59,
-  "?": 60,
-  "+": 61,
-  "PREC": 62,
-  "{": 63,
-  "action_body": 64,
-  "}": 65,
-  "ARROW_ACTION": 66,
-  "action_comments_body": 67,
-  "ACTION_BODY": 68,
-  "optional_module_code_chunk": 69,
-  "INCLUDE": 70,
-  "PATH": 71,
-  "module_code_chunk": 72,
-  "CODE": 73,
+  "UNKNOWN_DECL": 23,
+  "OPTIONS": 24,
+  "option_list": 25,
+  "OPTIONS_END": 26,
+  "option": 27,
+  "NAME": 28,
+  "=": 29,
+  "OPTION_VALUE": 30,
+  "PARSE_PARAM": 31,
+  "token_list": 32,
+  "PARSER_TYPE": 33,
+  "symbol": 34,
+  "associativity": 35,
+  "LEFT": 36,
+  "RIGHT": 37,
+  "NONASSOC": 38,
+  "full_token_definition": 39,
+  "optional_token_type": 40,
+  "optional_token_value": 41,
+  "optional_token_description": 42,
+  "TOKEN_TYPE": 43,
+  "INTEGER": 44,
+  "STRING": 45,
+  "id_list": 46,
+  "token_id": 47,
+  "production_list": 48,
+  "production": 49,
+  ":": 50,
+  "handle_list": 51,
+  ";": 52,
+  "|": 53,
+  "handle_action": 54,
+  "handle": 55,
+  "prec": 56,
+  "action": 57,
+  "expression_suffix": 58,
+  "handle_sublist": 59,
+  "expression": 60,
+  "suffix": 61,
+  "ALIAS": 62,
+  "ID": 63,
+  "(": 64,
+  ")": 65,
+  "*": 66,
+  "?": 67,
+  "+": 68,
+  "PREC": 69,
+  "{": 70,
+  "action_body": 71,
+  "}": 72,
+  "ARROW_ACTION": 73,
+  "action_comments_body": 74,
+  "ACTION_BODY": 75,
+  "optional_module_code_chunk": 76,
+  "INCLUDE": 77,
+  "PATH": 78,
+  "module_code_chunk": 79,
+  "CODE": 80,
   "$accept": 0,
   "$end": 1
 },
@@ -6291,33 +6889,38 @@ terminals_: {
   14: "START",
   16: "LEX_BLOCK",
   18: "TOKEN",
-  23: "OPTIONS",
-  25: "PARSE_PARAM",
-  26: "PARSER_TYPE",
-  29: "LEFT",
-  30: "RIGHT",
-  31: "NONASSOC",
-  36: "TOKEN_TYPE",
-  37: "INTEGER",
-  38: "STRING",
-  43: ":",
-  45: ";",
-  46: "|",
-  55: "ALIAS",
-  56: "ID",
-  57: "(",
-  58: ")",
-  59: "*",
-  60: "?",
-  61: "+",
-  62: "PREC",
-  63: "{",
-  65: "}",
-  66: "ARROW_ACTION",
-  68: "ACTION_BODY",
-  70: "INCLUDE",
-  71: "PATH",
-  73: "CODE"
+  23: "UNKNOWN_DECL",
+  24: "OPTIONS",
+  26: "OPTIONS_END",
+  28: "NAME",
+  29: "=",
+  30: "OPTION_VALUE",
+  31: "PARSE_PARAM",
+  33: "PARSER_TYPE",
+  36: "LEFT",
+  37: "RIGHT",
+  38: "NONASSOC",
+  43: "TOKEN_TYPE",
+  44: "INTEGER",
+  45: "STRING",
+  50: ":",
+  52: ";",
+  53: "|",
+  62: "ALIAS",
+  63: "ID",
+  64: "(",
+  65: ")",
+  66: "*",
+  67: "?",
+  68: "+",
+  69: "PREC",
+  70: "{",
+  72: "}",
+  73: "ARROW_ACTION",
+  75: "ACTION_BODY",
+  77: "INCLUDE",
+  78: "PATH",
+  80: "CODE"
 },
 productions_: [
   0,
@@ -6390,8 +6993,32 @@ productions_: [
     1
   ],
   [
+    13,
+    1
+  ],
+  [
     22,
+    3
+  ],
+  [
+    25,
     2
+  ],
+  [
+    25,
+    1
+  ],
+  [
+    27,
+    1
+  ],
+  [
+    27,
+    3
+  ],
+  [
+    27,
+    3
   ],
   [
     20,
@@ -6406,84 +7033,48 @@ productions_: [
     2
   ],
   [
-    28,
+    35,
     1
   ],
   [
-    28,
+    35,
     1
   ],
   [
-    28,
-    1
-  ],
-  [
-    24,
-    2
-  ],
-  [
-    24,
-    1
-  ],
-  [
-    19,
-    2
-  ],
-  [
-    19,
+    35,
     1
   ],
   [
     32,
+    2
+  ],
+  [
+    32,
+    1
+  ],
+  [
+    19,
+    2
+  ],
+  [
+    19,
+    1
+  ],
+  [
+    39,
     4
   ],
   [
-    33,
-    0
-  ],
-  [
-    33,
-    1
-  ],
-  [
-    34,
-    0
-  ],
-  [
-    34,
-    1
-  ],
-  [
-    35,
-    0
-  ],
-  [
-    35,
-    1
-  ],
-  [
-    39,
-    2
-  ],
-  [
-    39,
-    1
-  ],
-  [
     40,
-    2
+    0
   ],
   [
     40,
     1
-  ],
-  [
-    6,
-    2
   ],
   [
     41,
-    2
+    0
   ],
   [
     41,
@@ -6491,19 +7082,31 @@ productions_: [
   ],
   [
     42,
-    4
+    0
   ],
   [
-    44,
-    3
+    42,
+    1
   ],
   [
-    44,
+    46,
+    2
+  ],
+  [
+    46,
     1
   ],
   [
     47,
-    3
+    2
+  ],
+  [
+    47,
+    1
+  ],
+  [
+    6,
+    2
   ],
   [
     48,
@@ -6511,15 +7114,11 @@ productions_: [
   ],
   [
     48,
-    0
-  ],
-  [
-    52,
-    3
-  ],
-  [
-    52,
     1
+  ],
+  [
+    49,
+    4
   ],
   [
     51,
@@ -6527,50 +7126,78 @@ productions_: [
   ],
   [
     51,
-    2
-  ],
-  [
-    53,
     1
   ],
   [
-    53,
-    1
-  ],
-  [
-    53,
+    54,
     3
   ],
   [
-    54,
-    0
-  ],
-  [
-    54,
-    1
-  ],
-  [
-    54,
-    1
-  ],
-  [
-    54,
-    1
-  ],
-  [
-    49,
+    55,
     2
   ],
   [
-    49,
+    55,
     0
   ],
   [
-    27,
+    59,
+    3
+  ],
+  [
+    59,
     1
   ],
   [
-    27,
+    58,
+    3
+  ],
+  [
+    58,
+    2
+  ],
+  [
+    60,
+    1
+  ],
+  [
+    60,
+    1
+  ],
+  [
+    60,
+    3
+  ],
+  [
+    61,
+    0
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    61,
+    1
+  ],
+  [
+    56,
+    2
+  ],
+  [
+    56,
+    0
+  ],
+  [
+    34,
+    1
+  ],
+  [
+    34,
     1
   ],
   [
@@ -6578,47 +7205,47 @@ productions_: [
     1
   ],
   [
-    50,
+    57,
     3
   ],
   [
-    50,
+    57,
     1
   ],
   [
-    50,
+    57,
     1
   ],
   [
-    50,
+    57,
     1
   ],
   [
-    50,
+    57,
     0
   ],
   [
-    64,
+    71,
     0
   ],
   [
-    64,
+    71,
     1
   ],
   [
-    64,
+    71,
     5
   ],
   [
-    64,
+    71,
     4
   ],
   [
-    67,
+    74,
     1
   ],
   [
-    67,
+    74,
     2
   ],
   [
@@ -6638,19 +7265,19 @@ productions_: [
     2
   ],
   [
-    72,
+    79,
     1
   ],
   [
-    72,
+    79,
     2
   ],
   [
-    69,
+    76,
     1
   ],
   [
-    69,
+    76,
     0
   ]
 ],
@@ -6671,37 +7298,35 @@ case 1 :
 break;
 case 3 : 
 /*! Production::     optional_end_block : %% extra_parser_module_code */
- case 18 : 
-/*! Production::     options : OPTIONS token_list */
- case 19 : 
+ case 25 : 
 /*! Production::     parse_param : PARSE_PARAM token_list */
- case 20 : 
+ case 26 : 
 /*! Production::     parser_type : PARSER_TYPE symbol */
- case 38 : 
+ case 44 : 
 /*! Production::     token_id : TOKEN_TYPE id */
- case 39 : 
+ case 45 : 
 /*! Production::     token_id : id */
- case 53 : 
+ case 59 : 
 /*! Production::     expression : ID */
- case 62 : 
+ case 68 : 
 /*! Production::     symbol : id */
- case 63 : 
+ case 69 : 
 /*! Production::     symbol : STRING */
- case 64 : 
+ case 70 : 
 /*! Production::     id : ID */
- case 66 : 
+ case 72 : 
 /*! Production::     action : ACTION */
- case 67 : 
+ case 73 : 
 /*! Production::     action : include_macro_code */
- case 71 : 
+ case 77 : 
 /*! Production::     action_body : action_comments_body */
- case 74 : 
-/*! Production::     action_comments_body : ACTION_BODY */
- case 76 : 
-/*! Production::     extra_parser_module_code : optional_module_code_chunk */
  case 80 : 
-/*! Production::     module_code_chunk : CODE */
+/*! Production::     action_comments_body : ACTION_BODY */
  case 82 : 
+/*! Production::     extra_parser_module_code : optional_module_code_chunk */
+ case 86 : 
+/*! Production::     module_code_chunk : CODE */
+ case 88 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
   this.$ = $$[$0];  
 break;
@@ -6758,41 +7383,65 @@ case 17 :
 /*! Production::     declaration : options */
   this.$ = {options: $$[$0]};  
 break;
-case 21 : 
-/*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
+case 18 : 
+/*! Production::     declaration : UNKNOWN_DECL */
+  this.$ = {unknownDecl: $$[$0]};  
 break;
-case 22 : 
-/*! Production::     associativity : LEFT */
-  this.$ = 'left';  
+case 19 : 
+/*! Production::     options : OPTIONS option_list OPTIONS_END */
+ case 71 : 
+/*! Production::     action : { action_body } */
+  this.$ = $$[$0-1];  
 break;
-case 23 : 
-/*! Production::     associativity : RIGHT */
-  this.$ = 'right';  
-break;
-case 24 : 
-/*! Production::     associativity : NONASSOC */
-  this.$ = 'nonassoc';  
-break;
-case 25 : 
+case 20 : 
+/*! Production::     option_list : option_list option */
+ case 31 : 
 /*! Production::     token_list : token_list symbol */
- case 27 : 
+ case 33 : 
 /*! Production::     full_token_definitions : full_token_definitions full_token_definition */
- case 36 : 
+ case 42 : 
 /*! Production::     id_list : id_list id */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
-case 26 : 
+case 21 : 
+/*! Production::     option_list : option */
+ case 32 : 
 /*! Production::     token_list : symbol */
- case 28 : 
+ case 34 : 
 /*! Production::     full_token_definitions : full_token_definition */
- case 37 : 
+ case 43 : 
 /*! Production::     id_list : id */
- case 45 : 
+ case 51 : 
 /*! Production::     handle_list : handle_action */
   this.$ = [$$[$0]];  
 break;
+case 22 : 
+/*! Production::     option : NAME */
+  this.$ = [$$[$0], true];  
+break;
+case 23 : 
+/*! Production::     option : NAME = OPTION_VALUE */
+ case 24 : 
+/*! Production::     option : NAME = NAME */
+  this.$ = [$$[$0-2], $$[$0]];  
+break;
+case 27 : 
+/*! Production::     operator : associativity token_list */
+  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
+break;
+case 28 : 
+/*! Production::     associativity : LEFT */
+  this.$ = 'left';  
+break;
 case 29 : 
+/*! Production::     associativity : RIGHT */
+  this.$ = 'right';  
+break;
+case 30 : 
+/*! Production::     associativity : NONASSOC */
+  this.$ = 'nonassoc';  
+break;
+case 35 : 
 /*! Production::     full_token_definition : optional_token_type id optional_token_value optional_token_description */
  
             this.$ = {id: $$[$0-2]};
@@ -6807,22 +7456,22 @@ case 29 :
             }
          
 break;
-case 30 : 
+case 36 : 
 /*! Production::     optional_token_type :  */
- case 32 : 
+ case 38 : 
 /*! Production::     optional_token_value :  */
- case 34 : 
+ case 40 : 
 /*! Production::     optional_token_description :  */
   this.$ = false;  
 break;
-case 40 : 
+case 46 : 
 /*! Production::     grammar : optional_action_header_block production_list */
  
             this.$ = $$[$0-1];
             this.$.grammar = $$[$0];
          
 break;
-case 41 : 
+case 47 : 
 /*! Production::     production_list : production_list production */
  
             this.$ = $$[$0-1];
@@ -6833,22 +7482,22 @@ case 41 :
             }
          
 break;
-case 42 : 
+case 48 : 
 /*! Production::     production_list : production */
   this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
 break;
-case 43 : 
+case 49 : 
 /*! Production::     production : id : handle_list ; */
  this.$ = [$$[$0-3], $$[$0-1]]; 
 break;
-case 44 : 
+case 50 : 
 /*! Production::     handle_list : handle_list | handle_action */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0]);
          
 break;
-case 46 : 
+case 52 : 
 /*! Production::     handle_action : handle prec action */
  
             this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
@@ -6863,103 +7512,107 @@ case 46 :
             }
          
 break;
-case 47 : 
+case 53 : 
 /*! Production::     handle : handle expression_suffix */
  
             this.$ = $$[$0-1];
             this.$.push($$[$0]);
          
 break;
-case 48 : 
+case 54 : 
 /*! Production::     handle :  */
  
             this.$ = [];
          
 break;
-case 49 : 
+case 55 : 
 /*! Production::     handle_sublist : handle_sublist | handle */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0].join(' '));
          
 break;
-case 50 : 
+case 56 : 
 /*! Production::     handle_sublist : handle */
  
             this.$ = [$$[$0].join(' ')];
          
 break;
-case 51 : 
+case 57 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
  
             this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";
          
 break;
-case 52 : 
+case 58 : 
 /*! Production::     expression_suffix : expression suffix */
- case 75 : 
-/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
  case 81 : 
+/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
+ case 87 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
  
             this.$ = $$[$0-1] + $$[$0];
          
 break;
-case 54 : 
+case 60 : 
 /*! Production::     expression : STRING */
  
-            this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0];
+            // Re-encode the string *anyway* as it will
+            // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
+            // to be able to handle all tokens, including *significant space*
+            // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
+            if ($$[$0].indexOf("'") >= 0) {
+                this.$ = '"' + $$[$0] + '"';
+            } else {
+                this.$ = "'" + $$[$0] + "'";
+            }
          
 break;
-case 55 : 
+case 61 : 
 /*! Production::     expression : ( handle_sublist ) */
  
             this.$ = '(' + $$[$0-1].join(' | ') + ')';
          
 break;
-case 56 : 
+case 62 : 
 /*! Production::     suffix :  */
- case 69 : 
+ case 75 : 
 /*! Production::     action :  */
- case 70 : 
+ case 76 : 
 /*! Production::     action_body :  */
- case 83 : 
+ case 89 : 
 /*! Production::     optional_module_code_chunk :  */
   this.$ = '';  
 break;
-case 60 : 
+case 66 : 
 /*! Production::     prec : PREC symbol */
  
             this.$ = { prec: $$[$0] };
          
 break;
-case 61 : 
+case 67 : 
 /*! Production::     prec :  */
  
             this.$ = null;
          
 break;
-case 65 : 
-/*! Production::     action : { action_body } */
-  this.$ = $$[$0-1];  
-break;
-case 68 : 
+case 74 : 
 /*! Production::     action : ARROW_ACTION */
   this.$ = '$$ =' + $$[$0] + ';';  
 break;
-case 72 : 
+case 78 : 
 /*! Production::     action_body : action_body { action_body } action_comments_body */
   this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 73 : 
+case 79 : 
 /*! Production::     action_body : action_body { action_body } */
   this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 77 : 
+case 83 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
   this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 78 : 
+case 84 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
   
             var fs = require('fs');
@@ -6968,7 +7621,7 @@ case 78 :
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
          
 break;
-case 79 : 
+case 85 : 
 /*! Production::     include_macro_code : INCLUDE error */
   
             console.error("%include MUST be followed by a valid file path"); 
@@ -6980,7 +7633,7 @@ table: [
   __expand__($V0, [
       2,
       8
-    ], {3:1,4:2,70:[
+    ], {3:1,4:2,77:[
       2,
       8
     ]
@@ -7019,38 +7672,42 @@ table: [
     22: 13,
     23: [
       1,
-      18
+      14
     ],
-    25: [
-      1,
-      16
-    ],
-    26: [
-      1,
-      17
-    ],
-    28: 14,
-    29: [
+    24: [
       1,
       19
     ],
-    30: [
+    31: [
+      1,
+      17
+    ],
+    33: [
+      1,
+      18
+    ],
+    35: 15,
+    36: [
       1,
       20
     ],
-    31: [
+    37: [
       1,
       21
     ],
-    70: [
+    38: [
       1,
-      15
+      22
+    ],
+    77: [
+      1,
+      16
     ]
   },
   __expand__($V1, [
       2,
       4
-    ], {6:22,10:23,70:[
+    ], {6:23,10:24,77:[
       2,
       4
     ]
@@ -7058,22 +7715,22 @@ table: [
   __expand__($V0, [
       2,
       7
-    ], {70:[
+    ], {77:[
       2,
       7
     ]
   }),
   {
-    15: 24,
-    56: [
+    15: 25,
+    63: [
       1,
-      25
+      26
     ]
   },
   __expand__($V0, [
       2,
       10
-    ], {70:[
+    ], {77:[
       2,
       10
     ]
@@ -7081,28 +7738,28 @@ table: [
   __expand__($V0, [
       2,
       11
-    ], {70:[
+    ], {77:[
       2,
       11
     ]
   }),
   {
-    19: 26,
-    32: 27,
-    33: 28,
-    36: [
+    19: 27,
+    39: 28,
+    40: 29,
+    43: [
       1,
-      29
-    ],
-    56: [
-      2,
       30
+    ],
+    63: [
+      2,
+      36
     ]
   },
   __expand__($V0, [
       2,
       13
-    ], {70:[
+    ], {77:[
       2,
       13
     ]
@@ -7110,7 +7767,7 @@ table: [
   __expand__($V0, [
       2,
       14
-    ], {70:[
+    ], {77:[
       2,
       14
     ]
@@ -7118,7 +7775,7 @@ table: [
   __expand__($V0, [
       2,
       15
-    ], {70:[
+    ], {77:[
       2,
       15
     ]
@@ -7126,7 +7783,7 @@ table: [
   __expand__($V0, [
       2,
       16
-    ], {70:[
+    ], {77:[
       2,
       16
     ]
@@ -7134,108 +7791,111 @@ table: [
   __expand__($V0, [
       2,
       17
-    ], {70:[
+    ], {77:[
       2,
       17
     ]
   }),
+  __expand__($V0, [
+      2,
+      18
+    ], {77:[
+      2,
+      18
+    ]
+  }),
   {
-    15: 32,
-    24: 30,
-    27: 31,
-    38: [
+    15: 33,
+    32: 31,
+    34: 32,
+    45: [
       1,
-      33
+      34
     ],
-    56: [
+    63: [
       1,
-      25
+      26
     ]
   },
   {
     2: [
       1,
-      35
+      36
     ],
-    71: [
+    78: [
+      1,
+      35
+    ]
+  },
+  {
+    15: 33,
+    32: 37,
+    34: 32,
+    45: [
       1,
       34
+    ],
+    63: [
+      1,
+      26
     ]
   },
   {
-    15: 32,
-    24: 36,
-    27: 31,
-    38: [
+    15: 33,
+    34: 38,
+    45: [
       1,
-      33
+      34
     ],
-    56: [
+    63: [
       1,
-      25
+      26
     ]
   },
   {
-    15: 32,
-    27: 37,
-    38: [
+    25: 39,
+    27: 40,
+    28: [
       1,
-      33
-    ],
-    56: [
-      1,
-      25
+      41
     ]
   },
   {
-    15: 32,
-    24: 38,
-    27: 31,
-    38: [
-      1,
-      33
+    45: [
+      2,
+      28
     ],
-    56: [
-      1,
-      25
+    63: [
+      2,
+      28
     ]
   },
   {
-    38: [
+    45: [
       2,
-      22
+      29
     ],
-    56: [
+    63: [
       2,
-      22
+      29
     ]
   },
   {
-    38: [
+    45: [
       2,
-      23
+      30
     ],
-    56: [
+    63: [
       2,
-      23
-    ]
-  },
-  {
-    38: [
-      2,
-      24
-    ],
-    56: [
-      2,
-      24
+      30
     ]
   },
   {
     5: [
       1,
-      40
+      43
     ],
-    7: 39,
+    7: 42,
     8: [
       2,
       2
@@ -7244,188 +7904,203 @@ table: [
   {
     11: [
       1,
-      42
+      45
     ],
-    12: 43,
-    15: 45,
-    41: 41,
-    42: 44,
-    56: [
+    12: 46,
+    15: 48,
+    48: 44,
+    49: 47,
+    63: [
       1,
-      25
+      26
     ],
-    70: [
+    77: [
       1,
-      15
+      16
     ]
   },
   __expand__($V0, [
       2,
       9
-    ], {70:[
+    ], {77:[
       2,
       9
     ]
   }),
-  __expand__([5,11,14,16,18,23,25,26,29,30,31,36,37,38,43,45,46,56,63,66], [
+  __expand__([5,11,14,16,18,23,24,31,33,36,37,38,43,44,45,50,52,53,63,70,73], [
       2,
-      64
-    ], {70:[
+      70
+    ], {77:[
       2,
-      64
+      70
     ]
   }),
   __expand__($V0, [
       2,
       12
-    ], {33:28,32:46,36:[
+    ], {40:29,39:49,43:[
       1,
-      29
-    ],56:[
-      2,
       30
-    ],70:[
+    ],63:[
+      2,
+      36
+    ],77:[
       2,
       12
     ]
   }),
   __expand__($V2, [
       2,
-      28
-    ], {70:[
+      34
+    ], {77:[
       2,
-      28
+      34
     ]
   }),
   {
-    15: 47,
-    56: [
+    15: 50,
+    63: [
       1,
-      25
+      26
     ]
   },
   {
-    56: [
+    63: [
       2,
-      31
+      37
     ]
   },
   __expand__($V0, [
       2,
-      21
-    ], {15:32,27:48,38:[
+      27
+    ], {15:33,34:51,45:[
       1,
-      33
-    ],56:[
+      34
+    ],63:[
       1,
-      25
-    ],70:[
+      26
+    ],77:[
       2,
-      21
+      27
     ]
   }),
   __expand__($V3, [
       2,
-      26
-    ], {70:[
+      32
+    ], {77:[
       2,
-      26
+      32
     ]
   }),
   __expand__($V4, [
       2,
-      62
-    ], {70:[
+      68
+    ], {77:[
       2,
-      62
+      68
     ]
   }),
   __expand__($V4, [
       2,
-      63
-    ], {70:[
+      69
+    ], {77:[
       2,
-      63
+      69
     ]
   }),
   __expand__($V5, [
       2,
-      78
-    ], {73:[
+      84
+    ], {80:[
       2,
-      78
+      84
     ]
   }),
   __expand__($V5, [
       2,
-      79
-    ], {73:[
+      85
+    ], {80:[
       2,
-      79
+      85
     ]
   }),
   __expand__($V0, [
       2,
-      19
-    ], {15:32,27:48,38:[
-      1,
-      33
-    ],56:[
-      1,
       25
-    ],70:[
-      2,
-      19
-    ]
-  }),
-  __expand__($V0, [
-      2,
-      20
-    ], {70:[
-      2,
-      20
-    ]
-  }),
-  __expand__($V0, [
-      2,
-      18
-    ], {15:32,27:48,38:[
+    ], {15:33,34:51,45:[
       1,
-      33
-    ],56:[
+      34
+    ],63:[
       1,
+      26
+    ],77:[
+      2,
       25
-    ],70:[
+    ]
+  }),
+  __expand__($V0, [
       2,
-      18
+      26
+    ], {77:[
+      2,
+      26
+    ]
+  }),
+  {
+    26: [
+      1,
+      52
+    ],
+    27: 53,
+    28: [
+      1,
+      41
+    ]
+  },
+  {
+    26: [
+      2,
+      21
+    ],
+    28: [
+      2,
+      21
+    ]
+  },
+  __expand__([26,28], [
+      2,
+      22
+    ], {29:[
+      1,
+      54
     ]
   }),
   {
     8: [
       1,
-      49
+      55
     ]
   },
   __expand__($V6, [
       2,
-      83
-    ], {9:50,69:51,72:52,73:[
+      89
+    ], {9:56,76:57,79:58,80:[
       1,
-      53
+      59
     ]
   }),
   __expand__($V7, [
       2,
-      40
-    ], {15:45,42:54,56:[
+      46
+    ], {15:48,49:60,63:[
       1,
-      25
+      26
     ]
   }),
   __expand__($V1, [
       2,
       5
-    ], {70:[
+    ], {77:[
       2,
       5
     ]
@@ -7433,52 +8108,80 @@ table: [
   __expand__($V1, [
       2,
       6
-    ], {70:[
+    ], {77:[
       2,
       6
     ]
   }),
   __expand__($V7, [
       2,
-      42
-    ], {56:[
+      48
+    ], {63:[
       2,
-      42
+      48
     ]
   }),
   {
-    43: [
+    50: [
       1,
-      55
+      61
     ]
   },
   __expand__($V2, [
       2,
-      27
-    ], {70:[
+      33
+    ], {77:[
       2,
-      27
+      33
     ]
   }),
   __expand__($V8, [
       2,
-      32
-    ], {34:56,37:[
+      38
+    ], {41:62,44:[
       1,
-      57
-    ],70:[
+      63
+    ],77:[
       2,
-      32
+      38
     ]
   }),
   __expand__($V3, [
       2,
-      25
-    ], {70:[
+      31
+    ], {77:[
       2,
-      25
+      31
     ]
   }),
+  __expand__($V0, [
+      2,
+      19
+    ], {77:[
+      2,
+      19
+    ]
+  }),
+  {
+    26: [
+      2,
+      20
+    ],
+    28: [
+      2,
+      20
+    ]
+  },
+  {
+    28: [
+      1,
+      65
+    ],
+    30: [
+      1,
+      64
+    ]
+  },
   {
     1: [
       2,
@@ -7494,528 +8197,542 @@ table: [
   {
     8: [
       2,
-      76
+      82
     ],
-    12: 58,
-    70: [
+    12: 66,
+    77: [
       1,
-      15
+      16
     ]
   },
   __expand__($V6, [
       2,
-      82
-    ], {73:[
+      88
+    ], {80:[
+      1,
+      67
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      86
+    ], {80:[
+      2,
+      86
+    ]
+  }),
+  __expand__($V7, [
+      2,
+      47
+    ], {63:[
+      2,
+      47
+    ]
+  }),
+  __expand__($V9, [
+      2,
+      54
+    ], {51:68,54:69,55:70,77:[
+      2,
+      54
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      40
+    ], {42:71,45:[
+      1,
+      72
+    ],77:[
+      2,
+      40
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      39
+    ], {77:[
+      2,
+      39
+    ]
+  }),
+  {
+    26: [
+      2,
+      23
+    ],
+    28: [
+      2,
+      23
+    ]
+  },
+  {
+    26: [
+      2,
+      24
+    ],
+    28: [
+      2,
+      24
+    ]
+  },
+  __expand__($V6, [
+      2,
+      89
+    ], {76:57,79:58,9:73,80:[
       1,
       59
     ]
   }),
   __expand__($V6, [
       2,
-      80
-    ], {73:[
+      87
+    ], {80:[
       2,
-      80
-    ]
-  }),
-  __expand__($V7, [
-      2,
-      41
-    ], {56:[
-      2,
-      41
-    ]
-  }),
-  __expand__($V9, [
-      2,
-      48
-    ], {44:60,47:61,48:62,70:[
-      2,
-      48
-    ]
-  }),
-  __expand__($V2, [
-      2,
-      34
-    ], {35:63,38:[
-      1,
-      64
-    ],70:[
-      2,
-      34
-    ]
-  }),
-  __expand__($V8, [
-      2,
-      33
-    ], {70:[
-      2,
-      33
-    ]
-  }),
-  __expand__($V6, [
-      2,
-      83
-    ], {69:51,72:52,9:65,73:[
-      1,
-      53
-    ]
-  }),
-  __expand__($V6, [
-      2,
-      81
-    ], {73:[
-      2,
-      81
+      87
     ]
   }),
   {
-    45: [
+    52: [
       1,
-      66
+      74
     ],
-    46: [
+    53: [
       1,
-      67
+      75
     ]
   },
   {
-    45: [
+    52: [
       2,
-      45
+      51
     ],
-    46: [
+    53: [
       2,
-      45
+      51
     ]
   },
   __expand__($Va, [
       2,
-      61
-    ], {49:68,51:69,53:71,38:[
+      67
+    ], {56:76,58:77,60:79,45:[
       1,
-      73
-    ],56:[
+      81
+    ],63:[
       1,
-      72
-    ],57:[
+      80
+    ],64:[
       1,
-      74
-    ],62:[
+      82
+    ],69:[
       1,
-      70
-    ],70:[
+      78
+    ],77:[
       2,
-      61
-    ]
-  }),
-  __expand__($V2, [
-      2,
-      29
-    ], {70:[
-      2,
-      29
+      67
     ]
   }),
   __expand__($V2, [
       2,
       35
-    ], {70:[
+    ], {77:[
       2,
       35
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      41
+    ], {77:[
+      2,
+      41
     ]
   }),
   {
     8: [
       2,
-      77
+      83
     ]
   },
   __expand__($V7, [
       2,
-      43
-    ], {56:[
+      49
+    ], {63:[
       2,
-      43
+      49
     ]
   }),
   __expand__($V9, [
       2,
-      48
-    ], {48:62,47:75,70:[
+      54
+    ], {55:70,54:83,77:[
       2,
-      48
+      54
     ]
   }),
-  __expand__([45,46], [
+  __expand__([52,53], [
       2,
-      69
-    ], {50:76,12:79,11:[
+      75
+    ], {57:84,12:87,11:[
       1,
-      78
-    ],63:[
-      1,
-      77
-    ],66:[
-      1,
-      80
+      86
     ],70:[
       1,
-      15
+      85
+    ],73:[
+      1,
+      88
+    ],77:[
+      1,
+      16
     ]
   }),
   __expand__($Vb, [
       2,
-      47
-    ], {70:[
+      53
+    ], {77:[
       2,
-      47
+      53
     ]
   }),
   {
-    15: 32,
-    27: 81,
-    38: [
+    15: 33,
+    34: 89,
+    45: [
       1,
-      33
+      34
     ],
-    56: [
+    63: [
       1,
-      25
+      26
     ]
   },
   __expand__($Vc, [
       2,
-      56
-    ], {54:82,59:[
+      62
+    ], {61:90,66:[
       1,
-      83
-    ],60:[
+      91
+    ],67:[
       1,
-      84
-    ],61:[
+      92
+    ],68:[
       1,
-      85
-    ],70:[
+      93
+    ],77:[
       2,
-      56
+      62
     ]
   }),
   __expand__($Vd, [
       2,
-      53
-    ], {70:[
+      59
+    ], {77:[
       2,
-      53
+      59
     ]
   }),
   __expand__($Vd, [
       2,
-      54
-    ], {70:[
+      60
+    ], {77:[
       2,
-      54
+      60
     ]
   }),
   __expand__($Ve, [
       2,
-      48
-    ], {52:86,48:87,58:[
+      54
+    ], {59:94,55:95,65:[
       2,
-      48
+      54
     ]
   }),
   {
-    45: [
+    52: [
       2,
-      44
+      50
     ],
-    46: [
+    53: [
       2,
-      44
+      50
     ]
   },
   {
-    45: [
+    52: [
       2,
-      46
+      52
     ],
-    46: [
+    53: [
       2,
-      46
+      52
     ]
   },
   __expand__($Vf, [
       2,
-      70
-    ], {64:88,67:89,68:[
+      76
+    ], {71:96,74:97,75:[
       1,
-      90
+      98
     ]
   }),
   {
-    45: [
+    52: [
       2,
-      66
+      72
     ],
-    46: [
+    53: [
       2,
-      66
+      72
     ]
   },
   {
-    45: [
+    52: [
       2,
-      67
+      73
     ],
-    46: [
+    53: [
       2,
-      67
+      73
     ]
   },
   {
-    45: [
+    52: [
       2,
-      68
+      74
     ],
-    46: [
+    53: [
       2,
-      68
+      74
     ]
   },
   __expand__($Va, [
       2,
-      60
-    ], {70:[
+      66
+    ], {77:[
       2,
-      60
+      66
     ]
   }),
   __expand__($Vb, [
       2,
-      52
-    ], {55:[
-      1,
-      91
-    ],70:[
-      2,
-      52
-    ]
-  }),
-  __expand__($Vc, [
-      2,
-      57
-    ], {70:[
-      2,
-      57
-    ]
-  }),
-  __expand__($Vc, [
-      2,
       58
-    ], {70:[
+    ], {62:[
+      1,
+      99
+    ],77:[
       2,
       58
     ]
   }),
   __expand__($Vc, [
       2,
-      59
-    ], {70:[
+      63
+    ], {77:[
       2,
-      59
+      63
+    ]
+  }),
+  __expand__($Vc, [
+      2,
+      64
+    ], {77:[
+      2,
+      64
+    ]
+  }),
+  __expand__($Vc, [
+      2,
+      65
+    ], {77:[
+      2,
+      65
     ]
   }),
   {
-    46: [
+    53: [
       1,
-      93
-    ],
-    58: [
-      1,
-      92
-    ]
-  },
-  {
-    38: [
-      1,
-      73
-    ],
-    46: [
-      2,
-      50
-    ],
-    51: 69,
-    53: 71,
-    56: [
-      1,
-      72
-    ],
-    57: [
-      1,
-      74
-    ],
-    58: [
-      2,
-      50
-    ]
-  },
-  {
-    63: [
-      1,
-      95
+      101
     ],
     65: [
       1,
-      94
+      100
+    ]
+  },
+  {
+    45: [
+      1,
+      81
+    ],
+    53: [
+      2,
+      56
+    ],
+    58: 77,
+    60: 79,
+    63: [
+      1,
+      80
+    ],
+    64: [
+      1,
+      82
+    ],
+    65: [
+      2,
+      56
+    ]
+  },
+  {
+    70: [
+      1,
+      103
+    ],
+    72: [
+      1,
+      102
     ]
   },
   __expand__($Vf, [
       2,
-      71
-    ], {68:[
+      77
+    ], {75:[
       1,
-      96
+      104
     ]
   }),
   __expand__($Vf, [
       2,
-      74
-    ], {68:[
+      80
+    ], {75:[
       2,
-      74
+      80
     ]
   }),
   __expand__($Vb, [
       2,
-      51
-    ], {70:[
+      57
+    ], {77:[
       2,
-      51
+      57
     ]
   }),
   __expand__($Vd, [
       2,
-      55
-    ], {70:[
+      61
+    ], {77:[
       2,
-      55
+      61
     ]
   }),
   __expand__($Ve, [
       2,
-      48
-    ], {48:97,58:[
+      54
+    ], {55:105,65:[
       2,
-      48
+      54
+    ]
+  }),
+  {
+    52: [
+      2,
+      71
+    ],
+    53: [
+      2,
+      71
+    ]
+  },
+  __expand__($Vf, [
+      2,
+      76
+    ], {74:97,71:106,75:[
+      1,
+      98
+    ]
+  }),
+  __expand__($Vf, [
+      2,
+      81
+    ], {75:[
+      2,
+      81
     ]
   }),
   {
     45: [
-      2,
-      65
-    ],
-    46: [
-      2,
-      65
-    ]
-  },
-  __expand__($Vf, [
-      2,
-      70
-    ], {67:89,64:98,68:[
       1,
-      90
-    ]
-  }),
-  __expand__($Vf, [
-      2,
-      75
-    ], {68:[
-      2,
-      75
-    ]
-  }),
-  {
-    38: [
-      1,
-      73
+      81
     ],
-    46: [
+    53: [
       2,
-      49
+      55
     ],
-    51: 69,
-    53: 71,
-    56: [
-      1,
-      72
-    ],
-    57: [
-      1,
-      74
-    ],
-    58: [
-      2,
-      49
-    ]
-  },
-  {
+    58: 77,
+    60: 79,
     63: [
       1,
-      95
+      80
+    ],
+    64: [
+      1,
+      82
     ],
     65: [
+      2,
+      55
+    ]
+  },
+  {
+    70: [
       1,
-      99
+      103
+    ],
+    72: [
+      1,
+      107
     ]
   },
   __expand__($Vf, [
       2,
-      73
-    ], {67:100,68:[
+      79
+    ], {74:108,75:[
       1,
-      90
+      98
     ]
   }),
   __expand__($Vf, [
       2,
-      72
-    ], {68:[
+      78
+    ], {75:[
       1,
-      96
+      104
     ]
   })
 ],
 defaultActions: {
-  29: [
+  30: [
     2,
-    31
+    37
   ],
-  49: [
+  55: [
     2,
     1
   ],
-  50: [
+  56: [
     2,
     3
   ],
-  65: [
+  73: [
     2,
-    77
+    83
   ]
 },
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        function _parseError (msg, hash) {
-            this.message = msg;
-            this.hash = hash;
-        }
-        _parseError.prototype = new Error();
-
-        throw new _parseError(str, hash);
+        throw new this.JisonParserError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -8029,7 +8746,6 @@ parse: function parse(input) {
         yylineno = 0,
         yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -8065,11 +8781,10 @@ parse: function parse(input) {
 
     var ranges = lexer.options && lexer.options.ranges;
 
+    // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } else {
-        this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
-    }
+    } 
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -8173,7 +8888,6 @@ parse: function parse(input) {
                                  (symbol === EOF ? 'end of input' :
                                   ("'" + (this.terminals_[symbol] || symbol) + "'"));
                     }
-                    error_signaled = true;
                     a = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -8193,7 +8907,6 @@ parse: function parse(input) {
                 // just recovered from another error
                 if (recovering === 3) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
-                        error_signaled = true;
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -8215,7 +8928,6 @@ parse: function parse(input) {
 
                 // try to recover from error
                 if (error_rule_depth === false) {
-                    error_signaled = true;
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -8238,7 +8950,6 @@ parse: function parse(input) {
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
-                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -8300,7 +9011,6 @@ parse: function parse(input) {
 
                 if (typeof r !== 'undefined') {
                     retval = r;
-                    error_signaled = true;
                     break;
                 }
 
@@ -8320,14 +9030,10 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
-            if (!error_signaled) {
-                // b0rk b0rk b0rk!
-            }
             break;
         }
     } finally {
@@ -8361,8 +9067,22 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4 */
+/* generated by jison-lex 0.3.4-102 */
 var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
 var lexer = ({
 
 EOF:1,
@@ -8373,7 +9093,7 @@ parseError:function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new Error(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -8757,6 +9477,7 @@ options: {
   "easy_keyword_rules": true,
   "ranges": true
 },
+JisonLexerError: JisonLexerError,
 performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
@@ -8781,156 +9502,186 @@ case 3 :
 /*! Rule::       %% */ 
  this.pushState('code'); return 5; 
 break;
-case 9 : 
+case 11 : 
+/*! Conditions:: options */ 
+/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 30; 
+break;
+case 12 : 
+/*! Conditions:: options */ 
+/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 30; 
+break;
+case 14 : 
+/*! Conditions:: options */ 
+/*! Rule::       {BR}+ */ 
+ this.popState(); return 26; 
+break;
+case 15 : 
+/*! Conditions:: options */ 
+/*! Rule::       \s+{BR}+ */ 
+ this.popState(); return 26; 
+break;
+case 16 : 
+/*! Conditions:: options */ 
+/*! Rule::       \s+ */ 
+ /* empty */ 
+break;
+case 17 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \s+ */ 
  /* skip whitespace */ 
 break;
-case 10 : 
+case 18 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\/.* */ 
  /* skip comment */ 
 break;
-case 11 : 
+case 19 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* skip comment */ 
 break;
-case 12 : 
+case 20 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{id}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 55; 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 62; 
 break;
-case 14 : 
+case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 38; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 45; 
 break;
-case 15 : 
+case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 38; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 45; 
 break;
-case 20 : 
+case 28 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 5; 
 break;
-case 21 : 
+case 29 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 22 : 
+case 30 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
  if (!yy.options) { yy.options = {}; } yy.options.debug = true; 
 break;
-case 29 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
  this.pushState('token'); return 18; 
 break;
-case 33 : 
+case 39 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %options\b */ 
+ this.pushState('options'); return 24; 
+break;
+case 41 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 70; 
+ this.pushState('path'); return 77; 
 break;
-case 34 : 
+case 42 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       %{id}[^\r\n]* */ 
+/*! Rule::       %{NAME}[^\r\n]* */ 
   
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
+                                            return 23;
                                          
 break;
-case 35 : 
+case 43 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       <{id}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 36; 
+/*! Rule::       <{ID}> */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 43; 
 break;
-case 36 : 
+case 44 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 11; 
 break;
-case 37 : 
+case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 11; 
 break;
-case 38 : 
+case 46 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
- yy.depth = 0; this.pushState('action'); return 63; 
+ yy.depth = 0; this.pushState('action'); return 70; 
 break;
-case 39 : 
+case 47 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 66; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 73; 
 break;
-case 40 : 
+case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       {hex_number} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 37; 
+/*! Rule::       {HEX_NUMBER} */ 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 44; 
 break;
-case 41 : 
+case 49 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       {decimal_number}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 37; 
+/*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 44; 
 break;
-case 42 : 
+case 50 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
-                                            //console.log("unsupported input character: ", yy_.yytext, yy_.yylloc);
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 46 : 
+case 54 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 68; // regexp with braces or quotes (and no spaces) 
+ return 75; // regexp with braces or quotes (and no spaces) 
 break;
-case 51 : 
+case 59 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
- yy.depth++; return 63; 
+ yy.depth++; return 70; 
 break;
-case 52 : 
+case 60 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 65; 
+ if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 72; 
 break;
-case 54 : 
+case 62 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 73;      // the bit of CODE just before EOF... 
+ return 80;      // the bit of CODE just before EOF... 
 break;
-case 55 : 
+case 63 : 
 /*! Conditions:: path */ 
 /*! Rule::       [\r\n] */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 56 : 
+case 64 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 78; 
 break;
-case 57 : 
+case 65 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 78; 
 break;
-case 58 : 
+case 66 : 
 /*! Conditions:: path */ 
 /*! Rule::       \s+ */ 
  // skip whitespace in the line 
 break;
-case 59 : 
+case 67 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 71; 
+ this.popState(); return 78; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -8940,85 +9691,91 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   4 : 57,
+   4 : 64,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   5 : 58,
+   5 : 65,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   6 : 59,
+   6 : 66,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   7 : 60,
+   7 : 67,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   8 : 61,
+   8 : 68,
+  /*! Conditions:: options */ 
+  /*! Rule::       {NAME} */ 
+   9 : 28,
+  /*! Conditions:: options */ 
+  /*! Rule::       = */ 
+   10 : 29,
+  /*! Conditions:: options */ 
+  /*! Rule::       [^\s\r\n]+ */ 
+   13 : 30,
   /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       {id} */ 
-   13 : 56,
+  /*! Rule::       {ID} */ 
+   21 : 63,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   16 : 'TOKEN_WORD',
+   24 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   17 : 43,
+   25 : 50,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   18 : 45,
+   26 : 52,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   19 : 46,
+   27 : 53,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   23 : 26,
+   31 : 33,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   24 : 62,
+   32 : 69,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   25 : 14,
+   33 : 14,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   26 : 29,
+   34 : 36,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   27 : 30,
+   35 : 37,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   28 : 31,
+   36 : 38,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   30 : 25,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %options\b */ 
-   31 : 23,
+   38 : 31,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   32 : 16,
+   40 : 16,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   43 : 8,
+   51 : 8,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   44 : 68,
+   52 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   45 : 68,
+   53 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   47 : 68,
+   55 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   48 : 68,
+   56 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   49 : 68,
+   57 : 75,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   50 : 68,
+   58 : 75,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   53 : 73
+   61 : 80
 },
 rules: [
 /^(?:\r|\n)/,
@@ -9030,11 +9787,19 @@ rules: [
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:=)/,
+/^(?:"(\\\\|\\"|[^"])*")/,
+/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:[^\s\r\n]+)/,
+/^(?:(\r\n|\n|\r)+)/,
+/^(?:\s+(\r\n|\n|\r)+)/,
+/^(?:\s+)/,
 /^(?:\s+)/,
 /^(?:\/\/.*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\])/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
+/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
 /^(?:"[^"]+")/,
 /^(?:'[^']+')/,
 /^(?:[^\s\r\n]+)/,
@@ -9056,7 +9821,7 @@ rules: [
 /^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,
 /^(?:%include\b)/,
 /^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]*)/,
-/^(?:<([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)>)/,
+/^(?:<([a-zA-Z_][a-zA-Z0-9_]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
@@ -9086,13 +9851,6 @@ conditions: {
   "bnf": {
     "rules": [
       3,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
       17,
       18,
       19,
@@ -9100,7 +9858,6 @@ conditions: {
       21,
       22,
       23,
-      24,
       25,
       26,
       27,
@@ -9119,7 +9876,15 @@ conditions: {
       40,
       41,
       42,
-      43
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
     ],
     "inclusive": true
   },
@@ -9131,13 +9896,6 @@ conditions: {
       6,
       7,
       8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
       17,
       18,
       19,
@@ -9145,7 +9903,6 @@ conditions: {
       21,
       22,
       23,
-      24,
       25,
       26,
       27,
@@ -9164,54 +9921,6 @@ conditions: {
       40,
       41,
       42,
-      43
-    ],
-    "inclusive": true
-  },
-  "token": {
-    "rules": [
-      0,
-      1,
-      2,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      31,
-      32,
-      34,
-      35,
-      36,
-      37,
-      38,
-      39,
-      40,
-      41,
-      42,
-      43
-    ],
-    "inclusive": true
-  },
-  "action": {
-    "rules": [
       43,
       44,
       45,
@@ -9220,40 +9929,15 @@ conditions: {
       48,
       49,
       50,
-      51,
-      52
+      51
     ],
-    "inclusive": false
+    "inclusive": true
   },
-  "code": {
+  "token": {
     "rules": [
-      33,
-      43,
-      53,
-      54
-    ],
-    "inclusive": false
-  },
-  "path": {
-    "rules": [
-      43,
-      55,
-      56,
-      57,
-      58,
-      59
-    ],
-    "inclusive": false
-  },
-  "INITIAL": {
-    "rules": [
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
+      0,
+      1,
+      2,
       17,
       18,
       19,
@@ -9278,14 +9962,110 @@ conditions: {
       38,
       39,
       40,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ],
+    "inclusive": true
+  },
+  "action": {
+    "rules": [
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60
+    ],
+    "inclusive": false
+  },
+  "code": {
+    "rules": [
+      41,
+      51,
+      61,
+      62
+    ],
+    "inclusive": false
+  },
+  "path": {
+    "rules": [
+      51,
+      63,
+      64,
+      65,
+      66,
+      67
+    ],
+    "inclusive": false
+  },
+  "options": {
+    "rules": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      51
+    ],
+    "inclusive": false
+  },
+  "INITIAL": {
+    "rules": [
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
       41,
       42,
-      43
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
     ],
     "inclusive": true
   }
 }
 });
+// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -9295,6 +10075,7 @@ function Parser () {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -9311,7 +10092,7 @@ exports.parse = function () {
 
 }
 
-},{"./ebnf-transform":4,"fs":13}],8:[function(require,module,exports){
+},{"./ebnf-transform":4,"fs":12}],8:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
 
@@ -9326,9 +10107,13 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         active_conditions,
         newRules = [];
 
-    if (macros) {
-        macros = prepareMacros(macros);
-    }
+    // Depending on the location within the regex we need different expansions of the macros,
+    // hence precalcing the expansions is out for now; besides the number of macros is usually 
+    // relatively small enough that a naive approach to expansion is fine performance-wise anyhow:
+    // 
+    // if (macros) {
+    //     macros = prepareMacros(macros);
+    // }
 
     function tokenNumberReplacement (str, token) {
         return 'return ' + (tokens[token] || "'" + token + "'");
@@ -9370,11 +10155,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
 
         m = rules[i][0];
         if (typeof m === 'string') {
-            for (k in macros) {
-                if (macros.hasOwnProperty(k)) {
-                    m = m.split('{' + k + '}').join('(' + macros[k] + ')');
-                }
-            }
+            m = expandMacros(m, macros);
             m = new RegExp('^(?:' + m + ')', caseless ? 'i' : '');
         }
         newRules.push(m);
@@ -9382,8 +10163,8 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
             rules[i][1] = String(rules[i][1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
         }
         action = rules[i][1];
-        if (tokens && action.match(/return '[^']+'/)) {
-            action = action.replace(/return '([^']+)'/g, tokenNumberReplacement);
+        if (tokens && action.match(/return '(?:\\'|[^']+)+'/)) {
+            action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
         }
         
         var code = ['\n/*! Conditions::'];
@@ -9392,7 +10173,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         code = code.concat(rules[i][0]);
         code = code.concat('*/', '\n');
         
-        var match_nr = /^return\s+('[^\']+'|\d+)\s*;?$/.exec(action.trim());
+        var match_nr = /^return\s+('(?:\\'|[^']+)+'|\d+)\s*;?$/.exec(action.trim());
         if (match_nr) {
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
@@ -9409,21 +10190,103 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
 // expand macros within macros
 function prepareMacros (macros) {
     var cont = true,
-        m,i,k,mnew;
+        m, i, k, mnew;
     while (cont) {
         cont = false;
-        for (i in macros) if (macros.hasOwnProperty(i)) {
-            m = macros[i];
-            for (k in macros) if (macros.hasOwnProperty(k) && i !== k) {
-                mnew = m.split('{' + k + '}').join('(' + macros[k] + ')');
-                if (mnew !== m) {
-                    cont = true;
-                    macros[i] = mnew;
+        for (i in macros) {
+            if (macros.hasOwnProperty(i)) {
+                m = macros[i];
+                for (k in macros) {
+                    if (macros.hasOwnProperty(k) && i !== k) {
+                        mnew = m.split('{' + k + '}').join('(' + macros[k] + ')');
+                        if (mnew !== m) {
+                            cont = true;
+                            macros[i] = mnew;
+                        }
+                    }
                 }
             }
         }
     }
     return macros;
+}
+
+// expand macros in a regex; expands them recursively
+function expandMacros(src, macros) {
+    var i, m;
+
+    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
+    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+    // 
+    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
+    // `[^0-9]` in nested macros!
+    function reduceRegexToSet(s) {
+        // First make sure legal regexes such as `[-@]` or `[@-]` get their hypens at the edges 
+        // properly escaped as they'll otherwise produce havoc when being combined into new 
+        // sets thanks to macro expansion inside the outer regex set expression.
+        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped 
+        for (var i = 0, len = m.length; i < len; i++) {
+            s = ' ' + m[i] + ' '; // make our life easier down the lane...
+
+            s = s.replace(/([^\\])\[-/, '$1[\\-').replace(/-\]/, '\\-]');
+
+            // catch the remains of constructs like `[0-9]|[a-z]`  
+            s = s.replace(/\]\|\[/g, '');
+
+            // Also remove the outer brackets of any included set (which came in via macro expansion);
+            // we know that the ones we'll see be either escaped or raw; it's the raw ones we want
+            // to wipe out.
+            s = s.replace(/([^\\])\[/, '$1').replace(/([^\\])\]/, '$1');
+
+            m[i] = s.substr(1, s.length - 2);
+        }
+        s = m.join('\\\\');
+        return s;
+    }
+
+    function expandMacroInSet(i) {
+        var k, a;
+        var m = macros[i];
+
+        for (k in macros) {
+            if (macros.hasOwnProperty(k) && i !== k) {
+                a = m.split('{' + k + '}');
+                if (a.length > 1) {
+                    m = a.join(expandMacroInSet(k));
+                }
+            }
+        }
+
+        return m;
+    }
+
+    function expandMacroElsewhere(i) {
+        var k, a;
+        var m = macros[i];
+
+        for (k in macros) {
+            if (macros.hasOwnProperty(k) && i !== k) {
+                a = m.split('{' + k + '}');
+                if (a.length > 1) {
+                    m = a.join('(' + expandMacroElsewhere(k) + ')');
+                }
+            }
+        }
+        return m;
+    }
+
+    for (i in macros) {
+        if (macros.hasOwnProperty(i)) {
+            m = macros[i];
+
+            // first process the macros inside [...] set expressions:
+            src = src.split('{[{' + i + '}]}').join(reduceRegexToSet(expandMacroInSet(i)));
+            // then process the other macro occurrences in the regex:
+            src = src.split('{' + i + '}').join('(' + expandMacroElsewhere(i) + ')');
+        }
+    }
+
+    return src;
 }
 
 function prepareStartConditions (conditions) {
@@ -9464,6 +10327,24 @@ function buildActions (dict, tokens) {
     };
 }
 
+var jisonLexerErrorDefinition = [
+    '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript',
+    '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript',
+    'function JisonLexerError(msg, hash) {',
+    '    this.message = msg;',
+    '    this.hash = hash;',
+    '    var stacktrace = (new Error(msg)).stack;',
+    '    if (stacktrace) {',
+    '      this.stack = stacktrace;',
+    '    }',
+    '}',
+    'JisonLexerError.prototype = Object.create(Error.prototype);',
+    'JisonLexerError.prototype.constructor = JisonLexerError;',
+    'JisonLexerError.prototype.name = \'JisonLexerError\';',
+    '',
+];
+
+
 function RegExpLexer (dict, input, tokens) {
     var opts;
     var dump = false;
@@ -9475,16 +10356,18 @@ function RegExpLexer (dict, input, tokens) {
         }
         var source = generateModuleBody(opts);
         try {
+            // provide a local version for test purposes:
+            function JisonLexerError(msg, hash) {
+                throw new Error(msg);
+            }
+
             var lexer = eval(source);
             // When we do NOT crash, we found/killed the problem area just before this call!
-            //console.log('RegExpLexer: CULPRIT: ', description, src_exception);
             if (src_exception && description) {
                 src_exception.message += '\n        (' + description + ')';
             }
-            //console.log('RegExpLexer: CULPRIT: ', description, src_exception);
             return lexer;
         } catch (ex) {
-            //console.log('bonko @ RegExpLexer: ', description, ex, ex.stack);
             // if (src_exception) {
             //     src_exception.message += '\n        (' + description + ': ' + ex.message + ')';
             // }
@@ -9562,11 +10445,13 @@ RegExpLexer.prototype = {
     EOF: 1,
     ERROR: 2,
 
+    // JisonLexerError: JisonLexerError, 
+
     parseError: function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new Error(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -10040,6 +10925,7 @@ function generateModuleBody(opt) {
         out += ',\noptions: ' + JSON.stringify(opt.options, null, 2);
     }
 
+    out += ',\nJisonLexerError: JisonLexerError';
     out += ',\nperformAction: ' + String(opt.performAction);
     out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
     out += ',\nrules: [\n' + opt.rules.join(',\n') + '\n]';
@@ -10052,49 +10938,62 @@ function generateModuleBody(opt) {
 function generateModule(opt) {
     opt = opt || {};
 
-    var out = '/* generated by jison-lex ' + version + ' */';
+    var out = ['/* generated by jison-lex ' + version + ' */'];
     var moduleName = opt.moduleName || 'lexer';
 
-    out += '\nvar ' + moduleName + ' = (function () {\nvar lexer = '
-          + generateModuleBody(opt);
+    out.push('var ' + moduleName + ' = (function () {');
+    out.push.apply(out, jisonLexerErrorDefinition);
+    out.push('var lexer = ' + generateModuleBody(opt) + ';');
 
     if (opt.moduleInclude) {
-        out += ';\n' + opt.moduleInclude;
+        out.push(opt.moduleInclude + ';');
     }
 
-    out += ';\nreturn lexer;\n})();';
+    out.push(
+        '// lexer.JisonLexerError = JisonLexerError;',
+        'return lexer;', 
+        '})();'
+    );
 
-    return out;
+    return out.join('\n');
 }
 
 function generateAMDModule(opt) {
     opt = opt || {};
 
-    var out = '/* generated by jison-lex ' + version + ' */';
+    var out = ['/* generated by jison-lex ' + version + ' */'];
 
-    out += 'define([], function () {\nvar lexer = '
-          + generateModuleBody(opt);
+    out.push('define([], function () {');
+    out.push.apply(out, jisonLexerErrorDefinition);
+    out.push('var lexer = ' + generateModuleBody(opt) + ';');
 
     if (opt.moduleInclude) {
-        out += ';\n' + opt.moduleInclude;
+        out.push(opt.moduleInclude + ';');
     }
 
-    out += ';\nreturn lexer;'
-         + '\n});';
+    out.push(
+        '// lexer.JisonLexerError = JisonLexerError;',
+        'return lexer;',
+        '});'
+    );
 
-    return out;
+    return out.join('\n');
 }
 
 function generateCommonJSModule(opt) {
     opt = opt || {};
 
-    var out = '';
+    var out = [];
     var moduleName = opt.moduleName || 'lexer';
 
-    out += generateModule(opt);
-    out += '\nexports.lexer = ' + moduleName;
-    out += ';\nexports.lex = function () { return ' + moduleName + '.lex.apply(lexer, arguments); };';
-    return out;
+    out.push(
+        generateModule(opt),
+        'exports.lexer = ' + moduleName + ';',
+        'exports.lex = function () {',
+        ' return ' + moduleName + '.lex.apply(lexer, arguments);',
+        '};'
+    );
+    return out.join('\n');
 }
 
 RegExpLexer.generate = generate;
@@ -10198,7 +11097,7 @@ if (typeof exports !== 'undefined')
 
 
 },{"./typal":11}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.15 */
+/* parser generated by jison 0.4.15-100 */
 /*
   Returns a Parser object of the following structure:
 
@@ -10208,7 +11107,8 @@ if (typeof exports !== 'undefined')
 
   Parser.prototype: {
     yy: {},
-    trace: function(),
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
     symbols_: {associative list: name ==> number},
     terminals_: {associative list: number ==> name},
     productions_: [...],
@@ -10221,11 +11121,14 @@ if (typeof exports !== 'undefined')
 
     lexer: {
         EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
         parseError: function(str, hash),
         setInput: function(input),
         input: function(),
         unput: function(str),
         more: function(),
+        reject: function(),
         less: function(n),
         pastInput: function(),
         upcomingInput: function(),
@@ -10317,19 +11220,36 @@ if (typeof exports !== 'undefined')
   }
 */
 var ebnf = (function () {
-var __expand__ = function (k, v, o) {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
     o[k[l]] = v;
   }
   return o;
-},
-    $V0=[5,7,12,13],
+}
+
+var $V0=[5,7,12,13],
     $V1=[5,7,11,12,13,14,15,16],
     $V2=[7,12,13],
     $V3=[5,7,11,12,13];
+
 var parser = {
 trace: function trace() { },
+JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
   "error": 2,
@@ -10338,7 +11258,7 @@ symbols_: {
   "EOF": 5,
   "handle_list": 6,
   "|": 7,
-  "expression_suffix": 8,
+  "expression_suffixed": 8,
   "expression": 9,
   "suffix": 10,
   "ALIAS": 11,
@@ -10440,16 +11360,22 @@ case 4 :
   this.$ = [];  
 break;
 case 5 : 
-/*! Production::     handle : handle expression_suffix */
+/*! Production::     handle : handle expression_suffixed */
   $$[$0-1].push($$[$0]);  
 break;
 case 6 : 
-/*! Production::     expression_suffix : expression suffix ALIAS */
+/*! Production::     expression_suffixed : expression suffix ALIAS */
   this.$ = ['xalias', $$[$0-1], $$[$0-2], $$[$0]];  
 break;
 case 7 : 
-/*! Production::     expression_suffix : expression suffix */
-  if ($$[$0]) this.$ = [$$[$0], $$[$0-1]]; else this.$ = $$[$0-1];  
+/*! Production::     expression_suffixed : expression suffix */
+  
+      if ($$[$0]) {
+        this.$ = [$$[$0], $$[$0-1]]; 
+      } else {
+        this.$ = $$[$0-1];
+      } 
+     
 break;
 case 8 : 
 /*! Production::     expression : SYMBOL */
@@ -10655,13 +11581,7 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        function _parseError (msg, hash) {
-            this.message = msg;
-            this.hash = hash;
-        }
-        _parseError.prototype = new Error();
-
-        throw new _parseError(str, hash);
+        throw new this.JisonParserError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -10675,7 +11595,6 @@ parse: function parse(input) {
         yylineno = 0,
         yyleng = 0,
 
-        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -10711,11 +11630,10 @@ parse: function parse(input) {
 
     var ranges = lexer.options && lexer.options.ranges;
 
+    // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } else {
-        this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
-    }
+    } 
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -10795,7 +11713,6 @@ parse: function parse(input) {
                               ("'" + (this.terminals_[symbol] || symbol) + "'"));
                 }
                 // we cannot recover from the error!
-                error_signaled = true;
                 retval = this.parseError(errStr, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -10810,7 +11727,6 @@ parse: function parse(input) {
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
-                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -10870,7 +11786,6 @@ parse: function parse(input) {
 
                 if (typeof r !== 'undefined') {
                     retval = r;
-                    error_signaled = true;
                     break;
                 }
 
@@ -10890,14 +11805,10 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
-            if (!error_signaled) {
-                // b0rk b0rk b0rk!
-            }
             break;
         }
     } finally {
@@ -10917,8 +11828,22 @@ parse: function parse(input) {
 }
 };
 
-/* generated by jison-lex 0.3.4 */
+/* generated by jison-lex 0.3.4-100 */
 var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
 var lexer = ({
 
 EOF:1,
@@ -10929,7 +11854,7 @@ parseError:function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new Error(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -11310,6 +12235,7 @@ stateStackSize:function stateStackSize() {
         return this.conditionStack.length;
     },
 options: {},
+JisonLexerError: JisonLexerError,
 performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
@@ -11321,7 +12247,7 @@ case 0 :
 break;
 case 2 : 
 /*! Conditions:: INITIAL */ 
-/*! Rule::       \[{id}\] */ 
+/*! Rule::       \[{ID}\] */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 11; 
 break;
 default:
@@ -11331,41 +12257,45 @@ default:
 simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       {id} */ 
+  /*! Rule::       {ID} */ 
    1 : 12,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       '[^']*' */ 
+  /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
    3 : 12,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       \. */ 
+  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
    4 : 12,
   /*! Conditions:: INITIAL */ 
+  /*! Rule::       \. */ 
+   5 : 12,
+  /*! Conditions:: INITIAL */ 
   /*! Rule::       \( */ 
-   5 : 13,
+   6 : 13,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \) */ 
-   6 : 14,
+   7 : 14,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   7 : 15,
+   8 : 15,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \? */ 
-   8 : 16,
+   9 : 16,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \| */ 
-   9 : 7,
+   10 : 7,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   10 : 17,
+   11 : 17,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   11 : 5
+   12 : 5
 },
 rules: [
 /^(?:\s+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
-/^(?:\[([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\])/,
-/^(?:'[^']*')/,
+/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
+/^(?:'((\\'|(?!').)*)')/,
+/^(?:"((\\"|(?!").)*)")/,
 /^(?:\.)/,
 /^(?:\()/,
 /^(?:\))/,
@@ -11389,12 +12319,14 @@ conditions: {
       8,
       9,
       10,
-      11
+      11,
+      12
     ],
     "inclusive": true
   }
 }
 });
+// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -11404,6 +12336,7 @@ function Parser () {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -11513,582 +12446,8 @@ if (typeof exports !== 'undefined')
     exports.typal = typal;
 
 },{}],12:[function(require,module,exports){
-/*! Copyright (c) 2011, Lloyd Hilaiel, ISC License */
-/*
- * This is the JSONSelect reference implementation, in javascript.  This
- * code is designed to run under node.js or in a browser.  In the former
- * case, the "public API" is exposed as properties on the `export` object,
- * in the latter, as properties on `window.JSONSelect`.  That API is thus:
- *
- * Selector formating and parameter escaping:
- *
- * Anywhere where a string selector is selected, it may be followed by an
- * optional array of values.  When provided, they will be escaped and
- * inserted into the selector string properly escaped.  i.e.:
- *
- *   .match(':has(?)', [ 'foo' ], {}) 
- * 
- * would result in the seclector ':has("foo")' being matched against {}.
- *
- * This feature makes dynamically generated selectors more readable.
- *
- * .match(selector, [ values ], object)
- *
- *   Parses and "compiles" the selector, then matches it against the object
- *   argument.  Matches are returned in an array.  Throws an error when
- *   there's a problem parsing the selector.
- *
- * .forEach(selector, [ values ], object, callback)
- *
- *   Like match, but rather than returning an array, invokes the provided
- *   callback once per match as the matches are discovered. 
- * 
- * .compile(selector, [ values ]) 
- *
- *   Parses the selector and compiles it to an internal form, and returns
- *   an object which contains the compiled selector and has two properties:
- *   `match` and `forEach`.  These two functions work identically to the
- *   above, except they do not take a selector as an argument and instead
- *   use the compiled selector.
- *
- *   For cases where a complex selector is repeatedly used, this method
- *   should be faster as it will avoid recompiling the selector each time. 
- */
-(function(exports) {
-
-    var // localize references
-    toString = Object.prototype.toString;
-
-    function jsonParse(str) {
-      try {
-          if(JSON && JSON.parse){
-              return JSON.parse(str);
-          }
-          return (new Function("return " + str))();
-      } catch(e) {
-        te("ijs", e.message);
-      }
-    }
-
-    // emitted error codes.
-    var errorCodes = {
-        "bop":  "binary operator expected",
-        "ee":   "expression expected",
-        "epex": "closing paren expected ')'",
-        "ijs":  "invalid json string",
-        "mcp":  "missing closing paren",
-        "mepf": "malformed expression in pseudo-function",
-        "mexp": "multiple expressions not allowed",
-        "mpc":  "multiple pseudo classes (:xxx) not allowed",
-        "nmi":  "multiple ids not allowed",
-        "pex":  "opening paren expected '('",
-        "se":   "selector expected",
-        "sex":  "string expected",
-        "sra":  "string required after '.'",
-        "uc":   "unrecognized char",
-        "ucp":  "unexpected closing paren",
-        "ujs":  "unclosed json string",
-        "upc":  "unrecognized pseudo class"
-    };
-
-    // throw an error message
-    function te(ec, context) {
-      throw new Error(errorCodes[ec] + ( context && " in '" + context + "'"));
-    }
-
-    // THE LEXER
-    var toks = {
-        psc: 1, // pseudo class
-        psf: 2, // pseudo class function
-        typ: 3, // type
-        str: 4, // string
-        ide: 5  // identifiers (or "classes", stuff after a dot)
-    };
-
-    // The primary lexing regular expression in jsonselect
-    var pat = new RegExp(
-        "^(?:" +
-        // (1) whitespace
-        "([\\r\\n\\t\\ ]+)|" +
-        // (2) one-char ops
-        "([~*,>\\)\\(])|" +
-        // (3) types names
-        "(string|boolean|null|array|object|number)|" +
-        // (4) pseudo classes
-        "(:(?:root|first-child|last-child|only-child))|" +
-        // (5) pseudo functions
-        "(:(?:nth-child|nth-last-child|has|expr|val|contains))|" +
-        // (6) bogusly named pseudo something or others
-        "(:\\w+)|" +
-        // (7 & 8) identifiers and JSON strings
-        "(?:(\\.)?(\\\"(?:[^\\\\\\\"]|\\\\[^\\\"])*\\\"))|" +
-        // (8) bogus JSON strings missing a trailing quote
-        "(\\\")|" +
-        // (9) identifiers (unquoted)
-        "\\.((?:[_a-zA-Z]|[^\\0-\\0177]|\\\\[^\\r\\n\\f0-9a-fA-F])(?:[_a-zA-Z0-9\\-]|[^\\u0000-\\u0177]|(?:\\\\[^\\r\\n\\f0-9a-fA-F]))*)" +
-        ")"
-    );
-
-    // A regular expression for matching "nth expressions" (see grammar, what :nth-child() eats)
-    var nthPat = /^\s*\(\s*(?:([+\-]?)([0-9]*)n\s*(?:([+\-])\s*([0-9]))?|(odd|even)|([+\-]?[0-9]+))\s*\)/;
-    function lex(str, off) {
-        if (!off) off = 0;
-        var m = pat.exec(str.substr(off));
-        if (!m) return undefined;
-        off+=m[0].length;
-        var a;
-        if (m[1]) a = [off, " "];
-        else if (m[2]) a = [off, m[0]];
-        else if (m[3]) a = [off, toks.typ, m[0]];
-        else if (m[4]) a = [off, toks.psc, m[0]];
-        else if (m[5]) a = [off, toks.psf, m[0]];
-        else if (m[6]) te("upc", str);
-        else if (m[8]) a = [off, m[7] ? toks.ide : toks.str, jsonParse(m[8])];
-        else if (m[9]) te("ujs", str);
-        else if (m[10]) a = [off, toks.ide, m[10].replace(/\\([^\r\n\f0-9a-fA-F])/g,"$1")];
-        return a;
-    }
-
-    // THE EXPRESSION SUBSYSTEM
-
-    var exprPat = new RegExp(
-            // skip and don't capture leading whitespace
-            "^\\s*(?:" +
-            // (1) simple vals
-            "(true|false|null)|" + 
-            // (2) numbers
-            "(-?\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d+)?)|" +
-            // (3) strings
-            "(\"(?:[^\\]|\\[^\"])*\")|" +
-            // (4) the 'x' value placeholder
-            "(x)|" +
-            // (5) binops
-            "(&&|\\|\\||[\\$\\^<>!\\*]=|[=+\\-*/%<>])|" +
-            // (6) parens
-            "([\\(\\)])" +
-            ")"
-    );
-
-    function is(o, t) { return typeof o === t; }
-    var operators = {
-        '*':  [ 9, function(lhs, rhs) { return lhs * rhs; } ],
-        '/':  [ 9, function(lhs, rhs) { return lhs / rhs; } ],
-        '%':  [ 9, function(lhs, rhs) { return lhs % rhs; } ],
-        '+':  [ 7, function(lhs, rhs) { return lhs + rhs; } ],
-        '-':  [ 7, function(lhs, rhs) { return lhs - rhs; } ],
-        '<=': [ 5, function(lhs, rhs) { return is(lhs, 'number') && is(rhs, 'number') && lhs <= rhs; } ],
-        '>=': [ 5, function(lhs, rhs) { return is(lhs, 'number') && is(rhs, 'number') && lhs >= rhs; } ],
-        '$=': [ 5, function(lhs, rhs) { return is(lhs, 'string') && is(rhs, 'string') && lhs.lastIndexOf(rhs) === lhs.length - rhs.length; } ],
-        '^=': [ 5, function(lhs, rhs) { return is(lhs, 'string') && is(rhs, 'string') && lhs.indexOf(rhs) === 0; } ],
-        '*=': [ 5, function(lhs, rhs) { return is(lhs, 'string') && is(rhs, 'string') && lhs.indexOf(rhs) !== -1; } ],
-        '>':  [ 5, function(lhs, rhs) { return is(lhs, 'number') && is(rhs, 'number') && lhs > rhs; } ],
-        '<':  [ 5, function(lhs, rhs) { return is(lhs, 'number') && is(rhs, 'number') && lhs < rhs; } ],
-        '=':  [ 3, function(lhs, rhs) { return lhs === rhs; } ],
-        '!=': [ 3, function(lhs, rhs) { return lhs !== rhs; } ],
-        '&&': [ 2, function(lhs, rhs) { return lhs && rhs; } ],
-        '||': [ 1, function(lhs, rhs) { return lhs || rhs; } ]
-    };
-
-    function exprLex(str, off) {
-        var v, m = exprPat.exec(str.substr(off));
-        if (m) {
-            off += m[0].length;
-            v = m[1] || m[2] || m[3] || m[5] || m[6];
-            if (m[1] || m[2] || m[3]) return [off, 0, jsonParse(v)];
-            else if (m[4]) return [off, 0, undefined];
-            return [off, v];
-        }
-    }
-
-    function exprParse2(str, off) {
-        if (!off) off = 0;
-        // first we expect a value or a '('
-        var l = exprLex(str, off),
-            lhs;
-        if (l && l[1] === '(') {
-            lhs = exprParse2(str, l[0]);
-            var p = exprLex(str, lhs[0]);
-            if (!p || p[1] !== ')') te('epex', str);
-            off = p[0];
-            lhs = [ '(', lhs[1] ];
-        } else if (!l || (l[1] && l[1] != 'x')) {
-            te("ee", str + " - " + ( l[1] && l[1] ));
-        } else {
-            lhs = ((l[1] === 'x') ? undefined : l[2]);
-            off = l[0];
-        }
-
-        // now we expect a binary operator or a ')'
-        var op = exprLex(str, off);
-        if (!op || op[1] == ')') return [off, lhs];
-        else if (op[1] == 'x' || !op[1]) {
-            te('bop', str + " - " + ( op[1] && op[1] ));
-        }
-
-        // tail recursion to fetch the rhs expression
-        var rhs = exprParse2(str, op[0]);
-        off = rhs[0];
-        rhs = rhs[1];
-
-        // and now precedence!  how shall we put everything together?
-        var v;
-        if (typeof rhs !== 'object' || rhs[0] === '(' || operators[op[1]][0] < operators[rhs[1]][0] ) {
-            v = [lhs, op[1], rhs];
-        }
-        else {
-            v = rhs;
-            while (typeof rhs[0] === 'object' && rhs[0][0] != '(' && operators[op[1]][0] >= operators[rhs[0][1]][0]) {
-                rhs = rhs[0];
-            }
-            rhs[0] = [lhs, op[1], rhs[0]];
-        }
-        return [off, v];
-    }
-
-    function exprParse(str, off) {
-        function deparen(v) {
-            if (typeof v !== 'object' || v === null) return v;
-            else if (v[0] === '(') return deparen(v[1]);
-            else return [deparen(v[0]), v[1], deparen(v[2])];
-        }
-        var e = exprParse2(str, off ? off : 0);
-        return [e[0], deparen(e[1])];
-    }
-
-    function exprEval(expr, x) {
-        if (expr === undefined) return x;
-        else if (expr === null || typeof expr !== 'object') {
-            return expr;
-        }
-        var lhs = exprEval(expr[0], x),
-            rhs = exprEval(expr[2], x);
-        return operators[expr[1]][1](lhs, rhs);
-    }
-
-    // THE PARSER
-
-    function parse(str, off, nested, hints) {
-        if (!nested) hints = {};
-
-        var a = [], am, readParen;
-        if (!off) off = 0; 
-
-        while (true) {
-            var s = parse_selector(str, off, hints);
-            a.push(s[1]);
-            s = lex(str, off = s[0]);
-            if (s && s[1] === " ") s = lex(str, off = s[0]);
-            if (!s) break;
-            // now we've parsed a selector, and have something else...
-            if (s[1] === ">" || s[1] === "~") {
-                if (s[1] === "~") hints.usesSiblingOp = true;
-                a.push(s[1]);
-                off = s[0];
-            } else if (s[1] === ",") {
-                if (am === undefined) am = [ ",", a ];
-                else am.push(a);
-                a = [];
-                off = s[0];
-            } else if (s[1] === ")") {
-                if (!nested) te("ucp", s[1]);
-                readParen = 1;
-                off = s[0];
-                break;
-            }
-        }
-        if (nested && !readParen) te("mcp", str);
-        if (am) am.push(a);
-        var rv;
-        if (!nested && hints.usesSiblingOp) {
-            rv = normalize(am ? am : a);
-        } else {
-            rv = am ? am : a;
-        }
-        return [off, rv];
-    }
-
-    function normalizeOne(sel) {
-        var sels = [], s;
-        for (var i = 0; i < sel.length; i++) {
-            if (sel[i] === '~') {
-                // `A ~ B` maps to `:has(:root > A) > B`
-                // `Z A ~ B` maps to `Z :has(:root > A) > B, Z:has(:root > A) > B`
-                // This first clause, takes care of the first case, and the first half of the latter case.
-                if (i < 2 || sel[i-2] != '>') {
-                    s = sel.slice(0,i-1);
-                    s = s.concat([{has:[[{pc: ":root"}, ">", sel[i-1]]]}, ">"]);
-                    s = s.concat(sel.slice(i+1));
-                    sels.push(s);
-                }
-                // here we take care of the second half of above:
-                // (`Z A ~ B` maps to `Z :has(:root > A) > B, Z :has(:root > A) > B`)
-                // and a new case:
-                // Z > A ~ B maps to Z:has(:root > A) > B
-                if (i > 1) {
-                    var at = sel[i-2] === '>' ? i-3 : i-2;
-                    s = sel.slice(0,at);
-                    var z = {};
-                    for (var k in sel[at]) if (sel[at].hasOwnProperty(k)) z[k] = sel[at][k];
-                    if (!z.has) z.has = [];
-                    z.has.push([{pc: ":root"}, ">", sel[i-1]]);
-                    s = s.concat(z, '>', sel.slice(i+1));
-                    sels.push(s);
-                }
-                break;
-            }
-        }
-        if (i == sel.length) return sel;
-        return sels.length > 1 ? [','].concat(sels) : sels[0];
-    }
-
-    function normalize(sels) {
-        if (sels[0] === ',') {
-            var r = [","];
-            for (var i = i; i < sels.length; i++) {
-                var s = normalizeOne(s[i]);
-                r = r.concat(s[0] === "," ? s.slice(1) : s);
-            }
-            return r;
-        } else {
-            return normalizeOne(sels);
-        }
-    }
-
-    function parse_selector(str, off, hints) {
-        var soff = off;
-        var s = { };
-        var l = lex(str, off);
-        // skip space
-        if (l && l[1] === " ") { soff = off = l[0]; l = lex(str, off); }
-        if (l && l[1] === toks.typ) {
-            s.type = l[2];
-            l = lex(str, (off = l[0]));
-        } else if (l && l[1] === "*") {
-            // don't bother representing the universal sel, '*' in the
-            // parse tree, cause it's the default
-            l = lex(str, (off = l[0]));
-        }
-
-        // now support either an id or a pc
-        while (true) {
-            if (l === undefined) {
-                break;
-            } else if (l[1] === toks.ide) {
-                if (s.id) te("nmi", l[1]);
-                s.id = l[2];
-            } else if (l[1] === toks.psc) {
-                if (s.pc || s.pf) te("mpc", l[1]);
-                // collapse first-child and last-child into nth-child expressions
-                if (l[2] === ":first-child") {
-                    s.pf = ":nth-child";
-                    s.a = 0;
-                    s.b = 1;
-                } else if (l[2] === ":last-child") {
-                    s.pf = ":nth-last-child";
-                    s.a = 0;
-                    s.b = 1;
-                } else {
-                    s.pc = l[2];
-                }
-            } else if (l[1] === toks.psf) {
-                if (l[2] === ":val" || l[2] === ":contains") {
-                    s.expr = [ undefined, l[2] === ":val" ? "=" : "*=", undefined];
-                    // any amount of whitespace, followed by paren, string, paren
-                    l = lex(str, (off = l[0]));
-                    if (l && l[1] === " ") l = lex(str, off = l[0]);
-                    if (!l || l[1] !== "(") te("pex", str);
-                    l = lex(str, (off = l[0]));
-                    if (l && l[1] === " ") l = lex(str, off = l[0]);
-                    if (!l || l[1] !== toks.str) te("sex", str);
-                    s.expr[2] = l[2];
-                    l = lex(str, (off = l[0]));
-                    if (l && l[1] === " ") l = lex(str, off = l[0]);
-                    if (!l || l[1] !== ")") te("epex", str);
-                } else if (l[2] === ":has") {
-                    // any amount of whitespace, followed by paren
-                    l = lex(str, (off = l[0]));
-                    if (l && l[1] === " ") l = lex(str, off = l[0]);
-                    if (!l || l[1] !== "(") te("pex", str);
-                    var h = parse(str, l[0], true);
-                    l[0] = h[0];
-                    if (!s.has) s.has = [];
-                    s.has.push(h[1]);
-                } else if (l[2] === ":expr") {
-                    if (s.expr) te("mexp", str);
-                    var e = exprParse(str, l[0]);
-                    l[0] = e[0];
-                    s.expr = e[1];
-                } else {
-                    if (s.pc || s.pf ) te("mpc", str);
-                    s.pf = l[2];
-                    var m = nthPat.exec(str.substr(l[0]));
-                    if (!m) te("mepf", str);
-                    if (m[5]) {
-                        s.a = 2;
-                        s.b = (m[5] === "odd") ? 1 : 0;
-                    } else if (m[6]) {
-                        s.a = 0;
-                        s.b = parseInt(m[6], 10);
-                    } else {
-                        s.a = parseInt((m[1] ? m[1] : "+") + (m[2] ? m[2] : "1"),10);
-                        s.b = m[3] ? parseInt(m[3] + m[4],10) : 0;
-                    }
-                    l[0] += m[0].length;
-                }
-            } else {
-                break;
-            }
-            l = lex(str, (off = l[0]));
-        }
-
-        // now if we didn't actually parse anything it's an error
-        if (soff === off) te("se", str);
-
-        return [off, s];
-    }
-
-    // THE EVALUATOR
-
-    function isArray(o) {
-        return Array.isArray ? Array.isArray(o) : 
-          toString.call(o) === "[object Array]";
-    }
-
-    function mytypeof(o) {
-        if (o === null) return "null";
-        var to = typeof o;
-        if (to === "object" && isArray(o)) to = "array";
-        return to;
-    }
-
-    function mn(node, sel, id, num, tot) {
-        var sels = [];
-        var cs = (sel[0] === ">") ? sel[1] : sel[0];
-        var m = true, mod;
-        if (cs.type) m = m && (cs.type === mytypeof(node));
-        if (cs.id)   m = m && (cs.id === id);
-        if (m && cs.pf) {
-            if (cs.pf === ":nth-last-child") num = tot - num;
-            else num++;
-            if (cs.a === 0) {
-                m = cs.b === num;
-            } else {
-                mod = ((num - cs.b) % cs.a);
-
-                m = (!mod && ((num*cs.a + cs.b) >= 0));
-            }
-        }
-        if (m && cs.has) {
-            // perhaps we should augment forEach to handle a return value
-            // that indicates "client cancels traversal"?
-            var bail = function() { throw 42; };
-            for (var i = 0; i < cs.has.length; i++) {
-                try {
-                    forEach(cs.has[i], node, bail);
-                } catch (e) {
-                    if (e === 42) continue;
-                }
-                m = false;
-                break;
-            }
-        }
-        if (m && cs.expr) {
-            m = exprEval(cs.expr, node);
-        }
-        // should we repeat this selector for descendants?
-        if (sel[0] !== ">" && sel[0].pc !== ":root") sels.push(sel);
-
-        if (m) {
-            // is there a fragment that we should pass down?
-            if (sel[0] === ">") { if (sel.length > 2) { m = false; sels.push(sel.slice(2)); } }
-            else if (sel.length > 1) { m = false; sels.push(sel.slice(1)); }
-        }
-
-        return [m, sels];
-    }
-
-    function forEach(sel, obj, fun, id, num, tot) {
-        var a = (sel[0] === ",") ? sel.slice(1) : [sel],
-        a0 = [],
-        call = false,
-        i = 0, j = 0, k, x;
-        for (i = 0; i < a.length; i++) {
-            x = mn(obj, a[i], id, num, tot);
-            if (x[0]) {
-                call = true;
-            }
-            for (j = 0; j < x[1].length; j++) {
-                a0.push(x[1][j]);
-            }
-        }
-        if (a0.length && typeof obj === "object") {
-            if (a0.length >= 1) {
-                a0.unshift(",");
-            }
-            if (isArray(obj)) {
-                for (i = 0; i < obj.length; i++) {
-                    forEach(a0, obj[i], fun, undefined, i, obj.length);
-                }
-            } else {
-                for (k in obj) {
-                    if (obj.hasOwnProperty(k)) {
-                        forEach(a0, obj[k], fun, k);
-                    }
-                }
-            }
-        }
-        if (call && fun) {
-            fun(obj);
-        }
-    }
-
-    function match(sel, obj) {
-        var a = [];
-        forEach(sel, obj, function(x) {
-            a.push(x);
-        });
-        return a;
-    }
-
-    function format(sel, arr) {
-        sel = sel.replace(/\?/g, function() {
-            if (arr.length === 0) throw "too few parameters given";
-            var p = arr.shift();
-            return ((typeof p === 'string') ? JSON.stringify(p) : p);
-        });
-        if (arr.length) throw "too many parameters supplied";
-        return sel;
-    } 
-
-    function compile(sel, arr) {
-        if (arr) sel = format(sel, arr);
-        return {
-            sel: parse(sel)[1],
-            match: function(obj){
-                return match(this.sel, obj);
-            },
-            forEach: function(obj, fun) {
-                return forEach(this.sel, obj, fun);
-            }
-        };
-    }
-
-    exports._lex = lex;
-    exports._parse = parse;
-    exports.match = function (sel, arr, obj) {
-        if (!obj) { obj = arr; arr = undefined; }
-        return compile(sel, arr).match(obj);
-    };
-    exports.forEach = function(sel, arr, obj, fun) {
-        if (!fun) { fun = obj;  obj = arr; arr = undefined }
-        return compile(sel, arr).forEach(obj, fun);
-    };
-    exports.compile = compile;
-})(typeof exports === "undefined" ? (window.JSONSelect = {}) : exports);
 
 },{}],13:[function(require,module,exports){
-
-},{}],14:[function(require,module,exports){
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
@@ -12449,7 +12808,7 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":19}],15:[function(require,module,exports){
+},{"util/":18}],14:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -12474,7 +12833,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -12702,7 +13061,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":17}],17:[function(require,module,exports){
+},{"_process":16}],16:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -12795,14 +13154,14 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -13392,7 +13751,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":18,"_process":17,"inherits":15}],20:[function(require,module,exports){
+},{"./support/isBuffer":17,"_process":16,"inherits":14}],19:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("lex-parser");
@@ -13453,10 +13812,327 @@ var parseLex = function (text) {
 };
 
 
-},{"./ebnf-transform":21,"./parser":22,"lex-parser":24}],21:[function(require,module,exports){
-arguments[4][4][0].apply(exports,arguments)
-},{"./transform-parser.js":23,"dup":4}],22:[function(require,module,exports){
-/* parser generated by jison 0.4.15 */
+},{"./ebnf-transform":20,"./parser":21,"lex-parser":23}],20:[function(require,module,exports){
+var EBNF = (function(){
+    var parser = require('./transform-parser.js');
+    //var assert = require('assert');
+
+    var devDebug = 0;
+
+    function generatePushAction(handle, offset) {
+        var terms = handle.terms;
+        var rv = [];
+
+        for (var i = 0, len = terms.length; i < len; i++) {
+            rv.push('$' + (i + offset));
+        }
+        rv = rv.join(', ');
+        // and make sure we contain a term series unambiguously, i.e. anything more complex than
+        // a single term inside an EBNF check is produced as an array so we can differentiate
+        // between */+/? EBNF operator results and groups of tokens per individual match.
+        if (len > 1) {
+            rv = '[' + rv + ']';
+        }
+        return rv;
+    }
+
+    var transformExpression = function(e, opts, emit) {
+        var type = e[0], 
+            value = e[1], 
+            name = false,
+            has_transformed = 0;
+
+        if (type === 'xalias') {
+            type = e[1];
+            value = e[2];
+            name = e[3];
+            if (type) {
+                e = e.slice(1);
+            } else {
+                e = value;
+                type = e[0];
+                value = e[1];
+            }
+            if (devDebug > 3) console.log('xalias: ', e, type, value, name);
+        }
+
+        if (type === 'symbol') {
+            var n;
+            // if (e[1][0] === '\\') {
+            //     n = e[1][1];
+            // }            
+            // else if (e[1][0] === '\'') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else if (e[1][0] === '"') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else {
+                n = e[1];
+            // }
+            if (devDebug > 2) console.log('symbol EMIT: ', n + (name ? '[' + name + ']' : ''));
+            emit(n + (name ? '[' + name + ']' : ''));
+        } else if (type === '+') {
+            if (!name) {
+                name = opts.production + '_repetition_plus' + opts.repid++;
+            }
+            if (devDebug > 2) console.log('+ EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [
+                    list.fragment,
+                    '$$ = [' + generatePushAction(list, 1) + '];'
+                ],
+                [
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
+                ]
+            ];
+        } else if (type === '*') {
+            if (!name) {
+                name = opts.production + '_repetition' + opts.repid++;
+            }
+            if (devDebug > 2) console.log('* EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+            
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [
+                    '',
+                    '$$ = [];'
+                ],
+                [
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
+                ]
+            ];
+        } else if (type === '?') {
+            if (!name) {
+                name = opts.production + '_option' + opts.optid++;
+            }
+            if (devDebug > 2) console.log('? EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+            
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            // you want to be able to check if 0 or 1 occurrences were recognized: since jison
+            // by default *copies* the lexer token value, i.e. `$$ = $1` is the default action,
+            // we will need to set the action up explicitly in case of the 0-count match: 
+            // `$$ = undefined`.
+            // 
+            // Note that we MUST return an array as the
+            // '1 occurrence' match CAN carry multiple terms, e.g. in constructs like 
+            // `(T1 T2 T3)?`.
+            opts.grammar[name] = [
+                [
+                    '',
+                    '$$ = undefined;'
+                ],
+                [
+                    list.fragment,
+                    '$$ = ' + generatePushAction(list, 1) + ';'
+                ]
+            ];
+        } else if (type === '()') {
+            if (value.length === 1) {
+                var list = transformExpressionList(value[0], opts);
+                if (list.first_transformed_term_index) {
+                    has_transformed = list.first_transformed_term_index;
+                }
+                if (devDebug > 2) console.log('group EMIT len=1: ', list);
+                emit(list);
+            } else {
+                if (!name) {
+                    name = opts.production + '_group' + opts.groupid++;
+                }
+                if (devDebug > 2) console.log('group EMIT name: ', name);
+                emit(name);
+
+                has_transformed = 1;
+
+                opts = optsForProduction(name, opts.grammar);
+                opts.grammar[name] = value.map(function(handle) {
+                    var list = transformExpressionList(handle, opts);
+                    return list.fragment;
+                });
+            }
+        }
+        
+        return has_transformed;
+    };
+
+    var transformExpressionList = function(list, opts) {
+        var first_transformed_term_index = false;
+        var terms = list.reduce(function (tot, e) {
+            var ci = tot.length;
+
+            var has_transformed = transformExpression(e, opts, function (name) {
+                if (name.terms) {
+                    tot.push.apply(tot, name.terms);
+                } else {
+                    tot.push(name);
+                }
+            });
+
+            if (has_transformed) {
+                first_transformed_term_index = ci + has_transformed;
+            }
+            return tot;
+        }, []);
+        return {
+            fragment: terms.join(' '),
+            terms: terms,
+            first_transformed_term_index: first_transformed_term_index              // 1-based index
+        };
+    };
+
+    var optsForProduction = function(id, grammar) {
+        return {
+            production: id,
+            repid: 0,
+            groupid: 0,
+            optid: 0,
+            grammar: grammar
+        };
+    };
+
+    var transformProduction = function(id, production, grammar) {
+        var transform_opts = optsForProduction(id, grammar);
+        return production.map(function (handle) {
+            var action = null, 
+                opts = null;
+            if (typeof handle !== 'string') {
+                action = handle[1];
+                opts = handle[2];
+                handle = handle[0];
+            }
+            var expressions = parser.parse(handle);
+
+            if (devDebug > 1) console.log("\n================\nEBNF transform expressions:\n ", handle, opts, JSON.stringify(expressions, null, 2));
+
+            var list = transformExpressionList(expressions, transform_opts);
+
+            var ret = [list.fragment];
+            if (action) {
+                // make sure the action doesn't address any inner items.
+                if (list.first_transformed_term_index) {
+                    var rhs = list.fragment;
+                    // seek out all names and aliases; strip out literal tokens first as those cannot serve as $names:
+                    var alist = list.terms; // rhs.replace(/'[^']+'/g, '~').replace(/"[^"]+"/g, '~').split(' ');
+                    // we also know at which index the first transformation occurred:
+                    var first_index = list.first_transformed_term_index - 1;
+                    if (devDebug > 2) console.log("alist ~ rhs rule terms: ", alist, rhs);
+
+                    var alias_re = /\[[a-zA-Z_][a-zA-Z0-9_]*\]/;
+                    var term_re = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+                    // and collect the PERMITTED aliases: the names of the terms and all the remaining aliases
+                    var good_aliases = {};
+                    var alias_cnt = {};
+
+                    // WARNING: this replicates the knowledge/code of jison.js::addName()
+                    function addName(s, i) {
+                        if (good_aliases[s]) {
+                            good_aliases[s + (++alias_cnt[s])] = i + 1;
+                        } else {
+                            good_aliases[s] = i + 1;
+                            good_aliases[s + '1'] = i + 1;
+                            alias_cnt[s] = 1;
+                        }
+                    }
+
+                    for (var i = 0, len = alist.length; i < len; i++) {
+                        var term = alist[i];
+                        var alias = term.match(alias_re);
+                        if (alias) {
+                            addName(alias[0].substr(1, alias[0].length - 2), i);
+                            term = term.replace(alias_re, '');
+                        }
+                        if (term.match(term_re)) {
+                            addName(term, i);
+                        }
+                    }
+                    if (devDebug > 2) console.log("good_aliases: ", good_aliases);
+                    
+                    // now scan the action for all named and numeric semantic values ($nonterminal / $1)
+                    var named_spots = action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*\b/g);
+                    var numbered_spots = action.match(/[$@][0-9]+\b/g);
+                    var max_term_index = list.terms.length;
+                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);                    
+                    if (devDebug > 2) console.log("ACTION numbered_spots: ", numbered_spots);
+
+                    if (named_spots) {
+                        for (var i = 0, len = named_spots.length; i < len; i++) {
+                            var n = named_spots[i].substr(1);
+                            if (!good_aliases[n]) {
+                                throw new Error("The action block references the named alias '" + n + "' " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "it probably got removed by the EBNF rule rewrite process.\n" +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                            //assert(good_aliases[n] <= max_term_index, "max term index");
+                        }
+                    }
+                    if (numbered_spots) {
+                        for (var i = 0, len = numbered_spots.length; i < len; i++) {
+                            var n = parseInt(numbered_spots[i].substr(1));
+                            if (n > max_term_index) {
+                                throw new Error("The action block references the " + n + "th term, " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                        }
+                    }
+                }
+                ret.push(action);
+            }
+            if (opts) {
+                ret.push(opts);
+            }
+            if (devDebug > 1) console.log("\n\nEBNF tx result:\n ", JSON.stringify(list, null, 2), JSON.stringify(ret, null, 2));
+
+            if (ret.length === 1) {
+                return ret[0];
+            } else {
+                return ret;
+            }
+        });
+    };
+
+    var transformGrammar = function(grammar) {
+        Object.keys(grammar).forEach(function(id) {
+            grammar[id] = transformProduction(id, grammar[id], grammar);
+        });
+    };
+
+    return {
+        transform: function (ebnf) {
+            if (devDebug > 0) console.log("EBNF:\n ", JSON.stringify(ebnf, null, 2));
+            transformGrammar(ebnf);
+            if (devDebug > 0) console.log("\n\nEBNF after transformation:\n ", JSON.stringify(ebnf, null, 2));
+            return ebnf;
+        }
+    };
+})();
+
+exports.transform = EBNF.transform;
+
+
+},{"./transform-parser.js":22}],21:[function(require,module,exports){
+/* parser generated by jison 0.4.15-100 */
 /*
   Returns a Parser object of the following structure:
 
@@ -13466,7 +14142,8 @@ arguments[4][4][0].apply(exports,arguments)
 
   Parser.prototype: {
     yy: {},
-    trace: function(),
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
     symbols_: {associative list: name ==> number},
     terminals_: {associative list: number ==> name},
     productions_: [...],
@@ -13479,11 +14156,14 @@ arguments[4][4][0].apply(exports,arguments)
 
     lexer: {
         EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
         parseError: function(str, hash),
         setInput: function(input),
         input: function(),
         unput: function(str),
         more: function(),
+        reject: function(),
         less: function(n),
         pastInput: function(),
         upcomingInput: function(),
@@ -13575,14 +14255,29 @@ arguments[4][4][0].apply(exports,arguments)
   }
 */
 var bnf = (function () {
-var __expand__ = function (k, v, o) {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
   o = o || {};
   for (var l = k.length; l--; ) {
     o[k[l]] = v;
   }
   return o;
-},
-    $V0=[5,11,14,16,18,23,25,26,29,30,31],
+}
+
+var $V0=[5,11,14,16,18,23,25,26,29,30,31],
     $V1=[11,56],
     $V2=[5,11,14,16,18,23,25,26,29,30,31,36,56],
     $V3=[5,11,14,16,18,23,25,26,29,30,31,38,56],
@@ -13598,8 +14293,10 @@ var __expand__ = function (k, v, o) {
     $Vd=[11,38,45,46,55,56,57,58,59,60,61,62,63,66],
     $Ve=[38,46,56,57],
     $Vf=[63,65];
+
 var parser = {
 trace: function trace() { },
+JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
   "error": 2,
@@ -14302,7 +14999,15 @@ break;
 case 54 : 
 /*! Production::     expression : STRING */
  
-            this.$ = ebnf ? "'" + $$[$0] + "'" : $$[$0];
+            // Re-encode the string *anyway* as it will
+            // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
+            // to be able to handle all tokens, including *significant space*
+            // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
+            if ($$[$0].indexOf("'") >= 0) {
+                this.$ = '"' + $$[$0] + '"';
+            } else {
+                this.$ = "'" + $$[$0] + "'";
+            }
          
 break;
 case 55 : 
@@ -15403,13 +16108,7 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
-        function _parseError (msg, hash) {
-            this.message = msg;
-            this.hash = hash;
-        }
-        _parseError.prototype = new Error();
-
-        throw new _parseError(str, hash);
+        throw new this.JisonParserError(str, hash);
     }
 },
 parse: function parse(input) {
@@ -15423,7 +16122,6 @@ parse: function parse(input) {
         yylineno = 0,
         yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        error_signaled = false,
         TERROR = 2,
         EOF = 1;
 
@@ -15462,7 +16160,7 @@ parse: function parse(input) {
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
     } else {
-        this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
+        //this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
     }
 
     function popStack(n) {
@@ -15567,7 +16265,6 @@ parse: function parse(input) {
                                  (symbol === EOF ? 'end of input' :
                                   ("'" + (this.terminals_[symbol] || symbol) + "'"));
                     }
-                    error_signaled = true;
                     a = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -15587,7 +16284,6 @@ parse: function parse(input) {
                 // just recovered from another error
                 if (recovering === 3) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
-                        error_signaled = true;
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -15609,7 +16305,6 @@ parse: function parse(input) {
 
                 // try to recover from error
                 if (error_rule_depth === false) {
-                    error_signaled = true;
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
@@ -15632,7 +16327,6 @@ parse: function parse(input) {
 
             // this shouldn't happen, unless resolve defaults are off
             if (action[0] instanceof Array && action.length > 1) {
-                error_signaled = true;
                 retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
@@ -15694,7 +16388,6 @@ parse: function parse(input) {
 
                 if (typeof r !== 'undefined') {
                     retval = r;
-                    error_signaled = true;
                     break;
                 }
 
@@ -15714,14 +16407,10 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                error_signaled = true;
                 break;
             }
 
             // break out of loop: we accept or fail with error
-            if (!error_signaled) {
-                // b0rk b0rk b0rk!
-            }
             break;
         }
     } finally {
@@ -15755,8 +16444,22 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4 */
+/* generated by jison-lex 0.3.4-100 */
 var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error()).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
 var lexer = ({
 
 EOF:1,
@@ -15767,7 +16470,7 @@ parseError:function parseError(str, hash) {
         if (this.yy.parser) {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
-            throw new Error(str);
+            throw new this.JisonLexerError(str);
         }
     },
 
@@ -16151,6 +16854,7 @@ options: {
   "easy_keyword_rules": true,
   "ranges": true
 },
+JisonLexerError: JisonLexerError,
 performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
@@ -16680,6 +17384,7 @@ conditions: {
   }
 }
 });
+// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -16689,6 +17394,7 @@ function Parser () {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -16705,11 +17411,5038 @@ exports.parse = function () {
 
 }
 
-},{"./ebnf-transform":21,"fs":13}],23:[function(require,module,exports){
-arguments[4][10][0].apply(exports,arguments)
-},{"dup":10}],24:[function(require,module,exports){
-arguments[4][5][0].apply(exports,arguments)
-},{"dup":5,"fs":13}],25:[function(require,module,exports){
+},{"./ebnf-transform":20,"fs":12}],22:[function(require,module,exports){
+/* parser generated by jison 0.4.15-100 */
+/*
+  Returns a Parser object of the following structure:
+
+  Parser: {
+    yy: {}
+  }
+
+  Parser.prototype: {
+    yy: {},
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
+    symbols_: {associative list: name ==> number},
+    terminals_: {associative list: number ==> name},
+    productions_: [...],
+    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, ...),
+                (where `...` denotes the (optional) additional arguments the user passed to `parser.parse(str, ...)`)
+    table: [...],
+    defaultActions: {...},
+    parseError: function(str, hash),
+    parse: function(input),
+
+    lexer: {
+        EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
+        parseError: function(str, hash),
+        setInput: function(input),
+        input: function(),
+        unput: function(str),
+        more: function(),
+        reject: function(),
+        less: function(n),
+        pastInput: function(),
+        upcomingInput: function(),
+        showPosition: function(),
+        test_match: function(regex_match_array, rule_index),
+        next: function(),
+        lex: function(),
+        begin: function(condition),
+        popState: function(),
+        _currentRules: function(),
+        topState: function(),
+        pushState: function(condition),
+        stateStackSize: function(),
+
+        options: { ... },
+
+        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
+        rules: [...],
+        conditions: {associative list: name ==> set},
+    }
+  }
+
+
+  token location info (@$, _$, etc.): {
+    first_line: n,
+    last_line: n,
+    first_column: n,
+    last_column: n,
+    range: [start_number, end_number]       (where the numbers are indexes into the input string, regular zero-based)
+  }
+
+
+  the parseError function receives a 'hash' object with these members for lexer and parser errors: {
+    text:        (matched text)
+    token:       (the produced terminal token, if any)
+    line:        (yylineno)
+  }
+  while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {
+    loc:         (yylloc)
+    expected:    (array describing the set of expected tokens; may be empty when we cannot easily produce such a set)
+    recoverable: (boolean: TRUE when the parser MAY have an error recovery rule available for this particular error)
+  }
+  
+  You can specify parser options by setting / modifying the `.yy` object of your Parser instance.
+  These options are available:
+  
+  ### options which are global for all parser instances
+  
+  Parser.pre_parse: function(yy)
+                              optional: you can specify a pre_parse() function in the chunk following the grammar, 
+                              i.e. after the last `%%`.
+  Parser.post_parse: function(yy, retval) { return retval; }
+                              optional: you can specify a post_parse() function in the chunk following the grammar, 
+                              i.e. after the last `%%`. When it does not return any value, the parser will return 
+                              the original `retval`.
+  
+  ### options which can be set up per parser instance
+  
+  yy: {
+      pre_parse:  function(yy)
+                              optional: is invoked before the parse cycle starts (and before the first invocation 
+                              of `lex()`) but immediately after the invocation of parser.pre_parse()).
+      post_parse: function(yy, retval) { return retval; }
+                              optional: is invoked when the parse terminates due to success ('accept') or failure 
+                              (even when exceptions are thrown).  `retval` contains the return value to be produced
+                              by `Parser.parse()`; this function can override the return value by returning another. 
+                              When it does not return any value, the parser will return the original `retval`. 
+                              This function is invoked immediately before `Parser.post_parse()`.
+      parseError: function(str, hash)
+                              optional: overrides the default `parseError` function.
+  }
+  
+  parser.lexer.options: {
+      ranges: boolean         optional: true ==> token location info will include a .range[] member.
+      flex: boolean           optional: true ==> flex-like lexing behaviour where the rules are tested
+                                                 exhaustively to find the longest match.
+      backtrack_lexer: boolean
+                              optional: true ==> lexer regexes are tested in order and for each matching
+                                                 regex the action code is invoked; the lexer terminates
+                                                 the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
+  }
+*/
+var ebnf = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
+  o = o || {};
+  for (var l = k.length; l--; ) {
+    o[k[l]] = v;
+  }
+  return o;
+}
+
+var $V0=[5,7,12,13],
+    $V1=[5,7,11,12,13,14,15,16],
+    $V2=[7,12,13],
+    $V3=[5,7,11,12,13];
+
+var parser = {
+trace: function trace() { },
+JisonParserError: JisonParserError,
+yy: {},
+symbols_: {
+  "error": 2,
+  "production": 3,
+  "handle": 4,
+  "EOF": 5,
+  "handle_list": 6,
+  "|": 7,
+  "expression_suffixed": 8,
+  "expression": 9,
+  "suffix": 10,
+  "ALIAS": 11,
+  "SYMBOL": 12,
+  "(": 13,
+  ")": 14,
+  "*": 15,
+  "?": 16,
+  "+": 17,
+  "$accept": 0,
+  "$end": 1
+},
+terminals_: {
+  2: "error",
+  5: "EOF",
+  7: "|",
+  11: "ALIAS",
+  12: "SYMBOL",
+  13: "(",
+  14: ")",
+  15: "*",
+  16: "?",
+  17: "+"
+},
+productions_: [
+  0,
+  [
+    3,
+    2
+  ],
+  [
+    6,
+    1
+  ],
+  [
+    6,
+    3
+  ],
+  [
+    4,
+    0
+  ],
+  [
+    4,
+    2
+  ],
+  [
+    8,
+    3
+  ],
+  [
+    8,
+    2
+  ],
+  [
+    9,
+    1
+  ],
+  [
+    9,
+    3
+  ],
+  [
+    10,
+    0
+  ],
+  [
+    10,
+    1
+  ],
+  [
+    10,
+    1
+  ],
+  [
+    10,
+    1
+  ]
+],
+performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
+/* this == yyval */
+
+var $0 = $$.length - 1;
+switch (yystate) {
+case 1 : 
+/*! Production::     production : handle EOF */
+  return $$[$0-1];  
+break;
+case 2 : 
+/*! Production::     handle_list : handle */
+  this.$ = [$$[$0]];  
+break;
+case 3 : 
+/*! Production::     handle_list : handle_list | handle */
+  $$[$0-2].push($$[$0]);  
+break;
+case 4 : 
+/*! Production::     handle :  */
+  this.$ = [];  
+break;
+case 5 : 
+/*! Production::     handle : handle expression_suffixed */
+  $$[$0-1].push($$[$0]);  
+break;
+case 6 : 
+/*! Production::     expression_suffixed : expression suffix ALIAS */
+  this.$ = ['xalias', $$[$0-1], $$[$0-2], $$[$0]];  
+break;
+case 7 : 
+/*! Production::     expression_suffixed : expression suffix */
+  
+      if ($$[$0]) {
+        this.$ = [$$[$0], $$[$0-1]]; 
+      } else {
+        this.$ = $$[$0-1];
+      } 
+     
+break;
+case 8 : 
+/*! Production::     expression : SYMBOL */
+  this.$ = ['symbol', $$[$0]];  
+break;
+case 9 : 
+/*! Production::     expression : ( handle_list ) */
+  this.$ = ['()', $$[$0-1]];  
+break;
+}
+},
+table: [
+  __expand__([5,12], [
+      2,
+      4
+    ], {3:1,4:2,13:[
+      2,
+      4
+    ]
+  }),
+  {
+    1: [
+      3
+    ]
+  },
+  {
+    5: [
+      1,
+      3
+    ],
+    8: 4,
+    9: 5,
+    12: [
+      1,
+      6
+    ],
+    13: [
+      1,
+      7
+    ]
+  },
+  {
+    1: [
+      2,
+      1
+    ]
+  },
+  __expand__($V0, [
+      2,
+      5
+    ], {14:[
+      2,
+      5
+    ]
+  }),
+  __expand__([5,7,11,12,13,14], [
+      2,
+      10
+    ], {10:8,15:[
+      1,
+      9
+    ],16:[
+      1,
+      10
+    ],17:[
+      1,
+      11
+    ]
+  }),
+  __expand__($V1, [
+      2,
+      8
+    ], {17:[
+      2,
+      8
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      4
+    ], {6:12,4:13,14:[
+      2,
+      4
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      7
+    ], {11:[
+      1,
+      14
+    ],14:[
+      2,
+      7
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      11
+    ], {14:[
+      2,
+      11
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      12
+    ], {14:[
+      2,
+      12
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      13
+    ], {14:[
+      2,
+      13
+    ]
+  }),
+  {
+    7: [
+      1,
+      16
+    ],
+    14: [
+      1,
+      15
+    ]
+  },
+  {
+    7: [
+      2,
+      2
+    ],
+    8: 4,
+    9: 5,
+    12: [
+      1,
+      6
+    ],
+    13: [
+      1,
+      7
+    ],
+    14: [
+      2,
+      2
+    ]
+  },
+  __expand__($V0, [
+      2,
+      6
+    ], {14:[
+      2,
+      6
+    ]
+  }),
+  __expand__($V1, [
+      2,
+      9
+    ], {17:[
+      2,
+      9
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      4
+    ], {4:17,14:[
+      2,
+      4
+    ]
+  }),
+  {
+    7: [
+      2,
+      3
+    ],
+    8: 4,
+    9: 5,
+    12: [
+      1,
+      6
+    ],
+    13: [
+      1,
+      7
+    ],
+    14: [
+      2,
+      3
+    ]
+  }
+],
+defaultActions: {
+  3: [
+    2,
+    1
+  ]
+},
+parseError: function parseError(str, hash) {
+    if (hash.recoverable) {
+        this.trace(str);
+    } else {
+        throw new this.JisonParserError(str, hash);
+    }
+},
+parse: function parse(input) {
+    var self = this,
+        stack = [0],
+
+        vstack = [null],    // semantic value stack
+        lstack = [],        // location stack
+        table = this.table,
+        yytext = '',
+        yylineno = 0,
+        yyleng = 0,
+
+        TERROR = 2,
+        EOF = 1;
+
+    var args = lstack.slice.call(arguments, 1);
+
+    //this.reductionCount = this.shiftCount = 0;
+
+    var lexer;
+    if (this.__lexer__) {
+        lexer = this.__lexer__;
+    } else {
+        lexer = this.__lexer__ = Object.create(this.lexer);
+    }
+
+    var sharedState = { 
+      yy: {} 
+    };
+    // copy state
+    for (var k in this.yy) {
+      if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
+        sharedState.yy[k] = this.yy[k];
+      }
+    }
+
+    lexer.setInput(input, sharedState.yy);
+    sharedState.yy.lexer = lexer;
+    sharedState.yy.parser = this;
+    if (typeof lexer.yylloc === 'undefined') {
+        lexer.yylloc = {};
+    }
+    var yyloc = lexer.yylloc;
+    lstack.push(yyloc);
+
+    var ranges = lexer.options && lexer.options.ranges;
+
+    if (typeof sharedState.yy.parseError === 'function') {
+        this.parseError = sharedState.yy.parseError;
+    } else {
+        //this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
+    }
+
+    function popStack(n) {
+        stack.length = stack.length - 2 * n;
+        vstack.length = vstack.length - n;
+        lstack.length = lstack.length - n;
+    }
+
+    function lex() {
+        var token;
+        token = lexer.lex() || EOF;
+        // if token isn't its numeric value, convert
+        if (typeof token !== 'number') {
+            token = self.symbols_[token] || token;
+        }
+        return token;
+    }
+
+    var symbol;
+    var preErrorSymbol = null;
+    var state, action, a, r;
+    var yyval = {};
+    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
+    var expected = [];
+    var retval = false;
+
+    if (this.pre_parse) {
+        this.pre_parse.call(this, sharedState.yy);
+    }
+    if (sharedState.yy.pre_parse) {
+        sharedState.yy.pre_parse.call(this, sharedState.yy);
+    }
+
+
+
+    function collect_expected_token_set(state) {
+        var tokenset = [];
+        for (var p in table[state]) {
+            if (p > TERROR) {
+                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
+                    tokenset.push(self.terminal_descriptions_[p]);
+                }
+                else if (self.terminals_[p]) {
+                    tokenset.push("'" + self.terminals_[p] + "'");
+                }
+            }
+        }
+        return tokenset;
+    }
+
+    try {
+        for (;;) {
+            // retrieve state number from top of stack
+            state = stack[stack.length - 1];
+
+            // use default actions if available
+            if (this.defaultActions[state]) {
+                action = this.defaultActions[state];
+            } else {
+                if (symbol === null || typeof symbol === 'undefined') {
+                    symbol = lex();
+                }
+                // read action for current state and first input
+                action = table[state] && table[state][symbol];
+            }
+
+            // handle parse error
+            if (typeof action === 'undefined' || !action.length || !action[0]) {
+                var errStr;
+
+                // Report error
+                expected = collect_expected_token_set(state);
+                if (lexer.showPosition) {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                } else {
+                    errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
+                             (symbol === EOF ? 'end of input' :
+                              ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                }
+                // we cannot recover from the error!
+                retval = this.parseError(errStr, {
+                    text: lexer.match,
+                    token: this.terminals_[symbol] || symbol,
+                    line: lexer.yylineno,
+                    loc: yyloc,
+                    expected: expected,
+                    recoverable: false
+                });
+                break;
+            }
+
+
+            // this shouldn't happen, unless resolve defaults are off
+            if (action[0] instanceof Array && action.length > 1) {
+                retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+                    text: lexer.match,
+                    token: this.terminals_[symbol] || symbol,
+                    line: lexer.yylineno,
+                    loc: yyloc,
+                    expected: expected,
+                    recoverable: false
+                });
+                break;
+            }
+
+            switch (action[0]) {
+            case 1: // shift
+                //this.shiftCount++;
+
+                stack.push(symbol);
+                vstack.push(lexer.yytext);
+                lstack.push(lexer.yylloc);
+                stack.push(action[1]); // push state
+                symbol = null;
+                if (!preErrorSymbol) { // normal execution / no error
+                    yyleng = lexer.yyleng;
+                    yytext = lexer.yytext;
+                    yylineno = lexer.yylineno;
+                    yyloc = lexer.yylloc;
+
+                } else {
+                    // error just occurred, resume old lookahead f/ before error
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+                }
+                continue;
+
+            case 2:
+                // reduce
+                //this.reductionCount++;
+
+                this_production = this.productions_[action[1]]; 
+                len = this_production[1];
+                lstack_end = lstack.length;
+                lstack_begin = lstack_end - (len1 || 1);
+                lstack_end--;
+
+                // perform semantic action
+                yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack_begin].first_line,
+                    last_line: lstack[lstack_end].last_line,
+                    first_column: lstack[lstack_begin].first_column,
+                    last_column: lstack[lstack_end].last_column
+                };
+                if (ranges) {
+                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+                }
+                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack].concat(args));
+
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                    break;
+                }
+
+                // pop off stack
+                if (len) {
+                    popStack(len);
+                }
+
+                stack.push(this_production[0]);    // push nonterminal (reduce)
+                vstack.push(yyval.$);
+                lstack.push(yyval._$);
+                // goto new state = table[STATE][NONTERMINAL]
+                newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
+                stack.push(newState);
+                continue;
+
+            case 3:
+                // accept
+                retval = true;
+                break;
+            }
+
+            // break out of loop: we accept or fail with error
+            break;
+        }
+    } finally {
+        var rv;
+
+        if (sharedState.yy.post_parse) {
+            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            if (typeof rv !== 'undefined') retval = rv;
+        }
+        if (this.post_parse) {
+            rv = this.post_parse.call(this, sharedState.yy, retval);
+            if (typeof rv !== 'undefined') retval = rv;
+        }
+    }
+
+    return retval;
+}
+};
+
+/* generated by jison-lex 0.3.4-100 */
+var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error()).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
+var lexer = ({
+
+EOF:1,
+
+ERROR:2,
+
+parseError:function parseError(str, hash) {
+        if (this.yy.parser) {
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
+        } else {
+            throw new this.JisonLexerError(str);
+        }
+    },
+
+// resets the lexer, sets new input
+setInput:function (input, yy) {
+        this.yy = yy || this.yy || {};
+        this._input = input;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
+        this.yylineno = this.yyleng = 0;
+        this.yytext = this.matched = this.match = '';
+        this.conditionStack = ['INITIAL'];
+        this.yylloc = {
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 0
+        };
+        if (this.options.ranges) {
+            this.yylloc.range = [0, 0];
+        }
+        this.offset = 0;
+        return this;
+    },
+
+// consumes and returns one char from the input
+input:function () {
+        var ch = this._input[0];
+        this.yytext += ch;
+        this.yyleng++;
+        this.offset++;
+        this.match += ch;
+        this.matched += ch;
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
+        // and we advance immediately past the LF as well, returning both together as if 
+        // it was all a single 'character' only.
+        var slice_len = 1;
+        var lines = false;
+        if (ch === '\n') {
+            lines = true;
+        } else if (ch === '\r') {
+            lines = true;
+            var ch2 = this._input[1];
+            if (ch2 === '\n') {
+                slice_len++;
+                ch += ch2;
+                this.yytext += ch2;
+                this.yyleng++;
+                this.offset++;
+                this.match += ch2;
+                this.matched += ch2;
+                if (this.options.ranges) {
+                    this.yylloc.range[1]++;
+                }
+            }
+        } 
+        if (lines) {
+            this.yylineno++;
+            this.yylloc.last_line++;
+        } else {
+            this.yylloc.last_column++;
+        }
+        if (this.options.ranges) {
+            this.yylloc.range[1]++;
+        }
+
+        this._input = this._input.slice(slice_len);
+        return ch;
+    },
+
+// unshifts one char (or a string) into the input
+unput:function (ch) {
+        var len = ch.length;
+        var lines = ch.split(/(?:\r\n?|\n)/g);
+
+        this._input = ch + this._input;
+        this.yytext = this.yytext.substr(0, this.yytext.length - len);
+        //this.yyleng -= len;
+        this.offset -= len;
+        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+        this.match = this.match.substr(0, this.match.length - len);
+        this.matched = this.matched.substr(0, this.matched.length - len);
+
+        if (lines.length - 1) {
+            this.yylineno -= lines.length - 1;
+        }
+        var r = this.yylloc.range;
+
+        this.yylloc = {
+            first_line: this.yylloc.first_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.first_column,
+            last_column: lines ?
+                (lines.length === oldLines.length ? this.yylloc.first_column : 0)
+                + oldLines[oldLines.length - lines.length].length - lines[0].length :
+                this.yylloc.first_column - len
+        };
+
+        if (this.options.ranges) {
+            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+        }
+        this.yyleng = this.yytext.length;
+        return this;
+    },
+
+// When called from action, caches matched text and appends it on next action
+more:function () {
+        this._more = true;
+        return this;
+    },
+
+// When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+reject:function () {
+        if (this.options.backtrack_lexer) {
+            this._backtrack = true;
+        } else {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+                text: this.match,
+                token: null,
+                line: this.yylineno,
+                loc: this.yylloc
+            }) || this.ERROR);
+        }
+        return this;
+    },
+
+// retain first n characters of the match
+less:function (n) {
+        this.unput(this.match.slice(n));
+    },
+
+// return (part of the) already matched input, i.e. for error messages
+pastInput:function (maxSize) {
+        var past = this.matched.substr(0, this.matched.length - this.match.length);
+        if (maxSize < 0)
+            maxSize = past.length;
+        else if (!maxSize)
+            maxSize = 20;
+        return (past.length > maxSize ? '...' + past.substr(-maxSize) : past);
+    },
+
+// return (part of the) upcoming input, i.e. for error messages
+upcomingInput:function (maxSize) {
+        var next = this.match;
+        if (maxSize < 0)
+            maxSize = next.length + this._input.length;
+        else if (!maxSize)
+            maxSize = 20;
+        if (next.length < maxSize) {
+            next += this._input.substr(0, maxSize - next.length);
+        }
+        return (next.length > maxSize ? next.substr(0, maxSize) + '...' : next);
+    },
+
+// return a string which displays the character position where the lexing error occurred, i.e. for error messages
+showPosition:function () {
+        var pre = this.pastInput().replace(/\s/g, ' ');
+        var c = new Array(pre.length + 1).join('-');
+        return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
+    },
+
+// test the lexed token: return FALSE when not a match, otherwise return token
+test_match:function (match, indexed_rule) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yylloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno += lines.length;
+        }
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset + this.yyleng];
+        }
+        this.offset += this.yyleng;
+        this._more = false;
+        this._backtrack = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            return token;
+        } else if (this._backtrack) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
+        }
+        return false;
+    },
+
+// return next match in input
+next:function () {
+        function clear() {
+            this.yytext = '';
+            this.yyleng = 0;
+            this.match = '';
+            this.matches = false;
+            this._more = false;
+            this._backtrack = false;
+        }
+
+        if (this.done) {
+            clear.call(this);
+            return this.EOF;
+        }
+        if (!this._input) {
+            this.done = true;
+        }
+
+        var token,
+            match,
+            tempMatch,
+            index;
+        if (!this._more) {
+            clear.call(this);
+        }
+        var rules = this._currentRules();
+        for (var i = 0; i < rules.length; i++) {
+            tempMatch = this._input.match(this.rules[rules[i]]);
+            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                match = tempMatch;
+                index = i;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, rules[i]);
+                    if (token !== false) {
+                        return token;
+                    } else if (this._backtrack) {
+                        match = false;
+                        continue; // rule action called reject() implying a rule MISmatch.
+                    } else {
+                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                        return false;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
+            }
+        }
+        if (match) {
+            token = this.test_match(match, rules[index]);
+            if (token !== false) {
+                return token;
+            }
+            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+            return false;
+        }
+        if (this._input === '') {
+            clear.call(this);
+            this.done = true;
+            return this.EOF;
+        } else {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: this.match + this._input,
+                token: null,
+                line: this.yylineno,
+                loc: this.yylloc
+            }) || this.ERROR;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
+            }
+            return token;
+        }
+    },
+
+// return next match that has a token
+lex:function lex() {
+        var r;
+        // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
+        if (typeof this.options.pre_lex === 'function') {
+            r = this.options.pre_lex.call(this);
+        }
+        while (!r) {
+            r = this.next();
+        }
+        if (typeof this.options.post_lex === 'function') {
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.options.post_lex.call(this, r) || r;
+        }
+        return r;
+    },
+
+// activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+begin:function begin(condition) {
+        this.conditionStack.push(condition);
+    },
+
+// pop the previously active lexer condition state off the condition stack
+popState:function popState() {
+        var n = this.conditionStack.length - 1;
+        if (n > 0) {
+            return this.conditionStack.pop();
+        } else {
+            return this.conditionStack[0];
+        }
+    },
+
+// produce the lexer rule set which is active for the currently active lexer condition state
+_currentRules:function _currentRules() {
+        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+        } else {
+            return this.conditions['INITIAL'].rules;
+        }
+    },
+
+// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+topState:function topState(n) {
+        n = this.conditionStack.length - 1 - Math.abs(n || 0);
+        if (n >= 0) {
+            return this.conditionStack[n];
+        } else {
+            return 'INITIAL';
+        }
+    },
+
+// alias for begin(condition)
+pushState:function pushState(condition) {
+        this.begin(condition);
+    },
+
+// return the number of states currently on the stack
+stateStackSize:function stateStackSize() {
+        return this.conditionStack.length;
+    },
+options: {},
+JisonLexerError: JisonLexerError,
+performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
+
+var YYSTATE = YY_START;
+switch($avoiding_name_collisions) {
+case 0 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \s+ */ 
+ /* skip whitespace */ 
+break;
+case 2 : 
+/*! Conditions:: INITIAL */ 
+/*! Rule::       \[{id}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 11; 
+break;
+default:
+  return this.simpleCaseActionClusters[$avoiding_name_collisions];
+}
+},
+simpleCaseActionClusters: {
+
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       {id} */ 
+   1 : 12,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       '[^']+' */ 
+   3 : 12,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       '[^']+' */ 
+   4 : 12,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \. */ 
+   5 : 12,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \( */ 
+   6 : 13,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \) */ 
+   7 : 14,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \* */ 
+   8 : 15,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \? */ 
+   9 : 16,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \| */ 
+   10 : 7,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \+ */ 
+   11 : 17,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       $ */ 
+   12 : 5
+},
+rules: [
+/^(?:\s+)/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:\[([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\])/,
+/^(?:'[^']+')/,
+/^(?:'[^']+')/,
+/^(?:\.)/,
+/^(?:\()/,
+/^(?:\))/,
+/^(?:\*)/,
+/^(?:\?)/,
+/^(?:\|)/,
+/^(?:\+)/,
+/^(?:$)/
+],
+conditions: {
+  "INITIAL": {
+    "rules": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "inclusive": true
+  }
+}
+});
+// lexer.JisonLexerError = JisonLexerError;
+return lexer;
+})();
+parser.lexer = lexer;
+
+function Parser () {
+  this.yy = {};
+}
+Parser.prototype = parser;
+parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
+
+return new Parser();
+})();
+
+
+
+
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
+exports.parser = ebnf;
+exports.Parser = ebnf.Parser;
+exports.parse = function () {
+  return ebnf.parse.apply(ebnf, arguments);
+};
+
+}
+
+},{}],23:[function(require,module,exports){
+/* parser generated by jison 0.4.15-100 */
+/*
+  Returns a Parser object of the following structure:
+
+  Parser: {
+    yy: {}
+  }
+
+  Parser.prototype: {
+    yy: {},
+    trace: function(errorMessage, errorHash),
+    JisonParserError: function(msg, hash),
+    symbols_: {associative list: name ==> number},
+    terminals_: {associative list: number ==> name},
+    productions_: [...],
+    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, ...),
+                (where `...` denotes the (optional) additional arguments the user passed to `parser.parse(str, ...)`)
+    table: [...],
+    defaultActions: {...},
+    parseError: function(str, hash),
+    parse: function(input),
+
+    lexer: {
+        EOF: 1,
+        ERROR: 2,
+        JisonLexerError: function(msg, hash),
+        parseError: function(str, hash),
+        setInput: function(input),
+        input: function(),
+        unput: function(str),
+        more: function(),
+        reject: function(),
+        less: function(n),
+        pastInput: function(),
+        upcomingInput: function(),
+        showPosition: function(),
+        test_match: function(regex_match_array, rule_index),
+        next: function(),
+        lex: function(),
+        begin: function(condition),
+        popState: function(),
+        _currentRules: function(),
+        topState: function(),
+        pushState: function(condition),
+        stateStackSize: function(),
+
+        options: { ... },
+
+        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
+        rules: [...],
+        conditions: {associative list: name ==> set},
+    }
+  }
+
+
+  token location info (@$, _$, etc.): {
+    first_line: n,
+    last_line: n,
+    first_column: n,
+    last_column: n,
+    range: [start_number, end_number]       (where the numbers are indexes into the input string, regular zero-based)
+  }
+
+
+  the parseError function receives a 'hash' object with these members for lexer and parser errors: {
+    text:        (matched text)
+    token:       (the produced terminal token, if any)
+    line:        (yylineno)
+  }
+  while parser (grammar) errors will also provide these members, i.e. parser errors deliver a superset of attributes: {
+    loc:         (yylloc)
+    expected:    (array describing the set of expected tokens; may be empty when we cannot easily produce such a set)
+    recoverable: (boolean: TRUE when the parser MAY have an error recovery rule available for this particular error)
+  }
+  
+  You can specify parser options by setting / modifying the `.yy` object of your Parser instance.
+  These options are available:
+  
+  ### options which are global for all parser instances
+  
+  Parser.pre_parse: function(yy)
+                              optional: you can specify a pre_parse() function in the chunk following the grammar, 
+                              i.e. after the last `%%`.
+  Parser.post_parse: function(yy, retval) { return retval; }
+                              optional: you can specify a post_parse() function in the chunk following the grammar, 
+                              i.e. after the last `%%`. When it does not return any value, the parser will return 
+                              the original `retval`.
+  
+  ### options which can be set up per parser instance
+  
+  yy: {
+      pre_parse:  function(yy)
+                              optional: is invoked before the parse cycle starts (and before the first invocation 
+                              of `lex()`) but immediately after the invocation of parser.pre_parse()).
+      post_parse: function(yy, retval) { return retval; }
+                              optional: is invoked when the parse terminates due to success ('accept') or failure 
+                              (even when exceptions are thrown).  `retval` contains the return value to be produced
+                              by `Parser.parse()`; this function can override the return value by returning another. 
+                              When it does not return any value, the parser will return the original `retval`. 
+                              This function is invoked immediately before `Parser.post_parse()`.
+      parseError: function(str, hash)
+                              optional: overrides the default `parseError` function.
+  }
+  
+  parser.lexer.options: {
+      ranges: boolean         optional: true ==> token location info will include a .range[] member.
+      flex: boolean           optional: true ==> flex-like lexing behaviour where the rules are tested
+                                                 exhaustively to find the longest match.
+      backtrack_lexer: boolean
+                              optional: true ==> lexer regexes are tested in order and for each matching
+                                                 regex the action code is invoked; the lexer terminates
+                                                 the scan when a token is returned by the action code.
+      pre_lex:  function()
+                              optional: is invoked before the lexer is invoked to produce another token.
+                              `this` refers to the Lexer object.
+      post_lex: function(token) { return token; }
+                              optional: is invoked when the lexer has produced a token `token`;
+                              this function can override the returned token value by returning another.
+                              When it does not return any (truthy) value, the lexer will return the original `token`.
+                              `this` refers to the Lexer object.
+  }
+*/
+var lexParser = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonParserError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error(msg)).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonParserError.prototype = Object.create(Error.prototype);
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
+
+function __expand__(k, v, o) {
+  o = o || {};
+  for (var l = k.length; l--; ) {
+    o[k[l]] = v;
+  }
+  return o;
+}
+
+var $V0=[6,12,14,16,18,64],
+    $V1=[18,25,36,39,41,44,45,49,50,51,54,55,60,62,63],
+    $V2=[6,12,14,16,18,25,36,40,64],
+    $V3=[6,12,14,16,18,25,36,39,40,41,44,45,49,50,51,54,55,60,62,63,64],
+    $V4=[36,40],
+    $V5=[6,12,14,16,18,25,33,36,39,40,41,42,43,44,45,49,50,51,54,55,60,61,62,63,64],
+    $V6=[6,12,14,16,18,21,64],
+    $V7=[6,9,12,14,16,18,25,30,36,39,41,44,45,49,50,51,54,55,60,62,63,64,71],
+    $V8=[6,9,18,25,30,36,39,41,44,45,49,50,51,54,55,60,62,63],
+    $V9=[54,57],
+    $Va=[9,71],
+    $Vb=[25,27];
+
+var parser = {
+trace: function trace() { },
+JisonParserError: JisonParserError,
+yy: {},
+symbols_: {
+  "error": 2,
+  "lex": 3,
+  "init": 4,
+  "definitions": 5,
+  "%%": 6,
+  "rules": 7,
+  "epilogue": 8,
+  "EOF": 9,
+  "extra_lexer_module_code": 10,
+  "definition": 11,
+  "NAME": 12,
+  "regex": 13,
+  "START_INC": 14,
+  "names_inclusive": 15,
+  "START_EXC": 16,
+  "names_exclusive": 17,
+  "ACTION": 18,
+  "include_macro_code": 19,
+  "options": 20,
+  "START_COND": 21,
+  "rule": 22,
+  "start_conditions": 23,
+  "action": 24,
+  "{": 25,
+  "action_body": 26,
+  "}": 27,
+  "action_comments_body": 28,
+  "ACTION_BODY": 29,
+  "<": 30,
+  "name_list": 31,
+  ">": 32,
+  "*": 33,
+  ",": 34,
+  "regex_list": 35,
+  "|": 36,
+  "regex_concat": 37,
+  "regex_base": 38,
+  "(": 39,
+  ")": 40,
+  "SPECIAL_GROUP": 41,
+  "+": 42,
+  "?": 43,
+  "/": 44,
+  "/!": 45,
+  "name_expansion": 46,
+  "range_regex": 47,
+  "any_group_regex": 48,
+  ".": 49,
+  "^": 50,
+  "$": 51,
+  "string": 52,
+  "escape_char": 53,
+  "NAME_BRACE": 54,
+  "REGEX_SET_START": 55,
+  "regex_set": 56,
+  "REGEX_SET_END": 57,
+  "regex_set_atom": 58,
+  "REGEX_SET": 59,
+  "ESCAPE_CHAR": 60,
+  "RANGE_REGEX": 61,
+  "STRING_LIT": 62,
+  "CHARACTER_LIT": 63,
+  "OPTIONS": 64,
+  "option_list": 65,
+  "OPTIONS_END": 66,
+  "option": 67,
+  "=": 68,
+  "OPTION_VALUE": 69,
+  "optional_module_code_chunk": 70,
+  "INCLUDE": 71,
+  "PATH": 72,
+  "module_code_chunk": 73,
+  "CODE": 74,
+  "$accept": 0,
+  "$end": 1
+},
+terminals_: {
+  2: "error",
+  6: "%%",
+  9: "EOF",
+  12: "NAME",
+  14: "START_INC",
+  16: "START_EXC",
+  18: "ACTION",
+  21: "START_COND",
+  25: "{",
+  27: "}",
+  29: "ACTION_BODY",
+  30: "<",
+  32: ">",
+  33: "*",
+  34: ",",
+  36: "|",
+  39: "(",
+  40: ")",
+  41: "SPECIAL_GROUP",
+  42: "+",
+  43: "?",
+  44: "/",
+  45: "/!",
+  49: ".",
+  50: "^",
+  51: "$",
+  54: "NAME_BRACE",
+  55: "REGEX_SET_START",
+  57: "REGEX_SET_END",
+  59: "REGEX_SET",
+  60: "ESCAPE_CHAR",
+  61: "RANGE_REGEX",
+  62: "STRING_LIT",
+  63: "CHARACTER_LIT",
+  64: "OPTIONS",
+  66: "OPTIONS_END",
+  68: "=",
+  69: "OPTION_VALUE",
+  71: "INCLUDE",
+  72: "PATH",
+  74: "CODE"
+},
+productions_: [
+  0,
+  [
+    3,
+    5
+  ],
+  [
+    8,
+    1
+  ],
+  [
+    8,
+    3
+  ],
+  [
+    4,
+    0
+  ],
+  [
+    5,
+    2
+  ],
+  [
+    5,
+    0
+  ],
+  [
+    11,
+    2
+  ],
+  [
+    11,
+    2
+  ],
+  [
+    11,
+    2
+  ],
+  [
+    11,
+    1
+  ],
+  [
+    11,
+    1
+  ],
+  [
+    11,
+    1
+  ],
+  [
+    15,
+    1
+  ],
+  [
+    15,
+    2
+  ],
+  [
+    17,
+    1
+  ],
+  [
+    17,
+    2
+  ],
+  [
+    7,
+    2
+  ],
+  [
+    7,
+    1
+  ],
+  [
+    22,
+    3
+  ],
+  [
+    24,
+    3
+  ],
+  [
+    24,
+    1
+  ],
+  [
+    24,
+    1
+  ],
+  [
+    26,
+    0
+  ],
+  [
+    26,
+    1
+  ],
+  [
+    26,
+    5
+  ],
+  [
+    26,
+    4
+  ],
+  [
+    28,
+    1
+  ],
+  [
+    28,
+    2
+  ],
+  [
+    23,
+    3
+  ],
+  [
+    23,
+    3
+  ],
+  [
+    23,
+    0
+  ],
+  [
+    31,
+    1
+  ],
+  [
+    31,
+    3
+  ],
+  [
+    13,
+    1
+  ],
+  [
+    35,
+    3
+  ],
+  [
+    35,
+    2
+  ],
+  [
+    35,
+    1
+  ],
+  [
+    35,
+    0
+  ],
+  [
+    37,
+    2
+  ],
+  [
+    37,
+    1
+  ],
+  [
+    38,
+    3
+  ],
+  [
+    38,
+    3
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    2
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    38,
+    1
+  ],
+  [
+    46,
+    1
+  ],
+  [
+    48,
+    3
+  ],
+  [
+    56,
+    2
+  ],
+  [
+    56,
+    1
+  ],
+  [
+    58,
+    1
+  ],
+  [
+    58,
+    1
+  ],
+  [
+    53,
+    1
+  ],
+  [
+    47,
+    1
+  ],
+  [
+    52,
+    1
+  ],
+  [
+    52,
+    1
+  ],
+  [
+    20,
+    3
+  ],
+  [
+    65,
+    2
+  ],
+  [
+    65,
+    1
+  ],
+  [
+    67,
+    1
+  ],
+  [
+    67,
+    3
+  ],
+  [
+    67,
+    3
+  ],
+  [
+    10,
+    1
+  ],
+  [
+    10,
+    3
+  ],
+  [
+    19,
+    2
+  ],
+  [
+    19,
+    2
+  ],
+  [
+    73,
+    1
+  ],
+  [
+    73,
+    2
+  ],
+  [
+    70,
+    1
+  ],
+  [
+    70,
+    0
+  ]
+],
+performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
+/* this == yyval */
+
+var $0 = $$.length - 1;
+switch (yystate) {
+case 1 : 
+/*! Production::     lex : init definitions %% rules epilogue */
+ 
+          this.$ = { rules: $$[$0-1] };
+          if ($$[$0-3][0]) this.$.macros = $$[$0-3][0];
+          if ($$[$0-3][1]) this.$.startConditions = $$[$0-3][1];
+          if ($$[$0] && $$[$0].trim() !== '') this.$.moduleInclude = $$[$0];
+          if (yy.options) this.$.options = yy.options;
+          if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
+          delete yy.options;
+          delete yy.actionInclude;
+          return this.$;
+         
+break;
+case 2 : 
+/*! Production::     epilogue : EOF */
+ case 12 : 
+/*! Production::     definition : options */
+  this.$ = null;  
+break;
+case 3 : 
+/*! Production::     epilogue : %% extra_lexer_module_code EOF */
+ case 20 : 
+/*! Production::     action : { action_body } */
+ case 29 : 
+/*! Production::     start_conditions : < name_list > */
+  this.$ = $$[$0-1];  
+break;
+case 4 : 
+/*! Production::     init :  */
+  yy.actionInclude = '';  
+break;
+case 5 : 
+/*! Production::     definitions : definition definitions */
+ 
+          this.$ = $$[$0];
+          if ($$[$0-1] != null) {
+            if ('length' in $$[$0-1]) {
+              this.$[0] = this.$[0] || {};
+              this.$[0][$$[$0-1][0]] = $$[$0-1][1];
+            } else {
+              this.$[1] = this.$[1] || {};
+              for (var name in $$[$0-1]) {
+                this.$[1][name] = $$[$0-1][name];
+              }
+            }
+          }
+         
+break;
+case 6 : 
+/*! Production::     definitions :  */
+  this.$ = [null, null];  
+break;
+case 7 : 
+/*! Production::     definition : NAME regex */
+  this.$ = [$$[$0-1], $$[$0]];  
+break;
+case 8 : 
+/*! Production::     definition : START_INC names_inclusive */
+ case 9 : 
+/*! Production::     definition : START_EXC names_exclusive */
+ case 21 : 
+/*! Production::     action : ACTION */
+ case 22 : 
+/*! Production::     action : include_macro_code */
+ case 24 : 
+/*! Production::     action_body : action_comments_body */
+ case 27 : 
+/*! Production::     action_comments_body : ACTION_BODY */
+ case 62 : 
+/*! Production::     escape_char : ESCAPE_CHAR */
+ case 63 : 
+/*! Production::     range_regex : RANGE_REGEX */
+ case 72 : 
+/*! Production::     extra_lexer_module_code : optional_module_code_chunk */
+ case 76 : 
+/*! Production::     module_code_chunk : CODE */
+ case 78 : 
+/*! Production::     optional_module_code_chunk : module_code_chunk */
+  this.$ = $$[$0];  
+break;
+case 10 : 
+/*! Production::     definition : ACTION */
+ case 11 : 
+/*! Production::     definition : include_macro_code */
+  yy.actionInclude += $$[$0]; this.$ = null;  
+break;
+case 13 : 
+/*! Production::     names_inclusive : START_COND */
+  this.$ = {}; this.$[$$[$0]] = 0;  
+break;
+case 14 : 
+/*! Production::     names_inclusive : names_inclusive START_COND */
+  this.$ = $$[$0-1]; this.$[$$[$0]] = 0;  
+break;
+case 15 : 
+/*! Production::     names_exclusive : START_COND */
+  this.$ = {}; this.$[$$[$0]] = 1;  
+break;
+case 16 : 
+/*! Production::     names_exclusive : names_exclusive START_COND */
+  this.$ = $$[$0-1]; this.$[$$[$0]] = 1;  
+break;
+case 17 : 
+/*! Production::     rules : rules rule */
+  this.$ = $$[$0-1]; this.$.push($$[$0]);  
+break;
+case 18 : 
+/*! Production::     rules : rule */
+ case 32 : 
+/*! Production::     name_list : NAME */
+  this.$ = [$$[$0]];  
+break;
+case 19 : 
+/*! Production::     rule : start_conditions regex action */
+  this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
+break;
+case 23 : 
+/*! Production::     action_body :  */
+ case 38 : 
+/*! Production::     regex_list :  */
+ case 79 : 
+/*! Production::     optional_module_code_chunk :  */
+  this.$ = '';  
+break;
+case 25 : 
+/*! Production::     action_body : action_body { action_body } action_comments_body */
+  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+break;
+case 26 : 
+/*! Production::     action_body : action_body { action_body } */
+  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+break;
+case 28 : 
+/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
+ case 39 : 
+/*! Production::     regex_concat : regex_concat regex_base */
+ case 49 : 
+/*! Production::     regex_base : regex_base range_regex */
+ case 58 : 
+/*! Production::     regex_set : regex_set_atom regex_set */
+ case 77 : 
+/*! Production::     module_code_chunk : module_code_chunk CODE */
+  this.$ = $$[$0-1] + $$[$0];  
+break;
+case 30 : 
+/*! Production::     start_conditions : < * > */
+  this.$ = ['*'];  
+break;
+case 33 : 
+/*! Production::     name_list : name_list , NAME */
+  this.$ = $$[$0-2]; this.$.push($$[$0]);  
+break;
+case 34 : 
+/*! Production::     regex : regex_list */
+ 
+          this.$ = $$[$0];
+          if (yy.options && yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
+              this.$ += "\\b";
+          }
+         
+break;
+case 35 : 
+/*! Production::     regex_list : regex_list | regex_concat */
+  this.$ = $$[$0-2] + '|' + $$[$0];  
+break;
+case 36 : 
+/*! Production::     regex_list : regex_list | */
+  this.$ = $$[$0-1] + '|';  
+break;
+case 41 : 
+/*! Production::     regex_base : ( regex_list ) */
+  this.$ = '(' + $$[$0-1] + ')';  
+break;
+case 42 : 
+/*! Production::     regex_base : SPECIAL_GROUP regex_list ) */
+  this.$ = $$[$0-2] + $$[$0-1] + ')';  
+break;
+case 43 : 
+/*! Production::     regex_base : regex_base + */
+  this.$ = $$[$0-1] + '+';  
+break;
+case 44 : 
+/*! Production::     regex_base : regex_base * */
+  this.$ = $$[$0-1] + '*';  
+break;
+case 45 : 
+/*! Production::     regex_base : regex_base ? */
+  this.$ = $$[$0-1] + '?';  
+break;
+case 46 : 
+/*! Production::     regex_base : / regex_base */
+  this.$ = '(?=' + $$[$0] + ')';  
+break;
+case 47 : 
+/*! Production::     regex_base : /! regex_base */
+  this.$ = '(?!' + $$[$0] + ')';  
+break;
+case 51 : 
+/*! Production::     regex_base : . */
+  this.$ = '.';  
+break;
+case 52 : 
+/*! Production::     regex_base : ^ */
+  this.$ = '^';  
+break;
+case 53 : 
+/*! Production::     regex_base : $ */
+  this.$ = '$';  
+break;
+case 57 : 
+/*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
+ case 73 : 
+/*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
+  this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
+break;
+case 61 : 
+/*! Production::     regex_set_atom : name_expansion */
+  this.$ = '{[' + $$[$0] + ']}';  
+break;
+case 64 : 
+/*! Production::     string : STRING_LIT */
+  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
+break;
+case 69 : 
+/*! Production::     option : NAME */
+  yy.options[$$[$0]] = true;  
+break;
+case 70 : 
+/*! Production::     option : NAME = OPTION_VALUE */
+ case 71 : 
+/*! Production::     option : NAME = NAME */
+  yy.options[$$[$0-2]] = $$[$0];  
+break;
+case 74 : 
+/*! Production::     include_macro_code : INCLUDE PATH */
+  
+            var fs = require('fs');
+            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+            // And no, we don't support nested '%include':
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
+         
+break;
+case 75 : 
+/*! Production::     include_macro_code : INCLUDE error */
+  
+            console.error("%include MUST be followed by a valid file path"); 
+         
+break;
+}
+},
+table: [
+  __expand__($V0, [
+      2,
+      4
+    ], {3:1,4:2,71:[
+      2,
+      4
+    ]
+  }),
+  {
+    1: [
+      3
+    ]
+  },
+  {
+    5: 3,
+    6: [
+      2,
+      6
+    ],
+    11: 4,
+    12: [
+      1,
+      5
+    ],
+    14: [
+      1,
+      6
+    ],
+    16: [
+      1,
+      7
+    ],
+    18: [
+      1,
+      8
+    ],
+    19: 9,
+    20: 10,
+    64: [
+      1,
+      12
+    ],
+    71: [
+      1,
+      11
+    ]
+  },
+  {
+    6: [
+      1,
+      13
+    ]
+  },
+  {
+    5: 14,
+    6: [
+      2,
+      6
+    ],
+    11: 4,
+    12: [
+      1,
+      5
+    ],
+    14: [
+      1,
+      6
+    ],
+    16: [
+      1,
+      7
+    ],
+    18: [
+      1,
+      8
+    ],
+    19: 9,
+    20: 10,
+    64: [
+      1,
+      12
+    ],
+    71: [
+      1,
+      11
+    ]
+  },
+  __expand__([6,12,14,16,18,36,64], [
+      2,
+      38
+    ], {13:15,35:16,37:17,38:18,46:23,48:24,52:28,53:29,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ],71:[
+      2,
+      38
+    ]
+  }),
+  {
+    15: 35,
+    21: [
+      1,
+      36
+    ]
+  },
+  {
+    17: 37,
+    21: [
+      1,
+      38
+    ]
+  },
+  __expand__($V0, [
+      2,
+      10
+    ], {71:[
+      2,
+      10
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      11
+    ], {71:[
+      2,
+      11
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      12
+    ], {71:[
+      2,
+      12
+    ]
+  }),
+  {
+    2: [
+      1,
+      40
+    ],
+    72: [
+      1,
+      39
+    ]
+  },
+  {
+    12: [
+      1,
+      43
+    ],
+    65: 41,
+    67: 42
+  },
+  __expand__($V1, [
+      2,
+      31
+    ], {7:44,22:45,23:46,30:[
+      1,
+      47
+    ],71:[
+      2,
+      31
+    ]
+  }),
+  {
+    6: [
+      2,
+      5
+    ]
+  },
+  __expand__($V0, [
+      2,
+      7
+    ], {71:[
+      2,
+      7
+    ]
+  }),
+  __expand__([6,12,14,16,18,25,64], [
+      2,
+      34
+    ], {36:[
+      1,
+      48
+    ],71:[
+      2,
+      34
+    ]
+  }),
+  __expand__($V2, [
+      2,
+      37
+    ], {46:23,48:24,52:28,53:29,38:49,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ],71:[
+      2,
+      37
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      40
+    ], {47:53,33:[
+      1,
+      51
+    ],42:[
+      1,
+      50
+    ],43:[
+      1,
+      52
+    ],61:[
+      1,
+      54
+    ],71:[
+      2,
+      40
+    ]
+  }),
+  __expand__($V4, [
+      2,
+      38
+    ], {37:17,38:18,46:23,48:24,52:28,53:29,35:55,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ]
+  }),
+  __expand__($V4, [
+      2,
+      38
+    ], {37:17,38:18,46:23,48:24,52:28,53:29,35:56,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ]
+  }),
+  {
+    38: 57,
+    39: [
+      1,
+      19
+    ],
+    41: [
+      1,
+      20
+    ],
+    44: [
+      1,
+      21
+    ],
+    45: [
+      1,
+      22
+    ],
+    46: 23,
+    48: 24,
+    49: [
+      1,
+      25
+    ],
+    50: [
+      1,
+      26
+    ],
+    51: [
+      1,
+      27
+    ],
+    52: 28,
+    53: 29,
+    54: [
+      1,
+      30
+    ],
+    55: [
+      1,
+      31
+    ],
+    60: [
+      1,
+      34
+    ],
+    62: [
+      1,
+      32
+    ],
+    63: [
+      1,
+      33
+    ]
+  },
+  {
+    38: 58,
+    39: [
+      1,
+      19
+    ],
+    41: [
+      1,
+      20
+    ],
+    44: [
+      1,
+      21
+    ],
+    45: [
+      1,
+      22
+    ],
+    46: 23,
+    48: 24,
+    49: [
+      1,
+      25
+    ],
+    50: [
+      1,
+      26
+    ],
+    51: [
+      1,
+      27
+    ],
+    52: 28,
+    53: 29,
+    54: [
+      1,
+      30
+    ],
+    55: [
+      1,
+      31
+    ],
+    60: [
+      1,
+      34
+    ],
+    62: [
+      1,
+      32
+    ],
+    63: [
+      1,
+      33
+    ]
+  },
+  __expand__($V5, [
+      2,
+      48
+    ], {71:[
+      2,
+      48
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      50
+    ], {71:[
+      2,
+      50
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      51
+    ], {71:[
+      2,
+      51
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      52
+    ], {71:[
+      2,
+      52
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      53
+    ], {71:[
+      2,
+      53
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      54
+    ], {71:[
+      2,
+      54
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      55
+    ], {71:[
+      2,
+      55
+    ]
+  }),
+  __expand__([6,12,14,16,18,25,33,36,39,40,41,42,43,44,45,49,50,51,54,55,57,59,60,61,62,63,64], [
+      2,
+      56
+    ], {71:[
+      2,
+      56
+    ]
+  }),
+  {
+    46: 62,
+    54: [
+      1,
+      30
+    ],
+    56: 59,
+    58: 60,
+    59: [
+      1,
+      61
+    ]
+  },
+  __expand__($V5, [
+      2,
+      64
+    ], {71:[
+      2,
+      64
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      65
+    ], {71:[
+      2,
+      65
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      62
+    ], {71:[
+      2,
+      62
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      8
+    ], {21:[
+      1,
+      63
+    ],71:[
+      2,
+      8
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      13
+    ], {71:[
+      2,
+      13
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      9
+    ], {21:[
+      1,
+      64
+    ],71:[
+      2,
+      9
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      15
+    ], {71:[
+      2,
+      15
+    ]
+  }),
+  __expand__($V7, [
+      2,
+      74
+    ], {74:[
+      2,
+      74
+    ]
+  }),
+  __expand__($V7, [
+      2,
+      75
+    ], {74:[
+      2,
+      75
+    ]
+  }),
+  {
+    66: [
+      1,
+      65
+    ]
+  },
+  {
+    12: [
+      1,
+      43
+    ],
+    65: 66,
+    66: [
+      2,
+      68
+    ],
+    67: 42
+  },
+  __expand__([12,66], [
+      2,
+      69
+    ], {68:[
+      1,
+      67
+    ]
+  }),
+  __expand__($V1, [
+      2,
+      31
+    ], {23:46,8:68,22:69,6:[
+      1,
+      71
+    ],9:[
+      1,
+      70
+    ],30:[
+      1,
+      47
+    ],71:[
+      2,
+      31
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      18
+    ], {71:[
+      2,
+      18
+    ]
+  }),
+  __expand__([18,25,36], [
+      2,
+      38
+    ], {35:16,37:17,38:18,46:23,48:24,52:28,53:29,13:72,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ],71:[
+      2,
+      38
+    ]
+  }),
+  {
+    12: [
+      1,
+      75
+    ],
+    31: 73,
+    33: [
+      1,
+      74
+    ]
+  },
+  __expand__($V2, [
+      2,
+      36
+    ], {38:18,46:23,48:24,52:28,53:29,37:76,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ],71:[
+      2,
+      36
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      39
+    ], {47:53,33:[
+      1,
+      51
+    ],42:[
+      1,
+      50
+    ],43:[
+      1,
+      52
+    ],61:[
+      1,
+      54
+    ],71:[
+      2,
+      39
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      43
+    ], {71:[
+      2,
+      43
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      44
+    ], {71:[
+      2,
+      44
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      45
+    ], {71:[
+      2,
+      45
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      49
+    ], {71:[
+      2,
+      49
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      63
+    ], {71:[
+      2,
+      63
+    ]
+  }),
+  {
+    36: [
+      1,
+      48
+    ],
+    40: [
+      1,
+      77
+    ]
+  },
+  {
+    36: [
+      1,
+      48
+    ],
+    40: [
+      1,
+      78
+    ]
+  },
+  __expand__($V3, [
+      2,
+      46
+    ], {47:53,33:[
+      1,
+      51
+    ],42:[
+      1,
+      50
+    ],43:[
+      1,
+      52
+    ],61:[
+      1,
+      54
+    ],71:[
+      2,
+      46
+    ]
+  }),
+  __expand__($V3, [
+      2,
+      47
+    ], {47:53,33:[
+      1,
+      51
+    ],42:[
+      1,
+      50
+    ],43:[
+      1,
+      52
+    ],61:[
+      1,
+      54
+    ],71:[
+      2,
+      47
+    ]
+  }),
+  {
+    57: [
+      1,
+      79
+    ]
+  },
+  {
+    46: 62,
+    54: [
+      1,
+      30
+    ],
+    56: 80,
+    57: [
+      2,
+      59
+    ],
+    58: 60,
+    59: [
+      1,
+      61
+    ]
+  },
+  __expand__($V9, [
+      2,
+      60
+    ], {59:[
+      2,
+      60
+    ]
+  }),
+  __expand__($V9, [
+      2,
+      61
+    ], {59:[
+      2,
+      61
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      14
+    ], {71:[
+      2,
+      14
+    ]
+  }),
+  __expand__($V6, [
+      2,
+      16
+    ], {71:[
+      2,
+      16
+    ]
+  }),
+  __expand__($V0, [
+      2,
+      66
+    ], {71:[
+      2,
+      66
+    ]
+  }),
+  {
+    66: [
+      2,
+      67
+    ]
+  },
+  {
+    12: [
+      1,
+      82
+    ],
+    69: [
+      1,
+      81
+    ]
+  },
+  {
+    1: [
+      2,
+      1
+    ]
+  },
+  __expand__($V8, [
+      2,
+      17
+    ], {71:[
+      2,
+      17
+    ]
+  }),
+  {
+    1: [
+      2,
+      2
+    ]
+  },
+  __expand__($Va, [
+      2,
+      79
+    ], {10:83,70:84,73:85,74:[
+      1,
+      86
+    ]
+  }),
+  {
+    18: [
+      1,
+      89
+    ],
+    19: 90,
+    24: 87,
+    25: [
+      1,
+      88
+    ],
+    71: [
+      1,
+      11
+    ]
+  },
+  {
+    32: [
+      1,
+      91
+    ],
+    34: [
+      1,
+      92
+    ]
+  },
+  {
+    32: [
+      1,
+      93
+    ]
+  },
+  {
+    32: [
+      2,
+      32
+    ],
+    34: [
+      2,
+      32
+    ]
+  },
+  __expand__($V2, [
+      2,
+      35
+    ], {46:23,48:24,52:28,53:29,38:49,39:[
+      1,
+      19
+    ],41:[
+      1,
+      20
+    ],44:[
+      1,
+      21
+    ],45:[
+      1,
+      22
+    ],49:[
+      1,
+      25
+    ],50:[
+      1,
+      26
+    ],51:[
+      1,
+      27
+    ],54:[
+      1,
+      30
+    ],55:[
+      1,
+      31
+    ],60:[
+      1,
+      34
+    ],62:[
+      1,
+      32
+    ],63:[
+      1,
+      33
+    ],71:[
+      2,
+      35
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      41
+    ], {71:[
+      2,
+      41
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      42
+    ], {71:[
+      2,
+      42
+    ]
+  }),
+  __expand__($V5, [
+      2,
+      57
+    ], {71:[
+      2,
+      57
+    ]
+  }),
+  {
+    57: [
+      2,
+      58
+    ]
+  },
+  {
+    12: [
+      2,
+      70
+    ],
+    66: [
+      2,
+      70
+    ]
+  },
+  {
+    12: [
+      2,
+      71
+    ],
+    66: [
+      2,
+      71
+    ]
+  },
+  {
+    9: [
+      1,
+      94
+    ]
+  },
+  {
+    9: [
+      2,
+      72
+    ],
+    19: 95,
+    71: [
+      1,
+      11
+    ]
+  },
+  __expand__($Va, [
+      2,
+      78
+    ], {74:[
+      1,
+      96
+    ]
+  }),
+  __expand__($Va, [
+      2,
+      76
+    ], {74:[
+      2,
+      76
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      19
+    ], {71:[
+      2,
+      19
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      23
+    ], {26:97,28:98,29:[
+      1,
+      99
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      21
+    ], {71:[
+      2,
+      21
+    ]
+  }),
+  __expand__($V8, [
+      2,
+      22
+    ], {71:[
+      2,
+      22
+    ]
+  }),
+  __expand__($V1, [
+      2,
+      29
+    ], {71:[
+      2,
+      29
+    ]
+  }),
+  {
+    12: [
+      1,
+      100
+    ]
+  },
+  __expand__($V1, [
+      2,
+      30
+    ], {71:[
+      2,
+      30
+    ]
+  }),
+  {
+    1: [
+      2,
+      3
+    ]
+  },
+  __expand__($Va, [
+      2,
+      79
+    ], {70:84,73:85,10:101,74:[
+      1,
+      86
+    ]
+  }),
+  __expand__($Va, [
+      2,
+      77
+    ], {74:[
+      2,
+      77
+    ]
+  }),
+  {
+    25: [
+      1,
+      103
+    ],
+    27: [
+      1,
+      102
+    ]
+  },
+  __expand__($Vb, [
+      2,
+      24
+    ], {29:[
+      1,
+      104
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      27
+    ], {29:[
+      2,
+      27
+    ]
+  }),
+  {
+    32: [
+      2,
+      33
+    ],
+    34: [
+      2,
+      33
+    ]
+  },
+  {
+    9: [
+      2,
+      73
+    ]
+  },
+  __expand__($V8, [
+      2,
+      20
+    ], {71:[
+      2,
+      20
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      23
+    ], {28:98,26:105,29:[
+      1,
+      99
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      28
+    ], {29:[
+      2,
+      28
+    ]
+  }),
+  {
+    25: [
+      1,
+      103
+    ],
+    27: [
+      1,
+      106
+    ]
+  },
+  __expand__($Vb, [
+      2,
+      26
+    ], {28:107,29:[
+      1,
+      99
+    ]
+  }),
+  __expand__($Vb, [
+      2,
+      25
+    ], {29:[
+      1,
+      104
+    ]
+  })
+],
+defaultActions: {
+  14: [
+    2,
+    5
+  ],
+  66: [
+    2,
+    67
+  ],
+  68: [
+    2,
+    1
+  ],
+  70: [
+    2,
+    2
+  ],
+  80: [
+    2,
+    58
+  ],
+  94: [
+    2,
+    3
+  ],
+  101: [
+    2,
+    73
+  ]
+},
+parseError: function parseError(str, hash) {
+    if (hash.recoverable) {
+        this.trace(str);
+    } else {
+        throw new this.JisonParserError(str, hash);
+    }
+},
+parse: function parse(input) {
+    var self = this,
+        stack = [0],
+
+        vstack = [null],    // semantic value stack
+        lstack = [],        // location stack
+        table = this.table,
+        yytext = '',
+        yylineno = 0,
+        yyleng = 0,
+        recovering = 0,     // (only used when the grammar contains error recovery rules)
+        TERROR = 2,
+        EOF = 1;
+
+    var args = lstack.slice.call(arguments, 1);
+
+    //this.reductionCount = this.shiftCount = 0;
+
+    var lexer;
+    if (this.__lexer__) {
+        lexer = this.__lexer__;
+    } else {
+        lexer = this.__lexer__ = Object.create(this.lexer);
+    }
+
+    var sharedState = { 
+      yy: {} 
+    };
+    // copy state
+    for (var k in this.yy) {
+      if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
+        sharedState.yy[k] = this.yy[k];
+      }
+    }
+
+    lexer.setInput(input, sharedState.yy);
+    sharedState.yy.lexer = lexer;
+    sharedState.yy.parser = this;
+    if (typeof lexer.yylloc === 'undefined') {
+        lexer.yylloc = {};
+    }
+    var yyloc = lexer.yylloc;
+    lstack.push(yyloc);
+
+    var ranges = lexer.options && lexer.options.ranges;
+
+    if (typeof sharedState.yy.parseError === 'function') {
+        this.parseError = sharedState.yy.parseError;
+    } else {
+        //this.parseError = Object.getPrototypeOf(this).parseError; // because in the generated code 'this.__proto__.parseError' doesn't work for everyone: http://javascriptweblog.wordpress.com/2010/06/07/understanding-javascript-prototypes/
+    }
+
+    function popStack(n) {
+        stack.length = stack.length - 2 * n;
+        vstack.length = vstack.length - n;
+        lstack.length = lstack.length - n;
+    }
+
+    function lex() {
+        var token;
+        token = lexer.lex() || EOF;
+        // if token isn't its numeric value, convert
+        if (typeof token !== 'number') {
+            token = self.symbols_[token] || token;
+        }
+        return token;
+    }
+
+    var symbol;
+    var preErrorSymbol = null;
+    var state, action, a, r;
+    var yyval = {};
+    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
+    var expected = [];
+    var retval = false;
+
+    if (this.pre_parse) {
+        this.pre_parse.call(this, sharedState.yy);
+    }
+    if (sharedState.yy.pre_parse) {
+        sharedState.yy.pre_parse.call(this, sharedState.yy);
+    }
+
+    // Return the rule stack depth where the nearest error rule can be found.
+    // Return FALSE when no error recovery rule was found.
+    function locateNearestErrorRecoveryRule(state) {
+        var stack_probe = stack.length - 1;
+        var depth = 0;
+
+        // try to recover from error
+        for (;;) {
+            // check for error recovery rule in this state
+            if ((TERROR.toString()) in table[state]) {
+                return depth;
+            }
+            if (state === 0 || stack_probe < 2) {
+                return false; // No suitable error recovery rule available.
+            }
+            stack_probe -= 2; // popStack(1): [symbol, action]
+            state = stack[stack_probe];
+            ++depth;
+        }
+    }
+
+
+    function collect_expected_token_set(state) {
+        var tokenset = [];
+        for (var p in table[state]) {
+            if (p > TERROR) {
+                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
+                    tokenset.push(self.terminal_descriptions_[p]);
+                }
+                else if (self.terminals_[p]) {
+                    tokenset.push("'" + self.terminals_[p] + "'");
+                }
+            }
+        }
+        return tokenset;
+    }
+
+    try {
+        for (;;) {
+            // retrieve state number from top of stack
+            state = stack[stack.length - 1];
+
+            // use default actions if available
+            if (this.defaultActions[state]) {
+                action = this.defaultActions[state];
+            } else {
+                if (symbol === null || typeof symbol === 'undefined') {
+                    symbol = lex();
+                }
+                // read action for current state and first input
+                action = table[state] && table[state][symbol];
+            }
+
+            // handle parse error
+            if (typeof action === 'undefined' || !action.length || !action[0]) {
+                var error_rule_depth;
+                var errStr = '';
+
+                if (!recovering) {
+                    // first see if there's any chance at hitting an error recovery rule:
+                    error_rule_depth = locateNearestErrorRecoveryRule(state);
+
+                    // Report error
+                    expected = collect_expected_token_set(state);
+                    if (lexer.showPosition) {
+                        errStr = 'Parse error on line ' + (yylineno + 1) + ':\n' + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                    } else {
+                        errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
+                                 (symbol === EOF ? 'end of input' :
+                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                    }
+                    a = this.parseError(errStr, p = {
+                        text: lexer.match,
+                        token: this.terminals_[symbol] || symbol,
+                        line: lexer.yylineno,
+                        loc: yyloc,
+                        expected: expected,
+                        recoverable: (error_rule_depth !== false)
+                    });
+                    if (!p.recoverable) {
+                        retval = a;
+                        break;
+                    }
+                } else if (preErrorSymbol !== EOF) {
+                    error_rule_depth = locateNearestErrorRecoveryRule(state);
+                }
+
+                // just recovered from another error
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
+                        retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
+                            text: lexer.match,
+                            token: this.terminals_[symbol] || symbol,
+                            line: lexer.yylineno,
+                            loc: yyloc,
+                            expected: expected,
+                            recoverable: false
+                        });
+                        break;
+                    }
+
+                    // discard current lookahead and grab another
+                    yyleng = lexer.yyleng;
+                    yytext = lexer.yytext;
+                    yylineno = lexer.yylineno;
+                    yyloc = lexer.yylloc;
+                    symbol = lex();
+                }
+
+                // try to recover from error
+                if (error_rule_depth === false) {
+                    retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
+                        text: lexer.match,
+                        token: this.terminals_[symbol] || symbol,
+                        line: lexer.yylineno,
+                        loc: yyloc,
+                        expected: expected,
+                        recoverable: false
+                    });
+                    break;
+                }
+                popStack(error_rule_depth);
+
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                symbol = TERROR;         // insert generic error symbol as new lookahead
+                state = stack[stack.length - 1];
+                action = table[state] && table[state][TERROR];
+                recovering = 3; // allow 3 real symbols to be shifted before reporting a new error
+            }
+
+
+            // this shouldn't happen, unless resolve defaults are off
+            if (action[0] instanceof Array && action.length > 1) {
+                retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+                    text: lexer.match,
+                    token: this.terminals_[symbol] || symbol,
+                    line: lexer.yylineno,
+                    loc: yyloc,
+                    expected: expected,
+                    recoverable: false
+                });
+                break;
+            }
+
+            switch (action[0]) {
+            case 1: // shift
+                //this.shiftCount++;
+
+                stack.push(symbol);
+                vstack.push(lexer.yytext);
+                lstack.push(lexer.yylloc);
+                stack.push(action[1]); // push state
+                symbol = null;
+                if (!preErrorSymbol) { // normal execution / no error
+                    yyleng = lexer.yyleng;
+                    yytext = lexer.yytext;
+                    yylineno = lexer.yylineno;
+                    yyloc = lexer.yylloc;
+                    if (recovering > 0) {
+                        recovering--;
+                    }
+                } else {
+                    // error just occurred, resume old lookahead f/ before error
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+                }
+                continue;
+
+            case 2:
+                // reduce
+                //this.reductionCount++;
+
+                this_production = this.productions_[action[1]]; 
+                len = this_production[1];
+                lstack_end = lstack.length;
+                lstack_begin = lstack_end - (len1 || 1);
+                lstack_end--;
+
+                // perform semantic action
+                yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack_begin].first_line,
+                    last_line: lstack[lstack_end].last_line,
+                    first_column: lstack[lstack_begin].first_column,
+                    last_column: lstack[lstack_end].last_column
+                };
+                if (ranges) {
+                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+                }
+                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack].concat(args));
+
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                    break;
+                }
+
+                // pop off stack
+                if (len) {
+                    popStack(len);
+                }
+
+                stack.push(this_production[0]);    // push nonterminal (reduce)
+                vstack.push(yyval.$);
+                lstack.push(yyval._$);
+                // goto new state = table[STATE][NONTERMINAL]
+                newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
+                stack.push(newState);
+                continue;
+
+            case 3:
+                // accept
+                retval = true;
+                break;
+            }
+
+            // break out of loop: we accept or fail with error
+            break;
+        }
+    } finally {
+        var rv;
+
+        if (sharedState.yy.post_parse) {
+            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            if (typeof rv !== 'undefined') retval = rv;
+        }
+        if (this.post_parse) {
+            rv = this.post_parse.call(this, sharedState.yy, retval);
+            if (typeof rv !== 'undefined') retval = rv;
+        }
+    }
+
+    return retval;
+}
+};
+
+
+function encodeRE (s) {
+    return s.replace(/([.*+?^${}()|[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
+}
+
+function prepareString (s) {
+    // unescape slashes
+    s = s.replace(/\\\\/g, "\\");
+    s = encodeRE(s);
+    return s;
+};
+
+
+/* generated by jison-lex 0.3.4-100 */
+var lexer = (function () {
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+function JisonLexerError(msg, hash) {
+    this.message = msg;
+    this.hash = hash;
+    var stacktrace = (new Error()).stack;
+    if (stacktrace) {
+      this.stack = stacktrace;
+    }
+}
+JisonLexerError.prototype = Object.create(Error.prototype);
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';
+
+var lexer = ({
+
+EOF:1,
+
+ERROR:2,
+
+parseError:function parseError(str, hash) {
+        if (this.yy.parser) {
+            return this.yy.parser.parseError(str, hash) || this.ERROR;
+        } else {
+            throw new this.JisonLexerError(str);
+        }
+    },
+
+// resets the lexer, sets new input
+setInput:function (input, yy) {
+        this.yy = yy || this.yy || {};
+        this._input = input;
+        this._more = this._backtrack = this._signaled_error_token = this.done = false;
+        this.yylineno = this.yyleng = 0;
+        this.yytext = this.matched = this.match = '';
+        this.conditionStack = ['INITIAL'];
+        this.yylloc = {
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 0
+        };
+        if (this.options.ranges) {
+            this.yylloc.range = [0, 0];
+        }
+        this.offset = 0;
+        return this;
+    },
+
+// consumes and returns one char from the input
+input:function () {
+        var ch = this._input[0];
+        this.yytext += ch;
+        this.yyleng++;
+        this.offset++;
+        this.match += ch;
+        this.matched += ch;
+        // Count the linenumber up when we hit the LF (or a stand-alone CR).
+        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
+        // and we advance immediately past the LF as well, returning both together as if 
+        // it was all a single 'character' only.
+        var slice_len = 1;
+        var lines = false;
+        if (ch === '\n') {
+            lines = true;
+        } else if (ch === '\r') {
+            lines = true;
+            var ch2 = this._input[1];
+            if (ch2 === '\n') {
+                slice_len++;
+                ch += ch2;
+                this.yytext += ch2;
+                this.yyleng++;
+                this.offset++;
+                this.match += ch2;
+                this.matched += ch2;
+                if (this.options.ranges) {
+                    this.yylloc.range[1]++;
+                }
+            }
+        } 
+        if (lines) {
+            this.yylineno++;
+            this.yylloc.last_line++;
+        } else {
+            this.yylloc.last_column++;
+        }
+        if (this.options.ranges) {
+            this.yylloc.range[1]++;
+        }
+
+        this._input = this._input.slice(slice_len);
+        return ch;
+    },
+
+// unshifts one char (or a string) into the input
+unput:function (ch) {
+        var len = ch.length;
+        var lines = ch.split(/(?:\r\n?|\n)/g);
+
+        this._input = ch + this._input;
+        this.yytext = this.yytext.substr(0, this.yytext.length - len);
+        //this.yyleng -= len;
+        this.offset -= len;
+        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+        this.match = this.match.substr(0, this.match.length - len);
+        this.matched = this.matched.substr(0, this.matched.length - len);
+
+        if (lines.length - 1) {
+            this.yylineno -= lines.length - 1;
+        }
+        var r = this.yylloc.range;
+
+        this.yylloc = {
+            first_line: this.yylloc.first_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.first_column,
+            last_column: lines ?
+                (lines.length === oldLines.length ? this.yylloc.first_column : 0)
+                + oldLines[oldLines.length - lines.length].length - lines[0].length :
+                this.yylloc.first_column - len
+        };
+
+        if (this.options.ranges) {
+            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+        }
+        this.yyleng = this.yytext.length;
+        return this;
+    },
+
+// When called from action, caches matched text and appends it on next action
+more:function () {
+        this._more = true;
+        return this;
+    },
+
+// When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+reject:function () {
+        if (this.options.backtrack_lexer) {
+            this._backtrack = true;
+        } else {
+            // when the parseError() call returns, we MUST ensure that the error is registered.
+            // We accomplish this by signaling an 'error' token to be produced for the current
+            // .lex() run.
+            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
+                text: this.match,
+                token: null,
+                line: this.yylineno,
+                loc: this.yylloc
+            }) || this.ERROR);
+        }
+        return this;
+    },
+
+// retain first n characters of the match
+less:function (n) {
+        this.unput(this.match.slice(n));
+    },
+
+// return (part of the) already matched input, i.e. for error messages
+pastInput:function (maxSize) {
+        var past = this.matched.substr(0, this.matched.length - this.match.length);
+        if (maxSize < 0)
+            maxSize = past.length;
+        else if (!maxSize)
+            maxSize = 20;
+        return (past.length > maxSize ? '...' + past.substr(-maxSize) : past);
+    },
+
+// return (part of the) upcoming input, i.e. for error messages
+upcomingInput:function (maxSize) {
+        var next = this.match;
+        if (maxSize < 0)
+            maxSize = next.length + this._input.length;
+        else if (!maxSize)
+            maxSize = 20;
+        if (next.length < maxSize) {
+            next += this._input.substr(0, maxSize - next.length);
+        }
+        return (next.length > maxSize ? next.substr(0, maxSize) + '...' : next);
+    },
+
+// return a string which displays the character position where the lexing error occurred, i.e. for error messages
+showPosition:function () {
+        var pre = this.pastInput().replace(/\s/g, ' ');
+        var c = new Array(pre.length + 1).join('-');
+        return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
+    },
+
+// test the lexed token: return FALSE when not a match, otherwise return token
+test_match:function (match, indexed_rule) {
+        var token,
+            lines,
+            backup;
+
+        if (this.options.backtrack_lexer) {
+            // save context
+            backup = {
+                yylineno: this.yylineno,
+                yylloc: {
+                    first_line: this.yylloc.first_line,
+                    last_line: this.last_line,
+                    first_column: this.yylloc.first_column,
+                    last_column: this.yylloc.last_column
+                },
+                yytext: this.yytext,
+                match: this.match,
+                matches: this.matches,
+                matched: this.matched,
+                yyleng: this.yyleng,
+                offset: this.offset,
+                _more: this._more,
+                _input: this._input,
+                yy: this.yy,
+                conditionStack: this.conditionStack.slice(0),
+                done: this.done
+            };
+            if (this.options.ranges) {
+                backup.yylloc.range = this.yylloc.range.slice(0);
+            }
+        }
+
+        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        if (lines) {
+            this.yylineno += lines.length;
+        }
+        this.yylloc = {
+            first_line: this.yylloc.last_line,
+            last_line: this.yylineno + 1,
+            first_column: this.yylloc.last_column,
+            last_column: lines ?
+                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
+                         this.yylloc.last_column + match[0].length
+        };
+        this.yytext += match[0];
+        this.match += match[0];
+        this.matches = match;
+        this.yyleng = this.yytext.length;
+        if (this.options.ranges) {
+            this.yylloc.range = [this.offset, this.offset + this.yyleng];
+        }
+        this.offset += this.yyleng;
+        this._more = false;
+        this._backtrack = false;
+        this._input = this._input.slice(match[0].length);
+        this.matched += match[0];
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+        if (this.done && this._input) {
+            this.done = false;
+        }
+        if (token) {
+            return token;
+        } else if (this._backtrack) {
+            // recover context
+            for (var k in backup) {
+                this[k] = backup[k];
+            }
+            return false; // rule action called reject() implying the next rule should be tested instead.
+        } else if (this._signaled_error_token) {
+            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
+            token = this._signaled_error_token;
+            this._signaled_error_token = false;
+            return token;
+        }
+        return false;
+    },
+
+// return next match in input
+next:function () {
+        function clear() {
+            this.yytext = '';
+            this.yyleng = 0;
+            this.match = '';
+            this.matches = false;
+            this._more = false;
+            this._backtrack = false;
+        }
+
+        if (this.done) {
+            clear.call(this);
+            return this.EOF;
+        }
+        if (!this._input) {
+            this.done = true;
+        }
+
+        var token,
+            match,
+            tempMatch,
+            index;
+        if (!this._more) {
+            clear.call(this);
+        }
+        var rules = this._currentRules();
+        for (var i = 0; i < rules.length; i++) {
+            tempMatch = this._input.match(this.rules[rules[i]]);
+            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                match = tempMatch;
+                index = i;
+                if (this.options.backtrack_lexer) {
+                    token = this.test_match(tempMatch, rules[i]);
+                    if (token !== false) {
+                        return token;
+                    } else if (this._backtrack) {
+                        match = false;
+                        continue; // rule action called reject() implying a rule MISmatch.
+                    } else {
+                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                        return false;
+                    }
+                } else if (!this.options.flex) {
+                    break;
+                }
+            }
+        }
+        if (match) {
+            token = this.test_match(match, rules[index]);
+            if (token !== false) {
+                return token;
+            }
+            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+            return false;
+        }
+        if (this._input === '') {
+            clear.call(this);
+            this.done = true;
+            return this.EOF;
+        } else {
+            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+                text: this.match + this._input,
+                token: null,
+                line: this.yylineno,
+                loc: this.yylloc
+            }) || this.ERROR;
+            if (token === this.ERROR) {
+                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward one character at a time:
+                if (!this.match.length) {
+                    this.input();
+                }
+            }
+            return token;
+        }
+    },
+
+// return next match that has a token
+lex:function lex() {
+        var r;
+        // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
+        if (typeof this.options.pre_lex === 'function') {
+            r = this.options.pre_lex.call(this);
+        }
+        while (!r) {
+            r = this.next();
+        }
+        if (typeof this.options.post_lex === 'function') {
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.options.post_lex.call(this, r) || r;
+        }
+        return r;
+    },
+
+// activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+begin:function begin(condition) {
+        this.conditionStack.push(condition);
+    },
+
+// pop the previously active lexer condition state off the condition stack
+popState:function popState() {
+        var n = this.conditionStack.length - 1;
+        if (n > 0) {
+            return this.conditionStack.pop();
+        } else {
+            return this.conditionStack[0];
+        }
+    },
+
+// produce the lexer rule set which is active for the currently active lexer condition state
+_currentRules:function _currentRules() {
+        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+        } else {
+            return this.conditions['INITIAL'].rules;
+        }
+    },
+
+// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+topState:function topState(n) {
+        n = this.conditionStack.length - 1 - Math.abs(n || 0);
+        if (n >= 0) {
+            return this.conditionStack[n];
+        } else {
+            return 'INITIAL';
+        }
+    },
+
+// alias for begin(condition)
+pushState:function pushState(condition) {
+        this.begin(condition);
+    },
+
+// return the number of states currently on the stack
+stateStackSize:function stateStackSize() {
+        return this.conditionStack.length;
+    },
+options: {
+  "easy_keyword_rules": true,
+  "ranges": true
+},
+JisonLexerError: JisonLexerError,
+performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
+
+var YYSTATE = YY_START;
+switch($avoiding_name_collisions) {
+case 2 : 
+/*! Conditions:: action */ 
+/*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
+ return 29; // regexp with braces or quotes (and no spaces) 
+break;
+case 7 : 
+/*! Conditions:: action */ 
+/*! Rule::       \{ */ 
+ yy.depth++; return 25; 
+break;
+case 8 : 
+/*! Conditions:: action */ 
+/*! Rule::       \} */ 
+ if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 27; 
+break;
+case 10 : 
+/*! Conditions:: conditions */ 
+/*! Rule::       > */ 
+ this.popState(); return 32; 
+break;
+case 13 : 
+/*! Conditions:: rules */ 
+/*! Rule::       {BR}+ */ 
+ /* empty */ 
+break;
+case 14 : 
+/*! Conditions:: rules */ 
+/*! Rule::       \s+{BR}+ */ 
+ /* empty */ 
+break;
+case 15 : 
+/*! Conditions:: rules */ 
+/*! Rule::       \s+ */ 
+ this.begin('indented'); 
+break;
+case 16 : 
+/*! Conditions:: rules */ 
+/*! Rule::       %% */ 
+ this.begin('code'); return 6; 
+break;
+case 20 : 
+/*! Conditions:: options */ 
+/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 69; 
+break;
+case 21 : 
+/*! Conditions:: options */ 
+/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 69; 
+break;
+case 23 : 
+/*! Conditions:: options */ 
+/*! Rule::       {BR}+ */ 
+ this.popState(); return 66; 
+break;
+case 24 : 
+/*! Conditions:: options */ 
+/*! Rule::       \s+{BR}+ */ 
+ this.popState(); return 66; 
+break;
+case 25 : 
+/*! Conditions:: options */ 
+/*! Rule::       \s+ */ 
+ /* empty */ 
+break;
+case 27 : 
+/*! Conditions:: start_condition */ 
+/*! Rule::       {BR}+ */ 
+ this.popState(); 
+break;
+case 28 : 
+/*! Conditions:: start_condition */ 
+/*! Rule::       \s+{BR}+ */ 
+ this.popState(); 
+break;
+case 29 : 
+/*! Conditions:: start_condition */ 
+/*! Rule::       \s+ */ 
+ /* empty */ 
+break;
+case 30 : 
+/*! Conditions:: trail */ 
+/*! Rule::       \s*{BR}+ */ 
+ this.begin('rules'); 
+break;
+case 31 : 
+/*! Conditions:: indented */ 
+/*! Rule::       \{ */ 
+ yy.depth = 0; this.begin('action'); return 25; 
+break;
+case 32 : 
+/*! Conditions:: indented */ 
+/*! Rule::       %\{(.|{BR})*?%\} */ 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 18; 
+break;
+case 33 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %\{(.|{BR})*?%\} */ 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 18; 
+break;
+case 34 : 
+/*! Conditions:: indented */ 
+/*! Rule::       %include\b */ 
+ 
+                                            // This is an include instruction in place of an action: 
+                                            // thanks to the `<indented>.+` rule immediately below we need to semi-duplicate 
+                                            // the `%include` token recognition here vs. the almost-identical rule for the same 
+                                            // further below.
+                                            // There's no real harm as we need to do something special in this case anyway:
+                                            // push 2 (two!) conditions.
+                                            //
+                                            // (Anecdotal: to find that we needed to place this almost-copy here to make the test grammar
+                                            // parse correctly took several hours as the debug facilities were - and are - too meager to
+                                            // quickly diagnose the problem while we hadn't. So the code got littered with debug prints
+                                            // and finally it hit me what the *F* went wrong, after which I saw I needed to add *this* rule!)
+
+                                            // first push the 'trail' condition which will be the follow-up after we're done parsing the path parameter...
+                                            this.pushState('trail'); 
+                                            // then push the immediate need: the 'path' condition.
+                                            this.pushState('path'); 
+                                            return 71;
+                                         
+break;
+case 35 : 
+/*! Conditions:: indented */ 
+/*! Rule::       .+ */ 
+ this.begin('rules'); return 18; 
+break;
+case 36 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
+ /* ignore */ 
+break;
+case 37 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \/\/.* */ 
+ /* ignore */ 
+break;
+case 38 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       {BR}+ */ 
+ /* empty */ 
+break;
+case 39 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \s+ */ 
+ /* empty */ 
+break;
+case 41 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 62; 
+break;
+case 42 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 62; 
+break;
+case 43 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \[ */ 
+ this.pushState('set'); return 55; 
+break;
+case 56 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       < */ 
+ this.begin('conditions'); return 30; 
+break;
+case 57 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \/! */ 
+ return 45;                    // treated as `(?!atom)` 
+break;
+case 58 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \/ */ 
+ return 44;                     // treated as `(?=atom)`  
+break;
+case 60 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       \\. */ 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 60; 
+break;
+case 63 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %options\b */ 
+ if (!yy.options) { yy.options = {}; } this.begin('options'); return 64; 
+break;
+case 64 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %s\b */ 
+ this.begin('start_condition'); return 14; 
+break;
+case 65 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %x\b */ 
+ this.begin('start_condition'); return 16; 
+break;
+case 66 : 
+/*! Conditions:: INITIAL trail code */ 
+/*! Rule::       %include\b */ 
+ this.pushState('path'); return 71; 
+break;
+case 67 : 
+/*! Conditions:: INITIAL rules trail code */ 
+/*! Rule::       %{NAME}[^\r\n]+ */ 
+  
+                                            /* ignore unrecognized decl */
+                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                         
+break;
+case 68 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       %% */ 
+ this.begin('rules'); return 6; 
+break;
+case 74 : 
+/*! Conditions:: indented trail rules INITIAL */ 
+/*! Rule::       . */ 
+ throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */ 
+break;
+case 77 : 
+/*! Conditions:: set */ 
+/*! Rule::       \] */ 
+ this.popState('set'); return 57; 
+break;
+case 79 : 
+/*! Conditions:: code */ 
+/*! Rule::       [^\r\n]+ */ 
+ return 74;      // the bit of CODE just before EOF... 
+break;
+case 80 : 
+/*! Conditions:: path */ 
+/*! Rule::       [\r\n] */ 
+ this.popState(); this.unput(yy_.yytext); 
+break;
+case 81 : 
+/*! Conditions:: path */ 
+/*! Rule::       '[^\r\n]+' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 72; 
+break;
+case 82 : 
+/*! Conditions:: path */ 
+/*! Rule::       "[^\r\n]+" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 72; 
+break;
+case 83 : 
+/*! Conditions:: path */ 
+/*! Rule::       \s+ */ 
+ // skip whitespace in the line 
+break;
+case 84 : 
+/*! Conditions:: path */ 
+/*! Rule::       [^\s\r\n]+ */ 
+ this.popState(); return 72; 
+break;
+case 85 : 
+/*! Conditions:: * */ 
+/*! Rule::       . */ 
+  
+                                            /* ignore unrecognized decl */
+                                            console.warn('ignoring unsupported lexer input: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                         
+break;
+default:
+  return this.simpleCaseActionClusters[$avoiding_name_collisions];
+}
+},
+simpleCaseActionClusters: {
+
+  /*! Conditions:: action */ 
+  /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
+   0 : 29,
+  /*! Conditions:: action */ 
+  /*! Rule::       \/\/.* */ 
+   1 : 29,
+  /*! Conditions:: action */ 
+  /*! Rule::       "(\\\\|\\"|[^"])*" */ 
+   3 : 29,
+  /*! Conditions:: action */ 
+  /*! Rule::       '(\\\\|\\'|[^'])*' */ 
+   4 : 29,
+  /*! Conditions:: action */ 
+  /*! Rule::       [/"'][^{}/"']+ */ 
+   5 : 29,
+  /*! Conditions:: action */ 
+  /*! Rule::       [^{}/"']+ */ 
+   6 : 29,
+  /*! Conditions:: conditions */ 
+  /*! Rule::       {NAME} */ 
+   9 : 12,
+  /*! Conditions:: conditions */ 
+  /*! Rule::       , */ 
+   11 : 34,
+  /*! Conditions:: conditions */ 
+  /*! Rule::       \* */ 
+   12 : 33,
+  /*! Conditions:: rules */ 
+  /*! Rule::       [a-zA-Z0-9_]+ */ 
+   17 : 63,
+  /*! Conditions:: options */ 
+  /*! Rule::       {NAME} */ 
+   18 : 12,
+  /*! Conditions:: options */ 
+  /*! Rule::       = */ 
+   19 : 68,
+  /*! Conditions:: options */ 
+  /*! Rule::       [^\s\r\n]+ */ 
+   22 : 69,
+  /*! Conditions:: start_condition */ 
+  /*! Rule::       {NAME} */ 
+   26 : 21,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       {NAME} */ 
+   40 : 12,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \| */ 
+   44 : 36,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?: */ 
+   45 : 41,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?= */ 
+   46 : 41,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \(\?! */ 
+   47 : 41,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \( */ 
+   48 : 39,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \) */ 
+   49 : 40,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \+ */ 
+   50 : 42,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \* */ 
+   51 : 33,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \? */ 
+   52 : 43,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \^ */ 
+   53 : 50,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       , */ 
+   54 : 34,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       <<EOF>> */ 
+   55 : 51,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
+   59 : 60,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \$ */ 
+   61 : 51,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \. */ 
+   62 : 49,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
+   69 : 61,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \{{NAME}\} */ 
+   70 : 54,
+  /*! Conditions:: set options */ 
+  /*! Rule::       \{{NAME}\} */ 
+   71 : 54,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \{ */ 
+   72 : 25,
+  /*! Conditions:: indented trail rules INITIAL */ 
+  /*! Rule::       \} */ 
+   73 : 27,
+  /*! Conditions:: * */ 
+  /*! Rule::       $ */ 
+   75 : 9,
+  /*! Conditions:: set */ 
+  /*! Rule::       (\\\\|\\\]|[^\]])+ */ 
+   76 : 59,
+  /*! Conditions:: code */ 
+  /*! Rule::       [^\r\n]*(\r|\n)+ */ 
+   78 : 74
+},
+rules: [
+/^(?:\/\*(.|\n|\r)*?\*\/)/,
+/^(?:\/\/.*)/,
+/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:"(\\\\|\\"|[^"])*")/,
+/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:[\/"'][^{}\/"']+)/,
+/^(?:[^{}\/"']+)/,
+/^(?:\{)/,
+/^(?:\})/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:>)/,
+/^(?:,)/,
+/^(?:\*)/,
+/^(?:(\r\n|\n|\r)+)/,
+/^(?:\s+(\r\n|\n|\r)+)/,
+/^(?:\s+)/,
+/^(?:%%)/,
+/^(?:[a-zA-Z0-9_]+)/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:=)/,
+/^(?:"(\\\\|\\"|[^"])*")/,
+/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:[^\s\r\n]+)/,
+/^(?:(\r\n|\n|\r)+)/,
+/^(?:\s+(\r\n|\n|\r)+)/,
+/^(?:\s+)/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:(\r\n|\n|\r)+)/,
+/^(?:\s+(\r\n|\n|\r)+)/,
+/^(?:\s+)/,
+/^(?:\s*(\r\n|\n|\r)+)/,
+/^(?:\{)/,
+/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
+/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
+/^(?:%include\b)/,
+/^(?:.+)/,
+/^(?:\/\*(.|\n|\r)*?\*\/)/,
+/^(?:\/\/.*)/,
+/^(?:(\r\n|\n|\r)+)/,
+/^(?:\s+)/,
+/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:"(\\\\|\\"|[^"])*")/,
+/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:\[)/,
+/^(?:\|)/,
+/^(?:\(\?:)/,
+/^(?:\(\?=)/,
+/^(?:\(\?!)/,
+/^(?:\()/,
+/^(?:\))/,
+/^(?:\+)/,
+/^(?:\*)/,
+/^(?:\?)/,
+/^(?:\^)/,
+/^(?:,)/,
+/^(?:<<EOF>>)/,
+/^(?:<)/,
+/^(?:\/!)/,
+/^(?:\/)/,
+/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,
+/^(?:\\.)/,
+/^(?:\$)/,
+/^(?:\.)/,
+/^(?:%options\b)/,
+/^(?:%s\b)/,
+/^(?:%x\b)/,
+/^(?:%include\b)/,
+/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
+/^(?:%%)/,
+/^(?:\{\d+(,\s?\d+|,)?\})/,
+/^(?:\{([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\})/,
+/^(?:\{([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)\})/,
+/^(?:\{)/,
+/^(?:\})/,
+/^(?:.)/,
+/^(?:$)/,
+/^(?:(\\\\|\\\]|[^\]])+)/,
+/^(?:\])/,
+/^(?:[^\r\n]*(\r|\n)+)/,
+/^(?:[^\r\n]+)/,
+/^(?:[\r\n])/,
+/^(?:'[^\r\n]+')/,
+/^(?:"[^\r\n]+")/,
+/^(?:\s+)/,
+/^(?:[^\s\r\n]+)/,
+/^(?:.)/
+],
+conditions: {
+  "code": {
+    "rules": [
+      66,
+      67,
+      75,
+      78,
+      79,
+      85
+    ],
+    "inclusive": false
+  },
+  "start_condition": {
+    "rules": [
+      26,
+      27,
+      28,
+      29,
+      75,
+      85
+    ],
+    "inclusive": false
+  },
+  "options": {
+    "rules": [
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      71,
+      75,
+      85
+    ],
+    "inclusive": false
+  },
+  "conditions": {
+    "rules": [
+      9,
+      10,
+      11,
+      12,
+      75,
+      85
+    ],
+    "inclusive": false
+  },
+  "action": {
+    "rules": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      75,
+      85
+    ],
+    "inclusive": false
+  },
+  "path": {
+    "rules": [
+      75,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85
+    ],
+    "inclusive": false
+  },
+  "set": {
+    "rules": [
+      71,
+      75,
+      76,
+      77,
+      85
+    ],
+    "inclusive": false
+  },
+  "indented": {
+    "rules": [
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      68,
+      69,
+      70,
+      72,
+      73,
+      74,
+      75,
+      85
+    ],
+    "inclusive": true
+  },
+  "trail": {
+    "rules": [
+      30,
+      33,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      72,
+      73,
+      74,
+      75,
+      85
+    ],
+    "inclusive": true
+  },
+  "rules": {
+    "rules": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      33,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      67,
+      68,
+      69,
+      70,
+      72,
+      73,
+      74,
+      75,
+      85
+    ],
+    "inclusive": true
+  },
+  "INITIAL": {
+    "rules": [
+      33,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      72,
+      73,
+      74,
+      75,
+      85
+    ],
+    "inclusive": true
+  }
+}
+});
+// lexer.JisonLexerError = JisonLexerError;
+return lexer;
+})();
+parser.lexer = lexer;
+
+function Parser () {
+  this.yy = {};
+}
+Parser.prototype = parser;
+parser.Parser = Parser;
+// parser.JisonParserError = JisonParserError;
+
+return new Parser();
+})();
+
+
+
+
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
+exports.parser = lexParser;
+exports.Parser = lexParser.Parser;
+exports.parse = function () {
+  return lexParser.parse.apply(lexParser, arguments);
+};
+
+}
+
+},{"fs":12}],24:[function(require,module,exports){
 module.exports={
   "author": {
     "name": "Zach Carter",
@@ -16718,7 +22451,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.15",
+  "version": "0.4.15-102",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -16748,7 +22481,6 @@ module.exports={
     "node": ">=0.9"
   },
   "dependencies": {
-    "JSONSelect": ">=0.4.0",
     "jison-lex": "git://github.com/GerHobbelt/jison-lex.git#master",
     "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
     "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",

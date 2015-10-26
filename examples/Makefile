@@ -1,6 +1,6 @@
 #
 # You can build each example to its own directory in ./output/<example>
-# 
+#
 
 JISON = node ../lib/cli.js -o ./output/$@/ --main
 
@@ -10,6 +10,7 @@ ALL_TARGETS =  													\
 			basic2 												\
 			basic2_lex 											\
 			basic_lex 											\
+			bloop 												\
 			calculator 											\
 			calc_LA_on_demand									\
 			calculator_json 									\
@@ -22,6 +23,8 @@ ALL_TARGETS =  													\
 			handlebars 											\
 			inherited_y 										\
 			jscore 												\
+			issue-254											\
+			issue-293											\
 			json_js 											\
 			json_ast_js 										\
 			lambdacalc 											\
@@ -64,6 +67,13 @@ basic2_lex:
 basic_lex:
 	$(JISON) ./$@.jison
 
+bloop:
+	$(JISON) ./$@.y ./floop.l
+
+# cannot compile a lexer on its own, so we provide a bogus grammar to go with that.
+floop:
+	$(JISON) floop-standalone.y ./$@.l
+
 calculator:
 	$(JISON) ./$@.jison
 
@@ -101,6 +111,16 @@ handlebars:
 
 inherited_y:
 	$(JISON) ./inherited.y
+
+# build *AND* run the test:
+issue-254:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-293:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
 
 jscore:
 	$(JISON) ./$@.jison
