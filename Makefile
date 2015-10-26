@@ -1,6 +1,5 @@
 
-all: build test examples/issue-293 
-# examples/issue-254 
+all: build test examples/issue-293 examples/issue-254 
 
 prep: npm-install
 
