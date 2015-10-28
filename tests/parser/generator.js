@@ -430,20 +430,20 @@ exports["test 'semantic whitespace' edge case which could break the parser gener
     };
     var grammar = {
         startSymbol: "G",
-        // a literal whitespace in the rules could potentially damage the generated output as the 
+        // a literal whitespace in the rules could potentially damage the generated output as the
         // productions are re-assembled into strings before being ferried off to `buildProductions()`,
         // which would then call `string.split(' ')` on them before we introduced the new
         // `splitStringIntoSymbols()` splitter in there.
-        // 
+        //
         // Of course it's rather odd to have rules parsed, then reassembled and then, in a sense,
         // parsed *again*, but alas, that's how it is. Probably done this way to have automatic
         // JSON input support alongside the JISON feed which I (GerHobbelt) normally use.
-        // 
-        // Anyway, this grammar is crafted as a minimum sample which can potentially the grammar
+        //
+        // Anyway, this grammar is crafted as a minimum sample which can potentially break the parser
         // and is included in these tests to prevent nasty regressions: when things go pear-shaped
-        // you won't notice much, apart from maybe, after pulling all your hair, that the 
+        // you won't notice much, apart from maybe, after pulling all your hair, that the
         // generated `$N` references are off by at least one(1).
-        // 
+        //
         // Pumping this through the EBNF parser also can help to break things around there;
         // **TODO** is pumping this in various incantations through both raw BNF and EBNF
         // parsers to see who will falter, today.
@@ -469,11 +469,10 @@ exports["test 'semantic whitespace' edge case which could break the parser gener
                 parser = callback();
             }
         };
-    //console.log('source: ', parserSource);        
+    //console.log('source: ', parserSource);
     eval(parserSource);
 
     var rv = parser.parse(input);
-    console.log('parse result: ', rv);
     assert.equal(rv, 42);
 };
 
