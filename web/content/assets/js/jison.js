@@ -138,7 +138,7 @@ generator.processGrammar = function processGrammarDef (grammar) {
         console.log('processGrammar: ', JSON.stringify({
             bnf: bnf,
             tokens: tokens,
-            productions: productions 
+            productions: productions
         }, null, 2));
     }
     if (tokens) {
@@ -203,7 +203,7 @@ function processOperators (ops) {
     for (var i = 0, k, prec; (prec = ops[i]); i++) {
         for (k = 1; k < prec.length; k++) {
             operators[prec[k]] = {
-                precedence: i + 1, 
+                precedence: i + 1,
                 assoc: prec[0]
             };
         }
@@ -262,7 +262,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
         prods.forEach(buildProduction);
     }
-    for (var hash in actionGroups) {                     
+    for (var hash in actionGroups) {
         actions.push([].concat([].concat.apply([], actionGroups[hash]), actionGroupValue[hash], '\nbreak;').join(' '));
     }
 
@@ -319,17 +319,17 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 }
                 rhs = rhs.substr(pos + 1);
                 // now find the matching end marker.
-                // 
+                //
                 // As mentioned elsewhere in the code comments, we DO NOT cope with 'weird'
                 // literal tokens which are designed to break this scheme, i.e. literals
                 // containing *both* quote types, e.g. `rule: A '"\'' B;`
-                // 
+                //
                 // Besides, those won't make it through the lexer unscathed either, given the
                 // current STRING rules there: see `bnf.l`:
-                // 
+                //
                 //      '"'[^"]+'"'             ... return 'STRING';
                 //      "'"[^']+"'"             ... return 'STRING';
-                // 
+                //
                 // so it's like Chamberlain said: we can all go back to sleep now. ;-)
                 pos = rhs.indexOf(marker);
                 if (pos < 0) {
@@ -359,8 +359,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return tokens;
     }
 
-    // make sure a comment does not contain any embedded '*/' end-of-comment marker 
-    // as that would break the generated code 
+    // make sure a comment does not contain any embedded '*/' end-of-comment marker
+    // as that would break the generated code
     function postprocessComment(str) {
         if (Array.isArray(str)) {
             str = str.join(' ');
@@ -402,7 +402,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             if (typeof handle[1] === 'string' || handle.length === 3) {
                 // semantic action specified
                 var label = [
-                    'case', productions.length + 1, ':', 
+                    'case', productions.length + 1, ':',
                     '\n/*! Production::    ', postprocessComment(symbol), ':'
                 ].concat(postprocessComment(handle[0]), '*/\n');
                 var action = handle[1];
@@ -417,11 +417,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     // we therefor allow access to both the original (non)terminal and the alias.
                     //
                     // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
-                    // where N is a number representing the number of this particular occurrence of the given 
+                    // where N is a number representing the number of this particular occurrence of the given
                     // (non)terminal.
                     //
                     // For example, given this (intentionally contrived) production:
-                    //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias] 
+                    //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias]
                     // all the items can be accessed as:
                     //     $1 $2 $3 $4 $5
                     //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
@@ -474,7 +474,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     actionGroups[actionHash] = [label];
                     actionGroupValue[actionHash] = action;
                 }
-                
+
                 r = new Production(symbol, rhs, productions.length + 1);
                 // precedence specified also
                 if (handle[2] && operators[handle[2].prec]) {
@@ -559,7 +559,7 @@ var generatorDebug = {
 var lookaheadMixin = {};
 
 lookaheadMixin.computeLookaheads = function computeLookaheads () {
-    if (this.DEBUG) { 
+    if (this.DEBUG) {
         this.mix(lookaheadDebug); // mixin debug methods
     }
 
@@ -886,7 +886,7 @@ lrGeneratorMixin.gotoOperation = function gotoOperation (itemSet, symbol) {
     return gotoSet.isEmpty() ? gotoSet : this.closureOperation(gotoSet);
 };
 
-/* 
+/*
  * Create unique set of item sets
  */
 lrGeneratorMixin.canonicalCollection = function canonicalCollection () {
@@ -901,7 +901,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection () {
     states.has[firstState] = 0;
 
     while (marked !== states.size()) {
-        itemSet = states.item(marked); 
+        itemSet = states.item(marked);
         marked++;
         itemSet.forEach(function CC_itemSet_forEach (item) {
             if (item.markedSymbol && item.markedSymbol !== self.EOF) {
@@ -1264,8 +1264,8 @@ lrGeneratorMixin.generateAMDModule = function generateAMDModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var module = this.generateModule_();
     var out = [
-        generateGenericHeaderComment(), 
-        '', 
+        generateGenericHeaderComment(),
+        '',
         'define(function (require) {',
         module.commonCode,
         'var parser = ' + module.moduleCode,
@@ -1379,10 +1379,10 @@ function removeFeatureMarkers (fn) {
 }
 
 function pickOneOfTwoCodeAlternatives(parseFn, pick_A_not_B, A_start_marker, B_start_marker, end_marker) {
-    // Notes: 
+    // Notes:
     // 1) we use the special /[^\0]*/ regex set as that one will also munch newlines, etc.
     //    while the obvious /.*/ does not as '.' doesn't eat the newlines.
-    // 2) The end sentinel label is kept intact as we have another function 
+    // 2) The end sentinel label is kept intact as we have another function
     //    removeFeatureMarkers() which nukes that line properly, i.e. including the trailing comment!
     if (pick_A_not_B) {
         // kill section B
@@ -1397,7 +1397,7 @@ function addOrRemoveTokenStack(fn, wantTokenStack) {
     var parseFn = fn;
     // We don't use the Esprima+Escodegen toolchain as those loose the code comments easily;
     // instead we just chop the code using labels as sentinels for our chopping-it-up regexes:
-    // 
+    //
     // if (wantTokenStack) {
     //     try {
     //         var ast = esprima.parse(parseFn);
@@ -1413,7 +1413,7 @@ function addOrRemoveTokenStack(fn, wantTokenStack) {
     //         return parseFn;
     //     }
     // } else {
-    //     // remove the line: 
+    //     // remove the line:
     //     //         tstack = [], // token stack
     //     parseFn = parseFn.replace(/tstack = .*$/m, '');
     //     return parseFn;
@@ -1439,8 +1439,8 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
     // try {
     //     var ast = esprima.parse(parseFn);
 
-    //     var labeled = JSONSelect.match(':has(:root > .label > .name:val("' + 
-    //         (!hasErrorRecovery ? '_handle_error_with_recovery' : '_handle_error_no_recovery') + 
+    //     var labeled = JSONSelect.match(':has(:root > .label > .name:val("' +
+    //         (!hasErrorRecovery ? '_handle_error_with_recovery' : '_handle_error_no_recovery') +
     //         '"))', ast);
     //     Jison.print('labeled: ', labeled);
     //     assert(labeled[0].body.type === 'IfStatement');
@@ -1476,7 +1476,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
     parseFn = addOrRemoveTokenStack(parseFn, this.options['token-stack']);
 
     // always remove the feature markers in the template code.
-    parseFn = removeFeatureMarkers(parseFn); 
+    parseFn = removeFeatureMarkers(parseFn);
 
     // Generate code with fresh variable names
     nextVariableId = 0;
@@ -1599,8 +1599,8 @@ lrGeneratorMixin.generateTableCode = function (table) {
         "",
     ];
 
-    // Only include the expender function when it's actually used 
-    // (tiny grammars don't have much state duplication, so this shaves off 
+    // Only include the expender function when it's actually used
+    // (tiny grammars don't have much state duplication, so this shaves off
     // another couple bytes off the generated output)
     if (usesCompressor) {
         prelude.push(createObjectCode.toString().replace('createObjectCode', '__expand__'));
@@ -1767,8 +1767,8 @@ parser.parse = function parse (input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = { 
-      yy: {} 
+    var sharedState = {
+      yy: {}
     };
     // copy state
     for (var k in this.yy) {
@@ -1791,7 +1791,7 @@ parser.parse = function parse (input) {
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } 
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -2020,7 +2020,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                     loc: yyloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack  
+                    state_stack: stack
                 });
                 break;
             }
@@ -2053,7 +2053,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 // reduce
                 //this.reductionCount++;
 
-                this_production = this.productions_[action[1]]; 
+                this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len1 || 1);
@@ -2161,8 +2161,8 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
             DEBUG: false,
             go_: function (r, B) {
                 r = r.split(":")[0]; // grab state #
-                B = B.map(function (b) { 
-                    return b.slice(b.indexOf(":") + 1); 
+                B = B.map(function (b) {
+                    return b.slice(b.indexOf(":") + 1);
                 });
                 return this.oldg.go(r, B);
             }
@@ -2533,10 +2533,11 @@ var EBNF = (function(){
     }
 
     var transformExpression = function(e, opts, emit) {
-        var type = e[0], 
-            value = e[1], 
+        var type = e[0],
+            value = e[1],
             name = false,
             has_transformed = 0;
+        var list, n;
 
         if (type === 'xalias') {
             type = e[1];
@@ -2553,10 +2554,9 @@ var EBNF = (function(){
         }
 
         if (type === 'symbol') {
-            var n;
             // if (e[1][0] === '\\') {
             //     n = e[1][1];
-            // }            
+            // }
             // else if (e[1][0] === '\'') {
             //     n = e[1].substring(1, e[1].length - 1);
             // }
@@ -2578,7 +2578,7 @@ var EBNF = (function(){
             has_transformed = 1;
 
             opts = optsForProduction(name, opts.grammar);
-            var list = transformExpressionList([value], opts);
+            list = transformExpressionList([value], opts);
             opts.grammar[name] = [
                 [
                     list.fragment,
@@ -2597,9 +2597,9 @@ var EBNF = (function(){
             emit(name);
 
             has_transformed = 1;
-            
+
             opts = optsForProduction(name, opts.grammar);
-            var list = transformExpressionList([value], opts);
+            list = transformExpressionList([value], opts);
             opts.grammar[name] = [
                 [
                     '',
@@ -2618,16 +2618,16 @@ var EBNF = (function(){
             emit(name);
 
             has_transformed = 1;
-            
+
             opts = optsForProduction(name, opts.grammar);
-            var list = transformExpressionList([value], opts);
+            list = transformExpressionList([value], opts);
             // you want to be able to check if 0 or 1 occurrences were recognized: since jison
             // by default *copies* the lexer token value, i.e. `$$ = $1` is the default action,
-            // we will need to set the action up explicitly in case of the 0-count match: 
+            // we will need to set the action up explicitly in case of the 0-count match:
             // `$$ = undefined`.
-            // 
+            //
             // Note that we MUST return an array as the
-            // '1 occurrence' match CAN carry multiple terms, e.g. in constructs like 
+            // '1 occurrence' match CAN carry multiple terms, e.g. in constructs like
             // `(T1 T2 T3)?`.
             opts.grammar[name] = [
                 [
@@ -2640,8 +2640,8 @@ var EBNF = (function(){
                 ]
             ];
         } else if (type === '()') {
-            if (value.length === 1) {
-                var list = transformExpressionList(value[0], opts);
+            if (value.length === 1 && !name) {
+                list = transformExpressionList(value[0], opts);
                 if (list.first_transformed_term_index) {
                     has_transformed = list.first_transformed_term_index;
                 }
@@ -2659,11 +2659,14 @@ var EBNF = (function(){
                 opts = optsForProduction(name, opts.grammar);
                 opts.grammar[name] = value.map(function(handle) {
                     var list = transformExpressionList(handle, opts);
-                    return list.fragment;
+                    return [
+                        list.fragment,
+                        '$$ = ' + generatePushAction(list, 1) + ';'
+                    ];
                 });
             }
         }
-        
+
         return has_transformed;
     };
 
@@ -2705,8 +2708,10 @@ var EBNF = (function(){
     var transformProduction = function(id, production, grammar) {
         var transform_opts = optsForProduction(id, grammar);
         return production.map(function (handle) {
-            var action = null, 
+            var action = null,
                 opts = null;
+            var i, len, n;
+
             if (typeof handle !== 'string') {
                 action = handle[1];
                 opts = handle[2];
@@ -2746,7 +2751,7 @@ var EBNF = (function(){
                         }
                     };
 
-                    for (var i = 0, len = alist.length; i < len; i++) {
+                    for (i = 0, len = alist.length; i < len; i++) {
                         var term = alist[i];
                         var alias = term.match(alias_re);
                         if (alias) {
@@ -2758,17 +2763,17 @@ var EBNF = (function(){
                         }
                     }
                     if (devDebug > 2) console.log("good_aliases: ", good_aliases);
-                    
+
                     // now scan the action for all named and numeric semantic values ($nonterminal / $1)
                     var named_spots = action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*\b/g);
                     var numbered_spots = action.match(/[$@][0-9]+\b/g);
                     var max_term_index = list.terms.length;
-                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);                    
+                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);
                     if (devDebug > 2) console.log("ACTION numbered_spots: ", numbered_spots);
 
                     if (named_spots) {
-                        for (var i = 0, len = named_spots.length; i < len; i++) {
-                            var n = named_spots[i].substr(1);
+                        for (i = 0, len = named_spots.length; i < len; i++) {
+                            n = named_spots[i].substr(1);
                             if (!good_aliases[n]) {
                                 throw new Error("The action block references the named alias '" + n + "' " +
                                                 "which is not available in production '" + handle + "'; " +
@@ -2781,10 +2786,10 @@ var EBNF = (function(){
                         }
                     }
                     if (numbered_spots) {
-                        for (var i = 0, len = numbered_spots.length; i < len; i++) {
-                            var n = parseInt(numbered_spots[i].substr(1));
+                        for (i = 0, len = numbered_spots.length; i < len; i++) {
+                            n = parseInt(numbered_spots[i].substr(1));
                             if (n > max_term_index) {
-                                var n_suffixes = [ "st", "nd", "rd", "th" ];
+                                /* @const */ var n_suffixes = [ "st", "nd", "rd", "th" ];
                                 throw new Error("The action block references the " + n + n_suffixes[Math.max(0, Math.min(3, n - 1))] + " term, " +
                                                 "which is not available in production '" + handle + "'; " +
                                                 "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
@@ -5207,8 +5212,8 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = { 
-      yy: {} 
+    var sharedState = {
+      yy: {}
     };
     // copy state
     for (var k in this.yy) {
@@ -5231,7 +5236,7 @@ parse: function parse(input) {
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } 
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -5411,7 +5416,7 @@ parse: function parse(input) {
                     loc: yyloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack  
+                    state_stack: stack
                 });
                 break;
             }
@@ -5444,7 +5449,7 @@ parse: function parse(input) {
                 // reduce
                 //this.reductionCount++;
 
-                this_production = this.productions_[action[1]]; 
+                this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len1 || 1);
@@ -5586,7 +5591,7 @@ input:function () {
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
         // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if 
+        // and we advance immediately past the LF as well, returning both together as if
         // it was all a single 'character' only.
         var slice_len = 1;
         var lines = false;
@@ -5607,7 +5612,7 @@ input:function () {
                     this.yylloc.range[1]++;
                 }
             }
-        } 
+        }
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -5638,20 +5643,15 @@ unput:function (ch) {
         if (lines.length - 1) {
             this.yylineno -= lines.length - 1;
         }
-        var r = this.yylloc.range;
 
-        this.yylloc = {
-            first_line: this.yylloc.first_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.first_column,
-            last_column: lines ?
+        this.yylloc.last_line = this.yylineno + 1;
+        this.yylloc.last_column = (lines ?
                 (lines.length === oldLines.length ? this.yylloc.first_column : 0)
                 + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len
-        };
+                this.yylloc.first_column - len);
 
         if (this.options.ranges) {
-            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
         }
         this.yyleng = this.yytext.length;
         this.done = false;
@@ -5986,8 +5986,8 @@ break;
 case 17 : 
 /*! Conditions:: rules */ 
 /*! Rule::       [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+ */ 
-                       
-                                            // accept any non-regex, non-lex, non-string-delim, 
+ 
+                                            // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
                                             return 64;
                                          
@@ -6056,9 +6056,9 @@ case 34 :
 /*! Conditions:: indented */ 
 /*! Rule::       %include\b */ 
  
-                                            // This is an include instruction in place of an action: 
-                                            // thanks to the `<indented>.+` rule immediately below we need to semi-duplicate 
-                                            // the `%include` token recognition here vs. the almost-identical rule for the same 
+                                            // This is an include instruction in place of an action:
+                                            // thanks to the `<indented>.+` rule immediately below we need to semi-duplicate
+                                            // the `%include` token recognition here vs. the almost-identical rule for the same
                                             // further below.
                                             // There's no real harm as we need to do something special in this case anyway:
                                             // push 2 (two!) conditions.
@@ -6069,9 +6069,9 @@ case 34 :
                                             // and finally it hit me what the *F* went wrong, after which I saw I needed to add *this* rule!)
 
                                             // first push the 'trail' condition which will be the follow-up after we're done parsing the path parameter...
-                                            this.pushState('trail'); 
+                                            this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
-                                            this.pushState('path'); 
+                                            this.pushState('path');
                                             return 72;
                                          
 break;
@@ -6128,7 +6128,7 @@ break;
 case 58 : 
 /*! Conditions:: indented trail rules INITIAL */ 
 /*! Rule::       \/ */ 
- return 45;                     // treated as `(?=atom)`  
+ return 45;                     // treated as `(?=atom)` 
 break;
 case 60 : 
 /*! Conditions:: indented trail rules INITIAL */ 
@@ -6158,7 +6158,7 @@ break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
 /*! Rule::       %{NAME}[^\r\n]+ */ 
-  
+ 
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
                                             return 21;
@@ -6212,7 +6212,7 @@ break;
 case 85 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
-  
+ 
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer input: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
                                          
@@ -7809,7 +7809,7 @@ case 88 :
 break;
 case 89 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
-  
+ 
             var fs = require('fs');
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
@@ -7818,8 +7818,8 @@ case 89 :
 break;
 case 90 : 
 /*! Production::     include_macro_code : INCLUDE error */
-  
-            console.error("%include MUST be followed by a valid file path"); 
+ 
+            console.error("%include MUST be followed by a valid file path");
          
 break;
 }
@@ -9025,8 +9025,8 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = { 
-      yy: {} 
+    var sharedState = {
+      yy: {}
     };
     // copy state
     for (var k in this.yy) {
@@ -9049,7 +9049,7 @@ parse: function parse(input) {
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } 
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -9229,7 +9229,7 @@ parse: function parse(input) {
                     loc: yyloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack  
+                    state_stack: stack
                 });
                 break;
             }
@@ -9262,7 +9262,7 @@ parse: function parse(input) {
                 // reduce
                 //this.reductionCount++;
 
-                this_production = this.productions_[action[1]]; 
+                this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len1 || 1);
@@ -9405,7 +9405,7 @@ input:function () {
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
         // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if 
+        // and we advance immediately past the LF as well, returning both together as if
         // it was all a single 'character' only.
         var slice_len = 1;
         var lines = false;
@@ -9426,7 +9426,7 @@ input:function () {
                     this.yylloc.range[1]++;
                 }
             }
-        } 
+        }
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -9457,20 +9457,15 @@ unput:function (ch) {
         if (lines.length - 1) {
             this.yylineno -= lines.length - 1;
         }
-        var r = this.yylloc.range;
 
-        this.yylloc = {
-            first_line: this.yylloc.first_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.first_column,
-            last_column: lines ?
+        this.yylloc.last_line = this.yylineno + 1;
+        this.yylloc.last_column = (lines ?
                 (lines.length === oldLines.length ? this.yylloc.first_column : 0)
                 + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len
-        };
+                this.yylloc.first_column - len);
 
         if (this.options.ranges) {
-            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
         }
         this.yyleng = this.yytext.length;
         this.done = false;
@@ -9875,7 +9870,7 @@ break;
 case 43 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
-  
+ 
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
                                             return 23;
@@ -10398,9 +10393,9 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         newRules = [];
 
     // Depending on the location within the regex we need different expansions of the macros,
-    // hence precalcing the expansions is out for now; besides the number of macros is usually 
+    // hence precalcing the expansions is out for now; besides the number of macros is usually
     // relatively small enough that a naive approach to expansion is fine performance-wise anyhow:
-    // 
+    //
     // if (macros) {
     //     macros = prepareMacros(macros);
     // }
@@ -10409,8 +10404,8 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
     }
 
-    // make sure a comment does not contain any embedded '*/' end-of-comment marker 
-    // as that would break the generated code 
+    // make sure a comment does not contain any embedded '*/' end-of-comment marker
+    // as that would break the generated code
     function postprocessComment(str) {
         if (Array.isArray(str)) {
             str = str.join(' ');
@@ -10469,7 +10464,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         if (tokens && action.match(/return "(?:\\"|[^"]+)+"/)) {
             action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
         }
-        
+
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
         code.push('*/', '\n/*! Rule::      ');
@@ -10478,19 +10473,19 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
 
         // When the action is *only* a simple `return TOKEN` statement, then add it to the caseHelpers;
         // otherwise add the additional `break;` at the end.
-        // 
+        //
         // Note: we do NOT analyze the action block any more to see if the *last* line is a simple
         // `return NNN;` statement as there are too many shoddy idioms, e.g.
-        // 
+        //
         // ```
         // %{ if (cond)
         //      return TOKEN;
         // %}
         // ```
-        // 
+        //
         // which would then cause havoc when our action code analysis (using regexes or otherwise) was 'too simple'
-        // to catch these culprits; hence we resort and stick with the most fundamental approach here: 
-        // always append `break;` even when it would be obvious to a human that such would be 'unreachable code'.        
+        // to catch these culprits; hence we resort and stick with the most fundamental approach here:
+        // always append `break;` even when it would be obvious to a human that such would be 'unreachable code'.
         var match_nr = /^return[\s\r\n]+((?:'(?:\\'|[^']+)+')|(?:"(?:\\"|[^"]+)+")|\d+)[\s\r\n]*;?$/.exec(action.trim());
         if (match_nr) {
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
@@ -10535,20 +10530,20 @@ function expandMacros(src, macros) {
 
     // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
     // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-    // 
+    //
     // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
     // `[^0-9]` in nested macros!
     function reduceRegexToSet(s) {
-        // First make sure legal regexes such as `[-@]` or `[@-]` get their hypens at the edges 
-        // properly escaped as they'll otherwise produce havoc when being combined into new 
+        // First make sure legal regexes such as `[-@]` or `[@-]` get their hypens at the edges
+        // properly escaped as they'll otherwise produce havoc when being combined into new
         // sets thanks to macro expansion inside the outer regex set expression.
-        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped 
+        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
         for (var i = 0, len = m.length; i < len; i++) {
             s = ' ' + m[i] + ' '; // make our life easier down the lane...
 
             s = s.replace(/([^\\])\[-/, '$1[\\-').replace(/-\]/, '\\-]');
 
-            // catch the remains of constructs like `[0-9]|[a-z]`  
+            // catch the remains of constructs like `[0-9]|[a-z]`
             s = s.replace(/\]\|\[/g, '');
 
             // Also remove the outer brackets of any included set (which came in via macro expansion);
@@ -10712,7 +10707,7 @@ function RegExpLexer (dict, input, tokens) {
             return false;
         }
     }
-	
+
     var lexer = test_me(null, null, null, function (ex) {
         // When we get an exception here, it means some part of the user-specified lexer is botched.
         //
@@ -10757,17 +10752,17 @@ function RegExpLexer (dict, input, tokens) {
         lexer.setInput(input);
     }
 
-    lexer.generate = function () { 
-        return generateFromOpts(opts); 
+    lexer.generate = function () {
+        return generateFromOpts(opts);
     };
-    lexer.generateModule = function () { 
-        return generateModule(opts); 
+    lexer.generateModule = function () {
+        return generateModule(opts);
     };
-    lexer.generateCommonJSModule = function () { 
-        return generateCommonJSModule(opts); 
+    lexer.generateCommonJSModule = function () {
+        return generateCommonJSModule(opts);
     };
-    lexer.generateAMDModule = function () { 
-        return generateAMDModule(opts); 
+    lexer.generateAMDModule = function () {
+        return generateAMDModule(opts);
     };
 
     return lexer;
@@ -10777,7 +10772,7 @@ RegExpLexer.prototype = {
     EOF: 1,
     ERROR: 2,
 
-    // JisonLexerError: JisonLexerError, 
+    // JisonLexerError: JisonLexerError,
 
     parseError: function parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
@@ -10786,7 +10781,7 @@ RegExpLexer.prototype = {
             throw new this.JisonLexerError(str);
         }
     },
-
+    
     // resets the lexer, sets new input
     setInput: function (input, yy) {
         this.yy = yy || this.yy || {};
@@ -10822,7 +10817,7 @@ RegExpLexer.prototype = {
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
         // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if 
+        // and we advance immediately past the LF as well, returning both together as if
         // it was all a single 'character' only.
         var slice_len = 1;
         var lines = false;
@@ -10843,7 +10838,7 @@ RegExpLexer.prototype = {
                     this.yylloc.range[1]++;
                 }
             }
-        } 
+        }
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -10874,20 +10869,15 @@ RegExpLexer.prototype = {
         if (lines.length - 1) {
             this.yylineno -= lines.length - 1;
         }
-        var r = this.yylloc.range;
 
-        this.yylloc = {
-            first_line: this.yylloc.first_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.first_column,
-            last_column: lines ?
+        this.yylloc.last_line = this.yylineno + 1;
+        this.yylloc.last_column = (lines ?
                 (lines.length === oldLines.length ? this.yylloc.first_column : 0)
                 + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len
-        };
+                this.yylloc.first_column - len);
 
         if (this.options.ranges) {
-            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
         }
         this.yyleng = this.yytext.length;
         this.done = false;
@@ -11188,7 +11178,7 @@ function processGrammar(dict, tokens) {
     }
     dict = dict || {};
 
-    // Feed the possibly reprocessed 'dictionary' above back to the caller 
+    // Feed the possibly reprocessed 'dictionary' above back to the caller
     // (for use by our error diagnostic assistance code)
     opts.lex_rule_dictionary = dict;
 
@@ -11281,7 +11271,7 @@ function generateModuleBody(opt) {
         // and restore the original:
         opt.options.pre_lex = pre;
         opt.options.post_lex = post;
-        
+
         out += ',\noptions: ' + js;
     }
 
@@ -11311,7 +11301,7 @@ function generateModule(opt) {
 
     out.push(
         '// lexer.JisonLexerError = JisonLexerError;',
-        'return lexer;', 
+        'return lexer;',
         '})();'
     );
 
@@ -11729,12 +11719,12 @@ case 6 :
 break;
 case 7 : 
 /*! Production::     expression_suffixed : expression suffix */
-  
+ 
       if ($$[$0]) {
-        this.$ = [$$[$0], $$[$0-1]]; 
+        this.$ = [$$[$0], $$[$0-1]];
       } else {
         this.$ = $$[$0-1];
-      } 
+      }
      
 break;
 case 8 : 
@@ -12654,8 +12644,8 @@ rules: [
 /^(?:\s+)/,
 /^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
 /^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:'((\\'|(?!').)*)')/,
-/^(?:"((\\"|(?!").)*)")/,
+/^(?:'((?:\\'|(?!').)*)')/,
+/^(?:"((?:\\"|(?!").)*)")/,
 /^(?:\.)/,
 /^(?:\()/,
 /^(?:\))/,
@@ -14178,8 +14168,326 @@ var parseLex = function (text) {
 };
 
 },{"./ebnf-transform":20,"./parser":21,"lex-parser":23}],20:[function(require,module,exports){
-arguments[4][4][0].apply(exports,arguments)
-},{"./transform-parser.js":22,"dup":4}],21:[function(require,module,exports){
+var EBNF = (function(){
+    var parser = require('./transform-parser.js');
+    //var assert = require('assert');
+
+    var devDebug = 0;
+
+    function generatePushAction(handle, offset) {
+        var terms = handle.terms;
+        var rv = [];
+
+        for (var i = 0, len = terms.length; i < len; i++) {
+            rv.push('$' + (i + offset));
+        }
+        rv = rv.join(', ');
+        // and make sure we contain a term series unambiguously, i.e. anything more complex than
+        // a single term inside an EBNF check is produced as an array so we can differentiate
+        // between */+/? EBNF operator results and groups of tokens per individual match.
+        if (len > 1) {
+            rv = '[' + rv + ']';
+        }
+        return rv;
+    }
+
+    var transformExpression = function(e, opts, emit) {
+        var type = e[0], 
+            value = e[1], 
+            name = false,
+            has_transformed = 0;
+
+        if (type === 'xalias') {
+            type = e[1];
+            value = e[2];
+            name = e[3];
+            if (type) {
+                e = e.slice(1);
+            } else {
+                e = value;
+                type = e[0];
+                value = e[1];
+            }
+            if (devDebug > 3) console.log('xalias: ', e, type, value, name);
+        }
+
+        if (type === 'symbol') {
+            var n;
+            // if (e[1][0] === '\\') {
+            //     n = e[1][1];
+            // }            
+            // else if (e[1][0] === '\'') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else if (e[1][0] === '"') {
+            //     n = e[1].substring(1, e[1].length - 1);
+            // }
+            // else {
+                n = e[1];
+            // }
+            if (devDebug > 2) console.log('symbol EMIT: ', n + (name ? '[' + name + ']' : ''));
+            emit(n + (name ? '[' + name + ']' : ''));
+        } else if (type === '+') {
+            if (!name) {
+                name = opts.production + '_repetition_plus' + opts.repid++;
+            }
+            if (devDebug > 2) console.log('+ EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [
+                    list.fragment,
+                    '$$ = [' + generatePushAction(list, 1) + '];'
+                ],
+                [
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
+                ]
+            ];
+        } else if (type === '*') {
+            if (!name) {
+                name = opts.production + '_repetition' + opts.repid++;
+            }
+            if (devDebug > 2) console.log('* EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+            
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            opts.grammar[name] = [
+                [
+                    '',
+                    '$$ = [];'
+                ],
+                [
+                    name + ' ' + list.fragment,
+                    '$1.push(' + generatePushAction(list, 2) + ');\n$$ = $1;'
+                ]
+            ];
+        } else if (type === '?') {
+            if (!name) {
+                name = opts.production + '_option' + opts.optid++;
+            }
+            if (devDebug > 2) console.log('? EMIT name: ', name);
+            emit(name);
+
+            has_transformed = 1;
+            
+            opts = optsForProduction(name, opts.grammar);
+            var list = transformExpressionList([value], opts);
+            // you want to be able to check if 0 or 1 occurrences were recognized: since jison
+            // by default *copies* the lexer token value, i.e. `$$ = $1` is the default action,
+            // we will need to set the action up explicitly in case of the 0-count match: 
+            // `$$ = undefined`.
+            // 
+            // Note that we MUST return an array as the
+            // '1 occurrence' match CAN carry multiple terms, e.g. in constructs like 
+            // `(T1 T2 T3)?`.
+            opts.grammar[name] = [
+                [
+                    '',
+                    '$$ = undefined;'
+                ],
+                [
+                    list.fragment,
+                    '$$ = ' + generatePushAction(list, 1) + ';'
+                ]
+            ];
+        } else if (type === '()') {
+            if (value.length === 1) {
+                var list = transformExpressionList(value[0], opts);
+                if (list.first_transformed_term_index) {
+                    has_transformed = list.first_transformed_term_index;
+                }
+                if (devDebug > 2) console.log('group EMIT len=1: ', list);
+                emit(list);
+            } else {
+                if (!name) {
+                    name = opts.production + '_group' + opts.groupid++;
+                }
+                if (devDebug > 2) console.log('group EMIT name: ', name);
+                emit(name);
+
+                has_transformed = 1;
+
+                opts = optsForProduction(name, opts.grammar);
+                opts.grammar[name] = value.map(function(handle) {
+                    var list = transformExpressionList(handle, opts);
+                    return list.fragment;
+                });
+            }
+        }
+        
+        return has_transformed;
+    };
+
+    var transformExpressionList = function(list, opts) {
+        var first_transformed_term_index = false;
+        var terms = list.reduce(function (tot, e) {
+            var ci = tot.length;
+
+            var has_transformed = transformExpression(e, opts, function (name) {
+                if (name.terms) {
+                    tot.push.apply(tot, name.terms);
+                } else {
+                    tot.push(name);
+                }
+            });
+
+            if (has_transformed) {
+                first_transformed_term_index = ci + has_transformed;
+            }
+            return tot;
+        }, []);
+        return {
+            fragment: terms.join(' '),
+            terms: terms,
+            first_transformed_term_index: first_transformed_term_index              // 1-based index
+        };
+    };
+
+    var optsForProduction = function(id, grammar) {
+        return {
+            production: id,
+            repid: 0,
+            groupid: 0,
+            optid: 0,
+            grammar: grammar
+        };
+    };
+
+    var transformProduction = function(id, production, grammar) {
+        var transform_opts = optsForProduction(id, grammar);
+        return production.map(function (handle) {
+            var action = null, 
+                opts = null;
+            if (typeof handle !== 'string') {
+                action = handle[1];
+                opts = handle[2];
+                handle = handle[0];
+            }
+            var expressions = parser.parse(handle);
+
+            if (devDebug > 1) console.log("\n================\nEBNF transform expressions:\n ", handle, opts, JSON.stringify(expressions, null, 2));
+
+            var list = transformExpressionList(expressions, transform_opts);
+
+            var ret = [list.fragment];
+            if (action) {
+                // make sure the action doesn't address any inner items.
+                if (list.first_transformed_term_index) {
+                    var rhs = list.fragment;
+                    // seek out all names and aliases; strip out literal tokens first as those cannot serve as $names:
+                    var alist = list.terms; // rhs.replace(/'[^']+'/g, '~').replace(/"[^"]+"/g, '~').split(' ');
+                    // we also know at which index the first transformation occurred:
+                    var first_index = list.first_transformed_term_index - 1;
+                    if (devDebug > 2) console.log("alist ~ rhs rule terms: ", alist, rhs);
+
+                    var alias_re = /\[[a-zA-Z_][a-zA-Z0-9_]*\]/;
+                    var term_re = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+                    // and collect the PERMITTED aliases: the names of the terms and all the remaining aliases
+                    var good_aliases = {};
+                    var alias_cnt = {};
+
+                    // WARNING: this replicates the knowledge/code of jison.js::addName()
+                    var addName = function (s, i) {
+                        if (good_aliases[s]) {
+                            good_aliases[s + (++alias_cnt[s])] = i + 1;
+                        } else {
+                            good_aliases[s] = i + 1;
+                            good_aliases[s + '1'] = i + 1;
+                            alias_cnt[s] = 1;
+                        }
+                    };
+
+                    for (var i = 0, len = alist.length; i < len; i++) {
+                        var term = alist[i];
+                        var alias = term.match(alias_re);
+                        if (alias) {
+                            addName(alias[0].substr(1, alias[0].length - 2), i);
+                            term = term.replace(alias_re, '');
+                        }
+                        if (term.match(term_re)) {
+                            addName(term, i);
+                        }
+                    }
+                    if (devDebug > 2) console.log("good_aliases: ", good_aliases);
+                    
+                    // now scan the action for all named and numeric semantic values ($nonterminal / $1)
+                    var named_spots = action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*\b/g);
+                    var numbered_spots = action.match(/[$@][0-9]+\b/g);
+                    var max_term_index = list.terms.length;
+                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);                    
+                    if (devDebug > 2) console.log("ACTION numbered_spots: ", numbered_spots);
+
+                    if (named_spots) {
+                        for (var i = 0, len = named_spots.length; i < len; i++) {
+                            var n = named_spots[i].substr(1);
+                            if (!good_aliases[n]) {
+                                throw new Error("The action block references the named alias '" + n + "' " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "it probably got removed by the EBNF rule rewrite process.\n" +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                            //assert(good_aliases[n] <= max_term_index, "max term index");
+                        }
+                    }
+                    if (numbered_spots) {
+                        for (var i = 0, len = numbered_spots.length; i < len; i++) {
+                            var n = parseInt(numbered_spots[i].substr(1));
+                            if (n > max_term_index) {
+                                var n_suffixes = [ "st", "nd", "rd", "th" ];
+                                throw new Error("The action block references the " + n + n_suffixes[Math.max(0, Math.min(3, n - 1))] + " term, " +
+                                                "which is not available in production '" + handle + "'; " +
+                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
+                                                "only the outer-most EBNF group alias will remain available at all times " +
+                                                "due to the EBNF-to-BNF rewrite process.");
+                            }
+                        }
+                    }
+                }
+                ret.push(action);
+            }
+            if (opts) {
+                ret.push(opts);
+            }
+            if (devDebug > 1) console.log("\n\nEBNF tx result:\n ", JSON.stringify(list, null, 2), JSON.stringify(ret, null, 2));
+
+            if (ret.length === 1) {
+                return ret[0];
+            } else {
+                return ret;
+            }
+        });
+    };
+
+    var transformGrammar = function(grammar) {
+        Object.keys(grammar).forEach(function(id) {
+            grammar[id] = transformProduction(id, grammar[id], grammar);
+        });
+    };
+
+    return {
+        transform: function (ebnf) {
+            if (devDebug > 0) console.log("EBNF:\n ", JSON.stringify(ebnf, null, 2));
+            transformGrammar(ebnf);
+            if (devDebug > 0) console.log("\n\nEBNF after transformation:\n ", JSON.stringify(ebnf, null, 2));
+            return ebnf;
+        }
+    };
+})();
+
+exports.transform = EBNF.transform;
+
+
+},{"./transform-parser.js":22}],21:[function(require,module,exports){
 /* parser generated by jison 0.4.15-100 */
 /*
   Returns a Parser object of the following structure:

@@ -776,8 +776,8 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = { 
-      yy: {} 
+    var sharedState = {
+      yy: {}
     };
     // copy state
     for (var k in this.yy) {
@@ -800,7 +800,7 @@ parse: function parse(input) {
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
-    } 
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
@@ -904,7 +904,7 @@ parse: function parse(input) {
                     loc: yyloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack  
+                    state_stack: stack
                 });
                 break;
             }
@@ -935,7 +935,7 @@ parse: function parse(input) {
                 // reduce
                 //this.reductionCount++;
 
-                this_production = this.productions_[action[1]]; 
+                this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len1 || 1);
@@ -1064,7 +1064,7 @@ input:function () {
         this.matched += ch;
         // Count the linenumber up when we hit the LF (or a stand-alone CR).
         // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if 
+        // and we advance immediately past the LF as well, returning both together as if
         // it was all a single 'character' only.
         var slice_len = 1;
         var lines = false;
@@ -1085,7 +1085,7 @@ input:function () {
                     this.yylloc.range[1]++;
                 }
             }
-        } 
+        }
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
@@ -1116,20 +1116,15 @@ unput:function (ch) {
         if (lines.length - 1) {
             this.yylineno -= lines.length - 1;
         }
-        var r = this.yylloc.range;
 
-        this.yylloc = {
-            first_line: this.yylloc.first_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.first_column,
-            last_column: lines ?
+        this.yylloc.last_line = this.yylineno + 1;
+        this.yylloc.last_column = (lines ?
                 (lines.length === oldLines.length ? this.yylloc.first_column : 0)
                 + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len
-        };
+                this.yylloc.first_column - len);
 
         if (this.options.ranges) {
-            this.yylloc.range = [r[0], r[0] + this.yyleng - len];
+            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
         }
         this.yyleng = this.yytext.length;
         this.done = false;
