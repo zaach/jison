@@ -385,7 +385,7 @@ exports["test compiling a parser/lexer"] = function () {
     fs.unlinkSync(tmpFile);
 };
 
-exports["test edge case which could break the parser generator"] = function() {
+exports["test 'comment token' edge case which could break the parser generator"] = function() {
     var lexData = {
         rules: [
            ["\\*\\/", "return '*/';"],
@@ -415,9 +415,65 @@ exports["test edge case which could break the parser generator"] = function() {
                 parser = callback();
             }
         };
-console.log('parser = ', parserSource);    
     eval(parserSource);
 
     assert.ok(parser.parse(input));
+};
+
+exports["test 'semantic whitespace' edge case which could break the parser generator"] = function() {
+    var lexData = {
+        rules: [
+           ["\\ ", "return ' ';"],
+           ["' '", "return ' ';"],
+           ["x", "yytext = 7; return 'x';"],
+        ]
+    };
+    var grammar = {
+        startSymbol: "G",
+        // a literal whitespace in the rules could potentially damage the generated output as the 
+        // productions are re-assembled into strings before being ferried off to `buildProductions()`,
+        // which would then call `string.split(' ')` on them before we introduced the new
+        // `splitStringIntoSymbols()` splitter in there.
+        // 
+        // Of course it's rather odd to have rules parsed, then reassembled and then, in a sense,
+        // parsed *again*, but alas, that's how it is. Probably done this way to have automatic
+        // JSON input support alongside the JISON feed which I (GerHobbelt) normally use.
+        // 
+        // Anyway, this grammar is crafted as a minimum sample which can potentially the grammar
+        // and is included in these tests to prevent nasty regressions: when things go pear-shaped
+        // you won't notice much, apart from maybe, after pulling all your hair, that the 
+        // generated `$N` references are off by at least one(1).
+        // 
+        // Pumping this through the EBNF parser also can help to break things around there;
+        // **TODO** is pumping this in various incantations through both raw BNF and EBNF
+        // parsers to see who will falter, today.
+        ebnf: {
+            "G" :[ ['A', 'return $A;'] ],
+            "A" :[ ['A ( \' \' )+ x', '$$ = $1 + $x + $2.join(\' \').length;'],
+                   ['', '$$ = 0;'] ]
+        }
+    };
+
+    var input = " x  x x x x";
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateAMDModule();
+    var parser = null,
+        define = function(deps, callback) {
+            // temporary AMD-style define function, for testing.
+            if (!callback) {
+                // no deps array:
+                parser = deps();
+            } else {
+                parser = callback();
+            }
+        };
+    //console.log('source: ', parserSource);        
+    eval(parserSource);
+
+    var rv = parser.parse(input);
+    console.log('parse result: ', rv);
+    assert.equal(rv, 42);
 };
 
