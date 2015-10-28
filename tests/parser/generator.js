@@ -384,3 +384,40 @@ exports["test compiling a parser/lexer"] = function () {
       'generated parser works');
     fs.unlinkSync(tmpFile);
 };
+
+exports["test edge case which could break the parser generator"] = function() {
+    var lexData = {
+        rules: [
+           ["\\*\\/", "return '*/';"],
+           ["'*/'", "return '*/';"],
+        ]
+    };
+    var grammar = {
+        startSymbol: "A",
+        bnf: {
+            "A" :[ ['A \'*/\'', '$$ = 1;'],
+                   ['', '$$ = 0;'] ]
+        }
+    };
+
+    var input = "*/*/*/";
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateAMDModule();
+    var parser = null,
+        define = function(deps, callback) {
+            // temporary AMD-style define function, for testing.
+            if (!callback) {
+                // no deps array:
+                parser = deps();
+            } else {
+                parser = callback();
+            }
+        };
+console.log('parser = ', parserSource);    
+    eval(parserSource);
+
+    assert.ok(parser.parse(input));
+};
+
