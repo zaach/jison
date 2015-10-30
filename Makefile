@@ -17,9 +17,11 @@ preview:
 	open http://localhost:3000/jison/
 
 deploy: site
-	#-rm -rf ./gh-pages/*
-	#cp -r web/output/jison/* ./gh-pages/
-	#-cd ./gh-pages ; git checkout gh-pages ; git add . --all && git commit -m 'Deploy site updates' && git push origin gh-pages
+	git checkout gh-pages
+	cp -r web/output/jison/* ./
+	#git add . --all 
+	git commit -m 'Deploy site updates'
+	git checkout master
 
 test:
 	node tests/all-tests.js
