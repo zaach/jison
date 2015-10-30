@@ -1,17 +1,22 @@
 
-/* description: Grammar showing precedence operators and semantic actions. */
+/* 
+ * description: One way to provide a custom lexer with a jison grammar.
+ *
+ * The grammar itself is a copy of the precedence grammar which shows precedence operators 
+ * and semantic actions. 
+ */
 
 %lex
 
 %options ranges
 
-%include precedence.prelude1.js
+%include with-includes.prelude1.js
 
 %%
 
 %%
 
-%include precedence.prelude2.js
+%include with-includes.prelude2.js
 
 /lex
 
@@ -19,11 +24,11 @@
 %left '*'
 %left UNARY_PLUS UNARY_MINUS
 
-%include precedence.prelude3.js
+%include with-includes.prelude3.js
 
 %%
 
-%include precedence.prelude4.js
+%include with-includes.prelude4.js
 
 S
     : e EOF
@@ -42,10 +47,10 @@ e
     | '-' e                     %prec UNARY_MINUS 
         {$$ = ['-', $2];}
     | NAT
-        %include "precedence.parseInt.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+        %include "with-includes.parseInt.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
     ;
 
 
 %%
 
-%include precedence.main.js
+%include with-includes.main.js
