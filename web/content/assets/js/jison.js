@@ -569,7 +569,7 @@ lookaheadMixin.computeLookaheads = function computeLookaheads () {
     this.followSets();
 };
 
-// calculate follow sets typald on first and nullable
+// calculate follow sets based on first and nullable
 lookaheadMixin.followSets = function followSets () {
     var productions = this.productions,
         nonterminals = this.nonterminals,
@@ -599,7 +599,7 @@ lookaheadMixin.followSets = function followSets () {
                 if (i === production.handle.length + 1 && bool) {
                     set = nonterminals[production.symbol].follows;
                 } else {
-                    var part = production.handle.slice(i+1);
+                    var part = production.handle.slice(i + 1);
 
                     set = self.first(part);
                     if (self.nullable(part) && bool) {
@@ -913,7 +913,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection () {
     return states;
 };
 
-// Pushes a unique state into the que. Some parsing algorithms may perform additional operations
+// Pushes a unique state into the queue. Some parsing algorithms may perform additional operations
 lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert (symbol, itemSet, states, stateNum) {
     var g = this.gotoOperation(itemSet, symbol);
     if (!g.predecessors)
@@ -1233,7 +1233,12 @@ function generateGenericHeaderComment() {
     return out;
 }
 
-lrGeneratorMixin.generate = function parser_generate (opt) {
+/*
+ * Mixin for common LR/LL/*an* parser behavior
+ */
+var generatorMixin = {};
+
+generatorMixin.generate = function parser_generate (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var code = '';
 
@@ -1260,7 +1265,7 @@ lrGeneratorMixin.generate = function parser_generate (opt) {
 };
 
 
-lrGeneratorMixin.generateAMDModule = function generateAMDModule (opt) {
+generatorMixin.generateAMDModule = function generateAMDModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var module = this.generateModule_();
     var out = [
@@ -1284,7 +1289,7 @@ lrGeneratorMixin.generateAMDModule = function generateAMDModule (opt) {
     return out.join('\n') + '\n';
 };
 
-lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
+generatorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || 'parser';
     var main = [];
@@ -1312,7 +1317,7 @@ lrGeneratorMixin.generateCommonJSModule = function generateCommonJSModule (opt) 
     return out.join('\n') + '\n';
 };
 
-lrGeneratorMixin.generateModule = function generateModule (opt) {
+generatorMixin.generateModule = function generateModule (opt) {
     opt = typal.mix.call({}, this.options, opt);
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
@@ -1342,7 +1347,7 @@ lrGeneratorMixin.generateModule = function generateModule (opt) {
 };
 
 
-lrGeneratorMixin.generateModuleExpr = function generateModuleExpr () {
+generatorMixin.generateModuleExpr = function generateModuleExpr () {
     var out = [];
     var module = this.generateModule_();
 
@@ -1485,14 +1490,49 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
     // Generate the initialization code
     var commonCode = tableCode.commonCode;
 
+    // sort hash table by key to produce a nicer output:
+    function sortSymbolTable(tbl) {
+        var a = Object.keys(tbl);
+        a.sort();
+        var nt = {};
+        var k;
+        for (var i = 0, len = a.length; i < len; i++) {
+            k = a[i];
+            nt[k] = tbl[k];
+        }
+        return nt;
+    }
+
+    function produceProductionsForDebugging(tbl, sym) {
+        var prods = {};
+        for (var nonterm in tbl) {
+            var entry = tbl[nonterm];
+            var id = sym[nonterm];
+            var item_prods = {};
+            var item_tbl = entry.productions._items;
+            for (var i = 0, len = item_tbl.length; i < len; i++) {
+                var p = item_tbl[i];
+                item_prods[p.id] = p.handle.map(function (t) {
+                    if (!t) {
+                        t = '<epsilon>';
+                    }
+                    return t;
+                }).join(' ');
+            }
+            prods[nonterm] = item_prods;
+        }
+        return prods;
+    }
+
     // Generate the module creation code
     var moduleCode = '{\n';
     moduleCode += [
         'trace: ' + String(this.trace || parser.trace),
         'JisonParserError: JisonParserError',
         'yy: {}',
-        'symbols_: ' + JSON.stringify(this.symbols_, null, 2),
+        'symbols_: ' + JSON.stringify(sortSymbolTable(this.symbols_), null, 2),
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
+        'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
         'productions_: ' + JSON.stringify(this.productions_, null, 2),
         'performAction: ' + String(this.performAction),
         'table: ' + tableCode.moduleCode,
@@ -1699,8 +1739,7 @@ var lrGeneratorDebug = {
 
 var parser = typal.beget();
 
-lrGeneratorMixin.createParser = function createParser () {
-
+generatorMixin.createParser = function createParser () {
     var p = eval(this.generateModuleExpr());
 
     // for debugging
@@ -1831,7 +1870,7 @@ _lexer_with_token_stack_end:
     var preErrorSymbol = null;
     var state, action, a, r;
     var yyval = {};
-    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
     var retval = false;
 
@@ -2056,7 +2095,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
-                lstack_begin = lstack_end - (len1 || 1);
+                lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
 
                 // perform semantic action
@@ -2116,20 +2155,12 @@ _handle_error_end_of_section:                  // this concludes the error recov
     return retval;
 };
 
-parser.__init = function parser_init (dict) {
-    this.table = dict.table;
-    this.defaultActions = dict.defaultActions;
-    this.performAction = dict.performAction;
-    this.productions_ = dict.productions_;
-    this.symbols_ = dict.symbols_;
-    this.terminals_ = dict.terminals_;
-};
 
 /*
  * LR(0) Parser
  */
 
-var lr0 = generator.beget(lookaheadMixin, lrGeneratorMixin, {
+var lr0 = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: "LR(0)",
     afterconstructor: function lr0_afterconstructor () {
         this.buildTable();
@@ -2142,7 +2173,7 @@ var LR0Generator = exports.LR0Generator = lr0.construct();
  * Simple LALR(1)
  */
 
-var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
+var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: "LALR(1)",
 
     afterconstructor: function (typal_property_return_value, grammar, options) {
@@ -2186,7 +2217,7 @@ var lalr = generator.beget(lookaheadMixin, lrGeneratorMixin, {
     },
 
     lookAheads: function LALR_lookaheads (state, item) {
-        return (!!this.onDemandLookahead && !state.inadequate) ? this.terminals : item.follows;
+        return (this.onDemandLookahead && !state.inadequate) ? this.terminals : item.follows;
     },
     go: function LALR_go (p, w) {
         var q = parseInt(p, 10);
@@ -2297,7 +2328,7 @@ var lalrGeneratorDebug = {
  *
  * Define base type
  */
-var lrLookaheadGenerator = generator.beget(lookaheadMixin, lrGeneratorMixin, {
+var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     afterconstructor: function lr_aftercontructor () {
         this.computeLookaheads();
         this.buildTable();
@@ -2334,7 +2365,7 @@ var lr1 = lrLookaheadGenerator.beget({
         }
     }),
 
-    closureOperation: function LR_ClosureOperation (itemSet /*, closureSet*/) {
+    closureOperation: function LR_ClosureOperation (itemSet) {
         var closureSet = new this.ItemSet();
         var self = this;
 
@@ -2342,32 +2373,32 @@ var lr1 = lrLookaheadGenerator.beget({
             itemQueue, syms = {};
 
         do {
-        itemQueue = new Set();
-        closureSet.concat(set);
-        set.forEach(function (item) {
-            var symbol = item.markedSymbol;
-            var b, r;
+            itemQueue = new Set();
+            closureSet.concat(set);
+            set.forEach(function (item) {
+                var symbol = item.markedSymbol;
+                var b, r;
 
-            // if token is a nonterminal, recursively add closures
-            if (symbol && self.nonterminals[symbol]) {
-                r = item.remainingHandle();
-                b = self.first(item.remainingHandle());
-                if (b.length === 0 || item.production.nullable || self.nullable(r)) {
-                    b = b.concat(item.follows);
-                }
-                self.nonterminals[symbol].productions.forEach(function (production) {
-                    var newItem = new self.Item(production, 0, b);
-                    if(!closureSet.contains(newItem) && !itemQueue.contains(newItem)) {
-                        itemQueue.push(newItem);
+                // if token is a nonterminal, recursively add closures
+                if (symbol && self.nonterminals[symbol]) {
+                    r = item.remainingHandle();
+                    b = self.first(item.remainingHandle());
+                    if (b.length === 0 || item.production.nullable || self.nullable(r)) {
+                        b = b.concat(item.follows);
                     }
-                });
-            } else if (!symbol) {
-                // reduction
-                closureSet.reductions.push(item);
-            }
-        });
+                    self.nonterminals[symbol].productions.forEach(function (production) {
+                        var newItem = new self.Item(production, 0, b);
+                        if(!closureSet.contains(newItem) && !itemQueue.contains(newItem)) {
+                            itemQueue.push(newItem);
+                        }
+                    });
+                } else if (!symbol) {
+                    // reduction
+                    closureSet.reductions.push(item);
+                }
+            });
 
-        set = itemQueue;
+            set = itemQueue;
         } while (!itemQueue.isEmpty());
 
         return closureSet;
@@ -2379,7 +2410,7 @@ var LR1Generator = exports.LR1Generator = lr1.construct();
 /*
  * LL Parser
  */
-var ll = generator.beget(lookaheadMixin, {
+var ll = generator.beget(lookaheadMixin, generatorMixin, {
     type: "LL(1)",
 
     afterconstructor: function ll_aftercontructor () {
@@ -2407,6 +2438,91 @@ var ll = generator.beget(lookaheadMixin, {
         });
 
         return table;
+    },
+
+    // Generates the code of the parser module, which consists of two parts:
+    // - module.commonCode: initialization code that should be placed before the module
+    // - module.moduleCode: code that creates the module object
+    generateModule_: function ll_GenerateModule_ () {
+        // var parseFn = String(parser.parse);
+        // parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
+
+        // parseFn = addOrRemoveTokenStack(parseFn, this.options['token-stack']);
+
+        // // always remove the feature markers in the template code.
+        // parseFn = removeFeatureMarkers(parseFn);
+
+        // Generate code with fresh variable names
+        nextVariableId = 0;
+        // var tableCode = this.generateTableCode(this.table);
+
+        // // Generate the initialization code
+        // var commonCode = tableCode.commonCode;
+
+        // sort hash table by key to produce a nicer output:
+        function sortSymbolTable(tbl) {
+            var a = Object.keys(tbl);
+            a.sort();
+            var nt = {};
+            var k;
+            for (var i = 0, len = a.length; i < len; i++) {
+                k = a[i];
+                nt[k] = tbl[k];
+            }
+            return nt;
+        }
+
+        function produceProductionsForDebugging(tbl, sym) {
+            var prods = {};
+            for (var nonterm in tbl) {
+                var entry = tbl[nonterm];
+                var id = sym[nonterm];
+                var item_prods = {};
+                var item_tbl = entry.productions._items;
+                for (var i = 0, len = item_tbl.length; i < len; i++) {
+                    var p = item_tbl[i];
+                    item_prods[p.id] = p.handle.map(function (t) {
+                        if (!t) {
+                            t = '<epsilon>';
+                        }
+                        return t;
+                    }).join(' ');
+                }
+                prods[nonterm] = item_prods;
+            }
+            return prods;
+        }
+
+        // Generate the module creation code
+        // var moduleCode = '{\n';
+        // moduleCode += [
+        //     'trace: ' + String(this.trace || parser.trace),
+        //     'JisonParserError: JisonParserError',
+        //     'yy: {}',
+        //     'symbols_: ' + JSON.stringify(sortSymbolTable(this.symbols_), null, 2),
+        //     'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
+        //     'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
+        //     'productions_: ' + JSON.stringify(this.productions_, null, 2),
+        //     'performAction: ' + String(this.performAction),
+        //     'table: ' + tableCode.moduleCode,
+        //     'defaultActions: ' + JSON.stringify(this.defaultActions, null, 2).replace(/"([0-9]+)":/g, '$1:'),
+        //     'parseError: ' + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
+        //     'parse: ' + parseFn
+        //     ].join(',\n');
+        // moduleCode += '\n};';
+
+
+        // Generate the module creation code
+        var moduleCode = '{\n';
+        moduleCode += [
+            'trace: ' + String(this.trace),
+            'JisonParserError: JisonParserError',
+            'yy: {}',
+            'self: ' + JSON.stringify(this, null, 2)
+            ].join(',\n');
+        moduleCode += '\n};';
+
+        return { commonCode: (new Array(100)).join("commonCode\n"), moduleCode: moduleCode }
     }
 });
 
@@ -2834,7 +2950,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.15-106 */
+/* parser generated by jison 0.4.15-108 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -3015,82 +3131,82 @@ trace: function trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
-  "error": 2,
-  "lex": 3,
-  "init": 4,
-  "definitions": 5,
+  "$": 52,
+  "$accept": 0,
+  "$end": 1,
   "%%": 6,
-  "rules_and_epilogue": 7,
-  "EOF": 8,
-  "extra_lexer_module_code": 9,
-  "rules": 10,
-  "definition": 11,
-  "NAME": 12,
-  "regex": 13,
-  "START_INC": 14,
-  "names_inclusive": 15,
-  "START_EXC": 16,
-  "names_exclusive": 17,
-  "ACTION": 18,
-  "include_macro_code": 19,
-  "options": 20,
-  "UNKNOWN_DECL": 21,
-  "START_COND": 22,
-  "rule": 23,
-  "start_conditions": 24,
-  "action": 25,
-  "{": 26,
-  "action_body": 27,
-  "}": 28,
-  "action_comments_body": 29,
-  "ACTION_BODY": 30,
-  "<": 31,
-  "name_list": 32,
-  ">": 33,
-  "*": 34,
-  ",": 35,
-  "regex_list": 36,
-  "|": 37,
-  "regex_concat": 38,
-  "regex_base": 39,
   "(": 40,
   ")": 41,
-  "SPECIAL_GROUP": 42,
+  "*": 34,
   "+": 43,
-  "?": 44,
+  ",": 35,
+  ".": 50,
   "/": 45,
   "/!": 46,
-  "name_expansion": 47,
-  "range_regex": 48,
-  "any_group_regex": 49,
-  ".": 50,
-  "^": 51,
-  "$": 52,
-  "string": 53,
-  "escape_char": 54,
-  "NAME_BRACE": 55,
-  "REGEX_SET_START": 56,
-  "regex_set": 57,
-  "REGEX_SET_END": 58,
-  "regex_set_atom": 59,
-  "REGEX_SET": 60,
-  "ESCAPE_CHAR": 61,
-  "RANGE_REGEX": 62,
-  "STRING_LIT": 63,
-  "CHARACTER_LIT": 64,
-  "OPTIONS": 65,
-  "option_list": 66,
-  "OPTIONS_END": 67,
-  "option": 68,
+  "<": 31,
   "=": 69,
-  "OPTION_VALUE": 70,
-  "optional_module_code_chunk": 71,
-  "INCLUDE": 72,
-  "PATH": 73,
-  "module_code_chunk": 74,
+  ">": 33,
+  "?": 44,
+  "ACTION": 18,
+  "ACTION_BODY": 30,
+  "CHARACTER_LIT": 64,
   "CODE": 75,
-  "$accept": 0,
-  "$end": 1
+  "EOF": 8,
+  "ESCAPE_CHAR": 61,
+  "INCLUDE": 72,
+  "NAME": 12,
+  "NAME_BRACE": 55,
+  "OPTIONS": 65,
+  "OPTIONS_END": 67,
+  "OPTION_VALUE": 70,
+  "PATH": 73,
+  "RANGE_REGEX": 62,
+  "REGEX_SET": 60,
+  "REGEX_SET_END": 58,
+  "REGEX_SET_START": 56,
+  "SPECIAL_GROUP": 42,
+  "START_COND": 22,
+  "START_EXC": 16,
+  "START_INC": 14,
+  "STRING_LIT": 63,
+  "UNKNOWN_DECL": 21,
+  "^": 51,
+  "action": 25,
+  "action_body": 27,
+  "action_comments_body": 29,
+  "any_group_regex": 49,
+  "definition": 11,
+  "definitions": 5,
+  "error": 2,
+  "escape_char": 54,
+  "extra_lexer_module_code": 9,
+  "include_macro_code": 19,
+  "init": 4,
+  "lex": 3,
+  "module_code_chunk": 74,
+  "name_expansion": 47,
+  "name_list": 32,
+  "names_exclusive": 17,
+  "names_inclusive": 15,
+  "option": 68,
+  "option_list": 66,
+  "optional_module_code_chunk": 71,
+  "options": 20,
+  "range_regex": 48,
+  "regex": 13,
+  "regex_base": 39,
+  "regex_concat": 38,
+  "regex_list": 36,
+  "regex_set": 57,
+  "regex_set_atom": 59,
+  "rule": 23,
+  "rules": 10,
+  "rules_and_epilogue": 7,
+  "start_conditions": 24,
+  "string": 53,
+  "{": 26,
+  "|": 37,
+  "}": 28
 },
 terminals_: {
   2: "error",
@@ -3135,6 +3251,155 @@ terminals_: {
   72: "INCLUDE",
   73: "PATH",
   75: "CODE"
+},
+nonterminals_: {
+  "lex": {
+    1: "init definitions %% rules_and_epilogue"
+  },
+  "rules_and_epilogue": {
+    2: "EOF",
+    3: "%% extra_lexer_module_code EOF",
+    4: "rules %% extra_lexer_module_code EOF",
+    5: "rules EOF"
+  },
+  "init": {
+    6: "<epsilon>"
+  },
+  "definitions": {
+    7: "definition definitions",
+    8: "<epsilon>"
+  },
+  "definition": {
+    9: "NAME regex",
+    10: "START_INC names_inclusive",
+    11: "START_EXC names_exclusive",
+    12: "ACTION",
+    13: "include_macro_code",
+    14: "options",
+    15: "UNKNOWN_DECL"
+  },
+  "names_inclusive": {
+    16: "START_COND",
+    17: "names_inclusive START_COND"
+  },
+  "names_exclusive": {
+    18: "START_COND",
+    19: "names_exclusive START_COND"
+  },
+  "rules": {
+    20: "rules rule",
+    21: "rule"
+  },
+  "rule": {
+    22: "start_conditions regex action"
+  },
+  "action": {
+    23: "{ action_body }",
+    24: "ACTION",
+    25: "include_macro_code"
+  },
+  "action_body": {
+    26: "action_comments_body",
+    27: "action_body { action_body } action_comments_body"
+  },
+  "action_comments_body": {
+    28: "<epsilon>",
+    29: "action_comments_body ACTION_BODY"
+  },
+  "start_conditions": {
+    30: "< name_list >",
+    31: "< * >",
+    32: "<epsilon>"
+  },
+  "name_list": {
+    33: "NAME",
+    34: "name_list , NAME"
+  },
+  "regex": {
+    35: "regex_list"
+  },
+  "regex_list": {
+    36: "regex_list | regex_concat",
+    37: "regex_list |",
+    38: "regex_concat",
+    39: "<epsilon>"
+  },
+  "regex_concat": {
+    40: "regex_concat regex_base",
+    41: "regex_base"
+  },
+  "regex_base": {
+    42: "( regex_list )",
+    43: "SPECIAL_GROUP regex_list )",
+    44: "regex_base +",
+    45: "regex_base *",
+    46: "regex_base ?",
+    47: "/ regex_base",
+    48: "/! regex_base",
+    49: "name_expansion",
+    50: "regex_base range_regex",
+    51: "any_group_regex",
+    52: ".",
+    53: "^",
+    54: "$",
+    55: "string",
+    56: "escape_char"
+  },
+  "name_expansion": {
+    57: "NAME_BRACE"
+  },
+  "any_group_regex": {
+    58: "REGEX_SET_START regex_set REGEX_SET_END"
+  },
+  "regex_set": {
+    59: "regex_set_atom regex_set",
+    60: "regex_set_atom"
+  },
+  "regex_set_atom": {
+    61: "REGEX_SET",
+    62: "name_expansion"
+  },
+  "escape_char": {
+    63: "ESCAPE_CHAR"
+  },
+  "range_regex": {
+    64: "RANGE_REGEX"
+  },
+  "string": {
+    65: "STRING_LIT",
+    66: "CHARACTER_LIT"
+  },
+  "options": {
+    67: "OPTIONS option_list OPTIONS_END"
+  },
+  "option_list": {
+    68: "option option_list",
+    69: "option"
+  },
+  "option": {
+    70: "NAME",
+    71: "NAME = OPTION_VALUE",
+    72: "NAME = NAME"
+  },
+  "extra_lexer_module_code": {
+    73: "optional_module_code_chunk",
+    74: "optional_module_code_chunk include_macro_code extra_lexer_module_code"
+  },
+  "include_macro_code": {
+    75: "INCLUDE PATH",
+    76: "INCLUDE error"
+  },
+  "module_code_chunk": {
+    77: "CODE",
+    78: "module_code_chunk CODE"
+  },
+  "optional_module_code_chunk": {
+    79: "module_code_chunk",
+    80: "<epsilon>"
+  },
+  "$accept": {
+    0: "lex $end"
+  }
 },
 productions_: [
   0,
@@ -3486,16 +3751,16 @@ break;
 case 2 : 
 /*! Production::     rules_and_epilogue : EOF */
  
-        this.$ = { rules: null };
+        this.$ = { rules: [] };
        
 break;
 case 3 : 
 /*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
  
         if ($$[$0-1] && $$[$0-1].trim() !== '') {
-          this.$ = { rules: null, moduleInclude: $$[$0-1] };
+          this.$ = { rules: [], moduleInclude: $$[$0-1] };
         } else {
-          this.$ = { rules: null };
+          this.$ = { rules: [] };
         }
        
 break;
@@ -5258,7 +5523,7 @@ parse: function parse(input) {
     var preErrorSymbol = null;
     var state, action, a, r;
     var yyval = {};
-    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
     var retval = false;
 
@@ -5452,7 +5717,7 @@ parse: function parse(input) {
                 this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
-                lstack_begin = lstack_end - (len1 || 1);
+                lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
 
                 // perform semantic action
@@ -5526,7 +5791,7 @@ function prepareString (s) {
 };
 
 
-/* generated by jison-lex 0.3.4-106 */
+/* generated by jison-lex 0.3.4-108 */
 var lexer = (function () {
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
@@ -5542,7 +5807,7 @@ JisonLexerError.prototype = Object.create(Error.prototype);
 JisonLexerError.prototype.constructor = JisonLexerError;
 JisonLexerError.prototype.name = 'JisonLexerError';
 
-var lexer = ({
+var lexer = {
 
 EOF:1,
 
@@ -6174,42 +6439,42 @@ case 74 :
 /*! Rule::       . */ 
  throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */ 
 break;
-case 77 : 
+case 78 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
  this.popState('set'); return 58; 
 break;
-case 79 : 
+case 80 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
  return 75;      // the bit of CODE just before EOF... 
 break;
-case 80 : 
+case 81 : 
 /*! Conditions:: path */ 
 /*! Rule::       [\r\n] */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 81 : 
+case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
-case 82 : 
+case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 73; 
 break;
-case 83 : 
+case 84 : 
 /*! Conditions:: path */ 
 /*! Rule::       \s+ */ 
  // skip whitespace in the line 
 break;
-case 84 : 
+case 85 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
  this.popState(); return 73; 
 break;
-case 85 : 
+case 86 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
  
@@ -6329,11 +6594,14 @@ simpleCaseActionClusters: {
   /*! Rule::       $ */ 
    75 : 8,
   /*! Conditions:: set */ 
-  /*! Rule::       (\\\\|\\\]|[^\]])+ */ 
+  /*! Rule::       (\\\\|\\\]|[^\]{])+ */ 
    76 : 60,
+  /*! Conditions:: set */ 
+  /*! Rule::       \{ */ 
+   77 : 60,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   78 : 75
+   79 : 75
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -6412,7 +6680,8 @@ rules: [
 /^(?:\})/,
 /^(?:.)/,
 /^(?:$)/,
-/^(?:(\\\\|\\\]|[^\]])+)/,
+/^(?:(\\\\|\\\]|[^\]{])+)/,
+/^(?:\{)/,
 /^(?:\])/,
 /^(?:[^\r\n]*(\r|\n)+)/,
 /^(?:[^\r\n]+)/,
@@ -6429,9 +6698,9 @@ conditions: {
       66,
       67,
       75,
-      78,
       79,
-      85
+      80,
+      86
     ],
     inclusive: false
   },
@@ -6442,7 +6711,7 @@ conditions: {
       28,
       29,
       75,
-      85
+      86
     ],
     inclusive: false
   },
@@ -6458,7 +6727,7 @@ conditions: {
       25,
       71,
       75,
-      85
+      86
     ],
     inclusive: false
   },
@@ -6469,7 +6738,7 @@ conditions: {
       11,
       12,
       75,
-      85
+      86
     ],
     inclusive: false
   },
@@ -6485,19 +6754,19 @@ conditions: {
       7,
       8,
       75,
-      85
+      86
     ],
     inclusive: false
   },
   "path": {
     rules: [
       75,
-      80,
       81,
       82,
       83,
       84,
-      85
+      85,
+      86
     ],
     inclusive: false
   },
@@ -6507,7 +6776,8 @@ conditions: {
       75,
       76,
       77,
-      85
+      78,
+      86
     ],
     inclusive: false
   },
@@ -6555,7 +6825,7 @@ conditions: {
       73,
       74,
       75,
-      85
+      86
     ],
     inclusive: true
   },
@@ -6602,7 +6872,7 @@ conditions: {
       73,
       74,
       75,
-      85
+      86
     ],
     inclusive: true
   },
@@ -6652,7 +6922,7 @@ conditions: {
       73,
       74,
       75,
-      85
+      86
     ],
     inclusive: true
   },
@@ -6698,12 +6968,13 @@ conditions: {
       73,
       74,
       75,
-      85
+      86
     ],
     inclusive: true
   }
 }
-});
+};
+
 // lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
@@ -6741,7 +7012,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-106",
+  "version": "0.3.4-108",
   "keywords": [
     "jison",
     "parser",
@@ -6781,7 +7052,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.15-106 */
+/* parser generated by jison 0.4.15-108 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -6966,90 +7237,90 @@ trace: function trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
-  "error": 2,
-  "spec": 3,
-  "declaration_list": 4,
+  "$accept": 0,
+  "$end": 1,
   "%%": 5,
-  "grammar": 6,
-  "optional_end_block": 7,
-  "EOF": 8,
-  "extra_parser_module_code": 9,
-  "optional_action_header_block": 10,
-  "ACTION": 11,
-  "include_macro_code": 12,
-  "declaration": 13,
-  "START": 14,
-  "id": 15,
-  "LEX_BLOCK": 16,
-  "operator": 17,
-  "TOKEN": 18,
-  "full_token_definitions": 19,
-  "parse_param": 20,
-  "parser_type": 21,
-  "options": 22,
-  "UNKNOWN_DECL": 23,
-  "IMPORT": 24,
-  "import_name": 25,
-  "import_path": 26,
-  "ID": 27,
-  "STRING": 28,
-  "OPTIONS": 29,
-  "option_list": 30,
-  "OPTIONS_END": 31,
-  "option": 32,
-  "NAME": 33,
-  "=": 34,
-  "OPTION_VALUE": 35,
-  "PARSE_PARAM": 36,
-  "token_list": 37,
-  "PARSER_TYPE": 38,
-  "symbol": 39,
-  "associativity": 40,
-  "LEFT": 41,
-  "RIGHT": 42,
-  "NONASSOC": 43,
-  "full_token_definition": 44,
-  "optional_token_type": 45,
-  "optional_token_value": 46,
-  "optional_token_description": 47,
-  "TOKEN_TYPE": 48,
-  "INTEGER": 49,
-  "id_list": 50,
-  "token_id": 51,
-  "production_list": 52,
-  "production": 53,
-  ":": 54,
-  "handle_list": 55,
-  ";": 56,
-  "|": 57,
-  "handle_action": 58,
-  "handle": 59,
-  "prec": 60,
-  "action": 61,
-  "expression_suffix": 62,
-  "handle_sublist": 63,
-  "expression": 64,
-  "suffix": 65,
-  "ALIAS": 66,
   "(": 67,
   ")": 68,
   "*": 69,
-  "?": 70,
   "+": 71,
-  "PREC": 72,
-  "{": 73,
-  "action_body": 74,
-  "}": 75,
-  "ARROW_ACTION": 76,
-  "action_comments_body": 77,
+  ":": 54,
+  ";": 56,
+  "=": 34,
+  "?": 70,
+  "ACTION": 11,
   "ACTION_BODY": 78,
-  "optional_module_code_chunk": 79,
-  "INCLUDE": 80,
-  "PATH": 81,
-  "module_code_chunk": 82,
+  "ALIAS": 66,
+  "ARROW_ACTION": 76,
   "CODE": 83,
-  "$accept": 0,
-  "$end": 1
+  "EOF": 8,
+  "ID": 27,
+  "IMPORT": 24,
+  "INCLUDE": 80,
+  "INTEGER": 49,
+  "LEFT": 41,
+  "LEX_BLOCK": 16,
+  "NAME": 33,
+  "NONASSOC": 43,
+  "OPTIONS": 29,
+  "OPTIONS_END": 31,
+  "OPTION_VALUE": 35,
+  "PARSER_TYPE": 38,
+  "PARSE_PARAM": 36,
+  "PATH": 81,
+  "PREC": 72,
+  "RIGHT": 42,
+  "START": 14,
+  "STRING": 28,
+  "TOKEN": 18,
+  "TOKEN_TYPE": 48,
+  "UNKNOWN_DECL": 23,
+  "action": 61,
+  "action_body": 74,
+  "action_comments_body": 77,
+  "associativity": 40,
+  "declaration": 13,
+  "declaration_list": 4,
+  "error": 2,
+  "expression": 64,
+  "expression_suffix": 62,
+  "extra_parser_module_code": 9,
+  "full_token_definition": 44,
+  "full_token_definitions": 19,
+  "grammar": 6,
+  "handle": 59,
+  "handle_action": 58,
+  "handle_list": 55,
+  "handle_sublist": 63,
+  "id": 15,
+  "id_list": 50,
+  "import_name": 25,
+  "import_path": 26,
+  "include_macro_code": 12,
+  "module_code_chunk": 82,
+  "operator": 17,
+  "option": 32,
+  "option_list": 30,
+  "optional_action_header_block": 10,
+  "optional_end_block": 7,
+  "optional_module_code_chunk": 79,
+  "optional_token_description": 47,
+  "optional_token_type": 45,
+  "optional_token_value": 46,
+  "options": 22,
+  "parse_param": 20,
+  "parser_type": 21,
+  "prec": 60,
+  "production": 53,
+  "production_list": 52,
+  "spec": 3,
+  "suffix": 65,
+  "symbol": 39,
+  "token_id": 51,
+  "token_list": 37,
+  "{": 73,
+  "|": 57,
+  "}": 75
 },
 terminals_: {
   2: "error",
@@ -7092,6 +7363,189 @@ terminals_: {
   80: "INCLUDE",
   81: "PATH",
   83: "CODE"
+},
+nonterminals_: {
+  "spec": {
+    1: "declaration_list %% grammar optional_end_block EOF"
+  },
+  "optional_end_block": {
+    2: "<epsilon>",
+    3: "%% extra_parser_module_code"
+  },
+  "optional_action_header_block": {
+    4: "<epsilon>",
+    5: "optional_action_header_block ACTION",
+    6: "optional_action_header_block include_macro_code"
+  },
+  "declaration_list": {
+    7: "declaration_list declaration",
+    8: "<epsilon>"
+  },
+  "declaration": {
+    9: "START id",
+    10: "LEX_BLOCK",
+    11: "operator",
+    12: "TOKEN full_token_definitions",
+    13: "ACTION",
+    14: "include_macro_code",
+    15: "parse_param",
+    16: "parser_type",
+    17: "options",
+    18: "UNKNOWN_DECL",
+    19: "IMPORT import_name import_path"
+  },
+  "import_name": {
+    20: "ID",
+    21: "STRING"
+  },
+  "import_path": {
+    22: "ID",
+    23: "STRING"
+  },
+  "options": {
+    24: "OPTIONS option_list OPTIONS_END"
+  },
+  "option_list": {
+    25: "option_list option",
+    26: "option"
+  },
+  "option": {
+    27: "NAME",
+    28: "NAME = OPTION_VALUE",
+    29: "NAME = NAME"
+  },
+  "parse_param": {
+    30: "PARSE_PARAM token_list"
+  },
+  "parser_type": {
+    31: "PARSER_TYPE symbol"
+  },
+  "operator": {
+    32: "associativity token_list"
+  },
+  "associativity": {
+    33: "LEFT",
+    34: "RIGHT",
+    35: "NONASSOC"
+  },
+  "token_list": {
+    36: "token_list symbol",
+    37: "symbol"
+  },
+  "full_token_definitions": {
+    38: "full_token_definitions full_token_definition",
+    39: "full_token_definition"
+  },
+  "full_token_definition": {
+    40: "optional_token_type id optional_token_value optional_token_description"
+  },
+  "optional_token_type": {
+    41: "<epsilon>",
+    42: "TOKEN_TYPE"
+  },
+  "optional_token_value": {
+    43: "<epsilon>",
+    44: "INTEGER"
+  },
+  "optional_token_description": {
+    45: "<epsilon>",
+    46: "STRING"
+  },
+  "id_list": {
+    47: "id_list id",
+    48: "id"
+  },
+  "token_id": {
+    49: "TOKEN_TYPE id",
+    50: "id"
+  },
+  "grammar": {
+    51: "optional_action_header_block production_list"
+  },
+  "production_list": {
+    52: "production_list production",
+    53: "production"
+  },
+  "production": {
+    54: "id : handle_list ;"
+  },
+  "handle_list": {
+    55: "handle_list | handle_action",
+    56: "handle_action"
+  },
+  "handle_action": {
+    57: "handle prec action"
+  },
+  "handle": {
+    58: "handle expression_suffix",
+    59: "<epsilon>"
+  },
+  "handle_sublist": {
+    60: "handle_sublist | handle",
+    61: "handle"
+  },
+  "expression_suffix": {
+    62: "expression suffix ALIAS",
+    63: "expression suffix"
+  },
+  "expression": {
+    64: "ID",
+    65: "STRING",
+    66: "( handle_sublist )"
+  },
+  "suffix": {
+    67: "<epsilon>",
+    68: "*",
+    69: "?",
+    70: "+"
+  },
+  "prec": {
+    71: "PREC symbol",
+    72: "<epsilon>"
+  },
+  "symbol": {
+    73: "id",
+    74: "STRING"
+  },
+  "id": {
+    75: "ID"
+  },
+  "action": {
+    76: "{ action_body }",
+    77: "ACTION",
+    78: "include_macro_code",
+    79: "ARROW_ACTION",
+    80: "<epsilon>"
+  },
+  "action_body": {
+    81: "<epsilon>",
+    82: "action_comments_body",
+    83: "action_body { action_body } action_comments_body",
+    84: "action_body { action_body }"
+  },
+  "action_comments_body": {
+    85: "ACTION_BODY",
+    86: "action_comments_body ACTION_BODY"
+  },
+  "extra_parser_module_code": {
+    87: "optional_module_code_chunk",
+    88: "optional_module_code_chunk include_macro_code extra_parser_module_code"
+  },
+  "include_macro_code": {
+    89: "INCLUDE PATH",
+    90: "INCLUDE error"
+  },
+  "module_code_chunk": {
+    91: "CODE",
+    92: "module_code_chunk CODE"
+  },
+  "optional_module_code_chunk": {
+    93: "module_code_chunk",
+    94: "<epsilon>"
+  },
+  "$accept": {
+    0: "spec $end"
+  }
 },
 productions_: [
   0,
@@ -7472,7 +7926,7 @@ productions_: [
     0
   ]
 ],
-performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack) {
+performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack, options) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -7810,7 +8264,7 @@ break;
 case 89 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
  
-            var fs = require('fs');
+console.log('options: ', options);
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
@@ -9071,7 +9525,7 @@ parse: function parse(input) {
     var preErrorSymbol = null;
     var state, action, a, r;
     var yyval = {};
-    var p, len, len1, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
     var retval = false;
 
@@ -9265,7 +9719,7 @@ parse: function parse(input) {
                 this_production = this.productions_[action[1]];
                 len = this_production[1];
                 lstack_end = lstack.length;
-                lstack_begin = lstack_end - (len1 || 1);
+                lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
 
                 // perform semantic action
@@ -9326,6 +9780,7 @@ parse: function parse(input) {
 }
 };
 
+var fs = require('fs');
 var transform = require('./ebnf-transform').transform;
 var ebnf = false;
 
@@ -9340,7 +9795,7 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-106 */
+/* generated by jison-lex 0.3.4-108 */
 var lexer = (function () {
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
@@ -9356,7 +9811,7 @@ JisonLexerError.prototype = Object.create(Error.prototype);
 JisonLexerError.prototype.constructor = JisonLexerError;
 JisonLexerError.prototype.name = 'JisonLexerError';
 
-var lexer = ({
+var lexer = {
 
 EOF:1,
 
@@ -10349,7 +10804,8 @@ conditions: {
     inclusive: true
   }
 }
-});
+};
+
 // lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
@@ -10387,18 +10843,19 @@ var lexParser = require('./lex-parser');
 var version = require('./package.json').version;
 
 // expand macros and convert matchers to RegExp's
-function prepareRules(rules, macros, actions, tokens, startConditions, caseless, caseHelper) {
+function prepareRules(dict, actions, tokens, startConditions, caseless, caseHelper, opts) {
     var m, i, k, action, conditions,
         active_conditions,
-        newRules = [];
+        rules = dict.rules,
+        newRules = [],
+        macros = {};
 
-    // Depending on the location within the regex we need different expansions of the macros,
-    // hence precalcing the expansions is out for now; besides the number of macros is usually
-    // relatively small enough that a naive approach to expansion is fine performance-wise anyhow:
-    //
-    // if (macros) {
-    //     macros = prepareMacros(macros);
-    // }
+    // Depending on the location within the regex we need different expansions of the macros:
+    // one expansion for when a macro is *inside* a `[...]` and another expansion when a macro
+    // is anywhere else in a regex:
+    if (dict.macros) {
+        macros = prepareMacros(dict.macros, opts);
+    }
 
     function tokenNumberReplacement (str, token) {
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
@@ -10410,7 +10867,7 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
         if (Array.isArray(str)) {
             str = str.join(' ');
         }
-        str = str.replace(/\*\//g, "*\\/");         // destroy any inner `*/` comment terminator sequence.
+        str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
     }
 
@@ -10497,30 +10954,173 @@ function prepareRules(rules, macros, actions, tokens, startConditions, caseless,
     actions.push('  return this.simpleCaseActionClusters[$avoiding_name_collisions];');
     actions.push('}');
 
-    return newRules;
+    return {
+        rules: newRules,
+        macros: macros
+    };
 }
 
-// expand macros within macros
-function prepareMacros (macros) {
-    var cont = true,
-        m, i, k, mnew;
-    while (cont) {
-        cont = false;
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
-                for (k in macros) {
-                    if (macros.hasOwnProperty(k) && i !== k) {
-                        mnew = m.split('{' + k + '}').join('(' + macros[k] + ')');
-                        if (mnew !== m) {
-                            cont = true;
-                            macros[i] = mnew;
-                        }
+// expand macros within macros and cache the result
+function prepareMacros(dict_macros, opts) {
+    var macros = {};
+
+    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
+    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+    //
+    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
+    // `[^0-9]` in nested macros!
+    function reduceRegexToSet(s, name) {
+        // First make sure legal regexes such as `[-@]` or `[@-]` get their hyphens at the edges
+        // properly escaped as they'll otherwise produce havoc when being combined into new
+        // sets thanks to macro expansion inside the outer regex set expression.
+        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
+        for (var i = 0, len = m.length; i < len; i++) {
+            s = ' ' + m[i]; // make our life easier when we check the next regex(es)...
+
+            s = s.replace(/([^\\])\[-/g, '$1[\\-').replace(/-\]/g, '\\-]');
+
+            // catch the remains of constructs like `[0-9]|[a-z]`
+            s = s.replace(/([^\\])\]\|\[/g, '$1');
+
+            // strip unescaped pipes to catch constructs like `\\r|\\n`
+            s = s.replace(/([^\\])\|/g, '$1');
+
+            m[i] = s.substr(1, s.length - 1);
+        }
+        s = m.join('\\\\');
+
+        // Also remove the outer brackets if this thing is a set all by itself: we accept either
+        // `[0-9]` or `0-9` as good macro content to land in a (larger) set and this should
+        // take care of the `[]` brackets around the former.
+        // 
+        // Also strip off some other possible outer wrappers which we know how to remove.
+        // We don't worry about 'damaging' the regex as any too-complex regex will be caught
+        // in the validation check at the end; our 'strippers' here would not damage useful
+        // regexes anyway and them damaging the unacceptable ones is fine.
+        s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');       // (?:...) -> ...  and  (...) -> ...
+        s = s.replace(/^\[(.*?)\]$/, '$1');
+
+        // now ensure that any `-` dash at the start or end of the set list is properly escaped:
+        // we won't have caught all of them yet above, just the ones in sub-sets!
+        
+        m = s.split('\\\\'); // help us find out which chars in there are truly escaped
+        m[0] = m[0].replace(/^-/, '\\-');
+        m[m.length - 1] = m[m.length - 1].replace(/-$/, '\\-');
+        s = m.join('\\\\');
+
+        // when this result is suitable for use in a set, than we should be able to compile 
+        // it in a regex; that way we can easily validate whether macro X is fit to be used 
+        // inside a regex set:
+        try {
+            var re = new RegExp('[' + s + ']');
+            re.test(s[0]);
+
+            // one thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
+            // so we check for lingering UNESCAPED brackets in here as those cannot be:
+            if (/[^\\][\[\]]/.exec(s)) {
+                throw 'unescaped brackets in set data';
+            }
+        } catch (ex) {
+            // make sure we produce a set range expression which will fail badly when it is used
+            // in actual code:
+            if (0) console.log('reduceRegexToSet: regex validation: ', s, ex);
+            s = '[macro \'' + name + '\' is unsuitable for use inside regex set expressions]'; 
+        }
+
+        return s;
+    }
+
+    // expand a macro which exists inside a `[...]` set:
+    function expandMacroInSet(i) {
+        var k, a, m;
+        if (!macros[i]) {
+            m = dict_macros[i];
+
+            for (k in dict_macros) {
+                if (dict_macros.hasOwnProperty(k) && i !== k) {
+                    // it doesn't matter if the lexer recognized that the inner macro(s)
+                    // were sitting inside a `[...]` set or not: the fact that they are used
+                    // here in macro `i` which itself sits in a set, makes them *all* live in
+                    // a set so all of them get the same treatment: set expansion style.
+                    a = m.split('{[{' + k + '}]}');
+                    if (a.length > 1) {
+                        m = a.join(expandMacroInSet(k));
+                    }
+                    a = m.split('{' + k + '}');
+                    if (a.length > 1) {
+                        m = a.join(expandMacroInSet(k));
                     }
                 }
             }
+
+            m = reduceRegexToSet(m, i);
+
+            macros[i] = {
+                in_set: m,
+                elsewhere: null,
+                raw: dict_macros[i]
+            };
+        } else {
+            m = macros[i].in_set;
+        }
+
+        return m;
+    }
+
+    function expandMacroElsewhere(i) {
+        var k, a, m;
+
+        if (!macros[i].elsewhere) {
+            m = dict_macros[i];
+
+            // the macro MAY contain other macros which MAY be inside a `[...]` set in this
+            // macro, hence we first expand those submacros all the way:
+            for (k in dict_macros) {
+                if (dict_macros.hasOwnProperty(k) && i !== k) {
+                    a = m.split('{[{' + k + '}]}');
+                    if (a.length > 1) {
+                        m = a.join(macros[k].in_set);
+                    }
+                    
+                    a = m.split('{' + k + '}');
+                    if (a.length > 1) {
+                        m = a.join('(?:' + expandMacroElsewhere(k) + ')');
+                    }
+                }
+            }
+
+            macros[i].elsewhere = m;
+        } else {
+            m = macros[i].elsewhere;
+        }
+
+        return m;
+    }
+
+    var m, i;
+    
+    if (opts.debug) console.log('\n############## RAW macros: ', dict_macros);
+
+    // first we create the part of the dictionary which is targeting the use of macros
+    // *inside* `[...]` sets; once we have completed that half of the expansions work,
+    // we then go and expand the macros for when they are used elsewhere in a regex:
+    // iff we encounter submacros then which are used *inside* a set, we can use that
+    // first half dictionary to speed things up a bit as we can use those expansions
+    // straight away!
+    for (i in dict_macros) {
+        if (dict_macros.hasOwnProperty(i)) {
+            expandMacroInSet(i);
         }
     }
+
+    for (i in dict_macros) {
+        if (dict_macros.hasOwnProperty(i)) {
+            expandMacroElsewhere(i);
+        }
+    }
+    
+    if (opts.debug) console.log('\n############### expanded macros: ', macros);
+    
     return macros;
 }
 
@@ -10528,74 +11128,32 @@ function prepareMacros (macros) {
 function expandMacros(src, macros) {
     var i, m;
 
-    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
-    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-    //
-    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
-    // `[^0-9]` in nested macros!
-    function reduceRegexToSet(s) {
-        // First make sure legal regexes such as `[-@]` or `[@-]` get their hypens at the edges
-        // properly escaped as they'll otherwise produce havoc when being combined into new
-        // sets thanks to macro expansion inside the outer regex set expression.
-        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
-        for (var i = 0, len = m.length; i < len; i++) {
-            s = ' ' + m[i] + ' '; // make our life easier down the lane...
+    // first process *all* the macros inside [...] set expressions:
+    if (src.indexOf('{[{') >= 0) {
+        for (i in macros) {
+            if (macros.hasOwnProperty(i)) {
+                m = macros[i];
 
-            s = s.replace(/([^\\])\[-/, '$1[\\-').replace(/-\]/, '\\-]');
-
-            // catch the remains of constructs like `[0-9]|[a-z]`
-            s = s.replace(/\]\|\[/g, '');
-
-            // Also remove the outer brackets of any included set (which came in via macro expansion);
-            // we know that the ones we'll see be either escaped or raw; it's the raw ones we want
-            // to wipe out.
-            s = s.replace(/([^\\])\[/, '$1').replace(/([^\\])\]/, '$1');
-
-            m[i] = s.substr(1, s.length - 2);
-        }
-        s = m.join('\\\\');
-        return s;
-    }
-
-    function expandMacroInSet(i) {
-        var k, a;
-        var m = macros[i];
-
-        for (k in macros) {
-            if (macros.hasOwnProperty(k) && i !== k) {
-                a = m.split('{' + k + '}');
-                if (a.length > 1) {
-                    m = a.join(expandMacroInSet(k));
-                }
+                src = src.split('{[{' + i + '}]}').join(m.in_set);
             }
         }
-
-        return m;
     }
 
-    function expandMacroElsewhere(i) {
-        var k, a;
-        var m = macros[i];
+    // then process the remaining macro occurrences in the regex:
+    // every macro used in a lexer rule will become its own capture group. 
+    // Meanwhile the cached expansion will have expanded any submacros into
+    // *NON*-capturing groups so that the backreference indexes remain as you'ld
+    // expect and using macros doesn't require you to know exactly what your
+    // used macro will expand into, i.e. which and how many submacros it has.
+    // 
+    // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+    if (src.indexOf('{') >= 0) {
+        for (i in macros) {
+            if (macros.hasOwnProperty(i)) {
+                m = macros[i];
 
-        for (k in macros) {
-            if (macros.hasOwnProperty(k) && i !== k) {
-                a = m.split('{' + k + '}');
-                if (a.length > 1) {
-                    m = a.join('(' + expandMacroElsewhere(k) + ')');
-                }
+                src = src.split('{' + i + '}').join('(' + m.elsewhere + ')');
             }
-        }
-        return m;
-    }
-
-    for (i in macros) {
-        if (macros.hasOwnProperty(i)) {
-            m = macros[i];
-
-            // first process the macros inside [...] set expressions:
-            src = src.split('{[{' + i + '}]}').join(reduceRegexToSet(expandMacroInSet(i)));
-            // then process the other macro occurrences in the regex:
-            src = src.split('{' + i + '}').join('(' + expandMacroElsewhere(i) + ')');
         }
     }
 
@@ -10613,7 +11171,7 @@ function prepareStartConditions (conditions) {
     return hash;
 }
 
-function buildActions (dict, tokens) {
+function buildActions(dict, tokens, opts) {
     var actions = [dict.actionInclude || '', 'var YYSTATE = YY_START;'];
     var tok;
     var toks = {};
@@ -10623,11 +11181,12 @@ function buildActions (dict, tokens) {
         toks[tokens[tok]] = tok;
     }
 
-    if (this.options.flex) {
+    if (opts.options.flex) {
         dict.rules.push(['.', 'console.log(yytext);']);
     }
 
-    this.rules = prepareRules(dict.rules, dict.macros, actions, tokens && toks, this.conditions, this.options['case-insensitive'], caseHelper);
+    var gen = prepareRules(dict, actions, tokens && toks, opts.conditions, opts.options['case-insensitive'], caseHelper, opts);
+
     var fun = actions.join('\n');
     'yytext yyleng yylineno yylloc'.split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp('\\b(' + yy + ')\\b', 'g'), 'yy_.$1');
@@ -10636,7 +11195,10 @@ function buildActions (dict, tokens) {
     return {
         caseHelperInclude: '{\n' + caseHelper.join(',') + '\n}',
 
-        actions: 'function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {\n' + fun + '\n}'
+        actions: 'function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {\n' + fun + '\n}',
+
+        rules: gen.rules,
+        macros: gen.macros                   // propagate these for debugging/diagnostic purposes
     };
 }
 
@@ -10664,17 +11226,48 @@ function RegExpLexer (dict, input, tokens) {
 
     function test_me(tweak_cb, description, src_exception, ex_callback) {
         opts = processGrammar(dict, tokens);
+        opts.in_rules_failure_analysis_mode = false;
         if (tweak_cb) {
             tweak_cb();
         }
         var source = generateModuleBody(opts);
         try {
-            // provide a local version for test purposes:
-            function JisonLexerError(msg, hash) {
-                throw new Error(msg);
+            // The generated code will always have the `lexer` variable declared at local scope
+            // as `eval()` will use the local scope.
+            // 
+            // The compiled code will look something like this:
+            // 
+            // ```
+            // var lexer;
+            // bla bla...
+            // ```
+            // 
+            // or
+            // 
+            // ```
+            // var lexer = { bla... };
+            // ```
+            var testcode = '' +
+                '// provide a local version for test purposes:\n' +
+                jisonLexerErrorDefinition.join('\n') + '\n' +
+                source + '\n' +
+                'return lexer;\n';
+            var lexer_f = new Function('', testcode);
+            var lexer = lexer_f();
+
+            if (!lexer) {
+                throw new Error('no lexer defined *at all*?!');
+            }
+            if (typeof lexer.options !== 'object' || lexer.options == null) {
+                throw new Error('your lexer class MUST have an .options member object or it won\'t fly!');
+            }
+            if (typeof lexer.setInput !== 'function') {
+                throw new Error('your lexer class MUST have a .setInput function member or it won\'t fly!');
+            }
+            if (lexer.EOF !== 1 && lexer.ERROR !== 2) {
+                throw new Error('your lexer class MUST have these constants defined: lexer.EOF = 1 and lexer.ERROR = 2 or it won\'t fly!');
             }
 
-            var lexer = eval(source);
             // When we do NOT crash, we found/killed the problem area just before this call!
             if (src_exception && description) {
                 src_exception.message += '\n        (' + description + ')';
@@ -10693,6 +11286,13 @@ function RegExpLexer (dict, input, tokens) {
                 }
             }
 
+            if (opts.options.showSource) {
+                if (typeof opts.options.showSource === 'function') {
+                    opts.options.showSource(lexer, source, opts);
+                } else {
+                    console.log("\nGenerated lexer sourcecode:\n----------------------------------------\n", source, "\n----------------------------------------\n");
+                }
+            }
             return lexer;
         } catch (ex) {
             // if (src_exception) {
@@ -10714,10 +11314,15 @@ function RegExpLexer (dict, input, tokens) {
         // Now we go and try to narrow down the problem area/category:
         if (!test_me(function () {
             opts.conditions = [];
-        }, 'One or more of your lexer state names are possibly botched?', ex)) {
+            opts.showSource = false;
+        }, (dict.rules.length > 0 ? 
+            'One or more of your lexer state names are possibly botched?' :
+            'Your custom lexer is somehow botched.'), ex)) {
             if (!test_me(function () {
                 // opts.conditions = [];
                 opts.rules = [];
+                opts.showSource = false;
+                opts.in_rules_failure_analysis_mode = true;
             }, 'One or more of your lexer rules are possibly botched?', ex)) {
                 // kill each rule action block, one at a time and test again after each 'edit':
                 var rv = false;
@@ -10726,6 +11331,7 @@ function RegExpLexer (dict, input, tokens) {
                     rv = test_me(function () {
                         // opts.conditions = [];
                         // opts.rules = [];
+                        // opts.in_rules_failure_analysis_mode = true;
                     }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex);
                     if (rv) {
                         break;
@@ -10736,8 +11342,10 @@ function RegExpLexer (dict, input, tokens) {
                         opts.conditions = [];
                         opts.rules = [];
                         opts.performAction = 'null';
-                        // opts.options = [];
+                        // opts.options = {};
                         // opts.caseHelperInclude = '{}';
+                        opts.showSource = false;
+                        opts.in_rules_failure_analysis_mode = true;
 
                         dump = false;
                     }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex);
@@ -11189,12 +11797,15 @@ function processGrammar(dict, tokens) {
     opts.conditions = prepareStartConditions(dict.startConditions);
     opts.conditions.INITIAL = {rules:[], inclusive:true};
 
-    var code = buildActions.call(opts, dict, tokens);
+    var code = buildActions(dict, tokens, opts);
     opts.performAction = code.actions;
     opts.caseHelperInclude = code.caseHelperInclude;
+    opts.rules = code.rules;
+    opts.macros = code.macros;
 
     opts.conditionStack = ['INITIAL'];
 
+    opts.actionInclude = (dict.actionInclude || '');
     opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
     return opts;
 }
@@ -11243,45 +11854,73 @@ function generateModuleBody(opt) {
         return str;
     }
 
-    var out = '({\n';
-    var p = [];
-    var descr;
-    for (var k in RegExpLexer.prototype) {
-        if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf('generate') === -1) {
-            // copy the function description as a comment before the implementation; supports multi-line descriptions
-            descr = '\n';
-            if (functionDescriptions[k]) {
-                descr += '// ' + functionDescriptions[k].replace(/\n/g, '\n\/\/ ') + '\n';
+    var out;
+    if (opt.rules.length > 0 || opt.in_rules_failure_analysis_mode) {
+        var p = [];
+        var descr;
+
+        // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
+        // JavaScript is fine with that.
+        out = 'var lexer = {\n';
+
+        for (var k in RegExpLexer.prototype) {
+            if (RegExpLexer.prototype.hasOwnProperty(k) && k.indexOf('generate') === -1) {
+                // copy the function description as a comment before the implementation; supports multi-line descriptions
+                descr = '\n';
+                if (functionDescriptions[k]) {
+                    descr += '// ' + functionDescriptions[k].replace(/\n/g, '\n\/\/ ') + '\n';
+                }
+                p.push(descr + k + ':' + (RegExpLexer.prototype[k].toString() || '""'));
             }
-            p.push(descr + k + ':' + (RegExpLexer.prototype[k].toString() || '""'));
+        }
+        out += p.join(',\n');
+
+        if (opt.options) {
+            var pre = opt.options.pre_lex;
+            var post = opt.options.post_lex;
+            // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
+            opt.options.pre_lex = (pre ? true : undefined);
+            opt.options.post_lex = (post ? true : undefined);
+
+            var js = JSON.stringify(opt.options, null, 2);
+            js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
+
+            // and restore the original:
+            opt.options.pre_lex = pre;
+            opt.options.post_lex = post;
+
+            out += ',\noptions: ' + js;
+        }
+
+        out += ',\nJisonLexerError: JisonLexerError';
+        out += ',\nperformAction: ' + String(opt.performAction);
+        out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
+        out += ',\nrules: [\n' + opt.rules.join(',\n') + '\n]';
+        out += ',\nconditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
+        out += '\n};\n';
+    } else {
+        // We're clearly looking at a custom lexer here as there's no lexer rules at all.
+        // 
+        // We are re-purposing the `%{...%}` `actionInclude` code block here as it serves no purpose otherwise.
+        // 
+        // Meanwhile we make sure we have the `lexer` variable declared in *local scope* no matter
+        // what crazy stuff (or lack thereof) the userland code is pulling in the `actionInclude` chunk.
+        out = 'var lexer;\n';
+
+        if (opt.actionInclude) {
+            out += opt.actionInclude + (!opt.actionInclude.match(/;[\s\r\n]*$/) ? ';' : '') + '\n';
         }
     }
-    out += p.join(',\n');
 
-    if (opt.options) {
-        var pre = opt.options.pre_lex;
-        var post = opt.options.post_lex;
-        // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
-        opt.options.pre_lex = (pre ? true : undefined);
-        opt.options.post_lex = (post ? true : undefined);
-
-        var js = JSON.stringify(opt.options, null, 2);
-        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
-
-        // and restore the original:
-        opt.options.pre_lex = pre;
-        opt.options.post_lex = post;
-
-        out += ',\noptions: ' + js;
-    }
-
-    out += ',\nJisonLexerError: JisonLexerError';
-    out += ',\nperformAction: ' + String(opt.performAction);
-    out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
-    out += ',\nrules: [\n' + opt.rules.join(',\n') + '\n]';
-    out += ',\nconditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
-    out += '\n})';
-
+    // The output of this function is guaranteed to read something like this:
+    // 
+    // ```
+    // var lexer;
+    // 
+    // bla bla bla bla ... lotsa bla bla;
+    // ```
+    // 
+    // and that should work nicely as an `eval()`-able piece of source code.
     return out;
 }
 
@@ -11293,7 +11932,7 @@ function generateModule(opt) {
 
     out.push('var ' + moduleName + ' = (function () {');
     out.push.apply(out, jisonLexerErrorDefinition);
-    out.push('var lexer = ' + generateModuleBody(opt) + ';');
+    out.push(generateModuleBody(opt));
 
     if (opt.moduleInclude) {
         out.push(opt.moduleInclude + ';');
@@ -11315,7 +11954,7 @@ function generateAMDModule(opt) {
 
     out.push('define([], function () {');
     out.push.apply(out, jisonLexerErrorDefinition);
-    out.push('var lexer = ' + generateModuleBody(opt) + ';');
+    out.push(generateModuleBody(opt));
 
     if (opt.moduleInclude) {
         out.push(opt.moduleInclude + ';');
@@ -22894,7 +23533,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.15-106",
+  "version": "0.4.15-108",
   "license": "MIT",
   "keywords": [
     "jison",
