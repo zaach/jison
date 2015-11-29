@@ -36,17 +36,17 @@
     "node": ">=0.9"
   },
   "dependencies": {
-    "jison-lex": "git://github.com/GerHobbelt/jison-lex.git#master",
-    "ebnf-parser": "git://github.com/GerHobbelt/ebnf-parser.git#master",
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
-    "nomnom": "git://github.com/GerHobbelt/nomnom.git#master",
+    "jison-lex": "GerHobbelt/jison-lex#master",
+    "ebnf-parser": "GerHobbelt/ebnf-parser#master",
+    "lex-parser": "GerHobbelt/lex-parser#master",
+    "nomnom": "GerHobbelt/nomnom#master",
     "cjson": ">=0.3.2"
   },
   "devDependencies": {
     "test": ">=0.6.0",
-    "jison": "git://github.com/GerHobbelt/jison.git#master",
-    "uglify-js": ">=2.5.0",
-    "browserify": ">=11.2.0"
+    "jison": "GerHobbelt/jison#master",
+    "uglify-js": ">=2.6.1",
+    "browserify": ">=12.0.1"
   },
   "scripts": {
     "test": "node tests/all-tests.js"

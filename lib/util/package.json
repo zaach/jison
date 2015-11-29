@@ -30,7 +30,7 @@
     "node": ">=0.4"
   },
   "dependencies": {
-    "lex-parser": "git://github.com/GerHobbelt/lex-parser.git#master",
+    "lex-parser": "GerHobbelt/lex-parser#master",
     "nomnom": ">=1.8.1"
   },
   "devDependencies": {
