@@ -476,3 +476,81 @@ exports["test 'semantic whitespace' edge case which could break the parser gener
     assert.equal(rv, 42);
 };
 
+// test `%import symbols` functionality
+exports["test %import statement"] = function () {
+    var grammar =
+      '%lex\n%%\n\n\\s+      /* skip whitespace */\n' +
+      'x                     return \'x\';\n' +
+      '<<EOF>>               return \'EOF\'\n\n' +
+      '/lex\n\n%start expressions\n\n' +
+      '%import bugger boo\n\n' +
+      '%import "kwik kwak" "diddle doo"\n\n%%\n\n' +
+      'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
+      'e\n    : x -> $1\n    ;';
+
+    var gen = new Jison.Generator(grammar);
+    console.log('generator: ', gen.grammar.imports);
+    assert.ok(gen.grammar.imports.length === 2, '%imports detected');
+    assert.ok(gen.grammar.imports[0].name === 'bugger', '%import name works');
+    assert.ok(gen.grammar.imports[0].path === 'boo', '%import path works');
+    assert.ok(gen.grammar.imports[1].name === 'kwik kwak', '%import name works');
+    assert.ok(gen.grammar.imports[1].path === 'diddle doo', '%import path works');
+
+    var parser = new Jison.Parser(grammar);
+    var generated = parser.generate();
+
+    var tmpFile = path.resolve(__dirname, 'tmp-imports-parser.js');
+    fs.writeFileSync(tmpFile, generated);
+    var parser2 = require('./tmp-imports-parser');
+
+    assert.ok(parser.parse('x') === 'x',
+      'original parser works');
+    assert.ok(parser2.parse('x') === 'x',
+      'generated parser works');
+    fs.unlinkSync(tmpFile);
+};
+
+// test advanced `%import symbols` functionality
+exports["test %import statement"] = function () {
+    var grammar =
+      '%lex\n%%\n\n\\s+      /* skip whitespace */\n' +
+      'yy                     return \'y\';\n' +
+      'xx                     return \'x\';\n' +
+      '<<EOF>>               return \'EOF\'\n\n' +
+      '/lex\n\n%start expressions\n\n' +
+      '%%\n\n' +
+      'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
+      'e\n    : x y -> $x + $y\n    ;';
+
+    var parser = new Jison.Parser(grammar);
+    var generated = parser.generate();
+
+    var tmpFile = path.resolve(__dirname, 'tmp-imports-parser2.js');
+    fs.writeFileSync(tmpFile, generated);
+
+    var grammar2 =
+      '%lex\n%%\n\n\\s+      /* skip whitespace */\n' +
+      'xx                     return \'x\';\n' +
+      '<<EOF>>               return \'EOF\'\n\n' +
+      '/lex\n\n%start expressions\n\n' +
+      '%import symbols "' + __dirname + '/tmp-imports-parser2.js"\n\n' +
+      '%%\n\n' +
+      'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
+      'e\n    : x -> $1\n    ;';
+
+    var parser2 = new Jison.Parser(grammar2);
+    var generated2 = parser2.generate();
+
+    var tmpFile2 = path.resolve(__dirname, 'tmp-imports-parser3.js');
+    fs.writeFileSync(tmpFile2, generated2);
+
+    // both files should carry the exact same symbol table:
+    var re = /[\r\n]\s*symbols_:\s*(\{[\s\S]*?\}),\s*[\r\n]/;
+    var m1 = re.exec(generated);
+    var m2 = re.exec(generated2);
+
+    assert.ok(m1[1] === m2[1], 'both grammars\' symbol tables match');
+
+    fs.unlinkSync(tmpFile);
+    fs.unlinkSync(tmpFile2);
+};
