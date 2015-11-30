@@ -4,3 +4,6 @@ node_modules
 # Editor backup files
 *.bak
 *~
+
+web/output/
+web/tmp/
