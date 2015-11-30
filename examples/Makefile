@@ -35,6 +35,8 @@ ALL_TARGETS =  													\
 			semwhitespace 										\
 			tikiwikiparser 										\
 			mermaid												\
+			with-includes 										\
+			with_custom_lexer									\
 			dot 												\
 			flow 												\
 			gantt 												\
@@ -163,6 +165,12 @@ flow:
 	$(JISON) ./$@.jison
 
 gantt:
+	$(JISON) ./$@.jison
+
+with-includes:
+	$(JISON) ./$@.jison
+
+with_custom_lexer:
 	$(JISON) ./$@.jison
 
 grammar:

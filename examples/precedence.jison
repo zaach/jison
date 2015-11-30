@@ -3,32 +3,19 @@
 
 %lex
 
-%options ranges
-%options unicode=7
-%options xregexp
-
 
 digits          [0-9]
-alpha           [a-zA-Z]|{digits}
-space           " "
 whitespace      \s
 
 
-%include precedence.prelude1.js
-
 %%
-{whitespace}+   {/* skip whitespace */}
-[{digits}]+     %include "precedence.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
-[{digits}{alpha}]+     { console.log("buggerit millenium hands and shrimp!"); }
 
+{whitespace}+   {/* skip whitespace */}
+[{digits}]+     {return 'NAT';}
 "+"             {return '+';}
 "-"             {return '-';}
 "*"             {return '*';}
 <<EOF>>         {return 'EOF';}
-
-%%
-
-%include precedence.prelude2.js
 
 /lex
 
@@ -36,11 +23,7 @@ whitespace      \s
 %left '*'
 %left UNARY_PLUS UNARY_MINUS
 
-%include precedence.prelude3.js
-
 %%
-
-%include precedence.prelude4.js
 
 S
     : e EOF
@@ -59,10 +42,6 @@ e
     | '-' e                     %prec UNARY_MINUS 
         {$$ = ['-', $2];}
     | NAT
-        %include "precedence.parseInt.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+        {$$ = parseInt(yytext);}
     ;
 
-
-%%
-
-%include precedence.main.js
