@@ -33,6 +33,8 @@ exports.grammar = {
 
     "bnf": {
         "JSONString": [ "STRING" ],
+        
+        "JSONNullLiteral": [ "NULL" ],
 
         "JSONNumber": [ "NUMBER" ],
 
