@@ -6,7 +6,7 @@
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.15-113",
+  "version": "0.4.17-113",
   "license": "MIT",
   "keywords": [
     "jison",
