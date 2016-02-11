@@ -3,10 +3,10 @@
 /* lexical grammar */
 %lex
 %%
-"<"(.|\n)*?">"                      return 'TAG'
-[a-zA-Z0-9]+                        return 'WORD'
-(.|\n)                              return 'CHAR'
-<<EOF>>                             return 'EOF'
+"<"(.|\n)*?">"                      return 'TAG';
+[a-zA-Z0-9]+                        return 'WORD';
+(.|\n)                              return 'CHAR';
+<<EOF>>                             return 'EOF';
 
 
 /lex
