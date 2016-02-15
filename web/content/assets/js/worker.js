@@ -15,7 +15,7 @@ self.addEventListener('message', function (e) {
   
   try {
       cfg = JSON.parse(grammar);
-  } catch (e) {
+  } catch (ex) {
       // intentionally throw an error here if it fails to parse
       cfg = bnf.parse(grammar);
   }

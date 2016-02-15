@@ -1,12 +1,13 @@
 
-all: build test
+all: build test examples/issue-293 examples/issue-254
 
 prep: npm-install
 
 site: web/content/assets/js/jison.js
 
 web/content/assets/js/jison.js: build test examples
-	node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
+	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
+	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
@@ -16,9 +17,11 @@ preview:
 	open http://localhost:3000/jison/
 
 deploy: site
-	-rm -rf ./gh-pages/*
-	cp -r web/output/jison/* ./gh-pages/
-	-cd ./gh-pages ; git checkout gh-pages ; git add . --all && git commit -m 'Deploy site updates' && git push origin gh-pages
+	git checkout gh-pages
+	cp -r web/output/jison/* ./
+	#git add . --all 
+	git commit -m 'Deploy site updates'
+	git checkout master
 
 test:
 	node tests/all-tests.js
@@ -81,6 +84,14 @@ examples/handlebars: build
 examples/inherited_y: build
 	cd examples/ && make inherited_y
 
+# build *AND* run the test:
+examples/issue-254:
+	cd examples/ && make issue-254
+
+# build *AND* run the test:
+examples/issue-293:
+	cd examples/ && make issue-293
+
 examples/jscore: build
 	cd examples/ && make jscore
 
@@ -127,29 +138,30 @@ JISON_DEPS = \
 
 build_bnf: lib/util/parser.js
 
-lib/util/parser.js: $(JISON_DEPS) submodules \
-					lib/cli.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
+					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 
 build_lex: lib/util/lex-parser.js
 
-lib/util/lex-parser.js: $(JISON_DEPS) submodules \
-						lib/cli.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
+						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
+	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
+
+prep_util_dir:
+	@[ -d  node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
 	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
-	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' > $@
+	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/package.json: modules/jison-lex/package.json
 	cat modules/jison-lex/package.json > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' > $@
+	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
 	cat modules/ebnf-parser/ebnf-transform.js > $@
@@ -174,8 +186,34 @@ submodules-npm-install:
 	cd modules/lex-parser && make npm-install
 
 
+# increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
+#
+# Generally when I want to bump jison up one build number, then the submodules should also be bumped.
+# This is less relevant for the jison2json and json2jison tools as they probably won't have changed,
+# but hey, this way the build numbers stay nicely in sync!   :-)
+bump: submodules-bump
+	npm version --no-git-tag-version prerelease
+
+submodules-bump:
+	cd modules/ebnf-parser && make bump
+	cd modules/jison-lex && make bump
+	cd modules/jison2json && make bump
+	cd modules/json2jison && make bump
+	cd modules/lex-parser && make bump
+
+git-tag:
+	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
+
+submodules-git-tag:
+	cd modules/ebnf-parser && make git-tag
+	cd modules/jison-lex && make git-tag
+	cd modules/jison2json && make git-tag
+	cd modules/json2jison && make git-tag
+	cd modules/lex-parser && make git-tag
+
+
 git:
-	-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
+	#-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
 	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
 	-git pull --all; git push --all
 
@@ -209,12 +247,11 @@ superclean: clean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 	-rm -rf web/output/
 	-rm -rf web/tmp/
-	-rm -rf ./gh-pages/*
+	#-rm -rf ./gh-pages/*
 	-rm -f web/content/assets/js/calculator.js
 	-rm -f web/content/assets/js/jison.js
 
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git
-
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag

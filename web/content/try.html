@@ -13,7 +13,7 @@ title: Try Jison Online
     <p>
     Load an example:
     <select id="examples">
-      <option value="../examples/calculator.jison" selected="true">Calculator</option>
+      <option value="../examples/calculator.jison" selected="selected">Calculator</option>
       <option value="../examples/lambdacalc.jison">Lambda Calculus</option>
       <!--<option value="../examples/ansic.jison">ANSI C</option>-->
       <option value="../examples/happyhappy.jison">Happy Happy Joy Joy</option>
@@ -38,7 +38,7 @@ title: Try Jison Online
 ")"                   return ')'
 "PI"                  return 'PI'
 "E"                   return 'E'
-<<EOF>>               return 'EOF'
+&lt;&lt;EOF&gt;&gt;               return 'EOF'
 .                     return 'INVALID'
 
 /lex

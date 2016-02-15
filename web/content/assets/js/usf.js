@@ -8,7 +8,6 @@ if(typeof console === 'undefined'){
 var printOut = function(str){document.getElementById("out").value = JSON.stringify(str)};
 
 $(function () {
-
     $("#process_btn").click(processGrammar);
     $("#parse_btn").click(runParser);
     $("#examples").change(function(ev) {
@@ -19,7 +18,6 @@ $(function () {
         $(document.body).removeClass("loading");
       });
     });
-
 });
 
 function processGrammar () {
@@ -262,6 +260,5 @@ function lrTable (p){
       if (el)
         el.title += r.msg+"\n"+"("+r.s+", "+r.r+") -> "+r.action;
     });
-
 }
 
