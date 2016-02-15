@@ -6,7 +6,7 @@
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.17-113",
+  "version": "0.4.17-114",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -36,11 +36,12 @@
     "node": ">=0.9"
   },
   "dependencies": {
-    "jison-lex": "GerHobbelt/jison-lex#master",
+    "cjson": ">=0.3.2",
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
+    "jison-lex": "GerHobbelt/jison-lex#master",
     "lex-parser": "GerHobbelt/lex-parser#master",
     "nomnom": "GerHobbelt/nomnom#master",
-    "cjson": ">=0.3.2"
+    "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "test": ">=0.6.0",
