@@ -407,7 +407,7 @@ exports["test token array LIFO"] = function() {
             "pgm" :[ ["expr expr expr", "return $1+$2+$3;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
-                         ["c", "$$ = 'c';"] ]
+                        ["c", "$$ = 'c';"] ]
         },
         options: { 'token-stack': true }
     };
