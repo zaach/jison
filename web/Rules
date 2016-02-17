@@ -20,6 +20,10 @@ compile '/jison/demos/*/' do
   layout 'default'
 end
 
+compile '/jison/demos/*' do
+  # do nothing
+end
+
 compile '/jison/try/' do
   filter :erb
   layout 'default'
