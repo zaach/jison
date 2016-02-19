@@ -1,7 +1,9 @@
 
 /* description: Parses and executes mathematical expressions. */
 
-%options onDemandLookahead
+
+/* camelCased: option.onDemandLookahead */
+%options on-demand-lookahead
 
 
 /* lexical grammar */
