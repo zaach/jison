@@ -17,20 +17,11 @@ end
 
 
 compile '/jison/demos/*/' do
-  layout 'default'
+  layout 'default-l3'
 end
 
-compile '/jison/demos/*' do
-  # do nothing
-end
-
-compile '/jison/try/' do
-  filter :erb
-  layout 'default'
-end
-
-compile '/jison/try/*' do
-  # do nothing
+compile '/jison/try/*/' do
+  layout 'default-l3'
 end
 
 compile '/jison/' do

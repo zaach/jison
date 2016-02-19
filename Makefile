@@ -5,12 +5,18 @@ prep: npm-install
 
 site: web/content/assets/js/jison.js
 
-web/content/assets/js/jison.js: build test examples
+clean-site:
+	-@rm -rf web/tmp/
+	-@rm -rf web/output/jison/
+
+compile-site:
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
+
+web/content/assets/js/jison.js: build test examples compile-site
 
 preview:
 	cd web/ && nanoc view &
@@ -254,4 +260,4 @@ superclean: clean
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag
+.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
