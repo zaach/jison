@@ -227,7 +227,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 var parser = {
 EOF: 1,
 TERROR: 2,
-trace: function trace() { },
+trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
@@ -402,7 +402,7 @@ break;
 case 7 : 
 /*! Production::     e : e '!' */
  
-          this.$ = (function fact (n) { return n == 0 ? 1 : fact(n-1) * n; })($$[$0-1]);
+          this.$ = (function fact(n) { return n == 0 ? 1 : fact(n-1) * n; })($$[$0-1]);
          
 break;
 case 8 : 
@@ -2245,7 +2245,7 @@ return lexer;
 })();
 parser.lexer = lexer;
 
-function Parser () {
+function Parser() {
   this.yy = {};
 }
 Parser.prototype = parser;

@@ -60,7 +60,7 @@ e
         {$$ = Math.pow($1, $3);}
     | e '!'
         {{
-          $$ = (function fact (n) { return n == 0 ? 1 : fact(n-1) * n; })($1);
+          $$ = (function fact(n) { return n == 0 ? 1 : fact(n-1) * n; })($1);
         }}
     | e '%'
         {$$ = $1/100;}
