@@ -5,6 +5,12 @@ a img { border: 0px; }
   width: 100%;
 }
 
+#content {
+    max-width: 2600px;
+    margin: 0 auto;
+    padding: 0 1em;
+}
+
 #intro {
   font-size: 2em;
   -moz-border-radius: 8px;
@@ -31,14 +37,15 @@ a img { border: 0px; }
 #nonterminals dl {
   font-size: 90%;
 }
+#parsing { display: none; }
 
 dt { font-weight: bold; }
 
 .nonterm { background-color: #eef; }
-.action_s { color: #940; }
+.action_s { color: #940; /* #074 */ }
 .action_r { color: #707; }
 .accept { background-color: #dfd !important; }
-.conflict { background-color: #ffa !important; }
+.conflict { background-color: #ffa !important; /* #feb */ }
 .action, .state, .llaction {
   cursor: pointer;
 }

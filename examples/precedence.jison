@@ -4,14 +4,14 @@
 %lex
 
 
-digits          [0-9]
-whitespace      \s
+DIGITS          [0-9]
+WHITESPACE      \s
 
 
 %%
 
-{whitespace}+   {/* skip whitespace */}
-[{digits}]+     {return 'NAT';}
+{WHITESPACE}+   {/* skip whitespace */}
+[{DIGITS}]+     {return 'NAT';}
 "+"             {return '+';}
 "-"             {return '-';}
 "*"             {return '*';}

@@ -10,19 +10,20 @@
 %options ranges
 
 
-digits          [0-9]
-alpha           [a-zA-Z]|{digits}
-space           " "
-whitespace      \s
+DIGITS          [0-9]
+ALPHA           [a-zA-Z]|{DIGITS}
+SPACE           " "
+WHITESPACE      \s
 
 
 %include with-includes.prelude1.js
 
 %%
 
-{whitespace}+   {/* skip whitespace */}
-[{digits}]+     %include "with-includes.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
-[{digits}{alpha}]+     { console.log("buggerit millenium hands and shrimp!"); }
+{WHITESPACE}+   {/* skip whitespace */}
+[{DIGITS}]+     %include "with-includes.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+[{DIGITS}{ALPHA}]+     
+                %{ console.log("buggerit millenium hands and shrimp!"); %}
 
 "+"             {return '+';}
 "-"             {return '-';}
