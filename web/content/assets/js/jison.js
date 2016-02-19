@@ -30,17 +30,17 @@ Jison.version = version;
 if (typeof console !== 'undefined' && console.log) {
     Jison.print = console.log;
 } else if (typeof puts !== 'undefined') {
-    Jison.print = function print () { puts([].join.call(arguments, ' ')); };
+    Jison.print = function puts_print() { puts([].join.call(arguments, ' ')); };
 } else if (typeof print !== 'undefined') {
     Jison.print = print;
 } else {
-    Jison.print = function print () {};
+    Jison.print = function no_op_print() {};
 }
 
 Jison.Parser = (function () {
 
 // iterator utility
-function each (obj, func) {
+function each(obj, func) {
     if (obj.forEach) {
         obj.forEach(func);
     } else {
@@ -54,14 +54,14 @@ function each (obj, func) {
 }
 
 var Nonterminal = typal.construct({
-    constructor: function Nonterminal (symbol) {
+    constructor: function Nonterminal(symbol) {
         this.symbol = symbol;
         this.productions = new Set();
         this.first = [];
         this.follows = [];
         this.nullable = false;
     },
-    toString: function Nonterminal_toString () {
+    toString: function Nonterminal_toString() {
         var str = this.symbol + '\n';
         str += (this.nullable ? 'nullable' : 'not nullable');
         str += '\nFirsts: ' + this.first.join(', ');
@@ -73,7 +73,7 @@ var Nonterminal = typal.construct({
 });
 
 var Production = typal.construct({
-    constructor: function Production (symbol, handle, id) {
+    constructor: function Production(symbol, handle, id) {
         this.symbol = symbol;
         this.handle = handle;
         this.nullable = false;
@@ -81,14 +81,14 @@ var Production = typal.construct({
         this.first = [];
         this.precedence = 0;
     },
-    toString: function Production_toString () {
+    toString: function Production_toString() {
         return this.symbol + ' -> ' + this.handle.join(' ');
     }
 });
 
 var generator = typal.beget();
 
-generator.constructor = function Jison_Generator (grammar, opt) {
+generator.constructor = function Jison_Generator(grammar, opt) {
     if (typeof grammar === 'string') {
         grammar = ebnfParser.parse(grammar);
     }
@@ -131,7 +131,7 @@ generator.constructor = function Jison_Generator (grammar, opt) {
     }
 };
 
-generator.processGrammar = function processGrammarDef (grammar) {
+generator.processGrammar = function processGrammarDef(grammar) {
     var bnf = grammar.bnf,
         tokens = grammar.tokens,
         nonterminals = this.nonterminals = {},
@@ -274,7 +274,7 @@ generator.augmentGrammar = function augmentGrammar(grammar) {
 };
 
 // set precedence and associativity of operators
-function processOperators (ops) {
+function processOperators(ops) {
     if (!ops) return {};
     var operators = {};
     for (var i = 0, k, prec; (prec = ops[i]); i++) {
@@ -428,6 +428,67 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     ).join('\n')
     .replace(/YYABORT/g, 'return false')
     .replace(/YYACCEPT/g, 'return true');
+    // TODO:
+    // 
+    // yyerror(msg)
+    // yyerrok()
+    // 
+
+    var actionsBaseline = [
+        'function anonymous(' + parameters + ') {',
+        '/* this == yyval */',
+        '',
+        'var $0 = $$.length - 1;',
+        'switch (yystate) {',
+        '}',
+        '}'
+    ].join('\n');
+
+    // report whether there are actually any custom actions at all (or any custom actions' prep code); this
+    // flag will be set when the generated function is essentially *empty*:
+    this.actionsAreAllDefault = (actionsBaseline.replace(/\s+/g, ' ') === this.performAction.replace(/\s+/g, ' '));
+
+    this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
+    this.actionsUseYYLINENO = analyzeFeatureUsage(this.performAction, /\byylineno\b/g, 1);
+    this.actionsUseYYTEXT = analyzeFeatureUsage(this.performAction, /\byytext\b/g, 1);
+    // At this point in time, we have already expanded `$name`, `$$` and `$n` to its `$$[n]` index expression.
+    // 
+    // Also cannot use regex `\b` with `\$` as the regex doesn't consider the literal `$` to be a *word* character
+    // hence the *boundary check* `\b` won't deliver as expected. Hence we'll have to wing it but we can, assured
+    // in the knowledge that the 'sourcecode' we have here is a complete generated *function* which will include
+    // the `function ` prelude and `}` postlude at least! Hence we can replace `\b` with `[^\w]` and we'll be good.
+    this.actionsUseValueTracking = analyzeFeatureUsage(this.performAction, /[^\w]\$\$[^\w]/g, 2);
+    // Ditto for the specific case where we are assigning a value to `$$`:
+    this.actionsUseValueAssignment = analyzeFeatureUsage(this.performAction, /\bthis\.\$[^\w]/g, 0);
+    // Ditto for the expansion of `@name`, `@$` and `@n` to its `_$[n]` index expression:
+    this.actionsUseLocationTracking = analyzeFeatureUsage(this.performAction, /\b_\$[^\w]/g, 1);
+    // Ditto for the specific case where we are assigning a value to `@$`:
+    this.actionsUseLocationAssignment = analyzeFeatureUsage(this.performAction, /\bthis\._\$[^\w]/g, 0);
+
+    this.actionsUseYYSTACK = analyzeFeatureUsage(this.performAction, /\byystack\b/g, 1);
+
+    console.log("Optimization analysis: ", this.performAction, {
+        actionsAreAllDefault: this.actionsAreAllDefault,
+        actionsUseYYLENG: this.actionsUseYYLENG,
+        actionsUseYYLINENO: this.actionsUseYYLINENO,
+        actionsUseYYTEXT: this.actionsUseYYTEXT,
+        actionsUseValueTracking: this.actionsUseValueTracking,
+        actionsUseValueAssignment: this.actionsUseValueAssignment,
+        actionsUseLocationTracking: this.actionsUseLocationTracking,
+        actionsUseLocationAssignment: this.actionsUseLocationAssignment,
+        actionsUseYYSTACK: this.actionsUseYYSTACK,
+    });
+
+    function analyzeFeatureUsage(sourcecode, feature, threshold) {
+        var found = sourcecode.match(feature);
+        console.log("test feature usage for parser optimization: ", {
+            feature: feature,
+            found: found,
+            threshold: threshold,
+            GO: found && found.length > threshold,
+        });
+        return !!(found && found.length > threshold);
+    }
 
     // Cope with literal symbols in the string, including *significant whitespace* tokens
     // as used in a rule like this: `rule: A ' ' B;` which should produce 3 tokens for the
@@ -507,7 +568,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return str;
     }
 
-    function buildProduction (handle) {
+    function buildProduction(handle) {
         var r, rhs, i;
         if (devDebug) console.log('\nbuildProduction: ', JSON.stringify(handle, null, 2));
 
@@ -569,7 +630,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     // where each line above is equivalent to the top-most line. Note the numbers postfixed to
                     // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
                     // the postfix numbering is independent.
-                    function addName (s) {
+                    function addName(s) {
                         if (names[s]) {
                             names[s + (++count[s])] = i + 1;
                         } else {
@@ -656,26 +717,26 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
 
 
-generator.createParser = function createParser () {
+generator.createParser = function createParser() {
     throw new Error('Calling abstract method.');
 };
 
 // noop. implemented in debug mixin
-generator.trace = function trace () { };
+generator.trace = function no_op_trace() { };
 
-generator.warn = function warn () {
+generator.warn = function warn() {
     var args = Array.prototype.slice.call(arguments, 0);
     Jison.print.call(null, args.join(''));
 };
 
-generator.error = function error (msg) {
+generator.error = function error(msg) {
     throw new Error(msg);
 };
 
 // Generator debug mixin
 
 var generatorDebug = {
-    trace: function trace () {
+    trace: function debug_trace() {
         Jison.print.apply(null, arguments);
     },
     beforeprocessGrammar: function () {
@@ -696,7 +757,7 @@ var generatorDebug = {
  */
 var lookaheadMixin = {};
 
-lookaheadMixin.computeLookaheads = function computeLookaheads () {
+lookaheadMixin.computeLookaheads = function computeLookaheads() {
     if (this.DEBUG) {
         this.mix(lookaheadDebug); // mixin debug methods
     }
@@ -708,7 +769,7 @@ lookaheadMixin.computeLookaheads = function computeLookaheads () {
 };
 
 // calculate follow sets based on first and nullable
-lookaheadMixin.followSets = function followSets () {
+lookaheadMixin.followSets = function followSets() {
     var productions = this.productions,
         nonterminals = this.nonterminals,
         self = this,
@@ -755,7 +816,7 @@ lookaheadMixin.followSets = function followSets () {
 };
 
 // return the FIRST set of a symbol or series of symbols
-lookaheadMixin.first = function first (symbol) {
+lookaheadMixin.first = function first(symbol) {
     // epsilon
     if (symbol === '') {
         return [];
@@ -783,7 +844,7 @@ lookaheadMixin.first = function first (symbol) {
 };
 
 // fixed-point calculation of FIRST sets
-lookaheadMixin.firstSets = function firstSets () {
+lookaheadMixin.firstSets = function firstSets() {
     var productions = this.productions,
         nonterminals = this.nonterminals,
         self = this,
@@ -816,7 +877,7 @@ lookaheadMixin.firstSets = function firstSets () {
 };
 
 // fixed-point calculation of NULLABLE
-lookaheadMixin.nullableSets = function nullableSets () {
+lookaheadMixin.nullableSets = function nullableSets() {
     var firsts = this.firsts = {},
         nonterminals = this.nonterminals,
         self = this,
@@ -852,7 +913,7 @@ lookaheadMixin.nullableSets = function nullableSets () {
 };
 
 // check if a token or series of tokens is nullable
-lookaheadMixin.nullable = function nullable (symbol) {
+lookaheadMixin.nullable = function nullable(symbol) {
     // epsilon
     if (symbol === '') {
         return true;
@@ -898,7 +959,7 @@ var lookaheadDebug = {
  */
 var lrGeneratorMixin = {};
 
-lrGeneratorMixin.buildTable = function buildTable () {
+lrGeneratorMixin.buildTable = function buildTable() {
     if (this.DEBUG) {
         this.mix(lrGeneratorDebug); // mixin debug methods
     }
@@ -949,7 +1010,7 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
             this.hash_[this._items[i].id] = true; //i;
         }
     },
-    concat: function concat (set) {
+    concat: function concat(set) {
         var a = set._items || set;
         for (var i = a.length - 1; i >= 0; i--) {
             this.hash_[a[i].id] = true; //i;
@@ -964,14 +1025,14 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
     contains: function (item) {
         return this.hash_[item.id];
     },
-    valueOf: function toValue () {
+    valueOf: function toValue() {
         var v = this._items.map(function (a) { return a.id; }).sort().join('|');
         this.valueOf = function toValue_inner() { return v; };
         return v;
     }
 });
 
-lrGeneratorMixin.closureOperation = function closureOperation (itemSet /*, closureSet*/) {
+lrGeneratorMixin.closureOperation = function closureOperation(itemSet /*, closureSet*/) {
     var closureSet = new this.ItemSet();
     var self = this;
 
@@ -1012,7 +1073,7 @@ lrGeneratorMixin.closureOperation = function closureOperation (itemSet /*, closu
     return closureSet;
 };
 
-lrGeneratorMixin.gotoOperation = function gotoOperation (itemSet, symbol) {
+lrGeneratorMixin.gotoOperation = function gotoOperation(itemSet, symbol) {
     var gotoSet = new this.ItemSet(),
         self = this;
 
@@ -1042,7 +1103,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
     while (marked !== states.size()) {
         itemSet = states.item(marked);
         marked++;
-        itemSet.forEach(function CC_itemSet_forEach (item) {
+        itemSet.forEach(function CC_itemSet_forEach(item) {
             if (item.markedSymbol && item.markedSymbol !== self.EOF) {
                 self.canonicalCollectionInsert(item.markedSymbol, itemSet, states, marked - 1);
             }
@@ -1053,7 +1114,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
 };
 
 // Pushes a unique state into the queue. Some parsing algorithms may perform additional operations
-lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert (symbol, itemSet, states, stateNum) {
+lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert(symbol, itemSet, states, stateNum) {
     var g = this.gotoOperation(itemSet, symbol);
     if (!g.predecessors)
         g.predecessors = {};
@@ -1479,7 +1540,7 @@ function generateGenericHeaderComment() {
  */
 var generatorMixin = {};
 
-generatorMixin.generate = function parser_generate (opt) {
+generatorMixin.generate = function parser_generate(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     var code = '';
@@ -1507,7 +1568,7 @@ generatorMixin.generate = function parser_generate (opt) {
 };
 
 
-generatorMixin.generateAMDModule = function generateAMDModule (opt) {
+generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     var module = this.generateModule_();
@@ -1532,7 +1593,7 @@ generatorMixin.generateAMDModule = function generateAMDModule (opt) {
     return out.join('\n') + '\n';
 };
 
-generatorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
+generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     var moduleName = opt.moduleName || 'parser';
@@ -1561,7 +1622,7 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
     return out.join('\n') + '\n';
 };
 
-generatorMixin.generateModule = function generateModule (opt) {
+generatorMixin.generateModule = function generateModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     var moduleName = opt.moduleName || 'parser';
@@ -1592,7 +1653,7 @@ generatorMixin.generateModule = function generateModule (opt) {
 };
 
 
-generatorMixin.generateModuleExpr = function generateModuleExpr () {
+generatorMixin.generateModuleExpr = function generateModuleExpr() {
     var out = [];
     var module = this.generateModule_();
 
@@ -1608,7 +1669,7 @@ generatorMixin.generateModuleExpr = function generateModuleExpr () {
         }
     }
     out = out.concat(['',
-            'function Parser () {',
+            'function Parser() {',
             '  this.yy = {};',
             '}',
             'Parser.prototype = parser;',
@@ -1621,7 +1682,7 @@ generatorMixin.generateModuleExpr = function generateModuleExpr () {
     return out.join('\n') + '\n';
 };
 
-function removeFeatureMarkers (fn) {
+function removeFeatureMarkers(fn) {
     var parseFn = fn;
     parseFn = parseFn.replace(/^\s*_handle_error_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
     parseFn = parseFn.replace(/^\s*_lexer_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
@@ -1719,7 +1780,7 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
 // Generates the code of the parser module, which consists of two parts:
 // - module.commonCode: initialization code that should be placed before the module
 // - module.moduleCode: code that creates the module object
-lrGeneratorMixin.generateModule_ = function generateModule_ () {
+lrGeneratorMixin.generateModule_ = function generateModule_() {
     var parseFn = String(parser.parse);
     parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
@@ -2244,7 +2305,7 @@ lrGeneratorMixin.generateTableCode2 = function (table) {
 };
 
 // default main method for generated commonjs modules
-function commonjsMain (args) {
+function commonjsMain(args) {
     // When the parser comes with its own `main` function, then use that one:
     if (typeof exports.parser.main === 'function') {
       return exports.parser.main(args);
@@ -2260,7 +2321,7 @@ function commonjsMain (args) {
 
 // debug mixin for LR parser generators
 
-function printAction (a, gen) {
+function printAction(a, gen) {
     var s = a[0] == 1 ? 'shift token (then go to state ' + a[1] + ')' :
         a[0] == 2 ? 'reduce by rule: ' + gen.productions[a[1]] :
                     'accept';
@@ -2296,7 +2357,7 @@ var lrGeneratorDebug = {
 
 var parser = typal.beget();
 
-generatorMixin.createParser = function createParser () {
+generatorMixin.createParser = function createParser() {
     var p = eval(this.generateModuleExpr());
 
     // for debugging
@@ -2324,11 +2385,11 @@ parser.trace = generator.trace;
 parser.warn = generator.warn;
 parser.error = generator.error;
 
-function traceParseError (err, hash) {
+function traceParseError(err, hash) {
     this.trace(err);
 }
 
-function parseError (str, hash) {
+function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
     } else {
@@ -2364,7 +2425,7 @@ parser.describeSymbol = function describeSymbol(symbol) {
     return null;
 };
 
-parser.parse = function parse (input) {
+parser.parse = function parse(input) {
     var self = this,
         stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
         tstack = [],        // token stack (only used when `%options token_stack` support has been enabled)
@@ -2773,6 +2834,10 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
+                // TODO:
+                // yyerror(msg)
+                // yyerrok
+                // len
                 r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
@@ -2865,7 +2930,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
 
 var lr0 = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: "LR(0)",
-    afterconstructor: function lr0_afterconstructor () {
+    afterconstructor: function lr0_afterconstructor() {
         this.buildTable();
     }
 });
@@ -2992,13 +3057,13 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             var state = typeof i === 'number' ? self.states.item(i) : i,
                 follows = [];
             if (state.reductions.length) {
-                state.reductions.forEach(function union_reduction_forEach (item) {
+                state.reductions.forEach(function union_reduction_forEach(item) {
                     var follows = {};
                     for (var k = 0; k < item.follows.length; k++) {
                         follows[item.follows[k]] = true;
                     }
-                    state.goes[item.production.handle.join(' ')].forEach(function reduction_goes_forEach (symbol) {
-                        newg.nonterminals[symbol].follows.forEach(function goes_follows_forEach (symbol) {
+                    state.goes[item.production.handle.join(' ')].forEach(function reduction_goes_forEach(symbol) {
+                        newg.nonterminals[symbol].follows.forEach(function goes_follows_forEach(symbol) {
                             var terminal = self.terms_[symbol];
                             if (!follows[terminal]) {
                                 follows[terminal] = true;
@@ -3018,7 +3083,7 @@ var LALRGenerator = exports.LALRGenerator = lalr.construct();
 // LALR generator debug mixin
 
 var lalrGeneratorDebug = {
-    trace: function trace () {
+    trace: function lalrDebugTrace() {
         Jison.print.apply(null, arguments);
     },
     beforebuildNewGrammar: function () {
@@ -3036,7 +3101,7 @@ var lalrGeneratorDebug = {
  * Define base type
  */
 var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
-    afterconstructor: function lr_aftercontructor () {
+    afterconstructor: function lr_aftercontructor() {
         this.computeLookaheads();
         this.buildTable();
     }
@@ -3048,7 +3113,7 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
 var SLRGenerator = exports.SLRGenerator = lrLookaheadGenerator.construct({
     type: "SLR(1)",
 
-    lookAheads: function SLR_lookAhead (state, item) {
+    lookAheads: function SLR_lookAhead(state, item) {
         return this.nonterminals[item.production.symbol].follows;
     }
 });
@@ -3060,7 +3125,7 @@ var SLRGenerator = exports.SLRGenerator = lrLookaheadGenerator.construct({
 var lr1 = lrLookaheadGenerator.beget({
     type: "Canonical LR(1)",
 
-    lookAheads: function LR_lookAheads (state, item) {
+    lookAheads: function LR_lookAheads(state, item) {
         return item.follows;
     },
     Item: lrGeneratorMixin.Item.prototype.construct({
@@ -3072,7 +3137,7 @@ var lr1 = lrLookaheadGenerator.beget({
         }
     }),
 
-    closureOperation: function LR_ClosureOperation (itemSet) {
+    closureOperation: function LR_ClosureOperation(itemSet) {
         var closureSet = new this.ItemSet();
         var self = this;
 
@@ -3151,7 +3216,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
     // Generates the code of the parser module, which consists of two parts:
     // - module.commonCode: initialization code that should be placed before the module
     // - module.moduleCode: code that creates the module object
-    generateModule_: function ll_GenerateModule_ () {
+    generateModule_: function ll_GenerateModule_() {
         // var parseFn = String(parser.parse);
         // parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
@@ -3220,7 +3285,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
 
 var LLGenerator = exports.LLGenerator = ll.construct();
 
-Jison.Generator = function Jison_Generator (g, options) {
+Jison.Generator = function Jison_Generator(g, options) {
     var opt = typal.camelMix.call({}, g.options, options);
     switch (opt.type || '') {
     case 'lr0':
@@ -3242,7 +3307,7 @@ Jison.Generator = function Jison_Generator (g, options) {
     }
 };
 
-return function Parser (g, options) {
+return function Parser(g, options) {
     var gen = Jison.Generator(g, options);
     return gen.createParser();
 };
@@ -3255,11 +3320,14 @@ var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("./lex-parser");
 
-exports.parse = function parse (grammar) { return bnf.parse(grammar); };
+exports.parse = function parse(grammar) { 
+    return bnf.parse(grammar); 
+};
+
 exports.transform = ebnf.transform;
 
 // adds a declaration to the grammar
-bnf.yy.addDeclaration = function (grammar, decl) {
+bnf.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
     if (decl.start) {
         grammar.start = decl.start;
     } else if (decl.lex) {
@@ -3305,7 +3373,7 @@ bnf.yy.addDeclaration = function (grammar, decl) {
 };
 
 // parse an embedded lex section
-var parseLex = function (text) {
+var parseLex = function bnfParseLex(text) {
     text = text.replace(/(?:^%lex)|(?:\/lex$)/g, '');
     return jisonlex.parse(text);
 };
@@ -3865,7 +3933,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 var parser = {
 EOF: 1,
 TERROR: 2,
-trace: function trace() { },
+trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
@@ -11993,6 +12061,10 @@ parse: function parse(input) {
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
+                // TODO:
+                // yyerror(msg)
+                // yyerrok
+                // len
                 r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
@@ -13282,7 +13354,7 @@ return lexer;
 })();
 parser.lexer = lexer;
 
-function Parser () {
+function Parser() {
   this.yy = {};
 }
 Parser.prototype = parser;
@@ -13584,7 +13656,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 var parser = {
 EOF: 1,
 TERROR: 2,
-trace: function trace() { },
+trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 symbols_: {
@@ -19855,6 +19927,10 @@ parse: function parse(input) {
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
+                // TODO:
+                // yyerror(msg)
+                // yyerrok
+                // len
                 r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
@@ -20970,7 +21046,7 @@ return lexer;
 })();
 parser.lexer = lexer;
 
-function Parser () {
+function Parser() {
   this.yy = {};
 }
 Parser.prototype = parser;
@@ -22202,83 +22278,109 @@ module.exports = RegExpLexer;
 var typal = require("./typal").typal;
 
 var setMixin = {
-    constructor: function Set_constructor (set, raw) {
+    constructor: function Set_constructor(set, raw) {
         this._items = [];
-        if (set && set.constructor === Array)
+        if (set && set.constructor === Array) {
             this._items = raw ? set: set.slice(0);
-        else if(arguments.length)
-            this._items = [].slice.call(arguments,0);
+        }
+        else if(arguments.length) {
+            this._items = [].slice.call(arguments, 0);
+        }
     },
-    concat: function concat (setB) {
+    concat: function concat(setB) {
         this._items.push.apply(this._items, setB._items || setB);
         return this;
     },
-    eq: function eq (set) {
+    eq: function eq(set) {
         return this._items.length === set._items.length && this.subset(set);
     },
-    indexOf: function indexOf (item) {
+    indexOf: function indexOf(item) {
         if(item && item.eq) {
-            for(var k=0; k<this._items.length;k++)
-                if(item.eq(this._items[k]))
+            for(var k = 0; k < this._items.length; k++) {
+                if(item.eq(this._items[k])) {
                     return k;
+                }
+            }
             return -1;
         }
         return this._items.indexOf(item);
     },
-    union: function union (set) {
+    union: function union(set) {
         return (new Set(this._items)).concat(this.complement(set));
     },
-    intersection: function intersection (set) {
-    return this.filter(function (elm) {
+    intersection: function intersection(set) {
+        return this.filter(function intersection_filter(elm) {
             return set.contains(elm);
         });
     },
-    complement: function complement (set) {
+    complement: function complement(set) {
         var that = this;
-        return set.filter(function sub_complement (elm) {
+        return set.filter(function sub_complement(elm) {
             return !that.contains(elm);
         });
     },
-    subset: function subset (set) {
+    subset: function subset(set) {
         var cont = true;
-        for (var i=0; i<this._items.length && cont;i++) {
+        for (var i = 0; i < this._items.length && cont; i++) {
             cont = cont && set.contains(this._items[i]);
         }
         return cont;
     },
-    superset: function superset (set) {
+    superset: function superset(set) {
         return set.subset(this);
     },
-    joinSet: function joinSet (set) {
+    joinSet: function joinSet(set) {
         return this.concat(this.complement(set));
     },
-    contains: function contains (item) { return this.indexOf(item) !== -1; },
-    item: function item (v, val) { return this._items[v]; },
-    i: function i (v, val) { return this._items[v]; },
-    first: function first () { return this._items[0]; },
-    last: function last () { return this._items[this._items.length-1]; },
-    size: function size () { return this._items.length; },
-    isEmpty: function isEmpty () { return this._items.length === 0; },
-    copy: function copy () { return new Set(this._items); },
-    toString: function toString () { return this._items.toString(); }
+    contains: function contains(item) { 
+        return this.indexOf(item) !== -1; 
+    },
+    item: function item(v, val) { 
+        return this._items[v]; 
+    },
+    i: function i(v, val) { 
+        return this._items[v]; 
+    },
+    first: function first() { 
+        return this._items[0]; 
+    },
+    last: function last() { 
+        return this._items[this._items.length - 1]; 
+    },
+    size: function size() { 
+        return this._items.length; 
+    },
+    isEmpty: function isEmpty() { 
+        return this._items.length === 0; 
+    },
+    copy: function copy() { 
+        return new Set(this._items); 
+    },
+    toString: function toString() { 
+        return this._items.toString(); 
+    }
 };
 
 "push shift unshift forEach some every join sort".split(' ').forEach(function (e,i) {
-    setMixin[e] = function () { return Array.prototype[e].apply(this._items, arguments); };
+    setMixin[e] = function () { 
+        return Array.prototype[e].apply(this._items, arguments); 
+    };
     setMixin[e].name = e;
 });
 "filter slice map".split(' ').forEach(function (e,i) {
-    setMixin[e] = function () { return new Set(Array.prototype[e].apply(this._items, arguments), true); };
+    setMixin[e] = function () { 
+        return new Set(Array.prototype[e].apply(this._items, arguments), true); 
+    };
     setMixin[e].name = e;
 });
 
 var Set = typal.construct(setMixin).mix({
     union: function (a, b) {
         var ar = {};
-        for (var k=a.length-1;k >=0;--k) {
+        for (var k = a.length - 1; k >= 0; --k) {
             ar[a[k]] = true;
         }
-        for (var i=b.length-1;i >= 0;--i) {
+        for (var i = b.length - 1; i >= 0; --i) {
             if (!ar[b[i]]) {
                 a.push(b[i]);
             }
@@ -22287,8 +22389,9 @@ var Set = typal.construct(setMixin).mix({
     }
 });
 
-if (typeof exports !== 'undefined')
+if (typeof exports !== 'undefined') {
     exports.Set = Set;
+}
 
 
 },{"./typal":11}],10:[function(require,module,exports){
