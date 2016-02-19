@@ -232,7 +232,27 @@ generator.augmentGrammar = function augmentGrammar(grammar) {
     }
     //this.EOF = '$end';       // moved to generator.buildProductions()
 
-    // augment the grammar
+    // Augment the grammar:
+    // 
+    // Add the top-most accept rule (and implicit, default, action):
+    //   
+    //     $accept: <startSymbol> $end
+    //                  %{ $$ = $1; @$ = @1; %}
+    //     
+    // which, combined with the new parse kernel's `$accept` state behaviour will produce the
+    // `$$` value output of the <startSymbol> rule as the parse result, IFF that result is
+    // *not* `undefined`. (See also the parser kernel code.)
+    // 
+    // In code:
+    // 
+    //                  %{
+    //                      @$ = @1;
+    //                      if (typeof $1 !== 'undefined')
+    //                          return $1;
+    //                      else
+    //                          true;           // the default parse result if the rule actions don't produce anything
+    //                  %}
+    // 
     var acceptProduction = new Production('$accept', [this.startSymbol, '$end'], 0);
     this.productions.unshift(acceptProduction);
 
@@ -2776,7 +2796,27 @@ _handle_error_end_of_section:                  // this concludes the error recov
             case 3:
                 // accept
                 retval = true;
-                // Return the last rule's `$$` result, if available
+                // Return the `$accept` rule's `$$` result, if available.
+                // 
+                // Also note that JISON always adds this top-most `$accept` rule (with implicit, 
+                // default, action):
+                //   
+                //     $accept: <startSymbol> $end
+                //                  %{ $$ = $1; @$ = @1; %}
+                //     
+                // which, combined with the parse kernel's `$accept` state behaviour coded below, 
+                // will produce the `$$` value output of the <startSymbol> rule as the parse result, 
+                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                // 
+                // In code:
+                // 
+                //                  %{
+                //                      @$ = @1;            // if location tracking support is included
+                //                      if (typeof $1 !== 'undefined')
+                //                          return $1;
+                //                      else
+                //                          true;           // the default parse result if the rule actions don't produce anything
+                //                  %}
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
@@ -11976,7 +12016,27 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                // Return the last rule's `$$` result, if available
+                // Return the `$accept` rule's `$$` result, if available.
+                // 
+                // Also note that JISON always adds this top-most `$accept` rule (with implicit, 
+                // default, action):
+                //   
+                //     $accept: <startSymbol> $end
+                //                  %{ $$ = $1; @$ = @1; %}
+                //     
+                // which, combined with the parse kernel's `$accept` state behaviour coded below, 
+                // will produce the `$$` value output of the <startSymbol> rule as the parse result, 
+                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                // 
+                // In code:
+                // 
+                //                  %{
+                //                      @$ = @1;            // if location tracking support is included
+                //                      if (typeof $1 !== 'undefined')
+                //                          return $1;
+                //                      else
+                //                          true;           // the default parse result if the rule actions don't produce anything
+                //                  %}
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
@@ -19818,7 +19878,27 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
-                // Return the last rule's `$$` result, if available
+                // Return the `$accept` rule's `$$` result, if available.
+                // 
+                // Also note that JISON always adds this top-most `$accept` rule (with implicit, 
+                // default, action):
+                //   
+                //     $accept: <startSymbol> $end
+                //                  %{ $$ = $1; @$ = @1; %}
+                //     
+                // which, combined with the parse kernel's `$accept` state behaviour coded below, 
+                // will produce the `$$` value output of the <startSymbol> rule as the parse result, 
+                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                // 
+                // In code:
+                // 
+                //                  %{
+                //                      @$ = @1;            // if location tracking support is included
+                //                      if (typeof $1 !== 'undefined')
+                //                          return $1;
+                //                      else
+                //                          true;           // the default parse result if the rule actions don't produce anything
+                //                  %}
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
