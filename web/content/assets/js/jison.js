@@ -93,7 +93,8 @@ generator.constructor = function Jison_Generator (grammar, opt) {
         grammar = ebnfParser.parse(grammar);
     }
 
-    var options = typal.mix.call({}, grammar.options, opt);
+    var options = typal.camelMix.call({}, grammar.options, opt);
+
     this.terms = {};
     this.operators = {};
     this.productions = [];
@@ -180,7 +181,9 @@ generator.processGrammar = function processGrammarDef (grammar) {
             try {
                 predefined_symbols = JSON.parse(source);
             } catch (ex) {
-                if (devDebug) console.log('%import symbols JSON fail: ', ex);
+                if (devDebug) {
+                    console.log('%import symbols JSON fail: ', ex);
+                }
                 try {
                     var m = /[\r\n]\s*symbols_:\s*(\{[\s\S]*?\}),\s*[\r\n]/.exec(source);
                     if (m && m[1]) {
@@ -188,7 +191,9 @@ generator.processGrammar = function processGrammarDef (grammar) {
                         predefined_symbols = JSON.parse(source);
                     }
                 } catch (ex) {
-                    if (devDebug) console.log('%import symbols JISON output fail: ', ex);
+                    if (devDebug) {
+                        console.log('%import symbols JISON output fail: ', ex);
+                    }
                 }
             }
             if (!predefined_symbols || typeof predefined_symbols !== 'object') {
@@ -216,7 +221,7 @@ generator.processGrammar = function processGrammarDef (grammar) {
     this.augmentGrammar(grammar);
 };
 
-generator.augmentGrammar = function augmentGrammar (grammar) {
+generator.augmentGrammar = function augmentGrammar(grammar) {
     if (this.productions.length === 0) {
         throw new Error('Grammar error: must have at least one rule.');
     }
@@ -274,7 +279,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var actionGroups = {};          // used to combine identical actions into single instances: no use duplicating action code needlessly
     var actionGroupValue = {};      // stores the unaltered, expanded, user-defined action code for each action group.
     var prods, symbol;
-    var productions_ = [0];
+    var productions_ = [];
     var symbols_ = {};
     var usedSymbolIds = [/* $accept = 0 */ true, /* $end = 1 */ true, /* error = 2 */ true];
     var usedSymbolIdsLowIndex = 127; // 127? 3?
@@ -393,14 +398,16 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.productions_ = productions_;
     actions.push('}');
 
-    actions = actions.join('\n')
-                .replace(/YYABORT/g, 'return false')
-                .replace(/YYACCEPT/g, 'return true');
-
     var parameters = 'yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack';
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
-    this.performAction = 'function anonymous(' + parameters + ') {\n' + actions + '\n}';
+    this.performAction = [].concat(
+        'function anonymous(' + parameters + ') {',
+        actions, 
+        '}'
+    ).join('\n')
+    .replace(/YYABORT/g, 'return false')
+    .replace(/YYACCEPT/g, 'return true');
 
     // Cope with literal symbols in the string, including *significant whitespace* tokens
     // as used in a rule like this: `rule: A ' ' B;` which should produce 3 tokens for the
@@ -691,7 +698,7 @@ lookaheadMixin.followSets = function followSets () {
     while (cont) {
         cont = false;
 
-        productions.forEach(function Follow_prod_forEach (production, k) {
+        productions.forEach(function Follow_prod_forEach(production, k) {
             //self.trace(production.symbol, nonterminals[production.symbol].follows);
             // q is used in Simple LALR algorithm determine follows in context
             var q;
@@ -767,7 +774,7 @@ lookaheadMixin.firstSets = function firstSets () {
     while (cont) {
         cont = false;
 
-        productions.forEach(function FirstSets_forEach (production, k) {
+        productions.forEach(function FirstSets_forEach(production, k) {
             var firsts = self.first(production.handle);
             if (firsts.length !== production.first.length) {
                 production.first = firsts;
@@ -879,6 +886,7 @@ lrGeneratorMixin.buildTable = function buildTable () {
     this.states = this.canonicalCollection();
     this.table = this.parseTable(this.states);
     this.defaultActions = findDefaults(this.table);
+    cleanupTable(this.table);
 };
 
 lrGeneratorMixin.Item = typal.construct({
@@ -953,13 +961,13 @@ lrGeneratorMixin.closureOperation = function closureOperation (itemSet /*, closu
     do {
         itemQueue = new Set();
         closureSet.concat(set);
-        set.forEach(function CO_set_forEach (item) {
+        set.forEach(function CO_set_forEach(item) {
             var symbol = item.markedSymbol;
 
             // if token is a non-terminal, recursively add closures
             if (symbol && self.nonterminals[symbol]) {
                 if (!syms[symbol]) {
-                    self.nonterminals[symbol].productions.forEach(function CO_nt_forEach (production) {
+                    self.nonterminals[symbol].productions.forEach(function CO_nt_forEach(production) {
                         var newItem = new self.Item(production, 0);
                         if (!closureSet.contains(newItem)) {
                             itemQueue.push(newItem);
@@ -1000,7 +1008,7 @@ lrGeneratorMixin.gotoOperation = function gotoOperation (itemSet, symbol) {
 /*
  * Create unique set of item sets
  */
-lrGeneratorMixin.canonicalCollection = function canonicalCollection () {
+lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
     var item1 = new this.Item(this.productions[0], 0, [this.EOF]);
     var firstState = this.closureOperation(new this.ItemSet(item1)),
         states = new Set(firstState),
@@ -1046,7 +1054,8 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert 
 };
 
 var NONASSOC = 0;
-lrGeneratorMixin.parseTable = function parseTable (itemSets) {
+
+lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
     var states = [],
         nonterminals = this.nonterminals,
         operators = this.operators,
@@ -1067,6 +1076,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                 // find shift and goto actions
                 if (item.markedSymbol == stackSymbol) {
                     var gotoState = itemSet.edges[stackSymbol];
+                    assert(gotoState);
                     if (nonterminals[stackSymbol]) {
                         // store state to go to after a reduce
                         //self.trace(k, stackSymbol, 'g' + gotoState);
@@ -1082,6 +1092,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
         // set accept action
         itemSet.forEach(function (item, j) {
             if (item.markedSymbol == self.EOF) {
+                assert(item.markedSymbol === self.EOF);
                 // accept
                 state[self.symbols_[self.EOF]] = [a];
                 //self.trace(k, self.EOF, state[self.EOF]);
@@ -1100,7 +1111,7 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                 var op = operators[stackSymbol];
 
                 // Reading a terminal and current position is at the end of a production, try to reduce
-                if (action || action && action.length) {
+                if (action || (action && action.length)) {
                     var sol = resolveConflict(item.production, op, [r, item.production.id], action[0] instanceof Array ? action[0] : action);
                     self.resolutions.push([k, stackSymbol, sol]);
                     if (sol.bydefault) {
@@ -1110,8 +1121,9 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                             conflictedStates[k] = true;
                         }
                         if (self.options.noDefaultResolve) {
-                            if (!(action[0] instanceof Array))
+                            if (!(action[0] instanceof Array)) {
                                 action = [action];
+                            }
                             action.push(sol.r);
                         }
                     } else {
@@ -1123,7 +1135,15 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
                 if (action && action.length) {
                     state[self.symbols_[stackSymbol]] = action;
                 } else if (action === NONASSOC) {
-                    state[self.symbols_[stackSymbol]] = undefined;
+                    state[self.symbols_[stackSymbol]] = NONASSOC;       
+                    // ^- Can't delete this node right away as it will influence 
+                    // `findDefaults()` decision-making process adversely when this state is
+                    // not visible at that time. Hence we defer cleanup to the function
+                    // `cleanupTable()` which will be invoked at the very end: the NONASSOC
+                    // transition signals a transition into an ERROR state and we don't care
+                    // for the explicit zero(0) to be present in our table as anything 
+                    // 'falsey' as an action code will be considered an error state in
+                    // the parser and not having these zeroes around keeps the table small(er). 
                 }
             });
         });
@@ -1142,12 +1162,15 @@ lrGeneratorMixin.parseTable = function parseTable (itemSets) {
 };
 
 // find states with only one action, a reduction
-function findDefaults (states) {
+function findDefaults(states) {
     var defaults = {};
     states.forEach(function (state, k) {
+        var act;
         var i = 0;
-        for (var act in state) {
-             if ({}.hasOwnProperty.call(state, act)) i++;
+
+        for (act in state) {
+             assert({}.hasOwnProperty.call(state, act));    // it this isn't true, the last part of this function won't work!
+             i++;
         }
 
         if (i === 1 && state[act][0] === 2) {
@@ -1159,9 +1182,27 @@ function findDefaults (states) {
     return defaults;
 }
 
+// Remove all NONASSOC state transitions from the generated table now that we don't them any longer
+function cleanupTable(table) {
+    table.forEach(function (state, k) {
+        var symbol;
+
+        for (symbol in state) {
+            if (state[symbol] === NONASSOC) {
+                delete state[symbol];
+            }
+        }
+    });
+}
+
 // resolves shift-reduce and reduce-reduce conflicts
-function resolveConflict (production, op, reduce, shift) {
-    var sln = {production: production, operator: op, r: reduce, s: shift},
+function resolveConflict(production, op, reduce, shift) {
+    var sln = {
+            production: production, 
+            operator: op, 
+            r: reduce, 
+            s: shift
+        },
         s = 1, // shift
         r = 2, // reduce
         a = 3; // accept
@@ -1210,16 +1251,48 @@ function generateGenericHeaderComment() {
         + ' *\n'
         + ' *  Parser.prototype: {\n'
         + ' *    yy: {},\n'
+        + ' *    EOF: 1,\n'
+        + ' *    TERROR: 2,\n'
+        + ' *\n'
         + ' *    trace: function(errorMessage, errorHash),\n'
+        + ' *\n'
         + ' *    JisonParserError: function(msg, hash),\n'
+        + ' *\n'
+        + ' *    quoteName: function(name),\n'
+        + ' *               Helper function which can be overridden by user code later on: put suitable\n'
+        + ' *                quotes around literal IDs in a description string.\n'
+        + ' *\n'
+        + ' *    describeSymbol: function(symbol),\n'
+        + ' *               Return a more-or-less human-readable description of the given symbol, when\n'
+        + ' *               available, or the symbol itself, serving as its own \'description\' for lack\n'
+        + ' *               of something better to serve up.\n'
+        + ' *\n'
+        + ' *               Return NULL when the symbol is unknown to the parser.\n'
+        + ' *\n'
         + ' *    symbols_: {associative list: name ==> number},\n'
         + ' *    terminals_: {associative list: number ==> name},\n'
         + ' *    productions_: [...],\n'
-        + ' *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, ...),\n'
-        + ' *                (where `...` denotes the (optional) additional arguments the user passed to\n'
-        + ' *                 `parser.parse(str, ...)`)\n'
+        + ' *\n'
+        + ' *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
+        + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
+        + ' *               `parser.parse(str, ...)`\n'
+        + ' *\n'
         + ' *    table: [...],\n'
+        + ' *               State transition table\n'
+        + ' *               ----------------------\n'
+        + ' *\n'
+        + ' *               index levels are:\n'
+        + ' *               - `state`  --> hash table\n'
+        + ' *               - `symbol` --> action (number or array)\n'
+        + ' *\n'
+        + ' *                 If the `action` is an array, these are the elements\' meaning:\n'
+        + ' *                 - index [0]: 1 = shift, 2 = reduce, 3 = accept\n'
+        + ' *                 - index [1]: GOTO `state`\n'
+        + ' *\n'
+        + ' *                 If the `action` is a number, it is the GOTO `state`\n'
+        + ' *\n'
         + ' *    defaultActions: {...},\n'
+        + ' *\n'
         + ' *    parseError: function(str, hash),\n'
         + ' *    parse: function(input),\n'
         + ' *\n'
@@ -1262,7 +1335,7 @@ function generateGenericHeaderComment() {
         + ' *    first_column: n,\n'
         + ' *    last_column: n,\n'
         + ' *    range: [start_number, end_number]\n'
-        + ' *                (where the numbers are indexes into the input string, zero-based)\n'
+        + ' *               (where the numbers are indexes into the input string, zero-based)\n'
         + ' *  }\n'
         + ' *\n'
         + ' * ---\n'
@@ -1287,6 +1360,11 @@ function generateGenericHeaderComment() {
         + ' *                  available for this particular error)\n'
         + ' *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
+        + ' *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,\n'
+        + ' *                  for instance, for advanced error analysis and reporting)\n'
+        + ' *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,\n'
+        + ' *                  for instance, for advanced error analysis and reporting)\n'
+        + ' *    lexer:       (reference to the current lexer instance used by the parser)\n'
         + ' *  }\n'
         + ' *\n'
         + ' * while `this` will reference the current parser instance.\n'
@@ -1297,6 +1375,18 @@ function generateGenericHeaderComment() {
         + ' *  {\n'
         + ' *    lexer:       (reference to the current lexer instance which reported the error)\n'
         + ' *  }\n'
+        + ' *\n'
+        + ' *  When `parseError` is invoked by the parser due to a **JavaScript exception** being fired\n'
+        + ' *  from either the parser or lexer, `this` will still reference the related *parser*\n'
+        + ' *  instance, while these additional `hash` fields will also be provided:\n'
+        + ' *\n'
+        + ' *  {\n'
+        + ' *    exception:   (reference to the exception thrown)\n'
+        + ' *  }\n'
+        + ' *\n'
+        + ' *  Please do note that in the latter situation, the `expected` field will be omitted as\n'
+        + ' *  type of failure is assumed not to be due to *parse errors* but rather due to user\n'
+        + ' *  action code in either parser or lexer failing unexpectedly.\n'
         + ' *\n'
         + ' * ---\n'
         + ' *\n'
@@ -1328,23 +1418,14 @@ function generateGenericHeaderComment() {
         + ' *                 When it does not return any value, the parser will return the original\n'
         + ' *                 `retval`. \n'
         + ' *                 This function is invoked immediately before `Parser.post_parse()`.\n'
+        + ' *\n'
         + ' *      parseError: function(str, hash)\n'
         + ' *                 optional: overrides the default `parseError` function.\n'
+        + ' *      quoteName: function(name),\n'
+        + ' *                 optional: overrides the default `quoteName` function.\n'
         + ' *  }\n'
         + ' *\n'
         + ' *  parser.lexer.options: {\n'
-        + ' *      ranges: boolean\n'
-        + ' *                 optional: `true` ==> token location info will include a .range[] member.\n'
-        + ' *      flex: boolean\n'
-        + ' *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested\n'
-        + ' *                 exhaustively to find the longest match.\n'
-        + ' *      backtrack_lexer: boolean\n'
-        + ' *                 optional: `true` ==> lexer regexes are tested in order and for invoked;\n'
-        + ' *                 the lexer terminates the scan when a token is returned by the action code.\n'
-        + ' *      xregexp: boolean\n'
-        + ' *                 optional: `true` ==> lexer regexes are "extended regex format" using the\n'
-        + ' *                 `XRegExp` library. When this %option has not been specified, all lexer\n'
-        + ' *                 regexes are written as standard JavaScript RegExp expressions.\n'
         + ' *      pre_lex:  function()\n'
         + ' *                 optional: is invoked before the lexer is invoked to produce another token.\n'
         + ' *                 `this` refers to the Lexer object.\n'
@@ -1354,6 +1435,19 @@ function generateGenericHeaderComment() {
         + ' *                 When it does not return any (truthy) value, the lexer will return\n'
         + ' *                 the original `token`.\n'
         + ' *                 `this` refers to the Lexer object.\n'
+        + ' *\n'
+        + ' *      ranges: boolean\n'
+        + ' *                 optional: `true` ==> token location info will include a .range[] member.\n'
+        + ' *      flex: boolean\n'
+        + ' *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested\n'
+        + ' *                 exhaustively to find the longest match.\n'
+        + ' *      backtrack_lexer: boolean\n'
+        + ' *                 optional: `true` ==> lexer regexes are tested in order and for invoked;\n'
+        + ' *                 the lexer terminates the scan when a token is returned by the action code.\n'
+        + ' *      xregexp: boolean\n'
+        + ' *                 optional: `true` ==> lexer rule regexes are "extended regex format" requiring the\n'
+        + ' *                 `XRegExp` library. When this %option has not been specified at compile time, all lexer\n'
+        + ' *                 rule regexes have been written as standard JavaScript RegExp expressions.\n'
         + ' *  }\n'
         + ' */\n';
 
@@ -1366,26 +1460,27 @@ function generateGenericHeaderComment() {
 var generatorMixin = {};
 
 generatorMixin.generate = function parser_generate (opt) {
-    opt = typal.mix.call({}, this.options, opt);
+    opt = typal.camelMix.call({}, this.options, opt);
+    this.options = opt;
     var code = '';
 
     // check for illegal identifier
     if (!opt.moduleName || !opt.moduleName.match(/^[a-zA-Z_$][a-zA-Z0-9_$\.]*$/)) {
         if (opt.debug) {
-            console.warn("WARNING: The specified moduleName '" + opt.moduleName + "' is illegal (only characters [a-zA-Z0-9_$] and '.' dot are accepted); using the default moduleName 'parser' instead.");
+            console.warn('WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.');
         }
         opt.moduleName = 'parser';
     }
     switch (opt.moduleType) {
-        case 'js':
-            code = this.generateModule(opt);
-            break;
-        case 'amd':
-            code = this.generateAMDModule(opt);
-            break;
-        default:
-            code = this.generateCommonJSModule(opt);
-            break;
+    case 'js':
+        code = this.generateModule(opt);
+        break;
+    case 'amd':
+        code = this.generateAMDModule(opt);
+        break;
+    default:
+        code = this.generateCommonJSModule(opt);
+        break;
     }
 
     return code;
@@ -1393,7 +1488,8 @@ generatorMixin.generate = function parser_generate (opt) {
 
 
 generatorMixin.generateAMDModule = function generateAMDModule (opt) {
-    opt = typal.mix.call({}, this.options, opt);
+    opt = typal.camelMix.call({}, this.options, opt);
+    this.options = opt;
     var module = this.generateModule_();
     var out = [
         generateGenericHeaderComment(),
@@ -1417,7 +1513,8 @@ generatorMixin.generateAMDModule = function generateAMDModule (opt) {
 };
 
 generatorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
-    opt = typal.mix.call({}, this.options, opt);
+    opt = typal.camelMix.call({}, this.options, opt);
+    this.options = opt;
     var moduleName = opt.moduleName || 'parser';
     var main = [];
     if (!opt.noMain) {
@@ -1445,7 +1542,8 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule (opt) {
 };
 
 generatorMixin.generateModule = function generateModule (opt) {
-    opt = typal.mix.call({}, this.options, opt);
+    opt = typal.camelMix.call({}, this.options, opt);
+    this.options = opt;
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
 
@@ -1465,7 +1563,7 @@ generatorMixin.generateModule = function generateModule (opt) {
         return '';
     };
 
-    out += _generateNamespace(moduleName.split('.'), null, function (moduleName) {
+    out += _generateNamespace(moduleName.split('.'), null, function _generateNamespace_cb(moduleName) {
         return (moduleName.match(/\./) ? moduleName : 'var ' + moduleName) +
                 ' = ' + self.generateModuleExpr() + '\n';
     });
@@ -1605,15 +1703,35 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
     var parseFn = String(parser.parse);
     parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
-    parseFn = addOrRemoveTokenStack(parseFn, this.options['token-stack']);
+    parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
 
     // always remove the feature markers in the template code.
     parseFn = removeFeatureMarkers(parseFn);
 
-    var tableCode = this.generateTableCode(this.table);
+    var errorClassCode = this.generateErrorClass();
+
+    var tableCode;
+    switch (this.options.compressTables | 0) {
+    case 0: // no compression 
+        tableCode = this.generateTableCode0(this.table);
+        break;
+
+    default:
+    case 1: // default: vanilla JISON table compression = run-length encoding
+        tableCode = this.generateTableCode1(this.table);
+        break;
+
+    case 2: // column-mode compression
+        tableCode = this.generateTableCode2(this.table);
+        break;
+    }
 
     // Generate the initialization code
-    var commonCode = tableCode.commonCode;
+    var commonCode = [].concat(
+        errorClassCode.commonCode,
+        errorClassCode.moduleCode,
+        tableCode.commonCode
+    );
 
     // sort hash table by key to produce a nicer output:
     function sortSymbolTable(tbl) {
@@ -1649,9 +1767,115 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
         return prods;
     }
 
+
+
+    // table is array of 1/2-len arrays:
+    function analyzeTableForCompression(table) {
+        // column: productions' row length
+        var len_col = [];
+        // column: productions' shift size / action column
+        var pop_col = [];
+        // column: rule number for each slot ('rule'):
+        var rule_col = []; 
+
+        var i;
+        var row_count = table.length;
+        for (i = 0; i < row_count; i++) {
+            var prod = table[i];
+
+            len_col.push(prod.length);
+            assert(prod.length <= 2);
+            assert(prod.length > 0);
+            pop_col.push(prod[0]);
+            if (prod.length > 1) {
+                rule_col.push(prod[1]);
+            }
+        }
+
+        var overview = {
+            len_col: len_col,
+            pop_col: pop_col,
+            rule_col: rule_col,
+        };
+
+        var report = [];
+
+        var len = Math.max(len_col.length, pop_col.length, rule_col.length);
+        var def_arr = {
+            "len": len_col,
+            "pop": pop_col,
+            "rule": rule_col,
+        };
+        var col_width = 4;
+        var col_delta_width = 4;
+
+        function clip(val, width) {
+            var s = '        ' + val;
+            s = s.substr(s.length - width);
+            return s;
+        }
+
+        var track_prev4delta = {};
+        var c, key, delta, val, delta_val;
+        var line = [];
+        line.push('║');
+        for (c in def_arr) {
+            key = clip(c, col_width);
+            delta = clip('∆', col_delta_width);
+            line.push(key);
+            line.push('┊');
+            line.push(delta);
+            line.push('║');
+
+            track_prev4delta[c] = 10000000;
+        }
+        report.push(line.join(''));
+
+        for (i = 0; i < len; i++) {
+            line = [];
+            line.push('║');
+            
+            for (c in def_arr) {
+                var tbl = def_arr[c];
+                if (tbl.length > i) {
+                    val = tbl[i] || 0;
+
+                    delta_val = val - track_prev4delta[c];
+                    // negative deltas are jumps: don't treat those as delta but as absolute value, sign-flipped:
+                    if (delta_val < 0) {
+                        delta_val = -val - 1;  // so that absolute 0 becomes -1, so it can be recognized from delta=0 ('no change')
+                    }
+                    track_prev4delta[c] = val;
+                } else {
+                    val = '.';
+                    delta_val = '.';
+                    delta_val2 = '.';
+                }
+
+                key = clip(val, col_width);
+                delta = clip(delta_val, col_delta_width);
+                line.push(key);
+                line.push('┊');
+                line.push(delta);
+                line.push('║');
+            }
+            report.push(line.join(''));
+        }
+
+        // console.log('\n\n\n// ------------------------------\n\n\n// ' + report.join('\n// ') + '\n\n\n// ------------------\n\n\n  // ');
+
+        return '\n\n\n// ------------------------------\n\n\n// ' + report.join('\n// ') + '\n\n\n// ------------------\n\n\n  // ';
+    }
+
+
+
+
+
     // Generate the module creation code
     var moduleCode = '{\n';
     moduleCode += [
+        'EOF: ' + parser.EOF,
+        'TERROR: ' + parser.TERROR,
         'trace: ' + String(this.trace || parser.trace),
         'JisonParserError: JisonParserError',
         'yy: {}',
@@ -1659,22 +1883,67 @@ lrGeneratorMixin.generateModule_ = function generateModule_ () {
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
         'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
         'productions_: ' + JSON.stringify(this.productions_, null, 2),
+        analyzeTableForCompression(this.productions_),
         'performAction: ' + String(this.performAction),
         'table: ' + tableCode.moduleCode,
         'defaultActions: ' + JSON.stringify(this.defaultActions, null, 2).replace(/"([0-9]+)":/g, '$1:'),
+        analyzeTableForCompression(this.defaultActions),
         'parseError: ' + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
+        'quoteName: ' + String(parser.quoteName),
+        'describeSymbol: ' + String(parser.describeSymbol),
         'parse: ' + parseFn
-        ].join(',\n');
+    ].join(',\n');
     moduleCode += '\n};';
 
     return { 
-        commonCode: commonCode, 
+        commonCode: commonCode.join('\n'), 
         moduleCode: moduleCode 
     };
 };
 
+lrGeneratorMixin.generateErrorClass = function () {
+    var prelude = [
+        "// See also:",
+        "// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript",
+        "function JisonParserError(msg, hash) {",
+        "    this.message = msg;",
+        "    this.hash = hash;",
+        "    var stacktrace = (new Error(msg)).stack;",
+        "    if (stacktrace) {",
+        "      this.stack = stacktrace;",
+        "    }",
+        "}",
+        "JisonParserError.prototype = Object.create(Error.prototype);",
+        "JisonParserError.prototype.constructor = JisonParserError;",
+        "JisonParserError.prototype.name = 'JisonParserError';",
+        "",
+    ];
+
+    return {
+        commonCode: '',
+        moduleCode: prelude.join('\n')
+    };
+};
+
 // Generate code that represents the specified parser table
-lrGeneratorMixin.generateTableCode = function (table) {
+lrGeneratorMixin.generateTableCode0 = function (table) {
+    var moduleCode = JSON.stringify(table, null, 2);
+    var usesCompressor = false;
+
+    // Don't surround numerical property name numbers in quotes
+    moduleCode = moduleCode.replace(/"([0-9]+)"(?=:)/g, '$1');
+
+    var prelude = [];
+
+    // Return the variable initialization code and the table code
+    return {
+        commonCode: prelude.join('\n'),
+        moduleCode: moduleCode
+    };
+};
+
+// Generate code that represents the specified parser table
+lrGeneratorMixin.generateTableCode1 = function (table) {
     var moduleCode = JSON.stringify(table, null, 2);
     var usesCompressor = false;
 
@@ -1755,22 +2024,7 @@ lrGeneratorMixin.generateTableCode = function (table) {
         return listId;
     });
 
-    var prelude = [
-        "// See also:",
-        "// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript",
-        "function JisonParserError(msg, hash) {",
-        "    this.message = msg;",
-        "    this.hash = hash;",
-        "    var stacktrace = (new Error(msg)).stack;",
-        "    if (stacktrace) {",
-        "      this.stack = stacktrace;",
-        "    }",
-        "}",
-        "JisonParserError.prototype = Object.create(Error.prototype);",
-        "JisonParserError.prototype.constructor = JisonParserError;",
-        "JisonParserError.prototype.name = 'JisonParserError';",
-        "",
-    ];
+    var prelude = [];
 
     // Only include the expender function when it's actually used
     // (tiny grammars don't have much state duplication, so this shaves off
@@ -1802,6 +2056,173 @@ function createObjectCode(k, v, o) {
   return o;
 }
 
+// Generate code that represents the specified parser table
+lrGeneratorMixin.generateTableCode2 = function (table) {
+    var moduleCode = JSON.stringify(table, null, 2);
+
+    // We know a couple of things about the parse table:
+    // 
+    // - The first level is an array with continuous indexes
+    // - Each entry of the array is an object which contains a series of numeric states as a hash table
+    // - Each 'hash table' entry is either a state number or a 2-element array
+    // 
+    // So we can start by encoding the table 'vertically', i.e. by column rather than by row,
+    // and then provide a bit of code to transform that series of arrays to the real parse table
+    // at run time.
+    // We can encode the columns by encoding the array-or-number aspect as a separate column,
+    // while encoding the size of each hash table in yet another column: number of entries per state.
+    // Then thanks to that length info, plus the 'is this hash-table entry going to be a number or an array' flag column,
+    // we can transform those back to what we need at run-time.
+    // 
+    // Meanwhile, we can inspect each of the columns and see if we can compress them.
+    // 
+    // Of course the flags array is compressible as it's only 1 bit per entry, but there's sure to
+    // be more compression goodies to be had in there, such as run-length encoding and maybe 
+    // delta-encoding of the hashtable indexes themselves.
+    // 
+    // 
+
+    // Don't surround numerical property name numbers in quotes
+    moduleCode = moduleCode.replace(/"([0-9]+)"(?=:)/g, '$1');
+
+    // column: number of symbol hash entries per state slot ('length'):
+    var len_col = [];
+    // column: symbol hash entry key for each slot ('symbol'):
+    var symbol_col = []; 
+    // column: symbol hash entry value type: number (0) or array (array.length) ('type'):
+    var type_col = []; 
+    // column: symbol hash entry value if single GOTO state number ('state'):
+    var state_col = []; 
+    // column: symbol hash entry mode value if array slot type (reduce/shift/accept):
+    var mode_col = []; 
+    // column: symbol hash entry goto state value if array slot type:
+    var goto_col = []; 
+    // column: merged: state_col + goto_col:
+    var next_col = []; 
+
+    var row_count = table.length;
+    for (var state = 0; state < row_count; state++) {
+        var hashtable = table[state];
+        var count = 0;
+        var symbol;
+        for (symbol in hashtable) {
+            symbol = +symbol;
+            symbol_col.push(symbol);
+
+            var slot = hashtable[symbol];
+            if (slot && slot.length) {
+                // array type slot:
+                assert(slot.length === 2 || slot.length === 1);
+                assert(slot.length === 1 ? slot[0] === 3 /* $accept */ : true);
+                type_col.push(slot.length);
+                mode_col.push(slot[0]);
+                goto_col.push(slot[1]);
+                next_col.push(slot[1]);
+            } else if (slot) {
+                // number type slot:
+                type_col.push(0);
+                state_col.push(slot);
+                next_col.push(slot);
+            } else {
+                type_col.push(666);
+                state_col.push((typeof slot) + state + '/' + symbol);
+                next_col.push((typeof slot) + state + '/' + symbol);
+            }
+            count++;
+        }
+        len_col.push(count);
+    }
+
+    var overview = {
+        len_col: len_col,
+        symbol_col: symbol_col,
+        type_col: type_col,
+        state_col: state_col,
+        mode_col: mode_col,
+        goto_col: goto_col,
+        next_col: next_col,
+    };
+    // moduleCode += '\n\n\n// ------------------------------\n\n\n// ' + JSON.stringify(overview, null, 2).split('\n').join('\n// ') + '\n\n\n// ------------------\n\n\n';
+
+    var report = [];
+
+    var len = Math.max(len_col.length, symbol_col.length, type_col.length, state_col.length, mode_col.length, goto_col.length, next_col.length);
+    var def_arr = {
+        "len": len_col,
+        "symbol": symbol_col,
+        "type": type_col,
+        "state": state_col,
+        "mode": mode_col,
+        "goto": goto_col,
+        "next": next_col,
+    };
+    var col_width = 6;
+    var col_delta_width = 4;
+
+    function clip(val, width) {
+        var s = '        ' + val;
+        s = s.substr(s.length - width);
+        return s;
+    }
+
+    var track_prev4delta = {};
+    var c, key, delta, val, delta_val;
+    var line = [];
+    line.push('║');
+    for (c in def_arr) {
+        key = clip(c, col_width);
+        delta = clip('∆', col_delta_width);
+        line.push(key);
+        line.push('┊');
+        line.push(delta);
+        line.push('║');
+
+        track_prev4delta[c] = 10000000;
+    }
+    report.push(line.join(''));
+
+    for (var i = 0; i < len; i++) {
+        line = [];
+        line.push('║');
+        
+        for (c in def_arr) {
+            var tbl = def_arr[c];
+            if (tbl.length > i) {
+                val = tbl[i] || 0;
+
+                delta_val = val - track_prev4delta[c];
+                // negative deltas are jumps: don't treat those as delta but as absolute value, sign-flipped:
+                if (delta_val < 0) {
+                    delta_val = -val - 1;  // so that absolute 0 becomes -1, so it can be recognized from delta=0 ('no change')
+                }
+                track_prev4delta[c] = val;
+            } else {
+                val = '.';
+                delta_val = '.';
+                delta_val2 = '.';
+            }
+
+            key = clip(val, col_width);
+            delta = clip(delta_val, col_delta_width);
+            line.push(key);
+            line.push('┊');
+            line.push(delta);
+            line.push('║');
+        }
+        report.push(line.join(''));
+    }
+
+    moduleCode += '\n\n\n// ------------------------------\n\n\n// ' + report.join('\n// ') + '\n\n\n// ------------------\n\n\n';
+
+    var prelude = [];
+
+    // Return the variable initialization code and the table code
+    return {
+        commonCode: prelude.join('\n'),
+        moduleCode: moduleCode
+    };
+};
+
 // default main method for generated commonjs modules
 function commonjsMain (args) {
     // When the parser comes with its own `main` function, then use that one:
@@ -1829,26 +2250,26 @@ function printAction (a, gen) {
 
 var lrGeneratorDebug = {
     beforeparseTable: function () {
-        this.trace("Building parse table.");
+        this.trace('Building parse table.');
     },
     afterparseTable: function () {
         var self = this;
         if (this.conflicts > 0) {
             this.resolutions.forEach(function (r, i) {
                 if (r[2].bydefault) {
-                    self.warn('Conflict at state: ', r[0], ', token: ', r[1], "\n  ", printAction(r[2].r, self), "\n  ", printAction(r[2].s, self));
+                    self.warn('Conflict at state: ', r[0], ', token: ', r[1], '\n  ', printAction(r[2].r, self), '\n  ', printAction(r[2].s, self));
                 }
             });
-            this.trace("\n" + this.conflicts + " Conflict(s) found in grammar.");
+            this.trace('\n' + this.conflicts + ' Conflict(s) found in grammar.');
         }
-        this.trace("Done.");
+        this.trace('Done.');
     },
     aftercanonicalCollection: function (states /* as produced by `this.canonicalCollection()` */ ) {
         var trace = this.trace;
-        trace("\nItem sets\n------");
+        trace('\nItem sets\n------');
 
         states.forEach(function (state, i) {
-            trace("\nitem set", i, "\n" + state.join("\n"), '\ntransitions -> ', JSON.stringify(state.edges));
+            trace('\nitem set', i, '\n' + state.join('\n'), '\ntransitions -> ', JSON.stringify(state.edges));
         });
     }
 };
@@ -1897,19 +2318,42 @@ function parseError (str, hash) {
 
 parser.parseError = lrGeneratorMixin.parseError = parseError;
 
+// Helper function which can be overridden by user code later on: put suitable quotes around
+// literal IDs in a description string.
+parser.quoteName = function quoteName(id_str) {
+    return '"' + id_str + '"';
+};
+
+parser.TERROR = 2;
+parser.EOF = 1;
+
+// Return a more-or-less human-readable description of the given symbol, when available,
+// or the symbol itself, serving as its own 'description' for lack of something better to serve up.
+// 
+// Return NULL when the symbol is unknown to the parser.
+parser.describeSymbol = function describeSymbol(symbol) {
+    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
+        return this.terminal_descriptions_[symbol];
+    } 
+    else if (symbol === this.EOF) {
+        return 'end of input';
+    }
+    else if (this.terminals_[symbol]) {
+        return this.quoteName(this.terminals_[symbol]);
+    }
+    return null;
+};
+
 parser.parse = function parse (input) {
     var self = this,
-        stack = [0],
+        stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
         tstack = [],        // token stack (only used when `%options token_stack` support has been enabled)
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
         table = this.table,
-        yytext = '',
-        yylineno = 0,
-        yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        TERROR = 2,
-        EOF = 1;
+        TERROR = this.TERROR,
+        EOF = this.EOF;
 
     var args = lstack.slice.call(arguments, 1);
 
@@ -1940,12 +2384,29 @@ parser.parse = function parse (input) {
     }
     var yyloc = lexer.yylloc;
     lstack.push(yyloc);
+    
+    if (typeof lexer.yytext === 'undefined') {
+        lexer.yytext = '';
+    }
+    var yytext = lexer.yytext;
+    if (typeof lexer.yylineno === 'undefined') {
+        lexer.yylineno = 0;
+    }
+    var yylineno = lexer.yylineno;
+    if (typeof lexer.yyleng === 'undefined') {
+        lexer.yyleng = 0;
+    }
+    var yyleng = lexer.yyleng;
 
     var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
+    }
+    // Does the shared state override the default `quoteName` that already comes with this instance?
+    if (typeof sharedState.yy.quoteName === 'function') {
+        this.quoteName = sharedState.yy.quoteName;
     }
 
     function popStack(n) {
@@ -1955,6 +2416,7 @@ parser.parse = function parse (input) {
     }
 
 _lexer_without_token_stack:
+
     function lex() {
         var token;
         token = lexer.lex() || EOF;
@@ -1966,6 +2428,7 @@ _lexer_without_token_stack:
     }
 
 _lexer_with_token_stack:
+
     // lex function that supports token stacks
     function tokenStackLex() {
         var token;
@@ -1982,9 +2445,10 @@ _lexer_with_token_stack:
     }
 
 _lexer_with_token_stack_end:
-    var symbol;
+
+    var symbol = null;
     var preErrorSymbol = null;
-    var state, action, a, r;
+    var state, action, r;
     var yyval = {};
     var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
@@ -1998,6 +2462,7 @@ _lexer_with_token_stack_end:
     }
 
 _handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
+
     // Return the rule stack depth where the nearest error rule can be found.
     // Return FALSE when no error recovery rule was found.
     function locateNearestErrorRecoveryRule(state) {
@@ -2007,10 +2472,11 @@ _handle_error_with_recovery:                    // run this code when the gramma
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
-            if ((TERROR.toString()) in table[state]) {
+            var action = table[state][TERROR];
+            if (action && action.length && action[0]) {
                 return depth;
             }
-            if (state === 0 || stack_probe < 2) {
+            if (state === 0 /* $accept rule */ || stack_probe < 2) {
                 return false; // No suitable error recovery rule available.
             }
             stack_probe -= 2; // popStack(1): [symbol, action]
@@ -2018,18 +2484,32 @@ _handle_error_with_recovery:                    // run this code when the gramma
             ++depth;
         }
     }
+
 _handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
 _handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
 
+    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
+    // 
+    // The produced list may contain token or token set descriptions instead of the tokens
+    // themselves to help turning this output into something that easier to read by humans.
+    // 
+    // The returned list (array) will not contain any duplicate entries.
     function collect_expected_token_set(state) {
         var tokenset = [];
+        var check = {};
+        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
+        // If so, use that one instead of the less palatable token set.
+        if (self.state_descriptions_ && self.state_descriptions_[p]) {
+            return [
+                self.state_descriptions_[p]
+            ];
+        }
         for (var p in table[state]) {
-            if (p > TERROR) {
-                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
-                    tokenset.push(self.terminal_descriptions_[p]);
-                }
-                else if (self.terminals_[p]) {
-                    tokenset.push("'" + self.terminals_[p] + "'");
+            if (p !== TERROR) {
+                var d = self.describeSymbol(p);
+                if (d && !check[d]) {
+                    tokenset.push(d);
+                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
                 }
             }
         }
@@ -2045,7 +2525,11 @@ _handle_error_end_of_section:                   // this concludes the error reco
             if (this.defaultActions[state]) {
                 action = this.defaultActions[state];
             } else {
-                if (symbol === null || typeof symbol === 'undefined') {
+                // The single `==` condition below covers both these `===` comparisons in a single
+                // operation:
+                // 
+                //     if (symbol === null || typeof symbol === 'undefined') ...
+                if (symbol == null) {
                     symbol = lex();
                 }
                 // read action for current state and first input
@@ -2053,10 +2537,11 @@ _handle_error_end_of_section:                   // this concludes the error reco
             }
 
 _handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
+
             // handle parse error
-            if (typeof action === 'undefined' || !action.length || !action[0]) {
+            if (!action || !action.length || !action[0]) {
                 var error_rule_depth;
-                var errStr = '';
+                var errStr = null;
 
                 if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
@@ -2065,24 +2550,30 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     // Report error
                     expected = collect_expected_token_set(state);
                     if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ':\n' + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
                     } else {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
-                                 (symbol === EOF ? 'end of input' :
-                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
                     }
-                    a = this.parseError(errStr, p = {
+                    if (expected.length) {
+                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    } else {
+                        errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    }
+                    r = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: (error_rule_depth !== false),
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     if (!p.recoverable) {
-                        retval = a;
+                        retval = r;
                         break;
                     }
                 } else if (preErrorSymbol !== EOF) {
@@ -2097,10 +2588,13 @@ _handle_error_with_recovery:                // run this code when the grammar in
                             token: this.terminals_[symbol] || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
-                            loc: yyloc,
+                            loc: lexer.yylloc,
                             expected: expected,
                             recoverable: false,
-                            state_stack: stack
+                            state_stack: stack,
+                            value_stack: vstack,
+                            location_stack: lstack,
+                            lexer: lexer
                         });
                         break;
                     }
@@ -2120,10 +2614,13 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: false,
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     break;
                 }
@@ -2137,18 +2634,22 @@ _handle_error_with_recovery:                // run this code when the grammar in
             }
 
 _handle_error_no_recovery:                  // run this code when the grammar does not include any error recovery rules
+
             // handle parse error
-            if (typeof action === 'undefined' || !action.length || !action[0]) {
+            if (!action || !action.length || !action[0]) {
                 var errStr;
 
                 // Report error
                 expected = collect_expected_token_set(state);
                 if (lexer.showPosition) {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ":\n" + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                    errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
                 } else {
-                    errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
-                             (symbol === EOF ? 'end of input' :
-                              ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                    errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                }
+                if (expected.length) {
+                    errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
+                } else {
+                    errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
                 }
                 // we cannot recover from the error!
                 retval = this.parseError(errStr, {
@@ -2156,31 +2657,55 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
-                    loc: yyloc,
+                    loc: lexer.yylloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack
+                    state_stack: stack,
+                    value_stack: vstack,
+                    location_stack: lstack,
+                    lexer: lexer
                 });
                 break;
             }
+
 _handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
 
-            // this shouldn't happen, unless resolve defaults are off
-            if (action[0] instanceof Array && action.length > 1) {
-                retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+            switch (action[0]) {
+            default:
+                // this shouldn't happen, unless resolve defaults are off
+                if (action[0] instanceof Array) {
+                    retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+                        text: lexer.match,
+                        token: this.terminals_[symbol] || symbol,
+                        token_id: symbol,
+                        line: lexer.yylineno,
+                        loc: lexer.yylloc,
+                        expected: expected,
+                        recoverable: false,
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
+                    });
+                    break;
+                }
+                // Another case of better safe than sorry: in case state transitions come out of another error recovery process
+                // or a buggy LUT (LookUp Table):
+                retval = this.parseError(errStr || 'Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
-                    loc: yyloc,
+                    loc: lexer.yylloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack
+                    state_stack: stack,
+                    value_stack: vstack,
+                    location_stack: lstack,
+                    lexer: lexer
                 });
                 break;
-            }
 
-            switch (action[0]) {
             case 1: // shift
                 //this.shiftCount++;
 
@@ -2190,10 +2715,12 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution / no error
+                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
+
                     if (recovering > 0) {
                         recovering--;
                     }
@@ -2207,8 +2734,8 @@ _handle_error_end_of_section:                  // this concludes the error recov
             case 2:
                 // reduce
                 //this.reductionCount++;
-
-                this_production = this.productions_[action[1]];
+                newState = action[1];
+                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len || 1);
@@ -2226,7 +2753,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack, stack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -2249,12 +2776,32 @@ _handle_error_end_of_section:                  // this concludes the error recov
             case 3:
                 // accept
                 retval = true;
+                // Return the last rule's `$$` result, if available
+                if (typeof yyval.$ !== 'undefined') {
+                    retval = yyval.$;
+                }
                 break;
             }
 
             // break out of loop: we accept or fail with error
             break;
         }
+    } catch (ex) {
+        // report exceptions through the parseError callback too:
+        retval = this.parseError(errStr || 'Parsing aborted due to exception.', {
+            exception: ex,
+            text: lexer.match,
+            token: this.terminals_[symbol] || symbol,
+            token_id: symbol,
+            line: lexer.yylineno,
+            loc: lexer.yylloc,
+            // expected: expected,
+            recoverable: false,
+            state_stack: stack,
+            value_stack: vstack,
+            location_stack: lstack,
+            lexer: lexer
+        });
     } finally {
         var rv;
 
@@ -2330,19 +2877,20 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
 
         this.table = this.parseTable(this.states);
         this.defaultActions = findDefaults(this.table);
+        cleanupTable(this.table);
     },
 
-    lookAheads: function LALR_lookaheads (state, item) {
+    lookAheads: function LALR_lookaheads(state, item) {
         return (this.onDemandLookahead && !state.inadequate) ? this.terminals : item.follows;
     },
-    go: function LALR_go (p, w) {
+    go: function LALR_go(p, w) {
         var q = parseInt(p, 10);
         for (var i = 0; i < w.length; i++) {
             q = this.states.item(q).edges[w[i]] || q;
         }
         return q;
     },
-    goPath: function LALR_goPath (p, w) {
+    goPath: function LALR_goPath(p, w) {
         var q = parseInt(p, 10), t,
             path = [];
         for (var i = 0; i < w.length; i++) {
@@ -2354,10 +2902,13 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             q = this.states.item(q).edges[w[i]] || q;
             this.terms_[t] = w[i];
         }
-        return {path: path, endState: q};
+        return {
+            path: path, 
+            endState: q
+        };
     },
     // every disjoint reduction of a nonterminal becomes a production in G'
-    buildNewGrammar: function LALR_buildNewGrammar () {
+    buildNewGrammar: function LALR_buildNewGrammar() {
         var self = this,
             newg = this.newg;
 
@@ -2384,7 +2935,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    //self.trace('new production:',p);
+                    //self.trace('new production:', p);
                 }
             });
             if (state.inadequate) {
@@ -2392,12 +2943,12 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             }
         });
     },
-    unionLookaheads: function LALR_unionLookaheads () {
+    unionLookaheads: function LALR_unionLookaheads() {
         var self = this,
             newg = this.newg,
             states = !!this.onDemandLookahead ? this.inadequateStates : this.states;
 
-        states.forEach(function union_states_forEach (i) {
+        states.forEach(function union_states_forEach(i) {
             var state = typeof i === 'number' ? self.states.item(i) : i,
                 follows = [];
             if (state.reductions.length) {
@@ -2529,11 +3080,12 @@ var LR1Generator = exports.LR1Generator = lr1.construct();
 var ll = generator.beget(lookaheadMixin, generatorMixin, {
     type: "LL(1)",
 
-    afterconstructor: function ll_aftercontructor () {
+    afterconstructor: function ll_aftercontructor() {
         this.computeLookaheads();
         this.table = this.parseTable(this.productions);
     },
-    parseTable: function llParseTable (productions) {
+
+    parseTable: function llParseTable(productions) {
         var table = {},
             self = this;
         productions.forEach(function (production, i) {
@@ -2563,7 +3115,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         // var parseFn = String(parser.parse);
         // parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
-        // parseFn = addOrRemoveTokenStack(parseFn, this.options['token-stack']);
+        // parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
 
         // // always remove the feature markers in the template code.
         // parseFn = removeFeatureMarkers(parseFn);
@@ -2610,25 +3162,6 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         }
 
         // Generate the module creation code
-        // var moduleCode = '{\n';
-        // moduleCode += [
-        //     'trace: ' + String(this.trace || parser.trace),
-        //     'JisonParserError: JisonParserError',
-        //     'yy: {}',
-        //     'symbols_: ' + JSON.stringify(sortSymbolTable(this.symbols_), null, 2),
-        //     'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
-        //     'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
-        //     'productions_: ' + JSON.stringify(this.productions_, null, 2),
-        //     'performAction: ' + String(this.performAction),
-        //     'table: ' + tableCode.moduleCode,
-        //     'defaultActions: ' + JSON.stringify(this.defaultActions, null, 2).replace(/"([0-9]+)":/g, '$1:'),
-        //     'parseError: ' + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
-        //     'parse: ' + parseFn
-        //     ].join(',\n');
-        // moduleCode += '\n};';
-
-
-        // Generate the module creation code
         var moduleCode = '{\n';
         moduleCode += [
             'trace: ' + String(this.trace),
@@ -2638,31 +3171,34 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
             ].join(',\n');
         moduleCode += '\n};';
 
-        return { commonCode: (new Array(100)).join("commonCode\n"), moduleCode: moduleCode }
+        return { 
+            commonCode: (new Array(100)).join("commonCode\n"), 
+            moduleCode: moduleCode 
+        };
     }
 });
 
 var LLGenerator = exports.LLGenerator = ll.construct();
 
 Jison.Generator = function Jison_Generator (g, options) {
-    var opt = typal.mix.call({}, g.options, options);
+    var opt = typal.camelMix.call({}, g.options, options);
     switch (opt.type || '') {
-        case 'lr0':
-            return new LR0Generator(g, opt);
-        case 'slr':
-            return new SLRGenerator(g, opt);
-        case 'lr':
-        case 'lr1':
-            return new LR1Generator(g, opt);
-        case 'll':
-        case 'll1':
-            return new LLGenerator(g, opt);
-        case 'lalr1':
-        case 'lalr':
-        case '':
-            return new LALRGenerator(g, opt);
-        default:
-            throw new Error('Unsupported parser type: ' + opt.type);
+    case 'lr0':
+        return new LR0Generator(g, opt);
+    case 'slr':
+        return new SLRGenerator(g, opt);
+    case 'lr':
+    case 'lr1':
+        return new LR1Generator(g, opt);
+    case 'll':
+    case 'll1':
+        return new LLGenerator(g, opt);
+    case 'lalr1':
+    case 'lalr':
+    case '':
+        return new LALRGenerator(g, opt);
+    default:
+        throw new Error('Unsupported parser type: ' + opt.type);
     }
 };
 
@@ -3070,16 +3606,48 @@ exports.transform = EBNF.transform;
  *
  *  Parser.prototype: {
  *    yy: {},
+ *    EOF: 1,
+ *    TERROR: 2,
+ *
  *    trace: function(errorMessage, errorHash),
+ *
  *    JisonParserError: function(msg, hash),
+ *
+ *    quoteName: function(name),
+ *               Helper function which can be overridden by user code later on: put suitable
+ *                quotes around literal IDs in a description string.
+ *
+ *    describeSymbol: function(symbol),
+ *               Return a more-or-less human-readable description of the given symbol, when
+ *               available, or the symbol itself, serving as its own 'description' for lack
+ *               of something better to serve up.
+ *
+ *               Return NULL when the symbol is unknown to the parser.
+ *
  *    symbols_: {associative list: name ==> number},
  *    terminals_: {associative list: number ==> name},
  *    productions_: [...],
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, ...),
- *                (where `...` denotes the (optional) additional arguments the user passed to
- *                 `parser.parse(str, ...)`)
+ *
+ *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *               where `...` denotes the (optional) additional arguments the user passed to
+ *               `parser.parse(str, ...)`
+ *
  *    table: [...],
+ *               State transition table
+ *               ----------------------
+ *
+ *               index levels are:
+ *               - `state`  --> hash table
+ *               - `symbol` --> action (number or array)
+ *
+ *                 If the `action` is an array, these are the elements' meaning:
+ *                 - index [0]: 1 = shift, 2 = reduce, 3 = accept
+ *                 - index [1]: GOTO `state`
+ *
+ *                 If the `action` is a number, it is the GOTO `state`
+ *
  *    defaultActions: {...},
+ *
  *    parseError: function(str, hash),
  *    parse: function(input),
  *
@@ -3122,7 +3690,7 @@ exports.transform = EBNF.transform;
  *    first_column: n,
  *    last_column: n,
  *    range: [start_number, end_number]
- *                (where the numbers are indexes into the input string, zero-based)
+ *               (where the numbers are indexes into the input string, zero-based)
  *  }
  *
  * ---
@@ -3147,6 +3715,11 @@ exports.transform = EBNF.transform;
  *                  available for this particular error)
  *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
+ *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -3157,6 +3730,18 @@ exports.transform = EBNF.transform;
  *  {
  *    lexer:       (reference to the current lexer instance which reported the error)
  *  }
+ *
+ *  When `parseError` is invoked by the parser due to a **JavaScript exception** being fired
+ *  from either the parser or lexer, `this` will still reference the related *parser*
+ *  instance, while these additional `hash` fields will also be provided:
+ *
+ *  {
+ *    exception:   (reference to the exception thrown)
+ *  }
+ *
+ *  Please do note that in the latter situation, the `expected` field will be omitted as
+ *  type of failure is assumed not to be due to *parse errors* but rather due to user
+ *  action code in either parser or lexer failing unexpectedly.
  *
  * ---
  *
@@ -3188,23 +3773,14 @@ exports.transform = EBNF.transform;
  *                 When it does not return any value, the parser will return the original
  *                 `retval`. 
  *                 This function is invoked immediately before `Parser.post_parse()`.
+ *
  *      parseError: function(str, hash)
  *                 optional: overrides the default `parseError` function.
+ *      quoteName: function(name),
+ *                 optional: overrides the default `quoteName` function.
  *  }
  *
  *  parser.lexer.options: {
- *      ranges: boolean
- *                 optional: `true` ==> token location info will include a .range[] member.
- *      flex: boolean
- *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
- *                 exhaustively to find the longest match.
- *      backtrack_lexer: boolean
- *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
- *                 the lexer terminates the scan when a token is returned by the action code.
- *      xregexp: boolean
- *                 optional: `true` ==> lexer regexes are "extended regex format" using the
- *                 `XRegExp` library. When this %option has not been specified, all lexer
- *                 regexes are written as standard JavaScript RegExp expressions.
  *      pre_lex:  function()
  *                 optional: is invoked before the lexer is invoked to produce another token.
  *                 `this` refers to the Lexer object.
@@ -3214,9 +3790,23 @@ exports.transform = EBNF.transform;
  *                 When it does not return any (truthy) value, the lexer will return
  *                 the original `token`.
  *                 `this` refers to the Lexer object.
+ *
+ *      ranges: boolean
+ *                 optional: `true` ==> token location info will include a .range[] member.
+ *      flex: boolean
+ *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
+ *                 exhaustively to find the longest match.
+ *      backtrack_lexer: boolean
+ *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
+ *                 the lexer terminates the scan when a token is returned by the action code.
+ *      xregexp: boolean
+ *                 optional: `true` ==> lexer rule regexes are "extended regex format" requiring the
+ *                 `XRegExp` library. When this %option has not been specified at compile time, all lexer
+ *                 rule regexes have been written as standard JavaScript RegExp expressions.
  *  }
  */
 var lexParser = (function () {
+
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 function JisonParserError(msg, hash) {
@@ -3231,34 +3821,10 @@ JisonParserError.prototype = Object.create(Error.prototype);
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
-function x(k, v, o) {
-  o = o || {};
-  for (var l = k.length; l--; ) {
-    o[k[l]] = v;
-  }
-  return o;
-}
-
-var u = [
-    [130,136,138,140,142,145,174,180],
-    [36,40,46,47,94,123,124,142,157,158,164,165,170,172,173,180],
-    [41,123,124,130,136,138,140,142,145,174,180],
-    [36,40,41,46,47,94,123,124,130,136,138,140,142,145,157,158,164,165,170,172,173,174,180],
-    [41,124],
-    [36,40,41,42,43,46,47,63,94,123,124,130,136,138,140,142,145,157,158,164,165,170,171,172,173,174,180],
-    [130,136,138,140,142,145,146,174,180],
-    [36,40,46,47,60,94,123,124,130,132,136,138,140,142,145,157,158,164,165,170,172,173,174,180,183],
-    [136,176],
-    [132,180],
-    [36,40,46,47,60,94,123,124,130,132,142,157,158,164,165,170,172,173,180],
-    [164,167,169],
-    [132,180,183],
-    [44,62],
-    [123,125,152],
-    [123,125]
-];
 
 var parser = {
+EOF: 1,
+TERROR: 2,
 trace: function trace() { },
 JisonParserError: JisonParserError,
 yy: {},
@@ -3535,7 +4101,6 @@ nonterminals_: {
   }
 },
 productions_: [
-  0,
   [
     127,
     4
@@ -3857,6 +4422,99 @@ productions_: [
     0
   ]
 ],
+
+
+
+// ------------------------------
+
+
+// ║ len┊   ∆║ pop┊   ∆║rule┊   ∆║
+// ║   2┊  -3║ 127┊-128║   4┊  -5║
+// ║   2┊   0║ 131┊   4║   1┊  -2║
+// ║   2┊   0║ 131┊   0║   3┊   2║
+// ║   2┊   0║ 131┊   0║   4┊   1║
+// ║   2┊   0║ 131┊   0║   2┊  -3║
+// ║   2┊   0║ 128┊-129║   0┊  -1║
+// ║   2┊   0║ 129┊   1║   2┊   2║
+// ║   2┊   0║ 129┊   0║   0┊  -1║
+// ║   2┊   0║ 135┊   6║   2┊   2║
+// ║   2┊   0║ 135┊   0║   2┊   0║
+// ║   2┊   0║ 135┊   0║   2┊   0║
+// ║   2┊   0║ 135┊   0║   1┊  -2║
+// ║   2┊   0║ 135┊   0║   1┊   0║
+// ║   2┊   0║ 135┊   0║   1┊   0║
+// ║   2┊   0║ 135┊   0║   1┊   0║
+// ║   2┊   0║ 139┊   4║   1┊   0║
+// ║   2┊   0║ 139┊   0║   2┊   1║
+// ║   2┊   0║ 141┊   2║   1┊  -2║
+// ║   2┊   0║ 141┊   0║   2┊   1║
+// ║   2┊   0║ 134┊-135║   2┊   0║
+// ║   2┊   0║ 134┊   0║   1┊  -2║
+// ║   2┊   0║ 147┊  13║   3┊   2║
+// ║   2┊   0║ 149┊   2║   3┊   0║
+// ║   2┊   0║ 149┊   0║   1┊  -2║
+// ║   2┊   0║ 149┊   0║   1┊   0║
+// ║   2┊   0║ 150┊   1║   1┊   0║
+// ║   2┊   0║ 150┊   0║   5┊   4║
+// ║   2┊   0║ 151┊   1║   0┊  -1║
+// ║   2┊   0║ 151┊   0║   2┊   2║
+// ║   2┊   0║ 148┊-149║   3┊   1║
+// ║   2┊   0║ 148┊   0║   3┊   0║
+// ║   2┊   0║ 148┊   0║   0┊  -1║
+// ║   2┊   0║ 153┊   5║   1┊   1║
+// ║   2┊   0║ 153┊   0║   3┊   2║
+// ║   2┊   0║ 137┊-138║   1┊  -2║
+// ║   2┊   0║ 154┊  17║   3┊   2║
+// ║   2┊   0║ 154┊   0║   2┊  -3║
+// ║   2┊   0║ 154┊   0║   1┊  -2║
+// ║   2┊   0║ 154┊   0║   0┊  -1║
+// ║   2┊   0║ 155┊   1║   2┊   2║
+// ║   2┊   0║ 155┊   0║   1┊  -2║
+// ║   2┊   0║ 156┊   1║   3┊   2║
+// ║   2┊   0║ 156┊   0║   3┊   0║
+// ║   2┊   0║ 156┊   0║   2┊  -3║
+// ║   2┊   0║ 156┊   0║   2┊   0║
+// ║   2┊   0║ 156┊   0║   2┊   0║
+// ║   2┊   0║ 156┊   0║   2┊   0║
+// ║   2┊   0║ 156┊   0║   2┊   0║
+// ║   2┊   0║ 156┊   0║   1┊  -2║
+// ║   2┊   0║ 156┊   0║   2┊   1║
+// ║   2┊   0║ 156┊   0║   1┊  -2║
+// ║   2┊   0║ 156┊   0║   1┊   0║
+// ║   2┊   0║ 156┊   0║   1┊   0║
+// ║   2┊   0║ 156┊   0║   1┊   0║
+// ║   2┊   0║ 156┊   0║   1┊   0║
+// ║   2┊   0║ 156┊   0║   1┊   0║
+// ║   2┊   0║ 159┊   3║   1┊   0║
+// ║   2┊   0║ 161┊   2║   3┊   2║
+// ║   2┊   0║ 166┊   5║   2┊  -3║
+// ║   2┊   0║ 166┊   0║   1┊  -2║
+// ║   2┊   0║ 168┊   2║   1┊   0║
+// ║   2┊   0║ 168┊   0║   1┊   0║
+// ║   2┊   0║ 163┊-164║   1┊   0║
+// ║   2┊   0║ 160┊-161║   1┊   0║
+// ║   2┊   0║ 162┊   2║   1┊   0║
+// ║   2┊   0║ 162┊   0║   1┊   0║
+// ║   2┊   0║ 144┊-145║   3┊   2║
+// ║   2┊   0║ 175┊  31║   2┊  -3║
+// ║   2┊   0║ 175┊   0║   1┊  -2║
+// ║   2┊   0║ 177┊   2║   1┊   0║
+// ║   2┊   0║ 177┊   0║   3┊   2║
+// ║   2┊   0║ 177┊   0║   3┊   0║
+// ║   2┊   0║ 133┊-134║   1┊  -2║
+// ║   2┊   0║ 133┊   0║   3┊   2║
+// ║   2┊   0║ 143┊  10║   2┊  -3║
+// ║   2┊   0║ 143┊   0║   2┊   0║
+// ║   2┊   0║ 182┊  39║   1┊  -2║
+// ║   2┊   0║ 182┊   0║   2┊   1║
+// ║   2┊   0║ 179┊-180║   1┊  -2║
+// ║   2┊   0║ 179┊   0║   0┊  -1║
+
+
+// ------------------
+
+
+  // ,
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack) {
 /* this == yyval */
 
@@ -3875,7 +4533,13 @@ case 1 :
             this.$.options = yy.options;
             break;
           }
-          if (yy.actionInclude) this.$.actionInclude = yy.actionInclude;
+          if (yy.actionInclude) {
+            var asrc = yy.actionInclude.join('\n\n');
+            // Only a non-empty action code chunk should actually make it through:
+            if (asrc.trim() !== '') {
+              this.$.actionInclude = asrc; 
+            }
+          }
           delete yy.options;
           delete yy.actionInclude;
           return this.$;
@@ -3916,7 +4580,7 @@ break;
 case 6 : 
 /*! Production::     init :  */
  
-            yy.actionInclude = '';
+            yy.actionInclude = [];
             if (!yy.options) yy.options = {};
          
 break;
@@ -3974,7 +4638,7 @@ case 12 :
 /*! Production::     definition : ACTION */
  case 13 : 
 /*! Production::     definition : include_macro_code */
-  yy.actionInclude += $$[$0]; this.$ = null;  
+  yy.actionInclude.push($$[$0]); this.$ = null;  
 break;
 case 14 : 
 /*! Production::     definition : options */
@@ -4158,10 +4822,42 @@ break;
 }
 },
 table: [
-  x(u[0], [
+  {
+    127: 1,
+    128: 2,
+    130: [
       2,
       6
-    ], {127:1,128:2}),
+    ],
+    136: [
+      2,
+      6
+    ],
+    138: [
+      2,
+      6
+    ],
+    140: [
+      2,
+      6
+    ],
+    142: [
+      2,
+      6
+    ],
+    145: [
+      2,
+      6
+    ],
+    174: [
+      2,
+      6
+    ],
+    180: [
+      2,
+      6
+    ]
+  },
   {
     1: [
       3
@@ -4249,46 +4945,100 @@ table: [
       12
     ]
   },
-  x([124,130,136,138,140,142,145,174,180], [
-      2,
-      39
-    ], {137:16,154:17,155:18,156:19,159:24,161:25,162:29,163:30,36:[
+  {
+    36: [
       1,
       28
-    ],40:[
+    ],
+    40: [
       1,
       20
-    ],46:[
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    124: [
+      2,
+      39
+    ],
+    130: [
+      2,
+      39
+    ],
+    136: [
+      2,
+      39
+    ],
+    137: 16,
+    138: [
+      2,
+      39
+    ],
+    140: [
+      2,
+      39
+    ],
+    142: [
+      2,
+      39
+    ],
+    145: [
+      2,
+      39
+    ],
+    154: 17,
+    155: 18,
+    156: 19,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
+    ],
+    174: [
+      2,
+      39
+    ],
+    180: [
+      2,
+      39
+    ]
+  },
   {
     139: 36,
     146: [
@@ -4303,22 +5053,142 @@ table: [
       39
     ]
   },
-  x(u[0], [
+  {
+    130: [
       2,
       12
-    ]),
-  x(u[0], [
+    ],
+    136: [
+      2,
+      12
+    ],
+    138: [
+      2,
+      12
+    ],
+    140: [
+      2,
+      12
+    ],
+    142: [
+      2,
+      12
+    ],
+    145: [
+      2,
+      12
+    ],
+    174: [
+      2,
+      12
+    ],
+    180: [
+      2,
+      12
+    ]
+  },
+  {
+    130: [
       2,
       13
-    ]),
-  x(u[0], [
+    ],
+    136: [
+      2,
+      13
+    ],
+    138: [
+      2,
+      13
+    ],
+    140: [
+      2,
+      13
+    ],
+    142: [
+      2,
+      13
+    ],
+    145: [
+      2,
+      13
+    ],
+    174: [
+      2,
+      13
+    ],
+    180: [
+      2,
+      13
+    ]
+  },
+  {
+    130: [
       2,
       14
-    ]),
-  x(u[0], [
+    ],
+    136: [
+      2,
+      14
+    ],
+    138: [
+      2,
+      14
+    ],
+    140: [
+      2,
+      14
+    ],
+    142: [
+      2,
+      14
+    ],
+    145: [
+      2,
+      14
+    ],
+    174: [
+      2,
+      14
+    ],
+    180: [
+      2,
+      14
+    ]
+  },
+  {
+    130: [
       2,
       15
-    ]),
+    ],
+    136: [
+      2,
+      15
+    ],
+    138: [
+      2,
+      15
+    ],
+    140: [
+      2,
+      15
+    ],
+    142: [
+      2,
+      15
+    ],
+    145: [
+      2,
+      15
+    ],
+    174: [
+      2,
+      15
+    ],
+    180: [
+      2,
+      15
+    ]
+  },
   {
     2: [
       1,
@@ -4337,172 +5207,510 @@ table: [
     175: 42,
     177: 43
   },
-  x(u[1], [
+  {
+    36: [
       2,
       32
-    ], {131:45,134:48,147:49,148:50,60:[
+    ],
+    40: [
+      2,
+      32
+    ],
+    46: [
+      2,
+      32
+    ],
+    47: [
+      2,
+      32
+    ],
+    60: [
       1,
       51
-    ],130:[
+    ],
+    94: [
+      2,
+      32
+    ],
+    123: [
+      2,
+      32
+    ],
+    124: [
+      2,
+      32
+    ],
+    130: [
       1,
       47
-    ],132:[
+    ],
+    131: 45,
+    132: [
       1,
       46
-    ]}),
+    ],
+    134: 48,
+    142: [
+      2,
+      32
+    ],
+    147: 49,
+    148: 50,
+    157: [
+      2,
+      32
+    ],
+    158: [
+      2,
+      32
+    ],
+    164: [
+      2,
+      32
+    ],
+    165: [
+      2,
+      32
+    ],
+    170: [
+      2,
+      32
+    ],
+    172: [
+      2,
+      32
+    ],
+    173: [
+      2,
+      32
+    ],
+    180: [
+      2,
+      32
+    ]
+  },
   {
     130: [
       2,
       7
     ]
   },
-  x(u[0], [
+  {
+    130: [
       2,
       9
-    ]),
-  x([123,130,136,138,140,142,145,174,180], [
+    ],
+    136: [
+      2,
+      9
+    ],
+    138: [
+      2,
+      9
+    ],
+    140: [
+      2,
+      9
+    ],
+    142: [
+      2,
+      9
+    ],
+    145: [
+      2,
+      9
+    ],
+    174: [
+      2,
+      9
+    ],
+    180: [
+      2,
+      9
+    ]
+  },
+  {
+    123: [
       2,
       35
-    ], {124:[
+    ],
+    124: [
       1,
       52
-    ]}),
-  x(u[2], [
+    ],
+    130: [
+      2,
+      35
+    ],
+    136: [
+      2,
+      35
+    ],
+    138: [
+      2,
+      35
+    ],
+    140: [
+      2,
+      35
+    ],
+    142: [
+      2,
+      35
+    ],
+    145: [
+      2,
+      35
+    ],
+    174: [
+      2,
+      35
+    ],
+    180: [
+      2,
+      35
+    ]
+  },
+  {
+    36: [
+      1,
+      28
+    ],
+    40: [
+      1,
+      20
+    ],
+    41: [
       2,
       38
-    ], {159:24,161:25,162:29,163:30,156:53,36:[
-      1,
-      28
-    ],40:[
-      1,
-      20
-    ],46:[
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    123: [
+      2,
+      38
+    ],
+    124: [
+      2,
+      38
+    ],
+    130: [
+      2,
+      38
+    ],
+    136: [
+      2,
+      38
+    ],
+    138: [
+      2,
+      38
+    ],
+    140: [
+      2,
+      38
+    ],
+    142: [
+      2,
+      38
+    ],
+    145: [
+      2,
+      38
+    ],
+    156: 53,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
-  x(u[3], [
+    ],
+    174: [
+      2,
+      38
+    ],
+    180: [
+      2,
+      38
+    ]
+  },
+  {
+    36: [
       2,
       41
-    ], {160:57,42:[
+    ],
+    40: [
+      2,
+      41
+    ],
+    41: [
+      2,
+      41
+    ],
+    42: [
       1,
       55
-    ],43:[
+    ],
+    43: [
       1,
       54
-    ],63:[
+    ],
+    46: [
+      2,
+      41
+    ],
+    47: [
+      2,
+      41
+    ],
+    63: [
       1,
       56
-    ],171:[
+    ],
+    94: [
+      2,
+      41
+    ],
+    123: [
+      2,
+      41
+    ],
+    124: [
+      2,
+      41
+    ],
+    130: [
+      2,
+      41
+    ],
+    136: [
+      2,
+      41
+    ],
+    138: [
+      2,
+      41
+    ],
+    140: [
+      2,
+      41
+    ],
+    142: [
+      2,
+      41
+    ],
+    145: [
+      2,
+      41
+    ],
+    157: [
+      2,
+      41
+    ],
+    158: [
+      2,
+      41
+    ],
+    160: 57,
+    164: [
+      2,
+      41
+    ],
+    165: [
+      2,
+      41
+    ],
+    170: [
+      2,
+      41
+    ],
+    171: [
       1,
       58
-    ]}),
-  x(u[4], [
+    ],
+    172: [
       2,
-      39
-    ], {155:18,156:19,159:24,161:25,162:29,163:30,154:59,36:[
+      41
+    ],
+    173: [
+      2,
+      41
+    ],
+    174: [
+      2,
+      41
+    ],
+    180: [
+      2,
+      41
+    ]
+  },
+  {
+    36: [
       1,
       28
-    ],40:[
+    ],
+    40: [
       1,
       20
-    ],46:[
-      1,
-      26
-    ],47:[
-      1,
-      22
-    ],94:[
-      1,
-      27
-    ],157:[
-      1,
-      21
-    ],158:[
-      1,
-      23
-    ],164:[
-      1,
-      31
-    ],165:[
-      1,
-      32
-    ],170:[
-      1,
-      35
-    ],172:[
-      1,
-      33
-    ],173:[
-      1,
-      34
-    ]}),
-  x(u[4], [
+    ],
+    41: [
       2,
       39
-    ], {155:18,156:19,159:24,161:25,162:29,163:30,154:60,36:[
-      1,
-      28
-    ],40:[
-      1,
-      20
-    ],46:[
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    124: [
+      2,
+      39
+    ],
+    154: 59,
+    155: 18,
+    156: 19,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
+    ]
+  },
+  {
+    36: [
+      1,
+      28
+    ],
+    40: [
+      1,
+      20
+    ],
+    41: [
+      2,
+      39
+    ],
+    46: [
+      1,
+      26
+    ],
+    47: [
+      1,
+      22
+    ],
+    94: [
+      1,
+      27
+    ],
+    124: [
+      2,
+      39
+    ],
+    154: 60,
+    155: 18,
+    156: 19,
+    157: [
+      1,
+      21
+    ],
+    158: [
+      1,
+      23
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
+      1,
+      31
+    ],
+    165: [
+      1,
+      32
+    ],
+    170: [
+      1,
+      35
+    ],
+    172: [
+      1,
+      33
+    ],
+    173: [
+      1,
+      34
+    ]
+  },
   {
     36: [
       1,
@@ -4613,38 +5821,894 @@ table: [
       34
     ]
   },
-  x(u[5], [
+  {
+    36: [
       2,
       49
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      49
+    ],
+    41: [
+      2,
+      49
+    ],
+    42: [
+      2,
+      49
+    ],
+    43: [
+      2,
+      49
+    ],
+    46: [
+      2,
+      49
+    ],
+    47: [
+      2,
+      49
+    ],
+    63: [
+      2,
+      49
+    ],
+    94: [
+      2,
+      49
+    ],
+    123: [
+      2,
+      49
+    ],
+    124: [
+      2,
+      49
+    ],
+    130: [
+      2,
+      49
+    ],
+    136: [
+      2,
+      49
+    ],
+    138: [
+      2,
+      49
+    ],
+    140: [
+      2,
+      49
+    ],
+    142: [
+      2,
+      49
+    ],
+    145: [
+      2,
+      49
+    ],
+    157: [
+      2,
+      49
+    ],
+    158: [
+      2,
+      49
+    ],
+    164: [
+      2,
+      49
+    ],
+    165: [
+      2,
+      49
+    ],
+    170: [
+      2,
+      49
+    ],
+    171: [
+      2,
+      49
+    ],
+    172: [
+      2,
+      49
+    ],
+    173: [
+      2,
+      49
+    ],
+    174: [
+      2,
+      49
+    ],
+    180: [
+      2,
+      49
+    ]
+  },
+  {
+    36: [
       2,
       51
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      51
+    ],
+    41: [
+      2,
+      51
+    ],
+    42: [
+      2,
+      51
+    ],
+    43: [
+      2,
+      51
+    ],
+    46: [
+      2,
+      51
+    ],
+    47: [
+      2,
+      51
+    ],
+    63: [
+      2,
+      51
+    ],
+    94: [
+      2,
+      51
+    ],
+    123: [
+      2,
+      51
+    ],
+    124: [
+      2,
+      51
+    ],
+    130: [
+      2,
+      51
+    ],
+    136: [
+      2,
+      51
+    ],
+    138: [
+      2,
+      51
+    ],
+    140: [
+      2,
+      51
+    ],
+    142: [
+      2,
+      51
+    ],
+    145: [
+      2,
+      51
+    ],
+    157: [
+      2,
+      51
+    ],
+    158: [
+      2,
+      51
+    ],
+    164: [
+      2,
+      51
+    ],
+    165: [
+      2,
+      51
+    ],
+    170: [
+      2,
+      51
+    ],
+    171: [
+      2,
+      51
+    ],
+    172: [
+      2,
+      51
+    ],
+    173: [
+      2,
+      51
+    ],
+    174: [
+      2,
+      51
+    ],
+    180: [
+      2,
+      51
+    ]
+  },
+  {
+    36: [
       2,
       52
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      52
+    ],
+    41: [
+      2,
+      52
+    ],
+    42: [
+      2,
+      52
+    ],
+    43: [
+      2,
+      52
+    ],
+    46: [
+      2,
+      52
+    ],
+    47: [
+      2,
+      52
+    ],
+    63: [
+      2,
+      52
+    ],
+    94: [
+      2,
+      52
+    ],
+    123: [
+      2,
+      52
+    ],
+    124: [
+      2,
+      52
+    ],
+    130: [
+      2,
+      52
+    ],
+    136: [
+      2,
+      52
+    ],
+    138: [
+      2,
+      52
+    ],
+    140: [
+      2,
+      52
+    ],
+    142: [
+      2,
+      52
+    ],
+    145: [
+      2,
+      52
+    ],
+    157: [
+      2,
+      52
+    ],
+    158: [
+      2,
+      52
+    ],
+    164: [
+      2,
+      52
+    ],
+    165: [
+      2,
+      52
+    ],
+    170: [
+      2,
+      52
+    ],
+    171: [
+      2,
+      52
+    ],
+    172: [
+      2,
+      52
+    ],
+    173: [
+      2,
+      52
+    ],
+    174: [
+      2,
+      52
+    ],
+    180: [
+      2,
+      52
+    ]
+  },
+  {
+    36: [
       2,
       53
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      53
+    ],
+    41: [
+      2,
+      53
+    ],
+    42: [
+      2,
+      53
+    ],
+    43: [
+      2,
+      53
+    ],
+    46: [
+      2,
+      53
+    ],
+    47: [
+      2,
+      53
+    ],
+    63: [
+      2,
+      53
+    ],
+    94: [
+      2,
+      53
+    ],
+    123: [
+      2,
+      53
+    ],
+    124: [
+      2,
+      53
+    ],
+    130: [
+      2,
+      53
+    ],
+    136: [
+      2,
+      53
+    ],
+    138: [
+      2,
+      53
+    ],
+    140: [
+      2,
+      53
+    ],
+    142: [
+      2,
+      53
+    ],
+    145: [
+      2,
+      53
+    ],
+    157: [
+      2,
+      53
+    ],
+    158: [
+      2,
+      53
+    ],
+    164: [
+      2,
+      53
+    ],
+    165: [
+      2,
+      53
+    ],
+    170: [
+      2,
+      53
+    ],
+    171: [
+      2,
+      53
+    ],
+    172: [
+      2,
+      53
+    ],
+    173: [
+      2,
+      53
+    ],
+    174: [
+      2,
+      53
+    ],
+    180: [
+      2,
+      53
+    ]
+  },
+  {
+    36: [
       2,
       54
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      54
+    ],
+    41: [
+      2,
+      54
+    ],
+    42: [
+      2,
+      54
+    ],
+    43: [
+      2,
+      54
+    ],
+    46: [
+      2,
+      54
+    ],
+    47: [
+      2,
+      54
+    ],
+    63: [
+      2,
+      54
+    ],
+    94: [
+      2,
+      54
+    ],
+    123: [
+      2,
+      54
+    ],
+    124: [
+      2,
+      54
+    ],
+    130: [
+      2,
+      54
+    ],
+    136: [
+      2,
+      54
+    ],
+    138: [
+      2,
+      54
+    ],
+    140: [
+      2,
+      54
+    ],
+    142: [
+      2,
+      54
+    ],
+    145: [
+      2,
+      54
+    ],
+    157: [
+      2,
+      54
+    ],
+    158: [
+      2,
+      54
+    ],
+    164: [
+      2,
+      54
+    ],
+    165: [
+      2,
+      54
+    ],
+    170: [
+      2,
+      54
+    ],
+    171: [
+      2,
+      54
+    ],
+    172: [
+      2,
+      54
+    ],
+    173: [
+      2,
+      54
+    ],
+    174: [
+      2,
+      54
+    ],
+    180: [
+      2,
+      54
+    ]
+  },
+  {
+    36: [
       2,
       55
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      55
+    ],
+    41: [
+      2,
+      55
+    ],
+    42: [
+      2,
+      55
+    ],
+    43: [
+      2,
+      55
+    ],
+    46: [
+      2,
+      55
+    ],
+    47: [
+      2,
+      55
+    ],
+    63: [
+      2,
+      55
+    ],
+    94: [
+      2,
+      55
+    ],
+    123: [
+      2,
+      55
+    ],
+    124: [
+      2,
+      55
+    ],
+    130: [
+      2,
+      55
+    ],
+    136: [
+      2,
+      55
+    ],
+    138: [
+      2,
+      55
+    ],
+    140: [
+      2,
+      55
+    ],
+    142: [
+      2,
+      55
+    ],
+    145: [
+      2,
+      55
+    ],
+    157: [
+      2,
+      55
+    ],
+    158: [
+      2,
+      55
+    ],
+    164: [
+      2,
+      55
+    ],
+    165: [
+      2,
+      55
+    ],
+    170: [
+      2,
+      55
+    ],
+    171: [
+      2,
+      55
+    ],
+    172: [
+      2,
+      55
+    ],
+    173: [
+      2,
+      55
+    ],
+    174: [
+      2,
+      55
+    ],
+    180: [
+      2,
+      55
+    ]
+  },
+  {
+    36: [
       2,
       56
-    ]),
-  x([36,40,41,42,43,46,47,63,94,123,124,130,136,138,140,142,145,157,158,164,165,167,169,170,171,172,173,174,180], [
+    ],
+    40: [
+      2,
+      56
+    ],
+    41: [
+      2,
+      56
+    ],
+    42: [
+      2,
+      56
+    ],
+    43: [
+      2,
+      56
+    ],
+    46: [
+      2,
+      56
+    ],
+    47: [
+      2,
+      56
+    ],
+    63: [
+      2,
+      56
+    ],
+    94: [
+      2,
+      56
+    ],
+    123: [
+      2,
+      56
+    ],
+    124: [
+      2,
+      56
+    ],
+    130: [
+      2,
+      56
+    ],
+    136: [
+      2,
+      56
+    ],
+    138: [
+      2,
+      56
+    ],
+    140: [
+      2,
+      56
+    ],
+    142: [
+      2,
+      56
+    ],
+    145: [
+      2,
+      56
+    ],
+    157: [
+      2,
+      56
+    ],
+    158: [
+      2,
+      56
+    ],
+    164: [
+      2,
+      56
+    ],
+    165: [
+      2,
+      56
+    ],
+    170: [
+      2,
+      56
+    ],
+    171: [
+      2,
+      56
+    ],
+    172: [
+      2,
+      56
+    ],
+    173: [
+      2,
+      56
+    ],
+    174: [
+      2,
+      56
+    ],
+    180: [
+      2,
+      56
+    ]
+  },
+  {
+    36: [
       2,
       57
-    ]),
+    ],
+    40: [
+      2,
+      57
+    ],
+    41: [
+      2,
+      57
+    ],
+    42: [
+      2,
+      57
+    ],
+    43: [
+      2,
+      57
+    ],
+    46: [
+      2,
+      57
+    ],
+    47: [
+      2,
+      57
+    ],
+    63: [
+      2,
+      57
+    ],
+    94: [
+      2,
+      57
+    ],
+    123: [
+      2,
+      57
+    ],
+    124: [
+      2,
+      57
+    ],
+    130: [
+      2,
+      57
+    ],
+    136: [
+      2,
+      57
+    ],
+    138: [
+      2,
+      57
+    ],
+    140: [
+      2,
+      57
+    ],
+    142: [
+      2,
+      57
+    ],
+    145: [
+      2,
+      57
+    ],
+    157: [
+      2,
+      57
+    ],
+    158: [
+      2,
+      57
+    ],
+    164: [
+      2,
+      57
+    ],
+    165: [
+      2,
+      57
+    ],
+    167: [
+      2,
+      57
+    ],
+    169: [
+      2,
+      57
+    ],
+    170: [
+      2,
+      57
+    ],
+    171: [
+      2,
+      57
+    ],
+    172: [
+      2,
+      57
+    ],
+    173: [
+      2,
+      57
+    ],
+    174: [
+      2,
+      57
+    ],
+    180: [
+      2,
+      57
+    ]
+  },
   {
     159: 66,
     164: [
@@ -4658,48 +6722,692 @@ table: [
       65
     ]
   },
-  x(u[5], [
+  {
+    36: [
       2,
       65
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      65
+    ],
+    41: [
+      2,
+      65
+    ],
+    42: [
+      2,
+      65
+    ],
+    43: [
+      2,
+      65
+    ],
+    46: [
+      2,
+      65
+    ],
+    47: [
+      2,
+      65
+    ],
+    63: [
+      2,
+      65
+    ],
+    94: [
+      2,
+      65
+    ],
+    123: [
+      2,
+      65
+    ],
+    124: [
+      2,
+      65
+    ],
+    130: [
+      2,
+      65
+    ],
+    136: [
+      2,
+      65
+    ],
+    138: [
+      2,
+      65
+    ],
+    140: [
+      2,
+      65
+    ],
+    142: [
+      2,
+      65
+    ],
+    145: [
+      2,
+      65
+    ],
+    157: [
+      2,
+      65
+    ],
+    158: [
+      2,
+      65
+    ],
+    164: [
+      2,
+      65
+    ],
+    165: [
+      2,
+      65
+    ],
+    170: [
+      2,
+      65
+    ],
+    171: [
+      2,
+      65
+    ],
+    172: [
+      2,
+      65
+    ],
+    173: [
+      2,
+      65
+    ],
+    174: [
+      2,
+      65
+    ],
+    180: [
+      2,
+      65
+    ]
+  },
+  {
+    36: [
       2,
       66
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      66
+    ],
+    41: [
+      2,
+      66
+    ],
+    42: [
+      2,
+      66
+    ],
+    43: [
+      2,
+      66
+    ],
+    46: [
+      2,
+      66
+    ],
+    47: [
+      2,
+      66
+    ],
+    63: [
+      2,
+      66
+    ],
+    94: [
+      2,
+      66
+    ],
+    123: [
+      2,
+      66
+    ],
+    124: [
+      2,
+      66
+    ],
+    130: [
+      2,
+      66
+    ],
+    136: [
+      2,
+      66
+    ],
+    138: [
+      2,
+      66
+    ],
+    140: [
+      2,
+      66
+    ],
+    142: [
+      2,
+      66
+    ],
+    145: [
+      2,
+      66
+    ],
+    157: [
+      2,
+      66
+    ],
+    158: [
+      2,
+      66
+    ],
+    164: [
+      2,
+      66
+    ],
+    165: [
+      2,
+      66
+    ],
+    170: [
+      2,
+      66
+    ],
+    171: [
+      2,
+      66
+    ],
+    172: [
+      2,
+      66
+    ],
+    173: [
+      2,
+      66
+    ],
+    174: [
+      2,
+      66
+    ],
+    180: [
+      2,
+      66
+    ]
+  },
+  {
+    36: [
       2,
       63
-    ]),
-  x(u[0], [
+    ],
+    40: [
+      2,
+      63
+    ],
+    41: [
+      2,
+      63
+    ],
+    42: [
+      2,
+      63
+    ],
+    43: [
+      2,
+      63
+    ],
+    46: [
+      2,
+      63
+    ],
+    47: [
+      2,
+      63
+    ],
+    63: [
+      2,
+      63
+    ],
+    94: [
+      2,
+      63
+    ],
+    123: [
+      2,
+      63
+    ],
+    124: [
+      2,
+      63
+    ],
+    130: [
+      2,
+      63
+    ],
+    136: [
+      2,
+      63
+    ],
+    138: [
+      2,
+      63
+    ],
+    140: [
+      2,
+      63
+    ],
+    142: [
+      2,
+      63
+    ],
+    145: [
+      2,
+      63
+    ],
+    157: [
+      2,
+      63
+    ],
+    158: [
+      2,
+      63
+    ],
+    164: [
+      2,
+      63
+    ],
+    165: [
+      2,
+      63
+    ],
+    170: [
+      2,
+      63
+    ],
+    171: [
+      2,
+      63
+    ],
+    172: [
+      2,
+      63
+    ],
+    173: [
+      2,
+      63
+    ],
+    174: [
+      2,
+      63
+    ],
+    180: [
+      2,
+      63
+    ]
+  },
+  {
+    130: [
       2,
       10
-    ], {146:[
+    ],
+    136: [
+      2,
+      10
+    ],
+    138: [
+      2,
+      10
+    ],
+    140: [
+      2,
+      10
+    ],
+    142: [
+      2,
+      10
+    ],
+    145: [
+      2,
+      10
+    ],
+    146: [
       1,
       67
-    ]}),
-  x(u[6], [
+    ],
+    174: [
+      2,
+      10
+    ],
+    180: [
+      2,
+      10
+    ]
+  },
+  {
+    130: [
       2,
       16
-    ]),
-  x(u[0], [
+    ],
+    136: [
+      2,
+      16
+    ],
+    138: [
+      2,
+      16
+    ],
+    140: [
+      2,
+      16
+    ],
+    142: [
+      2,
+      16
+    ],
+    145: [
+      2,
+      16
+    ],
+    146: [
+      2,
+      16
+    ],
+    174: [
+      2,
+      16
+    ],
+    180: [
+      2,
+      16
+    ]
+  },
+  {
+    130: [
       2,
       11
-    ], {146:[
+    ],
+    136: [
+      2,
+      11
+    ],
+    138: [
+      2,
+      11
+    ],
+    140: [
+      2,
+      11
+    ],
+    142: [
+      2,
+      11
+    ],
+    145: [
+      2,
+      11
+    ],
+    146: [
       1,
       68
-    ]}),
-  x(u[6], [
+    ],
+    174: [
+      2,
+      11
+    ],
+    180: [
+      2,
+      11
+    ]
+  },
+  {
+    130: [
       2,
       18
-    ]),
-  x(u[7], [
+    ],
+    136: [
+      2,
+      18
+    ],
+    138: [
+      2,
+      18
+    ],
+    140: [
+      2,
+      18
+    ],
+    142: [
+      2,
+      18
+    ],
+    145: [
+      2,
+      18
+    ],
+    146: [
+      2,
+      18
+    ],
+    174: [
+      2,
+      18
+    ],
+    180: [
+      2,
+      18
+    ]
+  },
+  {
+    36: [
       2,
       75
-    ]),
-  x(u[7], [
+    ],
+    40: [
+      2,
+      75
+    ],
+    46: [
+      2,
+      75
+    ],
+    47: [
+      2,
+      75
+    ],
+    60: [
+      2,
+      75
+    ],
+    94: [
+      2,
+      75
+    ],
+    123: [
+      2,
+      75
+    ],
+    124: [
+      2,
+      75
+    ],
+    130: [
+      2,
+      75
+    ],
+    132: [
+      2,
+      75
+    ],
+    136: [
+      2,
+      75
+    ],
+    138: [
+      2,
+      75
+    ],
+    140: [
+      2,
+      75
+    ],
+    142: [
+      2,
+      75
+    ],
+    145: [
+      2,
+      75
+    ],
+    157: [
+      2,
+      75
+    ],
+    158: [
+      2,
+      75
+    ],
+    164: [
+      2,
+      75
+    ],
+    165: [
+      2,
+      75
+    ],
+    170: [
+      2,
+      75
+    ],
+    172: [
+      2,
+      75
+    ],
+    173: [
+      2,
+      75
+    ],
+    174: [
+      2,
+      75
+    ],
+    180: [
+      2,
+      75
+    ],
+    183: [
+      2,
+      75
+    ]
+  },
+  {
+    36: [
       2,
       76
-    ]),
+    ],
+    40: [
+      2,
+      76
+    ],
+    46: [
+      2,
+      76
+    ],
+    47: [
+      2,
+      76
+    ],
+    60: [
+      2,
+      76
+    ],
+    94: [
+      2,
+      76
+    ],
+    123: [
+      2,
+      76
+    ],
+    124: [
+      2,
+      76
+    ],
+    130: [
+      2,
+      76
+    ],
+    132: [
+      2,
+      76
+    ],
+    136: [
+      2,
+      76
+    ],
+    138: [
+      2,
+      76
+    ],
+    140: [
+      2,
+      76
+    ],
+    142: [
+      2,
+      76
+    ],
+    145: [
+      2,
+      76
+    ],
+    157: [
+      2,
+      76
+    ],
+    158: [
+      2,
+      76
+    ],
+    164: [
+      2,
+      76
+    ],
+    165: [
+      2,
+      76
+    ],
+    170: [
+      2,
+      76
+    ],
+    172: [
+      2,
+      76
+    ],
+    173: [
+      2,
+      76
+    ],
+    174: [
+      2,
+      76
+    ],
+    180: [
+      2,
+      76
+    ],
+    183: [
+      2,
+      76
+    ]
+  },
   {
     176: [
       1,
@@ -4718,13 +7426,20 @@ table: [
     ],
     177: 43
   },
-  x(u[8], [
-      2,
-      70
-    ], {61:[
+  {
+    61: [
       1,
       71
-    ]}),
+    ],
+    136: [
+      2,
+      70
+    ],
+    176: [
+      2,
+      70
+    ]
+  },
   {
     1: [
       2,
@@ -4737,70 +7452,255 @@ table: [
       2
     ]
   },
-  x(u[9], [
+  {
+    132: [
       2,
       80
-    ], {133:72,179:73,182:74,183:[
+    ],
+    133: 72,
+    179: 73,
+    180: [
+      2,
+      80
+    ],
+    182: 74,
+    183: [
       1,
       75
-    ]}),
-  x(u[1], [
+    ]
+  },
+  {
+    36: [
       2,
       32
-    ], {148:50,147:78,60:[
+    ],
+    40: [
+      2,
+      32
+    ],
+    46: [
+      2,
+      32
+    ],
+    47: [
+      2,
+      32
+    ],
+    60: [
       1,
       51
-    ],130:[
+    ],
+    94: [
+      2,
+      32
+    ],
+    123: [
+      2,
+      32
+    ],
+    124: [
+      2,
+      32
+    ],
+    130: [
       1,
       76
-    ],132:[
+    ],
+    132: [
       1,
       77
-    ]}),
-  x(u[10], [
+    ],
+    142: [
+      2,
+      32
+    ],
+    147: 78,
+    148: 50,
+    157: [
+      2,
+      32
+    ],
+    158: [
+      2,
+      32
+    ],
+    164: [
+      2,
+      32
+    ],
+    165: [
+      2,
+      32
+    ],
+    170: [
+      2,
+      32
+    ],
+    172: [
+      2,
+      32
+    ],
+    173: [
+      2,
+      32
+    ],
+    180: [
+      2,
+      32
+    ]
+  },
+  {
+    36: [
       2,
       21
-    ]),
-  x([123,124,142,180], [
+    ],
+    40: [
       2,
-      39
-    ], {154:17,155:18,156:19,159:24,161:25,162:29,163:30,137:79,36:[
+      21
+    ],
+    46: [
+      2,
+      21
+    ],
+    47: [
+      2,
+      21
+    ],
+    60: [
+      2,
+      21
+    ],
+    94: [
+      2,
+      21
+    ],
+    123: [
+      2,
+      21
+    ],
+    124: [
+      2,
+      21
+    ],
+    130: [
+      2,
+      21
+    ],
+    132: [
+      2,
+      21
+    ],
+    142: [
+      2,
+      21
+    ],
+    157: [
+      2,
+      21
+    ],
+    158: [
+      2,
+      21
+    ],
+    164: [
+      2,
+      21
+    ],
+    165: [
+      2,
+      21
+    ],
+    170: [
+      2,
+      21
+    ],
+    172: [
+      2,
+      21
+    ],
+    173: [
+      2,
+      21
+    ],
+    180: [
+      2,
+      21
+    ]
+  },
+  {
+    36: [
       1,
       28
-    ],40:[
+    ],
+    40: [
       1,
       20
-    ],46:[
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    123: [
+      2,
+      39
+    ],
+    124: [
+      2,
+      39
+    ],
+    137: 79,
+    142: [
+      2,
+      39
+    ],
+    154: 17,
+    155: 18,
+    156: 19,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
+    ],
+    180: [
+      2,
+      39
+    ]
+  },
   {
     42: [
       1,
@@ -4812,82 +7712,767 @@ table: [
     ],
     153: 80
   },
-  x(u[2], [
-      2,
-      37
-    ], {156:19,159:24,161:25,162:29,163:30,155:83,36:[
+  {
+    36: [
       1,
       28
-    ],40:[
+    ],
+    40: [
       1,
       20
-    ],46:[
+    ],
+    41: [
+      2,
+      37
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    123: [
+      2,
+      37
+    ],
+    124: [
+      2,
+      37
+    ],
+    130: [
+      2,
+      37
+    ],
+    136: [
+      2,
+      37
+    ],
+    138: [
+      2,
+      37
+    ],
+    140: [
+      2,
+      37
+    ],
+    142: [
+      2,
+      37
+    ],
+    145: [
+      2,
+      37
+    ],
+    155: 83,
+    156: 19,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
-  x(u[3], [
+    ],
+    174: [
+      2,
+      37
+    ],
+    180: [
+      2,
+      37
+    ]
+  },
+  {
+    36: [
       2,
       40
-    ], {160:57,42:[
+    ],
+    40: [
+      2,
+      40
+    ],
+    41: [
+      2,
+      40
+    ],
+    42: [
       1,
       55
-    ],43:[
+    ],
+    43: [
       1,
       54
-    ],63:[
+    ],
+    46: [
+      2,
+      40
+    ],
+    47: [
+      2,
+      40
+    ],
+    63: [
       1,
       56
-    ],171:[
+    ],
+    94: [
+      2,
+      40
+    ],
+    123: [
+      2,
+      40
+    ],
+    124: [
+      2,
+      40
+    ],
+    130: [
+      2,
+      40
+    ],
+    136: [
+      2,
+      40
+    ],
+    138: [
+      2,
+      40
+    ],
+    140: [
+      2,
+      40
+    ],
+    142: [
+      2,
+      40
+    ],
+    145: [
+      2,
+      40
+    ],
+    157: [
+      2,
+      40
+    ],
+    158: [
+      2,
+      40
+    ],
+    160: 57,
+    164: [
+      2,
+      40
+    ],
+    165: [
+      2,
+      40
+    ],
+    170: [
+      2,
+      40
+    ],
+    171: [
       1,
       58
-    ]}),
-  x(u[5], [
+    ],
+    172: [
+      2,
+      40
+    ],
+    173: [
+      2,
+      40
+    ],
+    174: [
+      2,
+      40
+    ],
+    180: [
+      2,
+      40
+    ]
+  },
+  {
+    36: [
       2,
       44
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      44
+    ],
+    41: [
+      2,
+      44
+    ],
+    42: [
+      2,
+      44
+    ],
+    43: [
+      2,
+      44
+    ],
+    46: [
+      2,
+      44
+    ],
+    47: [
+      2,
+      44
+    ],
+    63: [
+      2,
+      44
+    ],
+    94: [
+      2,
+      44
+    ],
+    123: [
+      2,
+      44
+    ],
+    124: [
+      2,
+      44
+    ],
+    130: [
+      2,
+      44
+    ],
+    136: [
+      2,
+      44
+    ],
+    138: [
+      2,
+      44
+    ],
+    140: [
+      2,
+      44
+    ],
+    142: [
+      2,
+      44
+    ],
+    145: [
+      2,
+      44
+    ],
+    157: [
+      2,
+      44
+    ],
+    158: [
+      2,
+      44
+    ],
+    164: [
+      2,
+      44
+    ],
+    165: [
+      2,
+      44
+    ],
+    170: [
+      2,
+      44
+    ],
+    171: [
+      2,
+      44
+    ],
+    172: [
+      2,
+      44
+    ],
+    173: [
+      2,
+      44
+    ],
+    174: [
+      2,
+      44
+    ],
+    180: [
+      2,
+      44
+    ]
+  },
+  {
+    36: [
       2,
       45
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      45
+    ],
+    41: [
+      2,
+      45
+    ],
+    42: [
+      2,
+      45
+    ],
+    43: [
+      2,
+      45
+    ],
+    46: [
+      2,
+      45
+    ],
+    47: [
+      2,
+      45
+    ],
+    63: [
+      2,
+      45
+    ],
+    94: [
+      2,
+      45
+    ],
+    123: [
+      2,
+      45
+    ],
+    124: [
+      2,
+      45
+    ],
+    130: [
+      2,
+      45
+    ],
+    136: [
+      2,
+      45
+    ],
+    138: [
+      2,
+      45
+    ],
+    140: [
+      2,
+      45
+    ],
+    142: [
+      2,
+      45
+    ],
+    145: [
+      2,
+      45
+    ],
+    157: [
+      2,
+      45
+    ],
+    158: [
+      2,
+      45
+    ],
+    164: [
+      2,
+      45
+    ],
+    165: [
+      2,
+      45
+    ],
+    170: [
+      2,
+      45
+    ],
+    171: [
+      2,
+      45
+    ],
+    172: [
+      2,
+      45
+    ],
+    173: [
+      2,
+      45
+    ],
+    174: [
+      2,
+      45
+    ],
+    180: [
+      2,
+      45
+    ]
+  },
+  {
+    36: [
       2,
       46
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      46
+    ],
+    41: [
+      2,
+      46
+    ],
+    42: [
+      2,
+      46
+    ],
+    43: [
+      2,
+      46
+    ],
+    46: [
+      2,
+      46
+    ],
+    47: [
+      2,
+      46
+    ],
+    63: [
+      2,
+      46
+    ],
+    94: [
+      2,
+      46
+    ],
+    123: [
+      2,
+      46
+    ],
+    124: [
+      2,
+      46
+    ],
+    130: [
+      2,
+      46
+    ],
+    136: [
+      2,
+      46
+    ],
+    138: [
+      2,
+      46
+    ],
+    140: [
+      2,
+      46
+    ],
+    142: [
+      2,
+      46
+    ],
+    145: [
+      2,
+      46
+    ],
+    157: [
+      2,
+      46
+    ],
+    158: [
+      2,
+      46
+    ],
+    164: [
+      2,
+      46
+    ],
+    165: [
+      2,
+      46
+    ],
+    170: [
+      2,
+      46
+    ],
+    171: [
+      2,
+      46
+    ],
+    172: [
+      2,
+      46
+    ],
+    173: [
+      2,
+      46
+    ],
+    174: [
+      2,
+      46
+    ],
+    180: [
+      2,
+      46
+    ]
+  },
+  {
+    36: [
       2,
       50
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      50
+    ],
+    41: [
+      2,
+      50
+    ],
+    42: [
+      2,
+      50
+    ],
+    43: [
+      2,
+      50
+    ],
+    46: [
+      2,
+      50
+    ],
+    47: [
+      2,
+      50
+    ],
+    63: [
+      2,
+      50
+    ],
+    94: [
+      2,
+      50
+    ],
+    123: [
+      2,
+      50
+    ],
+    124: [
+      2,
+      50
+    ],
+    130: [
+      2,
+      50
+    ],
+    136: [
+      2,
+      50
+    ],
+    138: [
+      2,
+      50
+    ],
+    140: [
+      2,
+      50
+    ],
+    142: [
+      2,
+      50
+    ],
+    145: [
+      2,
+      50
+    ],
+    157: [
+      2,
+      50
+    ],
+    158: [
+      2,
+      50
+    ],
+    164: [
+      2,
+      50
+    ],
+    165: [
+      2,
+      50
+    ],
+    170: [
+      2,
+      50
+    ],
+    171: [
+      2,
+      50
+    ],
+    172: [
+      2,
+      50
+    ],
+    173: [
+      2,
+      50
+    ],
+    174: [
+      2,
+      50
+    ],
+    180: [
+      2,
+      50
+    ]
+  },
+  {
+    36: [
       2,
       64
-    ]),
+    ],
+    40: [
+      2,
+      64
+    ],
+    41: [
+      2,
+      64
+    ],
+    42: [
+      2,
+      64
+    ],
+    43: [
+      2,
+      64
+    ],
+    46: [
+      2,
+      64
+    ],
+    47: [
+      2,
+      64
+    ],
+    63: [
+      2,
+      64
+    ],
+    94: [
+      2,
+      64
+    ],
+    123: [
+      2,
+      64
+    ],
+    124: [
+      2,
+      64
+    ],
+    130: [
+      2,
+      64
+    ],
+    136: [
+      2,
+      64
+    ],
+    138: [
+      2,
+      64
+    ],
+    140: [
+      2,
+      64
+    ],
+    142: [
+      2,
+      64
+    ],
+    145: [
+      2,
+      64
+    ],
+    157: [
+      2,
+      64
+    ],
+    158: [
+      2,
+      64
+    ],
+    164: [
+      2,
+      64
+    ],
+    165: [
+      2,
+      64
+    ],
+    170: [
+      2,
+      64
+    ],
+    171: [
+      2,
+      64
+    ],
+    172: [
+      2,
+      64
+    ],
+    173: [
+      2,
+      64
+    ],
+    174: [
+      2,
+      64
+    ],
+    180: [
+      2,
+      64
+    ]
+  },
   {
     41: [
       1,
@@ -4908,38 +8493,228 @@ table: [
       52
     ]
   },
-  x(u[3], [
+  {
+    36: [
       2,
       47
-    ], {160:57,42:[
+    ],
+    40: [
+      2,
+      47
+    ],
+    41: [
+      2,
+      47
+    ],
+    42: [
       1,
       55
-    ],43:[
+    ],
+    43: [
       1,
       54
-    ],63:[
+    ],
+    46: [
+      2,
+      47
+    ],
+    47: [
+      2,
+      47
+    ],
+    63: [
       1,
       56
-    ],171:[
+    ],
+    94: [
+      2,
+      47
+    ],
+    123: [
+      2,
+      47
+    ],
+    124: [
+      2,
+      47
+    ],
+    130: [
+      2,
+      47
+    ],
+    136: [
+      2,
+      47
+    ],
+    138: [
+      2,
+      47
+    ],
+    140: [
+      2,
+      47
+    ],
+    142: [
+      2,
+      47
+    ],
+    145: [
+      2,
+      47
+    ],
+    157: [
+      2,
+      47
+    ],
+    158: [
+      2,
+      47
+    ],
+    160: 57,
+    164: [
+      2,
+      47
+    ],
+    165: [
+      2,
+      47
+    ],
+    170: [
+      2,
+      47
+    ],
+    171: [
       1,
       58
-    ]}),
-  x(u[3], [
+    ],
+    172: [
+      2,
+      47
+    ],
+    173: [
+      2,
+      47
+    ],
+    174: [
+      2,
+      47
+    ],
+    180: [
+      2,
+      47
+    ]
+  },
+  {
+    36: [
       2,
       48
-    ], {160:57,42:[
+    ],
+    40: [
+      2,
+      48
+    ],
+    41: [
+      2,
+      48
+    ],
+    42: [
       1,
       55
-    ],43:[
+    ],
+    43: [
       1,
       54
-    ],63:[
+    ],
+    46: [
+      2,
+      48
+    ],
+    47: [
+      2,
+      48
+    ],
+    63: [
       1,
       56
-    ],171:[
+    ],
+    94: [
+      2,
+      48
+    ],
+    123: [
+      2,
+      48
+    ],
+    124: [
+      2,
+      48
+    ],
+    130: [
+      2,
+      48
+    ],
+    136: [
+      2,
+      48
+    ],
+    138: [
+      2,
+      48
+    ],
+    140: [
+      2,
+      48
+    ],
+    142: [
+      2,
+      48
+    ],
+    145: [
+      2,
+      48
+    ],
+    157: [
+      2,
+      48
+    ],
+    158: [
+      2,
+      48
+    ],
+    160: 57,
+    164: [
+      2,
+      48
+    ],
+    165: [
+      2,
+      48
+    ],
+    170: [
+      2,
+      48
+    ],
+    171: [
       1,
       58
-    ]}),
+    ],
+    172: [
+      2,
+      48
+    ],
+    173: [
+      2,
+      48
+    ],
+    174: [
+      2,
+      48
+    ],
+    180: [
+      2,
+      48
+    ]
+  },
   {
     167: [
       1,
@@ -4963,26 +8738,144 @@ table: [
       65
     ]
   },
-  x(u[11], [
+  {
+    164: [
       2,
       61
-    ]),
-  x(u[11], [
+    ],
+    167: [
+      2,
+      61
+    ],
+    169: [
+      2,
+      61
+    ]
+  },
+  {
+    164: [
       2,
       62
-    ]),
-  x(u[6], [
+    ],
+    167: [
+      2,
+      62
+    ],
+    169: [
+      2,
+      62
+    ]
+  },
+  {
+    130: [
       2,
       17
-    ]),
-  x(u[6], [
+    ],
+    136: [
+      2,
+      17
+    ],
+    138: [
+      2,
+      17
+    ],
+    140: [
+      2,
+      17
+    ],
+    142: [
+      2,
+      17
+    ],
+    145: [
+      2,
+      17
+    ],
+    146: [
+      2,
+      17
+    ],
+    174: [
+      2,
+      17
+    ],
+    180: [
+      2,
+      17
+    ]
+  },
+  {
+    130: [
       2,
       19
-    ]),
-  x(u[0], [
+    ],
+    136: [
+      2,
+      19
+    ],
+    138: [
+      2,
+      19
+    ],
+    140: [
+      2,
+      19
+    ],
+    142: [
+      2,
+      19
+    ],
+    145: [
+      2,
+      19
+    ],
+    146: [
+      2,
+      19
+    ],
+    174: [
+      2,
+      19
+    ],
+    180: [
+      2,
+      19
+    ]
+  },
+  {
+    130: [
       2,
       67
-    ]),
+    ],
+    136: [
+      2,
+      67
+    ],
+    138: [
+      2,
+      67
+    ],
+    140: [
+      2,
+      67
+    ],
+    142: [
+      2,
+      67
+    ],
+    145: [
+      2,
+      67
+    ],
+    174: [
+      2,
+      67
+    ],
+    180: [
+      2,
+      67
+    ]
+  },
   {
     176: [
       2,
@@ -5016,34 +8909,135 @@ table: [
       12
     ]
   },
-  x(u[9], [
+  {
+    132: [
       2,
       79
-    ], {183:[
+    ],
+    180: [
+      2,
+      79
+    ],
+    183: [
       1,
       92
-    ]}),
-  x(u[12], [
+    ]
+  },
+  {
+    132: [
       2,
       77
-    ]),
-  x(u[9], [
+    ],
+    180: [
+      2,
+      77
+    ],
+    183: [
+      2,
+      77
+    ]
+  },
+  {
+    132: [
       2,
       80
-    ], {179:73,182:74,133:93,183:[
+    ],
+    133: 93,
+    179: 73,
+    180: [
+      2,
+      80
+    ],
+    182: 74,
+    183: [
       1,
       75
-    ]}),
+    ]
+  },
   {
     1: [
       2,
       5
     ]
   },
-  x(u[10], [
+  {
+    36: [
       2,
       20
-    ]),
+    ],
+    40: [
+      2,
+      20
+    ],
+    46: [
+      2,
+      20
+    ],
+    47: [
+      2,
+      20
+    ],
+    60: [
+      2,
+      20
+    ],
+    94: [
+      2,
+      20
+    ],
+    123: [
+      2,
+      20
+    ],
+    124: [
+      2,
+      20
+    ],
+    130: [
+      2,
+      20
+    ],
+    132: [
+      2,
+      20
+    ],
+    142: [
+      2,
+      20
+    ],
+    157: [
+      2,
+      20
+    ],
+    158: [
+      2,
+      20
+    ],
+    164: [
+      2,
+      20
+    ],
+    165: [
+      2,
+      20
+    ],
+    170: [
+      2,
+      20
+    ],
+    172: [
+      2,
+      20
+    ],
+    173: [
+      2,
+      20
+    ],
+    180: [
+      2,
+      20
+    ]
+  },
   {
     123: [
       1,
@@ -5076,129 +9070,902 @@ table: [
       100
     ]
   },
-  x(u[13], [
+  {
+    44: [
       2,
       33
-    ]),
-  x(u[2], [
+    ],
+    62: [
       2,
-      36
-    ], {159:24,161:25,162:29,163:30,156:53,36:[
+      33
+    ]
+  },
+  {
+    36: [
       1,
       28
-    ],40:[
+    ],
+    40: [
       1,
       20
-    ],46:[
+    ],
+    41: [
+      2,
+      36
+    ],
+    46: [
       1,
       26
-    ],47:[
+    ],
+    47: [
       1,
       22
-    ],94:[
+    ],
+    94: [
       1,
       27
-    ],157:[
+    ],
+    123: [
+      2,
+      36
+    ],
+    124: [
+      2,
+      36
+    ],
+    130: [
+      2,
+      36
+    ],
+    136: [
+      2,
+      36
+    ],
+    138: [
+      2,
+      36
+    ],
+    140: [
+      2,
+      36
+    ],
+    142: [
+      2,
+      36
+    ],
+    145: [
+      2,
+      36
+    ],
+    156: 53,
+    157: [
       1,
       21
-    ],158:[
+    ],
+    158: [
       1,
       23
-    ],164:[
+    ],
+    159: 24,
+    161: 25,
+    162: 29,
+    163: 30,
+    164: [
       1,
       31
-    ],165:[
+    ],
+    165: [
       1,
       32
-    ],170:[
+    ],
+    170: [
       1,
       35
-    ],172:[
+    ],
+    172: [
       1,
       33
-    ],173:[
+    ],
+    173: [
       1,
       34
-    ]}),
-  x(u[5], [
+    ],
+    174: [
+      2,
+      36
+    ],
+    180: [
+      2,
+      36
+    ]
+  },
+  {
+    36: [
       2,
       42
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      42
+    ],
+    41: [
+      2,
+      42
+    ],
+    42: [
+      2,
+      42
+    ],
+    43: [
+      2,
+      42
+    ],
+    46: [
+      2,
+      42
+    ],
+    47: [
+      2,
+      42
+    ],
+    63: [
+      2,
+      42
+    ],
+    94: [
+      2,
+      42
+    ],
+    123: [
+      2,
+      42
+    ],
+    124: [
+      2,
+      42
+    ],
+    130: [
+      2,
+      42
+    ],
+    136: [
+      2,
+      42
+    ],
+    138: [
+      2,
+      42
+    ],
+    140: [
+      2,
+      42
+    ],
+    142: [
+      2,
+      42
+    ],
+    145: [
+      2,
+      42
+    ],
+    157: [
+      2,
+      42
+    ],
+    158: [
+      2,
+      42
+    ],
+    164: [
+      2,
+      42
+    ],
+    165: [
+      2,
+      42
+    ],
+    170: [
+      2,
+      42
+    ],
+    171: [
+      2,
+      42
+    ],
+    172: [
+      2,
+      42
+    ],
+    173: [
+      2,
+      42
+    ],
+    174: [
+      2,
+      42
+    ],
+    180: [
+      2,
+      42
+    ]
+  },
+  {
+    36: [
       2,
       43
-    ]),
-  x(u[5], [
+    ],
+    40: [
+      2,
+      43
+    ],
+    41: [
+      2,
+      43
+    ],
+    42: [
+      2,
+      43
+    ],
+    43: [
+      2,
+      43
+    ],
+    46: [
+      2,
+      43
+    ],
+    47: [
+      2,
+      43
+    ],
+    63: [
+      2,
+      43
+    ],
+    94: [
+      2,
+      43
+    ],
+    123: [
+      2,
+      43
+    ],
+    124: [
+      2,
+      43
+    ],
+    130: [
+      2,
+      43
+    ],
+    136: [
+      2,
+      43
+    ],
+    138: [
+      2,
+      43
+    ],
+    140: [
+      2,
+      43
+    ],
+    142: [
+      2,
+      43
+    ],
+    145: [
+      2,
+      43
+    ],
+    157: [
+      2,
+      43
+    ],
+    158: [
+      2,
+      43
+    ],
+    164: [
+      2,
+      43
+    ],
+    165: [
+      2,
+      43
+    ],
+    170: [
+      2,
+      43
+    ],
+    171: [
+      2,
+      43
+    ],
+    172: [
+      2,
+      43
+    ],
+    173: [
+      2,
+      43
+    ],
+    174: [
+      2,
+      43
+    ],
+    180: [
+      2,
+      43
+    ]
+  },
+  {
+    36: [
       2,
       58
-    ]),
+    ],
+    40: [
+      2,
+      58
+    ],
+    41: [
+      2,
+      58
+    ],
+    42: [
+      2,
+      58
+    ],
+    43: [
+      2,
+      58
+    ],
+    46: [
+      2,
+      58
+    ],
+    47: [
+      2,
+      58
+    ],
+    63: [
+      2,
+      58
+    ],
+    94: [
+      2,
+      58
+    ],
+    123: [
+      2,
+      58
+    ],
+    124: [
+      2,
+      58
+    ],
+    130: [
+      2,
+      58
+    ],
+    136: [
+      2,
+      58
+    ],
+    138: [
+      2,
+      58
+    ],
+    140: [
+      2,
+      58
+    ],
+    142: [
+      2,
+      58
+    ],
+    145: [
+      2,
+      58
+    ],
+    157: [
+      2,
+      58
+    ],
+    158: [
+      2,
+      58
+    ],
+    164: [
+      2,
+      58
+    ],
+    165: [
+      2,
+      58
+    ],
+    170: [
+      2,
+      58
+    ],
+    171: [
+      2,
+      58
+    ],
+    172: [
+      2,
+      58
+    ],
+    173: [
+      2,
+      58
+    ],
+    174: [
+      2,
+      58
+    ],
+    180: [
+      2,
+      58
+    ]
+  },
   {
     167: [
       2,
       59
     ]
   },
-  x(u[8], [
+  {
+    136: [
       2,
       71
-    ]),
-  x(u[8], [
+    ],
+    176: [
+      2,
+      71
+    ]
+  },
+  {
+    136: [
       2,
       72
-    ]),
+    ],
+    176: [
+      2,
+      72
+    ]
+  },
   {
     1: [
       2,
       3
     ]
   },
-  x(u[9], [
+  {
+    132: [
       2,
       80
-    ], {179:73,182:74,133:101,183:[
+    ],
+    133: 101,
+    179: 73,
+    180: [
+      2,
+      80
+    ],
+    182: 74,
+    183: [
       1,
       75
-    ]}),
-  x(u[12], [
+    ]
+  },
+  {
+    132: [
       2,
       78
-    ]),
+    ],
+    180: [
+      2,
+      78
+    ],
+    183: [
+      2,
+      78
+    ]
+  },
   {
     132: [
       1,
       102
     ]
   },
-  x(u[10], [
+  {
+    36: [
       2,
       22
-    ]),
-  x(u[14], [
+    ],
+    40: [
+      2,
+      22
+    ],
+    46: [
+      2,
+      22
+    ],
+    47: [
+      2,
+      22
+    ],
+    60: [
+      2,
+      22
+    ],
+    94: [
+      2,
+      22
+    ],
+    123: [
+      2,
+      22
+    ],
+    124: [
+      2,
+      22
+    ],
+    130: [
+      2,
+      22
+    ],
+    132: [
+      2,
+      22
+    ],
+    142: [
+      2,
+      22
+    ],
+    157: [
+      2,
+      22
+    ],
+    158: [
+      2,
+      22
+    ],
+    164: [
+      2,
+      22
+    ],
+    165: [
+      2,
+      22
+    ],
+    170: [
+      2,
+      22
+    ],
+    172: [
+      2,
+      22
+    ],
+    173: [
+      2,
+      22
+    ],
+    180: [
+      2,
+      22
+    ]
+  },
+  {
+    123: [
       2,
       28
-    ], {150:103,151:104}),
-  x(u[10], [
+    ],
+    125: [
+      2,
+      28
+    ],
+    150: 103,
+    151: 104,
+    152: [
+      2,
+      28
+    ]
+  },
+  {
+    36: [
       2,
       24
-    ]),
-  x(u[10], [
+    ],
+    40: [
+      2,
+      24
+    ],
+    46: [
+      2,
+      24
+    ],
+    47: [
+      2,
+      24
+    ],
+    60: [
+      2,
+      24
+    ],
+    94: [
+      2,
+      24
+    ],
+    123: [
+      2,
+      24
+    ],
+    124: [
+      2,
+      24
+    ],
+    130: [
+      2,
+      24
+    ],
+    132: [
+      2,
+      24
+    ],
+    142: [
+      2,
+      24
+    ],
+    157: [
+      2,
+      24
+    ],
+    158: [
+      2,
+      24
+    ],
+    164: [
+      2,
+      24
+    ],
+    165: [
+      2,
+      24
+    ],
+    170: [
+      2,
+      24
+    ],
+    172: [
+      2,
+      24
+    ],
+    173: [
+      2,
+      24
+    ],
+    180: [
+      2,
+      24
+    ]
+  },
+  {
+    36: [
       2,
       25
-    ]),
-  x(u[1], [
+    ],
+    40: [
+      2,
+      25
+    ],
+    46: [
+      2,
+      25
+    ],
+    47: [
+      2,
+      25
+    ],
+    60: [
+      2,
+      25
+    ],
+    94: [
+      2,
+      25
+    ],
+    123: [
+      2,
+      25
+    ],
+    124: [
+      2,
+      25
+    ],
+    130: [
+      2,
+      25
+    ],
+    132: [
+      2,
+      25
+    ],
+    142: [
+      2,
+      25
+    ],
+    157: [
+      2,
+      25
+    ],
+    158: [
+      2,
+      25
+    ],
+    164: [
+      2,
+      25
+    ],
+    165: [
+      2,
+      25
+    ],
+    170: [
+      2,
+      25
+    ],
+    172: [
+      2,
+      25
+    ],
+    173: [
+      2,
+      25
+    ],
+    180: [
+      2,
+      25
+    ]
+  },
+  {
+    36: [
       2,
       30
-    ]),
+    ],
+    40: [
+      2,
+      30
+    ],
+    46: [
+      2,
+      30
+    ],
+    47: [
+      2,
+      30
+    ],
+    94: [
+      2,
+      30
+    ],
+    123: [
+      2,
+      30
+    ],
+    124: [
+      2,
+      30
+    ],
+    142: [
+      2,
+      30
+    ],
+    157: [
+      2,
+      30
+    ],
+    158: [
+      2,
+      30
+    ],
+    164: [
+      2,
+      30
+    ],
+    165: [
+      2,
+      30
+    ],
+    170: [
+      2,
+      30
+    ],
+    172: [
+      2,
+      30
+    ],
+    173: [
+      2,
+      30
+    ],
+    180: [
+      2,
+      30
+    ]
+  },
   {
     136: [
       1,
       105
     ]
   },
-  x(u[1], [
+  {
+    36: [
       2,
       31
-    ]),
+    ],
+    40: [
+      2,
+      31
+    ],
+    46: [
+      2,
+      31
+    ],
+    47: [
+      2,
+      31
+    ],
+    94: [
+      2,
+      31
+    ],
+    123: [
+      2,
+      31
+    ],
+    124: [
+      2,
+      31
+    ],
+    142: [
+      2,
+      31
+    ],
+    157: [
+      2,
+      31
+    ],
+    158: [
+      2,
+      31
+    ],
+    164: [
+      2,
+      31
+    ],
+    165: [
+      2,
+      31
+    ],
+    170: [
+      2,
+      31
+    ],
+    172: [
+      2,
+      31
+    ],
+    173: [
+      2,
+      31
+    ],
+    180: [
+      2,
+      31
+    ]
+  },
   {
     132: [
       2,
@@ -5221,29 +9988,138 @@ table: [
       106
     ]
   },
-  x(u[15], [
+  {
+    123: [
       2,
       26
-    ], {152:[
+    ],
+    125: [
+      2,
+      26
+    ],
+    152: [
       1,
       108
-    ]}),
-  x(u[13], [
+    ]
+  },
+  {
+    44: [
       2,
       34
-    ]),
-  x(u[10], [
+    ],
+    62: [
+      2,
+      34
+    ]
+  },
+  {
+    36: [
       2,
       23
-    ]),
-  x(u[14], [
+    ],
+    40: [
+      2,
+      23
+    ],
+    46: [
+      2,
+      23
+    ],
+    47: [
+      2,
+      23
+    ],
+    60: [
+      2,
+      23
+    ],
+    94: [
+      2,
+      23
+    ],
+    123: [
+      2,
+      23
+    ],
+    124: [
+      2,
+      23
+    ],
+    130: [
+      2,
+      23
+    ],
+    132: [
+      2,
+      23
+    ],
+    142: [
+      2,
+      23
+    ],
+    157: [
+      2,
+      23
+    ],
+    158: [
+      2,
+      23
+    ],
+    164: [
+      2,
+      23
+    ],
+    165: [
+      2,
+      23
+    ],
+    170: [
+      2,
+      23
+    ],
+    172: [
+      2,
+      23
+    ],
+    173: [
+      2,
+      23
+    ],
+    180: [
+      2,
+      23
+    ]
+  },
+  {
+    123: [
       2,
       28
-    ], {151:104,150:109}),
-  x(u[14], [
+    ],
+    125: [
+      2,
+      28
+    ],
+    150: 109,
+    151: 104,
+    152: [
+      2,
+      28
+    ]
+  },
+  {
+    123: [
       2,
       29
-    ]),
+    ],
+    125: [
+      2,
+      29
+    ],
+    152: [
+      2,
+      29
+    ]
+  },
   {
     123: [
       1,
@@ -5254,18 +10130,1406 @@ table: [
       110
     ]
   },
-  x(u[14], [
+  {
+    123: [
       2,
       28
-    ], {151:111}),
-  x(u[15], [
+    ],
+    125: [
+      2,
+      28
+    ],
+    151: 111,
+    152: [
+      2,
+      28
+    ]
+  },
+  {
+    123: [
       2,
       27
-    ], {152:[
+    ],
+    125: [
+      2,
+      27
+    ],
+    152: [
       1,
       108
-    ]})
-],
+    ]
+  }
+]
+
+
+// ------------------------------
+
+
+// ║   len┊   ∆║symbol┊   ∆║  type┊   ∆║ state┊   ∆║  mode┊   ∆║  goto┊   ∆║  next┊   ∆║
+// ║    10┊ -11║   127┊-128║     0┊  -1║     1┊  -2║     2┊  -3║     6┊  -7║     1┊  -2║
+// ║     1┊  -2║   128┊   1║     0┊   0║     2┊   1║     2┊   0║     6┊   0║     2┊   1║
+// ║    12┊  11║   130┊   2║     2┊   2║     3┊   1║     2┊   0║     6┊   0║     6┊   4║
+// ║     1┊  -2║   136┊   6║     2┊   0║     4┊   1║     2┊   0║     6┊   0║     6┊   0║
+// ║    12┊  11║   138┊   2║     2┊   0║     9┊   5║     2┊   0║     6┊   0║     6┊   0║
+// ║    29┊  17║   140┊   2║     2┊   0║    10┊   1║     2┊   0║     6┊   0║     6┊   0║
+// ║     2┊  -3║   142┊   2║     2┊   0║    15┊   5║     2┊   0║     6┊   0║     6┊   0║
+// ║     2┊   0║   145┊   3║     2┊   0║     4┊  -5║     2┊   0║     6┊   0║     6┊   0║
+// ║     8┊   6║   174┊  29║     2┊   0║     9┊   5║     3┊   1║     0┊  -1║     6┊   0║
+// ║     8┊   0║   180┊   6║     2┊   0║    10┊   1║     2┊  -3║     8┊   8║     6┊   0║
+// ║     8┊   0║     1┊  -2║     1┊  -2║    16┊   6║     1┊  -2║     5┊  -6║     0┊  -1║
+// ║     8┊   0║   129┊ 128║     0┊  -1║    17┊   1║     1┊   0║     6┊   1║     3┊   3║
+// ║     2┊  -3║   130┊   1║     2┊   2║    18┊   1║     1┊   0║     7┊   1║     8┊   5║
+// ║     3┊   1║   135┊   5║     0┊  -1║    19┊   1║     1┊   0║     8┊   1║     4┊  -5║
+// ║    23┊  20║   136┊   1║     2┊   2║    24┊   5║     1┊   0║    11┊   3║     5┊   1║
+// ║     1┊  -2║   138┊   2║     2┊   0║    25┊   1║     1┊   0║    13┊   2║     6┊   1║
+// ║     8┊   7║   140┊   2║     2┊   0║    29┊   4║     1┊   0║    12┊ -13║     7┊   1║
+// ║    10┊   2║   142┊   2║     2┊   0║    30┊   1║     1┊   0║    14┊   2║     8┊   1║
+// ║    28┊  18║   143┊   1║     0┊  -1║    36┊   6║     2┊   1║     8┊  -9║     9┊   1║
+// ║    28┊   0║   144┊   1║     0┊   0║    38┊   2║     1┊  -2║     5┊  -6║    10┊   1║
+// ║    21┊ -22║   145┊   1║     2┊   2║    42┊   4║     1┊   0║     6┊   1║    11┊   1║
+// ║    21┊   0║   174┊  29║     2┊   0║    43┊   1║     1┊   0║     7┊   1║    13┊   2║
+// ║    17┊ -18║   180┊   6║     2┊   0║    45┊   2║     1┊   0║     8┊   1║    12┊ -13║
+// ║    17┊   0║   130┊-131║     2┊   0║    48┊   3║     1┊   0║    11┊   3║    14┊   2║
+// ║    27┊  10║   129┊-130║     0┊  -1║    49┊   1║     1┊   0║    13┊   2║    15┊   1║
+// ║    27┊   0║   130┊   1║     2┊   2║    50┊   1║     1┊   0║    12┊ -13║     8┊  -9║
+// ║    27┊   0║   135┊   5║     0┊  -1║    53┊   3║     1┊   0║    28┊  16║     4┊  -5║
+// ║    27┊   0║   136┊   1║     2┊   2║    24┊ -25║     1┊   0║    20┊ -21║     5┊   1║
+// ║    27┊   0║   138┊   2║     2┊   0║    25┊   1║     1┊   0║    26┊   6║     6┊   1║
+// ║    27┊   0║   140┊   2║     2┊   0║    29┊   4║     1┊   0║    22┊ -23║     7┊   1║
+// ║    27┊   0║   142┊   2║     2┊   0║    30┊   1║     1┊   0║    27┊   5║     8┊   1║
+// ║    29┊   2║   143┊   1║     0┊  -1║    57┊  27║     2┊   1║    39┊  12║     9┊   1║
+// ║     5┊  -6║   144┊   1║     0┊   0║    59┊   2║     2┊   0║    39┊   0║    10┊   1║
+// ║    27┊  22║   145┊   1║     2┊   2║    18┊ -19║     2┊   0║    39┊   0║    11┊   1║
+// ║    27┊   0║   174┊  29║     2┊   0║    19┊   1║     2┊   0║    39┊   0║    13┊   2║
+// ║    27┊   0║   180┊   6║     2┊   0║    24┊   5║     2┊   0║    39┊   0║    12┊ -13║
+// ║     9┊ -10║    36┊ -37║     2┊   0║    25┊   1║     2┊   0║    39┊   0║    28┊  16║
+// ║     9┊   0║    40┊   4║     2┊   0║    29┊   4║     2┊   0║    39┊   0║    20┊ -21║
+// ║     9┊   0║    46┊   6║     2┊   0║    30┊   1║     1┊  -2║    21┊ -22║    26┊   6║
+// ║     9┊   0║    47┊   1║     2┊   0║    60┊  30║     1┊   0║    23┊   2║    22┊ -23║
+// ║    25┊  16║    94┊  47║     2┊   0║    18┊ -19║     1┊   0║    31┊   8║    27┊   5║
+// ║    25┊   0║   124┊  30║     2┊   0║    19┊   1║     1┊   0║    32┊   1║    39┊  12║
+// ║     1┊  -2║   130┊   6║     2┊   0║    24┊   5║     1┊   0║    35┊   3║    39┊   0║
+// ║     4┊   3║   136┊   6║     2┊   0║    25┊   1║     1┊   0║    33┊ -34║    39┊   0║
+// ║     3┊  -4║   137┊   1║     0┊  -1║    29┊   4║     1┊   0║    34┊   1║    16┊ -17║
+// ║     1┊  -2║   138┊   1║     2┊   2║    30┊   1║     2┊   1║    39┊   5║    39┊  23║
+// ║     1┊   0║   140┊   2║     2┊   0║    61┊  31║     2┊   0║    39┊   0║    39┊   0║
+// ║     6┊   5║   142┊   2║     2┊   0║    24┊ -25║     1┊  -2║    37┊ -38║    39┊   0║
+// ║    21┊  15║   145┊   3║     2┊   0║    25┊   1║     1┊   0║    39┊   2║    39┊   0║
+// ║    19┊ -20║   154┊   9║     0┊  -1║    29┊   4║     2┊   1║    12┊ -13║    17┊ -18║
+// ║    24┊   5║   155┊   1║     0┊   0║    30┊   1║     2┊   0║    12┊   0║    18┊   1║
+// ║     3┊  -4║   156┊   1║     0┊   0║    62┊  32║     2┊   0║    12┊   0║    19┊   1║
+// ║    29┊  26║   157┊   1║     2┊   2║    24┊ -25║     2┊   0║    12┊   0║    21┊   2║
+// ║    28┊ -29║   158┊   1║     2┊   0║    25┊   1║     2┊   0║    12┊   0║    23┊   2║
+// ║    27┊ -28║   159┊   1║     0┊  -1║    29┊   4║     2┊   0║    12┊   0║    24┊   1║
+// ║    27┊   0║   161┊   2║     0┊   0║    30┊   1║     2┊   0║    12┊   0║    25┊   1║
+// ║    27┊   0║   162┊   1║     0┊   0║    66┊  36║     2┊   0║    12┊   0║    29┊   4║
+// ║    27┊   0║   163┊   1║     0┊   0║    63┊ -64║     2┊   0║    13┊   1║    30┊   1║
+// ║    27┊   0║   164┊   1║     2┊   2║    64┊   1║     2┊   0║    13┊   0║    31┊   1║
+// ║     2┊  -3║   165┊   1║     2┊   0║    70┊   6║     2┊   0║    13┊   0║    32┊   1║
+// ║     2┊   0║   170┊   5║     2┊   0║    43┊ -44║     2┊   0║    13┊   0║    35┊   3║
+// ║    28┊  26║   172┊   2║     2┊   0║    72┊  29║     2┊   0║    13┊   0║    33┊ -34║
+// ║    28┊   0║   173┊   1║     2┊   0║    73┊   1║     2┊   0║    13┊   0║    34┊   1║
+// ║     1┊  -2║   174┊   1║     2┊   0║    74┊   1║     2┊   0║    13┊   0║    39┊   5║
+// ║     6┊   5║   180┊   6║     2┊   0║    78┊   4║     2┊   0║    13┊   0║    39┊   0║
+// ║     3┊  -4║   139┊-140║     0┊  -1║    50┊ -51║     2┊   0║    14┊   1║    36┊ -37║
+// ║     3┊   0║   146┊   7║     2┊   2║    79┊  29║     2┊   0║    14┊   0║    37┊   1║
+// ║     9┊   6║   141┊-142║     0┊  -1║    17┊ -18║     2┊   0║    14┊   0║    38┊   1║
+// ║     9┊   0║   146┊   5║     2┊   2║    18┊   1║     2┊   0║    14┊   0║    39┊   1║
+// ║     8┊  -9║   130┊-131║     2┊   0║    19┊   1║     2┊   0║    14┊   0║    12┊ -13║
+// ║     1┊  -2║   136┊   6║     2┊   0║    24┊   5║     2┊   0║    14┊   0║    12┊   0║
+// ║     2┊   1║   138┊   2║     2┊   0║    25┊   1║     2┊   0║    14┊   0║    12┊   0║
+// ║     1┊  -2║   140┊   2║     2┊   0║    29┊   4║     2┊   0║    14┊   0║    12┊   0║
+// ║     3┊   2║   142┊   2║     2┊   0║    30┊   1║     2┊   0║    15┊   1║    12┊   0║
+// ║     3┊   0║   145┊   3║     2┊   0║    80┊  50║     2┊   0║    15┊   0║    12┊   0║
+// ║     3┊   0║   174┊  29║     2┊   0║    83┊   3║     2┊   0║    15┊   0║    12┊   0║
+// ║     6┊   3║   180┊   6║     2┊   0║    19┊ -20║     2┊   0║    15┊   0║    12┊   0║
+// ║     1┊  -2║   130┊-131║     2┊   0║    24┊   5║     2┊   0║    15┊   0║    13┊   1║
+// ║    19┊  18║   136┊   6║     2┊   0║    25┊   1║     2┊   0║    15┊   0║    13┊   0║
+// ║     5┊  -6║   138┊   2║     2┊   0║    29┊   4║     2┊   0║    15┊   0║    13┊   0║
+// ║     2┊  -3║   140┊   2║     2┊   0║    30┊   1║     2┊   0║    15┊   0║    13┊   0║
+// ║     1┊  -2║   142┊   2║     2┊   0║    57┊  27║     1┊  -2║    41┊  26║    13┊   0║
+// ║     2┊   1║   145┊   3║     2┊   0║    57┊   0║     1┊   0║    40┊ -41║    13┊   0║
+// ║    28┊  26║   174┊  29║     2┊   0║    57┊   0║     1┊   0║    44┊   4║    13┊   0║
+// ║    27┊ -28║   180┊   6║     2┊   0║    66┊   9║     2┊   1║    32┊ -33║    13┊   0║
+// ║    27┊   0║   130┊-131║     2┊   0║    87┊  21║     2┊   0║    32┊   0║    14┊   1║
+// ║    27┊   0║   136┊   6║     2┊   0║    64┊ -65║     2┊   0║    32┊   0║    14┊   0║
+// ║     1┊  -2║   138┊   2║     2┊   0║    91┊  27║     2┊   0║    32┊   0║    14┊   0║
+// ║     2┊   1║   140┊   2║     2┊   0║    93┊   2║     1┊  -2║    51┊  19║    14┊   0║
+// ║     2┊   0║   142┊   2║     2┊   0║    73┊ -74║     2┊   1║    32┊ -33║    14┊   0║
+// ║     1┊  -2║   145┊   3║     2┊   0║    74┊   1║     2┊   0║    32┊   0║    14┊   0║
+// ║     6┊   5║   174┊  29║     2┊   0║    97┊  23║     2┊   0║    32┊   0║    14┊   0║
+// ║     3┊  -4║   180┊   6║     2┊   0║    94┊ -95║     1┊  -2║    47┊  15║    14┊   0║
+// ║     1┊  -2║   130┊-131║     2┊   0║    53┊ -54║     1┊   0║    46┊ -47║    15┊   1║
+// ║    19┊  18║   136┊   6║     2┊   0║    24┊ -25║     2┊   1║    32┊ -33║    15┊   0║
+// ║     5┊  -6║   138┊   2║     2┊   0║    25┊   1║     2┊   0║    32┊   0║    15┊   0║
+// ║    19┊  14║   140┊   2║     2┊   0║    29┊   4║     2┊   0║    32┊   0║    15┊   0║
+// ║    19┊   0║   142┊   2║     2┊   0║    30┊   1║     2┊   0║    32┊   0║    15┊   0║
+// ║    16┊ -17║   145┊   3║     2┊   0║   101┊  71║     2┊   0║    32┊   0║    15┊   0║
+// ║     1┊  -2║   174┊  29║     2┊   0║    73┊ -74║     2┊   0║    32┊   0║    15┊   0║
+// ║    16┊  15║   180┊   6║     2┊   0║    74┊   1║     2┊   0║    32┊   0║    15┊   0║
+// ║     1┊  -2║     2┊  -3║     2┊   0║   103┊  29║     2┊   0║    32┊   0║    41┊  26║
+// ║     1┊   0║   181┊ 179║     2┊   0║   104┊   1║     2┊   0║    32┊   0║    40┊ -41║
+// ║     2┊   1║   136┊-137║     2┊   0║   109┊   5║     2┊   0║     7┊  -8║    44┊   4║
+// ║     3┊   1║   175┊  39║     0┊  -1║   104┊-105║     2┊   0║     9┊   2║    42┊ -43║
+// ║     2┊  -3║   177┊   2║     0┊   0║   111┊   7║     2┊   0║     9┊   0║    43┊   1║
+// ║    19┊  17║    36┊ -37║     2┊   2║     .┊   .║     2┊   0║     9┊   0║    32┊ -33║
+// ║     5┊  -6║    40┊   4║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    32┊   0║
+// ║     3┊  -4║    46┊   6║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    32┊   0║
+// ║     2┊  -3║    47┊   1║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    32┊   0║
+// ║     4┊   2║    60┊  13║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    51┊  19║
+// ║     3┊  -4║    94┊  34║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    32┊ -33║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    35┊  26║    32┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊  -2║    52┊  17║    32┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   1║    35┊ -36║    47┊  15║
+// ║     .┊   .║   131┊   1║     0┊  -1║     .┊   .║     2┊   0║    35┊   0║    45┊ -46║
+// ║     .┊   .║   132┊   1║     2┊   2║     .┊   .║     2┊   0║    35┊   0║    46┊   1║
+// ║     .┊   .║   134┊   2║     0┊  -1║     .┊   .║     2┊   0║    35┊   0║    48┊   2║
+// ║     .┊   .║   142┊   8║     2┊   2║     .┊   .║     2┊   0║    35┊   0║    32┊ -33║
+// ║     .┊   .║   147┊   5║     0┊  -1║     .┊   .║     2┊   0║    35┊   0║    49┊  17║
+// ║     .┊   .║   148┊   1║     0┊   0║     .┊   .║     2┊   0║    35┊   0║    50┊   1║
+// ║     .┊   .║   157┊   9║     2┊   2║     .┊   .║     2┊   0║    35┊   0║    32┊ -33║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊  -2║    28┊ -29║    32┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    32┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   1║    38┊  18║    32┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊  -2║    26┊ -27║    32┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    32┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    32┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   1║    38┊  11║    32┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     7┊  -8║
+// ║     .┊   .║   130┊   0║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   2║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    38┊   0║     9┊   0║
+// ║     .┊   .║   174┊  29║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║     9┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊   0║    23┊   2║     9┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    35┊  26║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    52┊  17║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    35┊ -36║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    35┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    35┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   1║    38┊   4║    35┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    35┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    41┊   3║    35┊   0║
+// ║     .┊   .║   174┊  29║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    35┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    35┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     1┊  -2║    55┊  14║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊   0║    54┊ -55║    20┊ -21║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   1║    41┊ -42║    38┊  18║
+// ║     .┊   .║    46┊   5║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    26┊ -27║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊  -2║    56┊  15║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   1║    41┊ -42║    27┊   5║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊  11║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    38┊   0║
+// ║     .┊   .║   156┊  11║     0┊  -1║     .┊   .║     2┊   0║    41┊   0║    53┊  15║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    41┊   0║    21┊ -22║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    41┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    41┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     1┊  -2║    58┊  17║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   1║    41┊ -42║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    41┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    41┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     1┊  -2║    28┊ -29║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    34┊   1║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   1║    39┊  19║    38┊   4║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊  -2║    26┊ -27║    38┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    41┊   3║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    41┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   1║    39┊  12║    41┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║    55┊  14║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    54┊ -55║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    41┊ -42║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    41┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    56┊  15║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    41┊ -42║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    41┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊   0║    28┊ -29║    41┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    41┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   1║    39┊  19║    41┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     1┊  -2║    26┊ -27║    41┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    41┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    41┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   1║    39┊  12║    41┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║    41┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    41┊   0║
+// ║     .┊   .║   160┊   2║     0┊  -1║     .┊   .║     1┊   0║    31┊   8║    57┊  16║
+// ║     .┊   .║   164┊   4║     2┊   2║     .┊   .║     1┊   0║    32┊   1║    41┊ -42║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    41┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    41┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    58┊  17║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     1┊   0║    28┊ -29║    41┊ -42║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    41┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     1┊   0║    26┊   6║    41┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    41┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊   0║    21┊ -22║    20┊ -21║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    39┊  19║
+// ║     .┊   .║    46┊   5║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    26┊ -27║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    27┊   5║
+// ║     .┊   .║   124┊  30║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    39┊  12║
+// ║     .┊   .║   154┊  30║     0┊  -1║     .┊   .║     1┊   0║    34┊   1║    59┊  20║
+// ║     .┊   .║   155┊   1║     0┊   0║     .┊   .║     1┊   0║    28┊ -29║    18┊ -19║
+// ║     .┊   .║   156┊   1║     0┊   0║     .┊   .║     1┊   0║    20┊ -21║    19┊   1║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     1┊   0║    26┊   6║    21┊   2║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     1┊   0║    27┊   5║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     1┊   0║    21┊ -22║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     1┊   0║    23┊   2║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     1┊   0║    31┊   8║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     1┊   0║    32┊   1║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   1║    49┊  15║    34┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    20┊ -21║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    39┊  19║
+// ║     .┊   .║    46┊   5║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    26┊ -27║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    27┊   5║
+// ║     .┊   .║   124┊  30║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    39┊  12║
+// ║     .┊   .║   154┊  30║     0┊  -1║     .┊   .║     2┊   0║    49┊   0║    60┊  21║
+// ║     .┊   .║   155┊   1║     0┊   0║     .┊   .║     2┊   0║    49┊   0║    18┊ -19║
+// ║     .┊   .║   156┊   1║     0┊   0║     .┊   .║     2┊   0║    49┊   0║    19┊   1║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    49┊   0║    21┊   2║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    49┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    49┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     2┊   0║    49┊   0║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   0║    49┊   0║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    49┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    34┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    20┊ -21║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    26┊   6║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    49┊   0║    27┊   5║
+// ║     .┊   .║   156┊  62║     0┊  -1║     .┊   .║     2┊   0║    51┊   2║    61┊  34║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    51┊   0║    21┊ -22║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    51┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    51┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    34┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    20┊ -21║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    26┊   6║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    27┊   5║
+// ║     .┊   .║   156┊  62║     0┊  -1║     .┊   .║     2┊   0║    51┊   0║    62┊  35║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    51┊   0║    21┊ -22║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    51┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   0║    51┊   0║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    51┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    52┊   1║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    34┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊  15║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    49┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   1║    49┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    49┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   2║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    51┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   1║    51┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    51┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    54┊   0║    52┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   1║    52┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    52┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    53┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   1║    53┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    53┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    56┊   0║    54┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   1║    54┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    54┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    55┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     1┊  -2║    31┊ -32║    56┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊   0║    65┊  34║    56┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   1║    65┊   0║    56┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    56┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    57┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    57┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   1║    57┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   167┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   169┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   170┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    57┊   0║
+// ║     .┊   .║   159┊-160║     0┊  -1║     .┊   .║     2┊   0║    63┊ -64║    66┊   9║
+// ║     .┊   .║   164┊   5║     2┊   2║     .┊   .║     2┊   0║    63┊   0║    31┊ -32║
+// ║     .┊   .║   166┊   2║     0┊  -1║     .┊   .║     2┊   0║    63┊   0║    63┊  32║
+// ║     .┊   .║   168┊   2║     0┊   0║     .┊   .║     2┊   0║    63┊   0║    64┊   1║
+// ║     .┊   .║   169┊   1║     2┊   2║     .┊   .║     2┊   0║    63┊   0║    65┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    65┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    10┊ -11║    65┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    65┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    65┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    65┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    65┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    66┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊  -2║    67┊  57║    66┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   1║    10┊ -11║    66┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    10┊   0║    66┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   6║    66┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    66┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    11┊ -12║    66┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     1┊  -2║    68┊  57║    66┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   1║    11┊ -12║    66┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    11┊   0║    66┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   7║    66┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    66┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    66┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    66┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    66┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    63┊ -64║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    63┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    63┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    63┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊  57║    63┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    63┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    10┊ -11║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    10┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   1║    10┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    10┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    10┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    10┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    67┊  57║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    10┊ -11║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    10┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   6║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    16┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊ -12║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    68┊  57║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊ -12║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    11┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     1┊  -2║    69┊ -70║    18┊   7║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     1┊   0║    44┊ -45║    18┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   1║    69┊  25║    18┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊  -2║    71┊   2║    18┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   1║    70┊ -71║    18┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    18┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║     1┊  -2║    18┊   0║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║     2┊   1║    18┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    80┊  78║    18┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    80┊   0║    75┊  57║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊  -2║    75┊ -76║    75┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   1║    32┊ -33║    75┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     1┊  -2║    51┊  19║    75┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   1║    32┊ -33║    75┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   136┊   4║     2┊   0║     .┊   .║     1┊  -2║    76┊  44║    75┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     1┊   0║    77┊   1║    75┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   1║    32┊ -33║    75┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    75┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    21┊ -22║    75┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    75┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    75┊   0║
+// ║     .┊   .║   183┊   3║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    75┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   136┊   4║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    76┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     1┊  -2║    28┊   7║    76┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    76┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     1┊   0║    26┊   6║    76┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    76┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    76┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   1║    39┊  12║    76┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    76┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    76┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║    76┊   0║
+// ║     .┊   .║   183┊   3║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    76┊   0║
+// ║     .┊   .║   176┊-177║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    69┊ -70║
+// ║     .┊   .║   136┊-137║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    44┊ -45║
+// ║     .┊   .║   175┊  39║     0┊  -1║     .┊   .║     1┊   0║    35┊   3║    70┊  26║
+// ║     .┊   .║   176┊   1║     2┊   2║     .┊   .║     1┊   0║    33┊ -34║    69┊ -70║
+// ║     .┊   .║   177┊   1║     0┊  -1║     .┊   .║     1┊   0║    34┊   1║    43┊ -44║
+// ║     .┊   .║    61┊ -62║     2┊   2║     .┊   .║     2┊   1║    39┊   5║    71┊  28║
+// ║     .┊   .║   136┊  75║     2┊   0║     .┊   .║     1┊  -2║    81┊  42║    70┊ -71║
+// ║     .┊   .║   176┊  40║     2┊   0║     .┊   .║     1┊   0║    82┊   1║    70┊   0║
+// ║     .┊   .║     1┊  -2║     2┊   0║     .┊   .║     1┊   0║    28┊ -29║     1┊  -2║
+// ║     .┊   .║     1┊   0║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║     2┊   1║
+// ║     .┊   .║   132┊ 131║     2┊   0║     .┊   .║     2┊   1║    37┊  17║    80┊  78║
+// ║     .┊   .║   133┊   1║     0┊  -1║     .┊   .║     1┊  -2║    26┊ -27║    72┊ -73║
+// ║     .┊   .║   179┊  46║     0┊   0║     .┊   .║     1┊   0║    22┊ -23║    73┊   1║
+// ║     .┊   .║   180┊   1║     2┊   2║     .┊   .║     1┊   0║    27┊   5║    80┊   7║
+// ║     .┊   .║   182┊   2║     0┊  -1║     .┊   .║     2┊   1║    37┊  10║    74┊ -75║
+// ║     .┊   .║   183┊   1║     2┊   2║     .┊   .║     2┊   0║    37┊   0║    75┊   1║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊ -33║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    51┊  19║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊ -33║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║    32┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    32┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    76┊  44║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    77┊   1║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    32┊ -33║
+// ║     .┊   .║   147┊   5║     0┊  -1║     .┊   .║     1┊   0║    33┊ -34║    78┊  46║
+// ║     .┊   .║   148┊   1║     0┊   0║     .┊   .║     1┊   0║    34┊   1║    50┊ -51║
+// ║     .┊   .║   157┊   9║     2┊   2║     .┊   .║     2┊   1║    37┊   3║    32┊ -33║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    32┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    40┊   3║    32┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    32┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    32┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     1┊  -2║    55┊  15║    32┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     1┊   0║    54┊ -55║    32┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   1║    40┊ -41║    32┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊ -22║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊  -2║    56┊  16║    21┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   1║    40┊ -41║    21┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     1┊  -2║    58┊  18║    21┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   1║    40┊ -41║    21┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    21┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    28┊   7║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    20┊ -21║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    44┊   4║    26┊   6║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    27┊   5║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    39┊  12║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    39┊   0║
+// ║     .┊   .║   137┊  13║     0┊  -1║     .┊   .║     2┊   0║    44┊   0║    79┊  40║
+// ║     .┊   .║   142┊   5║     2┊   2║     .┊   .║     2┊   0║    44┊   0║    39┊ -40║
+// ║     .┊   .║   154┊  12║     0┊  -1║     .┊   .║     2┊   0║    44┊   0║    17┊ -18║
+// ║     .┊   .║   155┊   1║     0┊   0║     .┊   .║     2┊   0║    44┊   0║    18┊   1║
+// ║     .┊   .║   156┊   1║     0┊   0║     .┊   .║     2┊   0║    44┊   0║    19┊   1║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    44┊   0║    21┊   2║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    44┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    44┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     2┊   0║    44┊   0║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   0║    44┊   0║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    44┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    34┊   1║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    39┊   5║
+// ║     .┊   .║    42┊ -43║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    81┊  42║
+// ║     .┊   .║   136┊  94║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    82┊   1║
+// ║     .┊   .║   153┊  17║     0┊  -1║     .┊   .║     2┊   0║    44┊   0║    80┊ -81║
+// ║     .┊   .║    36┊ -37║     2┊   2║     .┊   .║     2┊   0║    44┊   0║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    20┊ -21║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   1║    37┊  17║
+// ║     .┊   .║    46┊   5║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    26┊ -27║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    27┊   5║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊  10║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║   155┊  10║     0┊  -1║     .┊   .║     2┊   0║    45┊   0║    83┊  46║
+// ║     .┊   .║   156┊   1║     0┊   0║     .┊   .║     2┊   0║    45┊   0║    19┊ -20║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    45┊   0║    21┊   2║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    45┊   0║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    45┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     2┊   0║    45┊   0║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   0║    45┊   0║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    45┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    34┊   1║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   3║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    37┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    46┊   1║    40┊   3║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    55┊  15║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    54┊ -55║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊ -41║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    56┊  16║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊ -41║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   160┊   2║     0┊  -1║     .┊   .║     2┊   0║    46┊   0║    57┊  17║
+// ║     .┊   .║   164┊   4║     2┊   2║     .┊   .║     2┊   0║    46┊   0║    40┊ -41║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    58┊  18║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊ -41║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    40┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    50┊   4║    40┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   4║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    50┊   0║    44┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    64┊  14║    44┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    45┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊  -2║    84┊  20║    45┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     1┊   0║    52┊ -53║    46┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     1┊   0║    85┊  33║    46┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     1┊   0║    52┊ -53║    46┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   1║    47┊ -48║    46┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊  -2║    55┊   8║    46┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     1┊   0║    54┊ -55║    46┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   1║    47┊ -48║    46┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊  -2║    56┊   9║    46┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   1║    47┊ -48║    46┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    46┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     1┊  -2║    58┊  11║    46┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   1║    47┊ -48║    46┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    50┊   4║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    50┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    47┊   0║    50┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   1║    50┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊  -2║    55┊   7║    50┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     1┊   0║    54┊ -55║    50┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   1║    48┊ -49║    50┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊  -2║    56┊   8║    50┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   1║    48┊ -49║    50┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    50┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     1┊  -2║    58┊  10║    50┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   1║    48┊ -49║    50┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    64┊  14║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    64┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    48┊   0║    64┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     1┊  -2║    86┊  38║    64┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     1┊   0║    31┊ -32║    64┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   1║    60┊  29║    64┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊  -2║    65┊   5║    64┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   1║    61┊ -62║    64┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    61┊   0║    64┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    61┊   0║    64┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    62┊   1║    64┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    64┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    64┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊ -18║    64┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    64┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    19┊   2║    64┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    64┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    64┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    64┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    64┊   0║
+// ║     .┊   .║    41┊ -42║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    84┊  20║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    52┊ -53║
+// ║     .┊   .║    41┊ -42║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    85┊  33║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    52┊ -53║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    67┊  48║    47┊ -48║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    47┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    47┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    55┊   8║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    54┊ -55║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    47┊ -48║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    47┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    56┊   9║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    68┊   1║    47┊ -48║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     1┊  -2║    89┊  21║    47┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊   0║    88┊ -89║    47┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     1┊   0║    90┊   2║    47┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   1║    73┊ -74║    47┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     1┊  -2║    12┊ -13║    47┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   1║    79┊  67║    47┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    79┊   0║    47┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     1┊  -2║    92┊  13║    47┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   1║    77┊ -78║    47┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    77┊   0║    47┊   0║
+// ║     .┊   .║   160┊   2║     0┊  -1║     .┊   .║     2┊   0║    77┊   0║    57┊  10║
+// ║     .┊   .║   164┊   4║     2┊   2║     .┊   .║     2┊   0║    80┊   3║    47┊ -48║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    80┊   0║    47┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊  -2║    75┊ -76║    47┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   1║     5┊  -6║    58┊  11║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊  15║    47┊ -48║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    47┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    47┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    47┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    55┊   7║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    54┊ -55║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊ -49║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    56┊   8║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊ -49║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    48┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     1┊  -2║    95┊  75║    48┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     1┊   0║    96┊   1║    48┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     1┊   0║    12┊ -13║    48┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊   0║    99┊  87║    48┊   0║
+// ║     .┊   .║   160┊   2║     0┊  -1║     .┊   .║     1┊   0║    98┊ -99║    57┊   9║
+// ║     .┊   .║   164┊   4║     2┊   2║     .┊   .║     1┊   0║   100┊   2║    48┊ -49║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   1║    33┊ -34║    48┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    33┊   0║    48┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     1┊  -2║    28┊ -29║    58┊  10║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     1┊   0║    20┊ -21║    48┊ -49║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   1║    36┊  16║    48┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     1┊  -2║    26┊ -27║    48┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     1┊   0║    22┊ -23║    48┊   0║
+// ║     .┊   .║   167┊-168║     2┊   0║     .┊   .║     1┊   0║    27┊   5║    86┊  38║
+// ║     .┊   .║   159┊-160║     0┊  -1║     .┊   .║     2┊   1║    36┊   9║    66┊ -67║
+// ║     .┊   .║   164┊   5║     2┊   2║     .┊   .║     2┊   0║    36┊   0║    31┊ -32║
+// ║     .┊   .║   166┊   2║     0┊  -1║     .┊   .║     2┊   0║    36┊   0║    87┊  56║
+// ║     .┊   .║   167┊   1║     2┊   2║     .┊   .║     2┊   0║    36┊   0║    60┊ -61║
+// ║     .┊   .║   168┊   1║     0┊  -1║     .┊   .║     2┊   0║    36┊   0║    64┊   4║
+// ║     .┊   .║   169┊   1║     2┊   2║     .┊   .║     2┊   0║    36┊   0║    65┊   1║
+// ║     .┊   .║   164┊-165║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    61┊ -62║
+// ║     .┊   .║   167┊   3║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    61┊   0║
+// ║     .┊   .║   169┊   2║     2┊   0║     .┊   .║     1┊  -2║    21┊ -22║    61┊   0║
+// ║     .┊   .║   164┊-165║     2┊   0║     .┊   .║     1┊   0║    23┊   2║    62┊   1║
+// ║     .┊   .║   167┊   3║     2┊   0║     .┊   .║     1┊   0║    31┊   8║    62┊   0║
+// ║     .┊   .║   169┊   2║     2┊   0║     .┊   .║     1┊   0║    32┊   1║    62┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     1┊   0║    35┊   3║    17┊ -18║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     1┊   0║    33┊ -34║    17┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    17┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   1║    36┊   2║    17┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    17┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    42┊   6║    17┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    17┊   0║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    17┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    17┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   2║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   146┊   1║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   174┊  28║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    19┊   0║
+// ║     .┊   .║   130┊-131║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊  48║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   174┊  29║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    67┊   0║
+// ║     .┊   .║   176┊-177║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    68┊   1║
+// ║     .┊   .║   136┊-137║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    89┊  21║
+// ║     .┊   .║   178┊  42║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    88┊ -89║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    90┊   2║
+// ║     .┊   .║   132┊   0║     2┊   0║     .┊   .║     2┊   0║    42┊   0║    73┊ -74║
+// ║     .┊   .║   143┊  11║     0┊  -1║     .┊   .║     2┊   0║    42┊   0║    91┊  18║
+// ║     .┊   .║   180┊  37║     2┊   2║     .┊   .║     2┊   0║    43┊   1║    12┊ -13║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    79┊  67║
+// ║     .┊   .║   180┊  48║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    79┊   0║
+// ║     .┊   .║   183┊   3║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    92┊  13║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    77┊ -78║
+// ║     .┊   .║   180┊  48║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    77┊   0║
+// ║     .┊   .║   183┊   3║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    77┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    80┊   3║
+// ║     .┊   .║   133┊   1║     0┊  -1║     .┊   .║     2┊   0║    43┊   0║    93┊  13║
+// ║     .┊   .║   179┊  46║     0┊   0║     .┊   .║     2┊   0║    43┊   0║    73┊ -74║
+// ║     .┊   .║   180┊   1║     2┊   2║     .┊   .║     2┊   0║    43┊   0║    80┊   7║
+// ║     .┊   .║   182┊   2║     0┊  -1║     .┊   .║     2┊   0║    43┊   0║    74┊ -75║
+// ║     .┊   .║   183┊   1║     2┊   2║     .┊   .║     2┊   0║    43┊   0║    75┊   1║
+// ║     .┊   .║     1┊  -2║     2┊   0║     .┊   .║     2┊   0║    43┊   0║     5┊  -6║
+// ║     .┊   .║    36┊  35║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊  15║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    20┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    58┊  15║    20┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    95┊  75║
+// ║     .┊   .║   142┊  19║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    96┊   1║
+// ║     .┊   .║   143┊   1║     0┊  -1║     .┊   .║     2┊   0║    58┊   0║    97┊   1║
+// ║     .┊   .║   149┊   6║     0┊   0║     .┊   .║     2┊   0║    58┊   0║    94┊ -95║
+// ║     .┊   .║   180┊  31║     2┊   2║     .┊   .║     2┊   0║    58┊   0║    12┊ -13║
+// ║     .┊   .║    44┊ -45║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    99┊  87║
+// ║     .┊   .║    62┊  18║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    98┊ -99║
+// ║     .┊   .║    62┊   0║     2┊   0║     .┊   .║     2┊   0║    58┊   0║   100┊   2║
+// ║     .┊   .║    44┊ -45║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    33┊ -34║
+// ║     .┊   .║    62┊  18║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    33┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    28┊ -29║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    20┊ -21║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊  16║
+// ║     .┊   .║    46┊   5║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    26┊ -27║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    22┊ -23║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    27┊   5║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊   9║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    36┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    59┊   1║    36┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    71┊  12║    36┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    71┊   0║    36┊   0║
+// ║     .┊   .║   156┊  11║     0┊  -1║     .┊   .║     2┊   0║    72┊   1║    53┊  17║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    72┊   0║    21┊ -22║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║     3┊  -4║    23┊   2║
+// ║     .┊   .║   159┊   1║     0┊  -1║     .┊   .║     2┊   0║    80┊  77║    24┊   1║
+// ║     .┊   .║   161┊   2║     0┊   0║     .┊   .║     2┊   0║    80┊   0║    25┊   1║
+// ║     .┊   .║   162┊   1║     0┊   0║     .┊   .║     1┊  -2║    75┊ -76║    29┊   4║
+// ║     .┊   .║   163┊   1║     0┊   0║     .┊   .║     2┊   1║    78┊   3║    30┊   1║
+// ║     .┊   .║   164┊   1║     2┊   2║     .┊   .║     2┊   0║    78┊   0║    31┊   1║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    78┊   0║    32┊   1║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     1┊  -2║   102┊  24║    35┊   3║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   1║    22┊ -23║    33┊ -34║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    34┊   1║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    36┊   2║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    36┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   6║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    42┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    28┊   6║    42┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    28┊   0║    42┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    28┊   0║    42┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊ -25║    42┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    42┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    43┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   1║    43┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    43┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    58┊  15║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    58┊   0║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   5║    58┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║    46┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║    63┊  16║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║    94┊  31║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   136┊   6║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   138┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   145┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   157┊  12║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    58┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     1┊  -2║   105┊  75║    58┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   1║    31┊ -32║    58┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   171┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   174┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   180┊   6║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    58┊   0║
+// ║     .┊   .║   167┊-168║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    59┊   1║
+// ║     .┊   .║   136┊-137║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    71┊  12║
+// ║     .┊   .║   176┊  40║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    71┊   0║
+// ║     .┊   .║   136┊-137║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    72┊   1║
+// ║     .┊   .║   176┊  40║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    72┊   0║
+// ║     .┊   .║     1┊  -2║     2┊   0║     .┊   .║     2┊   0║    31┊   0║     3┊  -4║
+// ║     .┊   .║   132┊ 131║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    80┊  77║
+// ║     .┊   .║   133┊   1║     0┊  -1║     .┊   .║     2┊   0║    31┊   0║   101┊  21║
+// ║     .┊   .║   179┊  46║     0┊   0║     .┊   .║     2┊   0║    74┊  43║    73┊ -74║
+// ║     .┊   .║   180┊   1║     2┊   2║     .┊   .║     2┊   0║     4┊  -5║    80┊   7║
+// ║     .┊   .║   182┊   2║     0┊  -1║     .┊   .║     1┊  -2║   107┊ 103║    74┊ -75║
+// ║     .┊   .║   183┊   1║     2┊   2║     .┊   .║     1┊   0║   106┊-107║    75┊   1║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   1║    26┊ -27║    78┊   3║
+// ║     .┊   .║   180┊  48║     2┊   0║     .┊   .║     2┊   0║    26┊   0║    78┊   0║
+// ║     .┊   .║   183┊   3║     2┊   0║     .┊   .║     1┊  -2║   108┊  82║    78┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   1║    34┊ -35║   102┊  24║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    34┊   0║    22┊ -23║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    23┊ -24║    22┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    22┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    28┊   6║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     2┊   0║    28┊   5║    28┊   0║
+// ║     .┊   .║   150┊  25║     0┊  -1║     .┊   .║     2┊   0║    28┊   0║   103┊  75║
+// ║     .┊   .║   151┊   1║     0┊   0║     .┊   .║     2┊   0║    28┊   0║   104┊   1║
+// ║     .┊   .║   152┊   1║     2┊   2║     .┊   .║     2┊   0║    29┊   1║    28┊ -29║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     2┊   0║    29┊   0║    24┊ -25║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     2┊   0║    29┊   0║    24┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     1┊  -2║   107┊  78║    24┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     1┊   0║   110┊   3║    24┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     2┊   1║    28┊ -29║    24┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     2┊   0║    28┊   0║    24┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     2┊   0║    28┊   0║    24┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    27┊ -28║    24┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     2┊   0║    27┊   0║    24┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     1┊  -2║   108┊  81║    24┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    24┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   1║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    25┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   5║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   142┊  18║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    30┊   0║
+// ║     .┊   .║   136┊-137║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   105┊  75║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊ -32║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║    94┊  47║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   142┊  18║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    31┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    74┊  43║
+// ║     .┊   .║     1┊  -2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║     4┊  -5║
+// ║     .┊   .║   123┊ 122║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   107┊ 103║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   106┊-107║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    26┊ -27║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    26┊   0║
+// ║     .┊   .║   152┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   108┊  82║
+// ║     .┊   .║    44┊ -45║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    34┊ -35║
+// ║     .┊   .║    62┊  18║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    34┊   0║
+// ║     .┊   .║    36┊ -37║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊ -24║
+// ║     .┊   .║    40┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║    46┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║    47┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║    60┊  13║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║    94┊  34║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   123┊  29║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   130┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   132┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   142┊  10║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   157┊  15║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   164┊   6║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   170┊   5║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   172┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   173┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   180┊   7║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    23┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    28┊   5║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    28┊   0║
+// ║     .┊   .║   150┊  25║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║   109┊  81║
+// ║     .┊   .║   151┊   1║     0┊   0║     .┊   .║     .┊   .║     .┊   .║   104┊-105║
+// ║     .┊   .║   152┊   1║     2┊   2║     .┊   .║     .┊   .║     .┊   .║    28┊ -29║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    29┊   1║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    29┊   0║
+// ║     .┊   .║   152┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    29┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   107┊  78║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   110┊   3║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    28┊ -29║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    28┊   0║
+// ║     .┊   .║   151┊  26║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║   111┊  83║
+// ║     .┊   .║   152┊   1║     2┊   2║     .┊   .║     .┊   .║     .┊   .║    28┊ -29║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    27┊ -28║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    27┊   0║
+// ║     .┊   .║   152┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   108┊  81║
+
+
+// ------------------
+
+
+,
 defaultActions: {
   15: [
     2,
@@ -5304,6 +11568,19 @@ defaultActions: {
     4
   ]
 },
+
+
+
+// ------------------------------
+
+
+// ║ len┊   ∆║ pop┊   ∆║rule┊   ∆║
+
+
+// ------------------
+
+
+  // ,
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -5311,19 +11588,31 @@ parseError: function parseError(str, hash) {
         throw new this.JisonParserError(str, hash);
     }
 },
+quoteName: function quoteName(id_str) {
+    return '"' + id_str + '"';
+},
+describeSymbol: function describeSymbol(symbol) {
+    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
+        return this.terminal_descriptions_[symbol];
+    } 
+    else if (symbol === this.EOF) {
+        return 'end of input';
+    }
+    else if (this.terminals_[symbol]) {
+        return this.quoteName(this.terminals_[symbol]);
+    }
+    return null;
+},
 parse: function parse(input) {
     var self = this,
-        stack = [0],
+        stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
 
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
         table = this.table,
-        yytext = '',
-        yylineno = 0,
-        yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        TERROR = 2,
-        EOF = 1;
+        TERROR = this.TERROR,
+        EOF = this.EOF;
 
     var args = lstack.slice.call(arguments, 1);
 
@@ -5354,6 +11643,19 @@ parse: function parse(input) {
     }
     var yyloc = lexer.yylloc;
     lstack.push(yyloc);
+    
+    if (typeof lexer.yytext === 'undefined') {
+        lexer.yytext = '';
+    }
+    var yytext = lexer.yytext;
+    if (typeof lexer.yylineno === 'undefined') {
+        lexer.yylineno = 0;
+    }
+    var yylineno = lexer.yylineno;
+    if (typeof lexer.yyleng === 'undefined') {
+        lexer.yyleng = 0;
+    }
+    var yyleng = lexer.yyleng;
 
     var ranges = lexer.options && lexer.options.ranges;
 
@@ -5361,12 +11663,17 @@ parse: function parse(input) {
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
     }
+    // Does the shared state override the default `quoteName` that already comes with this instance?
+    if (typeof sharedState.yy.quoteName === 'function') {
+        this.quoteName = sharedState.yy.quoteName;
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
         lstack.length = lstack.length - n;
     }
+
 
     function lex() {
         var token;
@@ -5378,9 +11685,10 @@ parse: function parse(input) {
         return token;
     }
 
-    var symbol;
+
+    var symbol = null;
     var preErrorSymbol = null;
-    var state, action, a, r;
+    var state, action, r;
     var yyval = {};
     var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
@@ -5393,6 +11701,7 @@ parse: function parse(input) {
         sharedState.yy.pre_parse.call(this, sharedState.yy);
     }
 
+
     // Return the rule stack depth where the nearest error rule can be found.
     // Return FALSE when no error recovery rule was found.
     function locateNearestErrorRecoveryRule(state) {
@@ -5402,10 +11711,11 @@ parse: function parse(input) {
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
-            if ((TERROR.toString()) in table[state]) {
+            var action = table[state][TERROR];
+            if (action && action.length && action[0]) {
                 return depth;
             }
-            if (state === 0 || stack_probe < 2) {
+            if (state === 0 /* $accept rule */ || stack_probe < 2) {
                 return false; // No suitable error recovery rule available.
             }
             stack_probe -= 2; // popStack(1): [symbol, action]
@@ -5415,15 +11725,28 @@ parse: function parse(input) {
     }
 
 
+    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
+    // 
+    // The produced list may contain token or token set descriptions instead of the tokens
+    // themselves to help turning this output into something that easier to read by humans.
+    // 
+    // The returned list (array) will not contain any duplicate entries.
     function collect_expected_token_set(state) {
         var tokenset = [];
+        var check = {};
+        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
+        // If so, use that one instead of the less palatable token set.
+        if (self.state_descriptions_ && self.state_descriptions_[p]) {
+            return [
+                self.state_descriptions_[p]
+            ];
+        }
         for (var p in table[state]) {
-            if (p > TERROR) {
-                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
-                    tokenset.push(self.terminal_descriptions_[p]);
-                }
-                else if (self.terminals_[p]) {
-                    tokenset.push("'" + self.terminals_[p] + "'");
+            if (p !== TERROR) {
+                var d = self.describeSymbol(p);
+                if (d && !check[d]) {
+                    tokenset.push(d);
+                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
                 }
             }
         }
@@ -5439,17 +11762,22 @@ parse: function parse(input) {
             if (this.defaultActions[state]) {
                 action = this.defaultActions[state];
             } else {
-                if (symbol === null || typeof symbol === 'undefined') {
+                // The single `==` condition below covers both these `===` comparisons in a single
+                // operation:
+                // 
+                //     if (symbol === null || typeof symbol === 'undefined') ...
+                if (symbol == null) {
                     symbol = lex();
                 }
                 // read action for current state and first input
                 action = table[state] && table[state][symbol];
             }
 
+
             // handle parse error
-            if (typeof action === 'undefined' || !action.length || !action[0]) {
+            if (!action || !action.length || !action[0]) {
                 var error_rule_depth;
-                var errStr = '';
+                var errStr = null;
 
                 if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
@@ -5458,24 +11786,30 @@ parse: function parse(input) {
                     // Report error
                     expected = collect_expected_token_set(state);
                     if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ':\n' + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
                     } else {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
-                                 (symbol === EOF ? 'end of input' :
-                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
                     }
-                    a = this.parseError(errStr, p = {
+                    if (expected.length) {
+                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    } else {
+                        errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    }
+                    r = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: (error_rule_depth !== false),
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     if (!p.recoverable) {
-                        retval = a;
+                        retval = r;
                         break;
                     }
                 } else if (preErrorSymbol !== EOF) {
@@ -5490,10 +11824,13 @@ parse: function parse(input) {
                             token: this.terminals_[symbol] || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
-                            loc: yyloc,
+                            loc: lexer.yylloc,
                             expected: expected,
                             recoverable: false,
-                            state_stack: stack
+                            state_stack: stack,
+                            value_stack: vstack,
+                            location_stack: lstack,
+                            lexer: lexer
                         });
                         break;
                     }
@@ -5513,10 +11850,13 @@ parse: function parse(input) {
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: false,
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     break;
                 }
@@ -5530,22 +11870,42 @@ parse: function parse(input) {
             }
 
 
-            // this shouldn't happen, unless resolve defaults are off
-            if (action[0] instanceof Array && action.length > 1) {
-                retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+            switch (action[0]) {
+            default:
+                // this shouldn't happen, unless resolve defaults are off
+                if (action[0] instanceof Array) {
+                    retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+                        text: lexer.match,
+                        token: this.terminals_[symbol] || symbol,
+                        token_id: symbol,
+                        line: lexer.yylineno,
+                        loc: lexer.yylloc,
+                        expected: expected,
+                        recoverable: false,
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
+                    });
+                    break;
+                }
+                // Another case of better safe than sorry: in case state transitions come out of another error recovery process
+                // or a buggy LUT (LookUp Table):
+                retval = this.parseError(errStr || 'Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
-                    loc: yyloc,
+                    loc: lexer.yylloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack
+                    state_stack: stack,
+                    value_stack: vstack,
+                    location_stack: lstack,
+                    lexer: lexer
                 });
                 break;
-            }
 
-            switch (action[0]) {
             case 1: // shift
                 //this.shiftCount++;
 
@@ -5555,10 +11915,12 @@ parse: function parse(input) {
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution / no error
+                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
+
                     if (recovering > 0) {
                         recovering--;
                     }
@@ -5572,8 +11934,8 @@ parse: function parse(input) {
             case 2:
                 // reduce
                 //this.reductionCount++;
-
-                this_production = this.productions_[action[1]];
+                newState = action[1];
+                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len || 1);
@@ -5591,7 +11953,7 @@ parse: function parse(input) {
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack, stack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -5614,12 +11976,32 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
+                // Return the last rule's `$$` result, if available
+                if (typeof yyval.$ !== 'undefined') {
+                    retval = yyval.$;
+                }
                 break;
             }
 
             // break out of loop: we accept or fail with error
             break;
         }
+    } catch (ex) {
+        // report exceptions through the parseError callback too:
+        retval = this.parseError(errStr || 'Parsing aborted due to exception.', {
+            exception: ex,
+            text: lexer.match,
+            token: this.terminals_[symbol] || symbol,
+            token_id: symbol,
+            line: lexer.yylineno,
+            loc: lexer.yylloc,
+            // expected: expected,
+            recoverable: false,
+            state_stack: stack,
+            value_stack: vstack,
+            location_stack: lstack,
+            lexer: lexer
+        });
     } finally {
         var rv;
 
@@ -5650,7 +12032,6 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-
 
 /* generated by jison-lex 0.3.4-116 */
 var lexer = (function () {
@@ -6924,16 +13305,48 @@ module.exports={
  *
  *  Parser.prototype: {
  *    yy: {},
+ *    EOF: 1,
+ *    TERROR: 2,
+ *
  *    trace: function(errorMessage, errorHash),
+ *
  *    JisonParserError: function(msg, hash),
+ *
+ *    quoteName: function(name),
+ *               Helper function which can be overridden by user code later on: put suitable
+ *                quotes around literal IDs in a description string.
+ *
+ *    describeSymbol: function(symbol),
+ *               Return a more-or-less human-readable description of the given symbol, when
+ *               available, or the symbol itself, serving as its own 'description' for lack
+ *               of something better to serve up.
+ *
+ *               Return NULL when the symbol is unknown to the parser.
+ *
  *    symbols_: {associative list: name ==> number},
  *    terminals_: {associative list: number ==> name},
  *    productions_: [...],
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, ...),
- *                (where `...` denotes the (optional) additional arguments the user passed to
- *                 `parser.parse(str, ...)`)
+ *
+ *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *               where `...` denotes the (optional) additional arguments the user passed to
+ *               `parser.parse(str, ...)`
+ *
  *    table: [...],
+ *               State transition table
+ *               ----------------------
+ *
+ *               index levels are:
+ *               - `state`  --> hash table
+ *               - `symbol` --> action (number or array)
+ *
+ *                 If the `action` is an array, these are the elements' meaning:
+ *                 - index [0]: 1 = shift, 2 = reduce, 3 = accept
+ *                 - index [1]: GOTO `state`
+ *
+ *                 If the `action` is a number, it is the GOTO `state`
+ *
  *    defaultActions: {...},
+ *
  *    parseError: function(str, hash),
  *    parse: function(input),
  *
@@ -6976,7 +13389,7 @@ module.exports={
  *    first_column: n,
  *    last_column: n,
  *    range: [start_number, end_number]
- *                (where the numbers are indexes into the input string, zero-based)
+ *               (where the numbers are indexes into the input string, zero-based)
  *  }
  *
  * ---
@@ -7001,6 +13414,11 @@ module.exports={
  *                  available for this particular error)
  *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
+ *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -7011,6 +13429,18 @@ module.exports={
  *  {
  *    lexer:       (reference to the current lexer instance which reported the error)
  *  }
+ *
+ *  When `parseError` is invoked by the parser due to a **JavaScript exception** being fired
+ *  from either the parser or lexer, `this` will still reference the related *parser*
+ *  instance, while these additional `hash` fields will also be provided:
+ *
+ *  {
+ *    exception:   (reference to the exception thrown)
+ *  }
+ *
+ *  Please do note that in the latter situation, the `expected` field will be omitted as
+ *  type of failure is assumed not to be due to *parse errors* but rather due to user
+ *  action code in either parser or lexer failing unexpectedly.
  *
  * ---
  *
@@ -7042,23 +13472,14 @@ module.exports={
  *                 When it does not return any value, the parser will return the original
  *                 `retval`. 
  *                 This function is invoked immediately before `Parser.post_parse()`.
+ *
  *      parseError: function(str, hash)
  *                 optional: overrides the default `parseError` function.
+ *      quoteName: function(name),
+ *                 optional: overrides the default `quoteName` function.
  *  }
  *
  *  parser.lexer.options: {
- *      ranges: boolean
- *                 optional: `true` ==> token location info will include a .range[] member.
- *      flex: boolean
- *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
- *                 exhaustively to find the longest match.
- *      backtrack_lexer: boolean
- *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
- *                 the lexer terminates the scan when a token is returned by the action code.
- *      xregexp: boolean
- *                 optional: `true` ==> lexer regexes are "extended regex format" using the
- *                 `XRegExp` library. When this %option has not been specified, all lexer
- *                 regexes are written as standard JavaScript RegExp expressions.
  *      pre_lex:  function()
  *                 optional: is invoked before the lexer is invoked to produce another token.
  *                 `this` refers to the Lexer object.
@@ -7068,9 +13489,23 @@ module.exports={
  *                 When it does not return any (truthy) value, the lexer will return
  *                 the original `token`.
  *                 `this` refers to the Lexer object.
+ *
+ *      ranges: boolean
+ *                 optional: `true` ==> token location info will include a .range[] member.
+ *      flex: boolean
+ *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
+ *                 exhaustively to find the longest match.
+ *      backtrack_lexer: boolean
+ *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
+ *                 the lexer terminates the scan when a token is returned by the action code.
+ *      xregexp: boolean
+ *                 optional: `true` ==> lexer rule regexes are "extended regex format" requiring the
+ *                 `XRegExp` library. When this %option has not been specified at compile time, all lexer
+ *                 rule regexes have been written as standard JavaScript RegExp expressions.
  *  }
  */
 var parser = (function () {
+
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
 function JisonParserError(msg, hash) {
@@ -7085,40 +13520,10 @@ JisonParserError.prototype = Object.create(Error.prototype);
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
-function x(k, v, o) {
-  o = o || {};
-  for (var l = k.length; l--; ) {
-    o[k[l]] = v;
-  }
-  return o;
-}
-
-var u = [
-    [129,135,138,140,142,147,148,153,159,161,164,165,166,193],
-    [135,151,193],
-    [151,152],
-    [129,135,138,140,142,147,148,151,153,159,161,164,165,166,171,193],
-    [129,135,138,140,142,147,148,151,152,153,159,161,164,165,166,193],
-    [59,123,124,129,135,138,140,142,147,148,151,152,153,159,161,164,165,166,189,193],
-    [59,124,129,132,135,138,140,142,147,148,151,153,159,161,164,165,166,193,196],
-    [155,157],
-    [132,193],
-    [129,132,151],
-    [129,135,138,140,142,147,148,151,152,153,159,161,164,165,166,171,193],
-    [132,193,196],
-    [40,59,123,124,135,151,152,187,189,193],
-    [59,124],
-    [59,123,124,135,189,193],
-    [40,41,59,123,124,135,151,152,187,189,193],
-    [40,41,59,123,124,135,151,152,186,187,189,193],
-    [40,41,42,43,59,63,123,124,135,151,152,186,187,189,193],
-    [40,41,124,151,152],
-    [123,125],
-    [41,124],
-    [123,125,191]
-];
 
 var parser = {
+EOF: 1,
+TERROR: 2,
 trace: function trace() { },
 JisonParserError: JisonParserError,
 yy: {},
@@ -7435,7 +13840,6 @@ nonterminals_: {
   }
 },
 productions_: [
-  0,
   [
     127,
     5
@@ -7813,6 +14217,113 @@ productions_: [
     0
   ]
 ],
+
+
+
+// ------------------------------
+
+
+// ║ len┊   ∆║ pop┊   ∆║rule┊   ∆║
+// ║   2┊  -3║ 127┊-128║   5┊  -6║
+// ║   2┊   0║ 131┊   4║   0┊  -1║
+// ║   2┊   0║ 131┊   0║   2┊   2║
+// ║   2┊   0║ 134┊   3║   0┊  -1║
+// ║   2┊   0║ 134┊   0║   2┊   2║
+// ║   2┊   0║ 134┊   0║   2┊   0║
+// ║   2┊   0║ 128┊-129║   2┊   0║
+// ║   2┊   0║ 128┊   0║   0┊  -1║
+// ║   2┊   0║ 137┊   9║   2┊   2║
+// ║   2┊   0║ 137┊   0║   1┊  -2║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   2┊   1║
+// ║   2┊   0║ 137┊   0║   1┊  -2║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   1┊   0║
+// ║   2┊   0║ 137┊   0║   3┊   2║
+// ║   2┊   0║ 149┊  12║   1┊  -2║
+// ║   2┊   0║ 149┊   0║   1┊   0║
+// ║   2┊   0║ 150┊   1║   1┊   0║
+// ║   2┊   0║ 150┊   0║   1┊   0║
+// ║   2┊   0║ 146┊-147║   3┊   2║
+// ║   2┊   0║ 154┊   8║   2┊  -3║
+// ║   2┊   0║ 154┊   0║   1┊  -2║
+// ║   2┊   0║ 156┊   2║   1┊   0║
+// ║   2┊   0║ 156┊   0║   3┊   2║
+// ║   2┊   0║ 156┊   0║   3┊   0║
+// ║   2┊   0║ 144┊-145║   2┊  -3║
+// ║   2┊   0║ 145┊   1║   2┊   0║
+// ║   2┊   0║ 141┊-142║   2┊   0║
+// ║   2┊   0║ 163┊  22║   1┊  -2║
+// ║   2┊   0║ 163┊   0║   1┊   0║
+// ║   2┊   0║ 163┊   0║   1┊   0║
+// ║   2┊   0║ 160┊-161║   2┊   1║
+// ║   2┊   0║ 160┊   0║   1┊  -2║
+// ║   2┊   0║ 143┊-144║   2┊   1║
+// ║   2┊   0║ 143┊   0║   1┊  -2║
+// ║   2┊   0║ 167┊  24║   4┊   3║
+// ║   2┊   0║ 168┊   1║   0┊  -1║
+// ║   2┊   0║ 168┊   0║   1┊   1║
+// ║   2┊   0║ 169┊   1║   0┊  -1║
+// ║   2┊   0║ 169┊   0║   1┊   1║
+// ║   2┊   0║ 170┊   1║   0┊  -1║
+// ║   2┊   0║ 170┊   0║   1┊   1║
+// ║   2┊   0║ 173┊   3║   2┊   1║
+// ║   2┊   0║ 173┊   0║   1┊  -2║
+// ║   2┊   0║ 174┊   1║   2┊   1║
+// ║   2┊   0║ 174┊   0║   1┊  -2║
+// ║   2┊   0║ 130┊-131║   2┊   1║
+// ║   2┊   0║ 175┊  45║   2┊   0║
+// ║   2┊   0║ 175┊   0║   1┊  -2║
+// ║   2┊   0║ 176┊   1║   4┊   3║
+// ║   2┊   0║ 177┊   1║   3┊  -4║
+// ║   2┊   0║ 177┊   0║   1┊  -2║
+// ║   2┊   0║ 178┊   1║   3┊   2║
+// ║   2┊   0║ 179┊   1║   2┊  -3║
+// ║   2┊   0║ 179┊   0║   0┊  -1║
+// ║   2┊   0║ 183┊   4║   3┊   3║
+// ║   2┊   0║ 183┊   0║   1┊  -2║
+// ║   2┊   0║ 182┊-183║   3┊   2║
+// ║   2┊   0║ 182┊   0║   2┊  -3║
+// ║   2┊   0║ 184┊   2║   1┊  -2║
+// ║   2┊   0║ 184┊   0║   1┊   0║
+// ║   2┊   0║ 184┊   0║   3┊   2║
+// ║   2┊   0║ 185┊   1║   0┊  -1║
+// ║   2┊   0║ 185┊   0║   1┊   1║
+// ║   2┊   0║ 185┊   0║   1┊   0║
+// ║   2┊   0║ 185┊   0║   1┊   0║
+// ║   2┊   0║ 180┊-181║   2┊   1║
+// ║   2┊   0║ 180┊   0║   0┊  -1║
+// ║   2┊   0║ 162┊-163║   1┊   1║
+// ║   2┊   0║ 162┊   0║   1┊   0║
+// ║   2┊   0║ 139┊-140║   1┊   0║
+// ║   2┊   0║ 181┊  42║   3┊   2║
+// ║   2┊   0║ 181┊   0║   1┊  -2║
+// ║   2┊   0║ 181┊   0║   1┊   0║
+// ║   2┊   0║ 181┊   0║   1┊   0║
+// ║   2┊   0║ 181┊   0║   0┊  -1║
+// ║   2┊   0║ 188┊   7║   0┊   0║
+// ║   2┊   0║ 188┊   0║   1┊   1║
+// ║   2┊   0║ 188┊   0║   5┊   4║
+// ║   2┊   0║ 188┊   0║   4┊  -5║
+// ║   2┊   0║ 190┊   2║   1┊  -2║
+// ║   2┊   0║ 190┊   0║   2┊   1║
+// ║   2┊   0║ 133┊-134║   1┊  -2║
+// ║   2┊   0║ 133┊   0║   3┊   2║
+// ║   2┊   0║ 136┊   3║   2┊  -3║
+// ║   2┊   0║ 136┊   0║   2┊   0║
+// ║   2┊   0║ 195┊  59║   1┊  -2║
+// ║   2┊   0║ 195┊   0║   2┊   1║
+// ║   2┊   0║ 192┊-193║   1┊  -2║
+// ║   2┊   0║ 192┊   0║   0┊  -1║
+
+
+// ------------------
+
+
+  // ,
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack, options) {
 /* this == yyval */
 
@@ -8165,10 +14676,66 @@ break;
 }
 },
 table: [
-  x(u[0], [
+  {
+    127: 1,
+    128: 2,
+    129: [
       2,
       8
-    ], {127:1,128:2}),
+    ],
+    135: [
+      2,
+      8
+    ],
+    138: [
+      2,
+      8
+    ],
+    140: [
+      2,
+      8
+    ],
+    142: [
+      2,
+      8
+    ],
+    147: [
+      2,
+      8
+    ],
+    148: [
+      2,
+      8
+    ],
+    153: [
+      2,
+      8
+    ],
+    159: [
+      2,
+      8
+    ],
+    161: [
+      2,
+      8
+    ],
+    164: [
+      2,
+      8
+    ],
+    165: [
+      2,
+      8
+    ],
+    166: [
+      2,
+      8
+    ],
+    193: [
+      2,
+      8
+    ]
+  },
   {
     1: [
       3
@@ -8239,14 +14806,80 @@ table: [
       17
     ]
   },
-  x(u[1], [
+  {
+    130: 24,
+    134: 25,
+    135: [
       2,
       4
-    ], {130:24,134:25}),
-  x(u[0], [
+    ],
+    151: [
+      2,
+      4
+    ],
+    193: [
+      2,
+      4
+    ]
+  },
+  {
+    129: [
       2,
       7
-    ]),
+    ],
+    135: [
+      2,
+      7
+    ],
+    138: [
+      2,
+      7
+    ],
+    140: [
+      2,
+      7
+    ],
+    142: [
+      2,
+      7
+    ],
+    147: [
+      2,
+      7
+    ],
+    148: [
+      2,
+      7
+    ],
+    153: [
+      2,
+      7
+    ],
+    159: [
+      2,
+      7
+    ],
+    161: [
+      2,
+      7
+    ],
+    164: [
+      2,
+      7
+    ],
+    165: [
+      2,
+      7
+    ],
+    166: [
+      2,
+      7
+    ],
+    193: [
+      2,
+      7
+    ]
+  },
   {
     139: 26,
     151: [
@@ -8254,14 +14887,122 @@ table: [
       27
     ]
   },
-  x(u[0], [
+  {
+    129: [
       2,
       10
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      10
+    ],
+    138: [
+      2,
+      10
+    ],
+    140: [
+      2,
+      10
+    ],
+    142: [
+      2,
+      10
+    ],
+    147: [
+      2,
+      10
+    ],
+    148: [
+      2,
+      10
+    ],
+    153: [
+      2,
+      10
+    ],
+    159: [
+      2,
+      10
+    ],
+    161: [
+      2,
+      10
+    ],
+    164: [
+      2,
+      10
+    ],
+    165: [
+      2,
+      10
+    ],
+    166: [
+      2,
+      10
+    ],
+    193: [
+      2,
+      10
+    ]
+  },
+  {
+    129: [
       2,
       11
-    ]),
+    ],
+    135: [
+      2,
+      11
+    ],
+    138: [
+      2,
+      11
+    ],
+    140: [
+      2,
+      11
+    ],
+    142: [
+      2,
+      11
+    ],
+    147: [
+      2,
+      11
+    ],
+    148: [
+      2,
+      11
+    ],
+    153: [
+      2,
+      11
+    ],
+    159: [
+      2,
+      11
+    ],
+    161: [
+      2,
+      11
+    ],
+    164: [
+      2,
+      11
+    ],
+    165: [
+      2,
+      11
+    ],
+    166: [
+      2,
+      11
+    ],
+    193: [
+      2,
+      11
+    ]
+  },
   {
     143: 28,
     151: [
@@ -8275,30 +15016,354 @@ table: [
       31
     ]
   },
-  x(u[0], [
+  {
+    129: [
       2,
       13
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      13
+    ],
+    138: [
+      2,
+      13
+    ],
+    140: [
+      2,
+      13
+    ],
+    142: [
+      2,
+      13
+    ],
+    147: [
+      2,
+      13
+    ],
+    148: [
+      2,
+      13
+    ],
+    153: [
+      2,
+      13
+    ],
+    159: [
+      2,
+      13
+    ],
+    161: [
+      2,
+      13
+    ],
+    164: [
+      2,
+      13
+    ],
+    165: [
+      2,
+      13
+    ],
+    166: [
+      2,
+      13
+    ],
+    193: [
+      2,
+      13
+    ]
+  },
+  {
+    129: [
       2,
       14
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      14
+    ],
+    138: [
+      2,
+      14
+    ],
+    140: [
+      2,
+      14
+    ],
+    142: [
+      2,
+      14
+    ],
+    147: [
+      2,
+      14
+    ],
+    148: [
+      2,
+      14
+    ],
+    153: [
+      2,
+      14
+    ],
+    159: [
+      2,
+      14
+    ],
+    161: [
+      2,
+      14
+    ],
+    164: [
+      2,
+      14
+    ],
+    165: [
+      2,
+      14
+    ],
+    166: [
+      2,
+      14
+    ],
+    193: [
+      2,
+      14
+    ]
+  },
+  {
+    129: [
       2,
       15
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      15
+    ],
+    138: [
+      2,
+      15
+    ],
+    140: [
+      2,
+      15
+    ],
+    142: [
+      2,
+      15
+    ],
+    147: [
+      2,
+      15
+    ],
+    148: [
+      2,
+      15
+    ],
+    153: [
+      2,
+      15
+    ],
+    159: [
+      2,
+      15
+    ],
+    161: [
+      2,
+      15
+    ],
+    164: [
+      2,
+      15
+    ],
+    165: [
+      2,
+      15
+    ],
+    166: [
+      2,
+      15
+    ],
+    193: [
+      2,
+      15
+    ]
+  },
+  {
+    129: [
       2,
       16
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      16
+    ],
+    138: [
+      2,
+      16
+    ],
+    140: [
+      2,
+      16
+    ],
+    142: [
+      2,
+      16
+    ],
+    147: [
+      2,
+      16
+    ],
+    148: [
+      2,
+      16
+    ],
+    153: [
+      2,
+      16
+    ],
+    159: [
+      2,
+      16
+    ],
+    161: [
+      2,
+      16
+    ],
+    164: [
+      2,
+      16
+    ],
+    165: [
+      2,
+      16
+    ],
+    166: [
+      2,
+      16
+    ],
+    193: [
+      2,
+      16
+    ]
+  },
+  {
+    129: [
       2,
       17
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      17
+    ],
+    138: [
+      2,
+      17
+    ],
+    140: [
+      2,
+      17
+    ],
+    142: [
+      2,
+      17
+    ],
+    147: [
+      2,
+      17
+    ],
+    148: [
+      2,
+      17
+    ],
+    153: [
+      2,
+      17
+    ],
+    159: [
+      2,
+      17
+    ],
+    161: [
+      2,
+      17
+    ],
+    164: [
+      2,
+      17
+    ],
+    165: [
+      2,
+      17
+    ],
+    166: [
+      2,
+      17
+    ],
+    193: [
+      2,
+      17
+    ]
+  },
+  {
+    129: [
       2,
       18
-    ]),
+    ],
+    135: [
+      2,
+      18
+    ],
+    138: [
+      2,
+      18
+    ],
+    140: [
+      2,
+      18
+    ],
+    142: [
+      2,
+      18
+    ],
+    147: [
+      2,
+      18
+    ],
+    148: [
+      2,
+      18
+    ],
+    153: [
+      2,
+      18
+    ],
+    159: [
+      2,
+      18
+    ],
+    161: [
+      2,
+      18
+    ],
+    164: [
+      2,
+      18
+    ],
+    165: [
+      2,
+      18
+    ],
+    166: [
+      2,
+      18
+    ],
+    193: [
+      2,
+      18
+    ]
+  },
   {
     149: 32,
     151: [
@@ -8366,18 +15431,36 @@ table: [
       45
     ]
   },
-  x(u[2], [
+  {
+    151: [
       2,
       33
-    ]),
-  x(u[2], [
+    ],
+    152: [
+      2,
+      33
+    ]
+  },
+  {
+    151: [
       2,
       34
-    ]),
-  x(u[2], [
+    ],
+    152: [
+      2,
+      34
+    ]
+  },
+  {
+    151: [
       2,
       35
-    ]),
+    ],
+    152: [
+      2,
+      35
+    ]
+  },
   {
     129: [
       1,
@@ -8407,28 +15490,292 @@ table: [
       17
     ]
   },
-  x(u[0], [
+  {
+    129: [
       2,
       9
-    ]),
-  x([58,59,123,124,129,135,138,140,142,147,148,151,152,153,159,161,164,165,166,171,172,189,193], [
+    ],
+    135: [
+      2,
+      9
+    ],
+    138: [
+      2,
+      9
+    ],
+    140: [
+      2,
+      9
+    ],
+    142: [
+      2,
+      9
+    ],
+    147: [
+      2,
+      9
+    ],
+    148: [
+      2,
+      9
+    ],
+    153: [
+      2,
+      9
+    ],
+    159: [
+      2,
+      9
+    ],
+    161: [
+      2,
+      9
+    ],
+    164: [
+      2,
+      9
+    ],
+    165: [
+      2,
+      9
+    ],
+    166: [
+      2,
+      9
+    ],
+    193: [
+      2,
+      9
+    ]
+  },
+  {
+    58: [
       2,
       75
-    ]),
-  x(u[0], [
+    ],
+    59: [
+      2,
+      75
+    ],
+    123: [
+      2,
+      75
+    ],
+    124: [
+      2,
+      75
+    ],
+    129: [
+      2,
+      75
+    ],
+    135: [
+      2,
+      75
+    ],
+    138: [
+      2,
+      75
+    ],
+    140: [
+      2,
+      75
+    ],
+    142: [
+      2,
+      75
+    ],
+    147: [
+      2,
+      75
+    ],
+    148: [
+      2,
+      75
+    ],
+    151: [
+      2,
+      75
+    ],
+    152: [
+      2,
+      75
+    ],
+    153: [
+      2,
+      75
+    ],
+    159: [
+      2,
+      75
+    ],
+    161: [
+      2,
+      75
+    ],
+    164: [
+      2,
+      75
+    ],
+    165: [
+      2,
+      75
+    ],
+    166: [
+      2,
+      75
+    ],
+    171: [
+      2,
+      75
+    ],
+    172: [
+      2,
+      75
+    ],
+    189: [
+      2,
+      75
+    ],
+    193: [
+      2,
+      75
+    ]
+  },
+  {
+    129: [
       2,
       12
-    ], {168:30,167:53,151:[
+    ],
+    135: [
+      2,
+      12
+    ],
+    138: [
+      2,
+      12
+    ],
+    140: [
+      2,
+      12
+    ],
+    142: [
+      2,
+      12
+    ],
+    147: [
+      2,
+      12
+    ],
+    148: [
+      2,
+      12
+    ],
+    151: [
       2,
       41
-    ],171:[
+    ],
+    153: [
+      2,
+      12
+    ],
+    159: [
+      2,
+      12
+    ],
+    161: [
+      2,
+      12
+    ],
+    164: [
+      2,
+      12
+    ],
+    165: [
+      2,
+      12
+    ],
+    166: [
+      2,
+      12
+    ],
+    167: 53,
+    168: 30,
+    171: [
       1,
       31
-    ]}),
-  x(u[3], [
+    ],
+    193: [
+      2,
+      12
+    ]
+  },
+  {
+    129: [
       2,
       39
-    ]),
+    ],
+    135: [
+      2,
+      39
+    ],
+    138: [
+      2,
+      39
+    ],
+    140: [
+      2,
+      39
+    ],
+    142: [
+      2,
+      39
+    ],
+    147: [
+      2,
+      39
+    ],
+    148: [
+      2,
+      39
+    ],
+    151: [
+      2,
+      39
+    ],
+    153: [
+      2,
+      39
+    ],
+    159: [
+      2,
+      39
+    ],
+    161: [
+      2,
+      39
+    ],
+    164: [
+      2,
+      39
+    ],
+    165: [
+      2,
+      39
+    ],
+    166: [
+      2,
+      39
+    ],
+    171: [
+      2,
+      39
+    ],
+    193: [
+      2,
+      39
+    ]
+  },
   {
     139: 54,
     151: [
@@ -8453,58 +15800,606 @@ table: [
       57
     ]
   },
-  x(u[2], [
+  {
+    151: [
       2,
       20
-    ]),
-  x(u[2], [
+    ],
+    152: [
+      2,
+      20
+    ]
+  },
+  {
+    151: [
       2,
       21
-    ]),
-  x(u[0], [
+    ],
+    152: [
+      2,
+      21
+    ]
+  },
+  {
+    129: [
       2,
       32
-    ], {139:37,162:58,151:[
+    ],
+    135: [
+      2,
+      32
+    ],
+    138: [
+      2,
+      32
+    ],
+    139: 37,
+    140: [
+      2,
+      32
+    ],
+    142: [
+      2,
+      32
+    ],
+    147: [
+      2,
+      32
+    ],
+    148: [
+      2,
+      32
+    ],
+    151: [
       1,
       27
-    ],152:[
+    ],
+    152: [
       1,
       38
-    ]}),
-  x(u[4], [
+    ],
+    153: [
+      2,
+      32
+    ],
+    159: [
+      2,
+      32
+    ],
+    161: [
+      2,
+      32
+    ],
+    162: 58,
+    164: [
+      2,
+      32
+    ],
+    165: [
+      2,
+      32
+    ],
+    166: [
+      2,
+      32
+    ],
+    193: [
+      2,
+      32
+    ]
+  },
+  {
+    129: [
       2,
       37
-    ]),
-  x(u[5], [
+    ],
+    135: [
+      2,
+      37
+    ],
+    138: [
+      2,
+      37
+    ],
+    140: [
+      2,
+      37
+    ],
+    142: [
+      2,
+      37
+    ],
+    147: [
+      2,
+      37
+    ],
+    148: [
+      2,
+      37
+    ],
+    151: [
+      2,
+      37
+    ],
+    152: [
+      2,
+      37
+    ],
+    153: [
+      2,
+      37
+    ],
+    159: [
+      2,
+      37
+    ],
+    161: [
+      2,
+      37
+    ],
+    164: [
+      2,
+      37
+    ],
+    165: [
+      2,
+      37
+    ],
+    166: [
+      2,
+      37
+    ],
+    193: [
+      2,
+      37
+    ]
+  },
+  {
+    59: [
       2,
       73
-    ]),
-  x(u[5], [
+    ],
+    123: [
+      2,
+      73
+    ],
+    124: [
+      2,
+      73
+    ],
+    129: [
+      2,
+      73
+    ],
+    135: [
+      2,
+      73
+    ],
+    138: [
+      2,
+      73
+    ],
+    140: [
+      2,
+      73
+    ],
+    142: [
+      2,
+      73
+    ],
+    147: [
+      2,
+      73
+    ],
+    148: [
+      2,
+      73
+    ],
+    151: [
+      2,
+      73
+    ],
+    152: [
+      2,
+      73
+    ],
+    153: [
+      2,
+      73
+    ],
+    159: [
+      2,
+      73
+    ],
+    161: [
+      2,
+      73
+    ],
+    164: [
+      2,
+      73
+    ],
+    165: [
+      2,
+      73
+    ],
+    166: [
+      2,
+      73
+    ],
+    189: [
+      2,
+      73
+    ],
+    193: [
+      2,
+      73
+    ]
+  },
+  {
+    59: [
       2,
       74
-    ]),
-  x(u[6], [
+    ],
+    123: [
+      2,
+      74
+    ],
+    124: [
+      2,
+      74
+    ],
+    129: [
+      2,
+      74
+    ],
+    135: [
+      2,
+      74
+    ],
+    138: [
+      2,
+      74
+    ],
+    140: [
+      2,
+      74
+    ],
+    142: [
+      2,
+      74
+    ],
+    147: [
+      2,
+      74
+    ],
+    148: [
+      2,
+      74
+    ],
+    151: [
+      2,
+      74
+    ],
+    152: [
+      2,
+      74
+    ],
+    153: [
+      2,
+      74
+    ],
+    159: [
+      2,
+      74
+    ],
+    161: [
+      2,
+      74
+    ],
+    164: [
+      2,
+      74
+    ],
+    165: [
+      2,
+      74
+    ],
+    166: [
+      2,
+      74
+    ],
+    189: [
+      2,
+      74
+    ],
+    193: [
+      2,
+      74
+    ]
+  },
+  {
+    59: [
       2,
       89
-    ]),
-  x(u[6], [
+    ],
+    124: [
+      2,
+      89
+    ],
+    129: [
+      2,
+      89
+    ],
+    132: [
+      2,
+      89
+    ],
+    135: [
+      2,
+      89
+    ],
+    138: [
+      2,
+      89
+    ],
+    140: [
+      2,
+      89
+    ],
+    142: [
+      2,
+      89
+    ],
+    147: [
+      2,
+      89
+    ],
+    148: [
+      2,
+      89
+    ],
+    151: [
+      2,
+      89
+    ],
+    153: [
+      2,
+      89
+    ],
+    159: [
+      2,
+      89
+    ],
+    161: [
+      2,
+      89
+    ],
+    164: [
+      2,
+      89
+    ],
+    165: [
+      2,
+      89
+    ],
+    166: [
+      2,
+      89
+    ],
+    193: [
+      2,
+      89
+    ],
+    196: [
+      2,
+      89
+    ]
+  },
+  {
+    59: [
       2,
       90
-    ]),
-  x(u[0], [
+    ],
+    124: [
+      2,
+      90
+    ],
+    129: [
+      2,
+      90
+    ],
+    132: [
+      2,
+      90
+    ],
+    135: [
+      2,
+      90
+    ],
+    138: [
+      2,
+      90
+    ],
+    140: [
+      2,
+      90
+    ],
+    142: [
+      2,
+      90
+    ],
+    147: [
+      2,
+      90
+    ],
+    148: [
+      2,
+      90
+    ],
+    151: [
+      2,
+      90
+    ],
+    153: [
+      2,
+      90
+    ],
+    159: [
+      2,
+      90
+    ],
+    161: [
+      2,
+      90
+    ],
+    164: [
+      2,
+      90
+    ],
+    165: [
+      2,
+      90
+    ],
+    166: [
+      2,
+      90
+    ],
+    193: [
+      2,
+      90
+    ],
+    196: [
+      2,
+      90
+    ]
+  },
+  {
+    129: [
       2,
       30
-    ], {139:37,162:58,151:[
+    ],
+    135: [
+      2,
+      30
+    ],
+    138: [
+      2,
+      30
+    ],
+    139: 37,
+    140: [
+      2,
+      30
+    ],
+    142: [
+      2,
+      30
+    ],
+    147: [
+      2,
+      30
+    ],
+    148: [
+      2,
+      30
+    ],
+    151: [
       1,
       27
-    ],152:[
+    ],
+    152: [
       1,
       38
-    ]}),
-  x(u[0], [
+    ],
+    153: [
+      2,
+      30
+    ],
+    159: [
+      2,
+      30
+    ],
+    161: [
+      2,
+      30
+    ],
+    162: 58,
+    164: [
+      2,
+      30
+    ],
+    165: [
+      2,
+      30
+    ],
+    166: [
+      2,
+      30
+    ],
+    193: [
+      2,
+      30
+    ]
+  },
+  {
+    129: [
       2,
       31
-    ]),
+    ],
+    135: [
+      2,
+      31
+    ],
+    138: [
+      2,
+      31
+    ],
+    140: [
+      2,
+      31
+    ],
+    142: [
+      2,
+      31
+    ],
+    147: [
+      2,
+      31
+    ],
+    148: [
+      2,
+      31
+    ],
+    153: [
+      2,
+      31
+    ],
+    159: [
+      2,
+      31
+    ],
+    161: [
+      2,
+      31
+    ],
+    164: [
+      2,
+      31
+    ],
+    165: [
+      2,
+      31
+    ],
+    166: [
+      2,
+      31
+    ],
+    193: [
+      2,
+      31
+    ]
+  },
   {
     155: [
       1,
@@ -8516,90 +16411,566 @@ table: [
       45
     ]
   },
-  x(u[7], [
+  {
+    155: [
       2,
       26
-    ]),
-  x(u[7], [
+    ],
+    157: [
       2,
-      27
-    ], {61:[
+      26
+    ]
+  },
+  {
+    61: [
       1,
       61
-    ]}),
+    ],
+    155: [
+      2,
+      27
+    ],
+    157: [
+      2,
+      27
+    ]
+  },
   {
     132: [
       1,
       62
     ]
   },
-  x(u[8], [
+  {
+    132: [
       2,
       94
-    ], {133:63,192:64,195:65,196:[
+    ],
+    133: 63,
+    192: 64,
+    193: [
+      2,
+      94
+    ],
+    195: 65,
+    196: [
       1,
       66
-    ]}),
-  x([129,132], [
+    ]
+  },
+  {
+    129: [
       2,
       51
-    ], {139:52,176:67,151:[
+    ],
+    132: [
+      2,
+      51
+    ],
+    139: 52,
+    151: [
       1,
       27
-    ]}),
-  x(u[1], [
+    ],
+    176: 67
+  },
+  {
+    135: [
       2,
       5
-    ]),
-  x(u[1], [
+    ],
+    151: [
+      2,
+      5
+    ],
+    193: [
+      2,
+      5
+    ]
+  },
+  {
+    135: [
       2,
       6
-    ]),
-  x(u[9], [
+    ],
+    151: [
+      2,
+      6
+    ],
+    193: [
+      2,
+      6
+    ]
+  },
+  {
+    129: [
       2,
       53
-    ]),
+    ],
+    132: [
+      2,
+      53
+    ],
+    151: [
+      2,
+      53
+    ]
+  },
   {
     58: [
       1,
       68
     ]
   },
-  x(u[3], [
+  {
+    129: [
       2,
       38
-    ]),
-  x(u[10], [
+    ],
+    135: [
+      2,
+      38
+    ],
+    138: [
+      2,
+      38
+    ],
+    140: [
+      2,
+      38
+    ],
+    142: [
+      2,
+      38
+    ],
+    147: [
+      2,
+      38
+    ],
+    148: [
+      2,
+      38
+    ],
+    151: [
+      2,
+      38
+    ],
+    153: [
+      2,
+      38
+    ],
+    159: [
+      2,
+      38
+    ],
+    161: [
+      2,
+      38
+    ],
+    164: [
+      2,
+      38
+    ],
+    165: [
+      2,
+      38
+    ],
+    166: [
+      2,
+      38
+    ],
+    171: [
+      2,
+      38
+    ],
+    193: [
+      2,
+      38
+    ]
+  },
+  {
+    129: [
       2,
       43
-    ], {169:69,172:[
+    ],
+    135: [
+      2,
+      43
+    ],
+    138: [
+      2,
+      43
+    ],
+    140: [
+      2,
+      43
+    ],
+    142: [
+      2,
+      43
+    ],
+    147: [
+      2,
+      43
+    ],
+    148: [
+      2,
+      43
+    ],
+    151: [
+      2,
+      43
+    ],
+    152: [
+      2,
+      43
+    ],
+    153: [
+      2,
+      43
+    ],
+    159: [
+      2,
+      43
+    ],
+    161: [
+      2,
+      43
+    ],
+    164: [
+      2,
+      43
+    ],
+    165: [
+      2,
+      43
+    ],
+    166: [
+      2,
+      43
+    ],
+    169: 69,
+    171: [
+      2,
+      43
+    ],
+    172: [
       1,
       70
-    ]}),
-  x(u[0], [
+    ],
+    193: [
+      2,
+      43
+    ]
+  },
+  {
+    129: [
       2,
       19
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      19
+    ],
+    138: [
+      2,
+      19
+    ],
+    140: [
+      2,
+      19
+    ],
+    142: [
+      2,
+      19
+    ],
+    147: [
+      2,
+      19
+    ],
+    148: [
+      2,
+      19
+    ],
+    153: [
+      2,
+      19
+    ],
+    159: [
+      2,
+      19
+    ],
+    161: [
+      2,
+      19
+    ],
+    164: [
+      2,
+      19
+    ],
+    165: [
+      2,
+      19
+    ],
+    166: [
+      2,
+      19
+    ],
+    193: [
+      2,
+      19
+    ]
+  },
+  {
+    129: [
       2,
       22
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      22
+    ],
+    138: [
+      2,
+      22
+    ],
+    140: [
+      2,
+      22
+    ],
+    142: [
+      2,
+      22
+    ],
+    147: [
+      2,
+      22
+    ],
+    148: [
+      2,
+      22
+    ],
+    153: [
+      2,
+      22
+    ],
+    159: [
+      2,
+      22
+    ],
+    161: [
+      2,
+      22
+    ],
+    164: [
+      2,
+      22
+    ],
+    165: [
+      2,
+      22
+    ],
+    166: [
+      2,
+      22
+    ],
+    193: [
+      2,
+      22
+    ]
+  },
+  {
+    129: [
       2,
       23
-    ]),
-  x(u[4], [
+    ],
+    135: [
+      2,
+      23
+    ],
+    138: [
+      2,
+      23
+    ],
+    140: [
+      2,
+      23
+    ],
+    142: [
+      2,
+      23
+    ],
+    147: [
+      2,
+      23
+    ],
+    148: [
+      2,
+      23
+    ],
+    153: [
+      2,
+      23
+    ],
+    159: [
+      2,
+      23
+    ],
+    161: [
+      2,
+      23
+    ],
+    164: [
+      2,
+      23
+    ],
+    165: [
+      2,
+      23
+    ],
+    166: [
+      2,
+      23
+    ],
+    193: [
+      2,
+      23
+    ]
+  },
+  {
+    129: [
       2,
       36
-    ]),
-  x(u[0], [
+    ],
+    135: [
+      2,
+      36
+    ],
+    138: [
+      2,
+      36
+    ],
+    140: [
+      2,
+      36
+    ],
+    142: [
+      2,
+      36
+    ],
+    147: [
+      2,
+      36
+    ],
+    148: [
+      2,
+      36
+    ],
+    151: [
+      2,
+      36
+    ],
+    152: [
+      2,
+      36
+    ],
+    153: [
+      2,
+      36
+    ],
+    159: [
+      2,
+      36
+    ],
+    161: [
+      2,
+      36
+    ],
+    164: [
+      2,
+      36
+    ],
+    165: [
+      2,
+      36
+    ],
+    166: [
+      2,
+      36
+    ],
+    193: [
+      2,
+      36
+    ]
+  },
+  {
+    129: [
       2,
       24
-    ]),
-  x(u[7], [
+    ],
+    135: [
+      2,
+      24
+    ],
+    138: [
+      2,
+      24
+    ],
+    140: [
+      2,
+      24
+    ],
+    142: [
+      2,
+      24
+    ],
+    147: [
+      2,
+      24
+    ],
+    148: [
+      2,
+      24
+    ],
+    153: [
+      2,
+      24
+    ],
+    159: [
+      2,
+      24
+    ],
+    161: [
+      2,
+      24
+    ],
+    164: [
+      2,
+      24
+    ],
+    165: [
+      2,
+      24
+    ],
+    166: [
+      2,
+      24
+    ],
+    193: [
+      2,
+      24
+    ]
+  },
+  {
+    155: [
       2,
       25
-    ]),
+    ],
+    157: [
+      2,
+      25
+    ]
+  },
   {
     157: [
       1,
@@ -8633,55 +17004,285 @@ table: [
       17
     ]
   },
-  x(u[8], [
+  {
+    132: [
       2,
       93
-    ], {196:[
+    ],
+    193: [
+      2,
+      93
+    ],
+    196: [
       1,
       74
-    ]}),
-  x(u[11], [
+    ]
+  },
+  {
+    132: [
       2,
       91
-    ]),
-  x(u[9], [
+    ],
+    193: [
+      2,
+      91
+    ],
+    196: [
+      2,
+      91
+    ]
+  },
+  {
+    129: [
       2,
       52
-    ]),
-  x(u[12], [
+    ],
+    132: [
+      2,
+      52
+    ],
+    151: [
+      2,
+      52
+    ]
+  },
+  {
+    40: [
       2,
       59
-    ], {177:75,178:76,179:77}),
-  x(u[3], [
+    ],
+    59: [
+      2,
+      59
+    ],
+    123: [
+      2,
+      59
+    ],
+    124: [
+      2,
+      59
+    ],
+    135: [
+      2,
+      59
+    ],
+    151: [
+      2,
+      59
+    ],
+    152: [
+      2,
+      59
+    ],
+    177: 75,
+    178: 76,
+    179: 77,
+    187: [
+      2,
+      59
+    ],
+    189: [
+      2,
+      59
+    ],
+    193: [
+      2,
+      59
+    ]
+  },
+  {
+    129: [
       2,
       45
-    ], {170:78,152:[
+    ],
+    135: [
+      2,
+      45
+    ],
+    138: [
+      2,
+      45
+    ],
+    140: [
+      2,
+      45
+    ],
+    142: [
+      2,
+      45
+    ],
+    147: [
+      2,
+      45
+    ],
+    148: [
+      2,
+      45
+    ],
+    151: [
+      2,
+      45
+    ],
+    152: [
       1,
       79
-    ]}),
-  x(u[10], [
+    ],
+    153: [
+      2,
+      45
+    ],
+    159: [
+      2,
+      45
+    ],
+    161: [
+      2,
+      45
+    ],
+    164: [
+      2,
+      45
+    ],
+    165: [
+      2,
+      45
+    ],
+    166: [
+      2,
+      45
+    ],
+    170: 78,
+    171: [
+      2,
+      45
+    ],
+    193: [
+      2,
+      45
+    ]
+  },
+  {
+    129: [
       2,
       44
-    ]),
-  x(u[7], [
+    ],
+    135: [
+      2,
+      44
+    ],
+    138: [
+      2,
+      44
+    ],
+    140: [
+      2,
+      44
+    ],
+    142: [
+      2,
+      44
+    ],
+    147: [
+      2,
+      44
+    ],
+    148: [
+      2,
+      44
+    ],
+    151: [
+      2,
+      44
+    ],
+    152: [
+      2,
+      44
+    ],
+    153: [
+      2,
+      44
+    ],
+    159: [
+      2,
+      44
+    ],
+    161: [
+      2,
+      44
+    ],
+    164: [
+      2,
+      44
+    ],
+    165: [
+      2,
+      44
+    ],
+    166: [
+      2,
+      44
+    ],
+    171: [
+      2,
+      44
+    ],
+    193: [
+      2,
+      44
+    ]
+  },
+  {
+    155: [
       2,
       28
-    ]),
-  x(u[7], [
+    ],
+    157: [
+      2,
+      28
+    ]
+  },
+  {
+    155: [
       2,
       29
-    ]),
-  x(u[8], [
+    ],
+    157: [
+      2,
+      29
+    ]
+  },
+  {
+    132: [
       2,
       94
-    ], {192:64,195:65,133:80,196:[
+    ],
+    133: 80,
+    192: 64,
+    193: [
+      2,
+      94
+    ],
+    195: 65,
+    196: [
       1,
       66
-    ]}),
-  x(u[11], [
+    ]
+  },
+  {
+    132: [
       2,
       92
-    ]),
+    ],
+    193: [
+      2,
+      92
+    ],
+    196: [
+      2,
+      92
+    ]
+  },
   {
     59: [
       1,
@@ -8692,68 +17293,331 @@ table: [
       82
     ]
   },
-  x(u[13], [
+  {
+    59: [
       2,
       56
-    ]),
-  x(u[14], [
+    ],
+    124: [
       2,
-      72
-    ], {180:83,182:84,184:86,40:[
+      56
+    ]
+  },
+  {
+    40: [
       1,
       89
-    ],151:[
+    ],
+    59: [
+      2,
+      72
+    ],
+    123: [
+      2,
+      72
+    ],
+    124: [
+      2,
+      72
+    ],
+    135: [
+      2,
+      72
+    ],
+    151: [
       1,
       87
-    ],152:[
+    ],
+    152: [
       1,
       88
-    ],187:[
+    ],
+    180: 83,
+    182: 84,
+    184: 86,
+    187: [
       1,
       85
-    ]}),
-  x(u[3], [
+    ],
+    189: [
+      2,
+      72
+    ],
+    193: [
+      2,
+      72
+    ]
+  },
+  {
+    129: [
       2,
       40
-    ]),
-  x(u[3], [
+    ],
+    135: [
+      2,
+      40
+    ],
+    138: [
+      2,
+      40
+    ],
+    140: [
+      2,
+      40
+    ],
+    142: [
+      2,
+      40
+    ],
+    147: [
+      2,
+      40
+    ],
+    148: [
+      2,
+      40
+    ],
+    151: [
+      2,
+      40
+    ],
+    153: [
+      2,
+      40
+    ],
+    159: [
+      2,
+      40
+    ],
+    161: [
+      2,
+      40
+    ],
+    164: [
+      2,
+      40
+    ],
+    165: [
+      2,
+      40
+    ],
+    166: [
+      2,
+      40
+    ],
+    171: [
+      2,
+      40
+    ],
+    193: [
+      2,
+      40
+    ]
+  },
+  {
+    129: [
       2,
       46
-    ]),
+    ],
+    135: [
+      2,
+      46
+    ],
+    138: [
+      2,
+      46
+    ],
+    140: [
+      2,
+      46
+    ],
+    142: [
+      2,
+      46
+    ],
+    147: [
+      2,
+      46
+    ],
+    148: [
+      2,
+      46
+    ],
+    151: [
+      2,
+      46
+    ],
+    153: [
+      2,
+      46
+    ],
+    159: [
+      2,
+      46
+    ],
+    161: [
+      2,
+      46
+    ],
+    164: [
+      2,
+      46
+    ],
+    165: [
+      2,
+      46
+    ],
+    166: [
+      2,
+      46
+    ],
+    171: [
+      2,
+      46
+    ],
+    193: [
+      2,
+      46
+    ]
+  },
   {
     132: [
       2,
       88
     ]
   },
-  x(u[9], [
+  {
+    129: [
       2,
       54
-    ]),
-  x(u[12], [
+    ],
+    132: [
+      2,
+      54
+    ],
+    151: [
+      2,
+      54
+    ]
+  },
+  {
+    40: [
       2,
       59
-    ], {179:77,178:90}),
-  x(u[13], [
+    ],
+    59: [
+      2,
+      59
+    ],
+    123: [
+      2,
+      59
+    ],
+    124: [
+      2,
+      59
+    ],
+    135: [
+      2,
+      59
+    ],
+    151: [
+      2,
+      59
+    ],
+    152: [
+      2,
+      59
+    ],
+    178: 90,
+    179: 77,
+    187: [
+      2,
+      59
+    ],
+    189: [
+      2,
+      59
+    ],
+    193: [
+      2,
+      59
+    ]
+  },
+  {
+    59: [
       2,
       80
-    ], {181:91,136:94,123:[
+    ],
+    123: [
       1,
       92
-    ],135:[
+    ],
+    124: [
+      2,
+      80
+    ],
+    135: [
       1,
       93
-    ],189:[
+    ],
+    136: 94,
+    181: 91,
+    189: [
       1,
       95
-    ],193:[
+    ],
+    193: [
       1,
       17
-    ]}),
-  x(u[15], [
+    ]
+  },
+  {
+    40: [
       2,
       58
-    ]),
+    ],
+    41: [
+      2,
+      58
+    ],
+    59: [
+      2,
+      58
+    ],
+    123: [
+      2,
+      58
+    ],
+    124: [
+      2,
+      58
+    ],
+    135: [
+      2,
+      58
+    ],
+    151: [
+      2,
+      58
+    ],
+    152: [
+      2,
+      58
+    ],
+    187: [
+      2,
+      58
+    ],
+    189: [
+      2,
+      58
+    ],
+    193: [
+      2,
+      58
+    ]
+  },
   {
     139: 37,
     151: [
@@ -8766,81 +17630,509 @@ table: [
     ],
     162: 96
   },
-  x(u[16], [
+  {
+    40: [
       2,
       67
-    ], {185:97,42:[
+    ],
+    41: [
+      2,
+      67
+    ],
+    42: [
       1,
       98
-    ],43:[
+    ],
+    43: [
       1,
       100
-    ],63:[
+    ],
+    59: [
+      2,
+      67
+    ],
+    63: [
       1,
       99
-    ]}),
-  x(u[17], [
+    ],
+    123: [
+      2,
+      67
+    ],
+    124: [
+      2,
+      67
+    ],
+    135: [
+      2,
+      67
+    ],
+    151: [
+      2,
+      67
+    ],
+    152: [
+      2,
+      67
+    ],
+    185: 97,
+    186: [
+      2,
+      67
+    ],
+    187: [
+      2,
+      67
+    ],
+    189: [
+      2,
+      67
+    ],
+    193: [
+      2,
+      67
+    ]
+  },
+  {
+    40: [
       2,
       64
-    ]),
-  x(u[17], [
+    ],
+    41: [
+      2,
+      64
+    ],
+    42: [
+      2,
+      64
+    ],
+    43: [
+      2,
+      64
+    ],
+    59: [
+      2,
+      64
+    ],
+    63: [
+      2,
+      64
+    ],
+    123: [
+      2,
+      64
+    ],
+    124: [
+      2,
+      64
+    ],
+    135: [
+      2,
+      64
+    ],
+    151: [
+      2,
+      64
+    ],
+    152: [
+      2,
+      64
+    ],
+    186: [
+      2,
+      64
+    ],
+    187: [
+      2,
+      64
+    ],
+    189: [
+      2,
+      64
+    ],
+    193: [
+      2,
+      64
+    ]
+  },
+  {
+    40: [
       2,
       65
-    ]),
-  x(u[18], [
+    ],
+    41: [
+      2,
+      65
+    ],
+    42: [
+      2,
+      65
+    ],
+    43: [
+      2,
+      65
+    ],
+    59: [
+      2,
+      65
+    ],
+    63: [
+      2,
+      65
+    ],
+    123: [
+      2,
+      65
+    ],
+    124: [
+      2,
+      65
+    ],
+    135: [
+      2,
+      65
+    ],
+    151: [
+      2,
+      65
+    ],
+    152: [
+      2,
+      65
+    ],
+    186: [
+      2,
+      65
+    ],
+    187: [
+      2,
+      65
+    ],
+    189: [
+      2,
+      65
+    ],
+    193: [
+      2,
+      65
+    ]
+  },
+  {
+    40: [
       2,
       59
-    ], {183:101,179:102}),
-  x(u[13], [
+    ],
+    41: [
+      2,
+      59
+    ],
+    124: [
+      2,
+      59
+    ],
+    151: [
+      2,
+      59
+    ],
+    152: [
+      2,
+      59
+    ],
+    179: 102,
+    183: 101
+  },
+  {
+    59: [
       2,
       55
-    ]),
-  x(u[13], [
+    ],
+    124: [
+      2,
+      55
+    ]
+  },
+  {
+    59: [
       2,
       57
-    ]),
-  x(u[19], [
+    ],
+    124: [
+      2,
+      57
+    ]
+  },
+  {
+    123: [
       2,
       81
-    ], {188:103,190:104,191:[
+    ],
+    125: [
+      2,
+      81
+    ],
+    188: 103,
+    190: 104,
+    191: [
       1,
       105
-    ]}),
-  x(u[13], [
+    ]
+  },
+  {
+    59: [
       2,
       77
-    ]),
-  x(u[13], [
+    ],
+    124: [
+      2,
+      77
+    ]
+  },
+  {
+    59: [
       2,
       78
-    ]),
-  x(u[13], [
+    ],
+    124: [
+      2,
+      78
+    ]
+  },
+  {
+    59: [
       2,
       79
-    ]),
-  x(u[14], [
+    ],
+    124: [
+      2,
+      79
+    ]
+  },
+  {
+    59: [
       2,
       71
-    ]),
-  x(u[15], [
+    ],
+    123: [
+      2,
+      71
+    ],
+    124: [
+      2,
+      71
+    ],
+    135: [
+      2,
+      71
+    ],
+    189: [
+      2,
+      71
+    ],
+    193: [
+      2,
+      71
+    ]
+  },
+  {
+    40: [
       2,
       63
-    ], {186:[
+    ],
+    41: [
+      2,
+      63
+    ],
+    59: [
+      2,
+      63
+    ],
+    123: [
+      2,
+      63
+    ],
+    124: [
+      2,
+      63
+    ],
+    135: [
+      2,
+      63
+    ],
+    151: [
+      2,
+      63
+    ],
+    152: [
+      2,
+      63
+    ],
+    186: [
       1,
       106
-    ]}),
-  x(u[16], [
+    ],
+    187: [
+      2,
+      63
+    ],
+    189: [
+      2,
+      63
+    ],
+    193: [
+      2,
+      63
+    ]
+  },
+  {
+    40: [
       2,
       68
-    ]),
-  x(u[16], [
+    ],
+    41: [
+      2,
+      68
+    ],
+    59: [
+      2,
+      68
+    ],
+    123: [
+      2,
+      68
+    ],
+    124: [
+      2,
+      68
+    ],
+    135: [
+      2,
+      68
+    ],
+    151: [
+      2,
+      68
+    ],
+    152: [
+      2,
+      68
+    ],
+    186: [
+      2,
+      68
+    ],
+    187: [
+      2,
+      68
+    ],
+    189: [
+      2,
+      68
+    ],
+    193: [
+      2,
+      68
+    ]
+  },
+  {
+    40: [
       2,
       69
-    ]),
-  x(u[16], [
+    ],
+    41: [
+      2,
+      69
+    ],
+    59: [
+      2,
+      69
+    ],
+    123: [
+      2,
+      69
+    ],
+    124: [
+      2,
+      69
+    ],
+    135: [
+      2,
+      69
+    ],
+    151: [
+      2,
+      69
+    ],
+    152: [
+      2,
+      69
+    ],
+    186: [
+      2,
+      69
+    ],
+    187: [
+      2,
+      69
+    ],
+    189: [
+      2,
+      69
+    ],
+    193: [
+      2,
+      69
+    ]
+  },
+  {
+    40: [
       2,
       70
-    ]),
+    ],
+    41: [
+      2,
+      70
+    ],
+    59: [
+      2,
+      70
+    ],
+    123: [
+      2,
+      70
+    ],
+    124: [
+      2,
+      70
+    ],
+    135: [
+      2,
+      70
+    ],
+    151: [
+      2,
+      70
+    ],
+    152: [
+      2,
+      70
+    ],
+    186: [
+      2,
+      70
+    ],
+    187: [
+      2,
+      70
+    ],
+    189: [
+      2,
+      70
+    ],
+    193: [
+      2,
+      70
+    ]
+  },
   {
     41: [
       1,
@@ -8851,19 +18143,30 @@ table: [
       108
     ]
   },
-  x(u[20], [
-      2,
-      61
-    ], {182:84,184:86,40:[
+  {
+    40: [
       1,
       89
-    ],151:[
+    ],
+    41: [
+      2,
+      61
+    ],
+    124: [
+      2,
+      61
+    ],
+    151: [
       1,
       87
-    ],152:[
+    ],
+    152: [
       1,
       88
-    ]}),
+    ],
+    182: 84,
+    184: 86
+  },
   {
     123: [
       1,
@@ -8874,57 +18177,229 @@ table: [
       109
     ]
   },
-  x(u[19], [
+  {
+    123: [
       2,
       82
-    ], {191:[
+    ],
+    125: [
+      2,
+      82
+    ],
+    191: [
       1,
       111
-    ]}),
-  x(u[21], [
+    ]
+  },
+  {
+    123: [
       2,
       85
-    ]),
-  x(u[15], [
+    ],
+    125: [
+      2,
+      85
+    ],
+    191: [
+      2,
+      85
+    ]
+  },
+  {
+    40: [
       2,
       62
-    ]),
-  x(u[17], [
+    ],
+    41: [
+      2,
+      62
+    ],
+    59: [
+      2,
+      62
+    ],
+    123: [
+      2,
+      62
+    ],
+    124: [
+      2,
+      62
+    ],
+    135: [
+      2,
+      62
+    ],
+    151: [
+      2,
+      62
+    ],
+    152: [
+      2,
+      62
+    ],
+    187: [
+      2,
+      62
+    ],
+    189: [
+      2,
+      62
+    ],
+    193: [
+      2,
+      62
+    ]
+  },
+  {
+    40: [
       2,
       66
-    ]),
-  x(u[18], [
+    ],
+    41: [
+      2,
+      66
+    ],
+    42: [
+      2,
+      66
+    ],
+    43: [
+      2,
+      66
+    ],
+    59: [
+      2,
+      66
+    ],
+    63: [
+      2,
+      66
+    ],
+    123: [
+      2,
+      66
+    ],
+    124: [
+      2,
+      66
+    ],
+    135: [
+      2,
+      66
+    ],
+    151: [
+      2,
+      66
+    ],
+    152: [
+      2,
+      66
+    ],
+    186: [
+      2,
+      66
+    ],
+    187: [
+      2,
+      66
+    ],
+    189: [
+      2,
+      66
+    ],
+    193: [
+      2,
+      66
+    ]
+  },
+  {
+    40: [
       2,
       59
-    ], {179:112}),
-  x(u[13], [
+    ],
+    41: [
+      2,
+      59
+    ],
+    124: [
+      2,
+      59
+    ],
+    151: [
+      2,
+      59
+    ],
+    152: [
+      2,
+      59
+    ],
+    179: 112
+  },
+  {
+    59: [
       2,
       76
-    ]),
-  x(u[19], [
+    ],
+    124: [
+      2,
+      76
+    ]
+  },
+  {
+    123: [
       2,
       81
-    ], {190:104,188:113,191:[
+    ],
+    125: [
+      2,
+      81
+    ],
+    188: 113,
+    190: 104,
+    191: [
       1,
       105
-    ]}),
-  x(u[21], [
+    ]
+  },
+  {
+    123: [
       2,
       86
-    ]),
-  x(u[20], [
+    ],
+    125: [
       2,
-      60
-    ], {182:84,184:86,40:[
+      86
+    ],
+    191: [
+      2,
+      86
+    ]
+  },
+  {
+    40: [
       1,
       89
-    ],151:[
+    ],
+    41: [
+      2,
+      60
+    ],
+    124: [
+      2,
+      60
+    ],
+    151: [
       1,
       87
-    ],152:[
+    ],
+    152: [
       1,
       88
-    ]}),
+    ],
+    182: 84,
+    184: 86
+  },
   {
     123: [
       1,
@@ -8935,21 +18410,988 @@ table: [
       114
     ]
   },
-  x(u[19], [
+  {
+    123: [
       2,
       84
-    ], {190:115,191:[
+    ],
+    125: [
+      2,
+      84
+    ],
+    190: 115,
+    191: [
       1,
       105
-    ]}),
-  x(u[19], [
+    ]
+  },
+  {
+    123: [
       2,
       83
-    ], {191:[
+    ],
+    125: [
+      2,
+      83
+    ],
+    191: [
       1,
       111
-    ]})
-],
+    ]
+  }
+]
+
+
+// ------------------------------
+
+
+// ║   len┊   ∆║symbol┊   ∆║  type┊   ∆║ state┊   ∆║  mode┊   ∆║  goto┊   ∆║  next┊   ∆║
+// ║    16┊ -17║   127┊-128║     0┊  -1║     1┊  -2║     2┊  -3║     8┊  -9║     1┊  -2║
+// ║     1┊  -2║   128┊   1║     0┊   0║     2┊   1║     2┊   0║     8┊   0║     2┊   1║
+// ║    21┊  20║   129┊   1║     2┊   2║    10┊   8║     2┊   0║     8┊   0║     8┊   6║
+// ║     5┊  -6║   135┊   6║     2┊   0║     4┊  -5║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   9║   138┊   3║     2┊   0║     7┊   3║     2┊   0║     8┊   0║     8┊   0║
+// ║     2┊  -3║   140┊   2║     2┊   0║    11┊   4║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊  12║   142┊   2║     2┊   0║    12┊   1║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   147┊   5║     2┊   0║    13┊   1║     2┊   0║     8┊   0║     8┊   0║
+// ║     5┊  -6║   148┊   1║     2┊   0║    16┊   3║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   9║   153┊   5║     2┊   0║    24┊   8║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   159┊   6║     2┊   0║    25┊   1║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   161┊   2║     2┊   0║    26┊   1║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   164┊   3║     2┊   0║    28┊   2║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   165┊   1║     2┊   0║    29┊   1║     2┊   0║     8┊   0║     8┊   0║
+// ║    14┊   0║   166┊   1║     2┊   0║    30┊   1║     3┊   1║     0┊  -1║     8┊   0║
+// ║     3┊  -4║   193┊  27║     2┊   0║    32┊   2║     1┊  -2║     3┊   3║     8┊   0║
+// ║     5┊   2║     1┊  -2║     1┊  -2║    37┊   5║     1┊   0║     9┊   6║     0┊  -1║
+// ║     2┊  -3║   129┊ 128║     2┊   1║    35┊ -36║     1┊   0║     5┊  -6║     3┊   3║
+// ║     5┊   3║   135┊   6║     2┊   0║    36┊   1║     1┊   0║     6┊   1║     9┊   6║
+// ║     4┊  -5║   136┊   1║     0┊  -1║    37┊   1║     1┊   0║     8┊   2║    10┊   1║
+// ║     3┊  -4║   137┊   1║     0┊   0║    41┊   4║     1┊   0║    14┊   6║     4┊  -5║
+// ║     2┊  -3║   138┊   1║     2┊   2║    36┊ -37║     1┊   0║    15┊   1║     5┊   1║
+// ║     2┊   0║   140┊   2║     2┊   0║    37┊   1║     1┊   0║    20┊   5║     6┊   1║
+// ║     2┊   0║   141┊   1║     0┊  -1║    42┊   5║     1┊   0║    18┊ -19║     7┊   1║
+// ║     3┊   1║   142┊   1║     2┊   2║    43┊   1║     1┊   0║    19┊   1║     8┊   1║
+// ║     7┊   4║   144┊   2║     0┊  -1║    44┊   1║     1┊   0║    21┊   2║    11┊   3║
+// ║    14┊   7║   145┊   1║     0┊   0║    46┊   2║     1┊   0║    22┊   1║    12┊   1║
+// ║    23┊   9║   146┊   1║     0┊   0║    50┊   4║     1┊   0║    23┊   1║    13┊   1║
+// ║    18┊ -19║   147┊   1║     2┊   2║    52┊   2║     1┊   0║    17┊ -18║    14┊   1║
+// ║    16┊ -17║   148┊   1║     2┊   0║    48┊ -49║     2┊   1║     4┊  -5║    15┊   1║
+// ║     2┊  -3║   153┊   5║     2┊   0║    51┊   3║     2┊   0║     4┊   0║    20┊   5║
+// ║     1┊  -2║   159┊   6║     2┊   0║    53┊   2║     2┊   0║     4┊   0║    18┊ -19║
+// ║     3┊   2║   161┊   2║     2┊   0║    30┊ -31║     2┊   0║     7┊   3║    19┊   1║
+// ║     2┊  -3║   163┊   2║     0┊  -1║    54┊  24║     2┊   0║     7┊   0║    16┊ -17║
+// ║     2┊   0║   164┊   1║     2┊   2║    55┊   1║     2┊   0║     7┊   0║    21┊   5║
+// ║    18┊  16║   165┊   1║     2┊   0║    37┊ -38║     2┊   0║     7┊   0║    22┊   1║
+// ║    16┊ -17║   166┊   1║     2┊   0║    58┊  21║     2┊   0║     7┊   0║    23┊   1║
+// ║    20┊   4║   193┊  27║     2┊   0║    37┊ -38║     2┊   0║     7┊   0║    17┊ -18║
+// ║    20┊   0║   130┊-131║     0┊  -1║    58┊  21║     2┊   0║     7┊   0║    24┊   7║
+// ║    19┊ -20║   134┊   4║     0┊   0║    60┊   2║     2┊   0║     7┊   0║    25┊   1║
+// ║    19┊   0║   135┊   1║     2┊   2║    63┊   3║     2┊   0║     7┊   0║     4┊  -5║
+// ║    18┊ -19║   151┊  16║     2┊   0║    64┊   1║     2┊   0║     7┊   0║     4┊   0║
+// ║    14┊ -15║   193┊  42║     2┊   0║    65┊   1║     2┊   0║     7┊   0║     4┊   0║
+// ║     3┊  -4║   129┊-130║     2┊   0║    52┊ -53║     2┊   0║     7┊   0║     7┊   3║
+// ║     2┊  -3║   135┊   6║     2┊   0║    67┊  15║     2┊   0║     7┊   0║     7┊   0║
+// ║     3┊   1║   138┊   3║     2┊   0║    69┊   2║     2┊   0║     7┊   0║     7┊   0║
+// ║     1┊  -2║   140┊   2║     2┊   0║    73┊   4║     1┊  -2║    27┊  20║     7┊   0║
+// ║     6┊   5║   142┊   2║     2┊   0║    75┊   2║     2┊   1║    10┊ -11║     7┊   0║
+// ║     5┊  -6║   147┊   5║     2┊   0║    76┊   1║     2┊   0║    10┊   0║     7┊   0║
+// ║     3┊  -4║   148┊   1║     2┊   0║    77┊   1║     2┊   0║    10┊   0║     7┊   0║
+// ║     3┊   0║   153┊   5║     2┊   0║    78┊   1║     2┊   0║    10┊   0║     7┊   0║
+// ║     3┊   0║   159┊   6║     2┊   0║    80┊   2║     2┊   0║    10┊   0║     7┊   0║
+// ║     1┊  -2║   161┊   2║     2┊   0║    64┊ -65║     2┊   0║    10┊   0║     7┊   0║
+// ║    16┊  15║   164┊   3║     2┊   0║    65┊   1║     2┊   0║    10┊   0║     7┊   0║
+// ║    19┊   3║   165┊   1║     2┊   0║    83┊  18║     2┊   0║    10┊   0║     7┊   0║
+// ║    14┊ -15║   166┊   1║     2┊   0║    84┊   1║     2┊   0║    10┊   0║     7┊   0║
+// ║    14┊   0║   193┊  27║     2┊   0║    86┊   2║     2┊   0║    10┊   0║     7┊   0║
+// ║    14┊   0║   139┊-140║     0┊  -1║    90┊   4║     2┊   0║    10┊   0║    26┊  19║
+// ║    16┊   2║   151┊  12║     2┊   2║    77┊ -78║     2┊   0║    10┊   0║    27┊   1║
+// ║    14┊ -15║   129┊-130║     2┊   0║    94┊  17║     2┊   0║    10┊   0║    10┊ -11║
+// ║     2┊  -3║   135┊   6║     2┊   0║    91┊ -92║     2┊   0║    10┊   0║    10┊   0║
+// ║     2┊   0║   138┊   3║     2┊   0║    37┊ -38║     2┊   0║    11┊   1║    10┊   0║
+// ║     1┊  -2║   140┊   2║     2┊   0║    96┊  59║     2┊   0║    11┊   0║    10┊   0║
+// ║     1┊   0║   142┊   2║     2┊   0║    97┊   1║     2┊   0║    11┊   0║    10┊   0║
+// ║     3┊   2║   147┊   5║     2┊   0║   102┊   5║     2┊   0║    11┊   0║    10┊   0║
+// ║     3┊   0║   148┊   1║     2┊   0║   101┊-102║     2┊   0║    11┊   0║    10┊   0║
+// ║     3┊   0║   153┊   5║     2┊   0║   103┊   2║     2┊   0║    11┊   0║    10┊   0║
+// ║     3┊   0║   159┊   6║     2┊   0║   104┊   1║     2┊   0║    11┊   0║    10┊   0║
+// ║    13┊  10║   161┊   2║     2┊   0║    84┊ -85║     2┊   0║    11┊   0║    10┊   0║
+// ║    18┊   5║   164┊   3║     2┊   0║    86┊   2║     2┊   0║    11┊   0║    10┊   0║
+// ║    17┊ -18║   165┊   1║     2┊   0║   112┊  26║     2┊   0║    11┊   0║    10┊   0║
+// ║     2┊  -3║   166┊   1║     2┊   0║   113┊   1║     2┊   0║    11┊   0║    10┊   0║
+// ║     2┊   0║   193┊  27║     2┊   0║   104┊-105║     2┊   0║    11┊   0║    10┊   0║
+// ║     6┊   4║   129┊-130║     2┊   0║    84┊ -85║     2┊   0║    11┊   0║    11┊   1║
+// ║     3┊  -4║   135┊   6║     2┊   0║    86┊   2║     2┊   0║    11┊   0║    11┊   0║
+// ║     2┊  -3║   138┊   3║     2┊   0║   115┊  29║     2┊   0║    41┊  30║    11┊   0║
+// ║     2┊   0║   140┊   2║     2┊   0║     .┊   .║     1┊  -2║    31┊ -32║    11┊   0║
+// ║    13┊  11║   142┊   2║     2┊   0║     .┊   .║     2┊   1║    13┊ -14║    11┊   0║
+// ║    16┊   3║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║    16┊   0║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║     1┊  -2║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║     3┊   2║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║    12┊   9║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║     8┊  -9║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║    11┊   3║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║     4┊  -5║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║    16┊  12║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    13┊   0║    11┊   0║
+// ║    15┊ -16║   143┊-144║     0┊  -1║     .┊   .║     2┊   0║    13┊   0║    28┊  17║
+// ║    15┊   0║   151┊   8║     2┊   2║     .┊   .║     2┊   0║    13┊   0║    41┊  13║
+// ║     7┊  -8║   167┊  16║     0┊  -1║     .┊   .║     2┊   0║    13┊   0║    29┊ -30║
+// ║     2┊  -3║   168┊   1║     0┊   0║     .┊   .║     2┊   0║    13┊   0║    30┊   1║
+// ║     2┊   0║   171┊   3║     2┊   2║     .┊   .║     2┊   0║    14┊   1║    31┊   1║
+// ║     5┊   3║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊ -14║
+// ║     2┊  -3║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     2┊   0║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     2┊   0║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     6┊   4║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║    12┊   6║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║    12┊   0║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║    12┊   0║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║    12┊   0║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     2┊  -3║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     7┊   5║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     2┊  -3║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     3┊   1║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    14┊   0║    13┊   0║
+// ║     3┊   0║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    15┊   1║    13┊   0║
+// ║    11┊   8║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   1║
+// ║    15┊   4║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     6┊  -7║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     2┊  -3║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     5┊   3║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     3┊  -4║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     7┊   4║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     2┊  -3║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     4┊   2║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     3┊  -4║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    15┊   0║    14┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    16┊   1║    14┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    16┊   0║    15┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    17┊   1║    15┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    17┊   0║    16┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    18┊   1║    16┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    18┊   0║    17┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     1┊  -2║    33┊  15║    17┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     1┊   0║    34┊   1║    18┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     1┊   0║    27┊ -28║    18┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    18┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊   0║    40┊   2║    18┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     1┊   0║    39┊ -40║    18┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     1┊   0║    27┊ -28║    18┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    18┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     1┊   0║    27┊ -28║    18┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    18┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     1┊   0║    45┊   7║    18┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   1║    33┊ -34║    18┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    33┊   0║    18┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    34┊   1║    18┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    34┊   0║    18┊   0║
+// ║     .┊   .║   149┊-150║     0┊  -1║     .┊   .║     2┊   0║    35┊   1║    32┊  14║
+// ║     .┊   .║   151┊   2║     2┊   2║     .┊   .║     2┊   0║    35┊   0║    33┊   1║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     1┊  -2║    47┊  12║    34┊   1║
+// ║     .┊   .║   139┊-140║     0┊  -1║     .┊   .║     2┊   1║     2┊  -3║    37┊   3║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     1┊  -2║    49┊  47║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     1┊   0║    27┊ -28║    38┊  11║
+// ║     .┊   .║   160┊   8║     0┊  -1║     .┊   .║     1┊   0║    17┊ -18║    35┊ -36║
+// ║     .┊   .║   162┊   2║     0┊   0║     .┊   .║     2┊   1║     9┊ -10║    36┊   1║
+// ║     .┊   .║     2┊  -3║     2┊   2║     .┊   .║     2┊   0║     9┊   0║    40┊   4║
+// ║     .┊   .║   194┊ 192║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    39┊ -40║
+// ║     .┊   .║   139┊-140║     0┊  -1║     .┊   .║     2┊   0║     9┊   0║    37┊ -38║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   0║     9┊   0║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    38┊  11║
+// ║     .┊   .║   160┊   8║     0┊  -1║     .┊   .║     2┊   0║     9┊   0║    41┊   3║
+// ║     .┊   .║   162┊   2║     0┊   0║     .┊   .║     2┊   0║     9┊   0║    36┊ -37║
+// ║     .┊   .║   139┊-140║     0┊   0║     .┊   .║     2┊   0║     9┊   0║    37┊   1║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   0║     9┊   0║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║     9┊   0║    38┊  11║
+// ║     .┊   .║   162┊  10║     0┊  -1║     .┊   .║     2┊   0║     9┊   0║    42┊   4║
+// ║     .┊   .║   154┊-155║     0┊   0║     .┊   .║     2┊   0║     9┊   0║    43┊   1║
+// ║     .┊   .║   156┊   2║     0┊   0║     .┊   .║     2┊   0║     9┊   0║    44┊   1║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    75┊  66║    45┊   1║
+// ║     .┊   .║   151┊-152║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    33┊ -34║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    33┊   0║
+// ║     .┊   .║   151┊-152║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    34┊   1║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    34┊   0║
+// ║     .┊   .║   151┊-152║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    35┊   1║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    35┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    47┊  12║
+// ║     .┊   .║   131┊   2║     0┊  -1║     .┊   .║     2┊   0║    75┊   0║    46┊ -47║
+// ║     .┊   .║   132┊   1║     2┊   2║     .┊   .║     2┊   0║    75┊   0║     2┊  -3║
+// ║     .┊   .║   135┊   3║     2┊   0║     .┊   .║     2┊   0║    75┊   0║    49┊  47║
+// ║     .┊   .║   136┊   1║     0┊  -1║     .┊   .║     2┊   0║    75┊   0║    50┊   1║
+// ║     .┊   .║   139┊   3║     0┊   0║     .┊   .║     2┊   0║    75┊   0║    52┊   2║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   0║    75┊   0║    27┊ -28║
+// ║     .┊   .║   175┊  24║     0┊  -1║     .┊   .║     2┊   0║    75┊   0║    48┊  21║
+// ║     .┊   .║   176┊   1║     0┊   0║     .┊   .║     2┊   0║    75┊   0║    51┊   3║
+// ║     .┊   .║   193┊  17║     2┊   2║     .┊   .║     2┊   0║    75┊   0║    17┊ -18║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊ -10║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    75┊   0║     9┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    12┊ -13║     9┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    12┊   0║     9┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    41┊  29║     9┊   0║
+// ║     .┊   .║    58┊ -59║     2┊   0║     .┊   .║     2┊   0║    12┊ -13║    75┊  66║
+// ║     .┊   .║    59┊   1║     2┊   0║     .┊   .║     2┊   0║    12┊   0║    75┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    12┊   0║    75┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    12┊   0║    75┊   0║
+// ║     .┊   .║   129┊   5║     2┊   0║     .┊   .║     2┊   0║    12┊   0║    75┊   0║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    12┊   0║    75┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     1┊  -2║    31┊  19║    75┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   1║    12┊ -13║    75┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    39┊  27║    75┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   189┊  17║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    75┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    39┊   0║    12┊ -13║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     1┊  -2║    27┊ -28║    12┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   1║    42┊  15║    12┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊  -2║    56┊  14║    12┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     1┊   0║    57┊   1║    12┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   1║    20┊ -21║    12┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    20┊   0║    12┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    21┊   1║    41┊  29║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    21┊   0║    12┊ -13║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    32┊  11║    12┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    12┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    12┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    12┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    12┊   0║
+// ║     .┊   .║   167┊   1║     0┊  -1║     .┊   .║     2┊   0║    32┊   0║    53┊  41║
+// ║     .┊   .║   168┊   1║     0┊   0║     .┊   .║     2┊   0║    32┊   0║    30┊ -31║
+// ║     .┊   .║   171┊   3║     2┊   2║     .┊   .║     1┊  -2║    27┊ -28║    31┊   1║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    12┊ -13║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   1║    32┊ -33║    39┊  27║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    32┊   0║    39┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    37┊   5║    39┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    39┊   0║
+// ║     .┊   .║   139┊-140║     0┊  -1║     .┊   .║     2┊   0║    37┊   0║    54┊  15║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   0║    37┊   0║    27┊ -28║
+// ║     .┊   .║   151┊   0║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    42┊  15║
+// ║     .┊   .║   150┊-151║     0┊  -1║     .┊   .║     2┊   0║    37┊   0║    55┊  13║
+// ║     .┊   .║   151┊   1║     2┊   2║     .┊   .║     2┊   0║    37┊   0║    56┊   1║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    57┊   1║
+// ║     .┊   .║   151┊-152║     2┊   0║     .┊   .║     2┊   0║    37┊   0║    20┊ -21║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊  36║    20┊   0║
+// ║     .┊   .║   151┊-152║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    21┊   1║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    21┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊  11║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   139┊   1║     0┊  -1║     .┊   .║     2┊   0║    73┊   0║    37┊   5║
+// ║     .┊   .║   140┊   1║     2┊   2║     .┊   .║     2┊   0║    73┊   0║    32┊ -33║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    38┊  11║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊ -33║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   162┊   1║     0┊  -1║     .┊   .║     2┊   0║    73┊   0║    58┊  26║
+// ║     .┊   .║   164┊   2║     2┊   2║     .┊   .║     2┊   0║    73┊   0║    32┊ -33║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    73┊   0║    32┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    74┊   1║    32┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   5║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    37┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    73┊  36║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    73┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    74┊   0║    73┊   0║
+// ║     .┊   .║   129┊   5║     2┊   0║     .┊   .║     2┊   0║    89┊  15║    73┊   0║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   189┊  23║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    73┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    74┊   1║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    89┊   0║    74┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   1║    74┊   0║
+// ║     .┊   .║   129┊   5║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   189┊  23║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    74┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    90┊   0║    89┊  15║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   0║    30┊ -31║    89┊   0║
+// ║     .┊   .║   129┊   5║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   135┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     1┊  -2║    27┊ -28║    89┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    89┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   1║    30┊ -31║    89┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    30┊   0║    89┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    31┊   1║    89┊   0║
+// ║     .┊   .║   196┊   3║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    89┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   1║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   129┊   5║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   135┊   3║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    31┊   0║    90┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     1┊  -2║    59┊  28║    90┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     1┊   0║    45┊ -46║    90┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   1║    26┊ -27║    90┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    26┊   0║    90┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     1┊  -2║    61┊  35║    90┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   1║    27┊ -28║    90┊   0║
+// ║     .┊   .║   196┊   3║     2┊   0║     .┊   .║     2┊   0║    27┊   0║    90┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     1┊  -2║    62┊  35║    30┊ -31║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   1║    94┊  32║    30┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    94┊   0║    30┊   0║
+// ║     .┊   .║   139┊   1║     0┊  -1║     .┊   .║     1┊  -2║    66┊ -67║    37┊   7║
+// ║     .┊   .║   140┊   1║     2┊   2║     .┊   .║     2┊   1║    51┊ -52║    30┊ -31║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    51┊   0║    30┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     1┊  -2║    27┊ -28║    30┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   1║     5┊  -6║    30┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║     5┊   0║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║     5┊   0║    38┊  11║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║     6┊   1║    30┊ -31║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║     6┊   0║    30┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║     6┊   0║    30┊   0║
+// ║     .┊   .║   162┊   1║     0┊  -1║     .┊   .║     2┊   0║    53┊  47║    58┊  28║
+// ║     .┊   .║   164┊   2║     2┊   2║     .┊   .║     2┊   0║    53┊   0║    30┊ -31║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    53┊   0║    30┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     1┊  -2║    68┊  15║    30┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   1║    38┊ -39║    30┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    31┊   0║
+// ║     .┊   .║   155┊-156║     2┊   0║     .┊   .║     2┊   0║    38┊   0║    59┊  28║
+// ║     .┊   .║   156┊   1║     0┊  -1║     .┊   .║     2┊   0║    43┊   5║    60┊   1║
+// ║     .┊   .║   157┊   1║     2┊   2║     .┊   .║     2┊   0║    43┊   0║    45┊ -46║
+// ║     .┊   .║   155┊-156║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    26┊ -27║
+// ║     .┊   .║   157┊   2║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    26┊   0║
+// ║     .┊   .║    61┊ -62║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    61┊  35║
+// ║     .┊   .║   155┊  94║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    27┊ -28║
+// ║     .┊   .║   157┊   2║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    27┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    62┊  35║
+// ║     .┊   .║   132┊   0║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    94┊  32║
+// ║     .┊   .║   133┊   1║     0┊  -1║     .┊   .║     2┊   0║    43┊   0║    63┊ -64║
+// ║     .┊   .║   192┊  59║     0┊   0║     .┊   .║     2┊   0║    43┊   0║    64┊   1║
+// ║     .┊   .║   193┊   1║     2┊   2║     .┊   .║     2┊   0║    43┊   0║    94┊  30║
+// ║     .┊   .║   195┊   2║     0┊  -1║     .┊   .║     2┊   0║    43┊   0║    65┊ -66║
+// ║     .┊   .║   196┊   1║     2┊   2║     .┊   .║     2┊   0║    43┊   0║    66┊   1║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    51┊ -52║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    43┊   0║    51┊   0║
+// ║     .┊   .║   139┊   7║     0┊  -1║     .┊   .║     1┊  -2║    70┊  27║    52┊   1║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   1║    43┊ -44║    27┊ -28║
+// ║     .┊   .║   176┊  25║     0┊  -1║     .┊   .║     2┊   0║    19┊ -20║    67┊  40║
+// ║     .┊   .║   135┊-136║     2┊   2║     .┊   .║     2┊   0║    19┊   0║     5┊  -6║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    19┊   0║     5┊   0║
+// ║     .┊   .║   193┊  42║     2┊   0║     .┊   .║     2┊   0║    19┊   0║     5┊   0║
+// ║     .┊   .║   135┊-136║     2┊   0║     .┊   .║     2┊   0║    19┊   0║     6┊   1║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    19┊   0║     6┊   0║
+// ║     .┊   .║   193┊  42║     2┊   0║     .┊   .║     2┊   0║    19┊   0║     6┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    53┊  47║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    53┊   0║
+// ║     .┊   .║   151┊  19║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    53┊   0║
+// ║     .┊   .║    58┊ -59║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    68┊  15║
+// ║     .┊   .║   129┊  71║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    38┊ -39║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    38┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    19┊   0║    38┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   3║    38┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    38┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    22┊   0║    43┊   5║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    23┊   1║    43┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    23┊   0║    43┊   0║
+// ║     .┊   .║   169┊   3║     0┊  -1║     .┊   .║     2┊   0║    36┊  13║    69┊  26║
+// ║     .┊   .║   171┊   2║     2┊   2║     .┊   .║     2┊   0║    36┊   0║    43┊ -44║
+// ║     .┊   .║   172┊   1║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    70┊  27║
+// ║     .┊   .║   193┊  21║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    43┊ -44║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊ -20║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    36┊   0║    19┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊ -25║    19┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    19┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   3║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    24┊   0║    22┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    25┊   1║    22┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    25┊   0║    22┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     1┊  -2║    72┊  47║    23┊   1║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     1┊   0║    71┊ -72║    23┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   1║     1┊  -2║    23┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║     3┊   2║    23┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    87┊  84║    23┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     1┊  -2║    17┊ -18║    23┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   1║    93┊  76║    23┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    93┊   0║    23┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     1┊  -2║    74┊ -75║    23┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   1║    91┊  17║    23┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    91┊   0║    23┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    91┊   0║    23┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    52┊ -53║    23┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    23┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    52┊   0║    36┊  13║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    59┊   7║    36┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    36┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊ -46║    36┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    36┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    36┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    36┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    36┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊ -25║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊  -2║    79┊  34║    24┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   1║    45┊ -46║    24┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   153┊   5║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    45┊   0║    24┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊ -45║    24┊   0║
+// ║     .┊   .║   193┊  27║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    24┊   0║
+// ║     .┊   .║   155┊-156║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    25┊   1║
+// ║     .┊   .║   157┊   2║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    25┊   0║
+// ║     .┊   .║   157┊   0║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    72┊  47║
+// ║     .┊   .║   158┊   1║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    71┊ -72║
+// ║     .┊   .║     1┊  -2║     2┊   0║     .┊   .║     2┊   0║    44┊   0║     1┊  -2║
+// ║     .┊   .║   132┊ 131║     2┊   0║     .┊   .║     2┊   0║    44┊   0║     3┊   2║
+// ║     .┊   .║   132┊   0║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    87┊  84║
+// ║     .┊   .║   136┊   4║     0┊  -1║     .┊   .║     2┊   0║    44┊   0║    73┊ -74║
+// ║     .┊   .║   193┊  57║     2┊   2║     .┊   .║     2┊   0║    44┊   0║    17┊ -18║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    93┊  76║
+// ║     .┊   .║   193┊  61║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    93┊   0║
+// ║     .┊   .║   196┊   3║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    74┊ -75║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    91┊  17║
+// ║     .┊   .║   193┊  61║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    91┊   0║
+// ║     .┊   .║   196┊   3║     2┊   0║     .┊   .║     2┊   0║    44┊   0║    91┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    28┊ -29║    52┊ -53║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    28┊   0║    52┊   0║
+// ║     .┊   .║   151┊  19║     2┊   0║     .┊   .║     2┊   0║    29┊   1║    52┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    29┊   0║    59┊   7║
+// ║     .┊   .║    59┊  19║     2┊   0║     .┊   .║     2┊   0║    94┊  65║    59┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    94┊   0║    59┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊  -2║    66┊ -67║    59┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   1║    92┊  26║    59┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    92┊   0║    59┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    92┊   0║    59┊   0║
+// ║     .┊   .║   177┊  25║     0┊  -1║     .┊   .║     1┊  -2║    81┊ -82║    75┊  16║
+// ║     .┊   .║   178┊   1║     0┊   0║     .┊   .║     1┊   0║    82┊   1║    76┊   1║
+// ║     .┊   .║   179┊   1║     0┊   0║     .┊   .║     2┊   1║    56┊ -57║    77┊   1║
+// ║     .┊   .║   187┊   8║     2┊   2║     .┊   .║     2┊   0║    56┊   0║    59┊ -60║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     1┊  -2║    89┊  33║    59┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   1║    72┊ -73║    59┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    72┊   0║    45┊ -46║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    72┊   0║    45┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    72┊   0║    45┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     1┊  -2║    87┊  15║    45┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     1┊   0║    88┊   1║    45┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     1┊   0║    85┊ -86║    45┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   1║    72┊ -73║    45┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    72┊   0║    45┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊ -41║    79┊  34║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊ -46║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   170┊   4║     0┊  -1║     .┊   .║     2┊   0║    40┊   0║    78┊  33║
+// ║     .┊   .║   171┊   1║     2┊   2║     .┊   .║     2┊   0║    40┊   0║    45┊ -46║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    45┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊ -45║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    40┊   0║    44┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   6║    44┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   153┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    44┊   0║
+// ║     .┊   .║   155┊-156║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    28┊ -29║
+// ║     .┊   .║   157┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    28┊   0║
+// ║     .┊   .║   155┊-156║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    29┊   1║
+// ║     .┊   .║   157┊   2║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    29┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    46┊   0║    94┊  65║
+// ║     .┊   .║   133┊   1║     0┊  -1║     .┊   .║     2┊   0║    88┊  42║    80┊ -81║
+// ║     .┊   .║   192┊  59║     0┊   0║     .┊   .║     2┊   0║    54┊ -55║    64┊ -65║
+// ║     .┊   .║   193┊   1║     2┊   2║     .┊   .║     2┊   0║    54┊   0║    94┊  30║
+// ║     .┊   .║   195┊   2║     0┊  -1║     .┊   .║     2┊   0║    54┊   0║    65┊ -66║
+// ║     .┊   .║   196┊   1║     2┊   2║     .┊   .║     2┊   0║    59┊   5║    66┊   1║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    92┊  26║
+// ║     .┊   .║   193┊  61║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    92┊   0║
+// ║     .┊   .║   196┊   3║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    92┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    81┊ -82║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    82┊   1║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    56┊ -57║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    56┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    89┊  33║
+// ║     .┊   .║    59┊  19║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    72┊ -73║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    80┊  21║    72┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊  -2║    92┊  12║    72┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   1║    80┊ -81║    72┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     1┊  -2║    93┊  13║    87┊  15║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     1┊   0║    95┊   2║    88┊   1║
+// ║     .┊   .║   180┊  28║     0┊  -1║     .┊   .║     1┊   0║    17┊ -18║    83┊ -84║
+// ║     .┊   .║   182┊   2║     0┊   0║     .┊   .║     2┊   1║    58┊  41║    84┊   1║
+// ║     .┊   .║   184┊   2║     0┊   0║     .┊   .║     2┊   0║    58┊   0║    86┊   2║
+// ║     .┊   .║   187┊   3║     2┊   2║     .┊   .║     2┊   0║    58┊   0║    85┊ -86║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    72┊ -73║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    72┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊ -41║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    58┊   0║    40┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     1┊  -2║    27┊ -28║    40┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     1┊   0║    38┊  11║    40┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   1║    67┊  29║    40┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    40┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     1┊  -2║    98┊  31║    40┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     1┊   0║   100┊   2║    40┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   1║    67┊ -68║    40┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     1┊  -2║    99┊  32║    40┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   1║    67┊ -68║    40┊   0║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    40┊   0║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   6║
+// ║     .┊   .║   135┊   6║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   138┊   3║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   140┊   2║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   142┊   2║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   147┊   5║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   148┊   1║     2┊   0║     .┊   .║     2┊   0║    67┊   0║    46┊   0║
+// ║     .┊   .║   151┊   3║     2┊   0║     .┊   .║     2┊   0║    64┊ -65║    46┊   0║
+// ║     .┊   .║   153┊   2║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   159┊   6║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   161┊   2║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   164┊   3║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   165┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   166┊   1║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   171┊   5║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   193┊  22║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    46┊   0║
+// ║     .┊   .║   132┊-133║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    88┊  42║
+// ║     .┊   .║   129┊-130║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    54┊ -55║
+// ║     .┊   .║   132┊   3║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    54┊   0║
+// ║     .┊   .║   151┊  19║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    54┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    59┊   5║
+// ║     .┊   .║    59┊  19║     2┊   0║     .┊   .║     2┊   0║    64┊   0║    59┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    65┊   1║    59┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║   178┊  26║     0┊  -1║     .┊   .║     2┊   0║    65┊   0║    90┊  31║
+// ║     .┊   .║   179┊   1║     0┊   0║     .┊   .║     2┊   0║    65┊   0║    77┊ -78║
+// ║     .┊   .║   187┊   8║     2┊   2║     .┊   .║     2┊   0║    65┊   0║    59┊ -60║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    59┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    80┊  21║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    92┊  12║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    80┊ -81║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    65┊   0║    93┊  13║
+// ║     .┊   .║   136┊   1║     0┊  -1║     .┊   .║     2┊   0║    65┊   0║    94┊   1║
+// ║     .┊   .║   181┊  45║     0┊   0║     .┊   .║     2┊   0║    59┊ -60║    91┊ -92║
+// ║     .┊   .║   189┊   8║     2┊   2║     .┊   .║     2┊   0║    59┊   0║    95┊   4║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    17┊ -18║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    58┊  41║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    58┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     2┊   0║    55┊ -56║    58┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    55┊   0║    58┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    57┊   2║    58┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    57┊   0║    58┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    81┊  24║    58┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    81┊   0║    58┊   0║
+// ║     .┊   .║   187┊  35║     2┊   0║     .┊   .║     1┊  -2║   105┊  24║    58┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   1║    77┊ -78║    58┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    77┊   0║    58┊   0║
+// ║     .┊   .║   139┊-140║     0┊  -1║     .┊   .║     2┊   0║    78┊   1║    37┊ -38║
+// ║     .┊   .║   151┊  12║     2┊   2║     .┊   .║     2┊   0║    78┊   0║    27┊ -28║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    79┊   1║    38┊  11║
+// ║     .┊   .║   162┊  10║     0┊  -1║     .┊   .║     2┊   0║    79┊   0║    96┊  58║
+// ║     .┊   .║    40┊ -41║     2┊   2║     .┊   .║     2┊   0║    71┊ -72║    67┊ -68║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    71┊   0║    67┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    71┊   0║    98┊  31║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    71┊   0║   100┊   2║
+// ║     .┊   .║    59┊  16║     2┊   0║     .┊   .║     2┊   0║    71┊   0║    67┊ -68║
+// ║     .┊   .║    63┊   4║     2┊   0║     .┊   .║     2┊   0║    71┊   0║    99┊  32║
+// ║     .┊   .║   123┊  60║     2┊   0║     .┊   .║     2┊   0║    63┊ -64║    67┊ -68║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    67┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    67┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    67┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    67┊   0║
+// ║     .┊   .║   185┊  33║     0┊  -1║     .┊   .║     2┊   0║    63┊   0║    97┊  30║
+// ║     .┊   .║   186┊   1║     2┊   2║     .┊   .║     2┊   0║    63┊   0║    67┊ -68║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    67┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     1┊  -2║   106┊  43║    67┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   1║    63┊ -64║    67┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    64┊ -65║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    63┊   0║    64┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    68┊   5║    64┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║    59┊  16║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║    63┊   4║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   123┊  60║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    68┊   0║    64┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    69┊   1║    64┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   1║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║    59┊  16║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║    63┊   4║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   123┊  60║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    69┊   0║    65┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   0║    70┊   1║    65┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    65┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    65┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    65┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    59┊ -60║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    59┊   0║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    59┊   0║
+// ║     .┊   .║   151┊  27║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    59┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    70┊   0║    59┊   0║
+// ║     .┊   .║   179┊  27║     0┊  -1║     .┊   .║     2┊   0║    70┊   0║   102┊  43║
+// ║     .┊   .║   183┊   4║     0┊   0║     .┊   .║     2┊   0║    70┊   0║   101┊-102║
+// ║     .┊   .║    59┊ -60║     2┊   2║     .┊   .║     2┊   0║    70┊   0║    55┊ -56║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     1┊  -2║   107┊  37║    55┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     1┊   0║   108┊   1║    57┊   2║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     1┊   0║    89┊ -90║    57┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     2┊   1║    61┊ -62║    81┊  24║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     2┊   0║    61┊   0║    81┊   0║
+// ║     .┊   .║   188┊  63║     0┊  -1║     .┊   .║     1┊  -2║    87┊  26║   103┊  22║
+// ║     .┊   .║   190┊   2║     0┊   0║     .┊   .║     1┊   0║    88┊   1║   104┊   1║
+// ║     .┊   .║   191┊   1║     2┊   2║     .┊   .║     1┊   0║   110┊  22║   105┊   1║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     1┊   0║   109┊-110║    77┊ -78║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   1║    82┊ -83║    77┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    82┊   0║    78┊   1║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     1┊  -2║   111┊  29║    78┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   1║    85┊ -86║    79┊   1║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     2┊   0║    85┊   0║    79┊   0║
+// ║     .┊   .║    59┊ -60║     2┊   0║     .┊   .║     2┊   0║    85┊   0║    71┊ -72║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    62┊ -63║    71┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    71┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    71┊   0║
+// ║     .┊   .║   189┊  54║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    71┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    71┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊ -64║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    62┊   0║    63┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    66┊   4║    63┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    63┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   0║    66┊   0║   106┊  43║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    63┊ -64║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    63┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    63┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   5║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   0║    66┊   0║    68┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊ -60║    68┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    68┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    68┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    69┊   1║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     2┊   0║    59┊   0║    69┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     2┊   0║    76┊  17║    69┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     2┊   0║    76┊   0║    69┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     2┊   0║    81┊   5║    69┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   0║    81┊   0║    69┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     1┊  -2║   105┊  24║    69┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     2┊   1║    86┊ -87║    69┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   0║    86┊   0║    69┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    86┊   0║    69┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     1┊  -2║    89┊   3║    69┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     2┊   1║    60┊ -61║    69┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     2┊   0║    60┊   0║    70┊   1║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     1┊  -2║    87┊  27║    70┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     1┊   0║    88┊   1║    70┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     1┊   0║   110┊  22║    70┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     1┊   0║   114┊   4║    70┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     2┊   1║    84┊ -85║    70┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     2┊   0║    84┊   0║    70┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     1┊  -2║   105┊  21║    70┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     2┊   1║    83┊ -84║    70┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     2┊   0║    83┊   0║    70┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     1┊  -2║   111┊  28║    70┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    70┊   0║
+// ║     .┊   .║    41┊ -42║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   107┊  37║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   108┊   1║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    89┊ -90║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    61┊ -62║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    61┊   0║
+// ║     .┊   .║   151┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    87┊  26║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    88┊   1║
+// ║     .┊   .║   182┊  30║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║    84┊ -85║
+// ║     .┊   .║   184┊   2║     0┊   0║     .┊   .║     .┊   .║     .┊   .║    86┊   2║
+// ║     .┊   .║   123┊-124║     2┊   2║     .┊   .║     .┊   .║     .┊   .║   110┊  24║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   109┊-110║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    82┊ -83║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    82┊   0║
+// ║     .┊   .║   191┊  66║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   111┊  29║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    85┊ -86║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    85┊   0║
+// ║     .┊   .║   191┊  66║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    85┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊ -63║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║    59┊  18║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   123┊  64║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   187┊  35║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    62┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   4║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║    42┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║    43┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║    59┊  16║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║    63┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   123┊  60║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   124┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   135┊  11║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   151┊  16║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   186┊  34║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   187┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   189┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║   193┊   4║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    66┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    59┊ -60║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    59┊   0║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    59┊   0║
+// ║     .┊   .║   151┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    59┊   0║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    59┊   0║
+// ║     .┊   .║   179┊  27║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║   112┊  53║
+// ║     .┊   .║    59┊ -60║     2┊   2║     .┊   .║     .┊   .║     .┊   .║    76┊ -77║
+// ║     .┊   .║   124┊  65║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    76┊   0║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    81┊   5║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    81┊   0║
+// ║     .┊   .║   188┊  63║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║   113┊  32║
+// ║     .┊   .║   190┊   2║     0┊   0║     .┊   .║     .┊   .║     .┊   .║   104┊-105║
+// ║     .┊   .║   191┊   1║     2┊   2║     .┊   .║     .┊   .║     .┊   .║   105┊   1║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    86┊ -87║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    86┊   0║
+// ║     .┊   .║   191┊  66║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    86┊   0║
+// ║     .┊   .║    40┊ -41║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    89┊   3║
+// ║     .┊   .║    41┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    60┊ -61║
+// ║     .┊   .║   124┊  83║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    60┊   0║
+// ║     .┊   .║   151┊  27║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    87┊  27║
+// ║     .┊   .║   152┊   1║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    88┊   1║
+// ║     .┊   .║   182┊  30║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║    84┊ -85║
+// ║     .┊   .║   184┊   2║     0┊   0║     .┊   .║     .┊   .║     .┊   .║    86┊   2║
+// ║     .┊   .║   123┊-124║     2┊   2║     .┊   .║     .┊   .║     .┊   .║   110┊  24║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   114┊   4║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    84┊ -85║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    84┊   0║
+// ║     .┊   .║   190┊  65║     0┊  -1║     .┊   .║     .┊   .║     .┊   .║   115┊  31║
+// ║     .┊   .║   191┊   1║     2┊   2║     .┊   .║     .┊   .║     .┊   .║   105┊-106║
+// ║     .┊   .║   123┊-124║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    83┊ -84║
+// ║     .┊   .║   125┊   2║     2┊   0║     .┊   .║     .┊   .║     .┊   .║    83┊   0║
+// ║     .┊   .║   191┊  66║     2┊   0║     .┊   .║     .┊   .║     .┊   .║   111┊  28║
+
+
+// ------------------
+
+
+,
 defaultActions: {
   31: [
     2,
@@ -8968,6 +19410,19 @@ defaultActions: {
     88
   ]
 },
+
+
+
+// ------------------------------
+
+
+// ║ len┊   ∆║ pop┊   ∆║rule┊   ∆║
+
+
+// ------------------
+
+
+  // ,
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -8975,19 +19430,31 @@ parseError: function parseError(str, hash) {
         throw new this.JisonParserError(str, hash);
     }
 },
+quoteName: function quoteName(id_str) {
+    return '"' + id_str + '"';
+},
+describeSymbol: function describeSymbol(symbol) {
+    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
+        return this.terminal_descriptions_[symbol];
+    } 
+    else if (symbol === this.EOF) {
+        return 'end of input';
+    }
+    else if (this.terminals_[symbol]) {
+        return this.quoteName(this.terminals_[symbol]);
+    }
+    return null;
+},
 parse: function parse(input) {
     var self = this,
-        stack = [0],
+        stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
 
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
         table = this.table,
-        yytext = '',
-        yylineno = 0,
-        yyleng = 0,
         recovering = 0,     // (only used when the grammar contains error recovery rules)
-        TERROR = 2,
-        EOF = 1;
+        TERROR = this.TERROR,
+        EOF = this.EOF;
 
     var args = lstack.slice.call(arguments, 1);
 
@@ -9018,6 +19485,19 @@ parse: function parse(input) {
     }
     var yyloc = lexer.yylloc;
     lstack.push(yyloc);
+    
+    if (typeof lexer.yytext === 'undefined') {
+        lexer.yytext = '';
+    }
+    var yytext = lexer.yytext;
+    if (typeof lexer.yylineno === 'undefined') {
+        lexer.yylineno = 0;
+    }
+    var yylineno = lexer.yylineno;
+    if (typeof lexer.yyleng === 'undefined') {
+        lexer.yyleng = 0;
+    }
+    var yyleng = lexer.yyleng;
 
     var ranges = lexer.options && lexer.options.ranges;
 
@@ -9025,12 +19505,17 @@ parse: function parse(input) {
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
     }
+    // Does the shared state override the default `quoteName` that already comes with this instance?
+    if (typeof sharedState.yy.quoteName === 'function') {
+        this.quoteName = sharedState.yy.quoteName;
+    }
 
     function popStack(n) {
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
         lstack.length = lstack.length - n;
     }
+
 
     function lex() {
         var token;
@@ -9042,9 +19527,10 @@ parse: function parse(input) {
         return token;
     }
 
-    var symbol;
+
+    var symbol = null;
     var preErrorSymbol = null;
-    var state, action, a, r;
+    var state, action, r;
     var yyval = {};
     var p, len, this_production, lstack_begin, lstack_end, newState;
     var expected = [];
@@ -9057,6 +19543,7 @@ parse: function parse(input) {
         sharedState.yy.pre_parse.call(this, sharedState.yy);
     }
 
+
     // Return the rule stack depth where the nearest error rule can be found.
     // Return FALSE when no error recovery rule was found.
     function locateNearestErrorRecoveryRule(state) {
@@ -9066,10 +19553,11 @@ parse: function parse(input) {
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
-            if ((TERROR.toString()) in table[state]) {
+            var action = table[state][TERROR];
+            if (action && action.length && action[0]) {
                 return depth;
             }
-            if (state === 0 || stack_probe < 2) {
+            if (state === 0 /* $accept rule */ || stack_probe < 2) {
                 return false; // No suitable error recovery rule available.
             }
             stack_probe -= 2; // popStack(1): [symbol, action]
@@ -9079,15 +19567,28 @@ parse: function parse(input) {
     }
 
 
+    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
+    // 
+    // The produced list may contain token or token set descriptions instead of the tokens
+    // themselves to help turning this output into something that easier to read by humans.
+    // 
+    // The returned list (array) will not contain any duplicate entries.
     function collect_expected_token_set(state) {
         var tokenset = [];
+        var check = {};
+        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
+        // If so, use that one instead of the less palatable token set.
+        if (self.state_descriptions_ && self.state_descriptions_[p]) {
+            return [
+                self.state_descriptions_[p]
+            ];
+        }
         for (var p in table[state]) {
-            if (p > TERROR) {
-                if (self.terminal_descriptions_ && self.terminal_descriptions_[p]) {
-                    tokenset.push(self.terminal_descriptions_[p]);
-                }
-                else if (self.terminals_[p]) {
-                    tokenset.push("'" + self.terminals_[p] + "'");
+            if (p !== TERROR) {
+                var d = self.describeSymbol(p);
+                if (d && !check[d]) {
+                    tokenset.push(d);
+                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
                 }
             }
         }
@@ -9103,17 +19604,22 @@ parse: function parse(input) {
             if (this.defaultActions[state]) {
                 action = this.defaultActions[state];
             } else {
-                if (symbol === null || typeof symbol === 'undefined') {
+                // The single `==` condition below covers both these `===` comparisons in a single
+                // operation:
+                // 
+                //     if (symbol === null || typeof symbol === 'undefined') ...
+                if (symbol == null) {
                     symbol = lex();
                 }
                 // read action for current state and first input
                 action = table[state] && table[state][symbol];
             }
 
+
             // handle parse error
-            if (typeof action === 'undefined' || !action.length || !action[0]) {
+            if (!action || !action.length || !action[0]) {
                 var error_rule_depth;
-                var errStr = '';
+                var errStr = null;
 
                 if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
@@ -9122,24 +19628,30 @@ parse: function parse(input) {
                     // Report error
                     expected = collect_expected_token_set(state);
                     if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ':\n' + lexer.showPosition() + '\nExpecting ' + expected.join(', ') + ", got '" + (this.terminals_[symbol] || symbol) + "'";
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
                     } else {
-                        errStr = 'Parse error on line ' + (yylineno + 1) + ': Unexpected ' +
-                                 (symbol === EOF ? 'end of input' :
-                                  ("'" + (this.terminals_[symbol] || symbol) + "'"));
+                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
                     }
-                    a = this.parseError(errStr, p = {
+                    if (expected.length) {
+                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    } else {
+                        errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
+                    }
+                    r = this.parseError(errStr, p = {
                         text: lexer.match,
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: (error_rule_depth !== false),
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     if (!p.recoverable) {
-                        retval = a;
+                        retval = r;
                         break;
                     }
                 } else if (preErrorSymbol !== EOF) {
@@ -9154,10 +19666,13 @@ parse: function parse(input) {
                             token: this.terminals_[symbol] || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
-                            loc: yyloc,
+                            loc: lexer.yylloc,
                             expected: expected,
                             recoverable: false,
-                            state_stack: stack
+                            state_stack: stack,
+                            value_stack: vstack,
+                            location_stack: lstack,
+                            lexer: lexer
                         });
                         break;
                     }
@@ -9177,10 +19692,13 @@ parse: function parse(input) {
                         token: this.terminals_[symbol] || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
-                        loc: yyloc,
+                        loc: lexer.yylloc,
                         expected: expected,
                         recoverable: false,
-                        state_stack: stack
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
                     });
                     break;
                 }
@@ -9194,22 +19712,42 @@ parse: function parse(input) {
             }
 
 
-            // this shouldn't happen, unless resolve defaults are off
-            if (action[0] instanceof Array && action.length > 1) {
-                retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+            switch (action[0]) {
+            default:
+                // this shouldn't happen, unless resolve defaults are off
+                if (action[0] instanceof Array) {
+                    retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
+                        text: lexer.match,
+                        token: this.terminals_[symbol] || symbol,
+                        token_id: symbol,
+                        line: lexer.yylineno,
+                        loc: lexer.yylloc,
+                        expected: expected,
+                        recoverable: false,
+                        state_stack: stack,
+                        value_stack: vstack,
+                        location_stack: lstack,
+                        lexer: lexer
+                    });
+                    break;
+                }
+                // Another case of better safe than sorry: in case state transitions come out of another error recovery process
+                // or a buggy LUT (LookUp Table):
+                retval = this.parseError(errStr || 'Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
-                    loc: yyloc,
+                    loc: lexer.yylloc,
                     expected: expected,
                     recoverable: false,
-                    state_stack: stack
+                    state_stack: stack,
+                    value_stack: vstack,
+                    location_stack: lstack,
+                    lexer: lexer
                 });
                 break;
-            }
 
-            switch (action[0]) {
             case 1: // shift
                 //this.shiftCount++;
 
@@ -9219,10 +19757,12 @@ parse: function parse(input) {
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!preErrorSymbol) { // normal execution / no error
+                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
+
                     if (recovering > 0) {
                         recovering--;
                     }
@@ -9236,8 +19776,8 @@ parse: function parse(input) {
             case 2:
                 // reduce
                 //this.reductionCount++;
-
-                this_production = this.productions_[action[1]];
+                newState = action[1];
+                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len || 1);
@@ -9255,7 +19795,7 @@ parse: function parse(input) {
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, action[1], vstack, lstack, stack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -9278,12 +19818,32 @@ parse: function parse(input) {
             case 3:
                 // accept
                 retval = true;
+                // Return the last rule's `$$` result, if available
+                if (typeof yyval.$ !== 'undefined') {
+                    retval = yyval.$;
+                }
                 break;
             }
 
             // break out of loop: we accept or fail with error
             break;
         }
+    } catch (ex) {
+        // report exceptions through the parseError callback too:
+        retval = this.parseError(errStr || 'Parsing aborted due to exception.', {
+            exception: ex,
+            text: lexer.match,
+            token: this.terminals_[symbol] || symbol,
+            token_id: symbol,
+            line: lexer.yylineno,
+            loc: lexer.yylloc,
+            // expected: expected,
+            recoverable: false,
+            state_stack: stack,
+            value_stack: vstack,
+            location_stack: lstack,
+            lexer: lexer
+        });
     } finally {
         var rv;
 
@@ -12960,19 +23520,20 @@ exports.parse = function () {
  * */
 
 var typal = (function () {
+'use strict';
 
-var create = Object.create || function (o) { function F(){} F.prototype = o; return new F(); };
+var create = Object.create || function (o) { 
+    function F(){} 
+    F.prototype = o; 
+    return new F(); 
+};
 var position = /^(before|after)/;
 
 // basic method layering
 // always returns original method's return value
-function layerMethod(k, fun) {
-    var pos = k.match(position)[0],
-        key = k.replace(position, ''),
-        prop = this[key];
-
+function layerMethod(pos, key, prop, fun) {
     if (pos === 'after') {
-        this[key] = function () {
+        return function () {
             var ret = prop.apply(this, arguments);
             var args = [].slice.call(arguments);
             args.splice(0, 0, ret);
@@ -12980,12 +23541,13 @@ function layerMethod(k, fun) {
             return ret;
         };
     } else if (pos === 'before') {
-        this[key] = function () {
+        return function () {
             fun.apply(this, arguments);
             var ret = prop.apply(this, arguments);
             return ret;
         };
     }
+    return fun;
 }
 
 // mixes each argument's own properties into calling object,
@@ -12993,19 +23555,76 @@ function layerMethod(k, fun) {
 // layered by mixin methods 'beforemeth' or 'aftermeth'
 function typal_mix() {
     var self = this;
-    for(var i=0,o,k; i<arguments.length; i++) {
-        o=arguments[i];
+    var i, o, k;
+    for (i = 0; i < arguments.length; i++) {
+        o = arguments[i];
         if (!o) continue;
-        if (Object.prototype.hasOwnProperty.call(o,'constructor'))
+        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
             this.constructor = o.constructor;
-        if (Object.prototype.hasOwnProperty.call(o,'toString'))
+        }
+        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
             this.toString = o.toString;
-        for(k in o) {
+        }
+        for (k in o) {
             if (Object.prototype.hasOwnProperty.call(o, k)) {
-                if(k.match(position) && typeof this[k.replace(position, '')] === 'function')
-                    layerMethod.call(this, k, o[k]);
-                else
+                var match = k.match(position);
+                var key = k.replace(position, '');
+                if (match && typeof this[key] === 'function') {
+                    this[key] = layerMethod(match[0], key, this[key], o[k]);
+                } else {
                     this[k] = o[k];
+                }
+            }
+        }
+    }
+    return this;
+}
+
+// Same as typal_mix but also camelCases every object member.
+// This is useful for processing options with dashes in their key, e.g. `token-stack` --> tokenStack.
+function typal_camel_mix() {
+    var self = this;
+    var i, o, k;
+
+    // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'` 
+    function camelCase(s) {
+        return s.replace(/-\w/g, function (match) { 
+            return match.charAt(1).toUpperCase(); 
+        });
+    }
+
+    // Convert first character to lowercase
+    function lcase0(s) {
+        return s.replace(/^\w/, function (match) { 
+            return match.toLowerCase(); 
+        });
+    }
+
+    for (i = 0; i < arguments.length; i++) {
+        o = arguments[i];
+        if (!o) continue;
+        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
+            this.constructor = o.constructor;
+        }
+        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
+            this.toString = o.toString;
+        }
+        for (k in o) {
+            if (Object.prototype.hasOwnProperty.call(o, k)) {
+                var nk = camelCase(k);
+                var match = k.match(position);
+                var key = k.replace(position, '');
+                // This anticipates before/after members to be camelcased already, e.g.
+                // 'afterParse()' for layering 'parse()': 
+                var alt_key = lcase0(key);
+                if (match && typeof this[key] === 'function') {
+                    this[key] = layerMethod(match[0], key, this[key], o[k]);
+                }
+                else if (match && typeof this[alt_key] === 'function') {
+                    this[alt_key] = layerMethod(match[0], alt_key, this[alt_key], o[k]);
+                } else {
+                    this[nk] = o[k];
+                }
             }
         }
     }
@@ -13015,6 +23634,8 @@ function typal_mix() {
 return {
     // extend object with own properties of each argument
     mix: typal_mix,
+
+    camelMix: typal_camel_mix,
 
     // sugar for object begetting and mixing
     // - Object.create(typal).mix(etc, etc);
