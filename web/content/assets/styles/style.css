@@ -2,7 +2,7 @@ html, body {
     margin: 0;
     padding: 0;
     background: white;
-    font-family: Monaco, "Lucida Console", monospace;
+    font-family: Monaco, Consolas, 'Lucida Console', monospace;
     color: #333;
 }
 
@@ -15,6 +15,7 @@ a:hover {
 }
 
 pre {
+    font-family: Monaco, Consolas, 'Lucida Console', monospace;
     background-color: #eee;
     padding: 1em;
     -moz-border-radius: 1em;
@@ -23,6 +24,16 @@ pre {
 
 pre code {
     white-space: pre-wrap;
+}
+
+h3 code {
+    font-size: 135%;
+    background-color: #eee;
+}
+
+p code {
+    font-size: 130%;
+    background-color: #eee;
 }
 
 #header, #main, #content {
