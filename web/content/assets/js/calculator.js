@@ -1565,6 +1565,7 @@ parse: function parse(input) {
 
 
             switch (action[0]) {
+            // catch misc. parse failures:
             default:
                 // this shouldn't happen, unless resolve defaults are off
                 if (action[0] instanceof Array) {
@@ -1600,9 +1601,9 @@ parse: function parse(input) {
                 });
                 break;
 
-            case 1: // shift
+            // shift:
+            case 1: 
                 //this.shiftCount++;
-
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
                 lstack.push(lexer.yylloc);
@@ -1623,8 +1624,8 @@ parse: function parse(input) {
                 }
                 continue;
 
+            // reduce:
             case 2:
-                // reduce
                 //this.reductionCount++;
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
@@ -1669,8 +1670,8 @@ parse: function parse(input) {
                 stack.push(newState);
                 continue;
 
+            // accept:
             case 3:
-                // accept
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 // 
