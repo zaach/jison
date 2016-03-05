@@ -314,4 +314,4 @@ faking-multiple-start-rules:
 compiled_calc:
 	$(JISON) -t ./$@_parse.jison
 	$(JISON) -t ./$@_exec.jison
-
+	node output/compiled_calc/compiled_calc_exec.js compiled_calc_input.txt
