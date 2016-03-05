@@ -19,7 +19,7 @@
  *
  *
  * 
- * stmts : /*empty*/
+ * stmts : //empty//
  *      | stmts '\n'
  *      | stmts exp '\n'
  *      | stmts error '\n'  <- error followed by a newline is a stmt
