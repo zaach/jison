@@ -312,6 +312,6 @@ faking-multiple-start-rules:
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
-	$(JISON) ./$@_parse.jison
-	$(JISON) ./$@_exec.jison
+	$(JISON) -t ./$@_parse.jison
+	$(JISON) -t ./$@_exec.jison
 
