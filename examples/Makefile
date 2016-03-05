@@ -6,6 +6,8 @@ JISON = node ../lib/cli.js -o ./output/$@/ --main
 
 ALL_TARGETS =                                                   \
 			ansic                                               \
+			compiled_calc                                       \
+			c99                                                 \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
@@ -13,6 +15,7 @@ ALL_TARGETS =                                                   \
 			bloop                                               \
 			calc_LA_on_demand                                   \
 			calculator                                          \
+			ccalc 	                                            \
 			calculator_json                                     \
 			classy                                              \
 			classy_ast                                          \
@@ -20,11 +23,27 @@ ALL_TARGETS =                                                   \
 			dism                                                \
 			dism_lr0                                            \
 			dot                                                 \
+			faking-multiple-start-rules 						\
+			error-handling-and-yyclearin						\
+			error-handling-and-yyerrok-loopfix					\
+			error-handling-and-yyerrok-looping1					\
+			error-handling-and-yyerrok-looping2					\
+			error-handling-and-yyerrok-macro					\
+			error-handling-and-yyerrok-part1					\
+			error-handling-and-yyerrok-part2					\
+			error-handling-and-yyerrok-part3					\
+			error-handling-and-yyerrok-part4a					\
+			error-handling-and-yyerrok-part4b					\
+			error-handling-and-yyerrok-part5					\
+			error-recognition-actions							\
+			error-recovery-and-yyerror							\
 			flow                                                \
 			formula                                             \
+			fsyacc-cgrammar										\
 			gantt                                               \
 			grammar                                             \
 			handlebars                                          \
+			happyhappy											\
 			inherited_y                                         \
 			issue-254                                           \
 			issue-293                                           \
@@ -33,8 +52,11 @@ ALL_TARGETS =                                                   \
 			json_js                                             \
 			lambdacalc                                          \
 			lex                                                 \
+			lojban-300											\
 			mermaid                                             \
+			mfcalc 												\
 			nv_classy_ast                                       \
+			olmenu-proto2 										\
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -42,19 +64,49 @@ ALL_TARGETS =                                                   \
 			semwhitespace                                       \
 			tikiwikiparser                                      \
 			unicode                                             \
+			unicode2 											\
 			with-includes                                       \
-			with_custom_lexer
+			with_custom_lexer 									\
+			yacc-error-recovery
+
+
+
+
+ERROR_HANDLING_TARGETS =                                        \
+			error-handling-and-yyclearin						\
+			error-handling-and-yyerrok-loopfix					\
+			error-handling-and-yyerrok-looping1					\
+			error-handling-and-yyerrok-looping2					\
+			error-handling-and-yyerrok-macro					\
+			error-handling-and-yyerrok-part1					\
+			error-handling-and-yyerrok-part2					\
+			error-handling-and-yyerrok-part3					\
+			error-handling-and-yyerrok-part4a					\
+			error-handling-and-yyerrok-part4b					\
+			error-handling-and-yyerrok-part5					\
+			error-recognition-actions							\
+			error-recovery-and-yyerror							\
+			yacc-error-recovery
+
+
+
+
+
 
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean $(ALL_TARGETS)
+.PHONY: all clean superclean error-handling $(ALL_TARGETS)
 
 clean:
 	-rm -rf output/
 
 superclean: clean
 
+
+error-handling: $(ERROR_HANDLING_TARGETS)
+
+misc: $(MISC_TARGETS)
 
 ansic:
 	$(JISON) ./$@.jison
@@ -168,13 +220,73 @@ mermaid:
 dot:
 	$(JISON) ./$@.jison
 
+error-handling-and-yyclearin:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-loopfix:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-looping1:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-looping2:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-macro:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part1:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part2:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part3:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part4a:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part4b:
+	$(JISON) ./$@.jison
+
+error-handling-and-yyerrok-part5:
+	$(JISON) ./$@.jison
+
+error-recognition-actions:
+	$(JISON) ./$@.jison
+
+error-recovery-and-yyerror:
+	$(JISON) ./$@.jison
+
 flow:
+	$(JISON) ./$@.jison
+
+fsyacc-cgrammar:
 	$(JISON) ./$@.jison
 
 gantt:
 	$(JISON) ./$@.jison
 
+happyhappy:
+	$(JISON) ./$@.jison
+
 unicode:
+	$(JISON) ./$@.jison
+
+lojban-300:
+	$(JISON) ./$@.jison
+
+mfcalc:
+	$(JISON) ./$@.jison
+
+olmenu-proto2:
+	$(JISON) ./$@.jison
+
+unicode2:
+	$(JISON) ./$@.jison
+
+yacc-error-recovery:
 	$(JISON) ./$@.jison
 
 with-includes:
@@ -188,4 +300,18 @@ grammar:
 
 lex:
 	$(JISON) ./$@.jison lex_grammar.jisonlex
+
+ccalc:
+	$(JISON) ./$@-parse.y ./$@-lex.l
+
+c99:
+	$(JISON) ./$@.y ./$@.l
+
+faking-multiple-start-rules:
+	$(JISON) ./$@.jison
+
+# example of the use of the `%import symbols ...` statement: multi-phase engines
+compiled_calc:
+	$(JISON) ./$@_parse.jison
+	$(JISON) ./$@_exec.jison
 
