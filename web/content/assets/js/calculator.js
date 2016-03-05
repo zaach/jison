@@ -51,6 +51,9 @@
  *    defaultActions: {...},
  *
  *    parseError: function(str, hash),
+ *    yyErrOk: function(),
+ *    yyClearIn: function(),
+ *
  *    parse: function(input),
  *
  *    lexer: {
@@ -1395,9 +1398,9 @@ parse: function parse(input) {
 
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
-        table = this.table,
+        table = this.table;
 
-        TERROR = this.TERROR,
+    var TERROR = this.TERROR,
         EOF = this.EOF;
 
     var args = lstack.slice.call(arguments, 1);
@@ -1475,7 +1478,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    var preErrorSymbol = null;
+    this.preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production, lstack_begin, lstack_end, newState;
@@ -1619,7 +1622,7 @@ parse: function parse(input) {
                 lstack.push(lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!preErrorSymbol) { // normal execution / no error
+                if (!this.preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
@@ -1629,8 +1632,8 @@ parse: function parse(input) {
 
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = preErrorSymbol;
-                    preErrorSymbol = null;
+                    symbol = this.preErrorSymbol;
+                    this.preErrorSymbol = null;
                 }
                 continue;
 
