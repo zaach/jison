@@ -214,7 +214,15 @@ var calculator = (function () {
 function JisonParserError(msg, hash) {
     this.message = msg;
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+      var ex2 = hash.exception;
+      this.message = ex2.message || msg;
+      stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+      stacktrace = (new Error(msg)).stack;
+    }
     if (stacktrace) {
       this.stack = stacktrace;
     }
@@ -1413,9 +1421,11 @@ parse: function parse(input) {
       }
     }
 
-    lexer.setInput(input, sharedState.yy);
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
+
+    lexer.setInput(input, sharedState.yy);
+
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
     }
@@ -1586,7 +1596,7 @@ parse: function parse(input) {
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
-                retval = this.parseError(errStr || 'Parsing halted. No viable error recovery approach available due to internal system failure.', {
+                retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
@@ -1705,7 +1715,7 @@ parse: function parse(input) {
         }
     } catch (ex) {
         // report exceptions through the parseError callback too:
-        retval = this.parseError(errStr || 'Parsing aborted due to exception.', {
+        retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
             token: this.terminals_[symbol] || symbol,
