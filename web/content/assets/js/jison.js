@@ -447,6 +447,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
     this.actionsUseYYLINENO = analyzeFeatureUsage(this.performAction, /\byylineno\b/g, 1);
     this.actionsUseYYTEXT = analyzeFeatureUsage(this.performAction, /\byytext\b/g, 1);
+    this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 1);
     this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 1);
     this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 1);
     this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 1);
@@ -473,6 +474,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         actionsUseYYLENG: this.actionsUseYYLENG,
         actionsUseYYLINENO: this.actionsUseYYLINENO,
         actionsUseYYTEXT: this.actionsUseYYTEXT,
+        actionsUseParseError: this.actionsUseParseError,
         actionsUseYYERROR: this.actionsUseYYERROR,
         actionsUseYYERROK: this.actionsUseYYERROK,
         actionsUseYYCLEARIN: this.actionsUseYYCLEARIN,
@@ -623,7 +625,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 // Here we expand those direct token/symbol references: #TOKEN#
                 action = action
                     .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
-                        return ' /* ' + sym.replace(/\*\//g, '*-/').replace(/\r/g, 'CR').replace(/\n/g, 'LF') + ' */ ' + addSymbol(sym);
+                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(sym);
                     });
 
                 // replace named semantic values ($nonterminal)
@@ -691,7 +693,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     .replace(/#(-?\d+)\b/g, function (_, n) {
                         var i = parseInt(n, 10) - 1;
                         var sym = String(rhs[i]);
-                        return ' /* ' + sym.replace(/\*\//g, '*-/').replace(/\r/g, 'CR').replace(/\n/g, 'LF') + ' */ ' + addSymbol(rhs[i]);
+                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(rhs[i]);
                     });
                 actionHash = mkHashIndex(action);
                 if (actionHash in actionGroups) {
@@ -1228,10 +1230,10 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                     self.resolutions.push([k, stackSymbol, sol]);
                     if (sol.bydefault) {
                         self.conflicts++;
-                        if (!self.DEBUG) {
-                            self.warn('Conflict in grammar: multiple actions possible when lookahead token is ', stackSymbol, ' in state ', k, "\n- ", printAction(sol.r, self), "\n- ", printAction(sol.s, self));
-                            conflictedStates[k] = true;
-                        }
+
+                        self.warn('Conflict in grammar: multiple actions possible when lookahead token is ', stackSymbol, ' in state ', k, "\n- ", printAction(sol.r, self), "\n- ", printAction(sol.s, self));
+                        conflictedStates[k] = true;
+
                         if (self.options.noDefaultResolve) {
                             if (!(action[0] instanceof Array)) {
                                 action = [action];
@@ -1262,7 +1264,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
 
     });
 
-    if (!self.DEBUG && self.conflicts > 0) {
+    if (self.conflicts > 0) {
         self.warn('\nStates with conflicts:');
         each(conflictedStates, function (val, state) {
             self.warn('State ' + state);
@@ -1294,7 +1296,7 @@ function findDefaults(states) {
     return defaults;
 }
 
-// Remove all NONASSOC state transitions from the generated table now that we don't them any longer
+// Remove all NONASSOC state transitions from the generated table now that we don't need them any longer
 function cleanupTable(table) {
     table.forEach(function (state, k) {
         var symbol;
@@ -1510,10 +1512,10 @@ function generateGenericHeaderComment() {
         + ' *\n'
         + ' * ### options which are global for all parser instances\n'
         + ' *\n'
-        + ' *  Parser.pre_parse: function(yy)\n'
+        + ' *  Parser.pre_parse: function(yy [, optional parse() args])\n'
         + ' *                 optional: you can specify a pre_parse() function in the chunk following\n'
         + ' *                 the grammar, i.e. after the last `%%`.\n'
-        + ' *  Parser.post_parse: function(yy, retval) { return retval; }\n'
+        + ' *  Parser.post_parse: function(yy, retval [, optional parse() args]) { return retval; }\n'
         + ' *                 optional: you can specify a post_parse() function in the chunk following\n'
         + ' *                 the grammar, i.e. after the last `%%`. When it does not return any value,\n'
         + ' *                 the parser will return the original `retval`.\n'
@@ -1521,11 +1523,11 @@ function generateGenericHeaderComment() {
         + ' * ### options which can be set up per parser instance\n'
         + ' *  \n'
         + ' *  yy: {\n'
-        + ' *      pre_parse:  function(yy)\n'
+        + ' *      pre_parse:  function(yy [, optional parse() args])\n'
         + ' *                 optional: is invoked before the parse cycle starts (and before the first\n'
         + ' *                 invocation of `lex()`) but immediately after the invocation of\n'
         + ' *                 `parser.pre_parse()`).\n'
-        + ' *      post_parse: function(yy, retval) { return retval; }\n'
+        + ' *      post_parse: function(yy, retval [, optional parse() args]) { return retval; }\n'
         + ' *                 optional: is invoked when the parse terminates due to success (\'accept\')\n'
         + ' *                 or failure (even when exceptions are thrown).\n'
         + ' *                 `retval` contains the return value to be produced by `Parser.parse()`;\n'
@@ -2003,7 +2005,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'table: ' + tableCode.moduleCode,
         'defaultActions: ' + JSON.stringify(this.defaultActions, null, 2).replace(/"([0-9]+)":/g, '$1:'),
         analyzeTableForCompression(this.defaultActions),
-        'parseError: ' + String(this.parseError || (this.hasErrorRecovery ? traceParseError : parser.parseError)),
+        'parseError: ' + String(this.parseError || parser.parseError),
         'quoteName: ' + String(parser.quoteName),
         'describeSymbol: ' + String(parser.describeSymbol),
         'parse: ' + parseFn
@@ -2435,10 +2437,6 @@ parser.trace = generator.trace;
 parser.warn = generator.warn;
 parser.error = generator.error;
 
-function traceParseError(err, hash) {
-    this.trace(err);
-}
-
 function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -2588,10 +2586,10 @@ _lexer_with_token_stack_end:
     var retval = false;
 
     if (this.pre_parse) {
-        this.pre_parse.call(this, sharedState.yy);
+        this.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
     if (sharedState.yy.pre_parse) {
-        sharedState.yy.pre_parse.call(this, sharedState.yy);
+        sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
 
 _handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
@@ -2963,11 +2961,11 @@ _handle_error_end_of_section:                  // this concludes the error recov
         var rv;
 
         if (sharedState.yy.post_parse) {
-            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
         if (this.post_parse) {
-            rv = this.post_parse.call(this, sharedState.yy, retval);
+            rv = this.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
     }
@@ -3927,10 +3925,10 @@ exports.transform = EBNF.transform;
  *
  * ### options which are global for all parser instances
  *
- *  Parser.pre_parse: function(yy)
+ *  Parser.pre_parse: function(yy [, optional parse() args])
  *                 optional: you can specify a pre_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`.
- *  Parser.post_parse: function(yy, retval) { return retval; }
+ *  Parser.post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: you can specify a post_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`. When it does not return any value,
  *                 the parser will return the original `retval`.
@@ -3938,11 +3936,11 @@ exports.transform = EBNF.transform;
  * ### options which can be set up per parser instance
  *  
  *  yy: {
- *      pre_parse:  function(yy)
+ *      pre_parse:  function(yy [, optional parse() args])
  *                 optional: is invoked before the parse cycle starts (and before the first
  *                 invocation of `lex()`) but immediately after the invocation of
  *                 `parser.pre_parse()`).
- *      post_parse: function(yy, retval) { return retval; }
+ *      post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: is invoked when the parse terminates due to success ('accept')
  *                 or failure (even when exceptions are thrown).
  *                 `retval` contains the return value to be produced by `Parser.parse()`;
@@ -11882,10 +11880,10 @@ parse: function parse(input) {
     var retval = false;
 
     if (this.pre_parse) {
-        this.pre_parse.call(this, sharedState.yy);
+        this.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
     if (sharedState.yy.pre_parse) {
-        sharedState.yy.pre_parse.call(this, sharedState.yy);
+        sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
 
 
@@ -12217,11 +12215,11 @@ parse: function parse(input) {
         var rv;
 
         if (sharedState.yy.post_parse) {
-            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
         if (this.post_parse) {
-            rv = this.post_parse.call(this, sharedState.yy, retval);
+            rv = this.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
     }
@@ -13709,10 +13707,10 @@ module.exports={
  *
  * ### options which are global for all parser instances
  *
- *  Parser.pre_parse: function(yy)
+ *  Parser.pre_parse: function(yy [, optional parse() args])
  *                 optional: you can specify a pre_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`.
- *  Parser.post_parse: function(yy, retval) { return retval; }
+ *  Parser.post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: you can specify a post_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`. When it does not return any value,
  *                 the parser will return the original `retval`.
@@ -13720,11 +13718,11 @@ module.exports={
  * ### options which can be set up per parser instance
  *  
  *  yy: {
- *      pre_parse:  function(yy)
+ *      pre_parse:  function(yy [, optional parse() args])
  *                 optional: is invoked before the parse cycle starts (and before the first
  *                 invocation of `lex()`) but immediately after the invocation of
  *                 `parser.pre_parse()`).
- *      post_parse: function(yy, retval) { return retval; }
+ *      post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: is invoked when the parse terminates due to success ('accept')
  *                 or failure (even when exceptions are thrown).
  *                 `retval` contains the return value to be produced by `Parser.parse()`;
@@ -19807,10 +19805,10 @@ parse: function parse(input) {
     var retval = false;
 
     if (this.pre_parse) {
-        this.pre_parse.call(this, sharedState.yy);
+        this.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
     if (sharedState.yy.pre_parse) {
-        sharedState.yy.pre_parse.call(this, sharedState.yy);
+        sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
 
 
@@ -20142,11 +20140,11 @@ parse: function parse(input) {
         var rv;
 
         if (sharedState.yy.post_parse) {
-            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
         if (this.post_parse) {
-            rv = this.post_parse.call(this, sharedState.yy, retval);
+            rv = this.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
     }
@@ -21218,6 +21216,7 @@ exports.parse = function () {
 var XRegExp = require('xregexp');
 var lexParser = require('./lex-parser');
 var version = require('./package.json').version;
+var assert = require('assert');
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
@@ -21226,6 +21225,9 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         rules = dict.rules,
         newRules = [],
         macros = {};
+
+    // Assure all options are camelCased:
+    assert(typeof opts.options['case-insensitive'] === 'undefined');
 
     // Depending on the location within the regex we need different expansions of the macros:
     // one expansion for when a macro is *inside* a `[...]` and another expansion when a macro
@@ -21286,7 +21288,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         m = rules[i][0];
         if (typeof m === 'string') {
             m = expandMacros(m, macros);
-            m = new XRegExp('^(?:' + m + ')', opts.options['case-insensitive'] ? 'i' : '');
+            m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
         if (typeof rules[i][1] === 'function') {
@@ -21620,7 +21622,7 @@ var jisonLexerErrorDefinition = [
 ];
 
 
-function RegExpLexer (dict, input, tokens) {
+function RegExpLexer(dict, input, tokens) {
     var opts;
     var dump = false;
 
@@ -22175,8 +22177,28 @@ RegExpLexer.prototype = {
 };
 
 
+// Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'` 
+function camelCase(s) {
+    return s.replace(/-\w/g, function (match) { 
+        return match.charAt(1).toUpperCase(); 
+    });
+}
+
+// camelCase all options: 
+function camelCaseAllOptions(opts) {
+    opts = opts || {};
+    var options = {};
+    for (var key in opts) {
+        var nk = camelCase(key);
+        options[nk] = opts[key];
+    }
+    return options;
+}
+
+
+
 // generate lexer source from a grammar
-function generate (dict, tokens) {
+function generate(dict, tokens) {
     var opt = processGrammar(dict, tokens);
 
     return generateFromOpts(opt);
@@ -22194,12 +22216,17 @@ function processGrammar(dict, tokens) {
     // (for use by our error diagnostic assistance code)
     opts.lex_rule_dictionary = dict;
 
-    opts.options = dict.options || {};
+    // Make sure to camelCase all options: 
+    opts.options = camelCaseAllOptions(dict.options);
+
     opts.moduleType = opts.options.moduleType;
     opts.moduleName = opts.options.moduleName;
 
     opts.conditions = prepareStartConditions(dict.startConditions);
-    opts.conditions.INITIAL = {rules:[], inclusive:true};
+    opts.conditions.INITIAL = {
+        rules: [], 
+        inclusive: true
+    };
 
     var code = buildActions(dict, tokens, opts);
     opts.performAction = code.actions;
@@ -22231,11 +22258,12 @@ function generateFromOpts(opt) {
 
 function generateRegexesInitTableCode(opt) {
     var a = opt.rules;
+    var print_xregexp = opt.options && opt.options.xregexp;
     a = a.map(function generateXRegExpInitCode(re) {
         if (re instanceof XRegExp) {
             // When we don't need the special XRegExp sauce at run-time, we do with the original
             // JavaScript RegExp instance a.k.a. 'native regex':
-            if (re.xregexp.isNative) {
+            if (re.xregexp.isNative || !print_xregexp) {
                 return re;
             }
             // And make sure to escape the regex to make it suitable for placement inside a *string*
@@ -22299,6 +22327,9 @@ function generateModuleBody(opt) {
         out += p.join(',\n');
 
         if (opt.options) {
+            // Assure all options are camelCased:
+            assert(typeof opt.options['case-insensitive'] === 'undefined');
+
             var pre = opt.options.pre_lex;
             var post = opt.options.post_lex;
             // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
@@ -22413,7 +22444,7 @@ RegExpLexer.generate = generate;
 module.exports = RegExpLexer;
 
 
-},{"./lex-parser":5,"./package.json":6,"xregexp":24}],9:[function(require,module,exports){
+},{"./lex-parser":5,"./package.json":6,"assert":12,"xregexp":24}],9:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require("./typal").typal;
