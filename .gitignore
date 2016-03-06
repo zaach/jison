@@ -7,3 +7,6 @@ node_modules
 
 web/output/
 web/tmp/
+
+examples/output/
+
