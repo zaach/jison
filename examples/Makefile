@@ -24,6 +24,7 @@ ALL_TARGETS =                                                   \
 			dism_lr0                                            \
 			dot                                                 \
 			faking-multiple-start-rules 						\
+			faking-multiple-start-rules-alt  					\
 			error-handling-and-yyclearin						\
 			error-handling-and-yyerrok-loopfix					\
 			error-handling-and-yyerrok-looping1					\
@@ -308,6 +309,9 @@ c99:
 	$(JISON) ./$@.y ./$@.l
 
 faking-multiple-start-rules:
+	$(JISON) ./$@.jison
+
+faking-multiple-start-rules-alt:
 	$(JISON) ./$@.jison
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
