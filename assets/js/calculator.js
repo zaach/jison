@@ -51,6 +51,9 @@
  *    defaultActions: {...},
  *
  *    parseError: function(str, hash),
+ *    yyErrOk: function(),
+ *    yyClearIn: function(),
+ *
  *    parse: function(input),
  *
  *    lexer: {
@@ -152,10 +155,10 @@
  *
  * ### options which are global for all parser instances
  *
- *  Parser.pre_parse: function(yy)
+ *  Parser.pre_parse: function(yy [, optional parse() args])
  *                 optional: you can specify a pre_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`.
- *  Parser.post_parse: function(yy, retval) { return retval; }
+ *  Parser.post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: you can specify a post_parse() function in the chunk following
  *                 the grammar, i.e. after the last `%%`. When it does not return any value,
  *                 the parser will return the original `retval`.
@@ -163,11 +166,11 @@
  * ### options which can be set up per parser instance
  *  
  *  yy: {
- *      pre_parse:  function(yy)
+ *      pre_parse:  function(yy [, optional parse() args])
  *                 optional: is invoked before the parse cycle starts (and before the first
  *                 invocation of `lex()`) but immediately after the invocation of
  *                 `parser.pre_parse()`).
- *      post_parse: function(yy, retval) { return retval; }
+ *      post_parse: function(yy, retval [, optional parse() args]) { return retval; }
  *                 optional: is invoked when the parse terminates due to success ('accept')
  *                 or failure (even when exceptions are thrown).
  *                 `retval` contains the return value to be produced by `Parser.parse()`;
@@ -214,7 +217,15 @@ var calculator = (function () {
 function JisonParserError(msg, hash) {
     this.message = msg;
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+      var ex2 = hash.exception;
+      this.message = ex2.message || msg;
+      stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+      stacktrace = (new Error(msg)).stack;
+    }
     if (stacktrace) {
       this.stack = stacktrace;
     }
@@ -1387,9 +1398,9 @@ parse: function parse(input) {
 
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
-        table = this.table,
+        table = this.table;
 
-        TERROR = this.TERROR,
+    var TERROR = this.TERROR,
         EOF = this.EOF;
 
     var args = lstack.slice.call(arguments, 1);
@@ -1413,9 +1424,11 @@ parse: function parse(input) {
       }
     }
 
-    lexer.setInput(input, sharedState.yy);
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
+
+    lexer.setInput(input, sharedState.yy);
+
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
     }
@@ -1465,7 +1478,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    var preErrorSymbol = null;
+    this.preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production, lstack_begin, lstack_end, newState;
@@ -1473,10 +1486,10 @@ parse: function parse(input) {
     var retval = false;
 
     if (this.pre_parse) {
-        this.pre_parse.call(this, sharedState.yy);
+        this.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
     if (sharedState.yy.pre_parse) {
-        sharedState.yy.pre_parse.call(this, sharedState.yy);
+        sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
     }
 
 
@@ -1565,6 +1578,7 @@ parse: function parse(input) {
 
 
             switch (action[0]) {
+            // catch misc. parse failures:
             default:
                 // this shouldn't happen, unless resolve defaults are off
                 if (action[0] instanceof Array) {
@@ -1585,7 +1599,7 @@ parse: function parse(input) {
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
-                retval = this.parseError(errStr || 'Parsing halted. No viable error recovery approach available due to internal system failure.', {
+                retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
                     token: this.terminals_[symbol] || symbol,
                     token_id: symbol,
@@ -1600,15 +1614,15 @@ parse: function parse(input) {
                 });
                 break;
 
-            case 1: // shift
+            // shift:
+            case 1: 
                 //this.shiftCount++;
-
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
                 lstack.push(lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!preErrorSymbol) { // normal execution / no error
+                if (!this.preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
@@ -1618,13 +1632,13 @@ parse: function parse(input) {
 
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = preErrorSymbol;
-                    preErrorSymbol = null;
+                    symbol = this.preErrorSymbol;
+                    this.preErrorSymbol = null;
                 }
                 continue;
 
+            // reduce:
             case 2:
-                // reduce
                 //this.reductionCount++;
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
@@ -1669,8 +1683,8 @@ parse: function parse(input) {
                 stack.push(newState);
                 continue;
 
+            // accept:
             case 3:
-                // accept
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 // 
@@ -1704,7 +1718,7 @@ parse: function parse(input) {
         }
     } catch (ex) {
         // report exceptions through the parseError callback too:
-        retval = this.parseError(errStr || 'Parsing aborted due to exception.', {
+        retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
             token: this.terminals_[symbol] || symbol,
@@ -1722,11 +1736,11 @@ parse: function parse(input) {
         var rv;
 
         if (sharedState.yy.post_parse) {
-            rv = sharedState.yy.post_parse.call(this, sharedState.yy, retval);
+            rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
         if (this.post_parse) {
-            rv = this.post_parse.call(this, sharedState.yy, retval);
+            rv = this.post_parse.apply(this, [sharedState.yy, retval].concat(args));
             if (typeof rv !== 'undefined') retval = rv;
         }
     }
