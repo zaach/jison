@@ -37,7 +37,6 @@ ALL_TARGETS =                                                   \
 			error-handling-and-yyerrok-part4b					\
 			error-handling-and-yyerrok-part5					\
 			error-recognition-actions							\
-			error-recovery-and-yyerror							\
 			flow                                                \
 			formula                                             \
 			fsyacc-cgrammar										\
@@ -86,7 +85,6 @@ ERROR_HANDLING_TARGETS =                                        \
 			error-handling-and-yyerrok-part4b					\
 			error-handling-and-yyerrok-part5					\
 			error-recognition-actions							\
-			error-recovery-and-yyerror							\
 			yacc-error-recovery
 
 
@@ -255,9 +253,6 @@ error-handling-and-yyerrok-part5:
 	$(JISON) ./$@.jison
 
 error-recognition-actions:
-	$(JISON) ./$@.jison
-
-error-recovery-and-yyerror:
 	$(JISON) ./$@.jison
 
 flow:
