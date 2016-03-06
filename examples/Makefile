@@ -37,7 +37,6 @@ ALL_TARGETS =                                                   \
 			error-handling-and-yyerrok-part4b					\
 			error-handling-and-yyerrok-part5					\
 			error-recognition-actions							\
-			error-recovery-and-yyerror							\
 			flow                                                \
 			formula                                             \
 			fsyacc-cgrammar										\
@@ -67,9 +66,7 @@ ALL_TARGETS =                                                   \
 			unicode                                             \
 			unicode2 											\
 			with-includes                                       \
-			with_custom_lexer 									\
-			yacc-error-recovery
-
+			with_custom_lexer 									
 
 
 
@@ -85,10 +82,7 @@ ERROR_HANDLING_TARGETS =                                        \
 			error-handling-and-yyerrok-part4a					\
 			error-handling-and-yyerrok-part4b					\
 			error-handling-and-yyerrok-part5					\
-			error-recognition-actions							\
-			error-recovery-and-yyerror							\
-			yacc-error-recovery
-
+			error-recognition-actions							
 
 
 
@@ -257,9 +251,6 @@ error-handling-and-yyerrok-part5:
 error-recognition-actions:
 	$(JISON) ./$@.jison
 
-error-recovery-and-yyerror:
-	$(JISON) ./$@.jison
-
 flow:
 	$(JISON) ./$@.jison
 
@@ -285,9 +276,6 @@ olmenu-proto2:
 	$(JISON) ./$@.jison
 
 unicode2:
-	$(JISON) ./$@.jison
-
-yacc-error-recovery:
 	$(JISON) ./$@.jison
 
 with-includes:
