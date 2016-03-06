@@ -1718,6 +1718,112 @@ generatorMixin.generateModuleExpr = function generateModuleExpr() {
     return out.join('\n') + '\n';
 };
 
+function removeUnusedKernelFeatures(parseFn, info) {
+    console.log("### Cleanup ###: ", {
+        actionsAreAllDefault: info.actionsAreAllDefault,
+        actionsUseYYLENG: info.actionsUseYYLENG,
+        actionsUseYYLINENO: info.actionsUseYYLINENO,
+        actionsUseYYTEXT: info.actionsUseYYTEXT,
+        actionsUseParseError: info.actionsUseParseError,
+        actionsUseYYERROR: info.actionsUseYYERROR,
+        actionsUseYYERROK: info.actionsUseYYERROK,
+        actionsUseYYCLEARIN: info.actionsUseYYCLEARIN,
+        actionsUseValueTracking: info.actionsUseValueTracking,
+        actionsUseValueAssignment: info.actionsUseValueAssignment,
+        actionsUseLocationTracking: info.actionsUseLocationTracking,
+        actionsUseLocationAssignment: info.actionsUseLocationAssignment,
+        actionsUseYYSTACK: info.actionsUseYYSTACK,
+        hasErrorRecovery: info.hasErrorRecovery
+    });
+
+    var actionFn = info.performAction;
+
+    if (!info.actionsUseYYLENG) {
+        actionFn = actionFn
+        .replace(/, yyleng\b/g, '');
+
+        // remove:
+        // 
+        //     if (typeof lexer.yyleng === 'undefined') {
+        //       lexer.yyleng = 0;
+        //     }
+        //     var yyleng = lexer.yyleng;
+        //     ...
+
+        parseFn = parseFn
+        .replace(/, yyleng\b/g, '')
+        .replace(/\s+if\b.*?\.yyleng\b.*?\{[^}]+\}/g, '\n')
+        .replace(/^.*?\byyleng\b.*?=.*?\byyleng\b.*?$/gm, '');
+    }
+
+    if (!info.actionsUseYYLINENO) {
+        // The error handling code inside the kernel still uses this one, but only straight off the lexer
+        // so we can kill the local var and its usage at least:
+        actionFn = actionFn
+        .replace(/, yylineno\b/g, '');
+
+        // remove:
+        // 
+        //     var yylineno = lexer.yylineno;
+        //     ...
+
+        parseFn = parseFn
+        .replace(/, yylineno\b/g, '')
+        .replace(/^.*?\byylineno\b.*?=.*?\byylineno\b.*?$/gm, '');
+    }
+
+    if (!info.actionsUseYYSTACK) {
+        actionFn = actionFn
+        .replace(/, yystack\b/g, '');
+
+        // remove:
+        // 
+        //     var yylineno = lexer.yylineno;
+        //     ...
+
+        parseFn = parseFn
+        .replace(/, stack\b/g, '');
+    }
+
+    if (!info.actionsUseLocationTracking && !info.actionsUseLocationAssignment) {
+        actionFn = actionFn
+        .replace(/, _\$\s*\/\*\s*lstack\s*\*\//g, '');
+
+        // remove:
+        // 
+        //    if (typeof lexer.yylloc === 'undefined') {
+        //        lexer.yylloc = {};
+        //    }
+        //    var yyloc = lexer.yylloc;
+        //    lstack.push(yyloc);
+        //    ...
+        //        lstack.push(lexer.yylloc);
+        //    ...
+        //        yyval._$ = {
+        //            first_line: lstack[lstack_begin].first_line,
+        //            last_line: lstack[lstack_end].last_line,
+        //            first_column: lstack[lstack_begin].first_column,
+        //            last_column: lstack[lstack_end].last_column
+        //        };
+        //        if (ranges) {
+        //          yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+        //        }
+        //    ...
+            
+        parseFn = parseFn
+        .replace(/, lstack\b/g, '')
+        .replace(/\s+if\b.*?\.yylloc\b.*?\{[^}]+\{\s*\}[^}]+\}[^;]+;/g, '\n\n\n\n\n')
+        .replace(/\s+yyval\._\$\s*=\s*\{[^}]+\}[^\{\}]+\{[^}]+\}/g, '\n\n\n\n\n\n\n\n\n')
+        .replace(/^.*?\blstack\b.*$/gm, '')
+        .replace(/^.*?\blstack_[a-z]+.*$/gm, '')
+        .replace(/^.*?\byyloc\s*=.*?\.yylloc\b.*?$/gm, '');
+    }
+
+    info.performAction = actionFn;        
+
+    return parseFn;
+}
+
 function removeFeatureMarkers(fn) {
     var parseFn = fn;
     parseFn = parseFn.replace(/^\s*_handle_error_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
@@ -1807,8 +1913,17 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
         //          if (this.recovering > 0) {
         //              this.recovering--;
         //          }
-        parseFn = parseFn.replace(/^\s*this\.recovering.*$/gm, '');
-        parseFn = parseFn.replace(/^.*\bthis\.recovering\b.*\{[\s\r\n]*\}/gm, '');
+        parseFn = parseFn
+        .replace(/^\s*this\.recovering.*$/gm, '')
+        .replace(/^.*\bthis\.recovering\b.*\{[\s\r\n]*\}/gm, '')
+        // And nuke the preErrorSymbol code as it is unused when there's no error recovery
+        //        if (!this.preErrorSymbol) { 
+        //            ... keep this chunk ...
+        //        } else {
+        //            ... KILL this chunk ...
+        //        }
+        .replace(/\s+if[^a-z]+this\.preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}/g, '\n$1\n\n\n')
+        .replace(/^\s+this\.preErrorSymbol = .*$/gm, '');
     }
     return parseFn;
 }
@@ -1824,6 +1939,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
     // always remove the feature markers in the template code.
     parseFn = removeFeatureMarkers(parseFn);
+
+    parseFn = removeUnusedKernelFeatures(parseFn, this);
 
     var errorClassCode = this.generateErrorClass();
 
@@ -2484,7 +2601,7 @@ parser.parse = function parse(input) {
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
-    var args = lstack.slice.call(arguments, 1);
+    var args = stack.slice.call(arguments, 1);
 
     //this.reductionCount = this.shiftCount = 0;
 
@@ -2581,7 +2698,9 @@ _lexer_with_token_stack_end:
     this.preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
-    var p, len, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production;
+    var lstack_begin, lstack_end;
+    var newState;
     var expected = [];
     var retval = false;
 
@@ -2884,10 +3003,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 if (ranges) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
-                // TODO:
-                // yyerror(msg)
-                // yyerrok
-                // len
+
                 r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
 
                 if (typeof r !== 'undefined') {
@@ -3288,6 +3404,8 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
 
         // // always remove the feature markers in the template code.
         // parseFn = removeFeatureMarkers(parseFn);
+
+        // parseFn = removeUnusedKernelFeatures(parseFn, this);
 
         // Generate code with fresh variable names
         nextVariableId = 0;
@@ -4698,7 +4816,7 @@ productions_: [
 
 
   // ,
-performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack) {
+performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -11791,13 +11909,13 @@ parse: function parse(input) {
         stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
 
         vstack = [null],    // semantic value stack
-        lstack = [],        // location stack
+
         table = this.table;
     this.recovering = 0;    // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
-    var args = lstack.slice.call(arguments, 1);
+    var args = stack.slice.call(arguments, 1);
 
     //this.reductionCount = this.shiftCount = 0;
 
@@ -11823,11 +11941,11 @@ parse: function parse(input) {
 
     lexer.setInput(input, sharedState.yy);
 
-    if (typeof lexer.yylloc === 'undefined') {
-        lexer.yylloc = {};
-    }
-    var yyloc = lexer.yylloc;
-    lstack.push(yyloc);
+
+
+
+
+
     
     if (typeof lexer.yytext === 'undefined') {
         lexer.yytext = '';
@@ -11836,11 +11954,9 @@ parse: function parse(input) {
     if (typeof lexer.yylineno === 'undefined') {
         lexer.yylineno = 0;
     }
-    var yylineno = lexer.yylineno;
-    if (typeof lexer.yyleng === 'undefined') {
-        lexer.yyleng = 0;
-    }
-    var yyleng = lexer.yyleng;
+
+
+
 
     var ranges = lexer.options && lexer.options.ranges;
 
@@ -11856,7 +11972,7 @@ parse: function parse(input) {
     function popStack(n) {
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
-        lstack.length = lstack.length - n;
+
     }
 
 
@@ -11875,7 +11991,9 @@ parse: function parse(input) {
     this.preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
-    var p, len, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production;
+
+    var newState;
     var expected = [];
     var retval = false;
 
@@ -11990,7 +12108,7 @@ parse: function parse(input) {
                         recoverable: (error_rule_depth !== false),
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     if (!p.recoverable) {
@@ -12014,17 +12132,17 @@ parse: function parse(input) {
                             recoverable: false,
                             state_stack: stack,
                             value_stack: vstack,
-                            location_stack: lstack,
+
                             lexer: lexer
                         });
                         break;
                     }
 
                     // discard current lookahead and grab another
-                    yyleng = lexer.yyleng;
+
                     yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
+
+
                     symbol = lex();
                 }
 
@@ -12040,7 +12158,7 @@ parse: function parse(input) {
                         recoverable: false,
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     break;
@@ -12069,7 +12187,7 @@ parse: function parse(input) {
                         recoverable: false,
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     break;
@@ -12086,7 +12204,7 @@ parse: function parse(input) {
                     recoverable: false,
                     state_stack: stack,
                     value_stack: vstack,
-                    location_stack: lstack,
+
                     lexer: lexer
                 });
                 break;
@@ -12096,15 +12214,15 @@ parse: function parse(input) {
                 //this.shiftCount++;
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
-                lstack.push(lexer.yylloc);
+
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!this.preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
-                    yyleng = lexer.yyleng;
+
                     yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
+
+
 
                     if (this.recovering > 0) {
                         this.recovering--;
@@ -12122,27 +12240,24 @@ parse: function parse(input) {
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
-                lstack_end = lstack.length;
-                lstack_begin = lstack_end - (len || 1);
-                lstack_end--;
+
+
+
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
                 // default location, uses first token for firsts, last for lasts
-                yyval._$ = {
-                    first_line: lstack[lstack_begin].first_line,
-                    last_line: lstack[lstack_end].last_line,
-                    first_column: lstack[lstack_begin].first_column,
-                    last_column: lstack[lstack_end].last_column
-                };
-                if (ranges) {
-                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
-                }
-                // TODO:
-                // yyerror(msg)
-                // yyerrok
-                // len
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
+
+
+
+
+
+
+
+
+
+
+                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, vstack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -12156,7 +12271,7 @@ parse: function parse(input) {
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
-                lstack.push(yyval._$);
+
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
@@ -12208,7 +12323,7 @@ parse: function parse(input) {
             recoverable: false,
             state_stack: stack,
             value_stack: vstack,
-            location_stack: lstack,
+
             lexer: lexer
         });
     } finally {
@@ -14590,7 +14705,7 @@ productions_: [
 
 
   // ,
-performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack, options) {
+performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */, options) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -19716,13 +19831,13 @@ parse: function parse(input) {
         stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
 
         vstack = [null],    // semantic value stack
-        lstack = [],        // location stack
+
         table = this.table;
     this.recovering = 0;    // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
-    var args = lstack.slice.call(arguments, 1);
+    var args = stack.slice.call(arguments, 1);
 
     //this.reductionCount = this.shiftCount = 0;
 
@@ -19748,11 +19863,11 @@ parse: function parse(input) {
 
     lexer.setInput(input, sharedState.yy);
 
-    if (typeof lexer.yylloc === 'undefined') {
-        lexer.yylloc = {};
-    }
-    var yyloc = lexer.yylloc;
-    lstack.push(yyloc);
+
+
+
+
+
     
     if (typeof lexer.yytext === 'undefined') {
         lexer.yytext = '';
@@ -19761,11 +19876,9 @@ parse: function parse(input) {
     if (typeof lexer.yylineno === 'undefined') {
         lexer.yylineno = 0;
     }
-    var yylineno = lexer.yylineno;
-    if (typeof lexer.yyleng === 'undefined') {
-        lexer.yyleng = 0;
-    }
-    var yyleng = lexer.yyleng;
+
+
+
 
     var ranges = lexer.options && lexer.options.ranges;
 
@@ -19781,7 +19894,7 @@ parse: function parse(input) {
     function popStack(n) {
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
-        lstack.length = lstack.length - n;
+
     }
 
 
@@ -19800,7 +19913,9 @@ parse: function parse(input) {
     this.preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
-    var p, len, this_production, lstack_begin, lstack_end, newState;
+    var p, len, this_production;
+
+    var newState;
     var expected = [];
     var retval = false;
 
@@ -19915,7 +20030,7 @@ parse: function parse(input) {
                         recoverable: (error_rule_depth !== false),
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     if (!p.recoverable) {
@@ -19939,17 +20054,17 @@ parse: function parse(input) {
                             recoverable: false,
                             state_stack: stack,
                             value_stack: vstack,
-                            location_stack: lstack,
+
                             lexer: lexer
                         });
                         break;
                     }
 
                     // discard current lookahead and grab another
-                    yyleng = lexer.yyleng;
+
                     yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
+
+
                     symbol = lex();
                 }
 
@@ -19965,7 +20080,7 @@ parse: function parse(input) {
                         recoverable: false,
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     break;
@@ -19994,7 +20109,7 @@ parse: function parse(input) {
                         recoverable: false,
                         state_stack: stack,
                         value_stack: vstack,
-                        location_stack: lstack,
+
                         lexer: lexer
                     });
                     break;
@@ -20011,7 +20126,7 @@ parse: function parse(input) {
                     recoverable: false,
                     state_stack: stack,
                     value_stack: vstack,
-                    location_stack: lstack,
+
                     lexer: lexer
                 });
                 break;
@@ -20021,15 +20136,15 @@ parse: function parse(input) {
                 //this.shiftCount++;
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
-                lstack.push(lexer.yylloc);
+
                 stack.push(action[1]); // push state
                 symbol = null;
                 if (!this.preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
-                    yyleng = lexer.yyleng;
+
                     yytext = lexer.yytext;
-                    yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
+
+
 
                     if (this.recovering > 0) {
                         this.recovering--;
@@ -20047,27 +20162,24 @@ parse: function parse(input) {
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
-                lstack_end = lstack.length;
-                lstack_begin = lstack_end - (len || 1);
-                lstack_end--;
+
+
+
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
                 // default location, uses first token for firsts, last for lasts
-                yyval._$ = {
-                    first_line: lstack[lstack_begin].first_line,
-                    last_line: lstack[lstack_end].last_line,
-                    first_column: lstack[lstack_begin].first_column,
-                    last_column: lstack[lstack_end].last_column
-                };
-                if (ranges) {
-                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
-                }
-                // TODO:
-                // yyerror(msg)
-                // yyerrok
-                // len
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, sharedState.yy, newState, vstack, lstack, stack].concat(args));
+
+
+
+
+
+
+
+
+
+
+                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, vstack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -20081,7 +20193,7 @@ parse: function parse(input) {
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
-                lstack.push(yyval._$);
+
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
@@ -20133,7 +20245,7 @@ parse: function parse(input) {
             recoverable: false,
             state_stack: stack,
             value_stack: vstack,
-            location_stack: lstack,
+
             lexer: lexer
         });
     } finally {
