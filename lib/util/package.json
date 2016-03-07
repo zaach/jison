@@ -7,7 +7,7 @@
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-117",
+  "version": "0.3.4-118",
   "keywords": [
     "jison",
     "parser",
