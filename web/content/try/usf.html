@@ -9,7 +9,7 @@ title: Jison - parse table visualization page
     <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
 
     <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the initial interface.</p>
-    <p> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="../../assets/images/usflogo.jpg" alt="USF" /></a> </p>
+    <p> <a href="http://www.cse.usf.edu" id="usf_logo"><img src="../../assets/images/jpg/usflogo.jpg" alt="USF" /></a> </p>
 
     <h2>Input</h2>
 
@@ -21,11 +21,55 @@ title: Jison - parse table visualization page
     <select id="examples">
       <option value="../../examples/basic.jison" selected="selected">Basic</option>
       <option value="../../examples/basic2.jison">Basic #2</option>
+      <option value="../../examples/basic_w_error_rule.jison">Basic (with error rule)</option>
+      <option value="../../examples/basic_lex.jison">Basic (with lexer)</option>
+      <option value="../../examples/basic2_lex.jison">Basic #2 (with lexer)</option>
       <option value="../../examples/dism.jison">DISM</option>
       <option value="../../examples/dism_lr0.jison">DISM in LR(0)</option>
       <option value="../../examples/precedence.jison">Precedence operators</option>
       <option value="../../examples/reduce_conflict.jison">Reduce-Reduce conflict</option>
       <option value="../../examples/ansic.jison">ANSI C</option>
+      <option value="../../examples/calc_LA_on_demand.jison">calculator (with option <em>lookahead_on_demand</em>)</option>
+      <option value="../../examples/calculator.jison">calculator</option>
+      <option value="../../examples/classy.jison">classy</option>
+      <option value="../../examples/comments.jison">comments</option>
+      <option value="../../examples/dot.jison">dot</option>
+      <option value="../../examples/error-handling-and-yyclearin.jison">error-handling-and-yyclearin</option>
+      <option value="../../examples/error-handling-and-yyerrok-loopfix.jison">error-handling-and-yyerrok-loopfix</option>
+      <option value="../../examples/error-handling-and-yyerrok-looping1.jison">error-handling-and-yyerrok-looping1</option>
+      <option value="../../examples/error-handling-and-yyerrok-looping2.jison">error-handling-and-yyerrok-looping2</option>
+      <option value="../../examples/error-handling-and-yyerrok-macro.jison">error-handling-and-yyerrok-macro</option>
+      <option value="../../examples/error-handling-and-yyerrok-part1.jison">error-handling-and-yyerrok-part1</option>
+      <option value="../../examples/error-handling-and-yyerrok-part2.jison">error-handling-and-yyerrok-part2</option>
+      <option value="../../examples/error-handling-and-yyerrok-part3.jison">error-handling-and-yyerrok-part3</option>
+      <option value="../../examples/error-handling-and-yyerrok-part4a.jison">error-handling-and-yyerrok-part4a</option>
+      <option value="../../examples/error-handling-and-yyerrok-part4b.jison">error-handling-and-yyerrok-part4b</option>
+      <option value="../../examples/error-handling-and-yyerrok-part5.jison">error-handling-and-yyerrok-part5</option>
+      <option value="../../examples/error-recognition-actions.jison">error-recognition-actions</option>
+      <option value="../../examples/faking-multiple-start-rules-alt.jison">faking-multiple-start-rules-alt</option>
+      <option value="../../examples/faking-multiple-start-rules.jison">faking-multiple-start-rules</option>
+      <option value="../../examples/flow.jison">flow</option>
+      <option value="../../examples/formula.jison">formula</option>
+      <option value="../../examples/fsyacc-cgrammar.jison">fsyacc-cgrammar</option>
+      <option value="../../examples/gantt.jison">gantt</option>
+      <option value="../../examples/grammar.jison">grammar</option>
+      <option value="../../examples/happyhappy.jison">happyhappy</option>
+      <option value="../../examples/inherited.y">inherited (yacc)</option>
+      <option value="../../examples/jscore.jison">jscore (JavaScript core grammar)</option>
+      <option value="../../examples/lambdacalc.jison">lambdacalc</option>
+      <option value="../../examples/lojban-300.jison">lojban-300</option>
+      <option value="../../examples/mermaid.jison">mermaid</option>
+      <option value="../../examples/mfcalc.jison">mfcalc</option>
+      <option value="../../examples/nv_classy_ast.jison">nv_classy_ast</option>
+      <option value="../../examples/olmenu-proto2.jison">olmenu-proto2</option>
+      <option value="../../examples/phraser.jison">phraser</option>
+      <option value="../../examples/regex.jison">regex</option>
+      <option value="../../examples/tikiwikiparser.jison">tikiwikiparser</option>
+      <option value="../../examples/unicode.jison">unicode</option>
+      <option value="../../examples/unicode2.jison">unicode2</option>
+      <option value="../../examples/with-includes.jison">with-includes</option>
+      <option value="../../examples/with_custom_lexer.jison">with_custom_lexer</option>
+      <option value="../../examples/yacc-error-recovery.jison">yacc-error-recovery</option>
     </select>
     </p>
 

@@ -9,6 +9,7 @@ ALL_TARGETS =                                                   \
 			compiled_calc                                       \
 			c99                                                 \
 			basic                                               \
+			basic_w_error_rule                                  \
 			basic2                                              \
 			basic2_lex                                          \
 			basic_lex                                           \
@@ -111,6 +112,9 @@ ansic:
 	$(JISON) ./$@.jison
 
 basic:
+	$(JISON) ./$@.jison
+
+basic_w_error_rule:
 	$(JISON) ./$@.jison
 
 basic2:

@@ -1,6 +1,7 @@
 var parser,
     parser2;
 
+// IE, mainly
 if (typeof console === 'undefined') {
   console = {};
   console.log = function (str) { 
@@ -15,27 +16,12 @@ $(function () {
   $('#process_btn').click(processGrammar);
   $('#parse_btn').click(runParser);
 
-  $('.action, .state').on('click', function (ev) {
-    if (!$(ev.target).is('a')) {
-      $(this).toggleClass('open');
-    }
-  });
-
-  $('.action, .state').on('dblclick', function (ev) {
-    var row = this.className.match(/(row_[0-9]+)/)[1];
-    if ($(this).hasClass('open')) {
-      $('.' + row).removeClass('open');
-    }
-    else {
-      $('.' + row).addClass('open');
-    }
-    return false;
-  });
-
   $('#examples').change(function (ev) {
     var file = this.options[this.selectedIndex].value;
     $(document.body).addClass('loading');
-    $.get('examples/' + file, function (data) {
+    var jison_uri = window.location.href.replace(/[^\/]+$/, '') + file;
+    console.log('Going to load JISON file: ', jison_uri);
+    $.get(jison_uri, function (data) {
       $('#grammar').val(data);
       $(document.body).removeClass('loading');
     });
@@ -43,9 +29,9 @@ $(function () {
 });
 
 function processGrammar() {
+  var cfg;
   var type = $('#type')[0].options[$('#type')[0].selectedIndex].value || 'slr';
 
-  var cfg;
   var grammar = $('#grammar').val();
   try {
     cfg = JSON.parse(grammar);
@@ -84,27 +70,78 @@ function processGrammar() {
   else {
     lrTable(parser);
   }
+
+  var do_click = 0;
+  var click_timer;
+
+  // now that the table has been generated, add the click handlers:
+  function click_handler(ev) {
+    // delay 'click' action so dblclick gets a chance too.
+    // (make sure 'this' remains accessible via closure)
+    //
+    // See also: 
+    // http://stackoverflow.com/questions/6330431/jquery-bind-double-click-and-single-click-separately/7845282#7845282
+    var self = $(this);
+
+    do_click++;  // count clicks
+    console.log("click_handler", ev, ", PREP: do_click = ", do_click);
+
+    if (do_click === 1) {
+        click_timer = setTimeout(function dblclick_delay() {
+            // perform single-click action    
+            console.log("click_handler", ev);
+            if (!$(ev.target).is('a')) {
+              self.toggleClass('open');
+            }
+            
+            do_click = 0;             // after action has been performed, reset the counter
+        }, 350);
+    } else {
+        clearTimeout(click_timer);    // prevent single-click action
+
+        // perform double-click action: let the dblclick event handler handle this one...
+        console.log("deferring to the dblclick_handler", ev);
+
+        do_click = 0;                 // after action has been performed, reset the counter
+    }
+  }
+  $(".action, .state").on("click", click_handler);
+
+  function dblclick_handler(ev) {
+    console.log("dblclick_handler", ev);
+    do_click = 0;                     // after action has been performed, reset the counter
+    var row = this.className.match(/(row_[0-9]+)/)[1];
+    if ($(this).hasClass('open')) {
+      $('.' + row).removeClass('open');
+    }
+    else {
+      $('.' + row).addClass('open');
+    }
+    ev.preventDefault();              // cancel system double-click event
+    return false;
+  }
+  $(".action, .state").on("dblclick", dblclick_handler);
 }
 
 function runParser() {
-    if (!parser) {
-      processGrammer();
-    }
-    if (!parser2) {
-      parser2 = parser.createParser();
-    }
-    printOut('Parsing...');
-    var source = $('#source').val();
-    try {
-      printOut(parser2.parse(source));
-    } catch(e) {
-      printOut(e.message || e);
-    }
+  if (!parser) {
+    processGrammar();
+  }
+  if (!parser2) {
+    parser2 = parser.createParser();
+  }
+  printOut('Parsing...');
+  var source = $('#source').val();
+  try {
+    printOut(parser2.parse(source));
+  } catch(e) {
+    printOut(e.message || e);
+  }
 }
 
 function nonterminalInfo(p) {
   var out = ['<h3>Nonterminals</h3><dl>'];
-  for(var nt in p.nonterminals){
+  for(var nt in p.nonterminals) {
     out.push('<dt>', nt, '</dt>');
     out.push('<dd>', 'nullable: ' + (p.nonterminals[nt].nullable ? 'Yes' : 'No') + '<br/>firsts: ' + p.nonterminals[nt].first + '<br/>follows: ' + p.nonterminals[nt].follows);
     out.push('<p>Productions: ');
@@ -173,7 +210,8 @@ function printActionDetails(a, token) {
     a.forEach(function (ar) { 
       out += printActionDetails_(ar, token); 
     });
-  } else {
+  } 
+  else {
     out += printActionDetails_(a, token);
   }
 
@@ -224,18 +262,19 @@ function lrTable(p) {
   var actions = {
     1: 's', 
     2: 'r',
-    3:'a'
+    3: 'a'
   };
   var gs = p.symbols.slice(0).sort();
   var out = ['<table border="1">', '<thead>', '<tr>'];
   out.push('<th>&#8595;states', '</th>');
   var ntout = [];
-  gs.shift();
+  //gs.shift();
   gs.forEach(function (t) {
+    if (t === '$accept') return;
     if (p.nonterminals[t]) {
       ntout.push('<th class="nonterm nt-' + t + '">', t, '</th>');
     }
-    else if (t != 'error' || p.hasErrorRecovery) {
+    else if (t !== 'error' || p.hasErrorRecovery) {
       out.push('<th>', t, '</th>');
     }
   });
@@ -243,16 +282,17 @@ function lrTable(p) {
   out.push('</tr>', '</thead>');
 
   for (var i = 0, state; i < p.table.length; i++) {
-    state=p.table[i];
+    state = p.table[i];
     if (!state) continue;
     ntout = [];
     out.push('<tr><td class="row_' + i + ' state" id="state_' + i + '">', i, '<div class="details">');
     parser.states.item(i).forEach(function (item, k) {
-      out.push(item,'<br />');
+      out.push(item, '<br />');
     });
     out.push('</div></td>');
     gs.forEach(function (ts) {
-      if (ts == 'error' && !p.hasErrorRecovery) {
+      if (ts === '$accept') return;
+      if (ts === 'error' && !p.hasErrorRecovery) {
         return;
       }
       var t = sym2int(ts);
@@ -265,9 +305,9 @@ function lrTable(p) {
           ntout.push('<td class="nonterm">&nbsp;</td>');
         }
       } else if (state[t]) {
-        out.push('<td id="act-' + i + '-' + t + '" class="row_' + i + ' ' + (state[t] == 3 ? 'accept' : '') + ' action">', printAction(state[t]), printActionDetails(state[t], t));
+        out.push('<td id="act-' + i + '-' + t + '" class="row_' + i + ' ' + (state[t] === 3 ? 'accept' : '') + ' action">', printAction(state[t]), printActionDetails(state[t], t));
       } else {
-        out.push('<td>&nbsp;</td>');
+        out.push('<td id="act-' + i + '-' + t + '">&nbsp;</td>');
       }
     });
     out.push.apply(out, ntout);
@@ -276,7 +316,7 @@ function lrTable(p) {
 
   out.push('</table>');
 
-  $('#table').html('<h3>' + parser.type + ' Parse Table</h3><p>Click cells to show details</p>' + out.join(''));
+  $('#table').html('<h3>' + parser.type + ' Parse Table</h3><p>Click cells to show details (double-click to show details for the entire row of cells)</p>' + out.join(''));
 
   p.resolutions.forEach(function (res) {
     var r = res[2];
@@ -284,9 +324,7 @@ function lrTable(p) {
     if (r.bydefault) {
       el.className += ' conflict';
     }
-    if (el) {
-      el.title += r.msg + '\n' + '(' + r.s + ', ' + r.r + ') -> ' + r.action;
-    }
+    el.title += r.msg + '\n' + '(' + r.s + ', ' + r.r + ') -> ' + r.action;
   });
 }
 

@@ -5,7 +5,7 @@ var worker = new Worker('../assets/js/worker.js');
 var parser,
     parser2;
 
-//IE, mainly
+// IE, mainly
 if (typeof console === 'undefined') {
     console = {};
     console.log = function (str) {
@@ -33,17 +33,19 @@ function debounce(timeout, fn) {
 }
 
 $(document).ready(function () {
-    //$("#process_btn").click(processGrammar);
-    $("#parse_btn").click(runParser);
+    //$('#process_btn').click(processGrammar);
+    $('#parse_btn').click(runParser);
 
-    $("#examples").change(function(ev) {
+    $('#examples').change(function (ev) {
         var file = this.options[this.selectedIndex].value;
-        $(document.body).addClass("loading");
-        $.get(file, function (data) {
-                $("#grammar").val(data);
-                $(document.body).removeClass("loading");
-                processGrammar();
-            });
+        $(document.body).addClass('loading');
+        var jison_uri = window.location.href.replace(/[^\/]+$/, '') + file;
+        console.log('Going to load JISON file: ', jison_uri);
+        $.get(jison_uri, function (data) {
+            $('#grammar').val(data);
+            $(document.body).removeClass('loading');
+            processGrammar();
+        });
     });
     
     // recompile the grammar using a web worker,
@@ -64,7 +66,9 @@ function processGrammar() {
     
     function onSuccess(result) {
         try {
-            parser = Jison.Generator(result.cfg, {type: result.type});
+            parser = Jison.Generator(result.cfg, {
+                type: result.type
+            });
         } catch (e) {
             return onError(e);
         }
@@ -72,9 +76,9 @@ function processGrammar() {
         $("#out").removeClass("good").removeClass("bad").html('');
         $("#gen_out").removeClass("good").removeClass("bad").removeClass('warning');
         if (!parser.conflicts) {
-        $("#gen_out").text('Generated successfully!').addClass('good');
+            $("#gen_out").text('Generated successfully!').addClass('good');
         } else {
-        $("#gen_out").text('Conflicts encountered:\n').addClass('bad');
+            $("#gen_out").text('Conflicts encountered:\n').addClass('bad');
         }
 
         $("#download_btn").click(function () {
@@ -116,7 +120,10 @@ function processGrammar() {
             }
         }
         
-        onSuccess({cfg: cfg, type: 'lalr'});
+        onSuccess({
+            cfg: cfg, 
+            type: 'lalr'
+        });
     }
     
     $("#gen_out").html("Parsing...")
@@ -138,8 +145,8 @@ function runParser() {
     if (!parser) {
         processGrammar();
     }
-    printOut("Parsing...");
-    var source = $("#source").val();
+    printOut('Parsing...');
+    var source = $('#source').val();
     try {
         $("#out").removeClass("bad").addClass('good');
         printOut(JSON.stringify(parser2.parse(source)));
