@@ -207,7 +207,7 @@ submodules-bump:
 	cd modules/json2jison && make bump
 	cd modules/lex-parser && make bump
 
-git-tag:
+git-tag: submodules-git-tag
 	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
 
 submodules-git-tag:
