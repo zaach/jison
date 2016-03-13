@@ -336,8 +336,9 @@
 /* Non-terminals informations */
 
 //%start interpret file
-%start interpret 
-
+//%start interpret 
+//%start primary_expression
+%start paren_attr_list
 
 
 %%
@@ -386,20 +387,20 @@ global:
                                  NO_INIT)]
                             }
 /* (* Old style function prototype, but without any arguments *) */
-| IDENT LPAREN RPAREN  SEMICOLON
+| IDENT LPAREN RPAREN SEMICOLON
                            { (* Make the function declarator *)
                              doDeclaration ((snd $1)) []
                                [((fst $1, PROTO(JUSTBASE,[],false), [], cabslu),
                                  NO_INIT)]
                             }
 /* transformer for a toplevel construct */
-| AT_TRANSFORM LBRACE global RBRACE  IDENT/*to*/  LBRACE globals RBRACE 
+| AT_TRANSFORM LBRACE global RBRACE IDENT/*to*/ LBRACE globals RBRACE 
                             {
                               checkConnective(fst $5);
                               TRANSFORMER($3, $7, $1)
                             }
 /* transformer for an expression */
-| AT_TRANSFORMEXPR LBRACE expression RBRACE  IDENT/*to*/  LBRACE expression RBRACE 
+| AT_TRANSFORMEXPR LBRACE expression RBRACE IDENT/*to*/ LBRACE expression RBRACE 
                             {
                               checkConnective(fst $5);
                               EXPRTRANSFORMER(fst $3, fst $7, $1)
@@ -567,7 +568,6 @@ equality_expression:   /*(* 6.5.9 *)*/
                             {BINARY(NE, fst $1, fst $3), snd $1}
 ;
 
-
 bitwise_and_expression:   /*(* 6.5.10 *)*/
 |   equality_expression
                             { $1 }
@@ -644,7 +644,6 @@ expression:           /*(* 6.5.17 *)*/
     assignment_expression
                             { $1 }
 ;
-                            
 
 constant:
     CST_INT                 {CONST_INT (fst $1), snd $1}
@@ -718,20 +717,24 @@ initializer_list:    /* ISO 6.7.8. Allow a trailing COMMA */
     initializer                                   { [$1] }
 |   initializer COMMA initializer_list_opt        { $1 :: $3 }
 ;
+
 initializer_list_opt:
     /* empty */                                   { [] }
 |   initializer_list                              { $1 }
 ;
+
 initializer: 
     init_designators eq_opt init_expression       { ($1, $3) }
 |   gcc_init_designators init_expression          { ($1, $2) }
 |   init_expression                               { (NEXT_INIT, $1) }
 ;
+
 eq_opt: 
    EQ                                             { () }
    /*(* GCC allows missing = *)*/
 |  /*(* empty *)*/                                { () }
 ;
+
 init_designators: 
     DOT id_or_typename init_designators_opt       
                                         { INFIELD_INIT($2, $3) }
@@ -740,6 +743,7 @@ init_designators:
 |   LBRACKET  expression ELLIPSIS expression RBRACKET
                                         { ATINDEXRANGE_INIT(fst $2, fst $4) }
 ;         
+
 init_designators_opt:
     /* empty */                          { NEXT_INIT }
 |   init_designators                     { $1 }
@@ -803,6 +807,7 @@ block: /* ISO 6.8.2 */
                                             $2, $3
                                           }
 ;
+
 block_begin:
     LBRACE                              {!Lexerhack.push_context (); $1}
 ;
@@ -835,6 +840,7 @@ local_labels:
 |  LABEL__ local_label_names SEMICOLON local_labels  
                                         { $2 @ $4 }
 ;
+
 local_label_names: 
    IDENT                                
                                         { [ fst $1 ] }
@@ -907,7 +913,6 @@ statement:
                                         {(NOP $2)}
 ;
 
-
 for_clause: 
     opt_expression SEMICOLON            { FC_EXP $1 }
 |   declaration                         { FC_DECL $1 }
@@ -919,13 +924,14 @@ declaration:                                /* ISO 6.7.*/
 |   decl_spec_list SEMICOLON         
                                         { doDeclaration ((snd $1)) (fst $1) [] }
 ;
+
 init_declarator_list:                       /* ISO 6.7 */
     init_declarator                     
                                         { [$1] }
 |   init_declarator COMMA init_declarator_list   
                                         { $1 :: $3 }
-
 ;
+
 init_declarator:                             /* ISO 6.7 */
     declarator                          
                                         { ($1, NO_INIT) }
@@ -1040,8 +1046,7 @@ type_spec:   /* ISO 6.7.2 */
 |   TYPEOF LPAREN expression RPAREN     
                                         { TtypeofE (fst $3), $1 }
 |   TYPEOF LPAREN type_name RPAREN      
-                                        { let s, d = $3 in
-                                          TtypeofT (s, d), $1 }
+                                        { let s, d = $3 in TtypeofT (s, d), $1 }
 ;
 
 struct_decl_list: /* (* ISO 6.7.2. Except that we allow empty structs. We 
@@ -1185,8 +1190,7 @@ direct_old_proto_decl:
 
 old_parameter_list_ne:
 |  IDENT                                       { [fst $1] }
-|  IDENT COMMA old_parameter_list_ne           { let rest = $3 in
-                                                 (fst $1 :: rest) }
+|  IDENT COMMA old_parameter_list_ne           { let rest = $3 in (fst $1 :: rest) }
 ;
 
 old_pardef_list: 
@@ -1300,7 +1304,7 @@ function_def_start:  /* (* ISO 6.9.1 *) */
                              (snd $1, defSpec, fdec) 
                             }
 /* (* No return type and no parameters *) */
-| IDENT LPAREN                      RPAREN
+| IDENT LPAREN RPAREN
                            { (* Make the function declarator *)
                              let fdec = (fst $1,
                                          PROTO(JUSTBASE, [], false), 
@@ -1321,7 +1325,7 @@ cvspec:
 
 /*** GCC attributes ***/
 attributes:
-    /* empty */       { []}
+    /* empty */                   { [] }
 |   attribute attributes          { fst $1 :: $2 }
 ;
 
@@ -1350,7 +1354,7 @@ attribute_nocv:
 ;
 
 attribute_nocv_list:
-    /* empty */       { []}
+    /* empty */                         { [] }
 |   attribute_nocv attribute_nocv_list  { fst $1 :: $2 }
 ;
 
@@ -1395,9 +1399,7 @@ primary_attr:
 |   IDENT IDENT                          { CALL(VARIABLE (fst $1), [VARIABLE (fst $2)]) }
 |   CST_INT                              { CONSTANT(CONST_INT (fst $1)) }
 |   string_constant                      { CONSTANT(CONST_STRING (fst $1)) }
-                                           /*(* Const when it appears in 
-                                            * attribute lists, is translated 
-                                            * to aconst *)*/
+/*(* Const when it appears in attribute lists, is translated to aconst *)*/
 |   CONST                                { VARIABLE "aconst" }
 
 |   IDENT COLON CST_INT                  { VARIABLE (fst $1 ^ ":" ^ fst $3) }
@@ -1408,9 +1410,7 @@ primary_attr:
 
 |   DEFAULT COLON CST_INT                { VARIABLE ("default:" ^ fst $3) }
                           
-                                            /*(** GCC allows this as an 
-                                             * attribute for functions, 
-                                             * synonim for noreturn **)*/
+/*(** GCC allows this as an attribute for functions, synonym for noreturn **)*/
 |   VOLATILE                             { VARIABLE ("__noreturn__") }
 ;
 
@@ -1418,7 +1418,7 @@ postfix_attr:
     primary_attr                         { $1 }
                                          /* (* use a VARIABLE "" so that the 
                                              * parentheses are printed *) */
-|   IDENT LPAREN  RPAREN                 { CALL(VARIABLE (fst $1), [VARIABLE ""]) }
+|   IDENT LPAREN RPAREN                  { CALL(VARIABLE (fst $1), [VARIABLE ""]) }
 |   IDENT paren_attr_list_ne             { CALL(VARIABLE (fst $1), $2) }
 
 |   postfix_attr ARROW id_or_typename    {MEMBEROFPTR ($1, $3)} 
@@ -1426,7 +1426,7 @@ postfix_attr:
 |   postfix_attr LBRACKET attr RBRACKET  {INDEX ($1, $3) }
 ;
 
-/*(* Since in attributes we use both IDENT and NAMED_TYPE as indentifiers, 
+/*(* Since in attributes we use both IDENT and NAMED_TYPE as identifiers, 
  * that leads to conflicts for SIZEOF and ALIGNOF. In those cases we require 
  * that their arguments be expressions, not attributes *)*/
 unary_attr:
@@ -1434,7 +1434,6 @@ unary_attr:
 |   SIZEOF unary_expression              {EXPR_SIZEOF (fst $2) }
 |   SIZEOF LPAREN type_name RPAREN
                                          {let b, d = $3 in TYPE_SIZEOF (b, d)}
-
 |   ALIGNOF unary_expression             {EXPR_ALIGNOF (fst $2) }
 |   ALIGNOF LPAREN type_name RPAREN      {let b, d = $3 in TYPE_ALIGNOF (b, d)}
 |   PLUS cast_attr                       {UNARY (PLUS, $2)}
@@ -1544,7 +1543,7 @@ paren_attr_list:
 /*** GCC ASM instructions ***/
 asmattr:
      /* empty */                        { [] }
-|    VOLATILE  asmattr                  { ("volatile", []) :: $2 }
+|    VOLATILE asmattr                   { ("volatile", []) :: $2 }
 |    CONST asmattr                      { ("const", []) :: $2 } 
 ;
 
