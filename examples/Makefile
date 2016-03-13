@@ -6,44 +6,51 @@ JISON = node ../lib/cli.js -o ./output/$@/ --main
 
 ALL_TARGETS =                                                   \
 			ansic                                               \
-			compiled_calc                                       \
-			c99                                                 \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
 			basic_lex                                           \
+			basic_w_error_rule                                  \
 			bloop                                               \
+			btyacc-ansiC                                        \
+			btyacc-ansiC2                                       \
+			btyacc-ftp                                          \
+			btyacc-t1                                           \
+			btyacc-t2                                           \
+			c99                                                 \
 			calc_LA_on_demand                                   \
 			calculator                                          \
-			ccalc 	                                            \
 			calculator_json                                     \
+			ccalc                                               \
 			classy                                              \
 			classy_ast                                          \
 			comments                                            \
+			compiled_calc                                       \
 			dism                                                \
 			dism_lr0                                            \
 			dot                                                 \
-			faking-multiple-start-rules 						\
-			faking-multiple-start-rules-alt  					\
-			error-handling-and-yyclearin						\
-			error-handling-and-yyerrok-loopfix					\
-			error-handling-and-yyerrok-looping1					\
-			error-handling-and-yyerrok-looping2					\
-			error-handling-and-yyerrok-macro					\
-			error-handling-and-yyerrok-part1					\
-			error-handling-and-yyerrok-part2					\
-			error-handling-and-yyerrok-part3					\
-			error-handling-and-yyerrok-part4a					\
-			error-handling-and-yyerrok-part4b					\
-			error-handling-and-yyerrok-part5					\
-			error-recognition-actions							\
+			error-handling-and-yyclearin                        \
+			error-handling-and-yyerrok-loopfix                  \
+			error-handling-and-yyerrok-looping1                 \
+			error-handling-and-yyerrok-looping2                 \
+			error-handling-and-yyerrok-macro                    \
+			error-handling-and-yyerrok-part1                    \
+			error-handling-and-yyerrok-part2                    \
+			error-handling-and-yyerrok-part3                    \
+			error-handling-and-yyerrok-part4a                   \
+			error-handling-and-yyerrok-part4b                   \
+			error-handling-and-yyerrok-part5                    \
+			error-only                                          \
+			error-recognition-actions                           \
+			faking-multiple-start-rules                         \
+			faking-multiple-start-rules-alt                     \
 			flow                                                \
 			formula                                             \
-			fsyacc-cgrammar										\
+			fsyacc-cgrammar                                     \
 			gantt                                               \
 			grammar                                             \
 			handlebars                                          \
-			happyhappy											\
+			happyhappy                                          \
 			inherited_y                                         \
 			issue-254                                           \
 			issue-293                                           \
@@ -52,11 +59,11 @@ ALL_TARGETS =                                                   \
 			json_js                                             \
 			lambdacalc                                          \
 			lex                                                 \
-			lojban-300											\
+			lojban-300                                          \
 			mermaid                                             \
-			mfcalc 												\
+			mfcalc                                              \
 			nv_classy_ast                                       \
-			olmenu-proto2 										\
+			olmenu-proto2                                       \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -64,27 +71,27 @@ ALL_TARGETS =                                                   \
 			semwhitespace                                       \
 			tikiwikiparser                                      \
 			unicode                                             \
-			unicode2 											\
+			unicode2                                            \
 			with-includes                                       \
-			with_custom_lexer 									\
+			with_custom_lexer                                   \
 			yacc-error-recovery
 
 
 
 
 ERROR_HANDLING_TARGETS =                                        \
-			error-handling-and-yyclearin						\
-			error-handling-and-yyerrok-loopfix					\
-			error-handling-and-yyerrok-looping1					\
-			error-handling-and-yyerrok-looping2					\
-			error-handling-and-yyerrok-macro					\
-			error-handling-and-yyerrok-part1					\
-			error-handling-and-yyerrok-part2					\
-			error-handling-and-yyerrok-part3					\
-			error-handling-and-yyerrok-part4a					\
-			error-handling-and-yyerrok-part4b					\
-			error-handling-and-yyerrok-part5					\
-			error-recognition-actions							\
+			error-handling-and-yyclearin                        \
+			error-handling-and-yyerrok-loopfix                  \
+			error-handling-and-yyerrok-looping1                 \
+			error-handling-and-yyerrok-looping2                 \
+			error-handling-and-yyerrok-macro                    \
+			error-handling-and-yyerrok-part1                    \
+			error-handling-and-yyerrok-part2                    \
+			error-handling-and-yyerrok-part3                    \
+			error-handling-and-yyerrok-part4a                   \
+			error-handling-and-yyerrok-part4b                   \
+			error-handling-and-yyerrok-part5                    \
+			error-recognition-actions                           \
 			yacc-error-recovery
 
 
@@ -111,6 +118,9 @@ ansic:
 	$(JISON) ./$@.jison
 
 basic:
+	$(JISON) ./$@.jison
+
+basic_w_error_rule:
 	$(JISON) ./$@.jison
 
 basic2:
@@ -162,7 +172,7 @@ formula:
 	$(JISON) ./$@.jison
 
 handlebars:
-#	$(JISON) ./handlebars.jison.y ./handlebars.jison.l
+#   $(JISON) ./handlebars.jison.y ./handlebars.jison.l
 
 inherited_y:
 	$(JISON) ./inherited.y
@@ -302,6 +312,24 @@ ccalc:
 
 c99:
 	$(JISON) ./$@.y ./$@.l
+
+btyacc-ansiC:
+	$(JISON) ./$@.y
+
+btyacc-ansiC2:
+	$(JISON) ./$@.y
+
+btyacc-ftp:
+	$(JISON) ./$@.y
+
+btyacc-t1:
+	$(JISON) ./$@.y
+
+btyacc-t2:
+	$(JISON) ./$@.y
+
+error-only:
+	$(JISON) ./$@.y
 
 faking-multiple-start-rules:
 	$(JISON) ./$@.jison
