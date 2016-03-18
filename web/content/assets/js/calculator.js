@@ -17,7 +17,7 @@
  *
  *    quoteName: function(name),
  *               Helper function which can be overridden by user code later on: put suitable
- *                quotes around literal IDs in a description string.
+ *               quotes around literal IDs in a description string.
  *
  *    describeSymbol: function(symbol),
  *               Return a more-or-less human-readable description of the given symbol, when
@@ -54,6 +54,8 @@
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
+ *    options: { ... parser %options ... },
+ *
  *    parse: function(input),
  *
  *    lexer: {
@@ -80,7 +82,7 @@
  *        pushState: function(condition),
  *        stateStackSize: function(),
  *
- *        options: { ... },
+ *        options: { ... lexer %options ... },
  *
  *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
  *        rules: [...],
@@ -234,6 +236,8 @@ JisonParserError.prototype = Object.create(Error.prototype);
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
+
+// helper: reconstruct the productions[] table
 function bp(s) {
         var rv = [];
         var p = s.pop;
@@ -247,6 +251,9 @@ function bp(s) {
         return rv;
     }
 
+
+
+// helper: reconstruct the 'goto' table
 function bt(s) {
         var rv = [];
         var d = s.len;
@@ -283,6 +290,11 @@ function bt(s) {
         }
         return rv;
     }
+
+// helper: runlength encoding with increment step: code, length: step (default step = 0)
+
+// `this` references an array
+
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -290,12 +302,20 @@ function s(c, l, a) {
             c += a;
         }
     }
+
+// helper: duplicate sequence from *relative* offset and length.
+
+// `this` references an array
+
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
             this.push(this[i]);
         }
     }
+
+// helper: unpack an array using helpers and data, all passed in an array argument 'a'.
+
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -317,6 +337,9 @@ TERROR: 2,
 trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
+options: {
+  type: "lalr"
+},
 symbols_: {
   "!": 33,
   "$accept": 0,
@@ -405,19 +428,19 @@ case 1 :
 break;
 case 2 : 
 /*! Production::     e : e '+' e */
- this.$ = $$[$0-2]+$$[$0]; 
+ this.$ = $$[$0-2] + $$[$0]; 
 break;
 case 3 : 
 /*! Production::     e : e '-' e */
- this.$ = $$[$0-2]-$$[$0]; 
+ this.$ = $$[$0-2] - $$[$0]; 
 break;
 case 4 : 
 /*! Production::     e : e '*' e */
- this.$ = $$[$0-2]*$$[$0]; 
+ this.$ = $$[$0-2] * $$[$0]; 
 break;
 case 5 : 
 /*! Production::     e : e '/' e */
- this.$ = $$[$0-2]/$$[$0]; 
+ this.$ = $$[$0-2] / $$[$0]; 
 break;
 case 6 : 
 /*! Production::     e : e '^' e */
@@ -426,12 +449,12 @@ break;
 case 7 : 
 /*! Production::     e : e '!' */
  
-          this.$ = (function fact(n) { return n == 0 ? 1 : fact(n-1) * n; })($$[$0-1]);
+          this.$ = (function fact(n) { return n == 0 ? 1 : fact(n - 1) * n; })($$[$0-1]);
          
 break;
 case 8 : 
 /*! Production::     e : e '%' */
- this.$ = $$[$0-1]/100; 
+ this.$ = $$[$0-1] / 100; 
 break;
 case 9 : 
 /*! Production::     e : '-' e */
@@ -710,6 +733,23 @@ parse: function parse(input) {
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     lexer.setInput(input, sharedState.yy);
 
 
@@ -727,10 +767,6 @@ parse: function parse(input) {
     }
 
 
-
-
-    var ranges = lexer.options && lexer.options.ranges;
-
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
@@ -741,6 +777,8 @@ parse: function parse(input) {
     }
 
     function popStack(n) {
+
+        if (!n) return;
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
 
@@ -826,6 +864,8 @@ parse: function parse(input) {
             }
 
 
+
+
             // handle parse error
             if (!action || !action.length || !action[0]) {
                 var errStr;
@@ -858,6 +898,7 @@ parse: function parse(input) {
                 });
                 break;
             }
+
 
 
             switch (action[0]) {
@@ -917,6 +958,8 @@ parse: function parse(input) {
 
 
 
+    
+
                 continue;
 
             // reduce:
@@ -925,6 +968,8 @@ parse: function parse(input) {
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
+
+
 
 
 
@@ -950,9 +995,7 @@ parse: function parse(input) {
                 }
 
                 // pop off stack
-                if (len) {
-                    popStack(len);
-                }
+                popStack(len);
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);

@@ -65,6 +65,7 @@ ALL_TARGETS =                                                   \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			phraser                                             \
+			parser-to-lexer-communication-test                  \
 			precedence                                          \
 			reduce_conflict                                     \
 			regex                                               \
@@ -330,6 +331,9 @@ btyacc-t2:
 
 error-only:
 	$(JISON) ./$@.y
+
+parser-to-lexer-communication-test:
+	$(JISON) ./$@.jison
 
 faking-multiple-start-rules:
 	$(JISON) ./$@.jison
