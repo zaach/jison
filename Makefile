@@ -3,25 +3,29 @@ all: build test examples/issue-293 examples/issue-254
 
 prep: npm-install
 
+# `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
+# Use `make compile-site` for a faster, if less complete, site rebuild action.
 site: web/content/assets/js/jison.js
 
 clean-site:
 	-@rm -rf web/tmp/
 	-@rm -rf web/output/jison/
 
-compile-site:
+# `make compile-site` will perform a quick (re)build of the jison tool and the web pages, including the 'live' calculator example
+compile-site: build web-examples
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	cd web/ && nanoc compile
 	cp -r examples web/output/jison/
 
-web/content/assets/js/jison.js: build test examples compile-site
+web/content/assets/js/jison.js: build test web-examples examples compile-site
 
 preview:
 	cd web/ && nanoc view &
 	open http://localhost:3000/jison/
 
+# `make deploy` is `make site` plus GIT checkin of the result into the gh-pages branch
 deploy: site
 	git checkout gh-pages
 	cp -r web/output/jison/* ./
@@ -32,7 +36,9 @@ deploy: site
 test:
 	node tests/all-tests.js
 
-examples: web/content/assets/js/calculator.js examples_directory
+web-examples: web/content/assets/js/calculator.js
+
+examples: examples_directory
 
 web/content/assets/js/calculator.js: examples/calculator.jison build
 	node lib/cli.js examples/calculator.jison -o $@
@@ -260,4 +266,4 @@ superclean: clean
 
 
 
-.PHONY: all prep site preview deploy test examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
