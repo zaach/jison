@@ -292,9 +292,7 @@ function bt(s) {
     }
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
-
 // `this` references an array
-
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -304,9 +302,7 @@ function s(c, l, a) {
     }
 
 // helper: duplicate sequence from *relative* offset and length.
-
 // `this` references an array
-
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
@@ -315,7 +311,6 @@ function c(i, l) {
     }
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
-
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -738,18 +733,6 @@ parse: function parse(input) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     lexer.setInput(input, sharedState.yy);
 
 
@@ -941,6 +924,7 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
+
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
@@ -954,12 +938,15 @@ parse: function parse(input) {
 
 
 
+
+
+
+
                 
 
 
 
     
-
                 continue;
 
             // reduce:
@@ -1003,6 +990,7 @@ parse: function parse(input) {
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+
                 continue;
 
             // accept:
