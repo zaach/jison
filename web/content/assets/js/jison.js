@@ -458,10 +458,10 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
     this.actionsUseYYLINENO = analyzeFeatureUsage(this.performAction, /\byylineno\b/g, 1);
     this.actionsUseYYTEXT = analyzeFeatureUsage(this.performAction, /\byytext\b/g, 1);
-    this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 1);
-    this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 1);
-    this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 1);
-    this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 1);
+    this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 0);
+    this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 0);
+    this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 0);
+    this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 0);
     // At this point in time, we have already expanded `$name`, `$$` and `$n` to its `$$[n]` index expression.
     // 
     // Also cannot use regex `\b` with `\$` as the regex doesn't consider the literal `$` to be a *word* character
@@ -860,7 +860,8 @@ lookaheadMixin.followSets = function followSets() {
         cont = false;
 
         productions.forEach(function Follow_prod_forEach(production, k) {
-            //self.trace(production.symbol, nonterminals[production.symbol].follows);
+            self.trace(production.symbol, nonterminals[production.symbol].follows);
+
             // q is used in Simple LALR algorithm determine follows in context
             var q;
             var ctx = !!self.go_;
@@ -1645,7 +1646,9 @@ generatorMixin.generate = function parser_generate(opt) {
 
     // check for illegal identifier
     if (!opt.moduleName || !opt.moduleName.match(/^[a-zA-Z_$][a-zA-Z0-9_$\.]*$/)) {
-        console.warn('WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.');
+        if (opt.moduleName) {
+            console.warn('WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.');
+        }
         opt.moduleName = 'parser';
     }
     switch (opt.moduleType) {
@@ -1898,9 +1901,27 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //     if (yydebug) yydebug(...);
 
         parseFn = parseFn
-
         .replace(/\s+var yydebug = [^\0]+?self\.trace[^\0]+?}\n/g, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
         .replace(/^.*?\byydebug\b.*?$/gm, '');
+    }
+
+    if (!info.actionsUseYYERROK) {
+        /*
+           Kill this code:
+
+                if (this.yyErrOk === 1) {
+                    this.yyErrOk = function yyErrOk() {
+                        recovering = 0;
+                    };
+                }
+         */
+        parseFn = parseFn
+        .replace(/\s+if \(this\.yyErrOk === 1\) \{[^\0]+?}\n/g, '\n\n\n\n\n');
+    }
+
+    if (!info.actionsUseYYCLEARIN) {
+        parseFn = parseFn
+        .replace(/\s+if \(this\.yyClearIn === 1\) \{[^\0]+?}\n/g, '\n\n\n\n\n\n');
     }
 
     info.performAction = actionFn;        
@@ -1992,22 +2013,22 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
     // and some post-coital touch-ups:
     if (!hasErrorRecovery) {
         // Also nuke the support declaration statement:
-        //          this.recovering = 0;
+        //          var recovering = 0;
         // and the recovery support statements:
-        //          if (this.recovering > 0) {
-        //              this.recovering--;
+        //          if (recovering > 0) {
+        //              recovering--;
         //          }
         parseFn = parseFn
-        .replace(/^\s*this\.recovering.*$/gm, '')
-        .replace(/^.*\bthis\.recovering\b.*\{[\s\r\n]*\}/gm, '')
+        .replace(/^\s*var recovering.*$/gm, '')
+        .replace(/[ \t]*if \(recovering[^\)]+\) \{[^\0]+?\}\n/g, '\n\n\n\n\n')
         // And nuke the preErrorSymbol code as it is unused when there's no error recovery
-        //        if (!this.preErrorSymbol) { 
+        //        if (!preErrorSymbol) { 
         //            ... keep this chunk ...
         //        } else {
         //            ... KILL this chunk ...
         //        }
-        .replace(/\s+if[^a-z]+this\.preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}/g, '\n$1\n\n\n')
-        .replace(/^\s+this\.preErrorSymbol = .*$/gm, '');
+        .replace(/\s+if[^a-z]+preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}\n/g, '\n$1\n\n\n\n')
+        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '');
     }
     return parseFn;
 }
@@ -2112,6 +2133,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           file: 1,
           outfile: 1,
           inputPath: 1,
+          lexfile: 1,
           moduleName: 1,
           moduleType: 1,
         };
@@ -2166,11 +2188,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'parse: ' + parseFn
     ].concat(
         this.actionsUseYYERROK ?
-        'yyErrOk: ' + String(parser.yyErrOk) :
+        'yyErrOk: 1' :
         []
     ).concat(
         this.actionsUseYYCLEARIN ?
-        'yyClearIn: ' + String(parser.yyClearIn) :
+        'yyClearIn: 1' :
         []
     ).join(',\n');
     moduleCode += '\n};';
@@ -2869,15 +2891,15 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         '',
         compressGotoTable ? '// helper: reconstruct the \'goto\' table\n' + String(bt) : '',
         '',
-        '// helper: runlength encoding with increment step: code, length: step (default step = 0)\n',
-        '// `this` references an array\n',
+        '// helper: runlength encoding with increment step: code, length: step (default step = 0)',
+        '// `this` references an array',
         String(s),
         '',
-        '// helper: duplicate sequence from *relative* offset and length.\n',
-        '// `this` references an array\n',
+        '// helper: duplicate sequence from *relative* offset and length.',
+        '// `this` references an array',
         String(c),
         '',
-        '// helper: unpack an array using helpers and data, all passed in an array argument \'a\'.\n',
+        '// helper: unpack an array using helpers and data, all passed in an array argument \'a\'.',
         String(u)
     ];
     if (!compressAnything) {
@@ -3020,7 +3042,7 @@ parser.parse = function parse(input) {
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -3051,6 +3073,33 @@ parser.parse = function parse(input) {
     var yydebug = false;
     if (this.options.debug) {
         yydebug = function yydebug_impl(msg, obj) {
+            var ref_list;
+            var ref_names;
+            function deepClone(from, sub) {
+                if (sub == null) { ref_list = []; ref_names = []; sub = 'root'; }
+                if (typeof from === "function") return "[Function]";
+                if (from == null || typeof from !== "object") return from;
+                if (from.constructor !== Object && from.constructor !== Array) {
+                    return from;
+                }
+
+                for (var i = 0, len = ref_list.length; i < len; i++) {
+                    if (ref_list[i] === from) {
+                        return "[Circular/Xref:" + ref_names[i] + "]";   // circular or cross reference
+                    }
+                }
+                ref_list.push(from);
+                ref_names.push(sub);
+
+                var to = new from.constructor();
+                for (var name in from) {
+                    if (name === 'parser') continue;
+                    if (name === 'lexer') continue;
+                    to[name] = deepClone(from[name], name);
+                }
+                return to;
+            }
+
             obj = obj || {};
             if (obj.symbol) {
                 obj['local yytext'] = yytext;
@@ -3061,7 +3110,31 @@ parser.parse = function parse(input) {
             obj.state_stack = stack;
             obj.value_stack = vstack;
             obj.location_stack = lstack;
-            self.trace(msg, JSON.stringify(obj, null, 2));
+
+            // ready the object for printing:
+            obj = deepClone(obj);
+
+            var js;
+            try {
+                js = JSON.stringify(obj, null, 2).replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ").replace(/[\n\s]+/g, " ");
+            } catch (ex) {
+                js = String(obj);
+            }
+            self.trace(msg, js, '\n');
+        };
+    }
+
+    if (this.yyErrOk === 1) {
+        this.yyErrOk = function yyErrOk() {
+            recovering = 0;
+        };
+    }
+
+    if (this.yyClearIn === 1) {
+        this.yyClearIn = function yyClearIn() {
+            preErrorSymbol = null;
+            symbol = null;
+            yytext = null;
         };
     }
 
@@ -3137,7 +3210,7 @@ _lexer_with_token_stack:
 _lexer_with_token_stack_end:
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -3237,7 +3310,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                 var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -3271,15 +3344,15 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
                 if (yydebug) yydebug('after ERROR DETECT: ', { error_rule_depth: error_rule_depth });
 
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -3304,7 +3377,6 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     symbol = lex();
 
                     if (yydebug) yydebug('after ERROR RECOVERY-3: ', { symbol: symbol });
-
                 }
 
                 // try to recover from error
@@ -3326,9 +3398,9 @@ _handle_error_with_recovery:                // run this code when the grammar in
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
 
                 if (yydebug) yydebug('after ERROR POP: ', { error_rule_depth: error_rule_depth, symbol: symbol });
 
@@ -3413,28 +3485,30 @@ _handle_error_end_of_section:                  // this concludes the error recov
             // shift:
             case 1: 
                 //this.shiftCount++;
+                if (yydebug) yydebug('>>> SHIFT: ', { symbol: symbol });
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
                 lstack.push(lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+                        if (yydebug) yydebug('... SHIFT:error rule matching: ', { recovering: recovering, symbol: symbol });
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+                    if (yydebug) yydebug('... SHIFT:error recovery: ', { recovering: recovering, symbol: symbol });
                 }
     
-                if (yydebug) yydebug('>>> SHIFT: ', { symbol: symbol });
                 continue;
 
             // reduce:
@@ -3478,6 +3552,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+                if (yydebug) yydebug('REDUCED: ', { newState: newState, recovering: recovering, symbol: symbol });
                 continue;
 
             // accept:
@@ -3543,14 +3618,6 @@ _handle_error_end_of_section:                  // this concludes the error recov
     }
 
     return retval;
-};
-
-parser.yyErrOk = function yyErrOk() {
-    this.recovering = 0;
-};
-
-parser.yyClearIn = function yyClearIn() {
-    this.preErrorSymbol = null;
 };
 
 
@@ -3670,7 +3737,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    //self.trace('new production:', p);
+                    self.trace('new production:', p);
                 }
             });
             if (state.inadequate) {
@@ -3700,7 +3767,8 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                             }
                         });
                     });
-                    //self.trace('unioned item', item);
+                    
+                    self.trace('unioned item', item);
                 });
             }
         });
@@ -4654,9 +4722,7 @@ function bt(s) {
     }
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
-
 // `this` references an array
-
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -4666,9 +4732,7 @@ function s(c, l, a) {
     }
 
 // helper: duplicate sequence from *relative* offset and length.
-
 // `this` references an array
-
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
@@ -4677,7 +4741,6 @@ function c(i, l) {
     }
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
-
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -4700,8 +4763,7 @@ trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 options: {
-  type: "lalr",
-  lexfile: "modules/lex-parser/lex.l"
+  type: "lalr"
 },
 symbols_: {
   "$": 36,
@@ -6414,7 +6476,7 @@ parse: function parse(input) {
         vstack = [null],    // semantic value stack
 
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -6441,18 +6503,6 @@ parse: function parse(input) {
 
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -6506,7 +6556,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -6602,7 +6652,7 @@ parse: function parse(input) {
                 var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -6636,15 +6686,15 @@ parse: function parse(input) {
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
 
 
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -6669,7 +6719,6 @@ parse: function parse(input) {
                     symbol = lex();
 
 
-
                 }
 
                 // try to recover from error
@@ -6691,9 +6740,9 @@ parse: function parse(input) {
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
 
 
 
@@ -6742,28 +6791,30 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
+
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
                     yytext = lexer.yytext;
 
 
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+
                 }
     
-
                 continue;
 
             // reduce:
@@ -6807,6 +6858,7 @@ parse: function parse(input) {
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+
                 continue;
 
             // accept:
@@ -8505,9 +8557,7 @@ function bt(s) {
     }
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
-
 // `this` references an array
-
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -8517,9 +8567,7 @@ function s(c, l, a) {
     }
 
 // helper: duplicate sequence from *relative* offset and length.
-
 // `this` references an array
-
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
@@ -8528,7 +8576,6 @@ function c(i, l) {
     }
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
-
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -8551,8 +8598,7 @@ trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 options: {
-  type: "lalr",
-  lexfile: "modules/ebnf-parser/bnf.l"
+  type: "lalr"
 },
 symbols_: {
   "$accept": 0,
@@ -10491,7 +10537,7 @@ parse: function parse(input) {
         vstack = [null],    // semantic value stack
 
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -10518,18 +10564,6 @@ parse: function parse(input) {
 
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -10583,7 +10617,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -10679,7 +10713,7 @@ parse: function parse(input) {
                 var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -10713,15 +10747,15 @@ parse: function parse(input) {
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
 
 
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -10746,7 +10780,6 @@ parse: function parse(input) {
                     symbol = lex();
 
 
-
                 }
 
                 // try to recover from error
@@ -10768,9 +10801,9 @@ parse: function parse(input) {
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
 
 
 
@@ -10819,28 +10852,30 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
+
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
                     yytext = lexer.yytext;
 
 
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+
                 }
     
-
                 continue;
 
             // reduce:
@@ -10884,6 +10919,7 @@ parse: function parse(input) {
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+
                 continue;
 
             // accept:
