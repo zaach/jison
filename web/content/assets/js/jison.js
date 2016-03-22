@@ -1907,13 +1907,13 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
     if (!info.actionsUseYYERROK) {
         /*
-           Kill this code:
-
-                if (this.yyErrOk === 1) {
-                    this.yyErrOk = function yyErrOk() {
-                        recovering = 0;
-                    };
-                }
+         * Kill this code:
+         *
+         *       if (this.yyErrOk === 1) {
+         *           this.yyErrOk = function yyErrOk() {
+         *               recovering = 0;
+         *           };
+         *       }
          */
         parseFn = parseFn
         .replace(/\s+if \(this\.yyErrOk === 1\) \{[^\0]+?}\n/g, '\n\n\n\n\n');
@@ -2018,8 +2018,11 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
         //          if (recovering > 0) {
         //              recovering--;
         //          }
+        // and these yydebug particles:
+        //          , recovering: recovering
         parseFn = parseFn
         .replace(/^\s*var recovering.*$/gm, '')
+        .replace(/, recovering: recovering/g, '')
         .replace(/[ \t]*if \(recovering[^\)]+\) \{[^\0]+?\}\n/g, '\n\n\n\n\n')
         // And nuke the preErrorSymbol code as it is unused when there's no error recovery
         //        if (!preErrorSymbol) { 
