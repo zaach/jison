@@ -131,7 +131,7 @@ generator.constructor = function Jison_Generator(grammar, opt) {
     this.DEBUG = this.options.debug || false;
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
-        console.log('Grammar::OPTIONS: ', this.options);
+        console.log('Grammar::OPTIONS:\n', this.options);
     }
 
     this.processGrammar(grammar);
@@ -218,13 +218,13 @@ generator.processGrammar = function processGrammarDef(grammar) {
     var operators = this.operators = processOperators(grammar.operators);
 
     // build productions from CFG and calculate the symbol sets (terminals and nonterminals) and their name-to-ID mappings
-    this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols);
+    this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, grammar.extra_tokens);
 
     if (devDebug > 1) console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, '\n###################################### TOKENS\n', tokens, '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, '\n###################################### LEX\n', grammar.lex, '\n###################################### GRAMMAR\n', grammar);
     if (tokens && this.terminals.length !== tokens.length) {
         self.trace('Warning: declared tokens differ from tokens found in rules.');
-        self.trace(this.terminals);
-        self.trace(tokens);
+        self.trace('Terminals: ', this.terminals);
+        self.trace('Tokens:    ', tokens);
     }
 
     // augment the grammar
@@ -299,7 +299,7 @@ function processOperators(ops) {
 }
 
 
-generator.buildProductions = function buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols) {
+generator.buildProductions = function buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, descriptions) {
     var self = this;
     var actions = [
       '/* this == yyval */',
@@ -312,6 +312,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var prods, symbol;
     var productions_ = [];
     var symbols_ = {};
+    var descriptions_ = {};
     var usedSymbolIds = [/* $accept = 0 */ true, /* $end = 1 */ true, /* error = 2 */ true];
     var usedSymbolIdsLowIndex = 127; // 127? 3?
 
@@ -320,6 +321,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     symbols_.$accept = 0;
     symbols_[this.EOF] = 1;
+    symbols_['$eof'] = 1;               // `$eof` is a synonym of `$end` for bison compatibility; this is the only place where two symbol names may map to a single symbol ID number!
     symbols[0] = '$accept';
     symbols[1] = this.EOF;
 
@@ -345,6 +347,17 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } 
     }
+
+    if (descriptions) {
+        self.trace('descriptions obtained from grammar: ', descriptions);
+        descriptions.forEach(function (tokdef) {
+            // fields: id, type, value, description
+            if (tokdef.description && tokdef.id) {
+                descriptions_[tokdef.id] = tokdef.description;
+            }
+        });
+    }
+
 
     var hasErrorRecovery = false; // has error recovery
 
@@ -402,7 +415,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         } else {
             prods = bnf[symbol].slice(0);
         }
-        if (devDebug) console.log("\ngenerator.buildProductions: ", symbol, JSON.stringify(prods, null, 2));
+        if (devDebug) console.log('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
 
         prods.forEach(buildProduction);
     }
@@ -414,18 +427,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         terms = [], 
         terms_ = {};
     each(symbols_, function (id, sym) {
-        if (!nonterminals[sym]) {
+        // `$eof` is a synonym of `$end` for bison compatibility; 
+        // this is the only place where two symbol names may map to a single symbol ID number
+        // and we do not want `$eof` to show up in the symbol tables of generated parsers
+        // as we use `$end` for that one!
+        if (!nonterminals[sym] && sym !== '$eof') {
             terms.push(sym);
             terms_[id] = sym;
         }
     });
-    assert(terms[0] === this.EOF);
 
     this.hasErrorRecovery = hasErrorRecovery;
 
     this.terminals = terms;
     this.terminals_ = terms_;
     this.symbols_ = symbols_;
+    this.descriptions_ = descriptions_;
 
     this.productions_ = productions_;
     actions.push('}');
@@ -481,7 +498,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYSTACK = analyzeFeatureUsage(this.performAction, /\byystack\b/g, 1);
 
     if (devDebug) {
-        console.log("Optimization analysis: ", {
+        console.log('Optimization analysis: ', {
             actionsAreAllDefault: this.actionsAreAllDefault,
             actionsUseYYLENG: this.actionsUseYYLENG,
             actionsUseYYLINENO: this.actionsUseYYLINENO,
@@ -853,14 +870,16 @@ lookaheadMixin.followSets = function followSets() {
     var productions = this.productions,
         nonterminals = this.nonterminals,
         self = this,
-        cont = true;
+        cont = true,
+        count = 0;
 
     // loop until no further changes have been made
     while (cont) {
         cont = false;
+        count++;
 
         productions.forEach(function Follow_prod_forEach(production, k) {
-            self.trace(production.symbol, nonterminals[production.symbol].follows);
+            if (devDebug > 3) self.trace('Symbol/Follows: ', 'round:' + count, 'prod:' + k, ':', production.symbol, ' --> ', nonterminals[production.symbol].follows.join(', '));
 
             // q is used in Simple LALR algorithm determine follows in context
             var q;
@@ -893,6 +912,26 @@ lookaheadMixin.followSets = function followSets() {
                 }
             }
         });
+    }
+
+    var symfollowdbg = {};
+    productions.forEach(function Follow_prod_forEach_debugOut(production, k) {
+        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', nonterminals[production.symbol].follows.join(', '));
+        var key = ['prod-', k, ':  ', production.symbol, ' := ', production.handle.join(' ')].join('');
+        var flw = nonterminals[production.symbol].follows.join(', ');
+        if (!symfollowdbg[flw]) {
+            symfollowdbg[flw] = {};
+        }
+        if (!symfollowdbg[flw][key]) {
+            symfollowdbg[flw][key] = 1;
+        }
+    });
+    for (var l in symfollowdbg) {
+        var lst = [];
+        for (var k in symfollowdbg[l]) {
+            lst.push(k);
+        }
+        self.trace('Symbol/Follows:\n   ', lst.join('\n    '), ' -->\n        ', l);
     }
 };
 
@@ -1442,6 +1481,8 @@ function generateGenericHeaderComment() {
         + ' *\n'
         + ' *    symbols_: {associative list: name ==> number},\n'
         + ' *    terminals_: {associative list: number ==> name},\n'
+        + ' *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},\n'
+        + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
         + ' *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
@@ -1639,8 +1680,8 @@ generatorMixin.generate = function parser_generate(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     this.DEBUG = opt.debug || false;
-    if (this.DEBUG) {
-        console.log('GENERATE::OPTIONS: ', this.options);
+    if (this.DEBUG && devDebug) {
+        console.log('GENERATE::OPTIONS:\n', this.options);
     }
     var code = '';
 
@@ -1671,8 +1712,8 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     this.DEBUG = opt.debug || false;
-    if (this.DEBUG) {
-        console.log('GENERATE-AMD::OPTIONS: ', this.options);
+    if (this.DEBUG && devDebug) {
+        console.log('GENERATE-AMD::OPTIONS:\n', this.options);
     }
     var module = this.generateModule_();
     var out = [
@@ -1701,8 +1742,8 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     this.DEBUG = opt.debug || false;
-    if (this.DEBUG) {
-        console.log('GENERATE-CommonJS::OPTIONS: ', this.options);
+    if (this.DEBUG && devDebug) {
+        console.log('GENERATE-CommonJS::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var main = [];
@@ -1734,8 +1775,8 @@ generatorMixin.generateModule = function generateModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     this.DEBUG = opt.debug || false;
-    if (this.DEBUG) {
-        console.log('GENERATE-Module::OPTIONS: ', this.options);
+    if (this.DEBUG && devDebug) {
+        console.log('GENERATE-Module::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
@@ -2092,15 +2133,23 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         tableCode.commonCode
     );
 
+
+
     // sort hash table by key to produce a nicer output:
-    function sortSymbolTable(tbl) {
+    function produceSymbolTable(tbl) {
         var a = Object.keys(tbl);
         a.sort();
         var nt = {};
         var k;
         for (var i = 0, len = a.length; i < len; i++) {
             k = a[i];
-            nt[k] = tbl[k];
+            // `$eof` is a synonym of `$end` for bison compatibility; 
+            // this is the only place where two symbol names may map to a single symbol ID number
+            // and we do not want `$eof` to show up in the symbol tables of generated parsers
+            // as we use `$end` for that one!
+            if (k !== '$eof') {
+                nt[k] = tbl[k];
+            }
         }
         return nt;
     }
@@ -2118,12 +2167,33 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                     if (!t) {
                         t = '<epsilon>';
                     }
+                    // `$eof` is a synonym of `$end` for bison compatibility; 
+                    // this is the only place where two symbol names may map to a single symbol ID number
+                    // and we do not want `$eof` to show up in the symbol tables of generated parsers
+                    // as we use `$end` for that one!
+                    if (t === '$eof') {
+                        t = '$end';
+                    }
                     return t;
                 }).join(' ');
             }
             prods[nonterm] = item_prods;
         }
         return prods;
+    }
+
+    function produceTerminalDescriptions(tbl, sym) {
+        var rv = {};
+        var count = 0;
+        for (var k in tbl) {
+            var descr = tbl[k];
+            var id = sym[k];
+            if (id && descr && descr !== id) {
+                rv[id] = descr;
+                count++;
+            }
+        }
+        return (count ? rv : undefined);
     }
 
     function produceOptions(opts) {
@@ -2170,6 +2240,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
 
     // Generate the module creation code
+    var descrLst = JSON.stringify(produceTerminalDescriptions(this.descriptions_, this.symbols_), null, 2);
+    if (descrLst) {
+        descrLst = descrLst.replace(/"([0-9]+)":/g, '$1:');
+    }
+
     var moduleCode = '{\n';
     moduleCode += [
         'EOF: ' + parser.EOF,
@@ -2178,9 +2253,14 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'JisonParserError: JisonParserError',
         'yy: {}',
         'options: ' + produceOptions(this.options),
-        'symbols_: ' + JSON.stringify(sortSymbolTable(this.symbols_), null, 2),
+        'symbols_: ' + JSON.stringify(produceSymbolTable(this.symbols_), null, 2),
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
         'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
+    ].concat(
+        descrLst ?
+        'terminal_descriptions_: ' + descrLst :
+        []
+    ).concat([
         'productions_: ' + tableCode.productionsCode,
         'performAction: ' + String(this.performAction),
         'table: ' + tableCode.tableCode,
@@ -2189,7 +2269,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'quoteName: ' + String(parser.quoteName),
         'describeSymbol: ' + String(parser.describeSymbol),
         'parse: ' + parseFn
-    ].concat(
+    ]).concat(
         this.actionsUseYYERROK ?
         'yyErrOk: 1' :
         []
@@ -3447,7 +3527,7 @@ _handle_error_no_recovery:                  // run this code when the grammar do
 
 _handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
 
-            if (yydebug) yydebug('::: action: ', { action: action, symbol: symbol });
+            if (yydebug) yydebug('::: action: ' + (action[0] === 1 ? 'shift token (then go to state ' + action[1] + ')' : action[0] === 2 ? 'reduce by rule: ' + action[1] : action[0] === 3 ? 'accept' : '???unexpected???'), { action: action, symbol: symbol });
             switch (action[0]) {
             // catch misc. parse failures:
             default:
@@ -3488,7 +3568,6 @@ _handle_error_end_of_section:                  // this concludes the error recov
             // shift:
             case 1: 
                 //this.shiftCount++;
-                if (yydebug) yydebug('>>> SHIFT: ', { symbol: symbol });
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
                 lstack.push(lexer.yylloc);
@@ -3740,7 +3819,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    self.trace('new production:', p);
+                    if (devDebug > 2) self.trace('new production:', p);
                 }
             });
             if (state.inadequate) {
@@ -3771,7 +3850,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                         });
                     });
                     
-                    self.trace('unioned item', item);
+                    if (devDebug > 2) self.trace('unioned item', item);
                 });
             }
         });
@@ -3940,39 +4019,6 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         // // Generate the initialization code
         // var commonCode = tableCode.commonCode;
 
-        // sort hash table by key to produce a nicer output:
-        function sortSymbolTable(tbl) {
-            var a = Object.keys(tbl);
-            a.sort();
-            var nt = {};
-            var k;
-            for (var i = 0, len = a.length; i < len; i++) {
-                k = a[i];
-                nt[k] = tbl[k];
-            }
-            return nt;
-        }
-
-        function produceProductionsForDebugging(tbl, sym) {
-            var prods = {};
-            for (var nonterm in tbl) {
-                var entry = tbl[nonterm];
-                var id = sym[nonterm];
-                var item_prods = {};
-                var item_tbl = entry.productions._items;
-                for (var i = 0, len = item_tbl.length; i < len; i++) {
-                    var p = item_tbl[i];
-                    item_prods[p.id] = p.handle.map(function (t) {
-                        if (!t) {
-                            t = '<epsilon>';
-                        }
-                        return t;
-                    }).join(' ');
-                }
-                prods[nonterm] = item_prods;
-            }
-            return prods;
-        }
 
         // Generate the module creation code
         var moduleCode = '{\n';
@@ -4447,6 +4493,8 @@ exports.transform = EBNF.transform;
  *
  *    symbols_: {associative list: name ==> number},
  *    terminals_: {associative list: number ==> name},
+ *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},
+ *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
  *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
@@ -6794,7 +6842,6 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
-
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
@@ -8282,6 +8329,8 @@ module.exports={
  *
  *    symbols_: {associative list: name ==> number},
  *    terminals_: {associative list: number ==> name},
+ *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},
+ *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
  *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
@@ -10855,7 +10904,6 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
-
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
@@ -11488,47 +11536,47 @@ case 22 :
 /*! Rule::       \[{ID}\] */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
 break;
-case 24 : 
+case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "[^"]+" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
 break;
-case 25 : 
+case 27 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
 break;
-case 30 : 
+case 32 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 129; 
 break;
-case 31 : 
+case 33 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 32 : 
+case 34 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
  if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
 break;
-case 39 : 
+case 41 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
  this.pushState('token'); return 142; 
 break;
-case 41 : 
+case 43 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %options\b */ 
  this.pushState('options'); return 156; 
 break;
-case 45 : 
+case 47 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
  this.pushState('path'); return 196; 
 break;
-case 46 : 
+case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
  
@@ -11537,89 +11585,89 @@ case 46 :
                                             return 148;
                                          
 break;
-case 47 : 
+case 49 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
 break;
-case 48 : 
+case 50 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 135; 
 break;
-case 49 : 
+case 51 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 135; 
 break;
-case 50 : 
+case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 123; 
 break;
-case 51 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
 break;
-case 52 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
  yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
 break;
-case 53 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
  yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
 break;
-case 54 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 58 : 
+case 60 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
  return 194; // regexp with braces or quotes (and no spaces) 
 break;
-case 63 : 
+case 65 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 123; 
 break;
-case 64 : 
+case 66 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 125; 
 break;
-case 66 : 
+case 68 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
  return 199;      // the bit of CODE just before EOF... 
 break;
-case 67 : 
+case 69 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 68 : 
+case 70 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
 break;
-case 69 : 
+case 71 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
 break;
-case 70 : 
+case 72 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 71 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
  this.popState(); return 197; 
@@ -11663,72 +11711,78 @@ simpleCaseActionClusters: {
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
    23 : 154,
+  /*! Conditions:: bnf ebnf token INITIAL */ 
+  /*! Rule::       \$end\b */ 
+   24 : 154,
+  /*! Conditions:: bnf ebnf token INITIAL */ 
+  /*! Rule::       \$eof\b */ 
+   25 : 154,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   26 : 'TOKEN_WORD',
+   28 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   27 : 58,
+   29 : 58,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   28 : 59,
+   30 : 59,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   29 : 124,
+   31 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   33 : 164,
+   35 : 164,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   34 : 190,
+   36 : 190,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   35 : 138,
+   37 : 138,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   36 : 167,
+   38 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   37 : 168,
+   39 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   38 : 169,
+   40 : 169,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   40 : 162,
+   42 : 162,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   42 : 140,
+   44 : 140,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   43 : 152,
+   45 : 152,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   44 : 149,
+   46 : 149,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   55 : 132,
+   57 : 132,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   56 : 194,
+   58 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   57 : 194,
-  /*! Conditions:: action */ 
-  /*! Rule::       "(\\\\|\\"|[^"])*" */ 
    59 : 194,
   /*! Conditions:: action */ 
-  /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   60 : 194,
-  /*! Conditions:: action */ 
-  /*! Rule::       [/"'][^{}/"']+ */ 
+  /*! Rule::       "(\\\\|\\"|[^"])*" */ 
    61 : 194,
   /*! Conditions:: action */ 
-  /*! Rule::       [^{}/"']+ */ 
+  /*! Rule::       '(\\\\|\\'|[^'])*' */ 
    62 : 194,
+  /*! Conditions:: action */ 
+  /*! Rule::       [/"'][^{}/"']+ */ 
+   63 : 194,
+  /*! Conditions:: action */ 
+  /*! Rule::       [^{}/"']+ */ 
+   64 : 194,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   65 : 199
+   67 : 199
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -11755,6 +11809,8 @@ rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
 /^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\$end\b)/,
+/^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
 /^(?:'[^']+')/,
 /^(?:[^\s\r\n]+)/,
@@ -11818,8 +11874,8 @@ conditions: {
       23,
       24,
       25,
+      26,
       27,
-      28,
       29,
       30,
       31,
@@ -11846,7 +11902,9 @@ conditions: {
       52,
       53,
       54,
-      55
+      55,
+      56,
+      57
     ],
     inclusive: true
   },
@@ -11868,8 +11926,8 @@ conditions: {
       23,
       24,
       25,
+      26,
       27,
-      28,
       29,
       30,
       31,
@@ -11896,7 +11954,9 @@ conditions: {
       52,
       53,
       54,
-      55
+      55,
+      56,
+      57
     ],
     inclusive: true
   },
@@ -11932,8 +11992,8 @@ conditions: {
       42,
       43,
       44,
+      45,
       46,
-      47,
       48,
       49,
       50,
@@ -11941,14 +12001,14 @@ conditions: {
       52,
       53,
       54,
-      55
+      55,
+      56,
+      57
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      55,
-      56,
       57,
       58,
       59,
@@ -11956,27 +12016,29 @@ conditions: {
       61,
       62,
       63,
-      64
-    ],
-    inclusive: false
-  },
-  "code": {
-    rules: [
-      45,
-      55,
+      64,
       65,
       66
     ],
     inclusive: false
   },
+  "code": {
+    rules: [
+      47,
+      57,
+      67,
+      68
+    ],
+    inclusive: false
+  },
   "path": {
     rules: [
-      55,
-      67,
-      68,
+      57,
       69,
       70,
-      71
+      71,
+      72,
+      73
     ],
     inclusive: false
   },
@@ -11989,7 +12051,7 @@ conditions: {
       15,
       16,
       17,
-      55
+      57
     ],
     inclusive: false
   },
@@ -12003,8 +12065,8 @@ conditions: {
       23,
       24,
       25,
+      26,
       27,
-      28,
       29,
       30,
       31,
@@ -12031,7 +12093,9 @@ conditions: {
       52,
       53,
       54,
-      55
+      55,
+      56,
+      57
     ],
     inclusive: true
   }
@@ -14958,7 +15022,7 @@ case 0 :
 /*! Rule::       \s+ */ 
  /* skip whitespace */ 
 break;
-case 2 : 
+case 4 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 136; 
@@ -14973,45 +15037,53 @@ simpleCaseActionClusters: {
   /*! Rule::       {ID} */ 
    1 : 137,
   /*! Conditions:: INITIAL */ 
+  /*! Rule::       \$end */ 
+   2 : 137,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \$eof */ 
+   3 : 137,
+  /*! Conditions:: INITIAL */ 
   /*! Rule::       %empty */ 
-   3 : 131,
+   5 : 131,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %epsilon */ 
-   4 : 131,
+   6 : 131,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   5 : 137,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   6 : 137,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \. */ 
    7 : 137,
   /*! Conditions:: INITIAL */ 
+  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
+   8 : 137,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \. */ 
+   9 : 137,
+  /*! Conditions:: INITIAL */ 
   /*! Rule::       \( */ 
-   8 : 40,
+   10 : 40,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \) */ 
-   9 : 41,
+   11 : 41,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   10 : 42,
+   12 : 42,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \? */ 
-   11 : 63,
+   13 : 63,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \| */ 
-   12 : 124,
+   14 : 124,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   13 : 43,
+   15 : 43,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   14 : 129
+   16 : 129
 },
 rules: [
 /^(?:\s+)/,
 /^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\$end)/,
+/^(?:\$eof)/,
 /^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
 /^(?:%empty)/,
 /^(?:%epsilon)/,
@@ -15043,7 +15115,9 @@ conditions: {
       11,
       12,
       13,
-      14
+      14,
+      15,
+      16
     ],
     inclusive: true
   }

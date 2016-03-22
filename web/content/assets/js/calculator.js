@@ -28,6 +28,8 @@
  *
  *    symbols_: {associative list: name ==> number},
  *    terminals_: {associative list: number ==> name},
+ *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},
+ *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
  *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
@@ -924,7 +926,6 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
-
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
