@@ -89,7 +89,7 @@ var Production = typal.construct({
         this.precedence = 0;
     },
     toString: function Production_toString() {
-        return this.symbol + ' -> ' + this.handle.join(' ');
+        return this.symbol + (this.nullable ? '~' : '') + (this.precedence ? ' @' + this.precedence : '') + ' -> ' + this.handle.join(' ');
     }
 });
 
@@ -969,7 +969,7 @@ lookaheadMixin.firstSets = function firstSets() {
         nonterminals = this.nonterminals,
         self = this,
         cont = true,
-        symbol,firsts;
+        symbol, firsts;
 
     // loop until no further changes have been made
     while (cont) {
@@ -1113,8 +1113,13 @@ lrGeneratorMixin.Item = typal.construct({
     toString: function () {
         var temp = this.production.handle.slice(0);
         temp[this.dotPosition] = '.' + (temp[this.dotPosition] || '');
-        return this.production.symbol + ' -> ' + temp.join(' ') +
-            (this.follows.length === 0 ? '' : '     #lookaheads= ' + this.follows.join(' '));
+        var s = this.production.symbol + ' -> ' + temp.join(' ');
+        var padlen = Math.max(4, 40 - s.length);
+        var pad = new Array(padlen);
+        if (this.follows.length) {
+            s = s + pad.join(' ') + '#lookaheads= ' + this.follows.join(' ');
+        }
+        return s;
     }
 });
 
@@ -2154,7 +2159,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         return nt;
     }
 
-    function produceProductionsForDebugging(tbl, sym) {
+    function produceProductionsForDebugging(tbl, sym, options) {
+        if (!options.outputDebugTables) {
+            return undefined;
+        }
+
         var prods = {};
         for (var nonterm in tbl) {
             var entry = tbl[nonterm];
@@ -2163,9 +2172,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
             var item_tbl = entry.productions._items;
             for (var i = 0, len = item_tbl.length; i < len; i++) {
                 var p = item_tbl[i];
-                item_prods[p.id] = p.handle.map(function (t) {
+                var rulestr = p.handle.map(function (t) {
                     if (!t) {
-                        t = '<epsilon>';
+                        t = '%epsilon';
                     }
                     // `$eof` is a synonym of `$end` for bison compatibility; 
                     // this is the only place where two symbol names may map to a single symbol ID number
@@ -2176,6 +2185,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                     }
                     return t;
                 }).join(' ');
+                item_prods[p.id] = {
+                    handle: rulestr,
+                    first: [0],
+                    follow: [0]
+                };
             }
             prods[nonterm] = item_prods;
         }
@@ -2203,6 +2217,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           _: 1,
           noMain: 1,
           compressTables: 1,
+          outputDebugTables: 1,
           file: 1,
           outfile: 1,
           inputPath: 1,
@@ -2244,6 +2259,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     if (descrLst) {
         descrLst = descrLst.replace(/"([0-9]+)":/g, '$1:');
     }
+    var rulesLst = JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_, this.options), null, 2);
+    if (rulesLst) {
+        rulesLst = rulesLst.replace(/"([0-9]+)":/g, '$1:');
+    }
 
     var moduleCode = '{\n';
     moduleCode += [
@@ -2255,8 +2274,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'options: ' + produceOptions(this.options),
         'symbols_: ' + JSON.stringify(produceSymbolTable(this.symbols_), null, 2),
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
-        'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
     ].concat(
+        rulesLst ?
+        'nonterminals_: ' + rulesLst :
+        []
+    ).concat(
         descrLst ?
         'terminal_descriptions_: ' + descrLst :
         []
@@ -4938,155 +4960,6 @@ terminals_: {
   180: "INCLUDE",
   181: "PATH",
   183: "CODE"
-},
-nonterminals_: {
-  "$accept": {
-    0: "lex $end"
-  },
-  "lex": {
-    1: "init definitions %% rules_and_epilogue"
-  },
-  "rules_and_epilogue": {
-    2: "EOF",
-    3: "%% extra_lexer_module_code EOF",
-    4: "rules %% extra_lexer_module_code EOF",
-    5: "rules EOF"
-  },
-  "init": {
-    6: "<epsilon>"
-  },
-  "definitions": {
-    7: "definition definitions",
-    8: "<epsilon>"
-  },
-  "definition": {
-    9: "NAME regex",
-    10: "START_INC names_inclusive",
-    11: "START_EXC names_exclusive",
-    12: "ACTION",
-    13: "include_macro_code",
-    14: "options",
-    15: "UNKNOWN_DECL"
-  },
-  "names_inclusive": {
-    16: "START_COND",
-    17: "names_inclusive START_COND"
-  },
-  "names_exclusive": {
-    18: "START_COND",
-    19: "names_exclusive START_COND"
-  },
-  "rules": {
-    20: "rules rule",
-    21: "rule"
-  },
-  "rule": {
-    22: "start_conditions regex action"
-  },
-  "action": {
-    23: "{ action_body }",
-    24: "ACTION",
-    25: "include_macro_code"
-  },
-  "action_body": {
-    26: "action_comments_body",
-    27: "action_body { action_body } action_comments_body"
-  },
-  "action_comments_body": {
-    28: "<epsilon>",
-    29: "action_comments_body ACTION_BODY"
-  },
-  "start_conditions": {
-    30: "< name_list >",
-    31: "< * >",
-    32: "<epsilon>"
-  },
-  "name_list": {
-    33: "NAME",
-    34: "name_list , NAME"
-  },
-  "regex": {
-    35: "regex_list"
-  },
-  "regex_list": {
-    36: "regex_list | regex_concat",
-    37: "regex_list |",
-    38: "regex_concat",
-    39: "<epsilon>"
-  },
-  "regex_concat": {
-    40: "regex_concat regex_base",
-    41: "regex_base"
-  },
-  "regex_base": {
-    42: "( regex_list )",
-    43: "SPECIAL_GROUP regex_list )",
-    44: "regex_base +",
-    45: "regex_base *",
-    46: "regex_base ?",
-    47: "/ regex_base",
-    48: "/! regex_base",
-    49: "name_expansion",
-    50: "regex_base range_regex",
-    51: "any_group_regex",
-    52: ".",
-    53: "^",
-    54: "$",
-    55: "string",
-    56: "escape_char"
-  },
-  "name_expansion": {
-    57: "NAME_BRACE"
-  },
-  "any_group_regex": {
-    58: "REGEX_SET_START regex_set REGEX_SET_END"
-  },
-  "regex_set": {
-    59: "regex_set_atom regex_set",
-    60: "regex_set_atom"
-  },
-  "regex_set_atom": {
-    61: "REGEX_SET",
-    62: "name_expansion"
-  },
-  "escape_char": {
-    63: "ESCAPE_CHAR"
-  },
-  "range_regex": {
-    64: "RANGE_REGEX"
-  },
-  "string": {
-    65: "STRING_LIT",
-    66: "CHARACTER_LIT"
-  },
-  "options": {
-    67: "OPTIONS option_list OPTIONS_END"
-  },
-  "option_list": {
-    68: "option option_list",
-    69: "option"
-  },
-  "option": {
-    70: "NAME",
-    71: "NAME = OPTION_VALUE",
-    72: "NAME = NAME"
-  },
-  "extra_lexer_module_code": {
-    73: "optional_module_code_chunk",
-    74: "optional_module_code_chunk include_macro_code extra_lexer_module_code"
-  },
-  "include_macro_code": {
-    75: "INCLUDE PATH",
-    76: "INCLUDE error"
-  },
-  "module_code_chunk": {
-    77: "CODE",
-    78: "module_code_chunk CODE"
-  },
-  "optional_module_code_chunk": {
-    79: "module_code_chunk",
-    80: "<epsilon>"
-  }
 },
 productions_: bp({
   pop: u([
@@ -8786,191 +8659,6 @@ terminals_: {
   196: "INCLUDE",
   197: "PATH",
   199: "CODE"
-},
-nonterminals_: {
-  "$accept": {
-    0: "spec $end"
-  },
-  "spec": {
-    1: "declaration_list %% grammar optional_end_block EOF"
-  },
-  "optional_end_block": {
-    2: "<epsilon>",
-    3: "%% extra_parser_module_code"
-  },
-  "optional_action_header_block": {
-    4: "<epsilon>",
-    5: "optional_action_header_block ACTION",
-    6: "optional_action_header_block include_macro_code"
-  },
-  "declaration_list": {
-    7: "declaration_list declaration",
-    8: "<epsilon>"
-  },
-  "declaration": {
-    9: "START id",
-    10: "LEX_BLOCK",
-    11: "operator",
-    12: "TOKEN full_token_definitions",
-    13: "ACTION",
-    14: "include_macro_code",
-    15: "parse_param",
-    16: "parser_type",
-    17: "options",
-    18: "DEBUG",
-    19: "UNKNOWN_DECL",
-    20: "IMPORT import_name import_path",
-    21: "INIT_CODE import_name action_ne"
-  },
-  "import_name": {
-    22: "ID",
-    23: "STRING"
-  },
-  "import_path": {
-    24: "ID",
-    25: "STRING"
-  },
-  "options": {
-    26: "OPTIONS option_list OPTIONS_END"
-  },
-  "option_list": {
-    27: "option_list option",
-    28: "option"
-  },
-  "option": {
-    29: "NAME",
-    30: "NAME = OPTION_VALUE",
-    31: "NAME = NAME"
-  },
-  "parse_param": {
-    32: "PARSE_PARAM token_list"
-  },
-  "parser_type": {
-    33: "PARSER_TYPE symbol"
-  },
-  "operator": {
-    34: "associativity token_list"
-  },
-  "associativity": {
-    35: "LEFT",
-    36: "RIGHT",
-    37: "NONASSOC"
-  },
-  "token_list": {
-    38: "token_list symbol",
-    39: "symbol"
-  },
-  "full_token_definitions": {
-    40: "optional_token_type id_list",
-    41: "optional_token_type one_full_token"
-  },
-  "one_full_token": {
-    42: "id token_value token_description",
-    43: "id token_description",
-    44: "id token_value"
-  },
-  "optional_token_type": {
-    45: "<epsilon>",
-    46: "TOKEN_TYPE"
-  },
-  "token_value": {
-    47: "INTEGER"
-  },
-  "token_description": {
-    48: "STRING"
-  },
-  "id_list": {
-    49: "id_list id",
-    50: "id"
-  },
-  "grammar": {
-    51: "optional_action_header_block production_list"
-  },
-  "production_list": {
-    52: "production_list production",
-    53: "production"
-  },
-  "production": {
-    54: "id : handle_list ;"
-  },
-  "handle_list": {
-    55: "handle_list | handle_action",
-    56: "handle_action"
-  },
-  "handle_action": {
-    57: "handle prec action",
-    58: "EPSILON action"
-  },
-  "handle": {
-    59: "handle expression_suffix",
-    60: "<epsilon>"
-  },
-  "handle_sublist": {
-    61: "handle_sublist | handle",
-    62: "handle"
-  },
-  "expression_suffix": {
-    63: "expression suffix ALIAS",
-    64: "expression suffix"
-  },
-  "expression": {
-    65: "ID",
-    66: "STRING",
-    67: "( handle_sublist )"
-  },
-  "suffix": {
-    68: "<epsilon>",
-    69: "*",
-    70: "?",
-    71: "+"
-  },
-  "prec": {
-    72: "PREC symbol",
-    73: "<epsilon>"
-  },
-  "symbol": {
-    74: "id",
-    75: "STRING"
-  },
-  "id": {
-    76: "ID"
-  },
-  "action_ne": {
-    77: "{ action_body }",
-    78: "ACTION",
-    79: "include_macro_code",
-    80: "ARROW_ACTION"
-  },
-  "action": {
-    81: "action_ne",
-    82: "<epsilon>"
-  },
-  "action_body": {
-    83: "<epsilon>",
-    84: "action_comments_body",
-    85: "action_body { action_body } action_comments_body",
-    86: "action_body { action_body }"
-  },
-  "action_comments_body": {
-    87: "ACTION_BODY",
-    88: "action_comments_body ACTION_BODY"
-  },
-  "extra_parser_module_code": {
-    89: "optional_module_code_chunk",
-    90: "optional_module_code_chunk include_macro_code extra_parser_module_code"
-  },
-  "include_macro_code": {
-    91: "INCLUDE PATH",
-    92: "INCLUDE error"
-  },
-  "module_code_chunk": {
-    93: "CODE",
-    94: "module_code_chunk CODE"
-  },
-  "optional_module_code_chunk": {
-    95: "module_code_chunk",
-    96: "<epsilon>"
-  }
 },
 productions_: bp({
   pop: u([

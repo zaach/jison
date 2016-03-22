@@ -374,28 +374,6 @@ terminals_: {
   129: "NUMBER",
   130: "PI"
 },
-nonterminals_: {
-  "$accept": {
-    0: "expressions $end"
-  },
-  "expressions": {
-    1: "e EOF"
-  },
-  "e": {
-    2: "e + e",
-    3: "e - e",
-    4: "e * e",
-    5: "e / e",
-    6: "e ^ e",
-    7: "e !",
-    8: "e %",
-    9: "- e",
-    10: "( e )",
-    11: "NUMBER",
-    12: "E",
-    13: "PI"
-  }
-},
 productions_: bp({
   pop: u([
   127,
