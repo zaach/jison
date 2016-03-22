@@ -128,9 +128,10 @@ generator.constructor = function Jison_Generator(grammar, opt) {
     this.moduleInit = grammar.moduleInit || [];
     assert(Array.isArray(this.moduleInit));
 
-    this.DEBUG = options.debug || false;
+    this.DEBUG = this.options.debug || false;
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
+        console.log('Grammar::OPTIONS: ', this.options);
     }
 
     this.processGrammar(grammar);
@@ -457,10 +458,10 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
     this.actionsUseYYLINENO = analyzeFeatureUsage(this.performAction, /\byylineno\b/g, 1);
     this.actionsUseYYTEXT = analyzeFeatureUsage(this.performAction, /\byytext\b/g, 1);
-    this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 1);
-    this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 1);
-    this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 1);
-    this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 1);
+    this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 0);
+    this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 0);
+    this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 0);
+    this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 0);
     // At this point in time, we have already expanded `$name`, `$$` and `$n` to its `$$[n]` index expression.
     // 
     // Also cannot use regex `\b` with `\$` as the regex doesn't consider the literal `$` to be a *word* character
@@ -859,7 +860,8 @@ lookaheadMixin.followSets = function followSets() {
         cont = false;
 
         productions.forEach(function Follow_prod_forEach(production, k) {
-            //self.trace(production.symbol, nonterminals[production.symbol].follows);
+            self.trace(production.symbol, nonterminals[production.symbol].follows);
+
             // q is used in Simple LALR algorithm determine follows in context
             var q;
             var ctx = !!self.go_;
@@ -1429,7 +1431,7 @@ function generateGenericHeaderComment() {
         + ' *\n'
         + ' *    quoteName: function(name),\n'
         + ' *               Helper function which can be overridden by user code later on: put suitable\n'
-        + ' *                quotes around literal IDs in a description string.\n'
+        + ' *               quotes around literal IDs in a description string.\n'
         + ' *\n'
         + ' *    describeSymbol: function(symbol),\n'
         + ' *               Return a more-or-less human-readable description of the given symbol, when\n'
@@ -1466,6 +1468,8 @@ function generateGenericHeaderComment() {
         + ' *    yyErrOk: function(),\n'
         + ' *    yyClearIn: function(),\n'
         + ' *\n'
+        + ' *    options: { ... parser %options ... },\n'
+        + ' *\n'
         + ' *    parse: function(input),\n'
         + ' *\n'
         + ' *    lexer: {\n'
@@ -1492,7 +1496,7 @@ function generateGenericHeaderComment() {
         + ' *        pushState: function(condition),\n'
         + ' *        stateStackSize: function(),\n'
         + ' *\n'
-        + ' *        options: { ... },\n'
+        + ' *        options: { ... lexer %options ... },\n'
         + ' *\n'
         + ' *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),\n'
         + ' *        rules: [...],\n'
@@ -1634,11 +1638,15 @@ var generatorMixin = {};
 generatorMixin.generate = function parser_generate(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
+    this.DEBUG = opt.debug || false;
+    if (this.DEBUG) {
+        console.log('GENERATE::OPTIONS: ', this.options);
+    }
     var code = '';
 
     // check for illegal identifier
     if (!opt.moduleName || !opt.moduleName.match(/^[a-zA-Z_$][a-zA-Z0-9_$\.]*$/)) {
-        if (opt.debug) {
+        if (opt.moduleName) {
             console.warn('WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.');
         }
         opt.moduleName = 'parser';
@@ -1662,6 +1670,10 @@ generatorMixin.generate = function parser_generate(opt) {
 generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
+    this.DEBUG = opt.debug || false;
+    if (this.DEBUG) {
+        console.log('GENERATE-AMD::OPTIONS: ', this.options);
+    }
     var module = this.generateModule_();
     var out = [
         generateGenericHeaderComment(),
@@ -1688,6 +1700,10 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
 generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
+    this.DEBUG = opt.debug || false;
+    if (this.DEBUG) {
+        console.log('GENERATE-CommonJS::OPTIONS: ', this.options);
+    }
     var moduleName = opt.moduleName || 'parser';
     var main = [];
     if (!opt.noMain) {
@@ -1717,6 +1733,10 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
 generatorMixin.generateModule = function generateModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
+    this.DEBUG = opt.debug || false;
+    if (this.DEBUG) {
+        console.log('GENERATE-Module::OPTIONS: ', this.options);
+    }
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
 
@@ -1833,6 +1853,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
         // remove:
         // 
+        //    var ranges = lexer.options && lexer.options.ranges;
+        //    ...
         //    if (typeof lexer.yylloc === 'undefined') {
         //        lexer.yylloc = {};
         //    }
@@ -1856,9 +1878,50 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/, lstack\b/g, '')
         .replace(/\s+if\b.*?\.yylloc\b.*?\{[^}]+\{\s*\}[^}]+\}[^;]+;/g, '\n\n\n\n\n')
         .replace(/\s+yyval\._\$\s*=\s*\{[^}]+\}[^\{\}]+\{[^}]+\}/g, '\n\n\n\n\n\n\n\n\n')
+        .replace(/^\s*var\s+ranges\s+=\s+lexer\.options\s+.*$/gm, '')
         .replace(/^.*?\blstack\b.*$/gm, '')
         .replace(/^.*?\blstack_[a-z]+.*$/gm, '')
         .replace(/^.*?\byyloc\s*=.*?\.yylloc\b.*?$/gm, '');
+    }
+
+    if (!info.DEBUG) {
+        // When 'debug mode' hasn't been turned on during parser generation, 
+        // then we don't allow it at all: this gives us faster production parsers.
+        // 
+        // When you want debug output at parse run-time, then you MUST produce a parser
+        // with either the 
+        //     %debug
+        // option set or by invoking JISON with the debug flag `-t`.
+
+        // remove:
+        // 
+        //     var yydebug = false;
+        //     ... and delete yydebug function definition ... 
+        //     ...
+        //     if (yydebug) yydebug(...);
+
+        parseFn = parseFn
+        .replace(/\s+var yydebug = [^\0]+?self\.trace[^\0]+?}\n/g, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+        .replace(/^.*?\byydebug\b.*?$/gm, '');
+    }
+
+    if (!info.actionsUseYYERROK) {
+        /*
+         * Kill this code:
+         *
+         *       if (this.yyErrOk === 1) {
+         *           this.yyErrOk = function yyErrOk() {
+         *               recovering = 0;
+         *           };
+         *       }
+         */
+        parseFn = parseFn
+        .replace(/\s+if \(this\.yyErrOk === 1\) \{[^\0]+?}\n/g, '\n\n\n\n\n');
+    }
+
+    if (!info.actionsUseYYCLEARIN) {
+        parseFn = parseFn
+        .replace(/\s+if \(this\.yyClearIn === 1\) \{[^\0]+?}\n/g, '\n\n\n\n\n\n');
     }
 
     info.performAction = actionFn;        
@@ -1950,22 +2013,25 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
     // and some post-coital touch-ups:
     if (!hasErrorRecovery) {
         // Also nuke the support declaration statement:
-        //          this.recovering = 0;
+        //          var recovering = 0;
         // and the recovery support statements:
-        //          if (this.recovering > 0) {
-        //              this.recovering--;
+        //          if (recovering > 0) {
+        //              recovering--;
         //          }
+        // and these yydebug particles:
+        //          , recovering: recovering
         parseFn = parseFn
-        .replace(/^\s*this\.recovering.*$/gm, '')
-        .replace(/^.*\bthis\.recovering\b.*\{[\s\r\n]*\}/gm, '')
+        .replace(/^\s*var recovering.*$/gm, '')
+        .replace(/, recovering: recovering/g, '')
+        .replace(/[ \t]*if \(recovering[^\)]+\) \{[^\0]+?\}\n/g, '\n\n\n\n\n')
         // And nuke the preErrorSymbol code as it is unused when there's no error recovery
-        //        if (!this.preErrorSymbol) { 
+        //        if (!preErrorSymbol) { 
         //            ... keep this chunk ...
         //        } else {
         //            ... KILL this chunk ...
         //        }
-        .replace(/\s+if[^a-z]+this\.preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}/g, '\n$1\n\n\n')
-        .replace(/^\s+this\.preErrorSymbol = .*$/gm, '');
+        .replace(/\s+if[^a-z]+preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}\n/g, '\n$1\n\n\n\n')
+        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '');
     }
     return parseFn;
 }
@@ -2060,8 +2126,47 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         return prods;
     }
 
+    function produceOptions(opts) {
+        var obj = {};
+        var do_not_pass = {
+          // type: 1,
+          _: 1,
+          noMain: 1,
+          compressTables: 1,
+          file: 1,
+          outfile: 1,
+          inputPath: 1,
+          lexfile: 1,
+          moduleName: 1,
+          moduleType: 1,
+        };
+        for (var k in opts) {
+            if (!do_not_pass[k]) {
+                // make sure numeric values are encoded as numeric, the rest as boolean/string.
+                if (typeof opts[k] === 'string') {
+                    var f = parseFloat(opts[k]);
+                    if (f == opts[k]) {
+                        obj[k] = f;
+                        continue;
+                    }
+                }
+                obj[k] = opts[k];
+            }
+        }
 
+        var pre = obj.pre_parse;
+        var post = obj.post_parse;
+        // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
+        obj.pre_parse = (pre ? true : undefined);
+        obj.post_parse = (post ? true : undefined);
 
+        var js = JSON.stringify(obj, null, 2);
+
+        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
+        js = js.replace(/^( +)pre_parse: true,$/gm, "$1pre_parse: " + String(pre) + ',');
+        js = js.replace(/^( +)post_parse: true,$/gm, "$1post_parse: " + String(post) + ',');
+        return js;
+    }
 
 
     // Generate the module creation code
@@ -2072,6 +2177,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'trace: ' + String(this.trace || parser.trace),
         'JisonParserError: JisonParserError',
         'yy: {}',
+        'options: ' + produceOptions(this.options),
         'symbols_: ' + JSON.stringify(sortSymbolTable(this.symbols_), null, 2),
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
         'nonterminals_: ' + JSON.stringify(produceProductionsForDebugging(this.nonterminals, this.symbols_), null, 2).replace(/"([0-9]+)":/g, '$1:'),
@@ -2085,11 +2191,11 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'parse: ' + parseFn
     ].concat(
         this.actionsUseYYERROK ?
-        'yyErrOk: ' + String(parser.yyErrOk) :
+        'yyErrOk: 1' :
         []
     ).concat(
         this.actionsUseYYCLEARIN ?
-        'yyClearIn: ' + String(parser.yyClearIn) :
+        'yyClearIn: 1' :
         []
     ).join(',\n');
     moduleCode += '\n};';
@@ -2781,11 +2887,22 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
 
 
     var prelude = [
-        compressProductions ? String(bp) : '',
-        compressDefaultActions ? String(bda) : '',
-        compressGotoTable ? String(bt) : '',
+        '',
+        compressProductions ? '// helper: reconstruct the productions[] table\n' + String(bp) : '',
+        '',
+        compressDefaultActions ? '// helper: reconstruct the defaultActions[] table\n' + String(bda) : '',
+        '',
+        compressGotoTable ? '// helper: reconstruct the \'goto\' table\n' + String(bt) : '',
+        '',
+        '// helper: runlength encoding with increment step: code, length: step (default step = 0)',
+        '// `this` references an array',
         String(s),
+        '',
+        '// helper: duplicate sequence from *relative* offset and length.',
+        '// `this` references an array',
         String(c),
+        '',
+        '// helper: unpack an array using helpers and data, all passed in an array argument \'a\'.',
         String(u)
     ];
     if (!compressAnything) {
@@ -2928,7 +3045,7 @@ parser.parse = function parse(input) {
         vstack = [null],    // semantic value stack
         lstack = [],        // location stack
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -2955,6 +3072,74 @@ parser.parse = function parse(input) {
 
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
+
+    var yydebug = false;
+    if (this.options.debug) {
+        yydebug = function yydebug_impl(msg, obj) {
+            var ref_list;
+            var ref_names;
+            function deepClone(from, sub) {
+                if (sub == null) { ref_list = []; ref_names = []; sub = 'root'; }
+                if (typeof from === "function") return "[Function]";
+                if (from == null || typeof from !== "object") return from;
+                if (from.constructor !== Object && from.constructor !== Array) {
+                    return from;
+                }
+
+                for (var i = 0, len = ref_list.length; i < len; i++) {
+                    if (ref_list[i] === from) {
+                        return "[Circular/Xref:" + ref_names[i] + "]";   // circular or cross reference
+                    }
+                }
+                ref_list.push(from);
+                ref_names.push(sub);
+
+                var to = new from.constructor();
+                for (var name in from) {
+                    if (name === 'parser') continue;
+                    if (name === 'lexer') continue;
+                    to[name] = deepClone(from[name], name);
+                }
+                return to;
+            }
+
+            obj = obj || {};
+            if (obj.symbol) {
+                obj['local yytext'] = yytext;
+                obj['lexer.yytext'] = lexer.yytext;
+                obj['lexer.yylloc'] = lexer.yylloc;
+                obj['lexer.yyllineno'] = lexer.yyllineno;
+            }
+            obj.state_stack = stack;
+            obj.value_stack = vstack;
+            obj.location_stack = lstack;
+
+            // ready the object for printing:
+            obj = deepClone(obj);
+
+            var js;
+            try {
+                js = JSON.stringify(obj, null, 2).replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ").replace(/[\n\s]+/g, " ");
+            } catch (ex) {
+                js = String(obj);
+            }
+            self.trace(msg, js, '\n');
+        };
+    }
+
+    if (this.yyErrOk === 1) {
+        this.yyErrOk = function yyErrOk() {
+            recovering = 0;
+        };
+    }
+
+    if (this.yyClearIn === 1) {
+        this.yyClearIn = function yyClearIn() {
+            preErrorSymbol = null;
+            symbol = null;
+            yytext = null;
+        };
+    }
 
     lexer.setInput(input, sharedState.yy);
 
@@ -2989,6 +3174,8 @@ parser.parse = function parse(input) {
     }
 
     function popStack(n) {
+        if (yydebug) yydebug('popStack: ', { pop_size: n });
+        if (!n) return;
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
         lstack.length = lstack.length - n;
@@ -3026,7 +3213,7 @@ _lexer_with_token_stack:
 _lexer_with_token_stack_end:
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -3117,14 +3304,16 @@ _handle_error_end_of_section:                   // this concludes the error reco
                 action = table[state] && table[state][symbol];
             }
 
+            if (yydebug) yydebug('after FETCH/LEX: ', { symbol: symbol });
+
 _handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
 
             // handle parse error
             if (!action || !action.length || !action[0]) {
-                var error_rule_depth;
+                var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -3153,17 +3342,20 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         location_stack: lstack,
                         lexer: lexer
                     });
+                    if (yydebug) yydebug('error detected: ', { error_rule_depth: error_rule_depth });
                     if (!p.recoverable) {
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
+                if (yydebug) yydebug('after ERROR DETECT: ', { error_rule_depth: error_rule_depth });
+
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -3186,6 +3378,8 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
                     symbol = lex();
+
+                    if (yydebug) yydebug('after ERROR RECOVERY-3: ', { symbol: symbol });
                 }
 
                 // try to recover from error
@@ -3207,9 +3401,12 @@ _handle_error_with_recovery:                // run this code when the grammar in
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
+
+                if (yydebug) yydebug('after ERROR POP: ', { error_rule_depth: error_rule_depth, symbol: symbol });
+
                 continue;
             }
 
@@ -3250,6 +3447,7 @@ _handle_error_no_recovery:                  // run this code when the grammar do
 
 _handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
 
+            if (yydebug) yydebug('::: action: ', { action: action, symbol: symbol });
             switch (action[0]) {
             // catch misc. parse failures:
             default:
@@ -3290,26 +3488,30 @@ _handle_error_end_of_section:                  // this concludes the error recov
             // shift:
             case 1: 
                 //this.shiftCount++;
+                if (yydebug) yydebug('>>> SHIFT: ', { symbol: symbol });
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
                 lstack.push(lexer.yylloc);
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
                     yyloc = lexer.yylloc;
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+                        if (yydebug) yydebug('... SHIFT:error rule matching: ', { recovering: recovering, symbol: symbol });
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+                    if (yydebug) yydebug('... SHIFT:error recovery: ', { recovering: recovering, symbol: symbol });
                 }
+    
                 continue;
 
             // reduce:
@@ -3321,6 +3523,8 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 lstack_end = lstack.length;
                 lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
+
+                if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: len });
 
                 // perform semantic action
                 yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
@@ -3343,9 +3547,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 }
 
                 // pop off stack
-                if (len) {
-                    popStack(len);
-                }
+                popStack(len);
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
@@ -3353,6 +3555,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+                if (yydebug) yydebug('REDUCED: ', { newState: newState, recovering: recovering, symbol: symbol });
                 continue;
 
             // accept:
@@ -3418,14 +3621,6 @@ _handle_error_end_of_section:                  // this concludes the error recov
     }
 
     return retval;
-};
-
-parser.yyErrOk = function yyErrOk() {
-    this.recovering = 0;
-};
-
-parser.yyClearIn = function yyClearIn() {
-    this.preErrorSymbol = null;
 };
 
 
@@ -3545,7 +3740,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    //self.trace('new production:', p);
+                    self.trace('new production:', p);
                 }
             });
             if (state.inadequate) {
@@ -3575,7 +3770,8 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                             }
                         });
                     });
-                    //self.trace('unioned item', item);
+                    
+                    self.trace('unioned item', item);
                 });
             }
         });
@@ -4240,7 +4436,7 @@ exports.transform = EBNF.transform;
  *
  *    quoteName: function(name),
  *               Helper function which can be overridden by user code later on: put suitable
- *                quotes around literal IDs in a description string.
+ *               quotes around literal IDs in a description string.
  *
  *    describeSymbol: function(symbol),
  *               Return a more-or-less human-readable description of the given symbol, when
@@ -4277,6 +4473,8 @@ exports.transform = EBNF.transform;
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
+ *    options: { ... parser %options ... },
+ *
  *    parse: function(input),
  *
  *    lexer: {
@@ -4303,7 +4501,7 @@ exports.transform = EBNF.transform;
  *        pushState: function(condition),
  *        stateStackSize: function(),
  *
- *        options: { ... },
+ *        options: { ... lexer %options ... },
  *
  *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
  *        rules: [...],
@@ -4457,6 +4655,8 @@ JisonParserError.prototype = Object.create(Error.prototype);
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
+
+// helper: reconstruct the productions[] table
 function bp(s) {
         var rv = [];
         var p = s.pop;
@@ -4469,6 +4669,8 @@ function bp(s) {
         }
         return rv;
     }
+
+// helper: reconstruct the defaultActions[] table
 function bda(s) {
         var rv = {};
         var d = s.idx;
@@ -4483,6 +4685,8 @@ function bda(s) {
         }
         return rv;
     }
+
+// helper: reconstruct the 'goto' table
 function bt(s) {
         var rv = [];
         var d = s.len;
@@ -4519,6 +4723,9 @@ function bt(s) {
         }
         return rv;
     }
+
+// helper: runlength encoding with increment step: code, length: step (default step = 0)
+// `this` references an array
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -4526,12 +4733,17 @@ function s(c, l, a) {
             c += a;
         }
     }
+
+// helper: duplicate sequence from *relative* offset and length.
+// `this` references an array
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
             this.push(this[i]);
         }
     }
+
+// helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -4553,6 +4765,9 @@ TERROR: 2,
 trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
+options: {
+  type: "lalr"
+},
 symbols_: {
   "$": 36,
   "$accept": 0,
@@ -6264,7 +6479,7 @@ parse: function parse(input) {
         vstack = [null],    // semantic value stack
 
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -6292,6 +6507,11 @@ parse: function parse(input) {
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
 
+
+
+
+
+
     lexer.setInput(input, sharedState.yy);
 
 
@@ -6309,10 +6529,6 @@ parse: function parse(input) {
     }
 
 
-
-
-    var ranges = lexer.options && lexer.options.ranges;
-
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
@@ -6323,6 +6539,8 @@ parse: function parse(input) {
     }
 
     function popStack(n) {
+
+        if (!n) return;
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
 
@@ -6341,7 +6559,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -6430,12 +6648,14 @@ parse: function parse(input) {
             }
 
 
+
+
             // handle parse error
             if (!action || !action.length || !action[0]) {
-                var error_rule_depth;
+                var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -6464,17 +6684,20 @@ parse: function parse(input) {
 
                         lexer: lexer
                     });
+
                     if (!p.recoverable) {
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
+
+
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -6497,6 +6720,8 @@ parse: function parse(input) {
 
 
                     symbol = lex();
+
+
                 }
 
                 // try to recover from error
@@ -6518,11 +6743,15 @@ parse: function parse(input) {
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
+
+
+
                 continue;
             }
+
 
 
             switch (action[0]) {
@@ -6565,26 +6794,30 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
+
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
                     yytext = lexer.yytext;
 
 
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+
                 }
+    
                 continue;
 
             // reduce:
@@ -6593,6 +6826,8 @@ parse: function parse(input) {
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
+
+
 
 
 
@@ -6618,9 +6853,7 @@ parse: function parse(input) {
                 }
 
                 // pop off stack
-                if (len) {
-                    popStack(len);
-                }
+                popStack(len);
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
@@ -6628,6 +6861,7 @@ parse: function parse(input) {
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+
                 continue;
 
             // accept:
@@ -8037,7 +8271,7 @@ module.exports={
  *
  *    quoteName: function(name),
  *               Helper function which can be overridden by user code later on: put suitable
- *                quotes around literal IDs in a description string.
+ *               quotes around literal IDs in a description string.
  *
  *    describeSymbol: function(symbol),
  *               Return a more-or-less human-readable description of the given symbol, when
@@ -8074,6 +8308,8 @@ module.exports={
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
+ *    options: { ... parser %options ... },
+ *
  *    parse: function(input),
  *
  *    lexer: {
@@ -8100,7 +8336,7 @@ module.exports={
  *        pushState: function(condition),
  *        stateStackSize: function(),
  *
- *        options: { ... },
+ *        options: { ... lexer %options ... },
  *
  *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
  *        rules: [...],
@@ -8254,6 +8490,8 @@ JisonParserError.prototype = Object.create(Error.prototype);
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
+
+// helper: reconstruct the productions[] table
 function bp(s) {
         var rv = [];
         var p = s.pop;
@@ -8266,6 +8504,8 @@ function bp(s) {
         }
         return rv;
     }
+
+// helper: reconstruct the defaultActions[] table
 function bda(s) {
         var rv = {};
         var d = s.idx;
@@ -8280,6 +8520,8 @@ function bda(s) {
         }
         return rv;
     }
+
+// helper: reconstruct the 'goto' table
 function bt(s) {
         var rv = [];
         var d = s.len;
@@ -8316,6 +8558,9 @@ function bt(s) {
         }
         return rv;
     }
+
+// helper: runlength encoding with increment step: code, length: step (default step = 0)
+// `this` references an array
 function s(c, l, a) {
         a = a || 0;
         for (var i = 0; i < l; i++) {
@@ -8323,12 +8568,17 @@ function s(c, l, a) {
             c += a;
         }
     }
+
+// helper: duplicate sequence from *relative* offset and length.
+// `this` references an array
 function c(i, l) {
         i = this.length - i;
         for (l += i; i < l; i++) {
             this.push(this[i]);
         }
     }
+
+// helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
         var rv = [];
         for (var i = 0, l = a.length; i < l; i++) {
@@ -8350,6 +8600,9 @@ TERROR: 2,
 trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
+options: {
+  type: "lalr"
+},
 symbols_: {
   "$accept": 0,
   "$end": 1,
@@ -8363,77 +8616,78 @@ symbols_: {
   "=": 61,
   "?": 63,
   "ACTION": 135,
-  "ACTION_BODY": 193,
-  "ALIAS": 188,
-  "ARROW_ACTION": 191,
-  "CODE": 198,
+  "ACTION_BODY": 194,
+  "ALIAS": 189,
+  "ARROW_ACTION": 192,
+  "CODE": 199,
+  "DEBUG": 147,
   "EOF": 132,
-  "EPSILON": 183,
-  "ID": 153,
-  "IMPORT": 148,
-  "INCLUDE": 195,
-  "INIT_CODE": 151,
-  "INTEGER": 175,
-  "LEFT": 166,
+  "EPSILON": 184,
+  "ID": 154,
+  "IMPORT": 149,
+  "INCLUDE": 196,
+  "INIT_CODE": 152,
+  "INTEGER": 176,
+  "LEFT": 167,
   "LEX_BLOCK": 140,
-  "NAME": 159,
-  "NONASSOC": 168,
-  "OPTIONS": 155,
-  "OPTIONS_END": 157,
-  "OPTION_VALUE": 160,
-  "PARSER_TYPE": 163,
-  "PARSE_PARAM": 161,
-  "PATH": 196,
-  "PREC": 189,
-  "RIGHT": 167,
+  "NAME": 160,
+  "NONASSOC": 169,
+  "OPTIONS": 156,
+  "OPTIONS_END": 158,
+  "OPTION_VALUE": 161,
+  "PARSER_TYPE": 164,
+  "PARSE_PARAM": 162,
+  "PATH": 197,
+  "PREC": 190,
+  "RIGHT": 168,
   "START": 138,
-  "STRING": 154,
+  "STRING": 155,
   "TOKEN": 142,
-  "TOKEN_TYPE": 174,
-  "UNKNOWN_DECL": 147,
-  "action": 182,
-  "action_body": 190,
-  "action_comments_body": 192,
-  "action_ne": 152,
-  "associativity": 165,
+  "TOKEN_TYPE": 175,
+  "UNKNOWN_DECL": 148,
+  "action": 183,
+  "action_body": 191,
+  "action_comments_body": 193,
+  "action_ne": 153,
+  "associativity": 166,
   "declaration": 137,
   "declaration_list": 128,
   "error": 2,
-  "expression": 186,
-  "expression_suffix": 184,
+  "expression": 187,
+  "expression_suffix": 185,
   "extra_parser_module_code": 133,
   "full_token_definitions": 143,
   "grammar": 130,
-  "handle": 180,
-  "handle_action": 179,
-  "handle_list": 178,
-  "handle_sublist": 185,
+  "handle": 181,
+  "handle_action": 180,
+  "handle_list": 179,
+  "handle_sublist": 186,
   "id": 139,
-  "id_list": 170,
-  "import_name": 149,
-  "import_path": 150,
+  "id_list": 171,
+  "import_name": 150,
+  "import_path": 151,
   "include_macro_code": 136,
-  "module_code_chunk": 197,
-  "one_full_token": 171,
+  "module_code_chunk": 198,
+  "one_full_token": 172,
   "operator": 141,
-  "option": 158,
-  "option_list": 156,
+  "option": 159,
+  "option_list": 157,
   "optional_action_header_block": 134,
   "optional_end_block": 131,
-  "optional_module_code_chunk": 194,
-  "optional_token_type": 169,
+  "optional_module_code_chunk": 195,
+  "optional_token_type": 170,
   "options": 146,
   "parse_param": 144,
   "parser_type": 145,
-  "prec": 181,
-  "production": 177,
-  "production_list": 176,
+  "prec": 182,
+  "production": 178,
+  "production_list": 177,
   "spec": 127,
-  "suffix": 187,
-  "symbol": 164,
-  "token_description": 173,
-  "token_list": 162,
-  "token_value": 172,
+  "suffix": 188,
+  "symbol": 165,
+  "token_description": 174,
+  "token_list": 163,
+  "token_value": 173,
   "{": 123,
   "|": 124,
   "}": 125
@@ -8458,30 +8712,31 @@ terminals_: {
   138: "START",
   140: "LEX_BLOCK",
   142: "TOKEN",
-  147: "UNKNOWN_DECL",
-  148: "IMPORT",
-  151: "INIT_CODE",
-  153: "ID",
-  154: "STRING",
-  155: "OPTIONS",
-  157: "OPTIONS_END",
-  159: "NAME",
-  160: "OPTION_VALUE",
-  161: "PARSE_PARAM",
-  163: "PARSER_TYPE",
-  166: "LEFT",
-  167: "RIGHT",
-  168: "NONASSOC",
-  174: "TOKEN_TYPE",
-  175: "INTEGER",
-  183: "EPSILON",
-  188: "ALIAS",
-  189: "PREC",
-  191: "ARROW_ACTION",
-  193: "ACTION_BODY",
-  195: "INCLUDE",
-  196: "PATH",
-  198: "CODE"
+  147: "DEBUG",
+  148: "UNKNOWN_DECL",
+  149: "IMPORT",
+  152: "INIT_CODE",
+  154: "ID",
+  155: "STRING",
+  156: "OPTIONS",
+  158: "OPTIONS_END",
+  160: "NAME",
+  161: "OPTION_VALUE",
+  162: "PARSE_PARAM",
+  164: "PARSER_TYPE",
+  167: "LEFT",
+  168: "RIGHT",
+  169: "NONASSOC",
+  175: "TOKEN_TYPE",
+  176: "INTEGER",
+  184: "EPSILON",
+  189: "ALIAS",
+  190: "PREC",
+  192: "ARROW_ACTION",
+  194: "ACTION_BODY",
+  196: "INCLUDE",
+  197: "PATH",
+  199: "CODE"
 },
 nonterminals_: {
   "$accept": {
@@ -8513,158 +8768,159 @@ nonterminals_: {
     15: "parse_param",
     16: "parser_type",
     17: "options",
-    18: "UNKNOWN_DECL",
-    19: "IMPORT import_name import_path",
-    20: "INIT_CODE import_name action_ne"
+    18: "DEBUG",
+    19: "UNKNOWN_DECL",
+    20: "IMPORT import_name import_path",
+    21: "INIT_CODE import_name action_ne"
   },
   "import_name": {
-    21: "ID",
-    22: "STRING"
+    22: "ID",
+    23: "STRING"
   },
   "import_path": {
-    23: "ID",
-    24: "STRING"
+    24: "ID",
+    25: "STRING"
   },
   "options": {
-    25: "OPTIONS option_list OPTIONS_END"
+    26: "OPTIONS option_list OPTIONS_END"
   },
   "option_list": {
-    26: "option_list option",
-    27: "option"
+    27: "option_list option",
+    28: "option"
   },
   "option": {
-    28: "NAME",
-    29: "NAME = OPTION_VALUE",
-    30: "NAME = NAME"
+    29: "NAME",
+    30: "NAME = OPTION_VALUE",
+    31: "NAME = NAME"
   },
   "parse_param": {
-    31: "PARSE_PARAM token_list"
+    32: "PARSE_PARAM token_list"
   },
   "parser_type": {
-    32: "PARSER_TYPE symbol"
+    33: "PARSER_TYPE symbol"
   },
   "operator": {
-    33: "associativity token_list"
+    34: "associativity token_list"
   },
   "associativity": {
-    34: "LEFT",
-    35: "RIGHT",
-    36: "NONASSOC"
+    35: "LEFT",
+    36: "RIGHT",
+    37: "NONASSOC"
   },
   "token_list": {
-    37: "token_list symbol",
-    38: "symbol"
+    38: "token_list symbol",
+    39: "symbol"
   },
   "full_token_definitions": {
-    39: "optional_token_type id_list",
-    40: "optional_token_type one_full_token"
+    40: "optional_token_type id_list",
+    41: "optional_token_type one_full_token"
   },
   "one_full_token": {
-    41: "id token_value token_description",
-    42: "id token_description",
-    43: "id token_value"
+    42: "id token_value token_description",
+    43: "id token_description",
+    44: "id token_value"
   },
   "optional_token_type": {
-    44: "<epsilon>",
-    45: "TOKEN_TYPE"
+    45: "<epsilon>",
+    46: "TOKEN_TYPE"
   },
   "token_value": {
-    46: "INTEGER"
+    47: "INTEGER"
   },
   "token_description": {
-    47: "STRING"
+    48: "STRING"
   },
   "id_list": {
-    48: "id_list id",
-    49: "id"
+    49: "id_list id",
+    50: "id"
   },
   "grammar": {
-    50: "optional_action_header_block production_list"
+    51: "optional_action_header_block production_list"
   },
   "production_list": {
-    51: "production_list production",
-    52: "production"
+    52: "production_list production",
+    53: "production"
   },
   "production": {
-    53: "id : handle_list ;"
+    54: "id : handle_list ;"
   },
   "handle_list": {
-    54: "handle_list | handle_action",
-    55: "handle_action"
+    55: "handle_list | handle_action",
+    56: "handle_action"
   },
   "handle_action": {
-    56: "handle prec action",
-    57: "EPSILON action"
+    57: "handle prec action",
+    58: "EPSILON action"
   },
   "handle": {
-    58: "handle expression_suffix",
-    59: "<epsilon>"
+    59: "handle expression_suffix",
+    60: "<epsilon>"
   },
   "handle_sublist": {
-    60: "handle_sublist | handle",
-    61: "handle"
+    61: "handle_sublist | handle",
+    62: "handle"
   },
   "expression_suffix": {
-    62: "expression suffix ALIAS",
-    63: "expression suffix"
+    63: "expression suffix ALIAS",
+    64: "expression suffix"
   },
   "expression": {
-    64: "ID",
-    65: "STRING",
-    66: "( handle_sublist )"
+    65: "ID",
+    66: "STRING",
+    67: "( handle_sublist )"
   },
   "suffix": {
-    67: "<epsilon>",
-    68: "*",
-    69: "?",
-    70: "+"
+    68: "<epsilon>",
+    69: "*",
+    70: "?",
+    71: "+"
   },
   "prec": {
-    71: "PREC symbol",
-    72: "<epsilon>"
+    72: "PREC symbol",
+    73: "<epsilon>"
   },
   "symbol": {
-    73: "id",
-    74: "STRING"
+    74: "id",
+    75: "STRING"
   },
   "id": {
-    75: "ID"
+    76: "ID"
   },
   "action_ne": {
-    76: "{ action_body }",
-    77: "ACTION",
-    78: "include_macro_code",
-    79: "ARROW_ACTION"
+    77: "{ action_body }",
+    78: "ACTION",
+    79: "include_macro_code",
+    80: "ARROW_ACTION"
   },
   "action": {
-    80: "action_ne",
-    81: "<epsilon>"
+    81: "action_ne",
+    82: "<epsilon>"
   },
   "action_body": {
-    82: "<epsilon>",
-    83: "action_comments_body",
-    84: "action_body { action_body } action_comments_body",
-    85: "action_body { action_body }"
+    83: "<epsilon>",
+    84: "action_comments_body",
+    85: "action_body { action_body } action_comments_body",
+    86: "action_body { action_body }"
   },
   "action_comments_body": {
-    86: "ACTION_BODY",
-    87: "action_comments_body ACTION_BODY"
+    87: "ACTION_BODY",
+    88: "action_comments_body ACTION_BODY"
   },
   "extra_parser_module_code": {
-    88: "optional_module_code_chunk",
-    89: "optional_module_code_chunk include_macro_code extra_parser_module_code"
+    89: "optional_module_code_chunk",
+    90: "optional_module_code_chunk include_macro_code extra_parser_module_code"
   },
   "include_macro_code": {
-    90: "INCLUDE PATH",
-    91: "INCLUDE error"
+    91: "INCLUDE PATH",
+    92: "INCLUDE error"
   },
   "module_code_chunk": {
-    92: "CODE",
-    93: "module_code_chunk CODE"
+    93: "CODE",
+    94: "module_code_chunk CODE"
   },
   "optional_module_code_chunk": {
-    94: "module_code_chunk",
-    95: "<epsilon>"
+    95: "module_code_chunk",
+    96: "<epsilon>"
   }
 },
 productions_: bp({
@@ -8677,72 +8933,72 @@ productions_: bp({
   128,
   128,
   s,
-  [137, 12],
-  149,
-  149,
+  [137, 13],
   150,
   150,
+  151,
+  151,
   146,
-  156,
-  156,
+  157,
+  157,
   s,
-  [158, 3],
+  [159, 3],
   144,
   145,
   141,
   s,
-  [165, 3],
-  162,
-  162,
+  [166, 3],
+  163,
+  163,
   143,
   143,
   s,
-  [171, 3],
-  169,
-  169,
-  172,
+  [172, 3],
+  170,
+  170,
   173,
-  170,
-  170,
+  174,
+  171,
+  171,
   130,
-  176,
-  176,
+  177,
   177,
   178,
-  178,
   179,
   179,
   180,
   180,
-  185,
-  185,
-  184,
-  184,
-  s,
-  [186, 3],
-  s,
-  [187, 4],
   181,
   181,
-  164,
-  164,
+  186,
+  186,
+  185,
+  185,
+  s,
+  [187, 3],
+  s,
+  [188, 4],
+  182,
+  182,
+  165,
+  165,
   139,
   s,
-  [152, 4],
-  182,
-  182,
+  [153, 4],
+  183,
+  183,
   s,
-  [190, 4],
-  192,
-  192,
+  [191, 4],
+  193,
+  193,
   133,
   133,
   136,
   136,
-  197,
-  197,
-  194,
-  194
+  198,
+  198,
+  195,
+  195
 ]),
   rule: u([
   5,
@@ -8758,13 +9014,13 @@ productions_: bp({
   c,
   [3, 3],
   s,
-  [1, 4],
+  [1, 5],
   3,
   3,
   c,
   [6, 5],
   c,
-  [14, 3],
+  [15, 3],
   3,
   3,
   s,
@@ -8828,33 +9084,33 @@ case 1 :
 break;
 case 3 : 
 /*! Production::     optional_end_block : '%%' extra_parser_module_code */
- case 31 : 
-/*! Production::     parse_param : PARSE_PARAM token_list */
  case 32 : 
+/*! Production::     parse_param : PARSE_PARAM token_list */
+ case 33 : 
 /*! Production::     parser_type : PARSER_TYPE symbol */
- case 64 : 
+ case 65 : 
 /*! Production::     expression : ID */
- case 73 : 
-/*! Production::     symbol : id */
  case 74 : 
-/*! Production::     symbol : STRING */
+/*! Production::     symbol : id */
  case 75 : 
+/*! Production::     symbol : STRING */
+ case 76 : 
 /*! Production::     id : ID */
- case 77 : 
-/*! Production::     action_ne : ACTION */
  case 78 : 
+/*! Production::     action_ne : ACTION */
+ case 79 : 
 /*! Production::     action_ne : include_macro_code */
- case 80 : 
+ case 81 : 
 /*! Production::     action : action_ne */
- case 83 : 
+ case 84 : 
 /*! Production::     action_body : action_comments_body */
- case 86 : 
+ case 87 : 
 /*! Production::     action_comments_body : ACTION_BODY */
- case 88 : 
+ case 89 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk */
- case 92 : 
+ case 93 : 
 /*! Production::     module_code_chunk : CODE */
- case 94 : 
+ case 95 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
   this.$ = $$[$0];  
 break;
@@ -8912,68 +9168,72 @@ case 17 :
   this.$ = {options: $$[$0]};  
 break;
 case 18 : 
+/*! Production::     declaration : DEBUG */
+  this.$ = {options: [['debug', true]]};  
+break;
+case 19 : 
 /*! Production::     declaration : UNKNOWN_DECL */
   this.$ = {unknownDecl: $$[$0]};  
 break;
-case 19 : 
+case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
   this.$ = {imports: {name: $$[$0-1], path: $$[$0]}};  
 break;
-case 20 : 
+case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
   this.$ = {initCode: {qualifier: $$[$0-1], include: $$[$0]}};  
 break;
-case 25 : 
+case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
- case 76 : 
+ case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
   this.$ = $$[$0-1];  
 break;
-case 26 : 
+case 27 : 
 /*! Production::     option_list : option_list option */
- case 37 : 
+ case 38 : 
 /*! Production::     token_list : token_list symbol */
- case 48 : 
+ case 49 : 
 /*! Production::     id_list : id_list id */
   this.$ = $$[$0-1]; this.$.push($$[$0]);  
 break;
-case 27 : 
+case 28 : 
 /*! Production::     option_list : option */
- case 38 : 
+ case 39 : 
 /*! Production::     token_list : symbol */
- case 49 : 
+ case 50 : 
 /*! Production::     id_list : id */
- case 55 : 
+ case 56 : 
 /*! Production::     handle_list : handle_action */
   this.$ = [$$[$0]];  
 break;
-case 28 : 
+case 29 : 
 /*! Production::     option : NAME[option] */
   this.$ = [$$[$0], true];  
 break;
-case 29 : 
+case 30 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
- case 30 : 
+ case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
   this.$ = [$$[$0-2], $$[$0]];  
 break;
-case 33 : 
+case 34 : 
 /*! Production::     operator : associativity token_list */
   this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
 break;
-case 34 : 
+case 35 : 
 /*! Production::     associativity : LEFT */
   this.$ = 'left';  
 break;
-case 35 : 
+case 36 : 
 /*! Production::     associativity : RIGHT */
   this.$ = 'right';  
 break;
-case 36 : 
+case 37 : 
 /*! Production::     associativity : NONASSOC */
   this.$ = 'nonassoc';  
 break;
-case 39 : 
+case 40 : 
 /*! Production::     full_token_definitions : optional_token_type id_list */
  
             var rv = [];
@@ -8989,7 +9249,7 @@ case 39 :
             this.$ = rv;
          
 break;
-case 40 : 
+case 41 : 
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
  
             var m = $$[$0];
@@ -8999,7 +9259,7 @@ case 40 :
             this.$ = [m];
          
 break;
-case 41 : 
+case 42 : 
 /*! Production::     one_full_token : id token_value token_description */
  
             this.$ = {
@@ -9008,7 +9268,7 @@ case 41 :
             };
          
 break;
-case 42 : 
+case 43 : 
 /*! Production::     one_full_token : id token_description */
  
             this.$ = {
@@ -9017,7 +9277,7 @@ case 42 :
             };
          
 break;
-case 43 : 
+case 44 : 
 /*! Production::     one_full_token : id token_value */
  
             this.$ = {
@@ -9027,18 +9287,18 @@ case 43 :
             };
          
 break;
-case 44 : 
+case 45 : 
 /*! Production::     optional_token_type :  */
   this.$ = false;  
 break;
-case 50 : 
+case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
  
             this.$ = $$[$0-1];
             this.$.grammar = $$[$0];
          
 break;
-case 51 : 
+case 52 : 
 /*! Production::     production_list : production_list production */
  
             this.$ = $$[$0-1];
@@ -9049,22 +9309,22 @@ case 51 :
             }
          
 break;
-case 52 : 
+case 53 : 
 /*! Production::     production_list : production */
   this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
 break;
-case 53 : 
+case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
  this.$ = [$$[$0-3], $$[$0-1]]; 
 break;
-case 54 : 
+case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0]);
          
 break;
-case 56 : 
+case 57 : 
 /*! Production::     handle_action : handle prec action */
  
             this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
@@ -9079,7 +9339,7 @@ case 56 :
             }
          
 break;
-case 57 : 
+case 58 : 
 /*! Production::     handle_action : EPSILON action */
  
             this.$ = [''];
@@ -9091,49 +9351,49 @@ case 57 :
             }
          
 break;
-case 58 : 
+case 59 : 
 /*! Production::     handle : handle expression_suffix */
  
             this.$ = $$[$0-1];
             this.$.push($$[$0]);
          
 break;
-case 59 : 
+case 60 : 
 /*! Production::     handle :  */
  
             this.$ = [];
          
 break;
-case 60 : 
+case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
  
             this.$ = $$[$0-2];
             this.$.push($$[$0].join(' '));
          
 break;
-case 61 : 
+case 62 : 
 /*! Production::     handle_sublist : handle */
  
             this.$ = [$$[$0].join(' ')];
          
 break;
-case 62 : 
+case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
  
             this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";
          
 break;
-case 63 : 
+case 64 : 
 /*! Production::     expression_suffix : expression suffix */
- case 87 : 
+ case 88 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
- case 93 : 
+ case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
  
             this.$ = $$[$0-1] + $$[$0];
          
 break;
-case 65 : 
+case 66 : 
 /*! Production::     expression : STRING */
  
             // Re-encode the string *anyway* as it will
@@ -9147,51 +9407,51 @@ case 65 :
             }
          
 break;
-case 66 : 
+case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
  
             this.$ = '(' + $$[$0-1].join(' | ') + ')';
          
 break;
-case 67 : 
+case 68 : 
 /*! Production::     suffix :  */
- case 81 : 
-/*! Production::     action :  */
  case 82 : 
+/*! Production::     action :  */
+ case 83 : 
 /*! Production::     action_body :  */
- case 95 : 
+ case 96 : 
 /*! Production::     optional_module_code_chunk :  */
   this.$ = '';  
 break;
-case 71 : 
+case 72 : 
 /*! Production::     prec : PREC symbol */
  
             this.$ = { prec: $$[$0] };
          
 break;
-case 72 : 
+case 73 : 
 /*! Production::     prec :  */
  
             this.$ = null;
          
 break;
-case 79 : 
+case 80 : 
 /*! Production::     action_ne : ARROW_ACTION */
   this.$ = '$$ =' + $$[$0] + ';';  
 break;
-case 84 : 
+case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
   this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 85 : 
+case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
   this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 89 : 
+case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
   this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
 break;
-case 90 : 
+case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
  
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
@@ -9199,7 +9459,7 @@ case 90 :
             this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
          
 break;
-case 91 : 
+case 92 : 
 /*! Production::     include_macro_code : INCLUDE error */
  
             console.error("%include MUST be followed by a valid file path");
@@ -9209,17 +9469,17 @@ break;
 },
 table: bt({
   len: u([
-  17,
+  18,
   1,
-  22,
+  23,
   5,
-  15,
+  16,
   2,
-  15,
-  15,
+  16,
+  16,
   4,
   s,
-  [15, 6],
+  [16, 7],
   3,
   3,
   5,
@@ -9230,22 +9490,22 @@ table: bt({
   2,
   3,
   7,
-  15,
-  23,
-  15,
+  16,
+  24,
+  16,
   4,
   1,
   3,
   s,
   [6, 3],
-  19,
-  17,
+  20,
+  18,
+  22,
+  22,
   21,
   21,
   20,
-  20,
-  19,
-  15,
+  16,
   3,
   2,
   3,
@@ -9255,15 +9515,15 @@ table: bt({
   s,
   [3, 3],
   1,
-  17,
-  15,
-  20,
+  18,
+  16,
+  21,
   s,
-  [15, 4],
+  [16, 4],
   5,
   s,
-  [17, 4],
-  15,
+  [18, 4],
+  16,
   2,
   2,
   1,
@@ -9271,11 +9531,11 @@ table: bt({
   s,
   [3, 4],
   14,
+  17,
+  18,
   16,
   17,
-  15,
   16,
-  15,
   2,
   3,
   c,
@@ -9285,8 +9545,8 @@ table: bt({
   [4, 3],
   13,
   9,
-  15,
-  17,
+  16,
+  18,
   5,
   3,
   1,
@@ -9323,14 +9583,15 @@ table: bt({
   142,
   147,
   148,
-  151,
-  155,
-  161,
-  163,
-  166,
+  149,
+  152,
+  156,
+  162,
+  164,
   167,
   168,
-  195,
+  169,
+  196,
   1,
   129,
   s,
@@ -9339,264 +9600,264 @@ table: bt({
   141,
   142,
   s,
-  [144, 5, 1],
+  [144, 6, 1],
   c,
-  [22, 4],
+  [23, 4],
   s,
-  [165, 4, 1],
-  195,
+  [166, 4, 1],
+  196,
   130,
   134,
   135,
-  153,
-  195,
-  c,
-  [43, 15],
-  139,
-  153,
-  c,
-  [17, 15],
-  c,
-  [15, 15],
-  143,
-  153,
-  169,
-  174,
-  c,
-  [34, 30],
-  c,
-  [15, 60],
-  149,
-  153,
   154,
+  196,
+  c,
+  [45, 16],
+  139,
+  154,
+  c,
+  [18, 16],
+  c,
+  [16, 16],
+  143,
+  154,
+  170,
+  175,
+  c,
+  [36, 32],
+  c,
+  [16, 80],
+  150,
+  154,
+  155,
   c,
   [3, 3],
   139,
-  153,
   154,
-  162,
-  164,
+  155,
+  163,
+  165,
   2,
-  196,
+  197,
   c,
   [7, 5],
   c,
   [5, 3],
-  164,
-  156,
-  158,
+  165,
+  157,
   159,
-  153,
+  160,
   154,
-  153,
+  155,
   154,
-  153,
+  155,
   154,
+  155,
   129,
   131,
   132,
   135,
   136,
   139,
-  153,
-  176,
+  154,
   177,
+  178,
   c,
-  [56, 16],
+  [57, 17],
   58,
   59,
   123,
   124,
   c,
-  [19, 8],
-  153,
+  [20, 9],
   154,
+  155,
   c,
-  [21, 6],
-  175,
-  191,
+  [22, 6],
+  176,
+  192,
   c,
-  [220, 18],
-  170,
+  [247, 19],
   171,
-  153,
-  150,
-  153,
+  172,
   154,
+  151,
+  154,
+  155,
   123,
   135,
-  153,
   154,
-  191,
-  195,
+  155,
+  192,
+  196,
   c,
   [6, 8],
   136,
-  152,
+  153,
   c,
-  [41, 5],
+  [42, 5],
   139,
   c,
-  [61, 10],
-  164,
+  [63, 11],
+  165,
   c,
-  [154, 12],
+  [159, 13],
   c,
-  [79, 8],
-  195,
+  [82, 8],
+  196,
   c,
-  [99, 19],
-  191,
+  [103, 20],
+  192,
   c,
-  [21, 23],
+  [22, 24],
   124,
   s,
   [129, 4, 3],
   c,
-  [21, 6],
+  [22, 7],
   c,
-  [61, 7],
-  198,
+  [64, 7],
+  199,
   c,
-  [20, 20],
+  [21, 21],
   c,
-  [118, 27],
+  [124, 29],
   c,
-  [35, 7],
-  157,
+  [37, 7],
   158,
   159,
-  157,
-  159,
+  160,
+  158,
+  160,
   61,
-  157,
-  159,
+  158,
+  160,
   132,
   132,
   133,
-  194,
   195,
-  197,
+  196,
   198,
+  199,
   129,
   132,
   139,
-  153,
-  177,
+  154,
+  178,
   c,
-  [436, 3],
+  [472, 3],
   c,
-  [439, 4],
+  [475, 4],
   132,
-  153,
+  154,
   58,
   c,
-  [64, 10],
+  [66, 11],
   c,
-  [349, 30],
+  [363, 32],
   c,
-  [154, 8],
-  172,
+  [161, 8],
   173,
-  175,
+  174,
+  176,
   c,
-  [414, 61],
+  [432, 65],
   123,
   125,
-  190,
-  192,
+  191,
   193,
+  194,
   c,
-  [201, 3],
+  [211, 3],
   c,
-  [22, 14],
+  [23, 15],
   c,
-  [17, 34],
+  [18, 36],
   c,
-  [331, 17],
+  [348, 18],
   c,
-  [230, 16],
-  159,
-  159,
+  [242, 17],
   160,
+  160,
+  161,
   1,
   132,
   132,
   136,
-  195,
+  196,
   132,
-  195,
-  198,
+  196,
+  199,
   c,
   [3, 3],
   c,
-  [219, 3],
+  [231, 3],
   40,
   c,
-  [344, 3],
+  [361, 3],
   c,
-  [415, 3],
-  178,
+  [435, 3],
   179,
   180,
-  183,
-  189,
-  c,
-  [455, 10],
-  c,
-  [231, 16],
-  c,
-  [79, 7],
-  173,
-  c,
-  [183, 24],
-  c,
-  [111, 23],
-  123,
-  125,
-  123,
-  125,
-  193,
-  c,
-  [3, 3],
-  157,
-  c,
-  [348, 3],
-  c,
-  [344, 6],
-  c,
-  [117, 3],
-  59,
-  124,
-  59,
-  124,
-  c,
-  [118, 7],
   181,
   184,
-  186,
+  190,
   c,
-  [117, 3],
+  [476, 11],
+  c,
+  [243, 17],
+  c,
+  [82, 7],
+  174,
+  c,
+  [192, 26],
+  c,
+  [116, 24],
+  123,
+  125,
+  123,
+  125,
+  194,
+  c,
+  [3, 3],
+  158,
+  c,
+  [365, 3],
+  c,
+  [361, 6],
+  c,
+  [122, 3],
+  59,
+  124,
+  59,
+  124,
+  c,
+  [123, 7],
+  182,
+  185,
+  187,
+  c,
+  [122, 3],
   c,
   [12, 4],
   136,
-  152,
-  182,
+  153,
+  183,
   c,
-  [581, 17],
+  [607, 18],
   c,
-  [222, 17],
+  [231, 18],
   c,
-  [278, 5],
+  [290, 5],
   c,
-  [79, 3],
+  [81, 3],
   132,
   c,
-  [184, 10],
+  [191, 10],
   c,
-  [183, 6],
+  [190, 6],
   c,
-  [66, 9],
+  [68, 9],
   40,
   41,
   c,
@@ -9604,15 +9865,15 @@ table: bt({
   c,
   [20, 3],
   c,
-  [719, 4],
+  [749, 4],
   s,
   [40, 4, 1],
   59,
   63,
   c,
   [18, 5],
-  187,
   188,
+  189,
   c,
   [20, 3],
   c,
@@ -9620,12 +9881,12 @@ table: bt({
   c,
   [15, 21],
   124,
-  153,
   154,
-  180,
-  185,
+  155,
+  181,
+  186,
   c,
-  [160, 4],
+  [162, 4],
   123,
   125,
   c,
@@ -9642,12 +9903,12 @@ table: bt({
   124,
   c,
   [73, 5],
-  184,
-  186,
+  185,
+  187,
   123,
   125,
-  192,
   193,
+  194,
   c,
   [145, 11],
   c,
@@ -9661,31 +9922,31 @@ table: bt({
   0,
   0,
   s,
-  [2, 15],
+  [2, 16],
   1,
   2,
   2,
   c,
-  [20, 4],
+  [21, 4],
   0,
   c,
   [6, 3],
   c,
-  [27, 7],
+  [28, 8],
   c,
-  [7, 5],
+  [8, 5],
   c,
-  [40, 17],
+  [42, 18],
   c,
-  [25, 8],
+  [26, 8],
   s,
-  [2, 27],
+  [2, 29],
   c,
-  [68, 3],
+  [72, 3],
   s,
-  [2, 91],
+  [2, 113],
   c,
-  [165, 5],
+  [191, 5],
   c,
   [3, 5],
   c,
@@ -9695,65 +9956,63 @@ table: bt({
   c,
   [32, 10],
   c,
-  [198, 4],
+  [224, 4],
   c,
-  [94, 56],
+  [97, 59],
   c,
-  [61, 4],
+  [64, 4],
   c,
   [22, 17],
   c,
   [18, 6],
   c,
-  [24, 11],
+  [24, 12],
   c,
-  [226, 92],
+  [252, 112],
   c,
-  [367, 26],
+  [124, 34],
   c,
-  [118, 21],
+  [261, 10],
   c,
-  [250, 10],
+  [194, 6],
   c,
-  [186, 6],
+  [200, 16],
   c,
-  [192, 16],
+  [178, 48],
   c,
-  [171, 45],
+  [326, 59],
   c,
-  [312, 56],
+  [70, 81],
   c,
-  [66, 76],
+  [282, 40],
   c,
-  [268, 38],
+  [116, 8],
   c,
-  [111, 9],
+  [117, 38],
   c,
-  [112, 36],
+  [155, 64],
   c,
-  [148, 61],
+  [555, 19],
   c,
-  [530, 19],
+  [859, 11],
   c,
-  [118, 10],
+  [250, 40],
   c,
-  [128, 38],
+  [40, 17],
   c,
-  [278, 18],
-  c,
-  [689, 11],
+  [719, 11],
   c,
   [28, 15],
   c,
-  [727, 6],
+  [757, 6],
   c,
-  [187, 49],
+  [192, 49],
   c,
-  [376, 73],
+  [388, 73],
   c,
-  [856, 7],
+  [886, 7],
   c,
-  [337, 39],
+  [342, 39],
   0,
   0
 ]),
@@ -9766,489 +10025,490 @@ table: bt({
   11,
   12,
   13,
-  17,
-  25,
+  18,
   26,
   27,
-  29,
+  28,
   30,
-  32,
-  35,
-  38,
+  31,
+  33,
   36,
+  39,
   37,
   38,
-  42,
-  37,
-  38,
+  39,
   43,
+  38,
+  39,
   44,
   45,
-  47,
-  51,
-  53,
-  49,
+  46,
+  48,
   52,
-  56,
   54,
-  55,
+  50,
+  53,
   57,
-  63,
-  60,
-  38,
-  65,
-  38,
-  65,
-  67,
-  70,
+  55,
+  56,
+  58,
+  64,
+  61,
+  39,
+  66,
+  39,
+  66,
+  68,
   71,
   72,
-  53,
-  74,
-  76,
+  73,
+  54,
+  75,
   77,
   78,
-  81,
+  79,
   82,
-  86,
-  88,
+  83,
+  87,
   89,
   90,
-  92,
-  96,
-  71,
+  91,
+  93,
+  97,
   72,
-  99,
+  73,
   100,
-  102,
-  63,
-  107,
-  106,
+  101,
+  103,
+  64,
   108,
-  82,
-  109,
-  90,
-  63,
   107,
+  109,
+  83,
   110,
-  38,
+  91,
+  64,
+  108,
   111,
+  39,
   112,
+  113,
+  118,
   117,
-  116,
-  100,
-  102,
-  122,
+  101,
+  103,
   123,
-  100,
-  102
+  124,
+  101,
+  103
 ]),
   mode: u([
   s,
-  [2, 15],
+  [2, 16],
   s,
-  [1, 15],
+  [1, 16],
   s,
-  [2, 18],
+  [2, 19],
   c,
-  [19, 19],
+  [20, 20],
   c,
-  [32, 45],
+  [34, 48],
   s,
-  [2, 59],
+  [2, 79],
   c,
-  [154, 19],
+  [179, 19],
   1,
   c,
   [21, 4],
   c,
-  [77, 54],
+  [80, 57],
   c,
-  [58, 3],
+  [61, 3],
   c,
-  [93, 16],
+  [96, 16],
   c,
-  [12, 10],
+  [13, 11],
   s,
-  [2, 114],
+  [2, 120],
   c,
-  [116, 24],
+  [122, 25],
   c,
-  [24, 4],
+  [25, 4],
   c,
   [3, 12],
   c,
-  [359, 16],
+  [392, 17],
   c,
-  [400, 39],
+  [436, 41],
   c,
-  [210, 64],
+  [220, 68],
   c,
-  [274, 86],
+  [288, 91],
   c,
-  [245, 5],
+  [258, 5],
   c,
-  [216, 13],
+  [228, 13],
   c,
-  [108, 32],
+  [113, 34],
   c,
-  [493, 55],
+  [518, 58],
   c,
-  [316, 17],
+  [333, 17],
   c,
   [18, 9],
   c,
-  [503, 6],
+  [528, 6],
   c,
-  [584, 39],
+  [612, 41],
   c,
-  [35, 15],
+  [37, 15],
   c,
-  [65, 6],
+  [67, 6],
   c,
-  [59, 15],
+  [61, 15],
   c,
-  [90, 5],
+  [92, 5],
   c,
   [21, 3],
   c,
-  [513, 68],
+  [533, 68],
   c,
   [69, 40],
   c,
   [130, 5],
   c,
-  [229, 14],
+  [231, 14],
   c,
-  [267, 29],
+  [269, 29],
   1
 ]),
   goto: u([
   s,
-  [8, 15],
+  [8, 16],
   3,
   9,
   5,
   6,
   8,
-  14,
-  15,
-  16,
-  21,
-  19,
-  20,
+  s,
+  [14, 4, 1],
   22,
+  20,
+  21,
   23,
   24,
-  18,
+  25,
+  19,
   s,
   [4, 3],
   s,
-  [7, 15],
-  28,
+  [7, 16],
+  29,
   s,
-  [10, 15],
+  [10, 16],
   s,
-  [11, 15],
-  44,
-  31,
-  s,
-  [13, 15],
-  s,
-  [14, 15],
-  s,
-  [15, 15],
-  s,
-  [16, 15],
-  s,
-  [17, 15],
-  s,
-  [18, 15],
-  33,
-  34,
-  33,
-  34,
-  28,
-  39,
-  41,
-  40,
-  28,
-  39,
-  28,
-  39,
-  46,
-  34,
-  34,
-  35,
-  35,
-  36,
-  36,
-  48,
-  2,
-  50,
-  28,
-  18,
-  s,
-  [9, 15],
-  s,
-  [75, 23],
-  s,
-  [12, 15],
-  28,
+  [11, 16],
   45,
-  58,
-  59,
+  32,
   s,
-  [21, 6],
+  [13, 16],
+  s,
+  [14, 16],
+  s,
+  [15, 16],
+  s,
+  [16, 16],
+  s,
+  [17, 16],
+  s,
+  [18, 16],
+  s,
+  [19, 16],
+  34,
+  35,
+  34,
+  35,
+  29,
+  40,
+  42,
+  41,
+  29,
+  40,
+  29,
+  40,
+  47,
+  35,
+  35,
+  36,
+  36,
+  37,
+  37,
+  49,
+  2,
+  51,
+  29,
+  19,
+  s,
+  [9, 16],
+  s,
+  [76, 24],
+  s,
+  [12, 16],
+  29,
+  46,
+  59,
+  60,
   s,
   [22, 6],
-  61,
+  s,
+  [23, 6],
   62,
-  64,
-  18,
+  63,
+  65,
+  19,
   s,
-  [33, 8],
-  28,
-  39,
+  [34, 9],
+  29,
+  40,
   s,
-  [33, 7],
+  [34, 7],
   s,
-  [38, 17],
+  [39, 18],
   s,
-  [73, 21],
+  [74, 22],
   s,
-  [74, 21],
+  [75, 22],
   s,
-  [90, 20],
+  [91, 21],
   s,
-  [91, 20],
+  [92, 21],
   s,
-  [31, 8],
-  28,
-  39,
+  [32, 9],
+  29,
+  40,
   s,
-  [31, 7],
+  [32, 7],
   s,
-  [32, 15],
-  66,
-  46,
-  27,
-  27,
-  68,
+  [33, 16],
+  67,
+  47,
   28,
   28,
   69,
-  95,
-  95,
-  73,
-  50,
-  50,
-  28,
+  29,
+  29,
+  70,
+  96,
+  96,
+  74,
+  51,
+  51,
+  29,
   s,
   [5, 3],
   s,
   [6, 3],
   s,
-  [52, 3],
-  75,
+  [53, 3],
+  76,
   s,
-  [39, 8],
-  28,
+  [40, 9],
+  29,
   s,
-  [39, 7],
+  [40, 7],
   s,
-  [40, 15],
+  [41, 16],
   s,
-  [49, 9],
+  [50, 10],
+  81,
+  s,
+  [50, 6],
   80,
+  50,
   s,
-  [49, 6],
-  79,
-  49,
+  [20, 16],
   s,
-  [19, 15],
+  [24, 16],
   s,
-  [23, 15],
+  [25, 16],
   s,
-  [24, 15],
-  s,
-  [20, 15],
-  82,
-  82,
+  [21, 16],
   83,
-  s,
-  [77, 17],
-  s,
-  [78, 17],
-  s,
-  [79, 17],
-  s,
-  [37, 17],
-  s,
-  [25, 15],
-  26,
-  26,
-  85,
+  83,
   84,
+  s,
+  [78, 18],
+  s,
+  [79, 18],
+  s,
+  [80, 18],
+  s,
+  [38, 18],
+  s,
+  [26, 16],
+  27,
+  27,
+  86,
+  85,
   1,
   3,
-  88,
-  18,
-  94,
-  94,
-  87,
-  s,
-  [92, 3],
-  s,
-  [51, 3],
-  s,
-  [59, 7],
-  91,
-  s,
-  [59, 3],
-  s,
-  [48, 16],
-  s,
-  [43, 8],
-  80,
-  s,
-  [43, 7],
-  s,
-  [42, 15],
-  s,
-  [46, 16],
-  s,
-  [47, 15],
-  94,
-  93,
-  83,
-  83,
+  89,
+  19,
   95,
-  s,
-  [86, 3],
-  29,
-  29,
-  30,
-  30,
-  c,
-  [329, 3],
+  95,
+  88,
   s,
   [93, 3],
-  97,
-  98,
-  55,
-  55,
-  105,
   s,
-  [72, 4],
-  103,
-  104,
-  101,
-  72,
-  72,
+  [52, 3],
+  s,
+  [60, 7],
+  92,
+  s,
+  [60, 3],
+  s,
+  [49, 17],
+  s,
+  [44, 9],
   81,
-  61,
-  81,
-  c,
-  [511, 3],
   s,
-  [41, 15],
+  [44, 7],
   s,
-  [76, 17],
-  c,
-  [262, 3],
+  [43, 16],
+  s,
+  [47, 17],
+  s,
+  [48, 16],
+  95,
+  94,
+  84,
+  84,
+  96,
   s,
   [87, 3],
-  89,
-  s,
-  [53, 3],
+  30,
+  30,
+  31,
+  31,
   c,
-  [169, 11],
-  c,
-  [59, 6],
+  [346, 3],
   s,
-  [58, 11],
-  28,
-  39,
-  67,
-  67,
-  113,
-  115,
-  67,
+  [94, 3],
+  98,
+  99,
+  56,
+  56,
+  106,
+  s,
+  [73, 4],
+  104,
+  105,
+  102,
+  73,
+  73,
+  82,
+  62,
+  82,
+  c,
+  [536, 3],
+  s,
+  [42, 16],
+  s,
+  [77, 18],
+  c,
+  [274, 3],
+  s,
+  [88, 3],
+  90,
+  s,
+  [54, 3],
+  c,
+  [176, 11],
+  c,
+  [61, 6],
+  s,
+  [59, 11],
+  29,
+  40,
+  68,
+  68,
   114,
+  116,
+  68,
+  115,
   s,
-  [67, 9],
-  s,
-  [64, 15],
+  [68, 9],
   s,
   [65, 15],
   s,
-  [59, 5],
-  57,
-  57,
-  80,
-  80,
-  94,
-  118,
-  54,
-  54,
-  56,
-  56,
+  [66, 15],
   s,
-  [71, 6],
-  s,
-  [63, 8],
+  [60, 5],
+  58,
+  58,
+  81,
+  81,
+  95,
   119,
+  55,
+  55,
+  57,
+  57,
   s,
-  [63, 3],
+  [72, 6],
   s,
-  [68, 12],
+  [64, 8],
+  120,
+  s,
+  [64, 3],
   s,
   [69, 12],
   s,
   [70, 12],
-  120,
+  s,
+  [71, 12],
   121,
-  105,
-  61,
-  61,
-  103,
+  122,
+  106,
+  62,
+  62,
   104,
-  85,
-  85,
-  83,
-  s,
-  [62, 11],
-  s,
-  [66, 15],
-  s,
-  [59, 5],
-  84,
-  84,
-  95,
   105,
-  60,
-  60,
-  103,
-  104
+  86,
+  86,
+  84,
+  s,
+  [63, 11],
+  s,
+  [67, 15],
+  s,
+  [60, 5],
+  85,
+  85,
+  96,
+  106,
+  61,
+  61,
+  104,
+  105
 ])
 }),
 defaultActions: bda({
   idx: u([
-  31,
-  69,
+  32,
   70,
-  96
+  71,
+  97
 ]),
   pop: u([
   s,
   [2, 4]
 ]),
   rule: u([
-  45,
+  46,
   1,
   3,
-  89
+  90
 ])
 }),
 parseError: function parseError(str, hash) {
@@ -10280,7 +10540,7 @@ parse: function parse(input) {
         vstack = [null],    // semantic value stack
 
         table = this.table;
-    this.recovering = 0;    // (only used when the grammar contains error recovery rules)
+    var recovering = 0;     // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF;
 
@@ -10308,6 +10568,11 @@ parse: function parse(input) {
     sharedState.yy.lexer = lexer;
     sharedState.yy.parser = this;
 
+
+
+
+
+
     lexer.setInput(input, sharedState.yy);
 
 
@@ -10325,10 +10590,6 @@ parse: function parse(input) {
     }
 
 
-
-
-    var ranges = lexer.options && lexer.options.ranges;
-
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState.yy.parseError === 'function') {
         this.parseError = sharedState.yy.parseError;
@@ -10339,6 +10600,8 @@ parse: function parse(input) {
     }
 
     function popStack(n) {
+
+        if (!n) return;
         stack.length = stack.length - 2 * n;
         vstack.length = vstack.length - n;
 
@@ -10357,7 +10620,7 @@ parse: function parse(input) {
 
 
     var symbol = null;
-    this.preErrorSymbol = null;
+    var preErrorSymbol = null;
     var state, action, r;
     var yyval = {};
     var p, len, this_production;
@@ -10446,12 +10709,14 @@ parse: function parse(input) {
             }
 
 
+
+
             // handle parse error
             if (!action || !action.length || !action[0]) {
-                var error_rule_depth;
+                var error_rule_depth = 0;
                 var errStr = null;
 
-                if (!this.recovering) {
+                if (!recovering) {
                     // first see if there's any chance at hitting an error recovery rule:
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
 
@@ -10480,17 +10745,20 @@ parse: function parse(input) {
 
                         lexer: lexer
                     });
+
                     if (!p.recoverable) {
                         retval = r;
                         break;
                     }
-                } else if (this.preErrorSymbol !== EOF) {
+                } else if (preErrorSymbol !== EOF) {
                     error_rule_depth = locateNearestErrorRecoveryRule(state);
                 }
 
+
+
                 // just recovered from another error
-                if (this.recovering === 3) {
-                    if (symbol === EOF || this.preErrorSymbol === EOF) {
+                if (recovering === 3) {
+                    if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
                             token: this.terminals_[symbol] || symbol,
@@ -10513,6 +10781,8 @@ parse: function parse(input) {
 
 
                     symbol = lex();
+
+
                 }
 
                 // try to recover from error
@@ -10534,11 +10804,15 @@ parse: function parse(input) {
                 }
                 popStack(error_rule_depth);
 
-                this.preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
+                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
                 symbol = TERROR;            // insert generic error symbol as new lookahead
-                this.recovering = 3;        // allow 3 real symbols to be shifted before reporting a new error
+                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
+
+
+
                 continue;
             }
+
 
 
             switch (action[0]) {
@@ -10581,26 +10855,30 @@ parse: function parse(input) {
             // shift:
             case 1: 
                 //this.shiftCount++;
+
                 stack.push(symbol);
                 vstack.push(lexer.yytext);
 
                 stack.push(action[1]); // push state
                 symbol = null;
-                if (!this.preErrorSymbol) { // normal execution / no error
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
                     yytext = lexer.yytext;
 
 
 
-                    if (this.recovering > 0) {
-                        this.recovering--;
+                    if (recovering > 0) {
+                        recovering--;
+
                     }
                 } else {
                     // error just occurred, resume old lookahead f/ before error
-                    symbol = this.preErrorSymbol;
-                    this.preErrorSymbol = null;
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = null;
+
                 }
+    
                 continue;
 
             // reduce:
@@ -10609,6 +10887,8 @@ parse: function parse(input) {
                 newState = action[1];
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
                 len = this_production[1];
+
+
 
 
 
@@ -10634,9 +10914,7 @@ parse: function parse(input) {
                 }
 
                 // pop off stack
-                if (len) {
-                    popStack(len);
-                }
+                popStack(len);
 
                 stack.push(this_production[0]);    // push nonterminal (reduce)
                 vstack.push(yyval.$);
@@ -10644,6 +10922,7 @@ parse: function parse(input) {
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
                 stack.push(newState);
+
                 continue;
 
             // accept:
@@ -11167,17 +11446,17 @@ break;
 case 13 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
 break;
 case 14 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
 break;
 case 16 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 157; 
+ this.popState(); return 158; 
 break;
 case 17 : 
 /*! Conditions:: options */ 
@@ -11207,17 +11486,17 @@ break;
 case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 188; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
 break;
 case 24 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
 break;
 case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
 break;
 case 30 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -11232,7 +11511,7 @@ break;
 case 32 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
 break;
 case 39 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -11242,12 +11521,12 @@ break;
 case 41 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %options\b */ 
- this.pushState('options'); return 155; 
+ this.pushState('options'); return 156; 
 break;
 case 45 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 195; 
+ this.pushState('path'); return 196; 
 break;
 case 46 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -11255,13 +11534,13 @@ case 46 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 147;
+                                            return 148;
                                          
 break;
 case 47 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 174; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
 break;
 case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -11281,17 +11560,17 @@ break;
 case 51 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 191; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
 break;
 case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 175; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
 break;
 case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 175; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
 break;
 case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -11303,7 +11582,7 @@ break;
 case 58 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 193; // regexp with braces or quotes (and no spaces) 
+ return 194; // regexp with braces or quotes (and no spaces) 
 break;
 case 63 : 
 /*! Conditions:: action */ 
@@ -11318,7 +11597,7 @@ break;
 case 66 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 198;      // the bit of CODE just before EOF... 
+ return 199;      // the bit of CODE just before EOF... 
 break;
 case 67 : 
 /*! Conditions:: path */ 
@@ -11328,12 +11607,12 @@ break;
 case 68 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
 break;
 case 69 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
 break;
 case 70 : 
 /*! Conditions:: path */ 
@@ -11343,7 +11622,7 @@ break;
 case 71 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 196; 
+ this.popState(); return 197; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -11353,10 +11632,10 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 183,
+   4 : 184,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 183,
+   5 : 184,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
    6 : 40,
@@ -11374,16 +11653,16 @@ simpleCaseActionClusters: {
    10 : 43,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   11 : 159,
+   11 : 160,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    12 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   15 : 160,
+   15 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   23 : 153,
+   23 : 154,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
    26 : 'TOKEN_WORD',
@@ -11398,58 +11677,58 @@ simpleCaseActionClusters: {
    29 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   33 : 163,
+   33 : 164,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   34 : 189,
+   34 : 190,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
    35 : 138,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   36 : 166,
+   36 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   37 : 167,
+   37 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   38 : 168,
+   38 : 169,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   40 : 161,
+   40 : 162,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
    42 : 140,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   43 : 151,
+   43 : 152,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   44 : 148,
+   44 : 149,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
    55 : 132,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   56 : 193,
+   56 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   57 : 193,
+   57 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   59 : 193,
+   59 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   60 : 193,
+   60 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   61 : 193,
+   61 : 194,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   62 : 193,
+   62 : 194,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   65 : 198
+   65 : 199
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -12263,11 +12542,11 @@ function RegExpLexer(dict, input, tokens) {
                 var pre = opts.options.pre_lex;
                 var post = opts.options.post_lex;
                 // since JSON cannot encode functions, we'll have to do it manually now:
-                if (typeof opts.options.pre_lex === 'function') {
-                    lexer.options.pre_lex = opts.options.pre_lex;
+                if (typeof pre === 'function') {
+                    lexer.options.pre_lex = pre;
                 }
-                if (typeof opts.options.post_lex === 'function') {
-                    lexer.options.post_lex = opts.options.post_lex;
+                if (typeof post === 'function') {
+                    lexer.options.post_lex = post;
                 }
             }
 
@@ -12884,6 +13163,41 @@ function generateModuleBody(opt) {
         return str;
     }
 
+    function produceOptions(opts) {
+        var obj = {};
+        var do_not_pass = {
+          moduleName: 1,
+          moduleType: 1,
+        };
+        for (var k in opts) {
+            if (!do_not_pass[k]) {
+                // make sure numeric values are encoded as numeric, the rest as boolean/string.
+                if (typeof opts[k] === 'string') {
+                    var f = parseFloat(opts[k]);
+                    if (f == opts[k]) {
+                        obj[k] = f;
+                        continue;
+                    }
+                }
+                obj[k] = opts[k];
+            }
+        }
+
+        var pre = obj.pre_lex;
+        var post = obj.post_lex;
+        // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
+        obj.pre_lex = (pre ? true : undefined);
+        obj.post_lex = (post ? true : undefined);
+
+        var js = JSON.stringify(obj, null, 2);
+
+        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
+        js = js.replace(/^( +)pre_lex: true,$/gm, "$1pre_lex: " + String(pre) + ',');
+        js = js.replace(/^( +)post_lex: true,$/gm, "$1post_lex: " + String(post) + ',');
+        return js;
+    }
+
+
     var out;
     if (opt.rules.length > 0 || opt.in_rules_failure_analysis_mode) {
         var p = [];
@@ -12909,20 +13223,7 @@ function generateModuleBody(opt) {
             // Assure all options are camelCased:
             assert(typeof opt.options['case-insensitive'] === 'undefined');
 
-            var pre = opt.options.pre_lex;
-            var post = opt.options.post_lex;
-            // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
-            opt.options.pre_lex = (pre ? true : undefined);
-            opt.options.post_lex = (post ? true : undefined);
-
-            var js = JSON.stringify(opt.options, null, 2);
-            js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
-
-            // and restore the original:
-            opt.options.pre_lex = pre;
-            opt.options.post_lex = post;
-
-            out += ',\noptions: ' + js;
+            out += ',\noptions: ' + produceOptions(opt.options);
         }
 
         out += ',\nJisonLexerError: JisonLexerError';
