@@ -58,7 +58,7 @@ exports["test extra spaces in productions"] = function () {
     assert.ok(parser.parse('xyx'), "parse xyx");
 };
 
-exports["test | seperated rules"] = function () {
+exports["test | separated rules"] = function () {
 
     var grammar = {
         tokens: "x y",
@@ -97,7 +97,7 @@ exports["test start symbol should be nonterminal"] = function () {
         }
     };
 
-    assert.throws(function(){new Jison.Generator(grammar);}, "throws error");
+    assert.throws(function () { new Jison.Generator(grammar); }, "throws error");
 };
 
 exports["test token list as string"] = function () {
@@ -220,7 +220,7 @@ exports["test custom parse error method"] = function () {
         throw str;
     };
 
-    assert.throws(function () {parser.parse("aga")});
+    assert.throws(function () { parser.parse("aga"); });
     assert.strictEqual(result.text, "a", "parse error text should equal b");
     assert.strictEqual(typeof result.token, 'string', "parse error token should be a string");
     assert.strictEqual(result.line, 0, "hash should include line number");
@@ -251,7 +251,7 @@ exports["test no default resolve"] = function () {
 
     assert.ok(gen.table.length == 4, "table has 4 states");
     assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
-    assert.throws(function () {parser.parse("xx")}, "throws parse error for multiple actions");
+    assert.throws(function () { parser.parse("xx"); }, "throws parse error for multiple actions");
 };
 
 
@@ -293,7 +293,7 @@ exports["test whether default parser error handling throws an exception"] = func
     parser.lexer = new Lexer(lexData);
     parser.lexer.showPosition = null; // needed for "Unexpected" message
 
-    assert.throws(function () {parser.parse("xx"); });
+    assert.throws(function () { parser.parse("xx"); });
 };
 
 exports["test locations"] = function () {
@@ -403,7 +403,7 @@ exports["test lexer with no location support"] = function () {
       lex: function () {
         return this.toks.shift();
       },
-      setInput: function (){}
+      setInput: function () {}
     };
     var loc = parser.parse('xx\nxy');
 };
@@ -427,7 +427,7 @@ exports["test intance creation"] = function () {
       lex: function () {
         return this.toks.shift();
       },
-      setInput: function (){}
+      setInput: function () {}
     };
     var parser2 = new parser.Parser();
     parser2.lexer = parser.lexer;
