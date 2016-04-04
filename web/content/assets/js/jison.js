@@ -569,7 +569,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             // so it's like Chamberlain said: we can all go back to sleep now. ;-)
             pos = rhs.indexOf(marker);
             if (pos < 0) {
-                throw new Error("internal error parsing literal token(s) in grammar rule");
+                throw new Error('internal error parsing literal token(s) in grammar rule');
             }
             ls = rhs.substr(0, pos);
             // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
@@ -600,18 +600,19 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         if (Array.isArray(str)) {
             str = str.join(' ');
         }
-        str = str.replace(/\*\//g, "*\\/");         // destroy any inner `*/` comment terminator sequence.
+        str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
     }
 
     function buildProduction(handle) {
-        var r, rhs, i;
+        var r, rhs, i, 
+            precedence_override;
+
         if (devDebug) console.log('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
 
         if (handle.constructor === Array) {
             var aliased = [],
-                rhs_i,
-                precedence_override;
+                rhs_i;
             rhs = (typeof handle[0] === 'string') ?
                       splitStringIntoSymbols(handle[0]) :
                       handle[0].slice(0);
@@ -677,7 +678,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     // where each line above is equivalent to the top-most line. Note the numbers postfixed to
                     // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
                     // the postfix numbering is independent.
-                    function addName(s) {
+                    var addName = function addName(s) {
                         if (names[s]) {
                             names[s + (++count[s])] = i + 1;
                         } else {
@@ -685,7 +686,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                             names[s + '1'] = i + 1;
                             count[s] = 1;
                         }
-                    }
+                    };
 
                     for (i = 0; i < rhs.length; i++) {
                         // check for aliased names, e.g., id[alias]
@@ -810,7 +811,7 @@ generator.createParser = function createParser() {
     throw new Error('Calling abstract method.');
 };
 
-// noop. implemented in debug mixin
+// no-op. implemented in debug mixin
 generator.trace = function no_op_trace() { };
 
 generator.warn = function warn() {
@@ -985,7 +986,7 @@ lookaheadMixin.firstSets = function firstSets() {
 
         for (symbol in nonterminals) {
             firsts = [];
-            nonterminals[symbol].productions.forEach(function (production) {
+            nonterminals[symbol].productions.forEach(function FirstSets_forEachNonTerm(production) {
                 Set.union(firsts, production.first);
             });
             if (firsts.length !== nonterminals[symbol].first.length) {
@@ -1008,7 +1009,7 @@ lookaheadMixin.nullableSets = function nullableSets() {
         cont = false;
 
         // check if each production is nullable
-        this.productions.forEach(function (production, k) {
+        this.productions.forEach(function isEachProductionNullable(production, k) {
             if (!production.nullable) {
                 for (var i = 0, n = 0, t; (t = production.handle[i]); ++i) {
                     if (self.nullable(t)) n++;
@@ -1278,7 +1279,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
 
         // set shift and goto actions
         for (stackSymbol in itemSet.edges) {
-            itemSet.forEach(function (item, j) {
+            itemSet.forEach(function findShiftAndGotoActions(item, j) {
                 // find shift and goto actions
                 if (item.markedSymbol == stackSymbol) {
                     var gotoState = itemSet.edges[stackSymbol];
@@ -1296,7 +1297,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
         }
 
         // set accept action
-        itemSet.forEach(function (item, j) {
+        itemSet.forEach(function setAcceptAction(item, j) {
             if (item.markedSymbol == self.EOF) {
                 assert(item.markedSymbol === self.EOF);
                 // accept
@@ -1308,7 +1309,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
         var allterms = self.lookAheads ? false : self.terminals;
 
         // set reductions and resolve potential conflicts
-        itemSet.reductions.forEach(function (item, j) {
+        itemSet.reductions.forEach(function calcReduction(item, j) {
             // if parser uses lookahead, only enumerate those terminals
             var terminals = allterms || self.lookAheads(itemSet, item);
 
@@ -2247,9 +2248,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ");
-        js = js.replace(/^( +)pre_parse: true,$/gm, "$1pre_parse: " + String(pre) + ',');
-        js = js.replace(/^( +)post_parse: true,$/gm, "$1post_parse: " + String(post) + ',');
+        js = js.replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ');
+        js = js.replace(/^( +)pre_parse: true,$/gm, '$1pre_parse: ' + String(pre) + ',');
+        js = js.replace(/^( +)post_parse: true,$/gm, '$1post_parse: ' + String(post) + ',');
         return js;
     }
 
@@ -2309,29 +2310,91 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 };
 
 lrGeneratorMixin.generateErrorClass = function () {
+    // See also:
+    // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+    // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+    // with userland code which might access the derived class in a 'classic' way.
+    function JisonParserError(msg, hash) {
+        Object.defineProperty(this, 'name', {
+            enumerable: false,
+            writable: false,
+            value: 'JisonParserError'
+        });
+
+        if (msg == null) msg = '???';
+
+        Object.defineProperty(this, 'message', {
+            enumerable: false,
+            writable: true,
+            value: msg
+        });
+
+        this.hash = hash;
+
+        var stacktrace;
+        if (hash && hash.exception instanceof Error) {
+            var ex2 = hash.exception;
+            this.message = ex2.message || msg;
+            stacktrace = ex2.stack;
+        }
+        if (!stacktrace) {
+            if (Error.hasOwnProperty('captureStackTrace')) { // V8
+                Error.captureStackTrace(this, this.constructor);
+            } else {
+                stacktrace = (new Error(msg)).stack;
+            }
+        }
+        if (stacktrace) {
+            Object.defineProperty(this, 'stack', {
+                enumerable: false,
+                writable: false,
+                value: stacktrace
+            });
+        }
+    }
+
+    // wrap this init code in a function so we can String(function)-dump it into the generated 
+    // output: that way we only have to write this code *once*!
+    function __extra_code__() {
+        if (typeof Object.setPrototypeOf === 'function') {
+            Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+        } else {
+            JisonParserError.prototype = Object.create(Error.prototype);
+        }
+        JisonParserError.prototype.constructor = JisonParserError;
+        JisonParserError.prototype.name = 'JisonParserError';
+    }
+    __extra_code__();
+
+    var t = new JisonParserError('test', 42);
+    assert(t instanceof Error);
+    assert(t instanceof JisonParserError);
+    assert(t.hash === 42);
+    assert(t.message === 'test');
+    assert(t.toString() === 'JisonParserError: test');
+
+    var t2 = new Error('a');
+    var t3 = new JisonParserError('test', { exception: t2 });
+    assert(t2 instanceof Error);
+    assert(!(t2 instanceof JisonParserError));
+    assert(t3 instanceof Error);
+    assert(t3 instanceof JisonParserError);
+    assert(!t2.hash);
+    assert(t3.hash);
+    assert(t3.hash.exception);
+    assert(t2.message === 'a');
+    assert(t3.message === 'a');
+    assert(t2.toString() === 'Error: a');
+    assert(t3.toString() === 'JisonParserError: a');
+
     var prelude = [
-        "// See also:",
-        "// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript",
-        "function JisonParserError(msg, hash) {",
-        "    this.message = msg;",
-        "    this.hash = hash;",
-        "    var stacktrace;",
-        "    if (hash && hash.exception instanceof Error) {",
-        "      var ex2 = hash.exception;",
-        "      this.message = ex2.message || msg;",
-        "      stacktrace = ex2.stack;",
-        "    }",
-        "    if (!stacktrace) {",
-        "      stacktrace = (new Error(msg)).stack;",
-        "    }",
-        "    if (stacktrace) {",
-        "      this.stack = stacktrace;",
-        "    }",
-        "}",
-        "JisonParserError.prototype = Object.create(Error.prototype);",
-        "JisonParserError.prototype.constructor = JisonParserError;",
-        "JisonParserError.prototype.name = 'JisonParserError';",
-        "",
+        '// See also:',
+        '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
+        '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
+        '// with userland code which might access the derived class in a \'classic\' way.',
+        String(JisonParserError).replace(/^    /gm, ''),
+        String(__extra_code__).replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
+        '',
     ];
 
     return {
@@ -4704,26 +4767,56 @@ exports.transform = EBNF.transform;
 var lexParser = (function () {
 
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonParserError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonParserError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
+
     var stacktrace;
     if (hash && hash.exception instanceof Error) {
-      var ex2 = hash.exception;
-      this.message = ex2.message || msg;
-      stacktrace = ex2.stack;
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-      stacktrace = (new Error(msg)).stack;
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
     }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonParserError.prototype = Object.create(Error.prototype);
-JisonParserError.prototype.constructor = JisonParserError;
-JisonParserError.prototype.name = 'JisonParserError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+    } else {
+        JisonParserError.prototype = Object.create(Error.prototype);
+    }
+    JisonParserError.prototype.constructor = JisonParserError;
+    JisonParserError.prototype.name = 'JisonParserError';
+
 
 
 // helper: reconstruct the productions[] table
@@ -8391,26 +8484,56 @@ module.exports={
 var parser = (function () {
 
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonParserError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonParserError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
+
     var stacktrace;
     if (hash && hash.exception instanceof Error) {
-      var ex2 = hash.exception;
-      this.message = ex2.message || msg;
-      stacktrace = ex2.stack;
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-      stacktrace = (new Error(msg)).stack;
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
     }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonParserError.prototype = Object.create(Error.prototype);
-JisonParserError.prototype.constructor = JisonParserError;
-JisonParserError.prototype.name = 'JisonParserError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+    } else {
+        JisonParserError.prototype = Object.create(Error.prototype);
+    }
+    JisonParserError.prototype.constructor = JisonParserError;
+    JisonParserError.prototype.name = 'JisonParserError';
+
 
 
 // helper: reconstruct the productions[] table
