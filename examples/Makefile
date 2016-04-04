@@ -53,6 +53,7 @@ ALL_TARGETS =                                                   \
 			happyhappy                                          \
 			inherited_y                                         \
 			issue-254                                           \
+			issue-289                                           \
 			issue-293                                           \
 			jscore                                              \
 			json_ast_js                                         \
@@ -186,6 +187,11 @@ issue-254:
 # build *AND* run the test:
 issue-293:
 	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-289:
+	$(JISON) -t -p lalr ./$@.jison
 	node ./output/$@/$@.js
 
 jscore:

@@ -1,5 +1,5 @@
 
-all: build test examples/issue-293 examples/issue-254
+all: build test examples/issue-293 examples/issue-254 examples/issue-289
 
 prep: npm-install
 
@@ -47,6 +47,10 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 examples_directory: build
 	cd examples/ && make all
 
+examples/error-handling: build
+	cd examples/ && make error-handling
+
+
 
 examples/ansic: build
 	cd examples/ && make ansic
@@ -63,14 +67,41 @@ examples/basic2_lex: build
 examples/basic_lex: build
 	cd examples/ && make basic_lex
 
-examples/calculator: build
-	cd examples/ && make calculator
+examples/basic_w_error_rule: build
+	cd examples/ && make basic_w_error_rule
+
+examples/bloop: build
+	cd examples/ && make bloop
+
+examples/btyacc-ansiC: build
+	cd examples/ && make btyacc-ansiC
+
+examples/btyacc-ansiC2: build
+	cd examples/ && make btyacc-ansiC2
+
+examples/btyacc-ftp: build
+	cd examples/ && make btyacc-ftp
+
+examples/btyacc-t1: build
+	cd examples/ && make btyacc-t1
+
+examples/btyacc-t2: build
+	cd examples/ && make btyacc-t2
+
+examples/c99: build
+	cd examples/ && make c99
 
 examples/calc_LA_on_demand: build
 	cd examples/ && make calc_LA_on_demand
 
+examples/calculator: build
+	cd examples/ && make calculator
+
 examples/calculator_json: build
 	cd examples/ && make calculator_json
+
+examples/ccalc: build
+	cd examples/ && make ccalc
 
 examples/classy: build
 	cd examples/ && make classy
@@ -81,46 +112,131 @@ examples/classy_ast: build
 examples/comments: build
 	cd examples/ && make comments
 
+examples/compiled_calc: build
+	cd examples/ && make compiled_calc
+
 examples/dism: build
 	cd examples/ && make dism
 
 examples/dism_lr0: build
 	cd examples/ && make dism_lr0
 
+examples/dot: build
+	cd examples/ && make dot
+
+examples/error-handling-and-yyclearin: build
+	cd examples/ && make error-handling-and-yyclearin
+
+examples/error-handling-and-yyerrok-loopfix: build
+	cd examples/ && make error-handling-and-yyerrok-loopfix
+
+examples/error-handling-and-yyerrok-looping1: build
+	cd examples/ && make error-handling-and-yyerrok-looping1
+
+examples/error-handling-and-yyerrok-looping2: build
+	cd examples/ && make error-handling-and-yyerrok-looping2
+
+examples/error-handling-and-yyerrok-macro: build
+	cd examples/ && make error-handling-and-yyerrok-macro
+
+examples/error-handling-and-yyerrok-part1: build
+	cd examples/ && make error-handling-and-yyerrok-part1
+
+examples/error-handling-and-yyerrok-part2: build
+	cd examples/ && make error-handling-and-yyerrok-part2
+
+examples/error-handling-and-yyerrok-part3: build
+	cd examples/ && make error-handling-and-yyerrok-part3
+
+examples/error-handling-and-yyerrok-part4a: build
+	cd examples/ && make error-handling-and-yyerrok-part4a
+
+examples/error-handling-and-yyerrok-part4b: build
+	cd examples/ && make error-handling-and-yyerrok-part4b
+
+examples/error-handling-and-yyerrok-part5: build
+	cd examples/ && make error-handling-and-yyerrok-part5
+
+examples/error-only: build
+	cd examples/ && make error-only
+
+examples/error-recognition-actions: build
+	cd examples/ && make error-recognition-actions
+
+examples/faking-multiple-start-rules: build
+	cd examples/ && make faking-multiple-start-rules
+
+examples/faking-multiple-start-rules-alt: build
+	cd examples/ && make faking-multiple-start-rules-alt
+
+examples/flow: build
+	cd examples/ && make flow
+
 examples/formula: build
 	cd examples/ && make formula
+
+examples/fsyacc-cgrammar: build
+	cd examples/ && make fsyacc-cgrammar
+
+examples/gantt: build
+	cd examples/ && make gantt
+
+examples/grammar: build
+	cd examples/ && make grammar
 
 examples/handlebars: build
 	cd examples/ && make handlebars
 
+examples/happyhappy: build
+	cd examples/ && make happyhappy
+
 examples/inherited_y: build
 	cd examples/ && make inherited_y
 
-# build *AND* run the test:
-examples/issue-254:
+examples/issue-254: build
 	cd examples/ && make issue-254
 
-# build *AND* run the test:
-examples/issue-293:
+examples/issue-289: build
+	cd examples/ && make issue-289
+
+examples/issue-293: build
 	cd examples/ && make issue-293
 
 examples/jscore: build
 	cd examples/ && make jscore
 
-examples/json_js: build
-	cd examples/ && make json_js
-
 examples/json_ast_js: build
 	cd examples/ && make json_ast_js
+
+examples/json_js: build
+	cd examples/ && make json_js
 
 examples/lambdacalc: build
 	cd examples/ && make lambdacalc
 
+examples/lex: build
+	cd examples/ && make lex
+
+examples/lojban-300: build
+	cd examples/ && make lojban-300
+
+examples/mermaid: build
+	cd examples/ && make mermaid
+
+examples/mfcalc: build
+	cd examples/ && make mfcalc
+
 examples/nv_classy_ast: build
 	cd examples/ && make nv_classy_ast
 
+examples/olmenu-proto2: build
+	cd examples/ && make olmenu-proto2
+
 examples/phraser: build
 	cd examples/ && make phraser
+
+examples/parser-to-lexer-communication-test: build
+	cd examples/ && make parser-to-lexer-communication-test
 
 examples/precedence: build
 	cd examples/ && make precedence
@@ -128,11 +244,30 @@ examples/precedence: build
 examples/reduce_conflict: build
 	cd examples/ && make reduce_conflict
 
+examples/regex: build
+	cd examples/ && make regex
+
 examples/semwhitespace: build
 	cd examples/ && make semwhitespace
 
 examples/tikiwikiparser: build
 	cd examples/ && make tikiwikiparser
+
+examples/unicode: build
+	cd examples/ && make unicode
+
+examples/unicode2: build
+	cd examples/ && make unicode2
+
+examples/with-includes: build
+	cd examples/ && make with-includes
+
+examples/with_custom_lexer: build
+	cd examples/ && make with_custom_lexer
+
+examples/yacc-error-recovery: build
+	cd examples/ && make yacc-error-recovery
+
 
 
 build: build_bnf build_lex
