@@ -1,7 +1,7 @@
 Jison
 =====
-* [issues](http://github.com/zaach/jison/issues)
-* [discuss](mailto:jison@librelist.com)
+* [Issues](http://github.com/zaach/jison/issues)
+* [Discuss](mailto:jison@librelist.com)
 
 [![build status](https://secure.travis-ci.org/zaach/jison.png)](http://travis-ci.org/zaach/jison)
 
@@ -21,7 +21,7 @@ Using npm:
     npm install jison -g
 
 Usage from the command line
------------------------
+---------------------------
 
 Clone the github repository for examples:
 
@@ -56,9 +56,9 @@ Full cli option list:
 
 
 Usage from a CommonJS module
---------------------------
+----------------------------
 
-You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment's load path:
+You can generate parsers programatically from JavaScript as well. Assuming Jison is in your CommonJS environment's load path:
 
 ```javascript
 // mygenerator.js
@@ -104,7 +104,7 @@ How to contribute
 See [CONTRIBUTING.md](https://github.com/zaach/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
 
 Projects using Jison
-------------------
+--------------------
 
 View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
 
@@ -113,42 +113,42 @@ Contributors
 ------------
 [Githubbers](http://github.com/zaach/jison/contributors)
 
-Special thanks to Jarred Ligatti, Manuel E. Bermúdez 
+Special thanks to Jarred Ligatti, Manuel E. Bermúdez
 
 License
 -------
 
 > Copyright (c) 2009-2014 Zachary Carter
-> 
+>
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a
 > copy of this software and associated
 > documentation  files (the "Software"),
-> to deal in the Software without 
+> to deal in the Software without
 > restriction, including without
 > limitation the rights to use,  copy,
 > modify, merge, publish, distribute,
 > sublicense, and/or sell  copies of the
 > Software, and to permit persons to
 > whom the  Software is furnished to do
-> so, subject to the following 
+> so, subject to the following
 > conditions:
-> 
+>
 >  The above copyright notice and this
 > permission notice shall be  included
 > in all copies or substantial portions
 > of the Software.
-> 
+>
 >  THE SOFTWARE IS PROVIDED "AS IS",
 > WITHOUT WARRANTY OF ANY KIND,  EXPRESS
 > OR IMPLIED, INCLUDING BUT NOT LIMITED
 > TO THE WARRANTIES  OF MERCHANTABILITY,
-> FITNESS FOR A PARTICULAR PURPOSE AND 
+> FITNESS FOR A PARTICULAR PURPOSE AND
 > NONINFRINGEMENT. IN NO EVENT SHALL THE
 > AUTHORS OR COPYRIGHT  HOLDERS BE
 > LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 > LIABILITY,  WHETHER IN AN ACTION OF
-> CONTRACT, TORT OR OTHERWISE, ARISING 
+> CONTRACT, TORT OR OTHERWISE, ARISING
 > FROM, OUT OF OR IN CONNECTION WITH THE
 > SOFTWARE OR THE USE OR  OTHER DEALINGS
 > IN THE SOFTWARE.

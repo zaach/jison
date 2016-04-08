@@ -67,13 +67,18 @@ exports.grammar = {
     }
 };
 
-var options = {type: "slr", moduleType: "commonjs", moduleName: "jsonparse"};
+var options = {
+    type: "slr", 
+    moduleType: "commonjs", 
+    moduleName: "jsonparse"
+};
 
-exports.main = function main (args) {
+exports.main = function main(args) {
     var code = new Generator(exports.grammar, options).generate();
     console.log(code);
 };
 
-if (require.main === module)
+if (require.main === module) {
     exports.main();
+}
 

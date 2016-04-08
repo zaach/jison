@@ -8,20 +8,20 @@ var setMixin = {
         this._items = [];
         if (set && set.constructor === Array)
             this._items = raw ? set: set.slice(0);
-        else if(arguments.length)
-            this._items = [].slice.call(arguments,0);
+        else if (arguments.length)
+            this._items = [].slice.call(arguments, 0);
     },
     concat: function concat (setB) {
-        this._items.push.apply(this._items, setB._items || setB); 
-        return this; 
+        this._items.push.apply(this._items, setB._items || setB);
+        return this;
     },
     eq: function eq (set) {
-        return this._items.length === set._items.length && this.subset(set); 
+        return this._items.length === set._items.length && this.subset(set);
     },
     indexOf: function indexOf (item) {
-        if(item && item.eq) {
-            for(var k=0; k<this._items.length;k++)
-                if(item.eq(this._items[k]))
+        if (item && item.eq) {
+            for(var k = 0; k < this._items.length; k++)
+                if (item.eq(this._items[k]))
                     return k;
             return -1;
         }
@@ -43,9 +43,9 @@ var setMixin = {
     },
     subset: function subset (set) {
         var cont = true;
-        for (var i=0; i<this._items.length && cont;i++) {
+        for (var i = 0; i < this._items.length && cont; i++) {
             cont = cont && set.contains(this._items[i]);
-        };
+        }
         return cont;
     },
     superset: function superset (set) {
@@ -65,11 +65,11 @@ var setMixin = {
     toString: function toString () { return this._items.toString(); }
 };
 
-"push shift unshift forEach some every join sort".split(' ').forEach(function (e,i) {
+"push shift unshift forEach some every join sort".split(' ').forEach(function (e, i) {
     setMixin[e] = function () { return Array.prototype[e].apply(this._items, arguments); };
     setMixin[e].name = e;
 });
-"filter slice map".split(' ').forEach(function (e,i) {
+"filter slice map".split(' ').forEach(function (e, i) {
     setMixin[e] = function () { return new Set(Array.prototype[e].apply(this._items, arguments), true); };
     setMixin[e].name = e;
 });
@@ -77,10 +77,10 @@ var setMixin = {
 var Set = typal.construct(setMixin).mix({
     union: function (a, b) {
         var ar = {};
-        for (var k=a.length-1;k >=0;--k) {
+        for (var k = a.length - 1; k >= 0; --k) {
             ar[a[k]] = true;
         }
-        for (var i=b.length-1;i >= 0;--i) {
+        for (var i = b.length - 1; i >= 0; --i) {
             if (!ar[b[i]]) {
                 a.push(b[i]);
             }

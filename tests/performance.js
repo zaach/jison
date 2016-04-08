@@ -6,7 +6,7 @@ var grammar = {
     "lex": {
         "macros": {
             "digit": "[0-9]",
-            "id": "[a-zA-Z][a-zA-Z0-9]*" 
+            "id": "[a-zA-Z_][a-zA-Z0-9_]*"
         },
 
         "rules": [
@@ -83,7 +83,7 @@ var grammar = {
               "NUL",
               "id",
               "NEW id",
-              "THIS", 
+              "THIS",
               "IF LPAREN e RPAREN LBRACE el RBRACE ELSE LBRACE el RBRACE ",
               "FOR LPAREN e SEMICOLON e SEMICOLON e RPAREN LBRACE el RBRACE",
               "READNAT LPAREN RPAREN",

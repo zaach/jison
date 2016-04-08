@@ -31,9 +31,9 @@ if (!Object.defineProperty)
                     "This implementation of Object.defineProperty does not " +
                     "support configurable, enumerable, or writable."
                 );
-            else if (typeof descriptor.get == "function")
+            else if (typeof descriptor.get === "function")
                 object.__defineGetter__(property, descriptor.get);
-            if (typeof descriptor.set == "function")
+            if (typeof descriptor.set === "function")
                 object.__defineSetter__(property, descriptor.set);
         }
         return object;
@@ -74,7 +74,7 @@ if (!String.prototype.trim) {
 // ES5 draft:
 // http://www.ecma-international.org/publications/files/drafts/tc39-2009-025.pdf
 
-// ES5 15.4.3.2 
+// ES5 15.4.3.2
 if (!Array.isArray) {
     Array.isArray = function(obj) {
         return Object.prototype.toString.call(obj) == "[object Array]";

@@ -39,3 +39,7 @@ data_sources:
     # The path where layouts should be mounted. The layouts root behaves the
     # same as the items root, but applies to layouts rather than items.
     layouts_root: /
+
+    # See also: http://www.thehorrors.org.uk/snippets/nanoc-utf-8/
+    # Without this the HTML comment 'ASCII art' block in index.html gets b0rked b0rked b0rked.
+    encoding: utf-8

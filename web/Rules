@@ -17,16 +17,11 @@ end
 
 
 compile '/jison/demos/*/' do
-  layout 'default'
+  layout 'default-l3'
 end
 
-compile '/jison/try/' do
-  filter :erb
-  layout 'default'
-end
-
-compile '/jison/try/*' do
-  # do nothing
+compile '/jison/try/*/' do
+  layout 'default-l3'
 end
 
 compile '/jison/' do
@@ -48,8 +43,12 @@ route '/jison/assets/js/*' do
   item.identifier.gsub(/\/$/, '') + '.js'
 end
 
-route '/jison/assets/pngs/*' do
-  item.identifier.gsub('/pngs/', '/images/').gsub(/\/$/, '') + '.png'
+route '/jison/assets/images/png/*' do
+  item.identifier.gsub(/\/$/, '') + '.png'
+end
+
+route '/jison/assets/images/jpg/*' do
+  item.identifier.gsub(/\/$/, '') + '.jpg'
 end
 
 

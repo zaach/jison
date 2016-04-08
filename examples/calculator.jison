@@ -6,20 +6,20 @@
 %%
 
 \s+                   /* skip whitespace */
-[0-9]+("."[0-9]+)?\b  return 'NUMBER'
-"*"                   return '*'
-"/"                   return '/'
-"-"                   return '-'
-"+"                   return '+'
-"^"                   return '^'
-"!"                   return '!'
-"%"                   return '%'
-"("                   return '('
-")"                   return ')'
-"PI"                  return 'PI'
-"E"                   return 'E'
-<<EOF>>               return 'EOF'
-.                     return 'INVALID'
+[0-9]+("."[0-9]+)?\b  return 'NUMBER';
+"*"                   return '*';
+"/"                   return '/';
+"-"                   return '-';
+"+"                   return '+';
+"^"                   return '^';
+"!"                   return '!';
+"%"                   return '%';
+"("                   return '(';
+")"                   return ')';
+"PI"                  return 'PI';
+"E"                   return 'E';
+<<EOF>>               return 'EOF';
+.                     return 'INVALID';
 
 /lex
 
@@ -31,6 +31,7 @@
 %right '!'
 %right '%'
 %left UMINUS
+%token INVALID
 
 %start expressions
 
@@ -44,21 +45,21 @@ expressions
 
 e
     : e '+' e
-        {$$ = $1+$3;}
+        {$$ = $1 + $3;}
     | e '-' e
-        {$$ = $1-$3;}
+        {$$ = $1 - $3;}
     | e '*' e
-        {$$ = $1*$3;}
+        {$$ = $1 * $3;}
     | e '/' e
-        {$$ = $1/$3;}
+        {$$ = $1 / $3;}
     | e '^' e
         {$$ = Math.pow($1, $3);}
     | e '!'
         {{
-          $$ = (function fact (n) { return n==0 ? 1 : fact(n-1) * n })($1);
+          $$ = (function fact(n) { return n == 0 ? 1 : fact(n - 1) * n; })($1);
         }}
     | e '%'
-        {$$ = $1/100;}
+        {$$ = $1 / 100;}
     | '-' e %prec UMINUS
         {$$ = -$2;}
     | '(' e ')'
