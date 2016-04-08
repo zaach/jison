@@ -2,7 +2,8 @@
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.15",
+  "version": "0.4.17",
+  "license": "MIT",
   "keywords": [
     "jison",
     "bison",

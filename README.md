@@ -60,38 +60,39 @@ Usage from a CommonJS module
 
 You can generate parsers programatically from JavaScript as well. Assuming Jison is in your commonjs environment's load path:
 
-    // mygenerator.js
-    var Parser = require("jison").Parser;
-    
-    // a grammar in JSON
-    var grammar = {
-        "lex": {
-            "rules": [
-               ["\\s+", "/* skip whitespace */"],
-               ["[a-f0-9]+", "return 'HEX';"]
-            ]
-        },
-    
-        "bnf": {
-            "hex_strings" :[ "hex_strings HEX",
-                             "HEX" ]
-        }
-    };
-    
-    // `grammar` can also be a string that uses jison's grammar format
-    var parser = new Parser(grammar);
-    
-    // generate source, ready to be written to disk
-    var parserSource = parser.generate();
-    
-    // you can also use the parser directly from memory
-    
-    // returns true
-    parser.parse("adfe34bc e82a");
-    
-    // throws lexical error
-    parser.parse("adfe34bc zxg");
+```javascript
+// mygenerator.js
+var Parser = require("jison").Parser;
 
+// a grammar in JSON
+var grammar = {
+    "lex": {
+        "rules": [
+           ["\\s+", "/* skip whitespace */"],
+           ["[a-f0-9]+", "return 'HEX';"]
+        ]
+    },
+
+    "bnf": {
+        "hex_strings" :[ "hex_strings HEX",
+                         "HEX" ]
+    }
+};
+
+// `grammar` can also be a string that uses jison's grammar format
+var parser = new Parser(grammar);
+
+// generate source, ready to be written to disk
+var parserSource = parser.generate();
+
+// you can also use the parser directly from memory
+
+// returns true
+parser.parse("adfe34bc e82a");
+
+// throws lexical error
+parser.parse("adfe34bc zxg");
+```
 
 More Documentation
 ------------------
@@ -99,11 +100,8 @@ For more information on creating grammars and using the generated parsers, read 
 
 How to contribute
 -----------------
-Fork, make your changes, run tests and/or add tests then send a pull request.
 
-Run tests with:
-
-    make test
+See [CONTRIBUTING.md](https://github.com/zaach/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
 
 Projects using Jison
 ------------------
