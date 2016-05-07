@@ -191,8 +191,8 @@ issue-293:
 
 # build *AND* run the test:
 issue-289:
-	$(JISON) -t -p lalr ./$@.jison
-	node ./output/$@/$@.js
+	# $(JISON) -t -p lalr ./$@.jison
+	# node ./output/$@/$@.js
 
 jscore:
 	$(JISON) ./$@.jison
