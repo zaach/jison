@@ -60,6 +60,23 @@ function each(obj, func) {
     }
 }
 
+// This was Set.union() but it's not about *Set* at all: it is purely *Array* oriented!
+function union(a, b) {
+    assert(Array.isArray(a));
+    assert(Array.isArray(b));
+    var ar = {};
+    for (var k = a.length - 1; k >= 0; --k) {
+        ar[a[k]] = true;
+    }
+    for (var i = b.length - 1; i >= 0; --i) {
+        if (!ar[b[i]]) {
+            a.push(b[i]);
+        }
+    }
+    return a;
+}
+
+
 var Nonterminal = typal.construct({
     constructor: function Nonterminal(symbol) {
         this.symbol = symbol;
@@ -69,11 +86,19 @@ var Nonterminal = typal.construct({
         this.nullable = false;
     },
     toString: function Nonterminal_toString() {
-        var str = this.symbol + '\n';
-        str += (this.nullable ? 'nullable' : 'not nullable');
-        str += '\nFirsts: ' + this.first.join(', ');
-        str += '\nFollows: ' + this.follows.join(', ');
-        str += '\nProductions:\n  ' + this.productions.join('\n  ');
+        var str = this.symbol;
+        var attr_str = [];
+
+        if (this.nullable) {
+            attr_str.push('nullable');
+        }
+
+        if (attr_str.length) {
+            str += '        [' + attr_str.join(' ') + ']';
+        }
+        str += '\n  Firsts:  [' + this.first.join(']  [') + ']';
+        str += '\n  Follows: [' + this.follows.join(']  [') + ']';
+        str += '\n  Productions:\n    ' + this.productions.join('\n    ');
 
         return str;
     }
@@ -87,9 +112,49 @@ var Production = typal.construct({
         this.id = id;
         this.first = [];
         this.precedence = 0;
+        this.reachable = false;
     },
     toString: function Production_toString() {
-        return this.symbol + (this.nullable ? '~' : '') + (this.precedence ? ' @' + this.precedence : '') + ' -> ' + this.handle.join(' ');
+        var str = this.symbol;
+
+        var attr_str = [];
+
+        if (this.nullable) {
+            attr_str.push('~');
+        }
+        if (this.precedence) {
+            attr_str.push('@' + this.precedence);
+        }
+        if (!this.reachable) {
+            attr_str.push('*RIP*');
+        }
+
+        if (attr_str.length) {
+            str += '[' + attr_str.join(' ') + ']';
+        }
+        str += ' -> ' + this.handle.join(' ');
+
+        return str;
+    },
+    describe: function Production_describe() {
+        var str = this.symbol;
+
+        var attr_str = [];
+
+        if (this.nullable) {
+            attr_str.push('nullable');
+        }
+        if (this.precedence) {
+            attr_str.push('precedence: ' + this.precedence);
+        }
+
+        if (attr_str.length) {
+            str += '        [' + attr_str.join(' ') + ']';
+        }
+        str += '\n  Firsts: [' + this.first.join(']  [') + ']';
+        str += '\n  -->  ' + this.handle.join(' ');
+
+        return str;
     }
 });
 
@@ -220,7 +285,13 @@ generator.processGrammar = function processGrammarDef(grammar) {
     // build productions from CFG and calculate the symbol sets (terminals and nonterminals) and their name-to-ID mappings
     this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, grammar.extra_tokens);
 
-    if (devDebug > 1) console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, '\n###################################### TOKENS\n', tokens, '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, '\n###################################### LEX\n', grammar.lex, '\n###################################### GRAMMAR\n', grammar);
+    if (devDebug > 1) {
+        console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, 
+                    '\n###################################### TOKENS\n', tokens, 
+                    '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, 
+                    '\n###################################### LEX\n', grammar.lex, 
+                    '\n###################################### GRAMMAR\n', grammar);
+    }
     if (tokens && this.terminals.length !== tokens.length) {
         self.trace('Warning: declared tokens differ from tokens found in rules.');
         self.trace('Terminals: ', this.terminals);
@@ -229,6 +300,9 @@ generator.processGrammar = function processGrammarDef(grammar) {
 
     // augment the grammar
     this.augmentGrammar(grammar);
+
+    // detect unused productions and flag/report them
+    this.signalUnusedProductions();
 };
 
 generator.augmentGrammar = function augmentGrammar(grammar) {
@@ -281,6 +355,80 @@ generator.augmentGrammar = function augmentGrammar(grammar) {
 
     // also export the grammar itself:
     this.grammar = grammar;
+};
+
+// Mark & report unused productions
+generator.signalUnusedProductions = function () {
+    var mark = {};
+
+    var productions = this.productions;
+    var nonterminals = this.nonterminals;
+    var i, p, len, nt, sym;
+
+    for (i = 0, len = nonterminals.length; i < len; i++) {
+        nt = nonterminals[i];
+        assert(nt.symbol);
+        mark[nt.symbol] = false;
+    }
+
+    // scan & mark all visited productions
+    function traverseGrammar(nt) {
+        assert(nt);
+        assert(nt.symbol);
+        mark[nt.symbol] = true;
+
+        var prods = nt.productions;
+        assert(prods);
+        prods.forEach(function (p) {
+            assert(p.symbol === nt.symbol);
+            assert(p.handle);
+            var rhs = p.handle;
+            if (devDebug > 0) console.log('traverse / mark: ', nt.symbol, ' --> ', rhs);
+
+            for (var j = 0, len = rhs.length; j < len; j++) {
+                var sym = rhs[j];
+                assert(!sym ? !nonterminals[sym] : true);
+                if (nonterminals[sym] && !mark[sym]) {
+                    traverseGrammar(nonterminals[sym]);
+                }
+            }
+        });
+    }
+
+    traverseGrammar(nonterminals['$accept' /* this.startSymbol */ ]);
+
+    // now any production which is not yet marked is *unused*:
+    var unused_prods = [];
+    for (var sym in mark) {
+        nt = nonterminals[sym];
+        assert(nt);
+        var prods = nt.productions;
+        assert(prods);
+        var in_use = mark[sym];
+        prods.forEach(function (p) {
+            assert(p);
+            if (in_use) {
+                p.reachable = true;
+            } else {
+                p.reachable = false;
+                unused_prods.push(p.toString());
+            }
+        });
+
+        if (!in_use) {
+            // and kill the unused nonterminals:
+            delete this.nonterminals[sym];
+        }
+    }
+    if (unused_prods.length) {
+        console.warn('\nUnused productions in your grammar:\n  ' + unused_prods.join('\n  ') + '\n\n');
+    }
+
+    // and kill the unused productions:
+    this.productions = productions.filter(function (p) {
+        if (!p.reachable) console.warn('KILL PRODUCTION: ' + p);
+        return p.reachable;
+    });
 };
 
 // set precedence and associativity of operators
@@ -445,6 +593,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.descriptions_ = descriptions_;
 
     this.productions_ = productions_;
+    assert(this.productions === productions);
+
     actions.push('}');
 
     var parameters = 'yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */, yystack';
@@ -864,6 +1014,38 @@ lookaheadMixin.computeLookaheads = function computeLookaheads() {
     this.nullableSets();
     this.firstSets();
     this.followSets();
+
+    if (this.DEBUG) {
+        console.log("\nSymbol/Follow sets AFTER computeLookaheads:");
+        this.displayFollowSets();
+        console.log("\n");
+    }
+};
+
+lookaheadMixin.displayFollowSets = function displayFollowSets() {
+    var self = this;
+    var symfollowdbg = {};
+    this.productions.forEach(function Follow_prod_forEach_debugOut(production, k) {
+        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', nonterminals[production.symbol].follows.join(', '));
+        var key = ['prod-', k, ':  ', production.symbol, ' := ', production.handle.join(' ')].join('');
+        var flw = '[' + self.nonterminals[production.symbol].follows.join(']  [') + ']';
+        if (!symfollowdbg[flw]) {
+            symfollowdbg[flw] = {};
+        }
+        if (!symfollowdbg[flw][key]) {
+            symfollowdbg[flw][key] = 1;
+        } else {
+            assert(0);
+            symfollowdbg[flw][key]++;
+        }
+    });
+    for (var l in symfollowdbg) {
+        var lst = [];
+        for (var k in symfollowdbg[l]) {
+            lst.push(k);
+        }
+        self.trace('Symbol/Follows:\n   ', lst.join('\n    '), ' -->\n        ', l);
+    }
 };
 
 // calculate follow sets based on first and nullable
@@ -886,7 +1068,6 @@ lookaheadMixin.followSets = function followSets() {
             var q;
             var ctx = !!self.go_;
 
-            var set = [], oldcount;
             for (var i = 0, t; (t = production.handle[i]); ++i) {
                 if (!nonterminals[t]) continue;
 
@@ -894,45 +1075,33 @@ lookaheadMixin.followSets = function followSets() {
                 if (ctx) {
                     q = self.go_(production.symbol, production.handle.slice(0, i));
                 }
-                var bool = !ctx || q === parseInt(self.nterms_[t], 10);
+                var bool = (!ctx || q === self.nterms_[t]);
+                var set;
 
-                if (i === production.handle.length + 1 && bool) {
+                if (i === production.handle.length - 1 && bool) {
                     set = nonterminals[production.symbol].follows;
                 } else {
                     var part = production.handle.slice(i + 1);
 
                     set = self.first(part);
                     if (self.nullable(part) && bool) {
+                        assert(nonterminals[production.symbol].follows);
                         set.push.apply(set, nonterminals[production.symbol].follows);
                     }
                 }
-                oldcount = nonterminals[t].follows.length;
-                Set.union(nonterminals[t].follows, set);
-                if (oldcount !== nonterminals[t].follows.length) {
+                var follows = nonterminals[t].follows;
+                var oldcount = follows.length;
+                follows = union(follows, set);
+                if (oldcount !== follows.length) {
                     cont = true;
                 }
+                nonterminals[t].follows = follows;
             }
         });
     }
 
-    var symfollowdbg = {};
-    productions.forEach(function Follow_prod_forEach_debugOut(production, k) {
-        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', nonterminals[production.symbol].follows.join(', '));
-        var key = ['prod-', k, ':  ', production.symbol, ' := ', production.handle.join(' ')].join('');
-        var flw = nonterminals[production.symbol].follows.join(', ');
-        if (!symfollowdbg[flw]) {
-            symfollowdbg[flw] = {};
-        }
-        if (!symfollowdbg[flw][key]) {
-            symfollowdbg[flw][key] = 1;
-        }
-    });
-    for (var l in symfollowdbg) {
-        var lst = [];
-        for (var k in symfollowdbg[l]) {
-            lst.push(k);
-        }
-        self.trace('Symbol/Follows:\n   ', lst.join('\n    '), ' -->\n        ', l);
+    if (this.DEBUG) {
+        this.displayFollowSets();
     }
 };
 
@@ -946,10 +1115,11 @@ lookaheadMixin.first = function first(symbol) {
         var firsts = [];
         for (var i = 0, t; (t = symbol[i]); ++i) {
             if (!this.nonterminals[t]) {
-                if (firsts.indexOf(t) === -1)
+                if (firsts.indexOf(t) === -1) {
                     firsts.push(t);
+                }
             } else {
-                Set.union(firsts, this.nonterminals[t].first);
+                firsts = union(firsts, this.nonterminals[t].first);
             }
             if (!this.nullable(t))
                 break;
@@ -987,7 +1157,7 @@ lookaheadMixin.firstSets = function firstSets() {
         for (symbol in nonterminals) {
             firsts = [];
             nonterminals[symbol].productions.forEach(function FirstSets_forEachNonTerm(production) {
-                Set.union(firsts, production.first);
+                firsts = union(firsts, production.first);
             });
             if (firsts.length !== nonterminals[symbol].first.length) {
                 nonterminals[symbol].first = firsts;
@@ -1069,9 +1239,11 @@ var lookaheadDebug = {
     },
     afterfollowSets: function () {
         var trace = this.trace;
+        trace('\nNonterminals:\n');
         each(this.nonterminals, function (nt, t) {
-            trace(nt, '\n');
+            trace(nt.toString(), '\n');
         });
+        trace('\n');
     }
 };
 
@@ -1086,18 +1258,34 @@ lrGeneratorMixin.buildTable = function buildTable() {
     }
 
     this.states = this.canonicalCollection();
+
+    if (this.DEBUG) {
+        console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+        this.displayFollowSets();
+        console.log("\n");
+    }
+
     this.table = this.parseTable(this.states);
+
+    if (this.DEBUG) {
+        console.log("\nSymbol/Follow sets AFTER parseTable:");
+        this.displayFollowSets();
+        console.log("\n");
+    }
+
     this.defaultActions = findDefaults(this.table);
     cleanupTable(this.table);
+
+    traceStates(this.trace, this.states);
 };
 
 lrGeneratorMixin.Item = typal.construct({
-    constructor: function Item(production, dot, f, predecessor) {
+    constructor: function Item(production, dotPosition, followSet, predecessor) {
         this.production = production;
-        this.dotPosition = dot || 0;
-        this.follows = f || [];
+        this.dotPosition = dotPosition || 0;
+        this.follows = followSet || [];
         this.predecessor = predecessor;
-        this.id = parseInt(production.id + 'a' + this.dotPosition, 36);
+        this.id = production.id + '#' + this.dotPosition;
         this.markedSymbol = this.production.handle[this.dotPosition];
     },
     remainingHandle: function () {
@@ -1118,7 +1306,12 @@ lrGeneratorMixin.Item = typal.construct({
         var padlen = Math.max(4, 40 - s.length);
         var pad = new Array(padlen);
         if (this.follows.length) {
-            s = s + pad.join(' ') + '#lookaheads= ' + this.follows.join(' ');
+            s += pad.join(' ') + '#lookaheads= [' + this.follows.join(']  [') + ']';
+            pad = new Array(2);
+        }
+        if (this.reductions && this.reductions.length) {
+            s += pad.join(' ') + '#reductions= [' + this.reductions.join(']  [') + ']';
+            pad = new Array(2);
         }
         return s;
     }
@@ -1139,7 +1332,7 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
     concat: function concat(set) {
         var a = set._items || set;
         for (var i = a.length - 1; i >= 0; i--) {
-            this.hash_[a[i].id] = true; //i;
+            this.hash_[a[i].id] = true;
         }
         this._items.push.apply(this._items, a);
         return this;
@@ -1153,21 +1346,22 @@ lrGeneratorMixin.ItemSet = Set.prototype.construct({
     },
     valueOf: function toValue() {
         var v = this._items.map(function (a) { return a.id; }).sort().join('|');
-        this.valueOf = function toValue_inner() { return v; };
+        this.valueOf = function valueOf_inner() { return v; };
         return v;
     }
 });
 
-lrGeneratorMixin.closureOperation = function closureOperation(itemSet /*, closureSet*/) {
+lrGeneratorMixin.closureOperation = function closureOperation(itemSet) {
     var closureSet = new this.ItemSet();
     var self = this;
 
     var set = itemSet,
-        itemQueue, syms = {};
+        itemQueue, 
+        syms = {};
 
     do {
         itemQueue = new Set();
-        closureSet.concat(set);
+        closureSet = closureSet.concat(set);
         set.forEach(function CO_set_forEach(item) {
             var symbol = item.markedSymbol;
 
@@ -1225,15 +1419,17 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
 
     states.has = {};
     states.has[firstState] = 0;
+    
+    if (devDebug > 0) console.log('canonicalCollection: ', states.has);
 
     while (marked !== states.size()) {
         itemSet = states.item(marked);
-        marked++;
         itemSet.forEach(function CC_itemSet_forEach(item) {
             if (item.markedSymbol && item.markedSymbol !== self.EOF) {
-                self.canonicalCollectionInsert(item.markedSymbol, itemSet, states, marked - 1);
+                self.canonicalCollectionInsert(item.markedSymbol, itemSet, states, marked);
             }
         });
+        marked++;
     }
 
     return states;
@@ -1242,8 +1438,9 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
 // Pushes a unique state into the queue. Some parsing algorithms may perform additional operations
 lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert(symbol, itemSet, states, stateNum) {
     var g = this.gotoOperation(itemSet, symbol);
-    if (!g.predecessors)
+    if (!g.predecessors) {
         g.predecessors = {};
+    }
     // add g to queue if not empty or duplicate
     if (!g.isEmpty()) {
         var gv = g.valueOf(),
@@ -1273,7 +1470,8 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
         a = 3; // accept
 
     // for each item set
-    itemSets.forEach(function (itemSet, k) {
+    itemSets.forEach(function parseTableItem(itemSet, k) {
+        k = +k;
         var state = states[k] = {};
         var action, stackSymbol;
 
@@ -1281,7 +1479,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
         for (stackSymbol in itemSet.edges) {
             itemSet.forEach(function findShiftAndGotoActions(item, j) {
                 // find shift and goto actions
-                if (item.markedSymbol == stackSymbol) {
+                if (item.markedSymbol === stackSymbol) {
                     var gotoState = itemSet.edges[stackSymbol];
                     assert(gotoState);
                     if (nonterminals[stackSymbol]) {
@@ -1298,11 +1496,9 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
 
         // set accept action
         itemSet.forEach(function setAcceptAction(item, j) {
-            if (item.markedSymbol == self.EOF) {
-                assert(item.markedSymbol === self.EOF);
+            if (item.markedSymbol === self.EOF) {
                 // accept
                 state[self.symbols_[self.EOF]] = [a];
-                //self.trace(k, self.EOF, state[self.EOF]);
             }
         });
 
@@ -1705,6 +1901,9 @@ generatorMixin.generate = function parser_generate(opt) {
     case 'amd':
         code = this.generateAMDModule(opt);
         break;
+    case 'es':
+        code = this.generateESModule(opt);
+        break;
     default:
         code = this.generateCommonJSModule(opt);
         break;
@@ -1744,6 +1943,38 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     return out.join('\n') + '\n';
 };
 
+lrGeneratorMixin.generateESModule = function generateESModule(opt){
+    opt = typal.camelMix.call({}, this.options, opt);
+    this.options = opt;
+    this.DEBUG = opt.debug || false;
+    if (this.DEBUG && devDebug) {
+        console.log('GENERATE-ES2015::OPTIONS:\n', this.options);
+    }
+    var module = this.generateModule_();
+    var out = [
+        generateGenericHeaderComment(),
+        '',
+        module.commonCode,
+        '',
+        'var parser = ' + module.moduleCode,
+        this.moduleInclude
+    ];
+    if (this.lexer && this.lexer.generateModule) {
+      out.push(this.lexer.generateModule());
+      out.push('parser.lexer = lexer;');
+      if (this.options.ranges) {
+        out.push('parser.lexer.options.ranges = true;');
+      }
+    }
+    out.push('function Parser() { this.yy = {} };');
+    out.push('Parser.prototype = parser;');
+    out.push('parser.Parser = Parser;');
+    out.push('export {parser, Parser};');
+
+    return out.join('\n') + '\n';
+};
+
+
 generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
@@ -1755,10 +1986,10 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     var main = [];
     if (!opt.noMain) {
         main = main.concat([
-            'exports.main = ' + String(opt.moduleMain || commonjsMain) + ';',
-            'if (typeof module !== \'undefined\' && require.main === module) {',
-            '  exports.main(process.argv.slice(1));',
-            '}'
+            '  exports.main = ' + String(opt.moduleMain || commonjsMain) + ';',
+            '  if (typeof module !== \'undefined\' && require.main === module) {',
+            '    exports.main(process.argv.slice(1));',
+            '  }'
         ]);
     }
     var out = [
@@ -1766,11 +1997,11 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
         '',
         '',
         'if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {',
-        'exports.parser = ' + moduleName + ';',
-        'exports.Parser = ' + moduleName + '.Parser;',
-        'exports.parse = function () {',
-        '  return ' + moduleName + '.parse.apply(' + moduleName + ', arguments);',
-        '};',
+        '  exports.parser = ' + moduleName + ';',
+        '  exports.Parser = ' + moduleName + '.Parser;',
+        '  exports.parse = function () {',
+        '    return ' + moduleName + '.parse.apply(' + moduleName + ', arguments);',
+        '  };',
         main.join('\n'),
         '}'
     ];
@@ -1836,7 +2067,6 @@ generatorMixin.generateModuleExpr = function generateModuleExpr() {
         '}',
         'Parser.prototype = parser;',
         'parser.Parser = Parser;',
-        '// parser.JisonParserError = JisonParserError;',
         '',
         'return new Parser();',
         '})();'
@@ -2576,11 +2806,11 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
 
 
     function reportColumnsForCompression(def_arr) {
-        var i;
+        var i, key, len;
         var report = [];
 
-        var len = 0;
-        for (var key in def_arr) {
+        len = 0;
+        for (key in def_arr) {
             len = Math.max(len, def_arr[key].length);
         }
 
@@ -2594,7 +2824,7 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         }
 
         var track_prev4delta = {};
-        var c, key, delta, val, delta_val;
+        var c, delta, val, delta_val;
         var line = [];
         line.push('║');
         for (c in def_arr) {
@@ -2668,9 +2898,9 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         }
 
         var def_arr = {
-            "len": len_col,
-            "pop": pop_col,
-            "rule": rule_col,
+            'len': len_col,
+            'pop': pop_col,
+            'rule': rule_col,
         };
         return def_arr;
     }
@@ -2707,10 +2937,10 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         }
 
         var def_arr = {
-            "idx": idx_col,
-            "len": len_col,
-            "pop": pop_col,
-            "rule": rule_col,
+            'idx': idx_col,
+            'len': len_col,
+            'pop': pop_col,
+            'rule': rule_col,
         };
         return def_arr;
     }
@@ -2770,13 +3000,13 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         }
 
         var def_arr = {
-            "len": len_col,
-            "symbol": symbol_col,
-            "type": type_col,
-            "state": state_col,
-            "mode": mode_col,
-            "goto": goto_col,
-            //"next": next_col,
+            'len': len_col,
+            'symbol': symbol_col,
+            'type': type_col,
+            'state': state_col,
+            'mode': mode_col,
+            'goto': goto_col,
+            //'next': next_col,
         };
         return def_arr;
     }
@@ -2787,12 +3017,13 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
 
     function generateColumn(name, col) {
         var rv = [];
+        var i, j, len, l;
 
-        for (var i = 0, len = col.length; i < len; i++) {
+        for (i = 0, len = col.length; i < len; i++) {
             // try basic run-length encoding first:
             var v = col[i];
 
-            for (var j = i + 1; j < len; j++) {
+            for (j = i + 1; j < len; j++) {
                 if (col[j] !== v) {
                     break;
                 }
@@ -2806,7 +3037,7 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
             // we don't want to replicate the runlength result, so only look for a match 
             // when delta !== 0:
             if (delta !== 0) {
-                for (var j = i + 2; j < len; j++) {
+                for (j = i + 2; j < len; j++) {
                     if (col[j] - col[j - 1] !== delta) {
                         break;
                     }
@@ -2818,8 +3049,8 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
             var best_pos = 0;
             var best_len = 0;
             var upper_bound = i - 2;
-            for (var j = 0; j < upper_bound; j++) {
-                for (var l = 0; col[j + l] === col[i + l]; l++) {
+            for (j = 0; j < upper_bound; j++) {
+                for (l = 0; col[j + l] === col[i + l]; l++) {
                     // No need to check for:
                     //    if (j + l === i) break;
                     // because we know how the c() helper function will regenerate
@@ -3108,6 +3339,15 @@ function printAction(a, gen) {
     return s;
 }
 
+function traceStates(trace, states) {
+    trace('Item sets\n------');
+
+    states.forEach(function (state, i) {
+        trace('\nitem set', i, '\n' + state.join('\n'), '\ntransitions -> ', JSON.stringify(state.edges));
+    });
+    trace('\n');
+}
+
 var lrGeneratorDebug = {
     beforeparseTable: function () {
         this.trace('Building parse table.');
@@ -3127,13 +3367,7 @@ var lrGeneratorDebug = {
         trace('Done.\n');
     },
     aftercanonicalCollection: function (states /* as produced by `this.canonicalCollection()` */ ) {
-        var trace = this.trace;
-        trace('Item sets\n------');
-
-        states.forEach(function (state, i) {
-            trace('\nitem set', i, '\n' + state.join('\n'), '\ntransitions -> ', JSON.stringify(state.edges));
-        });
-        trace('\n');
+        traceStates(this.trace, states);
     }
 };
 
@@ -3245,15 +3479,15 @@ parser.parse = function parse(input) {
             var ref_names;
             function deepClone(from, sub) {
                 if (sub == null) { ref_list = []; ref_names = []; sub = 'root'; }
-                if (typeof from === "function") return "[Function]";
-                if (from == null || typeof from !== "object") return from;
+                if (typeof from === 'function') return '[Function]';
+                if (from == null || typeof from !== 'object') return from;
                 if (from.constructor !== Object && from.constructor !== Array) {
                     return from;
                 }
 
                 for (var i = 0, len = ref_list.length; i < len; i++) {
                     if (ref_list[i] === from) {
-                        return "[Circular/Xref:" + ref_names[i] + "]";   // circular or cross reference
+                        return '[Circular/Xref:' + ref_names[i] + ']';   // circular or cross reference
                     }
                 }
                 ref_list.push(from);
@@ -3284,7 +3518,7 @@ parser.parse = function parse(input) {
 
             var js;
             try {
-                js = JSON.stringify(obj, null, 2).replace(/  \"([a-zA-Z_][a-zA-Z0-9_]*)\": /g, "  $1: ").replace(/[\n\s]+/g, " ");
+                js = JSON.stringify(obj, null, 2).replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ').replace(/[\n\s]+/g, ' ');
             } catch (ex) {
                 js = String(obj);
             }
@@ -3496,7 +3730,8 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     }
                     r = this.parseError(errStr, p = {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -3523,7 +3758,8 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
+                            value: lexer.yytext,
+                            token: this.describeSymbol(symbol) || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
                             loc: lexer.yylloc,
@@ -3551,7 +3787,8 @@ _handle_error_with_recovery:                // run this code when the grammar in
                 if (error_rule_depth === false) {
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -3596,7 +3833,8 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                 // we cannot recover from the error!
                 retval = this.parseError(errStr, {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -3620,7 +3858,8 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -3637,7 +3876,8 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -3760,7 +4000,8 @@ _handle_error_end_of_section:                  // this concludes the error recov
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -3793,7 +4034,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
  */
 
 var lr0 = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
-    type: "LR(0)",
+    type: 'LR(0)',
     afterconstructor: function lr0_afterconstructor() {
         this.buildTable();
     }
@@ -3806,7 +4047,7 @@ var LR0Generator = exports.LR0Generator = lr0.construct();
  */
 
 var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
-    type: "LALR(1)",
+    type: 'LALR(1)',
 
     afterconstructor: function (typal_property_return_value, grammar, options) {
         if (this.DEBUG) {
@@ -3815,6 +4056,13 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
 
         options = options || {};
         this.states = this.canonicalCollection();
+
+        if (this.DEBUG) {
+            console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+            this.displayFollowSets();
+            console.log("\n");
+        }
+
         this.terms_ = {};
 
         var newg = this.newg = typal.beget(lookaheadMixin, {
@@ -3822,18 +4070,20 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             trace: this.trace,
             nterms_: {},
             DEBUG: false,
-            go_: function (r, B) {
-                r = r.split(":")[0]; // grab state #
-                B = B.map(function (b) {
-                    return b.slice(b.indexOf(":") + 1);
+            go_: function (productionSymbol, productionHandle) {
+                var stateNum = productionSymbol.split(':')[0]; // grab state #
+                assert(stateNum == +stateNum);
+                stateNum = +stateNum;
+                productionHandle = productionHandle.map(function (rhsElem) {
+                    return rhsElem.slice(rhsElem.indexOf(':') + 1);
                 });
-                return this.oldg.go(r, B);
+                return this.oldg.go(stateNum, productionHandle, productionSymbol);
             }
         });
         newg.nonterminals = {};
         newg.productions = [];
 
-        this.inadequateStates = [];
+        //this.inadequateStates = [];
 
         // if true, only lookaheads in inadequate states are computed (faster, larger table)
         // if false, lookaheads for all reductions will be computed (slower, smaller table)
@@ -3841,57 +4091,112 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         if (this.DEBUG) Jison.print('LALR: using on-demand look-ahead: ', (this.onDemandLookahead ? 'yes' : 'no'));
 
         this.buildNewGrammar();
+
+        if (this.DEBUG) {
+            console.log("Symbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
+            newg.displayFollowSets();
+            console.log("Symbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
+            this.displayFollowSets();
+        }
+
         newg.computeLookaheads();
+
+        if (this.DEBUG) {
+            console.log("Symbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
+            this.displayFollowSets();
+        }
+
         this.unionLookaheads();
 
+        if (this.DEBUG) {
+            console.log("Symbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
+            newg.displayFollowSets();
+            console.log("Symbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
+            this.displayFollowSets();
+        }
+
         this.table = this.parseTable(this.states);
+
+        if (this.DEBUG) {
+            console.log("Symbol/Follow sets AFTER parseTable: NEW GRAMMAR");
+            newg.displayFollowSets();
+            console.log("Symbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
+            this.displayFollowSets();
+        }
+
         this.defaultActions = findDefaults(this.table);
         cleanupTable(this.table);
+
+        traceStates(this.trace, this.states);
     },
 
     lookAheads: function LALR_lookaheads(state, item) {
         return (this.onDemandLookahead && !state.inadequate) ? this.terminals : item.follows;
     },
-    go: function LALR_go(p, w) {
-        var q = parseInt(p, 10);
-        for (var i = 0; i < w.length; i++) {
-            q = this.states.item(q).edges[w[i]] || q;
+
+    go: function LALR_go(stateNum, productionHandle, productionSymbol) {
+        assert(typeof stateNum === 'number');
+        var endStateNum = stateNum;
+        for (var i = 0; i < productionHandle.length; i++) {
+            endStateNum = this.states.item(endStateNum).edges[productionHandle[i]] || endStateNum;
         }
-        return q;
+        if (devDebug > 0) {
+            console.log('GO: ', {
+                stateNum: stateNum,
+                symbol: productionSymbol,
+                endState: endStateNum
+            });
+        }
+        return endStateNum;
     },
-    goPath: function LALR_goPath(p, w) {
-        var q = parseInt(p, 10), t,
+
+    goPath: function LALR_goPath(stateNum, productionHandle, productionSymbol) {
+        assert(typeof stateNum === 'number');
+        var endStateNum = stateNum,
+            t,
             path = [];
-        for (var i = 0; i < w.length; i++) {
-            t = w[i] ? q + ':' + w[i] : '';
+        for (var i = 0; i < productionHandle.length; i++) {
+            t = productionHandle[i] ? endStateNum + ':' + productionHandle[i] /* + ':' + productionSymbol */ : '';
             if (t) {
-                this.newg.nterms_[t] = q;
+                this.newg.nterms_[t] = endStateNum;
             }
             path.push(t);
-            q = this.states.item(q).edges[w[i]] || q;
-            this.terms_[t] = w[i];
+            endStateNum = this.states.item(endStateNum).edges[productionHandle[i]] || endStateNum;
+            assert(t ? this.terms_[t] === undefined || this.terms_[t] === productionHandle[i] : true);
+            this.terms_[t] = productionHandle[i];
+        }
+        if (devDebug > 0) {
+            console.log('GOPATH: ', {
+                stateNum: stateNum,
+                symbol: productionSymbol,
+                path: path,
+                endState: endStateNum
+            });
         }
         return {
             path: path, 
-            endState: q
+            endState: endStateNum
         };
     },
+
     // every disjoint reduction of a nonterminal becomes a production in G'
     buildNewGrammar: function LALR_buildNewGrammar() {
         var self = this,
             newg = this.newg;
 
         this.states.forEach(function (state, i) {
-            state.forEach(function (item) {
+            i = +i;
+            state.forEach(function LALR_buildNewHandle(item) {
                 if (item.dotPosition === 0) {
                     // new symbols are a combination of state and transition symbol
-                    var symbol = i + ":" + item.production.symbol;
+                    var symbol = i + ':' + item.production.symbol;
+                    assert(self.terms_[symbol] === undefined || self.terms_[symbol] === item.production.symbol);
                     self.terms_[symbol] = item.production.symbol;
                     newg.nterms_[symbol] = i;
                     if (!newg.nonterminals[symbol]) {
                         newg.nonterminals[symbol] = new Nonterminal(symbol);
                     }
-                    var pathInfo = self.goPath(i, item.production.handle);
+                    var pathInfo = self.goPath(i, item.production.handle, item.production.symbol);
                     var p = new Production(symbol, pathInfo.path, newg.productions.length);
                     newg.productions.push(p);
                     newg.nonterminals[symbol].productions.push(p);
@@ -3904,28 +4209,34 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    if (devDebug > 2) self.trace('new production:', p);
+                    if (devDebug > 2) self.trace('new production:', {
+                        state: state, 
+                        stateNum: i, 
+                        production: p
+                    });
                 }
             });
-            if (state.inadequate) {
-                self.inadequateStates.push(i);
-            }
+            // if (state.inadequate) {
+            //     self.inadequateStates.push(i);
+            // }
         });
     },
+
     unionLookaheads: function LALR_unionLookaheads() {
         var self = this,
-            newg = this.newg,
-            states = !!this.onDemandLookahead ? this.inadequateStates : this.states;
+            newg = this.newg;
+        // var states = !!this.onDemandLookahead ? this.inadequateStates : this.states;
 
-        states.forEach(function union_states_forEach(i) {
-            var state = typeof i === 'number' ? self.states.item(i) : i;
-            if (state.reductions.length) {
+        this.states.forEach(function union_states_forEach(state) {
+            var treat_me = (this.onDemandLookahead ? this.inadequate : true);
+            if (state.reductions.length && treat_me) {
                 state.reductions.forEach(function union_reduction_forEach(item) {
                     var follows = {};
                     for (var k = 0; k < item.follows.length; k++) {
                         follows[item.follows[k]] = true;
                     }
-                    state.goes[item.production.handle.join(' ')].forEach(function reduction_goes_forEach(symbol) {
+                    var handle = item.production.handle.join(' ');
+                    state.goes[handle].forEach(function reduction_goes_forEach(symbol) {
                         newg.nonterminals[symbol].follows.forEach(function goes_follows_forEach(symbol) {
                             var terminal = self.terms_[symbol];
                             if (!follows[terminal]) {
@@ -3957,11 +4268,11 @@ var lalrGeneratorDebug = {
         }
     },
     beforebuildNewGrammar: function () {
-        this.trace(this.states.size() + " states.");
-        this.trace("Building lookahead grammar.");
+        this.trace(this.states.size() + ' states.');
+        this.trace('Building lookahead grammar.');
     },
     beforeunionLookaheads: function () {
-        this.trace("Computing lookaheads.");
+        this.trace('Computing lookaheads.');
     }
 };
 
@@ -3981,7 +4292,7 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
  * SLR Parser
  */
 var SLRGenerator = exports.SLRGenerator = lrLookaheadGenerator.construct({
-    type: "SLR(1)",
+    type: 'SLR(1)',
 
     lookAheads: function SLR_lookAhead(state, item) {
         return this.nonterminals[item.production.symbol].follows;
@@ -3993,14 +4304,15 @@ var SLRGenerator = exports.SLRGenerator = lrLookaheadGenerator.construct({
  * LR(1) Parser
  */
 var lr1 = lrLookaheadGenerator.beget({
-    type: "Canonical LR(1)",
+    type: 'Canonical LR(1)',
 
     lookAheads: function LR_lookAheads(state, item) {
         return item.follows;
     },
+
     Item: lrGeneratorMixin.Item.prototype.construct({
         afterconstructor: function () {
-            this.id = this.production.id + 'a' + this.dotPosition + 'a' + this.follows.sort().join(',');
+            this.id = this.production.id + '#' + this.dotPosition + '#' + this.follows.sort().join(',');
         },
         eq: function (e) {
             return e.id === this.id;
@@ -4012,11 +4324,12 @@ var lr1 = lrLookaheadGenerator.beget({
         var self = this;
 
         var set = itemSet,
-            itemQueue, syms = {};
+            itemQueue, 
+            syms = {};
 
         do {
             itemQueue = new Set();
-            closureSet.concat(set);
+            closureSet = closureSet.concat(set);
             set.forEach(function (item) {
                 var symbol = item.markedSymbol;
                 var b, r;
@@ -4024,7 +4337,7 @@ var lr1 = lrLookaheadGenerator.beget({
                 // if token is a nonterminal, recursively add closures
                 if (symbol && self.nonterminals[symbol]) {
                     r = item.remainingHandle();
-                    b = self.first(item.remainingHandle());
+                    b = self.first(r);
                     if (b.length === 0 || item.production.nullable || self.nullable(r)) {
                         b = b.concat(item.follows);
                     }
@@ -4053,7 +4366,7 @@ var LR1Generator = exports.LR1Generator = lr1.construct();
  * LL Parser
  */
 var ll = generator.beget(lookaheadMixin, generatorMixin, {
-    type: "LL(1)",
+    type: 'LL(1)',
 
     afterconstructor: function ll_aftercontructor() {
         this.computeLookaheads();
@@ -4067,7 +4380,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
             var row = table[production.symbol] || {};
             var tokens = production.first;
             if (self.nullable(production.handle)) {
-                Set.union(tokens, self.nonterminals[production.symbol].follows);
+                tokens = union(tokens, self.nonterminals[production.symbol].follows);
             }
             tokens.forEach(function (token) {
                 if (row[token]) {
@@ -4078,6 +4391,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
                 }
             });
             table[production.symbol] = row;
+            production.first = tokens;
         });
 
         return table;
@@ -4116,7 +4430,7 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         moduleCode += '\n};';
 
         return { 
-            commonCode: (new Array(100)).join("commonCode\n"), 
+            commonCode: (new Array(100)).join('commonCode\n'), 
             moduleCode: moduleCode 
         };
     }
@@ -6687,7 +7001,8 @@ parse: function parse(input) {
                     }
                     r = this.parseError(errStr, p = {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -6714,7 +7029,8 @@ parse: function parse(input) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
+                            value: lexer.yytext,
+                            token: this.describeSymbol(symbol) || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
                             loc: lexer.yylloc,
@@ -6742,7 +7058,8 @@ parse: function parse(input) {
                 if (error_rule_depth === false) {
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -6775,7 +7092,8 @@ parse: function parse(input) {
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -6792,7 +7110,8 @@ parse: function parse(input) {
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -6915,7 +7234,8 @@ parse: function parse(input) {
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -6960,18 +7280,56 @@ function prepareString (s) {
 /* generated by jison-lex 0.3.4-121 */
 var lexer = (function () {
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonLexerError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonLexerError.prototype = Object.create(Error.prototype);
-JisonLexerError.prototype.constructor = JisonLexerError;
-JisonLexerError.prototype.name = 'JisonLexerError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+    } else {
+        JisonLexerError.prototype = Object.create(Error.prototype);
+    }
+    JisonLexerError.prototype.constructor = JisonLexerError;
+    JisonLexerError.prototype.name = 'JisonLexerError';
+
 
 var lexer = {
 
@@ -8187,7 +8545,6 @@ conditions: {
 }
 };
 
-// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -8197,7 +8554,6 @@ function Parser() {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
-// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -8206,11 +8562,11 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = lexParser;
-exports.Parser = lexParser.Parser;
-exports.parse = function () {
-  return lexParser.parse.apply(lexParser, arguments);
-};
+  exports.parser = lexParser;
+  exports.Parser = lexParser.Parser;
+  exports.parse = function () {
+    return lexParser.parse.apply(lexParser, arguments);
+  };
 
 }
 
@@ -10594,7 +10950,8 @@ parse: function parse(input) {
                     }
                     r = this.parseError(errStr, p = {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -10621,7 +10978,8 @@ parse: function parse(input) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
+                            value: lexer.yytext,
+                            token: this.describeSymbol(symbol) || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
                             loc: lexer.yylloc,
@@ -10649,7 +11007,8 @@ parse: function parse(input) {
                 if (error_rule_depth === false) {
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -10682,7 +11041,8 @@ parse: function parse(input) {
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -10699,7 +11059,8 @@ parse: function parse(input) {
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -10822,7 +11183,8 @@ parse: function parse(input) {
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -10868,18 +11230,56 @@ function extend(json, grammar) {
 /* generated by jison-lex 0.3.4-121 */
 var lexer = (function () {
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonLexerError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonLexerError.prototype = Object.create(Error.prototype);
-JisonLexerError.prototype.constructor = JisonLexerError;
-JisonLexerError.prototype.name = 'JisonLexerError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+    } else {
+        JisonLexerError.prototype = Object.create(Error.prototype);
+    }
+    JisonLexerError.prototype.constructor = JisonLexerError;
+    JisonLexerError.prototype.name = 'JisonLexerError';
+
 
 var lexer = {
 
@@ -11913,7 +12313,6 @@ conditions: {
 }
 };
 
-// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -11923,7 +12322,6 @@ function Parser() {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
-// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -11932,11 +12330,11 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = parser;
-exports.Parser = parser.Parser;
-exports.parse = function () {
-  return parser.parse.apply(parser, arguments);
-};
+  exports.parser = parser;
+  exports.Parser = parser.Parser;
+  exports.parse = function () {
+    return parser.parse.apply(parser, arguments);
+  };
 
 }
 
@@ -12337,22 +12735,103 @@ function buildActions(dict, tokens, opts) {
     };
 }
 
-var jisonLexerErrorDefinition = [
-    '// See also:',
-    '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript',
-    'function JisonLexerError(msg, hash) {',
-    '    this.message = msg;',
-    '    this.hash = hash;',
-    '    var stacktrace = (new Error(msg)).stack;',
-    '    if (stacktrace) {',
-    '      this.stack = stacktrace;',
-    '    }',
-    '}',
-    'JisonLexerError.prototype = Object.create(Error.prototype);',
-    'JisonLexerError.prototype.constructor = JisonLexerError;',
-    'JisonLexerError.prototype.name = \'JisonLexerError\';',
-    '',
-];
+//
+// NOTE: this is *almost* a copy of the JisonParserError producing code in 
+//       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
+//      
+function generateErrorClass() {
+    // See also:
+    // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+    // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+    // with userland code which might access the derived class in a 'classic' way.
+    function JisonLexerError(msg, hash) {
+        Object.defineProperty(this, 'name', {
+            enumerable: false,
+            writable: false,
+            value: 'JisonLexerError'
+        });
+
+        if (msg == null) msg = '???';
+
+        Object.defineProperty(this, 'message', {
+            enumerable: false,
+            writable: true,
+            value: msg
+        });
+
+        this.hash = hash;
+
+        var stacktrace;
+        if (hash && hash.exception instanceof Error) {
+            var ex2 = hash.exception;
+            this.message = ex2.message || msg;
+            stacktrace = ex2.stack;
+        }
+        if (!stacktrace) {
+            if (Error.hasOwnProperty('captureStackTrace')) { // V8
+                Error.captureStackTrace(this, this.constructor);
+            } else {
+                stacktrace = (new Error(msg)).stack;
+            }
+        }
+        if (stacktrace) {
+            Object.defineProperty(this, 'stack', {
+                enumerable: false,
+                writable: false,
+                value: stacktrace
+            });
+        }
+    }
+
+    // wrap this init code in a function so we can String(function)-dump it into the generated 
+    // output: that way we only have to write this code *once*!
+    function __extra_code__() {
+        if (typeof Object.setPrototypeOf === 'function') {
+            Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+        } else {
+            JisonLexerError.prototype = Object.create(Error.prototype);
+        }
+        JisonLexerError.prototype.constructor = JisonLexerError;
+        JisonLexerError.prototype.name = 'JisonLexerError';
+    }
+    __extra_code__();
+
+    var t = new JisonLexerError('test', 42);
+    assert(t instanceof Error);
+    assert(t instanceof JisonLexerError);
+    assert(t.hash === 42);
+    assert(t.message === 'test');
+    assert(t.toString() === 'JisonLexerError: test');
+
+    var t2 = new Error('a');
+    var t3 = new JisonLexerError('test', { exception: t2 });
+    assert(t2 instanceof Error);
+    assert(!(t2 instanceof JisonLexerError));
+    assert(t3 instanceof Error);
+    assert(t3 instanceof JisonLexerError);
+    assert(!t2.hash);
+    assert(t3.hash);
+    assert(t3.hash.exception);
+    assert(t2.message === 'a');
+    assert(t3.message === 'a');
+    assert(t2.toString() === 'Error: a');
+    assert(t3.toString() === 'JisonLexerError: a');
+
+    var prelude = [
+        '// See also:',
+        '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
+        '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
+        '// with userland code which might access the derived class in a \'classic\' way.',
+        String(JisonLexerError).replace(/^    /gm, ''),
+        String(__extra_code__).replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
+        '',
+    ];
+
+    return prelude;
+}
+
+
+var jisonLexerErrorDefinition = generateErrorClass();
 
 
 function RegExpLexer(dict, input, tokens) {
@@ -13148,7 +13627,6 @@ function generateModule(opt) {
     }
 
     out.push(
-        '// lexer.JisonLexerError = JisonLexerError;',
         'return lexer;',
         '})();'
     );
@@ -13170,7 +13648,6 @@ function generateAMDModule(opt) {
     }
 
     out.push(
-        '// lexer.JisonLexerError = JisonLexerError;',
         'return lexer;',
         '});'
     );
@@ -13202,7 +13679,8 @@ module.exports = RegExpLexer;
 },{"./lex-parser":5,"./package.json":6,"assert":12,"xregexp":24}],9:[function(require,module,exports){
 // Set class to wrap arrays
 
-var typal = require("./typal").typal;
+var typal = require('./typal').typal;
+var assert = require('assert');
 
 var setMixin = {
     constructor: function Set_constructor(set, raw) {
@@ -13210,7 +13688,7 @@ var setMixin = {
         if (set && set.constructor === Array) {
             this._items = raw ? set: set.slice(0);
         }
-        else if(arguments.length) {
+        else if (arguments.length) {
             this._items = [].slice.call(arguments, 0);
         }
     },
@@ -13219,21 +13697,18 @@ var setMixin = {
         return this;
     },
     eq: function eq(set) {
-        return this._items.length === set._items.length && this.subset(set);
+        return this._items.length === set._items.length && this.subset(set) && this.superset(set);
     },
     indexOf: function indexOf(item) {
-        if(item && item.eq) {
-            for(var k = 0; k < this._items.length; k++) {
-                if(item.eq(this._items[k])) {
+        if (item && item.eq) {
+            for (var k = 0; k < this._items.length; k++) {
+                if (item.eq(this._items[k])) {
                     return k;
                 }
             }
             return -1;
         }
         return this._items.indexOf(item);
-    },
-    union: function union(set) {
-        return (new Set(this._items)).concat(this.complement(set));
     },
     intersection: function intersection(set) {
         return this.filter(function intersection_filter(elm) {
@@ -13262,11 +13737,15 @@ var setMixin = {
     contains: function contains(item) { 
         return this.indexOf(item) !== -1; 
     },
-    item: function item(v, val) { 
+    item: function item(v) { 
         return this._items[v]; 
     },
-    i: function i(v, val) { 
+    i: function i(v) { 
         return this._items[v]; 
+    },
+    assign: function assign(index, value) { 
+        this._items[index] = value;
+        return this; 
     },
     first: function first() { 
         return this._items[0]; 
@@ -13288,40 +13767,27 @@ var setMixin = {
     }
 };
 
-"push shift unshift forEach some every join sort".split(' ').forEach(function (e,i) {
+'push shift unshift forEach some every join sort'.split(' ').forEach(function (e, i) {
     setMixin[e] = function () { 
         return Array.prototype[e].apply(this._items, arguments); 
     };
     setMixin[e].name = e;
 });
-"filter slice map".split(' ').forEach(function (e,i) {
+'filter slice map'.split(' ').forEach(function (e, i) {
     setMixin[e] = function () { 
         return new Set(Array.prototype[e].apply(this._items, arguments), true); 
     };
     setMixin[e].name = e;
 });
 
-var Set = typal.construct(setMixin).mix({
-    union: function (a, b) {
-        var ar = {};
-        for (var k = a.length - 1; k >= 0; --k) {
-            ar[a[k]] = true;
-        }
-        for (var i = b.length - 1; i >= 0; --i) {
-            if (!ar[b[i]]) {
-                a.push(b[i]);
-            }
-        }
-        return a;
-    }
-});
+var Set = typal.construct(setMixin);
 
 if (typeof exports !== 'undefined') {
     exports.Set = Set;
 }
 
 
-},{"./typal":11}],10:[function(require,module,exports){
+},{"./typal":11,"assert":12}],10:[function(require,module,exports){
 /* parser generated by jison 0.4.17-121 */
 /*
  * Returns a Parser object of the following structure:
