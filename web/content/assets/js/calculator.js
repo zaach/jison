@@ -259,104 +259,104 @@ function JisonParserError(msg, hash) {
     }
 }
 
-    if (typeof Object.setPrototypeOf === 'function') {
-        Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
-    } else {
-        JisonParserError.prototype = Object.create(Error.prototype);
-    }
-    JisonParserError.prototype.constructor = JisonParserError;
-    JisonParserError.prototype.name = 'JisonParserError';
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
 
 
 
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -428,38 +428,38 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     expressions : e EOF */
-  typeof console !== 'undefined' ? console.log($$[$0-1]) : print($$[$0-1]);
-          return $$[$0-1];  
+  typeof console !== 'undefined' ? console.log($$[$0 - 1]) : print($$[$0 - 1]);
+          return $$[$0 - 1];  
 break;
 case 2 : 
 /*! Production::     e : e '+' e */
- this.$ = $$[$0-2] + $$[$0]; 
+ this.$ = $$[$0 - 2] + $$[$0]; 
 break;
 case 3 : 
 /*! Production::     e : e '-' e */
- this.$ = $$[$0-2] - $$[$0]; 
+ this.$ = $$[$0 - 2] - $$[$0]; 
 break;
 case 4 : 
 /*! Production::     e : e '*' e */
- this.$ = $$[$0-2] * $$[$0]; 
+ this.$ = $$[$0 - 2] * $$[$0]; 
 break;
 case 5 : 
 /*! Production::     e : e '/' e */
- this.$ = $$[$0-2] / $$[$0]; 
+ this.$ = $$[$0 - 2] / $$[$0]; 
 break;
 case 6 : 
 /*! Production::     e : e '^' e */
- this.$ = Math.pow($$[$0-2], $$[$0]); 
+ this.$ = Math.pow($$[$0 - 2], $$[$0]); 
 break;
 case 7 : 
 /*! Production::     e : e '!' */
  
-          this.$ = (function fact(n) { return n == 0 ? 1 : fact(n - 1) * n; })($$[$0-1]);
+          this.$ = (function fact(n) { return n == 0 ? 1 : fact(n - 1) * n; })($$[$0 - 1]);
          
 break;
 case 8 : 
 /*! Production::     e : e '%' */
- this.$ = $$[$0-1] / 100; 
+ this.$ = $$[$0 - 1] / 100; 
 break;
 case 9 : 
 /*! Production::     e : '-' e */
@@ -467,7 +467,7 @@ case 9 :
 break;
 case 10 : 
 /*! Production::     e : '(' e ')' */
- this.$ = $$[$0-1]; 
+ this.$ = $$[$0 - 1]; 
 break;
 case 11 : 
 /*! Production::     e : NUMBER */

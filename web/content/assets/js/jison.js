@@ -76,6 +76,10 @@ function union(a, b) {
     return a;
 }
 
+// print the function in source code form, properly indented.
+function printFunctionSourceCode(f) {
+    return String(f).replace(/^    /gm, '');
+}
 
 var Nonterminal = typal.construct({
     constructor: function Nonterminal(symbol) {
@@ -754,6 +758,38 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return str;
     }
 
+    // helper: convert index string/number to proper JS add/subtract expression
+    function indexToJsExpr(n, len, rule4msg) {
+        var v = parseInt(n, 10);
+        // the usual situation: `$3`; MUST reference an rhs[] element or it will be considered an ERROR:
+        if (v > 0) {
+            if (len - v < 0) {
+                throw new Error('invalid token reference in action code for rule: "' + rule4msg + '"');
+            }
+            v = len - v;
+            if (v) {
+                return ' - ' + v;
+            }
+            // do not generate code for superfluous `- 0` JS expression:
+            return '';
+        }
+        // the VERY UNusual situation: `$-1`: refencing *parent* rules' values
+        if (v < 0) {
+            return ' - ' + (len - v);
+        }
+        // decode error?
+        if (v !== 0) {
+            throw new Error('invalid token reference in action code for rule: "' + rule4msg + '"');
+        }
+        // the slightly unusual situation: `$0` (instead of `$$`)
+        v = len;
+        if (v) {
+            return ' - ' + v;
+        }
+        // do not generate code for superfluous `- 0` JS expression:
+        return '';
+    }
+
     function buildProduction(handle) {
         var r, rhs, i, 
             precedence_override;
@@ -793,6 +829,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 ].concat(postprocessComment(handle[0]), '*/\n');
                 var action = handle[1];
                 var actionHash;
+                var rule4msg = symbol + ': ' + rhs.join(' ');
 
                 // before anything else, replace direct symbol references, e.g. #NUMBER# when there's a %token NUMBER for your grammar.
                 // This is done to prevent incorrect expansions where tokens are used in rules as RHS elements: we allow these to
@@ -860,15 +897,18 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
                     // replace semantic value references ($n) with stack value (stack[n])
                     .replace(/\$(-?\d+)\b/g, function (_, n) {
-                        return '$$[$0' + (parseInt(n, 10) - rhs.length || '') + ']';
+                        return '$$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
                     })
                     // same as above for location references (@n)
                     .replace(/@(-?\d+)\b/g, function (_, n) {
-                        return '_$[$0' + (parseInt(n, 10) - rhs.length || '') + ']';
+                        return '_$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
                     })
                     // same as above for token ID references (#n)
                     .replace(/#(-?\d+)\b/g, function (_, n) {
                         var i = parseInt(n, 10) - 1;
+                        if (!rhs[i]) {
+                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '"');
+                        }
                         var sym = String(rhs[i]);
                         return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(rhs[i]);
                     });
@@ -2623,7 +2663,7 @@ lrGeneratorMixin.generateErrorClass = function () {
         '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
         '// with userland code which might access the derived class in a \'classic\' way.',
         String(JisonParserError).replace(/^    /gm, ''),
-        String(__extra_code__).replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
+        printFunctionSourceCode(__extra_code__).replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, ''),
         '',
     ];
 
@@ -3284,22 +3324,22 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
 
     var prelude = [
         '',
-        compressProductions ? '// helper: reconstruct the productions[] table\n' + String(bp) : '',
+        compressProductions ? '// helper: reconstruct the productions[] table\n' + printFunctionSourceCode(bp) : '',
         '',
-        compressDefaultActions ? '// helper: reconstruct the defaultActions[] table\n' + String(bda) : '',
+        compressDefaultActions ? '// helper: reconstruct the defaultActions[] table\n' + printFunctionSourceCode(bda) : '',
         '',
-        compressGotoTable ? '// helper: reconstruct the \'goto\' table\n' + String(bt) : '',
+        compressGotoTable ? '// helper: reconstruct the \'goto\' table\n' + printFunctionSourceCode(bt) : '',
         '',
         '// helper: runlength encoding with increment step: code, length: step (default step = 0)',
         '// `this` references an array',
-        String(s),
+        printFunctionSourceCode(s),
         '',
         '// helper: duplicate sequence from *relative* offset and length.',
         '// `this` references an array',
-        String(c),
+        printFunctionSourceCode(c),
         '',
         '// helper: unpack an array using helpers and data, all passed in an array argument \'a\'.',
-        String(u)
+        printFunctionSourceCode(u)
     ];
     if (!compressAnything) {
         prelude = [];
@@ -5123,118 +5163,118 @@ function JisonParserError(msg, hash) {
     }
 }
 
-    if (typeof Object.setPrototypeOf === 'function') {
-        Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
-    } else {
-        JisonParserError.prototype = Object.create(Error.prototype);
-    }
-    JisonParserError.prototype.constructor = JisonParserError;
-    JisonParserError.prototype.name = 'JisonParserError';
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
 
 
 
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 // helper: reconstruct the defaultActions[] table
 function bda(s) {
-        var rv = {};
-        var d = s.idx;
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var j = d[i];
-            rv[j] = [
-                p[i],
-                r[i]
-            ];
-        }
-        return rv;
+    var rv = {};
+    var d = s.idx;
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = [
+            p[i],
+            r[i]
+        ];
     }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -5488,9 +5528,9 @@ case 1 :
 /*! Production::     lex : init definitions '%%' rules_and_epilogue */
  
           this.$ = $$[$0];
-          if ($$[$0-2][0]) this.$.macros = $$[$0-2][0];
-          if ($$[$0-2][1]) this.$.startConditions = $$[$0-2][1];
-          if ($$[$0-2][2]) this.$.unknownDecls = $$[$0-2][2];
+          if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
+          if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
+          if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
           // if there are any options, add them all, otherwise set options to NULL:
           // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
           for (var k in yy.options) {
@@ -5518,8 +5558,8 @@ break;
 case 3 : 
 /*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
  
-        if ($$[$0-1] && $$[$0-1].trim() !== '') {
-          this.$ = { rules: [], moduleInclude: $$[$0-1] };
+        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+          this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: [] };
         }
@@ -5528,17 +5568,17 @@ break;
 case 4 : 
 /*! Production::     rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
  
-        if ($$[$0-1] && $$[$0-1].trim() !== '') {
-          this.$ = { rules: $$[$0-3], moduleInclude: $$[$0-1] };
+        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+          this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
         } else {
-          this.$ = { rules: $$[$0-3] };
+          this.$ = { rules: $$[$0 - 3] };
         }
        
 break;
 case 5 : 
 /*! Production::     rules_and_epilogue : rules EOF */
  
-        this.$ = { rules: $$[$0-1] };
+        this.$ = { rules: $$[$0 - 1] };
        
 break;
 case 6 : 
@@ -5552,18 +5592,18 @@ case 7 :
 /*! Production::     definitions : definition definitions */
  
           this.$ = $$[$0];
-          if ($$[$0-1] != null) {
-            if ('length' in $$[$0-1]) {
+          if ($$[$0 - 1] != null) {
+            if ('length' in $$[$0 - 1]) {
               this.$[0] = this.$[0] || {};
-              this.$[0][$$[$0-1][0]] = $$[$0-1][1];
-            } else if ($$[$0-1].type === 'names') {
+              this.$[0][$$[$0 - 1][0]] = $$[$0 - 1][1];
+            } else if ($$[$0 - 1].type === 'names') {
               this.$[1] = this.$[1] || {};
-              for (var name in $$[$0-1].names) {
-                this.$[1][name] = $$[$0-1].names[name];
+              for (var name in $$[$0 - 1].names) {
+                this.$[1][name] = $$[$0 - 1].names[name];
               }
-            } else if ($$[$0-1].type === 'unknown') {
+            } else if ($$[$0 - 1].type === 'unknown') {
               this.$[2] = this.$[2] || [];
-              this.$[2].push($$[$0-1].body);
+              this.$[2].push($$[$0 - 1].body);
             }
           }
          
@@ -5574,7 +5614,7 @@ case 8 :
 break;
 case 9 : 
 /*! Production::     definition : NAME regex */
-  this.$ = [$$[$0-1], $$[$0]];  
+  this.$ = [$$[$0 - 1], $$[$0]];  
 break;
 case 10 : 
 /*! Production::     definition : START_INC names_inclusive */
@@ -5618,7 +5658,7 @@ case 16 :
 break;
 case 17 : 
 /*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 0;  
+  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0;  
 break;
 case 18 : 
 /*! Production::     names_exclusive : START_COND */
@@ -5626,11 +5666,11 @@ case 18 :
 break;
 case 19 : 
 /*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 1;  
+  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1;  
 break;
 case 20 : 
 /*! Production::     rules : rules rule */
-  this.$ = $$[$0-1]; this.$.push($$[$0]);  
+  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
 break;
 case 21 : 
 /*! Production::     rules : rule */
@@ -5640,17 +5680,17 @@ case 21 :
 break;
 case 22 : 
 /*! Production::     rule : start_conditions regex action */
-  this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
+  this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]];  
 break;
 case 23 : 
 /*! Production::     action : '{' action_body '}' */
  case 30 : 
 /*! Production::     start_conditions : '<' name_list '>' */
-  this.$ = $$[$0-1];  
+  this.$ = $$[$0 - 1];  
 break;
 case 27 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
 break;
 case 28 : 
 /*! Production::     action_comments_body :  */
@@ -5670,7 +5710,7 @@ case 29 :
 /*! Production::     regex_set : regex_set_atom regex_set */
  case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
-  this.$ = $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 1] + $$[$0];  
 break;
 case 31 : 
 /*! Production::     start_conditions : '<' '*' '>' */
@@ -5678,7 +5718,7 @@ case 31 :
 break;
 case 34 : 
 /*! Production::     name_list : name_list ',' NAME */
-  this.$ = $$[$0-2]; this.$.push($$[$0]);  
+  this.$ = $$[$0 - 2]; this.$.push($$[$0]);  
 break;
 case 35 : 
 /*! Production::     regex : regex_list */
@@ -5691,31 +5731,31 @@ case 35 :
 break;
 case 36 : 
 /*! Production::     regex_list : regex_list '|' regex_concat */
-  this.$ = $$[$0-2] + '|' + $$[$0];  
+  this.$ = $$[$0 - 2] + '|' + $$[$0];  
 break;
 case 37 : 
 /*! Production::     regex_list : regex_list '|' */
-  this.$ = $$[$0-1] + '|';  
+  this.$ = $$[$0 - 1] + '|';  
 break;
 case 42 : 
 /*! Production::     regex_base : '(' regex_list ')' */
-  this.$ = '(' + $$[$0-1] + ')';  
+  this.$ = '(' + $$[$0 - 1] + ')';  
 break;
 case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ')' */
-  this.$ = $$[$0-2] + $$[$0-1] + ')';  
+  this.$ = $$[$0 - 2] + $$[$0 - 1] + ')';  
 break;
 case 44 : 
 /*! Production::     regex_base : regex_base '+' */
-  this.$ = $$[$0-1] + '+';  
+  this.$ = $$[$0 - 1] + '+';  
 break;
 case 45 : 
 /*! Production::     regex_base : regex_base '*' */
-  this.$ = $$[$0-1] + '*';  
+  this.$ = $$[$0 - 1] + '*';  
 break;
 case 46 : 
 /*! Production::     regex_base : regex_base '?' */
-  this.$ = $$[$0-1] + '?';  
+  this.$ = $$[$0 - 1] + '?';  
 break;
 case 47 : 
 /*! Production::     regex_base : '/' regex_base */
@@ -5741,7 +5781,7 @@ case 58 :
 /*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
  case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-  this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
 break;
 case 62 : 
 /*! Production::     regex_set_atom : name_expansion */
@@ -5766,7 +5806,7 @@ case 71 :
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 72 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  yy.options[$$[$0-2]] = $$[$0];  
+  yy.options[$$[$0 - 2]] = $$[$0];  
 break;
 case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
@@ -8882,118 +8922,118 @@ function JisonParserError(msg, hash) {
     }
 }
 
-    if (typeof Object.setPrototypeOf === 'function') {
-        Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
-    } else {
-        JisonParserError.prototype = Object.create(Error.prototype);
-    }
-    JisonParserError.prototype.constructor = JisonParserError;
-    JisonParserError.prototype.name = 'JisonParserError';
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
+JisonParserError.prototype.constructor = JisonParserError;
+JisonParserError.prototype.name = 'JisonParserError';
 
 
 
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 // helper: reconstruct the defaultActions[] table
 function bda(s) {
-        var rv = {};
-        var d = s.idx;
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var j = d[i];
-            rv[j] = [
-                p[i],
-                r[i]
-            ];
-        }
-        return rv;
+    var rv = {};
+    var d = s.idx;
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = [
+            p[i],
+            r[i]
+        ];
     }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -9291,11 +9331,11 @@ switch (yystate) {
 case 1 : 
 /*! Production::     spec : declaration_list '%%' grammar optional_end_block EOF */
  
-            this.$ = $$[$0-4];
-            if ($$[$0-1] && $$[$0-1].trim() !== '') {
-                yy.addDeclaration(this.$, { include: $$[$0-1] });
+            this.$ = $$[$0 - 4];
+            if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+                yy.addDeclaration(this.$, { include: $$[$0 - 1] });
             }
-            return extend(this.$, $$[$0-2]);
+            return extend(this.$, $$[$0 - 2]);
          
 break;
 case 3 : 
@@ -9341,13 +9381,13 @@ case 5 :
  case 6 : 
 /*! Production::     optional_action_header_block : optional_action_header_block include_macro_code */
  
-            this.$ = $$[$0-1];
+            this.$ = $$[$0 - 1];
             yy.addDeclaration(this.$, { actionInclude: $$[$0] });
          
 break;
 case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
-  this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]);  
+  this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]);  
 break;
 case 9 : 
 /*! Production::     declaration : START id */
@@ -9393,17 +9433,17 @@ case 19 :
 break;
 case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
-  this.$ = {imports: {name: $$[$0-1], path: $$[$0]}};  
+  this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}};  
 break;
 case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
-  this.$ = {initCode: {qualifier: $$[$0-1], include: $$[$0]}};  
+  this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}};  
 break;
 case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
  case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
-  this.$ = $$[$0-1];  
+  this.$ = $$[$0 - 1];  
 break;
 case 27 : 
 /*! Production::     option_list : option_list option */
@@ -9411,7 +9451,7 @@ case 27 :
 /*! Production::     token_list : token_list symbol */
  case 49 : 
 /*! Production::     id_list : id_list id */
-  this.$ = $$[$0-1]; this.$.push($$[$0]);  
+  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
 break;
 case 28 : 
 /*! Production::     option_list : option */
@@ -9431,11 +9471,11 @@ case 30 :
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  this.$ = [$$[$0-2], $$[$0]];  
+  this.$ = [$$[$0 - 2], $$[$0]];  
 break;
 case 34 : 
 /*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
+  this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]);  
 break;
 case 35 : 
 /*! Production::     associativity : LEFT */
@@ -9457,8 +9497,8 @@ case 40 :
             for (var i = 0, len = lst.length; i < len; i++) {
                 var id = lst[i];
                 var m = {id: id};
-                if ($$[$0-1]) {
-                    m.type = $$[$0-1];
+                if ($$[$0 - 1]) {
+                    m.type = $$[$0 - 1];
                 }
                 rv.push(m);
             }
@@ -9469,8 +9509,8 @@ case 41 :
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
  
             var m = $$[$0];
-            if ($$[$0-1]) {
-                m.type = $$[$0-1];
+            if ($$[$0 - 1]) {
+                m.type = $$[$0 - 1];
             }
             this.$ = [m];
          
@@ -9479,8 +9519,8 @@ case 42 :
 /*! Production::     one_full_token : id token_value token_description */
  
             this.$ = {
-                id: $$[$0-2],
-                value: $$[$0-1]
+                id: $$[$0 - 2],
+                value: $$[$0 - 1]
             };
          
 break;
@@ -9488,7 +9528,7 @@ case 43 :
 /*! Production::     one_full_token : id token_description */
  
             this.$ = {
-                id: $$[$0-1],
+                id: $$[$0 - 1],
                 description: $$[$0]
             };
          
@@ -9497,7 +9537,7 @@ case 44 :
 /*! Production::     one_full_token : id token_value */
  
             this.$ = {
-                id: $$[$0-1],
+                id: $$[$0 - 1],
                 value: $$[$0],
                 description: $token_description
             };
@@ -9510,14 +9550,14 @@ break;
 case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
  
-            this.$ = $$[$0-1];
+            this.$ = $$[$0 - 1];
             this.$.grammar = $$[$0];
          
 break;
 case 52 : 
 /*! Production::     production_list : production_list production */
  
-            this.$ = $$[$0-1];
+            this.$ = $$[$0 - 1];
             if ($$[$0][0] in this.$) {
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             } else {
@@ -9531,24 +9571,24 @@ case 53 :
 break;
 case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
- this.$ = [$$[$0-3], $$[$0-1]]; 
+ this.$ = [$$[$0 - 3], $$[$0 - 1]]; 
 break;
 case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
  
-            this.$ = $$[$0-2];
+            this.$ = $$[$0 - 2];
             this.$.push($$[$0]);
          
 break;
 case 57 : 
 /*! Production::     handle_action : handle prec action */
  
-            this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
+            this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
-            if ($$[$0-1]) {
-                this.$.push($$[$0-1]);
+            if ($$[$0 - 1]) {
+                this.$.push($$[$0 - 1]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
@@ -9570,7 +9610,7 @@ break;
 case 59 : 
 /*! Production::     handle : handle expression_suffix */
  
-            this.$ = $$[$0-1];
+            this.$ = $$[$0 - 1];
             this.$.push($$[$0]);
          
 break;
@@ -9583,7 +9623,7 @@ break;
 case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
  
-            this.$ = $$[$0-2];
+            this.$ = $$[$0 - 2];
             this.$.push($$[$0].join(' '));
          
 break;
@@ -9596,7 +9636,7 @@ break;
 case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
  
-            this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";
+            this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]";
          
 break;
 case 64 : 
@@ -9606,7 +9646,7 @@ case 64 :
  case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
  
-            this.$ = $$[$0-1] + $$[$0];
+            this.$ = $$[$0 - 1] + $$[$0];
          
 break;
 case 66 : 
@@ -9626,7 +9666,7 @@ break;
 case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
  
-            this.$ = '(' + $$[$0-1].join(' | ') + ')';
+            this.$ = '(' + $$[$0 - 1].join(' | ') + ')';
          
 break;
 case 68 : 
@@ -9657,15 +9697,15 @@ case 80 :
 break;
 case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
 break;
 case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
-  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
 break;
 case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-  this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
+  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
 break;
 case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
