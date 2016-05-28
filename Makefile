@@ -5,21 +5,23 @@ prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: web/content/assets/js/jison.js
+site: build web-examples web/content/assets/js/jison.js compile-site 
 
 clean-site:
 	-@rm -rf web/tmp/
 	-@rm -rf web/output/jison/
+	-@rm -rf web/content/examples/
 
-# `make compile-site` will perform a quick (re)build of the jison tool and the web pages, including the 'live' calculator example
-compile-site: build web-examples
+# `make compile-site` will perform a quick (re)build of the web pages
+compile-site: 
+	-@rm -rf web/tmp/
+	-@rm -rf web/content/examples/
+	cp -r examples web/content/examples/
+	cd web/ && nanoc compile
+
+web/content/assets/js/jison.js: build test web-examples examples
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
-	-@rm -rf web/tmp/
-	cd web/ && nanoc compile
-	cp -r examples web/output/jison/
-
-web/content/assets/js/jison.js: build test web-examples examples compile-site
 
 preview:
 	cd web/ && nanoc view &
@@ -211,6 +213,9 @@ examples/json_ast_js: build
 examples/json_js: build
 	cd examples/ && make json_js
 
+examples/klammergebirge: build
+	cd examples/ && make klammergebirge
+
 examples/lambdacalc: build
 	cd examples/ && make lambdacalc
 
@@ -234,6 +239,9 @@ examples/olmenu-proto2: build
 
 examples/phraser: build
 	cd examples/ && make phraser
+
+examples/pascal: build
+	cd examples/ && make pascal
 
 examples/parser-to-lexer-communication-test: build
 	cd examples/ && make parser-to-lexer-communication-test
