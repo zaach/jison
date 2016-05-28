@@ -11,21 +11,42 @@
 #   because “*” matches zero or more characters.
 
 
-compile '/**/*.html' do
+ignore '/**/*.bak'
+
+ignore '/examples/*.bak'
+
+passthrough '/jison/examples/**/*'
+
+compile '/jison/index.html' do
+  layout '/default-root.*'
+end
+
+compile '/*/*.html' do
   layout '/default.*'
 end
 
-compile '/**/*.md' do
+compile '/*/*/*.html' do
+  layout '/default-l3.*'
+end
+
+compile '/*/*.md' do
   filter :kramdown
   layout '/default.*'
 end
 
+compile '/*/*/*.md' do
+  filter :kramdown
+  layout '/default-l3.*'
+end
+
+### Routing #########################################################
+
+route '/jison/index.{html,md}' do
+  '/jison/index.html'
+end
+
 route '/**/*.{html,md}' do
-  if item.identifier =~ '/index.*'
-    '/index.html'
-  else
-    item.identifier.without_ext + '/index.html'
-  end
+  item.identifier.without_ext + '/index.html'
 end
 
 compile '/**/*' do
