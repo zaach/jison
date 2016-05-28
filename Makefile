@@ -1,5 +1,5 @@
 
-all: build test examples/issue-293 examples/issue-254 examples/issue-289
+all: build test examples/issue-293 examples/issue-254 examples/issue-289-BAD
 
 prep: npm-install
 
@@ -203,6 +203,9 @@ examples/issue-254: build
 examples/issue-289: build
 	cd examples/ && make issue-289
 
+examples/issue-289-BAD: build
+	cd examples/ && make issue-289-BAD
+
 examples/issue-293: build
 	cd examples/ && make issue-293
 
@@ -306,9 +309,11 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	@[ -d  modules/ebnf-parser/node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js

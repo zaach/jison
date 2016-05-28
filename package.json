@@ -45,7 +45,6 @@
   },
   "devDependencies": {
     "test": ">=0.6.0",
-    "jison": "GerHobbelt/jison#master",
     "uglify-js": ">=2.6.2",
     "browserify": ">=13.0.0"
   },
