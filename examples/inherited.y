@@ -22,12 +22,12 @@ T
 
 L
   : L ',' id    {
-                  console.log("L -> L ',' id ("+yytext+")");
+                  console.log("L -> L ',' id (" + yytext + ")");
                   console.log($id + ' is of type ' + $0);
                   console.log($1 + ' is of class ' + $-1);
                 }
   | id          {
-                  console.log("L -> id ("+yytext+")");
+                  console.log("L -> id (" + yytext + ")");
                   console.log($id + ' is of type ' + $0);
                   console.log($1 + ' is of class ' + $-1);
                 }

@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <title>Jison / Try Jison Online</title>
     <link rel="stylesheet" href="../assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+
+    <!-- you don't need to keep this, but it's cool for stats! -->
+    <meta name="generator" content="Nanoc 4.1.6">
   </head>
   <body>
     <div id="header">
@@ -18,9 +21,10 @@
     </ul>
     <div id="content">
       
-<link href="../assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
 
-<div id="try">
+  <link href="../assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
+
+  <div id="try">
     <h1>Try Jison Online</h1>
     <p>Build, test, and download your parser from the web!</p>
     <h2>Describe Your Language</h2>
@@ -155,7 +159,7 @@ e
     ;
 </textarea>
     <p>
-      <button id="download_btn" disabled="">Download</button>
+      <button id="download_btn" disabled>Download</button>
     </p>
     <pre id="gen_out"></pre>
 
@@ -166,7 +170,7 @@ e
 
     <div id="parsing">
       <h2>Test Your Parser</h2>
-      <textarea id="source" rows="8" cols="80">5*PI^2</textarea><br />
+      <textarea id="source" rows="8" cols="80">5*PI^2</textarea><br/>
       <button id="parse_btn">Parse</button>
     </div>
     <pre id="out"></pre>
@@ -174,23 +178,17 @@ e
     <div id="loading"></div>
   </div>
 
-<div id="usf">
+  <div id="usf">
     <h2>Suggestion</h2>
     <p>You may also want to try <a href="usf/index.html">the Jison USF page</a> which includes logic to show the productions and state transition diagram. This can be very useful for debugging your grammar!</p>
   </div>
 
-<script src="../assets/js/webtoolkit.js"></script>
-
-<script src="../assets/js/jquery.js"></script>
-
-<script src="../assets/js/json2.js"></script>
-
-<script src="../assets/js/es5.js"></script>
-
-<script src="../assets/js/jison.js"></script>
-
-<script src="../assets/js/try.js"></script>
-
+  <script src="../assets/js/webtoolkit.base64.js"></script>
+  <script src="../assets/js/jquery.js"></script>
+  <script src="../assets/js/json2.js"></script>
+  <script src="../assets/js/es5.js"></script>
+  <script src="../assets/js/jison.js"></script>
+  <script src="../assets/js/try.js"></script>
 
     </div>
     <p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2016. MIT Licensed.</p>

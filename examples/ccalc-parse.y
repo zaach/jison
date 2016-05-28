@@ -95,7 +95,7 @@ statement
 //      }
       ASSIGN expression
       {
-        VarSetValue(var, $4);
+        VarSetValue(var, $3);
       }
     | expression
     ;

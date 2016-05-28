@@ -25,6 +25,7 @@
 %token TO TYPE UNTIL UPARROW VAR WHILE WITH
 
 %%
+
 file : program
  | module
  ;
@@ -545,3 +546,4 @@ semicolon : SEMICOLON
 
 comma : COMMA
  ;
+ 

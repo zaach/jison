@@ -104,8 +104,8 @@ parser.main = function compiledRunner(args) {
      * What you see happening here is:
      *
      * - the first parser parsed the text input and turns it into a token stream (a 
-     *   serialized AST, more or less)
-     * - then the second parser is executed, while it is fed the token stream produced
+     *   serialized AST, as it were)
+     * - then the second parser (defined above) is executed, while it is fed the token stream produced
      *   by the first parser:
      *   + the second parser comes with its own minimal, CUSTOM, lexer (see code below)
      *   + the second parser can be made to be ultra-fast as it doesn't need to mind
