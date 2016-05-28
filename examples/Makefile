@@ -49,15 +49,16 @@ ALL_TARGETS =                                                   \
 			fsyacc-cgrammar                                     \
 			gantt                                               \
 			grammar                                             \
-			handlebars                                          \
+			handlebars-BAD                                          \
 			happyhappy                                          \
 			inherited_y                                         \
 			issue-254                                           \
-			issue-289                                           \
+			issue-289-BAD                                           \
 			issue-293                                           \
 			jscore                                              \
 			json_ast_js                                         \
 			json_js                                             \
+			klammergebirge                                      \
 			lambdacalc                                          \
 			lex                                                 \
 			lojban-300                                          \
@@ -65,6 +66,7 @@ ALL_TARGETS =                                                   \
 			mfcalc                                              \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
+			pascal-BAD                                              \
 			phraser                                             \
 			parser-to-lexer-communication-test                  \
 			precedence                                          \
@@ -139,7 +141,7 @@ bloop:
 
 # cannot compile a lexer on its own, so we provide a bogus grammar to go with that.
 floop:
-	$(JISON) floop-standalone.y ./$@.l
+	$(JISON) $@-standalone.y ./$@.l
 
 calculator:
 	$(JISON) ./$@.jison
@@ -174,7 +176,7 @@ formula:
 	$(JISON) ./$@.jison
 
 handlebars:
-#   $(JISON) ./handlebars.jison.y ./handlebars.jison.l
+	$(JISON) ./handlebars.jison.y ./handlebars.jison.l
 
 inherited_y:
 	$(JISON) ./inherited.y
@@ -191,8 +193,8 @@ issue-293:
 
 # build *AND* run the test:
 issue-289:
-	# $(JISON) -t -p lalr ./$@.jison
-	# node ./output/$@/$@.js
+	$(JISON) -t -p lalr ./$@.jison
+	node ./output/$@/$@.js
 
 jscore:
 	$(JISON) ./$@.jison
@@ -223,7 +225,7 @@ reduce_conflict:
 regex:
 	$(JISON) ./$@.jison
 
-# input tst file:  ./semwhitespace_ex.src
+# input test file:  ./semwhitespace_ex.src
 semwhitespace:
 	$(JISON) ./$@.jison semwhitespace_lex.jison
 
@@ -311,6 +313,9 @@ with_custom_lexer:
 grammar:
 	$(JISON) ./$@.jison
 
+klammergebirge:
+	$(JISON) ./$@.jison
+
 lex:
 	$(JISON) ./$@.jison lex_grammar.jisonlex
 
@@ -347,8 +352,18 @@ faking-multiple-start-rules:
 faking-multiple-start-rules-alt:
 	$(JISON) ./$@.jison
 
+pascal:
+	$(JISON) ./$@.y ./$@.l
+
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
 	$(JISON) -t ./$@_parse.jison
 	$(JISON) -t ./$@_exec.jison
 	node output/compiled_calc/compiled_calc_exec.js compiled_calc_input.txt
+
+
+handlebars-BAD:
+
+pascal-BAD:
+
+issue-289-BAD:
