@@ -11,67 +11,25 @@
 #   because “*” matches zero or more characters.
 
 
-compile '/jison/assets/*' do
-  # do nothing
+compile '/**/*.html' do
+  layout '/default.*'
 end
 
-
-compile '/jison/demos/*/' do
-  layout 'default-l3'
-end
-
-compile '/jison/try/*/' do
-  layout 'default-l3'
-end
-
-compile '/jison/' do
-  filter :erb
-end
-
-compile '*' do
+compile '/**/*.md' do
   filter :kramdown
-  layout 'default'
+  layout '/default.*'
 end
 
-### Routing #########################################################
-
-route '/jison/assets/styles/*' do
-  item.identifier.gsub(/\/$/, '') + '.css'
-end
-
-route '/jison/assets/js/*' do
-  item.identifier.gsub(/\/$/, '') + '.js'
-end
-
-route '/jison/assets/images/png/*' do
-  item.identifier.gsub(/\/$/, '') + '.png'
-end
-
-route '/jison/assets/images/jpg/*' do
-  item.identifier.gsub(/\/$/, '') + '.jpg'
-end
-
-
-route '/jison/assets/*' do
-  dir = File.join('content', item.identifier)
-  puts dir
-  base = File.basename(dir)
-  regexp = /^#{base}\.(?!yaml)(.*)/
-
-  file_name = Dir.entries(dir).sort.find do |d|
-    d.match(regexp)
-  end
-
-  if file_name
-    ext = file_name.match(regexp)[1]
-    File.join(File.dirname(item.identifier), "#{base}.#{ext}")
+route '/**/*.{html,md}' do
+  if item.identifier =~ '/index.*'
+    '/index.html'
   else
-    nil
+    item.identifier.without_ext + '/index.html'
   end
 end
 
-route '*' do
-  item.identifier + 'index.html'
+compile '/**/*' do
+  write item.identifier.to_s
 end
 
-layout '*', :erb
+layout '/**/*', :erb
