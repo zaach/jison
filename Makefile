@@ -28,12 +28,12 @@ preview:
 	open http://localhost:3000/jison/
 
 # `make deploy` is `make site` plus GIT checkin of the result into the gh-pages branch
-deploy:
+deploy: site
 	git checkout gh-pages
 	cp -r web/output/jison/* ./
 	#git add . --all 
 	git commit -m 'Deploy site updates'
-	#git checkout master
+	git checkout master
 
 test:
 	node tests/all-tests.js
