@@ -11,6 +11,8 @@ clean-site:
 	-@rm -rf web/tmp/
 	-@rm -rf web/output/jison/
 	-@rm -rf web/content/examples/
+	-rm web/content/assets/js/jison.js
+	-rm web/content/assets/js/calculator.js
 
 # `make compile-site` will perform a quick (re)build of the web pages
 compile-site: 
@@ -373,7 +375,7 @@ git:
 	-git pull --all; git push --all
 
 
-clean:
+clean: clean-site
 	cd examples/ && make clean
 	cd modules/ebnf-parser && make clean
 	cd modules/jison-lex && make clean
@@ -385,14 +387,14 @@ clean:
 	-rm -rf node_modules/
 
 #
-# When you've run `make superclean` you must run `make` and `make deploy` to regenerate all content again.
+# When you've run `make superclean` you must run `make prep`, `make` and `make deploy` to regenerate all content again.
 #
 # The 'superclean' target is to be used when you need to update/edit the jison code generators and want to
 # make sure that jison is rebuilt from scratch.
 # The 'superclean' target is also useful in the above context for it enables you to find the 'originals'
 # of each part of the generator (lexer & parser) as all derived copies have been killed.
 #
-superclean: clean
+superclean: clean clean-site
 	cd examples/ && make superclean
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison-lex && make superclean
@@ -400,11 +402,6 @@ superclean: clean
 	cd modules/json2jison && make superclean
 	cd modules/lex-parser && make superclean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
-	-rm -rf web/output/
-	-rm -rf web/tmp/
-	#-rm -rf ./gh-pages/*
-	-rm -f web/content/assets/js/calculator.js
-	-rm -f web/content/assets/js/jison.js
 
 
 
