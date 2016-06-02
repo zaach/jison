@@ -13,6 +13,7 @@ var typal      = require('./util/typal').typal;
 var Set        = require('./util/set').Set;
 var Lexer      = require('./util/regexp-lexer.js');
 var ebnfParser = require('./util/ebnf-parser.js');
+var XRegExp    = require('xregexp');
 //var JSONSelect = require('JSONSelect');
 //var esprima    = require('esprima');
 //var escodegen  = require('escodegen');
@@ -200,7 +201,7 @@ generator.constructor = function Jison_Generator(grammar, opt) {
     this.DEBUG = this.options.debug || false;
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
-        console.log('Grammar::OPTIONS:\n', this.options);
+        Jison.print('Grammar::OPTIONS:\n', this.options);
     }
 
     this.processGrammar(grammar);
@@ -221,7 +222,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
         bnf = grammar.bnf = ebnfParser.transform(grammar.ebnf);
     }
     if (devDebug) {
-        console.log('processGrammar: ', JSON.stringify({
+        Jison.print('processGrammar: ', JSON.stringify({
             bnf: bnf,
             tokens: tokens,
             productions: productions
@@ -261,7 +262,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
                 predefined_symbols = JSON.parse(source);
             } catch (ex) {
                 if (devDebug) {
-                    console.log('%import symbols JSON fail: ', ex);
+                    console.error('%import symbols JSON fail: ', ex);
                 }
                 try {
                     var m = /[\r\n]\s*symbols_:\s*(\{[\s\S]*?\}),\s*[\r\n]/.exec(source);
@@ -271,7 +272,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
                     }
                 } catch (ex) {
                     if (devDebug) {
-                        console.log('%import symbols JISON output fail: ', ex);
+                        console.error('%import symbols JISON output fail: ', ex);
                     }
                 }
             }
@@ -290,7 +291,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
     this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, grammar.extra_tokens);
 
     if (devDebug > 1) {
-        console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, 
+        Jison.print('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, 
                     '\n###################################### TOKENS\n', tokens, 
                     '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, 
                     '\n###################################### LEX\n', grammar.lex, 
@@ -387,7 +388,9 @@ generator.signalUnusedProductions = function () {
             assert(p.symbol === nt.symbol);
             assert(p.handle);
             var rhs = p.handle;
-            if (devDebug > 0) console.log('traverse / mark: ', nt.symbol, ' --> ', rhs);
+            if (devDebug > 0) {
+                Jison.print('traverse / mark: ', nt.symbol, ' --> ', rhs);
+            }
 
             for (var j = 0, len = rhs.length; j < len; j++) {
                 var sym = rhs[j];
@@ -474,6 +477,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     symbols_.$accept = 0;
     symbols_[this.EOF] = 1;
     symbols_['$eof'] = 1;               // `$eof` is a synonym of `$end` for bison compatibility; this is the only place where two symbol names may map to a single symbol ID number!
+    symbols_['EOF'] = 1;                // `EOF` is a synonym of `$end` for bison compatibility; this is the only place where two symbol names may map to a single symbol ID number!
     symbols[0] = '$accept';
     symbols[1] = this.EOF;
 
@@ -513,11 +517,86 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     var hasErrorRecovery = false; // has error recovery
 
+    // Preprocess the action code block before we perform any `$n`, `@n` or `#n` expansions:
+    // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
+    // contain `$` or `#` prefixed bits which might look like references but aren't!)
+    //
+    // Note: 
+    // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
+    function preprocessActionCode(s) {
+        function replace_markers(cmt) {
+            cmt = cmt
+            .replace(/#/g, '\x01')
+            .replace(/\$/g, '\x02')
+            .replace(/@/g, '\x03')
+            .replace(/\/\*/g, '\x05')
+            .replace(/\/\//g, '\x06');
+            return cmt;
+        }
+
+        s = s
+        // do not trim any NEWLINES in the action block:
+        .replace(/^\s+/, '')
+        .replace(/\s+$/, '')
+        // unify CR/LF combo's:
+        .replace(/\r\n|\r/g, '\n')
+        // replace any '$' and '#' in any C++-style comment line:
+        .replace(/^\s*\/\/.+$/mg, function (_) {
+            return replace_markers(_);
+        })
+        // also process any //-comments trailing a line of code: 
+        // (we need to ensure these are real and not a bit of string, 
+        // which leaves those comments that are very hard to correctly 
+        // recognize with a simple regex, e.g. '// this isn't a #666 location ref!':
+        // we accept that we don't actually *parse* the action block and let these
+        // slip through... :-( )
+        //
+        // WARNING: without that `\n` inside the regex `[...]` set, the set *will*
+        // match a NEWLINE and thus *possibly* gobble TWO lines for the price of ONE,
+        // when the first line is an *empty* comment line, i.e. nothing trailing
+        // the `//` in there and thus the `[^'"]` matching the terminating NL *before*
+        // the `$` in the regex can get at it. Cave canem therefor!       |8-(
+        .replace(/\/\/[^'"\n]+$/mg, function (_) {
+            return replace_markers(_);
+        })
+        // now MARK all the /*...*/ comment blocks and process those!
+        // (Here again we accept that we don't actually *parse* the action code and
+        // permit to let some of these slip, i.e. comment blocks which trail
+        // a line of code and contain string delimiter(s). :-( )
+        .replace(/^(\s*)\/\*/mg, '$1\x04')
+        .replace(/\/\*([^'"\n]*)$/mg, '\x04$1')
+        // and find their END marker: first '*/' found wins!
+        // (The `[^\0]` regex expression is a hack to ensure NEWLINES are matched
+        // by that set as well, i.e. this way we can easily cross line boundaries
+        // while searching for he end of the multiline comment we're trying to
+        // dig out by regex matching. Also note that we employ non-aggressive
+        // matching to ensure the regex matcher will find the FIRST occurrence of
+        // `*/` and mark that as the end of the regex match!)
+        .replace(/\x04[^\0]*?\*\//g, function (_) {
+            return replace_markers(_);
+        });
+        return s;
+    }
+
+    // Postprocess the action code block after we perform any `$n`, `@n` or `#n` expansions:
+    // revert the preprocessing!
+    function postprocessActionCode(s) {
+        s = s
+        // multiline comment start markers:
+        .replace(/\x04/g, '/*')
+        .replace(/\x05/g, '/*')
+        .replace(/\x06/g, '//')
+        // revert markers:
+        .replace(/\x01/g, '#')
+        .replace(/\x02/g, '$')
+        .replace(/\x03/g, '@');
+        return s;
+    }
+
     // Strip off any insignificant whitespace from the user code to ensure that
     // otherwise identical actions are indeed matched up into a single actionGroup:
     function mkHashIndex(s) {
         return s.trim()
-        .replace(/\r\n|\r/g, '\n')
         .replace(/\s+$/mg, '')          // strip any trailing whitespace for each line of action code
         .replace(/^\s+/mg, '');         // ditto for leading whitespace for each line: we don't care about more or less clean indenting practices in the user code
     }
@@ -567,7 +646,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         } else {
             prods = bnf[symbol].slice(0);
         }
-        if (devDebug) console.log('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
+        if (devDebug) Jison.print('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
 
         prods.forEach(buildProduction);
     }
@@ -579,9 +658,9 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         terms = [], 
         terms_ = {};
     each(symbols_, function (id, sym) {
-        // `$eof` is a synonym of `$end` for bison compatibility; 
+        // `$eof` and `EOF` are synonyms of `$end` (`$eof` is for bison compatibility); 
         // this is the only place where two symbol names may map to a single symbol ID number
-        // and we do not want `$eof` to show up in the symbol tables of generated parsers
+        // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
         // as we use `$end` for that one!
         if (!nonterminals[sym] && sym !== '$eof') {
             terms.push(sym);
@@ -652,7 +731,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYSTACK = analyzeFeatureUsage(this.performAction, /\byystack\b/g, 1);
 
     if (devDebug) {
-        console.log('Optimization analysis: ', {
+        Jison.print('Optimization analysis: ', {
             actionsAreAllDefault: this.actionsAreAllDefault,
             actionsUseYYLENG: this.actionsUseYYLENG,
             actionsUseYYLINENO: this.actionsUseYYLINENO,
@@ -728,7 +807,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             ls = rhs.substr(0, pos);
             // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
             rhs = rhs.substr(pos + 1);
-            var alias = rhs.match(/^\[[a-zA-Z_][a-zA-Z0-9_]*\]/);
+            var alias = rhs.match(new XRegExp("^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]"));
             if (alias) {
                 ls += alias[0];
                 rhs = rhs.substr(alias[0].length);
@@ -750,9 +829,14 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     // make sure a comment does not contain any embedded '*/' end-of-comment marker
     // as that would break the generated code
-    function postprocessComment(str) {
+    function postprocessComment(str, check_for_epsilon) {
         if (Array.isArray(str)) {
-            str = str.join(' ');
+            str = str.map(function (_) {
+                return (check_for_epsilon && (_ === '' || _ == null)) ? 'ε' : _;
+            }).join(' ');
+        }
+        if (check_for_epsilon && str === '') {
+            str = 'ε';
         }
         str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
@@ -794,7 +878,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         var r, rhs, i, 
             precedence_override;
 
-        if (devDebug) console.log('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
 
         if (handle.constructor === Array) {
             var aliased = [],
@@ -805,7 +889,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
             for (i = 0; i < rhs.length; i++) {
                 // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = rhs[i].match(/\[[a-zA-Z_][a-zA-Z0-9_]*\]$/);
+                rhs_i = rhs[i].match(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$"));
                 if (rhs_i) {
                     rhs[i] = rhs[i].substr(0, rhs[i].length - rhs_i[0].length);
                     rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
@@ -826,8 +910,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 var label = [
                     'case', productions.length + 1, ':',
                     '\n/*! Production::    ', postprocessComment(symbol), ':'
-                ].concat(postprocessComment(handle[0]), '*/\n');
-                var action = handle[1];
+                ].concat(postprocessComment(handle[0], true), '*/\n');
+                var action = preprocessActionCode(handle[1]);
                 var actionHash;
                 var rule4msg = symbol + ': ' + rhs.join(' ');
 
@@ -843,7 +927,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     });
 
                 // replace named semantic values ($nonterminal)
-                if (action.match(/[$@#][a-zA-Z_][a-zA-Z0-9_]*/)) {
+                if (action.match(new XRegExp("[$@#][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*"))) {
                     var count = {},
                         names = {};
 
@@ -883,11 +967,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                             addName(rhs[i]);
                         }
                     }
-                    action = action.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                    action = action.replace(new XRegExp("\\$([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '$' + names[pl] : str;
-                        }).replace(/@([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                        }).replace(new XRegExp("@([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '@' + names[pl] : str;
-                        }).replace(/#([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                        }).replace(new XRegExp("#([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '#' + names[pl] : str;
                         });
                 }
@@ -907,12 +991,15 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     .replace(/#(-?\d+)\b/g, function (_, n) {
                         var i = parseInt(n, 10) - 1;
                         if (!rhs[i]) {
-                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '"');
+                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
                         }
                         var sym = String(rhs[i]);
-                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(rhs[i]);
+                        return ' /* ' + postprocessComment(sym, true) + ' */ ' + addSymbol(rhs[i]);
                     });
+                
                 actionHash = mkHashIndex(action);
+
+                action = postprocessActionCode(action);
                 if (actionHash in actionGroups) {
                     actionGroups[actionHash].push(label);
                 } else {
@@ -938,7 +1025,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } else {
             // no action -> don't care about aliases; strip them.
-            handle = handle.replace(/\[[a-zA-Z_][a-zA-Z0-9_]*\]/g, '');
+            handle = handle.replace(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]", "g"), '');
             rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 if (rhs[i] === 'error') {
@@ -965,7 +1052,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     var new_prec = operators[r.handle[i]].precedence;
                     if (old_prec !== 0 && old_prec !== new_prec) {
                         prec_symbols.push(r.handle[i]);
-                        // console.log('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
+                        // Jison.print('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
                         if (new_prec < old_prec) {
                             winning_symbol = r.handle[i];
                         }
@@ -976,7 +1063,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     } else if (old_prec === 0) {
                         prec_symbols.push(r.handle[i]);
                         winning_symbol = r.handle[i];
-                        // console.log('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
+                        // Jison.print('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
                     }
                     r.precedence = new_prec;
                 }
@@ -1054,12 +1141,6 @@ lookaheadMixin.computeLookaheads = function computeLookaheads() {
     this.nullableSets();
     this.firstSets();
     this.followSets();
-
-    if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER computeLookaheads:");
-        this.displayFollowSets();
-        console.log("\n");
-    }
 };
 
 lookaheadMixin.displayFollowSets = function displayFollowSets() {
@@ -1209,8 +1290,7 @@ lookaheadMixin.firstSets = function firstSets() {
 
 // fixed-point calculation of NULLABLE
 lookaheadMixin.nullableSets = function nullableSets() {
-    var firsts = this.firsts = {},
-        nonterminals = this.nonterminals,
+    var nonterminals = this.nonterminals,
         self = this,
         cont = true;
 
@@ -1300,17 +1380,17 @@ lrGeneratorMixin.buildTable = function buildTable() {
     this.states = this.canonicalCollection();
 
     if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
         this.displayFollowSets();
-        console.log("\n");
+        Jison.print("\n");
     }
 
     this.table = this.parseTable(this.states);
 
     if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER parseTable:");
+        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
         this.displayFollowSets();
-        console.log("\n");
+        Jison.print("\n");
     }
 
     this.defaultActions = findDefaults(this.table);
@@ -1460,7 +1540,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
     states.has = {};
     states.has[firstState] = 0;
     
-    if (devDebug > 0) console.log('canonicalCollection: ', states.has);
+    if (devDebug > 0) Jison.print('canonicalCollection: ', states.has);
 
     while (marked !== states.size()) {
         itemSet = states.item(marked);
@@ -1923,7 +2003,7 @@ generatorMixin.generate = function parser_generate(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE::OPTIONS:\n', this.options);
+        Jison.print('GENERATE::OPTIONS:\n', this.options);
     }
     var code = '';
 
@@ -1958,7 +2038,7 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-AMD::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-AMD::OPTIONS:\n', this.options);
     }
     var module = this.generateModule_();
     var out = [
@@ -1988,7 +2068,7 @@ lrGeneratorMixin.generateESModule = function generateESModule(opt){
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-ES2015::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-ES2015::OPTIONS:\n', this.options);
     }
     var module = this.generateModule_();
     var out = [
@@ -2020,7 +2100,7 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-CommonJS::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-CommonJS::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var main = [];
@@ -2053,7 +2133,7 @@ generatorMixin.generateModule = function generateModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-Module::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-Module::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
@@ -2419,9 +2499,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         var k;
         for (var i = 0, len = a.length; i < len; i++) {
             k = a[i];
-            // `$eof` is a synonym of `$end` for bison compatibility; 
+            // `$eof` and `EOF` are synonyms of `$end` (`$eof` is for bison compatibility); 
             // this is the only place where two symbol names may map to a single symbol ID number
-            // and we do not want `$eof` to show up in the symbol tables of generated parsers
+            // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
             // as we use `$end` for that one!
             if (k !== '$eof') {
                 nt[k] = tbl[k];
@@ -2447,9 +2527,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                     if (!t) {
                         t = '%epsilon';
                     }
-                    // `$eof` is a synonym of `$end` for bison compatibility; 
+                    // `$eof` and `EOF` are synonyms of `$end` ('$eof' is for bison compatibility); 
                     // this is the only place where two symbol names may map to a single symbol ID number
-                    // and we do not want `$eof` to show up in the symbol tables of generated parsers
+                    // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
                     // as we use `$end` for that one!
                     if (t === '$eof') {
                         t = '$end';
@@ -2518,7 +2598,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ');
+        js = js.replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ');
         js = js.replace(/^( +)pre_parse: true,$/gm, '$1pre_parse: ' + String(pre) + ',');
         js = js.replace(/^( +)post_parse: true,$/gm, '$1post_parse: ' + String(post) + ',');
         return js;
@@ -3558,7 +3638,7 @@ parser.parse = function parse(input) {
 
             var js;
             try {
-                js = JSON.stringify(obj, null, 2).replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ').replace(/[\n\s]+/g, ' ');
+                js = JSON.stringify(obj, null, 2).replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ').replace(/[\n\s]+/g, ' ');
             } catch (ex) {
                 js = String(obj);
             }
@@ -4098,9 +4178,9 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.states = this.canonicalCollection();
 
         if (this.DEBUG) {
-            console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
             this.displayFollowSets();
-            console.log("\n");
+            Jison.print("\n");
         }
 
         this.terms_ = {};
@@ -4133,34 +4213,36 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.buildNewGrammar();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         newg.computeLookaheads();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR");
+            newg.displayFollowSets();
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         this.unionLookaheads();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.states);
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER parseTable: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
@@ -4181,7 +4263,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             endStateNum = this.states.item(endStateNum).edges[productionHandle[i]] || endStateNum;
         }
         if (devDebug > 0) {
-            console.log('GO: ', {
+            Jison.print('GO: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 endState: endStateNum
@@ -4206,7 +4288,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             this.terms_[t] = productionHandle[i];
         }
         if (devDebug > 0) {
-            console.log('GOPATH: ', {
+            Jison.print('GOPATH: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 path: path,
@@ -4324,6 +4406,13 @@ var lalrGeneratorDebug = {
 var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     afterconstructor: function lr_aftercontructor() {
         this.computeLookaheads();
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            this.displayFollowSets();
+            Jison.print("\n");
+        }
+
         this.buildTable();
     }
 });
@@ -4410,7 +4499,18 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
 
     afterconstructor: function ll_aftercontructor() {
         this.computeLookaheads();
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            this.displayFollowSets();
+        }
+
         this.table = this.parseTable(this.productions);
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
+            this.displayFollowSets();
+        }
     },
 
     parseTable: function llParseTable(productions) {
@@ -4508,7 +4608,7 @@ return function Parser(g, options) {
 })();
 
 }).call(this,require('_process'))
-},{"../package.json":25,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"_process":21,"assert":12,"fs":13,"path":20}],3:[function(require,module,exports){
+},{"../package.json":25,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"_process":21,"assert":12,"fs":13,"path":20,"xregexp":24}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("./lex-parser");
@@ -4902,7 +5002,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.17-124 */
+/* parser generated by jison 0.4.17-126 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -5297,74 +5397,74 @@ symbols_: {
   ",": 44,
   ".": 46,
   "/": 47,
-  "/!": 158,
+  "/!": 157,
   "<": 60,
   "=": 61,
   ">": 62,
   "?": 63,
-  "ACTION": 142,
-  "ACTION_BODY": 152,
-  "CHARACTER_LIT": 173,
-  "CODE": 183,
-  "EOF": 132,
-  "ESCAPE_CHAR": 170,
-  "INCLUDE": 180,
-  "NAME": 136,
-  "NAME_BRACE": 164,
-  "OPTIONS": 174,
-  "OPTIONS_END": 176,
-  "OPTION_VALUE": 178,
-  "PATH": 181,
-  "RANGE_REGEX": 171,
-  "REGEX_SET": 169,
-  "REGEX_SET_END": 167,
-  "REGEX_SET_START": 165,
-  "SPECIAL_GROUP": 157,
-  "START_COND": 146,
-  "START_EXC": 140,
-  "START_INC": 138,
-  "STRING_LIT": 172,
-  "UNKNOWN_DECL": 145,
+  "ACTION": 141,
+  "ACTION_BODY": 151,
+  "CHARACTER_LIT": 172,
+  "CODE": 182,
+  "EOF": 1,
+  "ESCAPE_CHAR": 169,
+  "INCLUDE": 179,
+  "NAME": 135,
+  "NAME_BRACE": 163,
+  "OPTIONS": 173,
+  "OPTIONS_END": 175,
+  "OPTION_VALUE": 177,
+  "PATH": 180,
+  "RANGE_REGEX": 170,
+  "REGEX_SET": 168,
+  "REGEX_SET_END": 166,
+  "REGEX_SET_START": 164,
+  "SPECIAL_GROUP": 156,
+  "START_COND": 145,
+  "START_EXC": 139,
+  "START_INC": 137,
+  "STRING_LIT": 171,
+  "UNKNOWN_DECL": 144,
   "^": 94,
-  "action": 149,
-  "action_body": 150,
-  "action_comments_body": 151,
-  "any_group_regex": 161,
-  "definition": 135,
+  "action": 148,
+  "action_body": 149,
+  "action_comments_body": 150,
+  "any_group_regex": 160,
+  "definition": 134,
   "definitions": 129,
   "error": 2,
-  "escape_char": 163,
-  "extra_lexer_module_code": 133,
-  "include_macro_code": 143,
+  "escape_char": 162,
+  "extra_lexer_module_code": 132,
+  "include_macro_code": 142,
   "init": 128,
   "lex": 127,
-  "module_code_chunk": 182,
-  "name_expansion": 159,
-  "name_list": 153,
-  "names_exclusive": 141,
-  "names_inclusive": 139,
-  "option": 177,
-  "option_list": 175,
-  "optional_module_code_chunk": 179,
-  "options": 144,
-  "range_regex": 160,
-  "regex": 137,
-  "regex_base": 156,
-  "regex_concat": 155,
-  "regex_list": 154,
-  "regex_set": 166,
-  "regex_set_atom": 168,
-  "rule": 147,
-  "rules": 134,
+  "module_code_chunk": 181,
+  "name_expansion": 158,
+  "name_list": 152,
+  "names_exclusive": 140,
+  "names_inclusive": 138,
+  "option": 176,
+  "option_list": 174,
+  "optional_module_code_chunk": 178,
+  "options": 143,
+  "range_regex": 159,
+  "regex": 136,
+  "regex_base": 155,
+  "regex_concat": 154,
+  "regex_list": 153,
+  "regex_set": 165,
+  "regex_set_atom": 167,
+  "rule": 146,
+  "rules": 133,
   "rules_and_epilogue": 131,
-  "start_conditions": 148,
-  "string": 162,
+  "start_conditions": 147,
+  "string": 161,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   36: "$",
   40: "(",
@@ -5383,30 +5483,29 @@ terminals_: {
   124: "|",
   125: "}",
   130: "%%",
-  132: "EOF",
-  136: "NAME",
-  138: "START_INC",
-  140: "START_EXC",
-  142: "ACTION",
-  145: "UNKNOWN_DECL",
-  146: "START_COND",
-  152: "ACTION_BODY",
-  157: "SPECIAL_GROUP",
-  158: "/!",
-  164: "NAME_BRACE",
-  165: "REGEX_SET_START",
-  167: "REGEX_SET_END",
-  169: "REGEX_SET",
-  170: "ESCAPE_CHAR",
-  171: "RANGE_REGEX",
-  172: "STRING_LIT",
-  173: "CHARACTER_LIT",
-  174: "OPTIONS",
-  176: "OPTIONS_END",
-  178: "OPTION_VALUE",
-  180: "INCLUDE",
-  181: "PATH",
-  183: "CODE"
+  135: "NAME",
+  137: "START_INC",
+  139: "START_EXC",
+  141: "ACTION",
+  144: "UNKNOWN_DECL",
+  145: "START_COND",
+  151: "ACTION_BODY",
+  156: "SPECIAL_GROUP",
+  157: "/!",
+  163: "NAME_BRACE",
+  164: "REGEX_SET_START",
+  166: "REGEX_SET_END",
+  168: "REGEX_SET",
+  169: "ESCAPE_CHAR",
+  170: "RANGE_REGEX",
+  171: "STRING_LIT",
+  172: "CHARACTER_LIT",
+  173: "OPTIONS",
+  175: "OPTIONS_END",
+  177: "OPTION_VALUE",
+  179: "INCLUDE",
+  180: "PATH",
+  182: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -5417,54 +5516,54 @@ productions_: bp({
   129,
   129,
   s,
-  [135, 7],
-  139,
-  139,
-  141,
-  141,
-  134,
-  134,
-  147,
-  s,
-  [149, 3],
-  150,
-  150,
-  151,
-  151,
+  [134, 7],
+  138,
+  138,
+  140,
+  140,
+  133,
+  133,
+  146,
   s,
   [148, 3],
-  153,
-  153,
-  137,
+  149,
+  149,
+  150,
+  150,
   s,
-  [154, 4],
-  155,
-  155,
+  [147, 3],
+  152,
+  152,
+  136,
   s,
-  [156, 15],
+  [153, 4],
+  154,
+  154,
+  s,
+  [155, 15],
+  158,
+  160,
+  165,
+  165,
+  167,
+  167,
+  162,
   159,
   161,
-  166,
-  166,
-  168,
-  168,
-  163,
-  160,
-  162,
-  162,
-  144,
-  175,
-  175,
+  161,
+  143,
+  174,
+  174,
   s,
-  [177, 3],
-  133,
-  133,
-  143,
-  143,
-  182,
-  182,
-  179,
-  179
+  [176, 3],
+  132,
+  132,
+  142,
+  142,
+  181,
+  181,
+  178,
+  178
 ]),
   rule: u([
   4,
@@ -5526,8 +5625,7 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     lex : init definitions '%%' rules_and_epilogue */
- 
-          this.$ = $$[$0];
+ this.$ = $$[$0];
           if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
           if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
           if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
@@ -5546,52 +5644,40 @@ case 1 :
           }
           delete yy.options;
           delete yy.actionInclude;
-          return this.$;
-         
+          return this.$; 
 break;
 case 2 : 
 /*! Production::     rules_and_epilogue : EOF */
- 
-        this.$ = { rules: [] };
-       
+ this.$ = { rules: [] }; 
 break;
 case 3 : 
 /*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
           this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: [] };
-        }
-       
+        } 
 break;
 case 4 : 
 /*! Production::     rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
           this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: $$[$0 - 3] };
-        }
-       
+        } 
 break;
 case 5 : 
 /*! Production::     rules_and_epilogue : rules EOF */
- 
-        this.$ = { rules: $$[$0 - 1] };
-       
+ this.$ = { rules: $$[$0 - 1] }; 
 break;
 case 6 : 
-/*! Production::     init :  */
- 
-            yy.actionInclude = [];
-            if (!yy.options) yy.options = {};
-         
+/*! Production::     init : ε */
+ yy.actionInclude = [];
+            if (!yy.options) yy.options = {}; 
 break;
 case 7 : 
 /*! Production::     definitions : definition definitions */
- 
-          this.$ = $$[$0];
+ this.$ = $$[$0];
           if ($$[$0 - 1] != null) {
             if ('length' in $$[$0 - 1]) {
               this.$[0] = this.$[0] || {};
@@ -5605,16 +5691,15 @@ case 7 :
               this.$[2] = this.$[2] || [];
               this.$[2].push($$[$0 - 1].body);
             }
-          }
-         
+          } 
 break;
 case 8 : 
-/*! Production::     definitions :  */
-  this.$ = [null, null];  
+/*! Production::     definitions : ε */
+ this.$ = [null, null]; 
 break;
 case 9 : 
 /*! Production::     definition : NAME regex */
-  this.$ = [$$[$0 - 1], $$[$0]];  
+ this.$ = [$$[$0 - 1], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     definition : START_INC names_inclusive */
@@ -5636,69 +5721,69 @@ case 10 :
 /*! Production::     module_code_chunk : CODE */
  case 79 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 12 : 
 /*! Production::     definition : ACTION */
  case 13 : 
 /*! Production::     definition : include_macro_code */
-  yy.actionInclude.push($$[$0]); this.$ = null;  
+ yy.actionInclude.push($$[$0]); this.$ = null; 
 break;
 case 14 : 
 /*! Production::     definition : options */
-  this.$ = null;  
+ this.$ = null; 
 break;
 case 15 : 
 /*! Production::     definition : UNKNOWN_DECL */
-  this.$ = {type: 'unknown', body: $$[$0]};  
+ this.$ = {type: 'unknown', body: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     names_inclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0; 
 break;
 case 17 : 
 /*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0; 
 break;
 case 18 : 
 /*! Production::     names_exclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1; 
 break;
 case 19 : 
 /*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1; 
 break;
 case 20 : 
 /*! Production::     rules : rules rule */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 21 : 
 /*! Production::     rules : rule */
  case 33 : 
 /*! Production::     name_list : NAME */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 22 : 
 /*! Production::     rule : start_conditions regex action */
-  this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]];  
+ this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]]; 
 break;
 case 23 : 
 /*! Production::     action : '{' action_body '}' */
  case 30 : 
 /*! Production::     start_conditions : '<' name_list '>' */
-  this.$ = $$[$0 - 1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 28 : 
-/*! Production::     action_comments_body :  */
+/*! Production::     action_comments_body : ε */
  case 39 : 
-/*! Production::     regex_list :  */
+/*! Production::     regex_list : ε */
  case 80 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 29 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
@@ -5710,118 +5795,152 @@ case 29 :
 /*! Production::     regex_set : regex_set_atom regex_set */
  case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
-  this.$ = $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 31 : 
 /*! Production::     start_conditions : '<' '*' '>' */
-  this.$ = ['*'];  
+ this.$ = ['*']; 
 break;
 case 34 : 
 /*! Production::     name_list : name_list ',' NAME */
-  this.$ = $$[$0 - 2]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 2]; this.$.push($$[$0]); 
 break;
 case 35 : 
 /*! Production::     regex : regex_list */
- 
+ // Detect if the regex ends with a pure (Unicode) word;
+          // we *do* consider escaped characters which are 'alphanumeric' to be equivalent to their non-escaped version,
+          // hence these are all valid 'words' for the 'easy keyword rules' option:
+          //
+          // - hello_kitty
+          // - γεια_σου_γατούλα
+          // - \u03B3\u03B5\u03B9\u03B1_\u03C3\u03BF\u03C5_\u03B3\u03B1\u03C4\u03BF\u03CD\u03BB\u03B1
+          //
+          // http://stackoverflow.com/questions/7885096/how-do-i-decode-a-string-with-escaped-unicode#12869914
+          //
+          // As we only check the *tail*, we also accept these as 'easy keywords':
+          //
+          // - %options
+          // - %foo-bar    
+          // - +++a:b:c1
+          //
+          // Note the dash in that last example: there the code will consider `bar` to be the keyword, 
+          // which is fine with us as we're only interested in the taiol boundary and patching that one
+          // for the `easy_keyword_rules` option.
           this.$ = $$[$0];
-          if (yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
-              this.$ += "\\b";
-          }
-         
+          if (yy.options.easy_keyword_rules) {
+            try {
+              // We need to 'protect' JSON.parse here as keywords are allowed to contain double-quotes and
+              // other leading cruft.
+              // JSON.parse *does* gobble some escapes (such as `\b`) but we protect against that through
+              // a simple replace regex: we're not interested in the special escapes' exact value anyway.
+              // It will also catch escaped escapes (`\\`), which are not word characters either, 
+              // so no need to worry about JSON.parse 'correctly' converting convoluted constructs like 
+              // '\\\\\\\\\\b' in here.
+              this.$ = this.$
+              .replace(/"/g, '.' /* '\\"' */)
+              .replace(/\\c[A-Z]/g, '.')
+              .replace(/\\[^xu0-9]/g, '.');
+
+              this.$ = JSON.parse('"' + this.$ + '"');
+              // a 'keyword' starts with an alphanumeric character, followed by zero or more alphanumerics or digits:
+              if (this.$.match(/\w[\w\d]*$/u)) {
+                this.$ = $$[$0] + "\\b";
+              } else {
+                this.$ = $$[$0];
+              }
+            } catch (ex) {
+              this.$ = $$[$0];
+            }
+          } 
 break;
 case 36 : 
 /*! Production::     regex_list : regex_list '|' regex_concat */
-  this.$ = $$[$0 - 2] + '|' + $$[$0];  
+ this.$ = $$[$0 - 2] + '|' + $$[$0]; 
 break;
 case 37 : 
 /*! Production::     regex_list : regex_list '|' */
-  this.$ = $$[$0 - 1] + '|';  
+ this.$ = $$[$0 - 1] + '|'; 
 break;
 case 42 : 
 /*! Production::     regex_base : '(' regex_list ')' */
-  this.$ = '(' + $$[$0 - 1] + ')';  
+ this.$ = '(' + $$[$0 - 1] + ')'; 
 break;
 case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ')' */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + ')';  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + ')'; 
 break;
 case 44 : 
 /*! Production::     regex_base : regex_base '+' */
-  this.$ = $$[$0 - 1] + '+';  
+ this.$ = $$[$0 - 1] + '+'; 
 break;
 case 45 : 
 /*! Production::     regex_base : regex_base '*' */
-  this.$ = $$[$0 - 1] + '*';  
+ this.$ = $$[$0 - 1] + '*'; 
 break;
 case 46 : 
 /*! Production::     regex_base : regex_base '?' */
-  this.$ = $$[$0 - 1] + '?';  
+ this.$ = $$[$0 - 1] + '?'; 
 break;
 case 47 : 
 /*! Production::     regex_base : '/' regex_base */
-  this.$ = '(?=' + $$[$0] + ')';  
+ this.$ = '(?=' + $$[$0] + ')'; 
 break;
 case 48 : 
 /*! Production::     regex_base : '/!' regex_base */
-  this.$ = '(?!' + $$[$0] + ')';  
+ this.$ = '(?!' + $$[$0] + ')'; 
 break;
 case 52 : 
 /*! Production::     regex_base : '.' */
-  this.$ = '.';  
+ this.$ = '.'; 
 break;
 case 53 : 
 /*! Production::     regex_base : '^' */
-  this.$ = '^';  
+ this.$ = '^'; 
 break;
 case 54 : 
 /*! Production::     regex_base : '$' */
-  this.$ = '$';  
+ this.$ = '$'; 
 break;
 case 58 : 
 /*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
  case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 62 : 
 /*! Production::     regex_set_atom : name_expansion */
-  
-            if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) && $$[$0].toUpperCase() !== $$[$0]) {
+ if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) && $$[$0].toUpperCase() !== $$[$0]) {
                 // treat this as part of an XRegExp `\p{...}` Unicode slug:
                 this.$ = $$[$0];
             } else {
                 this.$ = '{[' + $$[$0] + ']}';
             }
-         
+            //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ }); 
 break;
 case 65 : 
 /*! Production::     string : STRING_LIT */
-  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
+ this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2)); 
 break;
 case 70 : 
 /*! Production::     option : NAME[option] */
-  yy.options[$$[$0]] = true;  
+ yy.options[$$[$0]] = true; 
 break;
 case 71 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 72 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  yy.options[$$[$0 - 2]] = $$[$0];  
+ yy.options[$$[$0 - 2]] = $$[$0]; 
 break;
 case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fs = require('fs');
+ var fs = require('fs');
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 76 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -5927,18 +6046,18 @@ table: bt({
   128,
   130,
   s,
-  [136, 4, 2],
-  145,
-  174,
-  180,
+  [135, 4, 2],
+  144,
+  173,
+  179,
   1,
   129,
   130,
-  135,
+  134,
   c,
   [11, 4],
+  142,
   143,
-  144,
   c,
   [13, 3],
   130,
@@ -5951,55 +6070,55 @@ table: bt({
   94,
   124,
   130,
+  135,
   136,
-  137,
   c,
   [41, 4],
   s,
-  [154, 6, 1],
+  [153, 6, 1],
   s,
-  [161, 5, 1],
-  170,
+  [160, 5, 1],
+  169,
+  171,
   172,
   173,
-  174,
-  180,
-  139,
-  146,
-  141,
-  146,
+  179,
+  138,
+  145,
+  140,
+  145,
   c,
   [67, 8],
   c,
   [8, 24],
   2,
-  181,
-  136,
-  175,
-  177,
+  180,
+  135,
+  174,
+  176,
+  1,
   c,
-  [70, 4],
+  [71, 4],
   60,
   94,
   123,
   124,
   130,
   131,
-  132,
-  134,
-  142,
+  133,
+  141,
+  146,
   147,
-  148,
+  156,
   157,
-  158,
   c,
   [65, 5],
-  180,
+  179,
   130,
   c,
   [37, 8],
   c,
-  [26, 3],
+  [25, 3],
   c,
   [10, 7],
   36,
@@ -6020,13 +6139,13 @@ table: bt({
   63,
   c,
   [31, 9],
+  156,
   157,
-  158,
-  160,
+  159,
   c,
   [27, 3],
   s,
-  [171, 4, 1],
+  [170, 4, 1],
   c,
   [56, 7],
   124,
@@ -6044,47 +6163,45 @@ table: bt({
   [103, 11],
   c,
   [27, 180],
-  167,
-  s,
-  [169, 6, 1],
-  180,
-  159,
-  164,
   166,
+  s,
+  [168, 6, 1],
+  179,
+  158,
+  163,
+  165,
+  167,
   168,
-  169,
   c,
   [115, 81],
   c,
   [16, 6],
-  146,
+  145,
   c,
   [9, 29],
   c,
-  [514, 9],
-  132,
+  [514, 10],
   c,
   [61, 10],
   c,
   [60, 4],
-  183,
+  182,
   c,
   [25, 25],
-  176,
-  136,
+  175,
+  135,
+  174,
   175,
   176,
-  177,
   61,
-  136,
-  176,
-  1,
-  1,
+  135,
+  175,
+  s,
+  [1, 3],
   132,
-  133,
+  178,
   179,
-  180,
-  182,
+  181,
   c,
   [41, 11],
   c,
@@ -6092,17 +6209,19 @@ table: bt({
   c,
   [21, 11],
   c,
-  [19, 12],
+  [19, 8],
   c,
-  [18, 3],
-  137,
-  142,
+  [463, 5],
+  123,
+  124,
+  136,
+  141,
   c,
   [503, 14],
-  180,
+  179,
   42,
-  136,
-  153,
+  135,
+  152,
   c,
   [605, 14],
   c,
@@ -6119,42 +6238,41 @@ table: bt({
   [167, 47],
   c,
   [28, 9],
-  167,
+  166,
   c,
   [508, 3],
+  166,
   167,
   168,
-  169,
-  164,
-  167,
+  163,
+  166,
   c,
   [3, 4],
   c,
   [425, 24],
-  174,
-  180,
-  176,
-  136,
-  178,
-  132,
-  132,
-  143,
-  180,
-  132,
-  180,
-  183,
-  c,
-  [3, 4],
-  c,
-  [377, 5],
+  173,
+  179,
+  175,
+  135,
+  177,
   1,
+  1,
+  142,
+  179,
+  1,
+  c,
+  [409, 3],
+  c,
+  [3, 3],
+  c,
+  [377, 6],
   c,
   [357, 19],
   123,
+  141,
   142,
-  143,
-  149,
-  180,
+  148,
+  179,
   44,
   62,
   62,
@@ -6164,41 +6282,41 @@ table: bt({
   [945, 47],
   c,
   [257, 62],
-  167,
-  136,
-  176,
+  166,
+  135,
+  175,
   c,
-  [529, 3],
+  [529, 4],
   c,
   [151, 6],
   c,
-  [160, 4],
+  [160, 3],
   c,
   [154, 20],
   125,
+  149,
   150,
   151,
-  152,
   c,
-  [535, 23],
+  [24, 19],
   c,
-  [554, 22],
+  [554, 26],
   c,
   [16, 9],
-  136,
+  135,
   c,
   [17, 16],
-  132,
+  1,
   1,
   123,
   125,
   123,
   125,
-  152,
+  151,
+  44,
+  62,
   c,
-  [229, 4],
-  c,
-  [104, 22],
+  [104, 24],
   c,
   [29, 3],
   c,
@@ -6235,9 +6353,9 @@ table: bt({
   s,
   [2, 25],
   c,
-  [73, 11],
+  [73, 12],
   c,
-  [50, 4],
+  [12, 3],
   c,
   [88, 13],
   c,
@@ -6261,11 +6379,11 @@ table: bt({
   c,
   [174, 132],
   c,
-  [577, 9],
+  [565, 10],
   c,
-  [465, 15],
+  [593, 24],
   c,
-  [235, 38],
+  [235, 28],
   c,
   [469, 15],
   c,
@@ -6279,13 +6397,15 @@ table: bt({
   c,
   [28, 36],
   c,
-  [891, 5],
+  [324, 4],
   c,
-  [81, 47],
+  [209, 39],
   c,
-  [377, 16],
+  [306, 10],
   c,
-  [388, 33],
+  [51, 26],
+  c,
+  [312, 22],
   c,
   [839, 102],
   c,
@@ -6390,11 +6510,11 @@ table: bt({
   s,
   [2, 32],
   c,
-  [53, 7],
+  [54, 8],
   c,
   [5, 4],
   c,
-  [45, 21],
+  [45, 20],
   c,
   [20, 9],
   c,
@@ -6404,11 +6524,11 @@ table: bt({
   c,
   [26, 8],
   c,
-  [39, 10],
+  [59, 16],
   c,
-  [54, 11],
+  [83, 6],
   c,
-  [50, 7],
+  [50, 6],
   c,
   [157, 10],
   c,
@@ -6426,15 +6546,17 @@ table: bt({
   c,
   [421, 4],
   c,
-  [454, 12],
+  [179, 12],
   c,
-  [188, 33],
+  [538, 24],
   c,
-  [441, 8],
+  [650, 14],
   c,
-  [657, 12],
+  [532, 11],
   c,
-  [556, 48],
+  [492, 9],
+  c,
+  [556, 43],
   c,
   [421, 137],
   c,
@@ -6508,13 +6630,13 @@ table: bt({
   41,
   40,
   44,
+  46,
   s,
   [32, 4],
   51,
   s,
   [32, 3],
   47,
-  46,
   s,
   [32, 9],
   7,
@@ -6612,10 +6734,10 @@ table: bt({
   80,
   80,
   75,
+  77,
   c,
   [538, 8],
   76,
-  77,
   s,
   [32, 9],
   s,
@@ -7317,7 +7439,7 @@ function prepareString (s) {
     return s;
 };
 
-/* generated by jison-lex 0.3.4-124 */
+/* generated by jison-lex 0.3.4-126 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -7377,7 +7499,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -7386,7 +7508,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -7407,7 +7529,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -7457,7 +7579,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -7488,13 +7610,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -7513,12 +7635,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -7528,7 +7650,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -7541,14 +7663,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -7626,7 +7748,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -7704,7 +7826,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -7721,12 +7843,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -7736,7 +7858,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -7745,7 +7867,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -7755,12 +7877,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -7775,7 +7897,7 @@ switch($avoiding_name_collisions) {
 case 2 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 152; // regexp with braces or quotes (and no spaces) 
+ return 151; // regexp with braces or quotes (and no spaces) 
 break;
 case 7 : 
 /*! Conditions:: action */ 
@@ -7818,23 +7940,23 @@ case 17 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 176; 
+ this.popState(); return 175; 
 break;
 case 24 : 
 /*! Conditions:: options */ 
@@ -7864,12 +7986,12 @@ break;
 case 30 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 31 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -7891,13 +8013,13 @@ case 32 :
                                             this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path');
-                                            return 180;
+                                            return 179;
                                          
 break;
 case 33 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .+ */ 
- this.begin('rules'); return 142; 
+ this.begin('rules'); return 141; 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7912,7 +8034,7 @@ break;
 case 36 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       {ID} */ 
- this.pushState('macro'); return 136; 
+ this.pushState('macro'); return 135; 
 break;
 case 37 : 
 /*! Conditions:: macro */ 
@@ -7925,7 +8047,7 @@ case 38 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 39 : 
@@ -7941,17 +8063,17 @@ break;
 case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 171; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 171; 
 break;
 case 43 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \[ */ 
- this.pushState('set'); return 165; 
+ this.pushState('set'); return 164; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7961,7 +8083,7 @@ break;
 case 57 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/! */ 
- return 158;                    // treated as `(?!atom)` 
+ return 157;                    // treated as `(?!atom)` 
 break;
 case 58 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7971,27 +8093,27 @@ break;
 case 60 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 170; 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 169; 
 break;
 case 63 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %options\b */ 
- this.begin('options'); return 174; 
+ this.begin('options'); return 173; 
 break;
 case 64 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %s\b */ 
- this.begin('start_condition'); return 138; 
+ this.begin('start_condition'); return 137; 
 break;
 case 65 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %x\b */ 
- this.begin('start_condition'); return 140; 
+ this.begin('start_condition'); return 139; 
 break;
 case 66 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 180; 
+ this.pushState('path'); return 179; 
 break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
@@ -7999,7 +8121,7 @@ case 67 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            return 145;
+                                            return 144;
                                          
 break;
 case 68 : 
@@ -8015,12 +8137,12 @@ break;
 case 78 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
- this.popState('set'); return 167; 
+ this.popState('set'); return 166; 
 break;
 case 80 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 183;      // the bit of CODE just before EOF... 
+ return 182;      // the bit of CODE just before EOF... 
 break;
 case 81 : 
 /*! Conditions:: path */ 
@@ -8030,12 +8152,12 @@ break;
 case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 84 : 
 /*! Conditions:: path */ 
@@ -8045,7 +8167,7 @@ break;
 case 85 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 181; 
+ this.popState(); return 180; 
 break;
 case 86 : 
 /*! Conditions:: * */ 
@@ -8063,25 +8185,25 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 152,
+   0 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 152,
+   1 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 152,
+   3 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 152,
+   4 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 152,
+   5 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 152,
+   6 : 151,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
-   9 : 136,
+   9 : 135,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
    11 : 44,
@@ -8090,28 +8212,28 @@ simpleCaseActionClusters: {
    12 : 42,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   18 : 136,
+   18 : 135,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    19 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 178,
+   22 : 177,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   25 : 146,
+   25 : 145,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \| */ 
    44 : 124,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 157,
+   45 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?= */ 
-   46 : 157,
+   46 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?! */ 
-   47 : 157,
+   47 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \( */ 
    48 : 40,
@@ -8138,7 +8260,7 @@ simpleCaseActionClusters: {
    55 : 36,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 170,
+   59 : 169,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \$ */ 
    61 : 36,
@@ -8147,13 +8269,13 @@ simpleCaseActionClusters: {
    62 : 46,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 171,
+   69 : 170,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{{ID}\} */ 
-   70 : 164,
+   70 : 163,
   /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
-   71 : 164,
+   71 : 163,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{ */ 
    72 : 123,
@@ -8162,16 +8284,16 @@ simpleCaseActionClusters: {
    73 : 125,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   75 : 132,
+   75 : 1,
   /*! Conditions:: set */ 
-  /*! Rule::       (\\\\|\\\]|[^\]{])+ */ 
-   76 : 169,
+  /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */ 
+   76 : 168,
   /*! Conditions:: set */ 
   /*! Rule::       \{ */ 
-   77 : 169,
+   77 : 168,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   79 : 183
+   79 : 182
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -8183,7 +8305,7 @@ rules: [
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
@@ -8192,14 +8314,14 @@ rules: [
 /^(?:\s+)/,
 /^(?:%%)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[^\s\r\n]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
 /^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
@@ -8210,7 +8332,7 @@ rules: [
 /^(?:.+)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
 /^(?:(\r\n|\n|\r)+)/,
@@ -8241,16 +8363,16 @@ rules: [
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
+/^(?:%([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?)[^\r\n]+)/,
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
+/^(?:\{([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\})/,
+/^(?:\{([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\})/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
 /^(?:$)/,
-/^(?:(\\\\|\\\]|[^\]{])+)/,
+/^(?:(?:\\\\|\\\]|[^\]{])+)/,
 /^(?:\{)/,
 /^(?:\])/,
 /^(?:[^\r\n]*(\r|\n)+)/,
@@ -8620,7 +8742,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-124",
+  "version": "0.3.4-126",
   "keywords": [
     "jison",
     "parser",
@@ -8661,7 +8783,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.17-124 */
+/* parser generated by jison 0.4.17-126 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -9056,85 +9178,85 @@ symbols_: {
   ";": 59,
   "=": 61,
   "?": 63,
-  "ACTION": 135,
-  "ACTION_BODY": 194,
-  "ALIAS": 189,
-  "ARROW_ACTION": 192,
-  "CODE": 199,
-  "DEBUG": 147,
-  "EOF": 132,
-  "EPSILON": 184,
-  "ID": 154,
-  "IMPORT": 149,
-  "INCLUDE": 196,
-  "INIT_CODE": 152,
-  "INTEGER": 176,
-  "LEFT": 167,
-  "LEX_BLOCK": 140,
-  "NAME": 160,
-  "NONASSOC": 169,
-  "OPTIONS": 156,
-  "OPTIONS_END": 158,
-  "OPTION_VALUE": 161,
-  "PARSER_TYPE": 164,
-  "PARSE_PARAM": 162,
-  "PATH": 197,
-  "PREC": 190,
-  "RIGHT": 168,
-  "START": 138,
-  "STRING": 155,
-  "TOKEN": 142,
-  "TOKEN_TYPE": 175,
-  "UNKNOWN_DECL": 148,
-  "action": 183,
-  "action_body": 191,
-  "action_comments_body": 193,
-  "action_ne": 153,
-  "associativity": 166,
-  "declaration": 137,
+  "ACTION": 134,
+  "ACTION_BODY": 193,
+  "ALIAS": 188,
+  "ARROW_ACTION": 191,
+  "CODE": 198,
+  "DEBUG": 146,
+  "EOF": 1,
+  "EPSILON": 183,
+  "ID": 153,
+  "IMPORT": 148,
+  "INCLUDE": 195,
+  "INIT_CODE": 151,
+  "INTEGER": 175,
+  "LEFT": 166,
+  "LEX_BLOCK": 139,
+  "NAME": 159,
+  "NONASSOC": 168,
+  "OPTIONS": 155,
+  "OPTIONS_END": 157,
+  "OPTION_VALUE": 160,
+  "PARSER_TYPE": 163,
+  "PARSE_PARAM": 161,
+  "PATH": 196,
+  "PREC": 189,
+  "RIGHT": 167,
+  "START": 137,
+  "STRING": 154,
+  "TOKEN": 141,
+  "TOKEN_TYPE": 174,
+  "UNKNOWN_DECL": 147,
+  "action": 182,
+  "action_body": 190,
+  "action_comments_body": 192,
+  "action_ne": 152,
+  "associativity": 165,
+  "declaration": 136,
   "declaration_list": 128,
   "error": 2,
-  "expression": 187,
-  "expression_suffix": 185,
-  "extra_parser_module_code": 133,
-  "full_token_definitions": 143,
+  "expression": 186,
+  "expression_suffix": 184,
+  "extra_parser_module_code": 132,
+  "full_token_definitions": 142,
   "grammar": 130,
-  "handle": 181,
-  "handle_action": 180,
-  "handle_list": 179,
-  "handle_sublist": 186,
-  "id": 139,
-  "id_list": 171,
-  "import_name": 150,
-  "import_path": 151,
-  "include_macro_code": 136,
-  "module_code_chunk": 198,
-  "one_full_token": 172,
-  "operator": 141,
-  "option": 159,
-  "option_list": 157,
-  "optional_action_header_block": 134,
+  "handle": 180,
+  "handle_action": 179,
+  "handle_list": 178,
+  "handle_sublist": 185,
+  "id": 138,
+  "id_list": 170,
+  "import_name": 149,
+  "import_path": 150,
+  "include_macro_code": 135,
+  "module_code_chunk": 197,
+  "one_full_token": 171,
+  "operator": 140,
+  "option": 158,
+  "option_list": 156,
+  "optional_action_header_block": 133,
   "optional_end_block": 131,
-  "optional_module_code_chunk": 195,
-  "optional_token_type": 170,
-  "options": 146,
-  "parse_param": 144,
-  "parser_type": 145,
-  "prec": 182,
-  "production": 178,
-  "production_list": 177,
+  "optional_module_code_chunk": 194,
+  "optional_token_type": 169,
+  "options": 145,
+  "parse_param": 143,
+  "parser_type": 144,
+  "prec": 181,
+  "production": 177,
+  "production_list": 176,
   "spec": 127,
-  "suffix": 188,
-  "symbol": 165,
-  "token_description": 174,
-  "token_list": 163,
-  "token_value": 173,
+  "suffix": 187,
+  "symbol": 164,
+  "token_description": 173,
+  "token_list": 162,
+  "token_value": 172,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -9148,36 +9270,35 @@ terminals_: {
   124: "|",
   125: "}",
   129: "%%",
-  132: "EOF",
-  135: "ACTION",
-  138: "START",
-  140: "LEX_BLOCK",
-  142: "TOKEN",
-  147: "DEBUG",
-  148: "UNKNOWN_DECL",
-  149: "IMPORT",
-  152: "INIT_CODE",
-  154: "ID",
-  155: "STRING",
-  156: "OPTIONS",
-  158: "OPTIONS_END",
-  160: "NAME",
-  161: "OPTION_VALUE",
-  162: "PARSE_PARAM",
-  164: "PARSER_TYPE",
-  167: "LEFT",
-  168: "RIGHT",
-  169: "NONASSOC",
-  175: "TOKEN_TYPE",
-  176: "INTEGER",
-  184: "EPSILON",
-  189: "ALIAS",
-  190: "PREC",
-  192: "ARROW_ACTION",
-  194: "ACTION_BODY",
-  196: "INCLUDE",
-  197: "PATH",
-  199: "CODE"
+  134: "ACTION",
+  137: "START",
+  139: "LEX_BLOCK",
+  141: "TOKEN",
+  146: "DEBUG",
+  147: "UNKNOWN_DECL",
+  148: "IMPORT",
+  151: "INIT_CODE",
+  153: "ID",
+  154: "STRING",
+  155: "OPTIONS",
+  157: "OPTIONS_END",
+  159: "NAME",
+  160: "OPTION_VALUE",
+  161: "PARSE_PARAM",
+  163: "PARSER_TYPE",
+  166: "LEFT",
+  167: "RIGHT",
+  168: "NONASSOC",
+  174: "TOKEN_TYPE",
+  175: "INTEGER",
+  183: "EPSILON",
+  188: "ALIAS",
+  189: "PREC",
+  191: "ARROW_ACTION",
+  193: "ACTION_BODY",
+  195: "INCLUDE",
+  196: "PATH",
+  198: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -9185,76 +9306,76 @@ productions_: bp({
   131,
   131,
   s,
-  [134, 3],
+  [133, 3],
   128,
   128,
   s,
-  [137, 13],
+  [136, 13],
+  149,
+  149,
   150,
   150,
-  151,
-  151,
-  146,
-  157,
-  157,
-  s,
-  [159, 3],
-  144,
   145,
-  141,
+  156,
+  156,
   s,
-  [166, 3],
-  163,
-  163,
+  [158, 3],
   143,
-  143,
+  144,
+  140,
   s,
-  [172, 3],
-  170,
-  170,
+  [165, 3],
+  162,
+  162,
+  142,
+  142,
+  s,
+  [171, 3],
+  169,
+  169,
+  172,
   173,
-  174,
-  171,
-  171,
+  170,
+  170,
   130,
+  176,
+  176,
   177,
-  177,
+  178,
   178,
   179,
   179,
   180,
   180,
-  181,
-  181,
-  186,
-  186,
   185,
   185,
+  184,
+  184,
   s,
-  [187, 3],
+  [186, 3],
   s,
-  [188, 4],
+  [187, 4],
+  181,
+  181,
+  164,
+  164,
+  138,
+  s,
+  [152, 4],
   182,
   182,
-  165,
-  165,
-  139,
   s,
-  [153, 4],
-  183,
-  183,
-  s,
-  [191, 4],
-  193,
-  193,
-  133,
-  133,
-  136,
-  136,
-  198,
-  198,
-  195,
-  195
+  [190, 4],
+  192,
+  192,
+  132,
+  132,
+  135,
+  135,
+  197,
+  197,
+  194,
+  194
 ]),
   rule: u([
   5,
@@ -9330,13 +9451,11 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     spec : declaration_list '%%' grammar optional_end_block EOF */
- 
-            this.$ = $$[$0 - 4];
+ this.$ = $$[$0 - 4];
             if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
                 yy.addDeclaration(this.$, { include: $$[$0 - 1] });
             }
-            return extend(this.$, $$[$0 - 2]);
-         
+            return extend(this.$, $$[$0 - 2]); 
 break;
 case 3 : 
 /*! Production::     optional_end_block : '%%' extra_parser_module_code */
@@ -9368,82 +9487,80 @@ case 3 :
 /*! Production::     module_code_chunk : CODE */
  case 95 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 4 : 
-/*! Production::     optional_action_header_block :  */
+/*! Production::     optional_action_header_block : ε */
  case 8 : 
-/*! Production::     declaration_list :  */
-  this.$ = {};  
+/*! Production::     declaration_list : ε */
+ this.$ = {}; 
 break;
 case 5 : 
 /*! Production::     optional_action_header_block : optional_action_header_block ACTION */
  case 6 : 
 /*! Production::     optional_action_header_block : optional_action_header_block include_macro_code */
- 
-            this.$ = $$[$0 - 1];
-            yy.addDeclaration(this.$, { actionInclude: $$[$0] });
-         
+ this.$ = $$[$0 - 1];
+            yy.addDeclaration(this.$, { actionInclude: $$[$0] }); 
 break;
 case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
-  this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]);  
+ this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
 case 9 : 
 /*! Production::     declaration : START id */
-  this.$ = {start: $$[$0]};  
+ this.$ = {start: $$[$0]}; 
 break;
 case 10 : 
 /*! Production::     declaration : LEX_BLOCK */
-  this.$ = {lex: $$[$0]};  
+ this.$ = {lex: $$[$0]}; 
 break;
 case 11 : 
 /*! Production::     declaration : operator */
-  this.$ = {operator: $$[$0]};  
+ this.$ = {operator: $$[$0]}; 
 break;
 case 12 : 
 /*! Production::     declaration : TOKEN full_token_definitions */
-  this.$ = {token_list: $$[$0]};  
+ this.$ = {token_list: $$[$0]}; 
 break;
 case 13 : 
 /*! Production::     declaration : ACTION */
  case 14 : 
 /*! Production::     declaration : include_macro_code */
-  this.$ = {include: $$[$0]};  
+ this.$ = {include: $$[$0]}; 
 break;
 case 15 : 
 /*! Production::     declaration : parse_param */
-  this.$ = {parseParam: $$[$0]};  
+ this.$ = {parseParam: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     declaration : parser_type */
-  this.$ = {parserType: $$[$0]};  
+ this.$ = {parserType: $$[$0]}; 
 break;
 case 17 : 
 /*! Production::     declaration : options */
-  this.$ = {options: $$[$0]};  
+ this.$ = {options: $$[$0]}; 
 break;
 case 18 : 
 /*! Production::     declaration : DEBUG */
-  this.$ = {options: [['debug', true]]};  
+ this.$ = {options: [['debug', true]]}; 
 break;
 case 19 : 
 /*! Production::     declaration : UNKNOWN_DECL */
-  this.$ = {unknownDecl: $$[$0]};  
+ this.$ = {unknownDecl: $$[$0]}; 
 break;
 case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
-  this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}};  
+ this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}}; 
 break;
 case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
-  this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}};  
+ this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}}; 
 break;
 case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
  case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
-  this.$ = $$[$0 - 1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     option_list : option_list option */
@@ -9451,7 +9568,7 @@ case 27 :
 /*! Production::     token_list : token_list symbol */
  case 49 : 
 /*! Production::     id_list : id_list id */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 28 : 
 /*! Production::     option_list : option */
@@ -9461,38 +9578,37 @@ case 28 :
 /*! Production::     id_list : id */
  case 56 : 
 /*! Production::     handle_list : handle_action */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 29 : 
 /*! Production::     option : NAME[option] */
-  this.$ = [$$[$0], true];  
+ this.$ = [$$[$0], true]; 
 break;
 case 30 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  this.$ = [$$[$0 - 2], $$[$0]];  
+ this.$ = [$$[$0 - 2], $$[$0]]; 
 break;
 case 34 : 
 /*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]);  
+ this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
 case 35 : 
 /*! Production::     associativity : LEFT */
-  this.$ = 'left';  
+ this.$ = 'left'; 
 break;
 case 36 : 
 /*! Production::     associativity : RIGHT */
-  this.$ = 'right';  
+ this.$ = 'right'; 
 break;
 case 37 : 
 /*! Production::     associativity : NONASSOC */
-  this.$ = 'nonassoc';  
+ this.$ = 'nonassoc'; 
 break;
 case 40 : 
 /*! Production::     full_token_definitions : optional_token_type id_list */
- 
-            var rv = [];
+ var rv = [];
             var lst = $$[$0];
             for (var i = 0, len = lst.length; i < len; i++) {
                 var id = lst[i];
@@ -9502,72 +9618,59 @@ case 40 :
                 }
                 rv.push(m);
             }
-            this.$ = rv;
-         
+            this.$ = rv; 
 break;
 case 41 : 
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
- 
-            var m = $$[$0];
+ var m = $$[$0];
             if ($$[$0 - 1]) {
                 m.type = $$[$0 - 1];
             }
-            this.$ = [m];
-         
+            this.$ = [m]; 
 break;
 case 42 : 
 /*! Production::     one_full_token : id token_value token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 2],
                 value: $$[$0 - 1]
-            };
-         
+            }; 
 break;
 case 43 : 
 /*! Production::     one_full_token : id token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 description: $$[$0]
-            };
-         
+            }; 
 break;
 case 44 : 
 /*! Production::     one_full_token : id token_value */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 value: $$[$0],
                 description: $token_description
-            };
-         
+            }; 
 break;
 case 45 : 
-/*! Production::     optional_token_type :  */
-  this.$ = false;  
+/*! Production::     optional_token_type : ε */
+ this.$ = false; 
 break;
 case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
- 
-            this.$ = $$[$0 - 1];
-            this.$.grammar = $$[$0];
-         
+ this.$ = $$[$0 - 1];
+            this.$.grammar = $$[$0]; 
 break;
 case 52 : 
 /*! Production::     production_list : production_list production */
- 
-            this.$ = $$[$0 - 1];
+ this.$ = $$[$0 - 1];
             if ($$[$0][0] in this.$) {
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             } else {
                 this.$[$$[$0][0]] = $$[$0][1];
-            }
-         
+            } 
 break;
 case 53 : 
 /*! Production::     production_list : production */
-  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
+ this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
 case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
@@ -9575,15 +9678,12 @@ case 54 :
 break;
 case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0]); 
 break;
 case 57 : 
 /*! Production::     handle_action : handle prec action */
- 
-            this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
+ this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
@@ -9592,52 +9692,39 @@ case 57 :
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 58 : 
 /*! Production::     handle_action : EPSILON action */
- 
-            this.$ = [''];
+ this.$ = [''];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 59 : 
 /*! Production::     handle : handle expression_suffix */
- 
-            this.$ = $$[$0 - 1];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 1];
+            this.$.push($$[$0]); 
 break;
 case 60 : 
-/*! Production::     handle :  */
- 
-            this.$ = [];
-         
+/*! Production::     handle : ε */
+ this.$ = []; 
 break;
 case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0].join(' '));
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0].join(' ')); 
 break;
 case 62 : 
 /*! Production::     handle_sublist : handle */
- 
-            this.$ = [$$[$0].join(' ')];
-         
+ this.$ = [$$[$0].join(' ')]; 
 break;
 case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
- 
-            this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]";
-         
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]"; 
 break;
 case 64 : 
 /*! Production::     expression_suffix : expression suffix */
@@ -9645,14 +9732,11 @@ case 64 :
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
  case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
- 
-            this.$ = $$[$0 - 1] + $$[$0];
-         
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 66 : 
 /*! Production::     expression : STRING */
- 
-            // Re-encode the string *anyway* as it will
+ // Re-encode the string *anyway* as it will
             // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
             // to be able to handle all tokens, including *significant space*
             // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
@@ -9660,66 +9744,55 @@ case 66 :
                 this.$ = '"' + $$[$0] + '"';
             } else {
                 this.$ = "'" + $$[$0] + "'";
-            }
-         
+            } 
 break;
 case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
- 
-            this.$ = '(' + $$[$0 - 1].join(' | ') + ')';
-         
+ this.$ = '(' + $$[$0 - 1].join(' | ') + ')'; 
 break;
 case 68 : 
-/*! Production::     suffix :  */
+/*! Production::     suffix : ε */
  case 82 : 
-/*! Production::     action :  */
+/*! Production::     action : ε */
  case 83 : 
-/*! Production::     action_body :  */
+/*! Production::     action_body : ε */
  case 96 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 72 : 
 /*! Production::     prec : PREC symbol */
- 
-            this.$ = { prec: $$[$0] };
-         
+ this.$ = { prec: $$[$0] }; 
 break;
 case 73 : 
-/*! Production::     prec :  */
- 
-            this.$ = null;
-         
+/*! Production::     prec : ε */
+ this.$ = null; 
 break;
 case 80 : 
 /*! Production::     action_ne : ARROW_ACTION */
-  this.$ = '$$ =' + $$[$0] + ';';  
+ this.$ = '$$ =' + $$[$0] + ';'; 
 break;
 case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
-  this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+ var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 92 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -9833,91 +9906,91 @@ table: bt({
   127,
   128,
   129,
-  135,
-  138,
-  140,
-  142,
+  134,
+  137,
+  139,
+  141,
+  146,
   147,
   148,
-  149,
-  152,
-  156,
-  162,
-  164,
+  151,
+  155,
+  161,
+  163,
+  166,
   167,
   168,
-  169,
-  196,
+  195,
   1,
   129,
   s,
-  [135, 4, 1],
+  [134, 4, 1],
+  139,
   140,
   141,
-  142,
   s,
-  [144, 6, 1],
+  [143, 6, 1],
   c,
   [23, 4],
   s,
-  [166, 4, 1],
-  196,
+  [165, 4, 1],
+  195,
   130,
+  133,
   134,
-  135,
-  154,
-  196,
+  153,
+  195,
   c,
   [45, 16],
-  139,
-  154,
+  138,
+  153,
   c,
   [18, 16],
   c,
   [16, 16],
-  143,
-  154,
-  170,
-  175,
+  142,
+  153,
+  169,
+  174,
   c,
   [36, 32],
   c,
   [16, 80],
-  150,
+  149,
+  153,
   154,
-  155,
   c,
   [3, 3],
-  139,
+  138,
+  153,
   154,
-  155,
-  163,
-  165,
+  162,
+  164,
   2,
-  197,
+  196,
   c,
   [7, 5],
   c,
   [5, 3],
-  165,
-  157,
+  164,
+  156,
+  158,
   159,
-  160,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  1,
   129,
   131,
-  132,
+  134,
   135,
-  136,
-  139,
-  154,
+  138,
+  153,
+  176,
   177,
-  178,
   c,
   [57, 17],
   58,
@@ -9926,86 +9999,86 @@ table: bt({
   124,
   c,
   [20, 9],
+  153,
   154,
-  155,
   c,
   [22, 6],
-  176,
-  192,
+  175,
+  191,
   c,
   [247, 19],
+  170,
   171,
-  172,
+  153,
+  150,
+  153,
   154,
-  151,
-  154,
-  155,
   123,
-  135,
+  134,
+  153,
   154,
-  155,
-  192,
-  196,
+  191,
+  195,
   c,
   [6, 8],
-  136,
-  153,
+  135,
+  152,
   c,
   [42, 5],
-  139,
+  138,
   c,
   [63, 11],
-  165,
+  164,
   c,
   [159, 13],
   c,
   [82, 8],
-  196,
+  195,
   c,
   [103, 20],
-  192,
+  191,
   c,
-  [22, 24],
-  124,
-  s,
-  [129, 4, 3],
+  [22, 23],
+  1,
+  59,
   c,
-  [22, 7],
+  [22, 11],
   c,
   [64, 7],
-  199,
+  198,
   c,
   [21, 21],
   c,
   [124, 29],
   c,
   [37, 7],
+  157,
   158,
   159,
-  160,
-  158,
-  160,
+  157,
+  159,
   61,
-  158,
-  160,
+  157,
+  159,
+  1,
+  1,
   132,
-  132,
-  133,
+  194,
   195,
-  196,
+  197,
   198,
-  199,
+  1,
   129,
-  132,
-  139,
-  154,
-  178,
+  138,
+  153,
+  177,
   c,
   [472, 3],
   c,
-  [475, 4],
-  132,
-  154,
+  [3, 3],
+  1,
+  129,
+  153,
   58,
   c,
   [66, 11],
@@ -10013,58 +10086,57 @@ table: bt({
   [363, 32],
   c,
   [161, 8],
+  172,
   173,
-  174,
-  176,
+  175,
   c,
   [432, 65],
   123,
   125,
-  191,
+  190,
+  192,
   193,
-  194,
   c,
-  [211, 3],
+  [210, 11],
   c,
-  [23, 15],
+  [294, 8],
   c,
-  [18, 36],
+  [18, 35],
   c,
   [348, 18],
   c,
   [242, 17],
+  159,
+  159,
   160,
-  160,
-  161,
+  s,
+  [1, 3],
+  135,
+  195,
   1,
-  132,
-  132,
-  136,
-  196,
-  132,
-  196,
-  199,
+  c,
+  [311, 3],
   c,
   [3, 3],
-  c,
-  [231, 3],
+  129,
+  153,
   40,
   c,
   [361, 3],
   c,
   [435, 3],
+  178,
   179,
   180,
-  181,
-  184,
-  190,
+  183,
+  189,
   c,
   [476, 11],
   c,
   [243, 17],
   c,
   [82, 7],
-  174,
+  173,
   c,
   [192, 26],
   c,
@@ -10073,32 +10145,32 @@ table: bt({
   125,
   123,
   125,
-  194,
+  193,
   c,
   [3, 3],
-  158,
+  157,
   c,
   [365, 3],
   c,
-  [361, 6],
-  c,
-  [122, 3],
+  [361, 7],
+  195,
+  198,
   59,
   124,
   59,
   124,
   c,
   [123, 7],
-  182,
-  185,
-  187,
+  181,
+  184,
+  186,
   c,
   [122, 3],
   c,
   [12, 4],
-  136,
-  153,
-  183,
+  135,
+  152,
+  182,
   c,
   [607, 18],
   c,
@@ -10107,7 +10179,7 @@ table: bt({
   [290, 5],
   c,
   [81, 3],
-  132,
+  1,
   c,
   [191, 10],
   c,
@@ -10128,8 +10200,8 @@ table: bt({
   63,
   c,
   [18, 5],
+  187,
   188,
-  189,
   c,
   [20, 3],
   c,
@@ -10137,10 +10209,10 @@ table: bt({
   c,
   [15, 21],
   124,
+  153,
   154,
-  155,
-  181,
-  186,
+  180,
+  185,
   c,
   [162, 4],
   123,
@@ -10159,12 +10231,12 @@ table: bt({
   124,
   c,
   [73, 5],
-  185,
-  187,
+  184,
+  186,
   123,
   125,
+  192,
   193,
-  194,
   c,
   [145, 11],
   c,
@@ -10210,11 +10282,11 @@ table: bt({
   c,
   [5, 8],
   c,
-  [32, 10],
+  [149, 10],
   c,
-  [224, 4],
+  [3, 5],
   c,
-  [97, 59],
+  [97, 58],
   c,
   [64, 4],
   c,
@@ -10228,9 +10300,9 @@ table: bt({
   c,
   [124, 34],
   c,
-  [261, 10],
+  [22, 9],
   c,
-  [194, 6],
+  [194, 7],
   c,
   [200, 16],
   c,
@@ -10256,9 +10328,9 @@ table: bt({
   c,
   [40, 17],
   c,
-  [719, 11],
+  [17, 10],
   c,
-  [28, 15],
+  [68, 16],
   c,
   [757, 6],
   c,
@@ -10372,14 +10444,13 @@ table: bt({
   s,
   [2, 79],
   c,
-  [179, 19],
-  1,
+  [179, 20],
   c,
-  [21, 4],
+  [190, 23],
   c,
-  [80, 57],
+  [80, 38],
   c,
-  [61, 3],
+  [62, 3],
   c,
   [96, 16],
   c,
@@ -10415,7 +10486,9 @@ table: bt({
   c,
   [528, 6],
   c,
-  [612, 41],
+  [551, 4],
+  c,
+  [94, 37],
   c,
   [37, 15],
   c,
@@ -10499,8 +10572,8 @@ table: bt({
   36,
   37,
   37,
-  49,
   2,
+  49,
   51,
   29,
   19,
@@ -11267,7 +11340,7 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-124 */
+/* generated by jison-lex 0.3.4-126 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -11327,7 +11400,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -11336,7 +11409,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -11357,7 +11430,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -11407,7 +11480,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -11438,13 +11511,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -11463,12 +11536,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -11478,7 +11551,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -11491,14 +11564,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -11576,7 +11649,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -11654,7 +11727,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -11671,12 +11744,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -11686,7 +11759,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -11695,7 +11768,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -11705,12 +11778,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -11742,186 +11815,186 @@ case 3 :
 /*! Rule::       %% */ 
  this.pushState('code'); return 129; 
 break;
-case 13 : 
+case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 14 : 
+case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 16 : 
+case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 158; 
+ this.popState(); return 157; 
 break;
-case 17 : 
+case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 18 : 
+case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 19 : 
+case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* skip newlines */ 
 break;
-case 20 : 
+case 24 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\/[^\r\n]* */ 
  /* skip single-line comment */ 
 break;
-case 21 : 
+case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* skip multi-line comment */ 
 break;
-case 22 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
-break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 188; 
 break;
-case 27 : 
+case 30 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       "[^"]+" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+break;
+case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
 break;
-case 32 : 
+case 36 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 129; 
 break;
-case 33 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 34 : 
+case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 146; 
 break;
-case 41 : 
+case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
- this.pushState('token'); return 142; 
-break;
-case 43 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       %options\b */ 
- this.pushState('options'); return 156; 
+ this.pushState('token'); return 141; 
 break;
 case 47 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %options\b */ 
+ this.pushState('options'); return 155; 
+break;
+case 51 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 196; 
+ this.pushState('path'); return 195; 
 break;
-case 48 : 
+case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 148;
+                                            return 147;
                                          
 break;
-case 49 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 174; 
 break;
-case 50 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 134; 
 break;
-case 51 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 134; 
 break;
-case 52 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 123; 
 break;
-case 53 : 
+case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 191; 
 break;
-case 54 : 
+case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 175; 
 break;
-case 55 : 
+case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 175; 
 break;
-case 56 : 
+case 60 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 60 : 
+case 64 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 194; // regexp with braces or quotes (and no spaces) 
+ return 193; // regexp with braces or quotes (and no spaces) 
 break;
-case 65 : 
+case 69 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 123; 
 break;
-case 66 : 
+case 70 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 125; 
 break;
-case 68 : 
+case 72 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 199;      // the bit of CODE just before EOF... 
+ return 198;      // the bit of CODE just before EOF... 
 break;
-case 69 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 70 : 
+case 74 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 71 : 
+case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 72 : 
+case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 73 : 
+case 77 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 197; 
+ this.popState(); return 196; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -11931,109 +12004,121 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 184,
+   4 : 183,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 184,
+   5 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u0190 */ 
+   6 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u025B */ 
+   7 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03B5 */ 
+   8 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03F5 */ 
+   9 : 183,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   6 : 40,
+   10 : 40,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   7 : 41,
+   11 : 41,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   8 : 42,
+   12 : 42,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   9 : 63,
+   13 : 63,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   10 : 43,
+   14 : 43,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   11 : 160,
+   15 : 159,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   12 : 61,
+   16 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   15 : 161,
+   19 : 160,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   23 : 154,
+   27 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$end\b */ 
-   24 : 154,
+   28 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$eof\b */ 
-   25 : 154,
+   29 : 153,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   28 : 'TOKEN_WORD',
+   32 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   29 : 58,
+   33 : 58,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   30 : 59,
+   34 : 59,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   31 : 124,
+   35 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   35 : 164,
+   39 : 163,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   36 : 190,
+   40 : 189,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   37 : 138,
+   41 : 137,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   38 : 167,
+   42 : 166,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   39 : 168,
+   43 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   40 : 169,
+   44 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   42 : 162,
+   46 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   44 : 140,
+   48 : 139,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   45 : 152,
+   49 : 151,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   46 : 149,
+   50 : 148,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   57 : 132,
+   61 : 1,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   58 : 194,
+   62 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   59 : 194,
+   63 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   61 : 194,
+   65 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   62 : 194,
+   66 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   63 : 194,
+   67 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   64 : 194,
+   68 : 193,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   67 : 199
+   71 : 198
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -12042,12 +12127,16 @@ rules: [
 /^(?:%%)/,
 /^(?:%empty\b)/,
 /^(?:%epsilon\b)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:\()/,
 /^(?:\))/,
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
@@ -12058,8 +12147,8 @@ rules: [
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\[([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\])/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
@@ -12084,8 +12173,8 @@ rules: [
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]*)/,
-/^(?:<([a-zA-Z_][a-zA-Z0-9_]*)>)/,
+/^(?:%([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?)[^\r\n]*)/,
+/^(?:<([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
@@ -12117,20 +12206,20 @@ conditions: {
       3,
       4,
       5,
-      18,
-      19,
-      20,
-      21,
+      6,
+      7,
+      8,
+      9,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12155,7 +12244,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -12169,20 +12262,20 @@ conditions: {
       8,
       9,
       10,
-      18,
-      19,
-      20,
-      21,
+      11,
+      12,
+      13,
+      14,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12207,7 +12300,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -12216,10 +12313,6 @@ conditions: {
       0,
       1,
       2,
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
@@ -12245,83 +12338,83 @@ conditions: {
       44,
       45,
       46,
+      47,
       48,
       49,
       50,
-      51,
       52,
       53,
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      57,
-      58,
-      59,
-      60,
       61,
       62,
       63,
       64,
       65,
-      66
+      66,
+      67,
+      68,
+      69,
+      70
     ],
     inclusive: false
   },
   "code": {
     rules: [
-      47,
-      57,
-      67,
-      68
+      51,
+      61,
+      71,
+      72
     ],
     inclusive: false
   },
   "path": {
     rules: [
-      57,
-      69,
-      70,
-      71,
-      72,
-      73
+      61,
+      73,
+      74,
+      75,
+      76,
+      77
     ],
     inclusive: false
   },
   "options": {
     rules: [
-      11,
-      12,
-      13,
-      14,
       15,
       16,
       17,
-      57
+      18,
+      19,
+      20,
+      21,
+      61
     ],
     inclusive: false
   },
   "INITIAL": {
     rules: [
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12346,7 +12439,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   }
@@ -12407,7 +12504,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         macros = prepareMacros(dict.macros, opts);
     }
 
-    function tokenNumberReplacement (str, token) {
+    function tokenNumberReplacement(str, token) {
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
     }
 
@@ -12591,7 +12688,7 @@ function prepareMacros(dict_macros, opts) {
         return s;
     }
 
-    // expand a macro which exists inside a `[...]` set:
+    // expand a `{NAME}` macro which exists inside a `[...]` set:
     function expandMacroInSet(i) {
         var k, a, m;
         if (!macros[i]) {
@@ -12610,7 +12707,7 @@ function prepareMacros(dict_macros, opts) {
                     
                     // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
                     // macros here:
-                    if ((opts.xregexp || 1) && XRegExp.isUnicodeSlug(k)) {
+                    if (XRegExp.isUnicodeSlug(k)) {
                         // Work-around so that you can use `\p{ascii}` for an XRegExp slug
                         // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
                         // macro:
@@ -12901,15 +12998,23 @@ function RegExpLexer(dict, input, tokens) {
             // ```
             // var lexer = { bla... };
             // ```
-            var testcode = '' +
-                '// provide a local version for test purposes:\n' +
-                jisonLexerErrorDefinition.join('\n') + '\n' +
-                'function XRegExp(re, f) {\n' +
-                '  this.re = re;\n' +
-                '  this.flags = f;\n' +
-                '}\n' +
-                source + '\n' +
-                'return lexer;\n';
+            var testcode = [
+                '// provide a local version for test purposes:',
+                jisonLexerErrorDefinition.join('\n'),
+                '',
+                'var __hacky_counter__ = 0;',
+                'function XRegExp(re, f) {',
+                '  this.re = re;',
+                '  this.flags = f;',
+                '  var fake = /./;',    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
+                '  __hacky_counter__++;',
+                '  fake.__hacky_backy__ = __hacky_counter__;',
+                '  return fake;',
+                '}',
+                '',
+                source,
+                'return lexer;'].join('\n');
+            //console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
             var lexer_f = new Function('', testcode);
             var lexer = lexer_f();
 
@@ -13031,6 +13136,11 @@ function RegExpLexer(dict, input, tokens) {
         return generateAMDModule(opts);
     };
 
+    // internal APIs to aid testing:
+    lexer.getExpandedMacros = function () {
+        return opts.macros;
+    };
+
     return lexer;
 }
 
@@ -13040,7 +13150,7 @@ RegExpLexer.prototype = {
 
     // JisonLexerError: JisonLexerError,
 
-    parseError: function parseError(str, hash) {
+    parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -13049,7 +13159,7 @@ RegExpLexer.prototype = {
     },
     
     // resets the lexer, sets new input
-    setInput: function (input, yy) {
+    setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -13070,7 +13180,7 @@ RegExpLexer.prototype = {
     },
 
     // consumes and returns one char from the input
-    input: function () {
+    input: function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -13120,7 +13230,7 @@ RegExpLexer.prototype = {
     },
 
     // unshifts one char (or a string) into the input
-    unput: function (ch) {
+    unput: function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -13151,13 +13261,13 @@ RegExpLexer.prototype = {
     },
 
     // When called from action, caches matched text and appends it on next action
-    more: function () {
+    more: function lexer_more() {
         this._more = true;
         return this;
     },
 
     // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-    reject: function () {
+    reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -13176,12 +13286,12 @@ RegExpLexer.prototype = {
     },
 
     // retain first n characters of the match
-    less: function (n) {
+    less: function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
     // return (part of the) already matched input, i.e. for error messages
-    pastInput: function(maxSize) {
+    pastInput: function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -13191,7 +13301,7 @@ RegExpLexer.prototype = {
     },
 
     // return (part of the) upcoming input, i.e. for error messages
-    upcomingInput: function(maxSize) {
+    upcomingInput: function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -13204,14 +13314,14 @@ RegExpLexer.prototype = {
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-    showPosition: function () {
+    showPosition: function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
     // test the lexed token: return FALSE when not a match, otherwise return token
-    test_match: function(match, indexed_rule) {
+    test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -13289,7 +13399,7 @@ RegExpLexer.prototype = {
     },
 
     // return next match in input
-    next: function () {
+    next: function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -13367,7 +13477,7 @@ RegExpLexer.prototype = {
     },
 
     // return next match that has a token
-    lex: function lex () {
+    lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -13384,12 +13494,12 @@ RegExpLexer.prototype = {
     },
 
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-    begin: function begin (condition) {
+    begin: function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
     // pop the previously active lexer condition state off the condition stack
-    popState: function popState () {
+    popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -13399,7 +13509,7 @@ RegExpLexer.prototype = {
     },
 
     // produce the lexer rule set which is active for the currently active lexer condition state
-    _currentRules: function _currentRules () {
+    _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -13408,7 +13518,7 @@ RegExpLexer.prototype = {
     },
 
     // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-    topState: function topState (n) {
+    topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -13418,12 +13528,12 @@ RegExpLexer.prototype = {
     },
 
     // alias for begin(condition)
-    pushState: function pushState (condition) {
+    pushState: function lexer_pushState(condition) {
         this.begin(condition);
     },
 
     // return the number of states currently on the stack
-    stateStackSize: function stateStackSize() {
+    stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     }
 };
@@ -13828,7 +13938,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
+/* parser generated by jison 0.4.17-126 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -14205,22 +14315,22 @@ symbols_: {
   "*": 42,
   "+": 43,
   "?": 63,
-  "ALIAS": 136,
-  "EOF": 129,
-  "EPSILON": 131,
-  "SYMBOL": 137,
+  "ALIAS": 135,
+  "EOF": 1,
+  "EPSILON": 130,
+  "SYMBOL": 136,
   "error": 2,
-  "expression": 134,
-  "expression_suffixed": 133,
+  "expression": 133,
+  "expression_suffixed": 132,
   "handle": 128,
-  "handle_list": 130,
+  "handle_list": 129,
   "production": 127,
-  "rule": 132,
-  "suffix": 135,
+  "rule": 131,
+  "suffix": 134,
   "|": 124
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -14228,26 +14338,25 @@ terminals_: {
   43: "+",
   63: "?",
   124: "|",
-  129: "EOF",
-  131: "EPSILON",
-  136: "ALIAS",
-  137: "SYMBOL"
+  130: "EPSILON",
+  135: "ALIAS",
+  136: "SYMBOL"
 },
 productions_: bp({
   pop: u([
   127,
-  130,
-  130,
+  129,
+  129,
   s,
   [128, 3],
+  131,
+  131,
   132,
   132,
   133,
   133,
-  134,
-  134,
   s,
-  [135, 4]
+  [134, 4]
 ]),
   rule: u([
   2,
@@ -14269,53 +14378,51 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     production : handle EOF */
-  return $$[$0 - 1];  
+ return $$[$0 - 1]; 
 break;
 case 2 : 
 /*! Production::     handle_list : handle */
  case 7 : 
 /*! Production::     rule : expression_suffixed */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 3 : 
 /*! Production::     handle_list : handle_list '|' handle */
-  $$[$0 - 2].push($$[$0]);  
+ $$[$0 - 2].push($$[$0]); 
 break;
 case 4 : 
-/*! Production::     handle :  */
+/*! Production::     handle : ε */
  case 5 : 
 /*! Production::     handle : EPSILON */
-  this.$ = [];  
+ this.$ = []; 
 break;
 case 6 : 
 /*! Production::     handle : rule */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 8 : 
 /*! Production::     rule : rule expression_suffixed */
-  $$[$0 - 1].push($$[$0]);  
+ $$[$0 - 1].push($$[$0]); 
 break;
 case 9 : 
 /*! Production::     expression_suffixed : expression suffix ALIAS */
-  this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]];  
+ this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     expression_suffixed : expression suffix */
- 
-      if ($$[$0]) {
+ if ($$[$0]) {
         this.$ = [$$[$0], $$[$0 - 1]];
       } else {
         this.$ = $$[$0 - 1];
-      }
-     
+      } 
 break;
 case 11 : 
 /*! Production::     expression : SYMBOL */
-  this.$ = ['symbol', $$[$0]];  
+ this.$ = ['symbol', $$[$0]]; 
 break;
 case 12 : 
 /*! Production::     expression : '(' handle_list ')' */
-  this.$ = ['()', $$[$0 - 1]];  
+ this.$ = ['()', $$[$0 - 1]]; 
 break;
 }
 },
@@ -14342,58 +14449,55 @@ table: bt({
   2
 ]),
   symbol: u([
+  1,
   40,
   127,
   128,
-  129,
   s,
-  [131, 4, 1],
-  137,
-  1,
-  129,
+  [130, 4, 1],
+  136,
+  s,
+  [1, 3],
   41,
   124,
-  129,
+  1,
   40,
+  41,
+  124,
   c,
-  [4, 3],
+  [12, 4],
   c,
-  [12, 3],
+  [7, 3],
   c,
-  [7, 4],
-  c,
-  [5, 3],
+  [5, 4],
   42,
   43,
   63,
   124,
-  129,
+  134,
+  135,
+  c,
+  [10, 8],
   135,
   136,
   c,
-  [10, 8],
-  c,
-  [9, 4],
-  124,
-  128,
+  [23, 3],
   s,
-  [130, 5, 1],
-  137,
-  1,
+  [128, 6, 1],
+  c,
+  [46, 3],
   c,
   [35, 7],
   c,
-  [22, 7],
+  [22, 3],
   c,
-  [6, 15],
+  [6, 18],
   41,
   124,
-  41,
-  124,
   c,
-  [68, 12],
+  [75, 6],
   c,
-  [58, 6],
+  [58, 14],
   c,
   [57, 5],
   41,
@@ -14401,26 +14505,24 @@ table: bt({
 ]),
   type: u([
   2,
-  0,
-  0,
   2,
+  0,
+  0,
   c,
-  [4, 3],
+  [3, 3],
   0,
   2,
   1,
   s,
   [2, 8],
   c,
-  [17, 4],
+  [12, 3],
   s,
-  [2, 11],
+  [2, 12],
   c,
   [14, 14],
   c,
-  [30, 4],
-  c,
-  [46, 4],
+  [46, 8],
   s,
   [2, 51],
   c,
@@ -14444,58 +14546,59 @@ table: bt({
   [4, 3]
 ]),
   mode: u([
-  1,
   2,
   s,
-  [1, 3],
-  s,
-  [2, 3],
-  c,
-  [4, 8],
+  [1, 4],
   s,
   [2, 4],
   c,
-  [18, 6],
+  [5, 3],
+  c,
+  [8, 5],
+  c,
+  [12, 5],
+  c,
+  [19, 6],
+  c,
+  [15, 9],
+  c,
+  [18, 4],
+  c,
+  [15, 13],
   s,
-  [2, 10],
+  [2, 17],
   c,
-  [14, 3],
+  [49, 14],
   c,
-  [18, 12],
-  c,
-  [29, 14],
-  c,
-  [51, 8],
-  c,
-  [18, 17],
-  c,
-  [21, 6]
+  [53, 11]
 ]),
   goto: u([
-  8,
   4,
+  8,
   3,
   7,
   9,
   s,
   [5, 3],
+  6,
   8,
-  s,
-  [6, 3],
+  6,
+  6,
   s,
   [7, 6],
-  13,
-  13,
+  s,
+  [13, 3],
   12,
   14,
   s,
-  [13, 5],
+  [13, 4],
   s,
   [11, 9],
   8,
   4,
-  c,
-  [37, 3],
+  4,
+  3,
+  7,
   1,
   s,
   [8, 5],
@@ -14920,7 +15023,7 @@ parse: function parse(input) {
 }
 };
 
-/* generated by jison-lex 0.3.4-123 */
+/* generated by jison-lex 0.3.4-126 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -14980,7 +15083,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -14989,7 +15092,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -15010,7 +15113,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -15060,7 +15163,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -15091,13 +15194,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -15116,12 +15219,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -15131,7 +15234,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -15144,14 +15247,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -15229,7 +15332,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -15307,7 +15410,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -15324,12 +15427,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -15339,7 +15442,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -15348,7 +15451,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -15358,12 +15461,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {},
@@ -15380,7 +15483,7 @@ break;
 case 4 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 136; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 135; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -15390,58 +15493,74 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       {ID} */ 
-   1 : 137,
+   1 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$end */ 
-   2 : 137,
+   2 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$eof */ 
-   3 : 137,
+   3 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %empty */ 
-   5 : 131,
+   5 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %epsilon */ 
-   6 : 131,
+   6 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u0190 */ 
+   7 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u025B */ 
+   8 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03B5 */ 
+   9 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03F5 */ 
+   10 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   7 : 137,
+   11 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   8 : 137,
+   12 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \. */ 
-   9 : 137,
+   13 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \( */ 
-   10 : 40,
+   14 : 40,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \) */ 
-   11 : 41,
+   15 : 41,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   12 : 42,
+   16 : 42,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \? */ 
-   13 : 63,
+   17 : 63,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \| */ 
-   14 : 124,
+   18 : 124,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   15 : 43,
+   19 : 43,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   16 : 129
+   20 : 1
 },
 rules: [
 /^(?:\s+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
 /^(?:\$end)/,
 /^(?:\$eof)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
+/^(?:\[([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\])/,
 /^(?:%empty)/,
 /^(?:%epsilon)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:'((?:\\'|(?!').)*)')/,
 /^(?:"((?:\\"|(?!").)*)")/,
 /^(?:\.)/,
@@ -15472,7 +15591,11 @@ conditions: {
       13,
       14,
       15,
-      16
+      16,
+      17,
+      18,
+      19,
+      20
     ],
     inclusive: true
   }
@@ -16091,7 +16214,7 @@ var parseLex = function bnfParseLex(text) {
 },{"./ebnf-transform":15,"./parser":16,"lex-parser":19}],15:[function(require,module,exports){
 arguments[4][4][0].apply(exports,arguments)
 },{"./transform-parser.js":17,"dup":4}],16:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
+/* parser generated by jison 0.4.17-126 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -16486,85 +16609,85 @@ symbols_: {
   ";": 59,
   "=": 61,
   "?": 63,
-  "ACTION": 135,
-  "ACTION_BODY": 194,
-  "ALIAS": 189,
-  "ARROW_ACTION": 192,
-  "CODE": 199,
-  "DEBUG": 147,
-  "EOF": 132,
-  "EPSILON": 184,
-  "ID": 154,
-  "IMPORT": 149,
-  "INCLUDE": 196,
-  "INIT_CODE": 152,
-  "INTEGER": 176,
-  "LEFT": 167,
-  "LEX_BLOCK": 140,
-  "NAME": 160,
-  "NONASSOC": 169,
-  "OPTIONS": 156,
-  "OPTIONS_END": 158,
-  "OPTION_VALUE": 161,
-  "PARSER_TYPE": 164,
-  "PARSE_PARAM": 162,
-  "PATH": 197,
-  "PREC": 190,
-  "RIGHT": 168,
-  "START": 138,
-  "STRING": 155,
-  "TOKEN": 142,
-  "TOKEN_TYPE": 175,
-  "UNKNOWN_DECL": 148,
-  "action": 183,
-  "action_body": 191,
-  "action_comments_body": 193,
-  "action_ne": 153,
-  "associativity": 166,
-  "declaration": 137,
+  "ACTION": 134,
+  "ACTION_BODY": 193,
+  "ALIAS": 188,
+  "ARROW_ACTION": 191,
+  "CODE": 198,
+  "DEBUG": 146,
+  "EOF": 1,
+  "EPSILON": 183,
+  "ID": 153,
+  "IMPORT": 148,
+  "INCLUDE": 195,
+  "INIT_CODE": 151,
+  "INTEGER": 175,
+  "LEFT": 166,
+  "LEX_BLOCK": 139,
+  "NAME": 159,
+  "NONASSOC": 168,
+  "OPTIONS": 155,
+  "OPTIONS_END": 157,
+  "OPTION_VALUE": 160,
+  "PARSER_TYPE": 163,
+  "PARSE_PARAM": 161,
+  "PATH": 196,
+  "PREC": 189,
+  "RIGHT": 167,
+  "START": 137,
+  "STRING": 154,
+  "TOKEN": 141,
+  "TOKEN_TYPE": 174,
+  "UNKNOWN_DECL": 147,
+  "action": 182,
+  "action_body": 190,
+  "action_comments_body": 192,
+  "action_ne": 152,
+  "associativity": 165,
+  "declaration": 136,
   "declaration_list": 128,
   "error": 2,
-  "expression": 187,
-  "expression_suffix": 185,
-  "extra_parser_module_code": 133,
-  "full_token_definitions": 143,
+  "expression": 186,
+  "expression_suffix": 184,
+  "extra_parser_module_code": 132,
+  "full_token_definitions": 142,
   "grammar": 130,
-  "handle": 181,
-  "handle_action": 180,
-  "handle_list": 179,
-  "handle_sublist": 186,
-  "id": 139,
-  "id_list": 171,
-  "import_name": 150,
-  "import_path": 151,
-  "include_macro_code": 136,
-  "module_code_chunk": 198,
-  "one_full_token": 172,
-  "operator": 141,
-  "option": 159,
-  "option_list": 157,
-  "optional_action_header_block": 134,
+  "handle": 180,
+  "handle_action": 179,
+  "handle_list": 178,
+  "handle_sublist": 185,
+  "id": 138,
+  "id_list": 170,
+  "import_name": 149,
+  "import_path": 150,
+  "include_macro_code": 135,
+  "module_code_chunk": 197,
+  "one_full_token": 171,
+  "operator": 140,
+  "option": 158,
+  "option_list": 156,
+  "optional_action_header_block": 133,
   "optional_end_block": 131,
-  "optional_module_code_chunk": 195,
-  "optional_token_type": 170,
-  "options": 146,
-  "parse_param": 144,
-  "parser_type": 145,
-  "prec": 182,
-  "production": 178,
-  "production_list": 177,
+  "optional_module_code_chunk": 194,
+  "optional_token_type": 169,
+  "options": 145,
+  "parse_param": 143,
+  "parser_type": 144,
+  "prec": 181,
+  "production": 177,
+  "production_list": 176,
   "spec": 127,
-  "suffix": 188,
-  "symbol": 165,
-  "token_description": 174,
-  "token_list": 163,
-  "token_value": 173,
+  "suffix": 187,
+  "symbol": 164,
+  "token_description": 173,
+  "token_list": 162,
+  "token_value": 172,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -16578,36 +16701,35 @@ terminals_: {
   124: "|",
   125: "}",
   129: "%%",
-  132: "EOF",
-  135: "ACTION",
-  138: "START",
-  140: "LEX_BLOCK",
-  142: "TOKEN",
-  147: "DEBUG",
-  148: "UNKNOWN_DECL",
-  149: "IMPORT",
-  152: "INIT_CODE",
-  154: "ID",
-  155: "STRING",
-  156: "OPTIONS",
-  158: "OPTIONS_END",
-  160: "NAME",
-  161: "OPTION_VALUE",
-  162: "PARSE_PARAM",
-  164: "PARSER_TYPE",
-  167: "LEFT",
-  168: "RIGHT",
-  169: "NONASSOC",
-  175: "TOKEN_TYPE",
-  176: "INTEGER",
-  184: "EPSILON",
-  189: "ALIAS",
-  190: "PREC",
-  192: "ARROW_ACTION",
-  194: "ACTION_BODY",
-  196: "INCLUDE",
-  197: "PATH",
-  199: "CODE"
+  134: "ACTION",
+  137: "START",
+  139: "LEX_BLOCK",
+  141: "TOKEN",
+  146: "DEBUG",
+  147: "UNKNOWN_DECL",
+  148: "IMPORT",
+  151: "INIT_CODE",
+  153: "ID",
+  154: "STRING",
+  155: "OPTIONS",
+  157: "OPTIONS_END",
+  159: "NAME",
+  160: "OPTION_VALUE",
+  161: "PARSE_PARAM",
+  163: "PARSER_TYPE",
+  166: "LEFT",
+  167: "RIGHT",
+  168: "NONASSOC",
+  174: "TOKEN_TYPE",
+  175: "INTEGER",
+  183: "EPSILON",
+  188: "ALIAS",
+  189: "PREC",
+  191: "ARROW_ACTION",
+  193: "ACTION_BODY",
+  195: "INCLUDE",
+  196: "PATH",
+  198: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -16615,76 +16737,76 @@ productions_: bp({
   131,
   131,
   s,
-  [134, 3],
+  [133, 3],
   128,
   128,
   s,
-  [137, 13],
+  [136, 13],
+  149,
+  149,
   150,
   150,
-  151,
-  151,
-  146,
-  157,
-  157,
-  s,
-  [159, 3],
-  144,
   145,
-  141,
+  156,
+  156,
   s,
-  [166, 3],
-  163,
-  163,
+  [158, 3],
   143,
-  143,
+  144,
+  140,
   s,
-  [172, 3],
-  170,
-  170,
+  [165, 3],
+  162,
+  162,
+  142,
+  142,
+  s,
+  [171, 3],
+  169,
+  169,
+  172,
   173,
-  174,
-  171,
-  171,
+  170,
+  170,
   130,
+  176,
+  176,
   177,
-  177,
+  178,
   178,
   179,
   179,
   180,
   180,
-  181,
-  181,
-  186,
-  186,
   185,
   185,
+  184,
+  184,
   s,
-  [187, 3],
+  [186, 3],
   s,
-  [188, 4],
+  [187, 4],
+  181,
+  181,
+  164,
+  164,
+  138,
+  s,
+  [152, 4],
   182,
   182,
-  165,
-  165,
-  139,
   s,
-  [153, 4],
-  183,
-  183,
-  s,
-  [191, 4],
-  193,
-  193,
-  133,
-  133,
-  136,
-  136,
-  198,
-  198,
-  195,
-  195
+  [190, 4],
+  192,
+  192,
+  132,
+  132,
+  135,
+  135,
+  197,
+  197,
+  194,
+  194
 ]),
   rule: u([
   5,
@@ -16760,13 +16882,11 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     spec : declaration_list '%%' grammar optional_end_block EOF */
- 
-            this.$ = $$[$0 - 4];
+ this.$ = $$[$0 - 4];
             if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
                 yy.addDeclaration(this.$, { include: $$[$0 - 1] });
             }
-            return extend(this.$, $$[$0 - 2]);
-         
+            return extend(this.$, $$[$0 - 2]); 
 break;
 case 3 : 
 /*! Production::     optional_end_block : '%%' extra_parser_module_code */
@@ -16798,82 +16918,80 @@ case 3 :
 /*! Production::     module_code_chunk : CODE */
  case 95 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 4 : 
-/*! Production::     optional_action_header_block :  */
+/*! Production::     optional_action_header_block : ε */
  case 8 : 
-/*! Production::     declaration_list :  */
-  this.$ = {};  
+/*! Production::     declaration_list : ε */
+ this.$ = {}; 
 break;
 case 5 : 
 /*! Production::     optional_action_header_block : optional_action_header_block ACTION */
  case 6 : 
 /*! Production::     optional_action_header_block : optional_action_header_block include_macro_code */
- 
-            this.$ = $$[$0 - 1];
-            yy.addDeclaration(this.$, { actionInclude: $$[$0] });
-         
+ this.$ = $$[$0 - 1];
+            yy.addDeclaration(this.$, { actionInclude: $$[$0] }); 
 break;
 case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
-  this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]);  
+ this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
 case 9 : 
 /*! Production::     declaration : START id */
-  this.$ = {start: $$[$0]};  
+ this.$ = {start: $$[$0]}; 
 break;
 case 10 : 
 /*! Production::     declaration : LEX_BLOCK */
-  this.$ = {lex: $$[$0]};  
+ this.$ = {lex: $$[$0]}; 
 break;
 case 11 : 
 /*! Production::     declaration : operator */
-  this.$ = {operator: $$[$0]};  
+ this.$ = {operator: $$[$0]}; 
 break;
 case 12 : 
 /*! Production::     declaration : TOKEN full_token_definitions */
-  this.$ = {token_list: $$[$0]};  
+ this.$ = {token_list: $$[$0]}; 
 break;
 case 13 : 
 /*! Production::     declaration : ACTION */
  case 14 : 
 /*! Production::     declaration : include_macro_code */
-  this.$ = {include: $$[$0]};  
+ this.$ = {include: $$[$0]}; 
 break;
 case 15 : 
 /*! Production::     declaration : parse_param */
-  this.$ = {parseParam: $$[$0]};  
+ this.$ = {parseParam: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     declaration : parser_type */
-  this.$ = {parserType: $$[$0]};  
+ this.$ = {parserType: $$[$0]}; 
 break;
 case 17 : 
 /*! Production::     declaration : options */
-  this.$ = {options: $$[$0]};  
+ this.$ = {options: $$[$0]}; 
 break;
 case 18 : 
 /*! Production::     declaration : DEBUG */
-  this.$ = {options: [['debug', true]]};  
+ this.$ = {options: [['debug', true]]}; 
 break;
 case 19 : 
 /*! Production::     declaration : UNKNOWN_DECL */
-  this.$ = {unknownDecl: $$[$0]};  
+ this.$ = {unknownDecl: $$[$0]}; 
 break;
 case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
-  this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}};  
+ this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}}; 
 break;
 case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
-  this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}};  
+ this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}}; 
 break;
 case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
  case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
-  this.$ = $$[$0 - 1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     option_list : option_list option */
@@ -16881,7 +16999,7 @@ case 27 :
 /*! Production::     token_list : token_list symbol */
  case 49 : 
 /*! Production::     id_list : id_list id */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 28 : 
 /*! Production::     option_list : option */
@@ -16891,38 +17009,37 @@ case 28 :
 /*! Production::     id_list : id */
  case 56 : 
 /*! Production::     handle_list : handle_action */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 29 : 
 /*! Production::     option : NAME[option] */
-  this.$ = [$$[$0], true];  
+ this.$ = [$$[$0], true]; 
 break;
 case 30 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  this.$ = [$$[$0 - 2], $$[$0]];  
+ this.$ = [$$[$0 - 2], $$[$0]]; 
 break;
 case 34 : 
 /*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]);  
+ this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
 case 35 : 
 /*! Production::     associativity : LEFT */
-  this.$ = 'left';  
+ this.$ = 'left'; 
 break;
 case 36 : 
 /*! Production::     associativity : RIGHT */
-  this.$ = 'right';  
+ this.$ = 'right'; 
 break;
 case 37 : 
 /*! Production::     associativity : NONASSOC */
-  this.$ = 'nonassoc';  
+ this.$ = 'nonassoc'; 
 break;
 case 40 : 
 /*! Production::     full_token_definitions : optional_token_type id_list */
- 
-            var rv = [];
+ var rv = [];
             var lst = $$[$0];
             for (var i = 0, len = lst.length; i < len; i++) {
                 var id = lst[i];
@@ -16932,72 +17049,59 @@ case 40 :
                 }
                 rv.push(m);
             }
-            this.$ = rv;
-         
+            this.$ = rv; 
 break;
 case 41 : 
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
- 
-            var m = $$[$0];
+ var m = $$[$0];
             if ($$[$0 - 1]) {
                 m.type = $$[$0 - 1];
             }
-            this.$ = [m];
-         
+            this.$ = [m]; 
 break;
 case 42 : 
 /*! Production::     one_full_token : id token_value token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 2],
                 value: $$[$0 - 1]
-            };
-         
+            }; 
 break;
 case 43 : 
 /*! Production::     one_full_token : id token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 description: $$[$0]
-            };
-         
+            }; 
 break;
 case 44 : 
 /*! Production::     one_full_token : id token_value */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 value: $$[$0],
                 description: $token_description
-            };
-         
+            }; 
 break;
 case 45 : 
-/*! Production::     optional_token_type :  */
-  this.$ = false;  
+/*! Production::     optional_token_type : ε */
+ this.$ = false; 
 break;
 case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
- 
-            this.$ = $$[$0 - 1];
-            this.$.grammar = $$[$0];
-         
+ this.$ = $$[$0 - 1];
+            this.$.grammar = $$[$0]; 
 break;
 case 52 : 
 /*! Production::     production_list : production_list production */
- 
-            this.$ = $$[$0 - 1];
+ this.$ = $$[$0 - 1];
             if ($$[$0][0] in this.$) {
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             } else {
                 this.$[$$[$0][0]] = $$[$0][1];
-            }
-         
+            } 
 break;
 case 53 : 
 /*! Production::     production_list : production */
-  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
+ this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
 case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
@@ -17005,15 +17109,12 @@ case 54 :
 break;
 case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0]); 
 break;
 case 57 : 
 /*! Production::     handle_action : handle prec action */
- 
-            this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
+ this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
@@ -17022,52 +17123,39 @@ case 57 :
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 58 : 
 /*! Production::     handle_action : EPSILON action */
- 
-            this.$ = [''];
+ this.$ = [''];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 59 : 
 /*! Production::     handle : handle expression_suffix */
- 
-            this.$ = $$[$0 - 1];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 1];
+            this.$.push($$[$0]); 
 break;
 case 60 : 
-/*! Production::     handle :  */
- 
-            this.$ = [];
-         
+/*! Production::     handle : ε */
+ this.$ = []; 
 break;
 case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0].join(' '));
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0].join(' ')); 
 break;
 case 62 : 
 /*! Production::     handle_sublist : handle */
- 
-            this.$ = [$$[$0].join(' ')];
-         
+ this.$ = [$$[$0].join(' ')]; 
 break;
 case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
- 
-            this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]";
-         
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]"; 
 break;
 case 64 : 
 /*! Production::     expression_suffix : expression suffix */
@@ -17075,14 +17163,11 @@ case 64 :
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
  case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
- 
-            this.$ = $$[$0 - 1] + $$[$0];
-         
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 66 : 
 /*! Production::     expression : STRING */
- 
-            // Re-encode the string *anyway* as it will
+ // Re-encode the string *anyway* as it will
             // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
             // to be able to handle all tokens, including *significant space*
             // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
@@ -17090,66 +17175,55 @@ case 66 :
                 this.$ = '"' + $$[$0] + '"';
             } else {
                 this.$ = "'" + $$[$0] + "'";
-            }
-         
+            } 
 break;
 case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
- 
-            this.$ = '(' + $$[$0 - 1].join(' | ') + ')';
-         
+ this.$ = '(' + $$[$0 - 1].join(' | ') + ')'; 
 break;
 case 68 : 
-/*! Production::     suffix :  */
+/*! Production::     suffix : ε */
  case 82 : 
-/*! Production::     action :  */
+/*! Production::     action : ε */
  case 83 : 
-/*! Production::     action_body :  */
+/*! Production::     action_body : ε */
  case 96 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 72 : 
 /*! Production::     prec : PREC symbol */
- 
-            this.$ = { prec: $$[$0] };
-         
+ this.$ = { prec: $$[$0] }; 
 break;
 case 73 : 
-/*! Production::     prec :  */
- 
-            this.$ = null;
-         
+/*! Production::     prec : ε */
+ this.$ = null; 
 break;
 case 80 : 
 /*! Production::     action_ne : ARROW_ACTION */
-  this.$ = '$$ =' + $$[$0] + ';';  
+ this.$ = '$$ =' + $$[$0] + ';'; 
 break;
 case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
-  this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+ var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 92 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -17263,91 +17337,91 @@ table: bt({
   127,
   128,
   129,
-  135,
-  138,
-  140,
-  142,
+  134,
+  137,
+  139,
+  141,
+  146,
   147,
   148,
-  149,
-  152,
-  156,
-  162,
-  164,
+  151,
+  155,
+  161,
+  163,
+  166,
   167,
   168,
-  169,
-  196,
+  195,
   1,
   129,
   s,
-  [135, 4, 1],
+  [134, 4, 1],
+  139,
   140,
   141,
-  142,
   s,
-  [144, 6, 1],
+  [143, 6, 1],
   c,
   [23, 4],
   s,
-  [166, 4, 1],
-  196,
+  [165, 4, 1],
+  195,
   130,
+  133,
   134,
-  135,
-  154,
-  196,
+  153,
+  195,
   c,
   [45, 16],
-  139,
-  154,
+  138,
+  153,
   c,
   [18, 16],
   c,
   [16, 16],
-  143,
-  154,
-  170,
-  175,
+  142,
+  153,
+  169,
+  174,
   c,
   [36, 32],
   c,
   [16, 80],
-  150,
+  149,
+  153,
   154,
-  155,
   c,
   [3, 3],
-  139,
+  138,
+  153,
   154,
-  155,
-  163,
-  165,
+  162,
+  164,
   2,
-  197,
+  196,
   c,
   [7, 5],
   c,
   [5, 3],
-  165,
-  157,
+  164,
+  156,
+  158,
   159,
-  160,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  1,
   129,
   131,
-  132,
+  134,
   135,
-  136,
-  139,
-  154,
+  138,
+  153,
+  176,
   177,
-  178,
   c,
   [57, 17],
   58,
@@ -17356,86 +17430,86 @@ table: bt({
   124,
   c,
   [20, 9],
+  153,
   154,
-  155,
   c,
   [22, 6],
-  176,
-  192,
+  175,
+  191,
   c,
   [247, 19],
+  170,
   171,
-  172,
+  153,
+  150,
+  153,
   154,
-  151,
-  154,
-  155,
   123,
-  135,
+  134,
+  153,
   154,
-  155,
-  192,
-  196,
+  191,
+  195,
   c,
   [6, 8],
-  136,
-  153,
+  135,
+  152,
   c,
   [42, 5],
-  139,
+  138,
   c,
   [63, 11],
-  165,
+  164,
   c,
   [159, 13],
   c,
   [82, 8],
-  196,
+  195,
   c,
   [103, 20],
-  192,
+  191,
   c,
-  [22, 24],
-  124,
-  s,
-  [129, 4, 3],
+  [22, 23],
+  1,
+  59,
   c,
-  [22, 7],
+  [22, 11],
   c,
   [64, 7],
-  199,
+  198,
   c,
   [21, 21],
   c,
   [124, 29],
   c,
   [37, 7],
+  157,
   158,
   159,
-  160,
-  158,
-  160,
+  157,
+  159,
   61,
-  158,
-  160,
+  157,
+  159,
+  1,
+  1,
   132,
-  132,
-  133,
+  194,
   195,
-  196,
+  197,
   198,
-  199,
+  1,
   129,
-  132,
-  139,
-  154,
-  178,
+  138,
+  153,
+  177,
   c,
   [472, 3],
   c,
-  [475, 4],
-  132,
-  154,
+  [3, 3],
+  1,
+  129,
+  153,
   58,
   c,
   [66, 11],
@@ -17443,58 +17517,57 @@ table: bt({
   [363, 32],
   c,
   [161, 8],
+  172,
   173,
-  174,
-  176,
+  175,
   c,
   [432, 65],
   123,
   125,
-  191,
+  190,
+  192,
   193,
-  194,
   c,
-  [211, 3],
+  [210, 11],
   c,
-  [23, 15],
+  [294, 8],
   c,
-  [18, 36],
+  [18, 35],
   c,
   [348, 18],
   c,
   [242, 17],
+  159,
+  159,
   160,
-  160,
-  161,
+  s,
+  [1, 3],
+  135,
+  195,
   1,
-  132,
-  132,
-  136,
-  196,
-  132,
-  196,
-  199,
+  c,
+  [311, 3],
   c,
   [3, 3],
-  c,
-  [231, 3],
+  129,
+  153,
   40,
   c,
   [361, 3],
   c,
   [435, 3],
+  178,
   179,
   180,
-  181,
-  184,
-  190,
+  183,
+  189,
   c,
   [476, 11],
   c,
   [243, 17],
   c,
   [82, 7],
-  174,
+  173,
   c,
   [192, 26],
   c,
@@ -17503,32 +17576,32 @@ table: bt({
   125,
   123,
   125,
-  194,
+  193,
   c,
   [3, 3],
-  158,
+  157,
   c,
   [365, 3],
   c,
-  [361, 6],
-  c,
-  [122, 3],
+  [361, 7],
+  195,
+  198,
   59,
   124,
   59,
   124,
   c,
   [123, 7],
-  182,
-  185,
-  187,
+  181,
+  184,
+  186,
   c,
   [122, 3],
   c,
   [12, 4],
-  136,
-  153,
-  183,
+  135,
+  152,
+  182,
   c,
   [607, 18],
   c,
@@ -17537,7 +17610,7 @@ table: bt({
   [290, 5],
   c,
   [81, 3],
-  132,
+  1,
   c,
   [191, 10],
   c,
@@ -17558,8 +17631,8 @@ table: bt({
   63,
   c,
   [18, 5],
+  187,
   188,
-  189,
   c,
   [20, 3],
   c,
@@ -17567,10 +17640,10 @@ table: bt({
   c,
   [15, 21],
   124,
+  153,
   154,
-  155,
-  181,
-  186,
+  180,
+  185,
   c,
   [162, 4],
   123,
@@ -17589,12 +17662,12 @@ table: bt({
   124,
   c,
   [73, 5],
-  185,
-  187,
+  184,
+  186,
   123,
   125,
+  192,
   193,
-  194,
   c,
   [145, 11],
   c,
@@ -17640,11 +17713,11 @@ table: bt({
   c,
   [5, 8],
   c,
-  [32, 10],
+  [149, 10],
   c,
-  [224, 4],
+  [3, 5],
   c,
-  [97, 59],
+  [97, 58],
   c,
   [64, 4],
   c,
@@ -17658,9 +17731,9 @@ table: bt({
   c,
   [124, 34],
   c,
-  [261, 10],
+  [22, 9],
   c,
-  [194, 6],
+  [194, 7],
   c,
   [200, 16],
   c,
@@ -17686,9 +17759,9 @@ table: bt({
   c,
   [40, 17],
   c,
-  [719, 11],
+  [17, 10],
   c,
-  [28, 15],
+  [68, 16],
   c,
   [757, 6],
   c,
@@ -17802,14 +17875,13 @@ table: bt({
   s,
   [2, 79],
   c,
-  [179, 19],
-  1,
+  [179, 20],
   c,
-  [21, 4],
+  [190, 23],
   c,
-  [80, 57],
+  [80, 38],
   c,
-  [61, 3],
+  [62, 3],
   c,
   [96, 16],
   c,
@@ -17845,7 +17917,9 @@ table: bt({
   c,
   [528, 6],
   c,
-  [612, 41],
+  [551, 4],
+  c,
+  [94, 37],
   c,
   [37, 15],
   c,
@@ -17929,8 +18003,8 @@ table: bt({
   36,
   37,
   37,
-  49,
   2,
+  49,
   51,
   29,
   19,
@@ -18697,7 +18771,7 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-123 */
+/* generated by jison-lex 0.3.4-126 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -18757,7 +18831,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -18766,7 +18840,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -18787,7 +18861,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -18837,7 +18911,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -18868,13 +18942,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -18893,12 +18967,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -18908,7 +18982,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -18921,14 +18995,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -19006,7 +19080,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -19084,7 +19158,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -19101,12 +19175,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -19116,7 +19190,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -19125,7 +19199,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -19135,12 +19209,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -19172,186 +19246,186 @@ case 3 :
 /*! Rule::       %% */ 
  this.pushState('code'); return 129; 
 break;
-case 13 : 
+case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 14 : 
+case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 16 : 
+case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 158; 
+ this.popState(); return 157; 
 break;
-case 17 : 
+case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 18 : 
+case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 19 : 
+case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* skip newlines */ 
 break;
-case 20 : 
+case 24 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\/[^\r\n]* */ 
  /* skip single-line comment */ 
 break;
-case 21 : 
+case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* skip multi-line comment */ 
 break;
-case 22 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
-break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 188; 
 break;
-case 27 : 
+case 30 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       "[^"]+" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+break;
+case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
 break;
-case 32 : 
+case 36 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 129; 
 break;
-case 33 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 34 : 
+case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 146; 
 break;
-case 41 : 
+case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
- this.pushState('token'); return 142; 
-break;
-case 43 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       %options\b */ 
- this.pushState('options'); return 156; 
+ this.pushState('token'); return 141; 
 break;
 case 47 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %options\b */ 
+ this.pushState('options'); return 155; 
+break;
+case 51 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 196; 
+ this.pushState('path'); return 195; 
 break;
-case 48 : 
+case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 148;
+                                            return 147;
                                          
 break;
-case 49 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 174; 
 break;
-case 50 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 134; 
 break;
-case 51 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 134; 
 break;
-case 52 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 123; 
 break;
-case 53 : 
+case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 191; 
 break;
-case 54 : 
+case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 175; 
 break;
-case 55 : 
+case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 175; 
 break;
-case 56 : 
+case 60 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 60 : 
+case 64 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 194; // regexp with braces or quotes (and no spaces) 
+ return 193; // regexp with braces or quotes (and no spaces) 
 break;
-case 65 : 
+case 69 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 123; 
 break;
-case 66 : 
+case 70 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 125; 
 break;
-case 68 : 
+case 72 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 199;      // the bit of CODE just before EOF... 
+ return 198;      // the bit of CODE just before EOF... 
 break;
-case 69 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 70 : 
+case 74 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 71 : 
+case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 72 : 
+case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 73 : 
+case 77 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 197; 
+ this.popState(); return 196; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -19361,109 +19435,121 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 184,
+   4 : 183,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 184,
+   5 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u0190 */ 
+   6 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u025B */ 
+   7 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03B5 */ 
+   8 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03F5 */ 
+   9 : 183,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   6 : 40,
+   10 : 40,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   7 : 41,
+   11 : 41,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   8 : 42,
+   12 : 42,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   9 : 63,
+   13 : 63,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   10 : 43,
+   14 : 43,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   11 : 160,
+   15 : 159,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   12 : 61,
+   16 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   15 : 161,
+   19 : 160,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   23 : 154,
+   27 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$end\b */ 
-   24 : 154,
+   28 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$eof\b */ 
-   25 : 154,
+   29 : 153,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   28 : 'TOKEN_WORD',
+   32 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   29 : 58,
+   33 : 58,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   30 : 59,
+   34 : 59,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   31 : 124,
+   35 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   35 : 164,
+   39 : 163,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   36 : 190,
+   40 : 189,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   37 : 138,
+   41 : 137,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   38 : 167,
+   42 : 166,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   39 : 168,
+   43 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   40 : 169,
+   44 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   42 : 162,
+   46 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   44 : 140,
+   48 : 139,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   45 : 152,
+   49 : 151,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   46 : 149,
+   50 : 148,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   57 : 132,
+   61 : 1,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   58 : 194,
+   62 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   59 : 194,
+   63 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   61 : 194,
+   65 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   62 : 194,
+   66 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   63 : 194,
+   67 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   64 : 194,
+   68 : 193,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   67 : 199
+   71 : 198
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -19472,12 +19558,16 @@ rules: [
 /^(?:%%)/,
 /^(?:%empty\b)/,
 /^(?:%epsilon\b)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:\()/,
 /^(?:\))/,
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
@@ -19488,8 +19578,8 @@ rules: [
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\[([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\])/,
+/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
@@ -19514,8 +19604,8 @@ rules: [
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]*)/,
-/^(?:<([a-zA-Z_][a-zA-Z0-9_]*)>)/,
+/^(?:%([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?)[^\r\n]*)/,
+/^(?:<([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
@@ -19547,20 +19637,20 @@ conditions: {
       3,
       4,
       5,
-      18,
-      19,
-      20,
-      21,
+      6,
+      7,
+      8,
+      9,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19585,7 +19675,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -19599,20 +19693,20 @@ conditions: {
       8,
       9,
       10,
-      18,
-      19,
-      20,
-      21,
+      11,
+      12,
+      13,
+      14,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19637,7 +19731,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -19646,10 +19744,6 @@ conditions: {
       0,
       1,
       2,
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
@@ -19675,83 +19769,83 @@ conditions: {
       44,
       45,
       46,
+      47,
       48,
       49,
       50,
-      51,
       52,
       53,
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      57,
-      58,
-      59,
-      60,
       61,
       62,
       63,
       64,
       65,
-      66
+      66,
+      67,
+      68,
+      69,
+      70
     ],
     inclusive: false
   },
   "code": {
     rules: [
-      47,
-      57,
-      67,
-      68
+      51,
+      61,
+      71,
+      72
     ],
     inclusive: false
   },
   "path": {
     rules: [
-      57,
-      69,
-      70,
-      71,
-      72,
-      73
+      61,
+      73,
+      74,
+      75,
+      76,
+      77
     ],
     inclusive: false
   },
   "options": {
     rules: [
-      11,
-      12,
-      13,
-      14,
       15,
       16,
       17,
-      57
+      18,
+      19,
+      20,
+      21,
+      61
     ],
     inclusive: false
   },
   "INITIAL": {
     rules: [
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19776,7 +19870,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   }
@@ -19836,3715 +19934,8 @@ if (typeof Object.create === 'function') {
 }
 
 },{}],19:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
-/*
- * Returns a Parser object of the following structure:
- *
- *  Parser: {
- *    yy: {}
- *  }
- *
- *  Parser.prototype: {
- *    yy: {},
- *    EOF: 1,
- *    TERROR: 2,
- *
- *    trace: function(errorMessage, errorHash),
- *
- *    JisonParserError: function(msg, hash),
- *
- *    quoteName: function(name),
- *               Helper function which can be overridden by user code later on: put suitable
- *               quotes around literal IDs in a description string.
- *
- *    describeSymbol: function(symbol),
- *               Return a more-or-less human-readable description of the given symbol, when
- *               available, or the symbol itself, serving as its own 'description' for lack
- *               of something better to serve up.
- *
- *               Return NULL when the symbol is unknown to the parser.
- *
- *    symbols_: {associative list: name ==> number},
- *    terminals_: {associative list: number ==> name},
- *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},
- *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
- *    productions_: [...],
- *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
- *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
- *
- *    table: [...],
- *               State transition table
- *               ----------------------
- *
- *               index levels are:
- *               - `state`  --> hash table
- *               - `symbol` --> action (number or array)
- *
- *                 If the `action` is an array, these are the elements' meaning:
- *                 - index [0]: 1 = shift, 2 = reduce, 3 = accept
- *                 - index [1]: GOTO `state`
- *
- *                 If the `action` is a number, it is the GOTO `state`
- *
- *    defaultActions: {...},
- *
- *    parseError: function(str, hash),
- *    yyErrOk: function(),
- *    yyClearIn: function(),
- *
- *    options: { ... parser %options ... },
- *
- *    parse: function(input),
- *
- *    lexer: {
- *        EOF: 1,
- *        ERROR: 2,
- *        JisonLexerError: function(msg, hash),
- *        parseError: function(str, hash),
- *        setInput: function(input),
- *        input: function(),
- *        unput: function(str),
- *        more: function(),
- *        reject: function(),
- *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
- *        showPosition: function(),
- *        test_match: function(regex_match_array, rule_index),
- *        next: function(),
- *        lex: function(),
- *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
- *        pushState: function(condition),
- *        stateStackSize: function(),
- *
- *        options: { ... lexer %options ... },
- *
- *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
- *        rules: [...],
- *        conditions: {associative list: name ==> set},
- *    }
- *  }
- *
- *
- *  token location info (@$, _$, etc.): {
- *    first_line: n,
- *    last_line: n,
- *    first_column: n,
- *    last_column: n,
- *    range: [start_number, end_number]
- *               (where the numbers are indexes into the input string, zero-based)
- *  }
- *
- * ---
- *
- * The parseError function receives a 'hash' object with these members for lexer and
- * parser errors:
- *
- *  {
- *    text:        (matched text)
- *    token:       (the produced terminal token, if any)
- *    token_id:    (the produced terminal token numeric ID, if any)
- *    line:        (yylineno)
- *    loc:         (yylloc)
- *  }
- *
- * parser (grammar) errors will also provide these additional members:
- *
- *  {
- *    expected:    (array describing the set of expected tokens;
- *                  may be empty when we cannot easily produce such a set)
- *    recoverable: (boolean: TRUE when the parser MAY have an error recovery rule
- *                  available for this particular error)
- *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,
- *                  for instance, for advanced error analysis and reporting)
- *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
- *                  for instance, for advanced error analysis and reporting)
- *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
- *                  for instance, for advanced error analysis and reporting)
- *    lexer:       (reference to the current lexer instance used by the parser)
- *  }
- *
- * while `this` will reference the current parser instance.
- *
- *  When `parseError` is invoked by the lexer, `this` will still reference the related *parser*
- *  instance, while these additional `hash` fields will also be provided:
- *
- *  {
- *    lexer:       (reference to the current lexer instance which reported the error)
- *  }
- *
- *  When `parseError` is invoked by the parser due to a **JavaScript exception** being fired
- *  from either the parser or lexer, `this` will still reference the related *parser*
- *  instance, while these additional `hash` fields will also be provided:
- *
- *  {
- *    exception:   (reference to the exception thrown)
- *  }
- *
- *  Please do note that in the latter situation, the `expected` field will be omitted as
- *  type of failure is assumed not to be due to *parse errors* but rather due to user
- *  action code in either parser or lexer failing unexpectedly.
- *
- * ---
- *
- * You can specify parser options by setting / modifying the `.yy` object of your Parser instance.
- * These options are available:
- *
- * ### options which are global for all parser instances
- *
- *  Parser.pre_parse: function(yy [, optional parse() args])
- *                 optional: you can specify a pre_parse() function in the chunk following
- *                 the grammar, i.e. after the last `%%`.
- *  Parser.post_parse: function(yy, retval [, optional parse() args]) { return retval; }
- *                 optional: you can specify a post_parse() function in the chunk following
- *                 the grammar, i.e. after the last `%%`. When it does not return any value,
- *                 the parser will return the original `retval`.
- *
- * ### options which can be set up per parser instance
- *  
- *  yy: {
- *      pre_parse:  function(yy [, optional parse() args])
- *                 optional: is invoked before the parse cycle starts (and before the first
- *                 invocation of `lex()`) but immediately after the invocation of
- *                 `parser.pre_parse()`).
- *      post_parse: function(yy, retval [, optional parse() args]) { return retval; }
- *                 optional: is invoked when the parse terminates due to success ('accept')
- *                 or failure (even when exceptions are thrown).
- *                 `retval` contains the return value to be produced by `Parser.parse()`;
- *                 this function can override the return value by returning another. 
- *                 When it does not return any value, the parser will return the original
- *                 `retval`. 
- *                 This function is invoked immediately before `Parser.post_parse()`.
- *
- *      parseError: function(str, hash)
- *                 optional: overrides the default `parseError` function.
- *      quoteName: function(name),
- *                 optional: overrides the default `quoteName` function.
- *  }
- *
- *  parser.lexer.options: {
- *      pre_lex:  function()
- *                 optional: is invoked before the lexer is invoked to produce another token.
- *                 `this` refers to the Lexer object.
- *      post_lex: function(token) { return token; }
- *                 optional: is invoked when the lexer has produced a token `token`;
- *                 this function can override the returned token value by returning another.
- *                 When it does not return any (truthy) value, the lexer will return
- *                 the original `token`.
- *                 `this` refers to the Lexer object.
- *
- *      ranges: boolean
- *                 optional: `true` ==> token location info will include a .range[] member.
- *      flex: boolean
- *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
- *                 exhaustively to find the longest match.
- *      backtrack_lexer: boolean
- *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
- *                 the lexer terminates the scan when a token is returned by the action code.
- *      xregexp: boolean
- *                 optional: `true` ==> lexer rule regexes are "extended regex format" requiring the
- *                 `XRegExp` library. When this %option has not been specified at compile time, all lexer
- *                 rule regexes have been written as standard JavaScript RegExp expressions.
- *  }
- */
-var lexParser = (function () {
-
-// See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-// with userland code which might access the derived class in a 'classic' way.
-function JisonParserError(msg, hash) {
-    Object.defineProperty(this, 'name', {
-        enumerable: false,
-        writable: false,
-        value: 'JisonParserError'
-    });
-
-    if (msg == null) msg = '???';
-
-    Object.defineProperty(this, 'message', {
-        enumerable: false,
-        writable: true,
-        value: msg
-    });
-
-    this.hash = hash;
-
-    var stacktrace;
-    if (hash && hash.exception instanceof Error) {
-        var ex2 = hash.exception;
-        this.message = ex2.message || msg;
-        stacktrace = ex2.stack;
-    }
-    if (!stacktrace) {
-        if (Error.hasOwnProperty('captureStackTrace')) { // V8
-            Error.captureStackTrace(this, this.constructor);
-        } else {
-            stacktrace = (new Error(msg)).stack;
-        }
-    }
-    if (stacktrace) {
-        Object.defineProperty(this, 'stack', {
-            enumerable: false,
-            writable: false,
-            value: stacktrace
-        });
-    }
-}
-
-if (typeof Object.setPrototypeOf === 'function') {
-    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
-} else {
-    JisonParserError.prototype = Object.create(Error.prototype);
-}
-JisonParserError.prototype.constructor = JisonParserError;
-JisonParserError.prototype.name = 'JisonParserError';
-
-
-
-// helper: reconstruct the productions[] table
-function bp(s) {
-    var rv = [];
-    var p = s.pop;
-    var r = s.rule;
-    for (var i = 0, l = p.length; i < l; i++) {
-        rv.push([
-            p[i],
-            r[i]
-        ]);
-    }
-    return rv;
-}
-
-// helper: reconstruct the defaultActions[] table
-function bda(s) {
-    var rv = {};
-    var d = s.idx;
-    var p = s.pop;
-    var r = s.rule;
-    for (var i = 0, l = d.length; i < l; i++) {
-        var j = d[i];
-        rv[j] = [
-            p[i],
-            r[i]
-        ];
-    }
-    return rv;
-}
-
-// helper: reconstruct the 'goto' table
-function bt(s) {
-    var rv = [];
-    var d = s.len;
-    var y = s.symbol;
-    var t = s.type;
-    var a = s.state;
-    var m = s.mode;
-    var g = s.goto;
-    for (var i = 0, l = d.length; i < l; i++) {
-        var n = d[i];
-        var q = {};
-        for (var j = 0; j < n; j++) {
-            var z = y.shift();
-            switch (t.shift()) {
-            case 2:
-                q[z] = [
-                    m.shift(),
-                    g.shift()
-                ];
-                break;
-
-            case 0:
-                q[z] = a.shift();
-                break;
-
-            default:
-                // type === 1: accept
-                q[z] = [
-                    3
-                ];
-            }
-        }
-        rv.push(q);
-    }
-    return rv;
-}
-
-// helper: runlength encoding with increment step: code, length: step (default step = 0)
-// `this` references an array
-function s(c, l, a) {
-    a = a || 0;
-    for (var i = 0; i < l; i++) {
-        this.push(c);
-        c += a;
-    }
-}
-
-// helper: duplicate sequence from *relative* offset and length.
-// `this` references an array
-function c(i, l) {
-    i = this.length - i;
-    for (l += i; i < l; i++) {
-        this.push(this[i]);
-    }
-}
-
-// helper: unpack an array using helpers and data, all passed in an array argument 'a'.
-function u(a) {
-    var rv = [];
-    for (var i = 0, l = a.length; i < l; i++) {
-        var e = a[i];
-        // Is this entry a helper function?
-        if (typeof e === 'function') {
-            i++;
-            e.apply(rv, a[i]);
-        } else {
-            rv.push(e);
-        }
-    }
-    return rv;
-}
-
-var parser = {
-EOF: 1,
-TERROR: 2,
-trace: function no_op_trace() { },
-JisonParserError: JisonParserError,
-yy: {},
-options: {
-  type: "lalr"
-},
-symbols_: {
-  "$": 36,
-  "$accept": 0,
-  "$end": 1,
-  "%%": 130,
-  "(": 40,
-  ")": 41,
-  "*": 42,
-  "+": 43,
-  ",": 44,
-  ".": 46,
-  "/": 47,
-  "/!": 158,
-  "<": 60,
-  "=": 61,
-  ">": 62,
-  "?": 63,
-  "ACTION": 142,
-  "ACTION_BODY": 152,
-  "CHARACTER_LIT": 173,
-  "CODE": 183,
-  "EOF": 132,
-  "ESCAPE_CHAR": 170,
-  "INCLUDE": 180,
-  "NAME": 136,
-  "NAME_BRACE": 164,
-  "OPTIONS": 174,
-  "OPTIONS_END": 176,
-  "OPTION_VALUE": 178,
-  "PATH": 181,
-  "RANGE_REGEX": 171,
-  "REGEX_SET": 169,
-  "REGEX_SET_END": 167,
-  "REGEX_SET_START": 165,
-  "SPECIAL_GROUP": 157,
-  "START_COND": 146,
-  "START_EXC": 140,
-  "START_INC": 138,
-  "STRING_LIT": 172,
-  "UNKNOWN_DECL": 145,
-  "^": 94,
-  "action": 149,
-  "action_body": 150,
-  "action_comments_body": 151,
-  "any_group_regex": 161,
-  "definition": 135,
-  "definitions": 129,
-  "error": 2,
-  "escape_char": 163,
-  "extra_lexer_module_code": 133,
-  "include_macro_code": 143,
-  "init": 128,
-  "lex": 127,
-  "module_code_chunk": 182,
-  "name_expansion": 159,
-  "name_list": 153,
-  "names_exclusive": 141,
-  "names_inclusive": 139,
-  "option": 177,
-  "option_list": 175,
-  "optional_module_code_chunk": 179,
-  "options": 144,
-  "range_regex": 160,
-  "regex": 137,
-  "regex_base": 156,
-  "regex_concat": 155,
-  "regex_list": 154,
-  "regex_set": 166,
-  "regex_set_atom": 168,
-  "rule": 147,
-  "rules": 134,
-  "rules_and_epilogue": 131,
-  "start_conditions": 148,
-  "string": 162,
-  "{": 123,
-  "|": 124,
-  "}": 125
-},
-terminals_: {
-  1: "$end",
-  2: "error",
-  36: "$",
-  40: "(",
-  41: ")",
-  42: "*",
-  43: "+",
-  44: ",",
-  46: ".",
-  47: "/",
-  60: "<",
-  61: "=",
-  62: ">",
-  63: "?",
-  94: "^",
-  123: "{",
-  124: "|",
-  125: "}",
-  130: "%%",
-  132: "EOF",
-  136: "NAME",
-  138: "START_INC",
-  140: "START_EXC",
-  142: "ACTION",
-  145: "UNKNOWN_DECL",
-  146: "START_COND",
-  152: "ACTION_BODY",
-  157: "SPECIAL_GROUP",
-  158: "/!",
-  164: "NAME_BRACE",
-  165: "REGEX_SET_START",
-  167: "REGEX_SET_END",
-  169: "REGEX_SET",
-  170: "ESCAPE_CHAR",
-  171: "RANGE_REGEX",
-  172: "STRING_LIT",
-  173: "CHARACTER_LIT",
-  174: "OPTIONS",
-  176: "OPTIONS_END",
-  178: "OPTION_VALUE",
-  180: "INCLUDE",
-  181: "PATH",
-  183: "CODE"
-},
-productions_: bp({
-  pop: u([
-  127,
-  s,
-  [131, 4],
-  128,
-  129,
-  129,
-  s,
-  [135, 7],
-  139,
-  139,
-  141,
-  141,
-  134,
-  134,
-  147,
-  s,
-  [149, 3],
-  150,
-  150,
-  151,
-  151,
-  s,
-  [148, 3],
-  153,
-  153,
-  137,
-  s,
-  [154, 4],
-  155,
-  155,
-  s,
-  [156, 15],
-  159,
-  161,
-  166,
-  166,
-  168,
-  168,
-  163,
-  160,
-  162,
-  162,
-  144,
-  175,
-  175,
-  s,
-  [177, 3],
-  133,
-  133,
-  143,
-  143,
-  182,
-  182,
-  179,
-  179
-]),
-  rule: u([
-  4,
-  1,
-  3,
-  4,
-  2,
-  0,
-  2,
-  0,
-  s,
-  [2, 3],
-  s,
-  [1, 5],
-  2,
-  1,
-  c,
-  [9, 3],
-  3,
-  3,
-  s,
-  [1, 3],
-  5,
-  0,
-  2,
-  3,
-  3,
-  0,
-  1,
-  3,
-  1,
-  s,
-  [3, 4, -1],
-  c,
-  [20, 4],
-  s,
-  [2, 5],
-  c,
-  [33, 3],
-  s,
-  [1, 6],
-  c,
-  [22, 3],
-  c,
-  [9, 10],
-  c,
-  [49, 3],
-  c,
-  [31, 3],
-  c,
-  [28, 3],
-  0
-])
-}),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
-/* this == yyval */
-
-var $0 = $$.length - 1;
-switch (yystate) {
-case 1 : 
-/*! Production::     lex : init definitions '%%' rules_and_epilogue */
- 
-          this.$ = $$[$0];
-          if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
-          if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
-          if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
-          // if there are any options, add them all, otherwise set options to NULL:
-          // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
-          for (var k in yy.options) {
-            this.$.options = yy.options;
-            break;
-          }
-          if (yy.actionInclude) {
-            var asrc = yy.actionInclude.join('\n\n');
-            // Only a non-empty action code chunk should actually make it through:
-            if (asrc.trim() !== '') {
-              this.$.actionInclude = asrc; 
-            }
-          }
-          delete yy.options;
-          delete yy.actionInclude;
-          return this.$;
-         
-break;
-case 2 : 
-/*! Production::     rules_and_epilogue : EOF */
- 
-        this.$ = { rules: [] };
-       
-break;
-case 3 : 
-/*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
-          this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
-        } else {
-          this.$ = { rules: [] };
-        }
-       
-break;
-case 4 : 
-/*! Production::     rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
-          this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
-        } else {
-          this.$ = { rules: $$[$0 - 3] };
-        }
-       
-break;
-case 5 : 
-/*! Production::     rules_and_epilogue : rules EOF */
- 
-        this.$ = { rules: $$[$0 - 1] };
-       
-break;
-case 6 : 
-/*! Production::     init :  */
- 
-            yy.actionInclude = [];
-            if (!yy.options) yy.options = {};
-         
-break;
-case 7 : 
-/*! Production::     definitions : definition definitions */
- 
-          this.$ = $$[$0];
-          if ($$[$0 - 1] != null) {
-            if ('length' in $$[$0 - 1]) {
-              this.$[0] = this.$[0] || {};
-              this.$[0][$$[$0 - 1][0]] = $$[$0 - 1][1];
-            } else if ($$[$0 - 1].type === 'names') {
-              this.$[1] = this.$[1] || {};
-              for (var name in $$[$0 - 1].names) {
-                this.$[1][name] = $$[$0 - 1].names[name];
-              }
-            } else if ($$[$0 - 1].type === 'unknown') {
-              this.$[2] = this.$[2] || [];
-              this.$[2].push($$[$0 - 1].body);
-            }
-          }
-         
-break;
-case 8 : 
-/*! Production::     definitions :  */
-  this.$ = [null, null];  
-break;
-case 9 : 
-/*! Production::     definition : NAME regex */
-  this.$ = [$$[$0 - 1], $$[$0]];  
-break;
-case 10 : 
-/*! Production::     definition : START_INC names_inclusive */
- case 11 : 
-/*! Production::     definition : START_EXC names_exclusive */
- case 24 : 
-/*! Production::     action : ACTION */
- case 25 : 
-/*! Production::     action : include_macro_code */
- case 26 : 
-/*! Production::     action_body : action_comments_body */
- case 63 : 
-/*! Production::     escape_char : ESCAPE_CHAR */
- case 64 : 
-/*! Production::     range_regex : RANGE_REGEX */
- case 73 : 
-/*! Production::     extra_lexer_module_code : optional_module_code_chunk */
- case 77 : 
-/*! Production::     module_code_chunk : CODE */
- case 79 : 
-/*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
-break;
-case 12 : 
-/*! Production::     definition : ACTION */
- case 13 : 
-/*! Production::     definition : include_macro_code */
-  yy.actionInclude.push($$[$0]); this.$ = null;  
-break;
-case 14 : 
-/*! Production::     definition : options */
-  this.$ = null;  
-break;
-case 15 : 
-/*! Production::     definition : UNKNOWN_DECL */
-  this.$ = {type: 'unknown', body: $$[$0]};  
-break;
-case 16 : 
-/*! Production::     names_inclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
-break;
-case 17 : 
-/*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0;  
-break;
-case 18 : 
-/*! Production::     names_exclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
-break;
-case 19 : 
-/*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1;  
-break;
-case 20 : 
-/*! Production::     rules : rules rule */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
-break;
-case 21 : 
-/*! Production::     rules : rule */
- case 33 : 
-/*! Production::     name_list : NAME */
-  this.$ = [$$[$0]];  
-break;
-case 22 : 
-/*! Production::     rule : start_conditions regex action */
-  this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]];  
-break;
-case 23 : 
-/*! Production::     action : '{' action_body '}' */
- case 30 : 
-/*! Production::     start_conditions : '<' name_list '>' */
-  this.$ = $$[$0 - 1];  
-break;
-case 27 : 
-/*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
-break;
-case 28 : 
-/*! Production::     action_comments_body :  */
- case 39 : 
-/*! Production::     regex_list :  */
- case 80 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
-break;
-case 29 : 
-/*! Production::     action_comments_body : action_comments_body ACTION_BODY */
- case 40 : 
-/*! Production::     regex_concat : regex_concat regex_base */
- case 50 : 
-/*! Production::     regex_base : regex_base range_regex */
- case 59 : 
-/*! Production::     regex_set : regex_set_atom regex_set */
- case 78 : 
-/*! Production::     module_code_chunk : module_code_chunk CODE */
-  this.$ = $$[$0 - 1] + $$[$0];  
-break;
-case 31 : 
-/*! Production::     start_conditions : '<' '*' '>' */
-  this.$ = ['*'];  
-break;
-case 34 : 
-/*! Production::     name_list : name_list ',' NAME */
-  this.$ = $$[$0 - 2]; this.$.push($$[$0]);  
-break;
-case 35 : 
-/*! Production::     regex : regex_list */
- 
-          this.$ = $$[$0];
-          if (yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
-              this.$ += "\\b";
-          }
-         
-break;
-case 36 : 
-/*! Production::     regex_list : regex_list '|' regex_concat */
-  this.$ = $$[$0 - 2] + '|' + $$[$0];  
-break;
-case 37 : 
-/*! Production::     regex_list : regex_list '|' */
-  this.$ = $$[$0 - 1] + '|';  
-break;
-case 42 : 
-/*! Production::     regex_base : '(' regex_list ')' */
-  this.$ = '(' + $$[$0 - 1] + ')';  
-break;
-case 43 : 
-/*! Production::     regex_base : SPECIAL_GROUP regex_list ')' */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + ')';  
-break;
-case 44 : 
-/*! Production::     regex_base : regex_base '+' */
-  this.$ = $$[$0 - 1] + '+';  
-break;
-case 45 : 
-/*! Production::     regex_base : regex_base '*' */
-  this.$ = $$[$0 - 1] + '*';  
-break;
-case 46 : 
-/*! Production::     regex_base : regex_base '?' */
-  this.$ = $$[$0 - 1] + '?';  
-break;
-case 47 : 
-/*! Production::     regex_base : '/' regex_base */
-  this.$ = '(?=' + $$[$0] + ')';  
-break;
-case 48 : 
-/*! Production::     regex_base : '/!' regex_base */
-  this.$ = '(?!' + $$[$0] + ')';  
-break;
-case 52 : 
-/*! Production::     regex_base : '.' */
-  this.$ = '.';  
-break;
-case 53 : 
-/*! Production::     regex_base : '^' */
-  this.$ = '^';  
-break;
-case 54 : 
-/*! Production::     regex_base : '$' */
-  this.$ = '$';  
-break;
-case 58 : 
-/*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
- case 74 : 
-/*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
-break;
-case 62 : 
-/*! Production::     regex_set_atom : name_expansion */
-  
-            if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) && $$[$0].toUpperCase() !== $$[$0]) {
-                // treat this as part of an XRegExp `\p{...}` Unicode slug:
-                this.$ = $$[$0];
-            } else {
-                this.$ = '{[' + $$[$0] + ']}';
-            }
-         
-break;
-case 65 : 
-/*! Production::     string : STRING_LIT */
-  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
-break;
-case 70 : 
-/*! Production::     option : NAME[option] */
-  yy.options[$$[$0]] = true;  
-break;
-case 71 : 
-/*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
- case 72 : 
-/*! Production::     option : NAME[option] '=' NAME[value] */
-  yy.options[$$[$0 - 2]] = $$[$0];  
-break;
-case 75 : 
-/*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fs = require('fs');
-            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
-            // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
-break;
-case 76 : 
-/*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
-break;
-}
-},
-table: bt({
-  len: u([
-  10,
-  1,
-  12,
-  1,
-  12,
-  29,
-  2,
-  2,
-  s,
-  [8, 4],
-  2,
-  3,
-  23,
-  1,
-  8,
-  10,
-  28,
-  28,
-  21,
-  21,
-  17,
-  17,
-  s,
-  [27, 7],
-  29,
-  5,
-  s,
-  [27, 3],
-  s,
-  [9, 4],
-  25,
-  25,
-  1,
-  4,
-  3,
-  1,
-  1,
-  6,
-  21,
-  19,
-  24,
-  3,
-  29,
-  28,
-  s,
-  [27, 5],
-  2,
-  2,
-  28,
-  28,
-  1,
-  6,
-  3,
-  3,
-  9,
-  9,
-  8,
-  1,
-  2,
-  1,
-  s,
-  [3, 3],
-  6,
-  1,
-  19,
-  5,
-  2,
-  1,
-  2,
-  c,
-  [30, 4],
-  1,
-  2,
-  2,
-  c,
-  [27, 3],
-  c,
-  [16, 3],
-  19,
-  19,
-  16,
-  1,
-  16,
-  1,
-  1,
-  2,
-  3,
-  2,
-  19,
-  5,
-  3,
-  2,
-  4,
-  3
-]),
-  symbol: u([
-  127,
-  128,
-  130,
-  s,
-  [136, 4, 2],
-  145,
-  174,
-  180,
-  1,
-  129,
-  130,
-  135,
-  c,
-  [11, 4],
-  143,
-  144,
-  c,
-  [13, 3],
-  130,
-  c,
-  [13, 12],
-  36,
-  40,
-  46,
-  47,
-  94,
-  124,
-  130,
-  136,
-  137,
-  c,
-  [41, 4],
-  s,
-  [154, 6, 1],
-  s,
-  [161, 5, 1],
-  170,
-  172,
-  173,
-  174,
-  180,
-  139,
-  146,
-  141,
-  146,
-  c,
-  [67, 8],
-  c,
-  [8, 24],
-  2,
-  181,
-  136,
-  175,
-  177,
-  c,
-  [70, 4],
-  60,
-  94,
-  123,
-  124,
-  130,
-  131,
-  132,
-  134,
-  142,
-  147,
-  148,
-  157,
-  158,
-  c,
-  [65, 5],
-  180,
-  130,
-  c,
-  [37, 8],
-  c,
-  [26, 3],
-  c,
-  [10, 7],
-  36,
-  40,
-  41,
-  c,
-  [113, 3],
-  c,
-  [16, 8],
-  c,
-  [111, 14],
-  c,
-  [28, 3],
-  42,
-  43,
-  46,
-  47,
-  63,
-  c,
-  [31, 9],
-  157,
-  158,
-  160,
-  c,
-  [27, 3],
-  s,
-  [171, 4, 1],
-  c,
-  [56, 7],
-  124,
-  c,
-  [162, 14],
-  c,
-  [21, 23],
-  c,
-  [20, 3],
-  c,
-  [17, 31],
-  c,
-  [104, 17],
-  c,
-  [103, 11],
-  c,
-  [27, 180],
-  167,
-  s,
-  [169, 6, 1],
-  180,
-  159,
-  164,
-  166,
-  168,
-  169,
-  c,
-  [115, 81],
-  c,
-  [16, 6],
-  146,
-  c,
-  [9, 29],
-  c,
-  [514, 9],
-  132,
-  c,
-  [61, 10],
-  c,
-  [60, 4],
-  183,
-  c,
-  [25, 25],
-  176,
-  136,
-  175,
-  176,
-  177,
-  61,
-  136,
-  176,
-  1,
-  1,
-  132,
-  133,
-  179,
-  180,
-  182,
-  c,
-  [41, 11],
-  c,
-  [578, 11],
-  c,
-  [21, 11],
-  c,
-  [19, 12],
-  c,
-  [18, 3],
-  137,
-  142,
-  c,
-  [503, 14],
-  180,
-  42,
-  136,
-  153,
-  c,
-  [605, 14],
-  c,
-  [717, 15],
-  c,
-  [606, 31],
-  c,
-  [476, 132],
-  41,
-  124,
-  41,
-  124,
-  c,
-  [167, 47],
-  c,
-  [28, 9],
-  167,
-  c,
-  [508, 3],
-  167,
-  168,
-  169,
-  164,
-  167,
-  c,
-  [3, 4],
-  c,
-  [425, 24],
-  174,
-  180,
-  176,
-  136,
-  178,
-  132,
-  132,
-  143,
-  180,
-  132,
-  180,
-  183,
-  c,
-  [3, 4],
-  c,
-  [377, 5],
-  1,
-  c,
-  [357, 19],
-  123,
-  142,
-  143,
-  149,
-  180,
-  44,
-  62,
-  62,
-  44,
-  62,
-  c,
-  [945, 47],
-  c,
-  [257, 62],
-  167,
-  136,
-  176,
-  c,
-  [529, 3],
-  c,
-  [151, 6],
-  c,
-  [160, 4],
-  c,
-  [154, 20],
-  125,
-  150,
-  151,
-  152,
-  c,
-  [535, 23],
-  c,
-  [554, 22],
-  c,
-  [16, 9],
-  136,
-  c,
-  [17, 16],
-  132,
-  1,
-  123,
-  125,
-  123,
-  125,
-  152,
-  c,
-  [229, 4],
-  c,
-  [104, 22],
-  c,
-  [29, 3],
-  c,
-  [34, 4],
-  c,
-  [9, 5]
-]),
-  type: u([
-  0,
-  0,
-  s,
-  [2, 8],
-  1,
-  0,
-  2,
-  c,
-  [12, 5],
-  c,
-  [18, 6],
-  c,
-  [13, 13],
-  s,
-  [2, 7],
-  c,
-  [18, 7],
-  c,
-  [7, 3],
-  s,
-  [0, 4],
-  c,
-  [21, 9],
-  c,
-  [35, 12],
-  s,
-  [2, 25],
-  c,
-  [73, 11],
-  c,
-  [50, 4],
-  c,
-  [88, 13],
-  c,
-  [58, 31],
-  c,
-  [111, 13],
-  c,
-  [33, 22],
-  c,
-  [107, 15],
-  c,
-  [51, 19],
-  c,
-  [21, 19],
-  c,
-  [17, 34],
-  s,
-  [2, 213],
-  c,
-  [381, 45],
-  c,
-  [174, 132],
-  c,
-  [577, 9],
-  c,
-  [465, 15],
-  c,
-  [235, 38],
-  c,
-  [469, 15],
-  c,
-  [54, 15],
-  c,
-  [555, 20],
-  c,
-  [606, 30],
-  c,
-  [296, 153],
-  c,
-  [28, 36],
-  c,
-  [891, 5],
-  c,
-  [81, 47],
-  c,
-  [377, 16],
-  c,
-  [388, 33],
-  c,
-  [839, 102],
-  c,
-  [151, 27],
-  c,
-  [542, 39],
-  c,
-  [134, 71],
-  c,
-  [304, 12]
-]),
-  state: u([
-  s,
-  [1, 4, 1],
-  9,
-  10,
-  15,
-  c,
-  [4, 3],
-  s,
-  [16, 4, 1],
-  24,
-  25,
-  29,
-  30,
-  36,
-  38,
-  42,
-  43,
-  45,
-  48,
-  49,
-  50,
-  53,
-  c,
-  [13, 4],
-  57,
-  59,
-  c,
-  [21, 6],
-  60,
-  c,
-  [7, 6],
-  61,
-  c,
-  [5, 4],
-  62,
-  c,
-  [5, 4],
-  66,
-  63,
-  64,
-  70,
-  43,
-  72,
-  73,
-  74,
-  78,
-  50,
-  79,
-  c,
-  [56, 7],
-  80,
-  83,
-  c,
-  [7, 5],
-  s,
-  [57, 3],
-  66,
-  87,
-  64,
-  91,
-  93,
-  73,
-  74,
-  97,
-  94,
-  c,
-  [67, 5],
-  101,
-  73,
-  74,
-  103,
-  104,
-  109,
-  104,
-  111
-]),
-  mode: u([
-  s,
-  [2, 9],
-  s,
-  [1, 8],
-  c,
-  [9, 9],
-  c,
-  [13, 5],
-  c,
-  [28, 13],
-  c,
-  [9, 4],
-  s,
-  [2, 32],
-  c,
-  [53, 7],
-  c,
-  [5, 4],
-  c,
-  [45, 21],
-  c,
-  [20, 9],
-  c,
-  [106, 6],
-  c,
-  [126, 15],
-  c,
-  [26, 8],
-  c,
-  [39, 10],
-  c,
-  [54, 11],
-  c,
-  [50, 7],
-  c,
-  [157, 10],
-  c,
-  [174, 16],
-  s,
-  [1, 19],
-  s,
-  [2, 218],
-  c,
-  [220, 89],
-  c,
-  [88, 18],
-  c,
-  [106, 62],
-  c,
-  [421, 4],
-  c,
-  [454, 12],
-  c,
-  [188, 33],
-  c,
-  [441, 8],
-  c,
-  [657, 12],
-  c,
-  [556, 48],
-  c,
-  [421, 137],
-  c,
-  [202, 7],
-  c,
-  [166, 25],
-  c,
-  [749, 28],
-  c,
-  [95, 36],
-  c,
-  [38, 4],
-  c,
-  [267, 7],
-  c,
-  [332, 25],
-  c,
-  [953, 6],
-  c,
-  [322, 23],
-  c,
-  [581, 90],
-  c,
-  [96, 77],
-  c,
-  [77, 19],
-  c,
-  [315, 19],
-  c,
-  [802, 20],
-  1
-]),
-  goto: u([
-  s,
-  [6, 8],
-  8,
-  s,
-  [5, 4, 1],
-  11,
-  13,
-  12,
-  14,
-  c,
-  [9, 8],
-  28,
-  20,
-  26,
-  22,
-  27,
-  s,
-  [39, 7],
-  21,
-  23,
-  31,
-  32,
-  35,
-  33,
-  34,
-  39,
-  39,
-  37,
-  39,
-  s,
-  [12, 8],
-  s,
-  [13, 8],
-  s,
-  [14, 8],
-  s,
-  [15, 8],
-  41,
-  40,
-  44,
-  s,
-  [32, 4],
-  51,
-  s,
-  [32, 3],
-  47,
-  46,
-  s,
-  [32, 9],
-  7,
-  s,
-  [9, 8],
-  35,
-  52,
-  s,
-  [35, 8],
-  28,
-  20,
-  38,
-  c,
-  [97, 3],
-  s,
-  [38, 8],
-  c,
-  [98, 7],
-  38,
-  38,
-  s,
-  [41, 3],
-  55,
-  54,
-  41,
-  41,
-  56,
-  s,
-  [41, 14],
-  58,
-  s,
-  [41, 4],
-  28,
-  20,
-  39,
-  c,
-  [147, 4],
-  c,
-  [43, 7],
-  c,
-  [14, 16],
-  c,
-  [13, 3],
-  c,
-  [12, 19],
-  s,
-  [49, 27],
-  s,
-  [51, 27],
-  s,
-  [52, 27],
-  s,
-  [53, 27],
-  s,
-  [54, 27],
-  s,
-  [55, 27],
-  s,
-  [56, 27],
-  s,
-  [57, 29],
-  31,
-  s,
-  [65, 28],
-  s,
-  [66, 27],
-  s,
-  [63, 27],
-  s,
-  [10, 6],
-  67,
-  10,
-  10,
-  s,
-  [16, 9],
-  s,
-  [11, 6],
-  68,
-  11,
-  11,
-  s,
-  [18, 9],
-  s,
-  [75, 25],
-  s,
-  [76, 25],
-  69,
-  44,
-  69,
-  71,
-  70,
-  70,
-  1,
-  2,
-  80,
-  80,
-  75,
-  c,
-  [538, 8],
-  76,
-  77,
-  s,
-  [32, 9],
-  s,
-  [21, 19],
-  c,
-  [634, 8],
-  c,
-  [630, 8],
-  81,
-  82,
-  28,
-  20,
-  37,
-  c,
-  [19, 3],
-  s,
-  [37, 8],
-  c,
-  [24, 7],
-  37,
-  37,
-  s,
-  [40, 3],
-  55,
-  54,
-  40,
-  40,
-  56,
-  s,
-  [40, 14],
-  58,
-  s,
-  [40, 4],
-  s,
-  [44, 27],
-  s,
-  [45, 27],
-  s,
-  [46, 27],
-  s,
-  [50, 27],
-  s,
-  [64, 27],
-  84,
-  52,
-  85,
-  52,
-  s,
-  [47, 3],
-  55,
-  54,
-  47,
-  47,
-  56,
-  s,
-  [47, 14],
-  58,
-  s,
-  [47, 4],
-  s,
-  [48, 3],
-  55,
-  54,
-  48,
-  48,
-  56,
-  s,
-  [48, 14],
-  58,
-  s,
-  [48, 4],
-  86,
-  31,
-  60,
-  65,
-  s,
-  [61, 3],
-  s,
-  [62, 3],
-  s,
-  [17, 9],
-  s,
-  [19, 9],
-  s,
-  [67, 8],
-  68,
-  89,
-  88,
-  90,
-  73,
-  12,
-  79,
-  79,
-  92,
-  s,
-  [77, 3],
-  c,
-  [350, 3],
-  5,
-  s,
-  [20, 19],
-  95,
-  96,
-  12,
-  99,
-  98,
-  100,
-  33,
-  33,
-  28,
-  20,
-  36,
-  c,
-  [322, 3],
-  s,
-  [36, 8],
-  c,
-  [322, 7],
-  36,
-  36,
-  s,
-  [42, 27],
-  s,
-  [43, 27],
-  s,
-  [58, 27],
-  59,
-  71,
-  71,
-  72,
-  72,
-  3,
-  c,
-  [141, 3],
-  s,
-  [78, 3],
-  102,
-  s,
-  [22, 19],
-  s,
-  [28, 3],
-  s,
-  [24, 19],
-  s,
-  [25, 19],
-  s,
-  [30, 16],
-  105,
-  s,
-  [31, 16],
-  74,
-  4,
-  107,
-  106,
-  26,
-  26,
-  108,
-  34,
-  34,
-  s,
-  [23, 19],
-  s,
-  [28, 3],
-  s,
-  [29, 3],
-  107,
-  110,
-  s,
-  [28, 3],
-  27,
-  27,
-  108
-])
-}),
-defaultActions: bda({
-  idx: u([
-  15,
-  45,
-  46,
-  70,
-  77,
-  87,
-  90,
-  101,
-  102
-]),
-  pop: u([
-  s,
-  [2, 9]
-]),
-  rule: u([
-  7,
-  1,
-  2,
-  68,
-  5,
-  59,
-  3,
-  74,
-  4
-])
-}),
-parseError: function parseError(str, hash) {
-    if (hash.recoverable) {
-        this.trace(str);
-    } else {
-        throw new this.JisonParserError(str, hash);
-    }
-},
-quoteName: function quoteName(id_str) {
-    return '"' + id_str + '"';
-},
-describeSymbol: function describeSymbol(symbol) {
-    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
-        return this.terminal_descriptions_[symbol];
-    } 
-    else if (symbol === this.EOF) {
-        return 'end of input';
-    }
-    else if (this.terminals_[symbol]) {
-        return this.quoteName(this.terminals_[symbol]);
-    }
-    return null;
-},
-parse: function parse(input) {
-    var self = this,
-        stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
-
-        vstack = [null],    // semantic value stack
-
-        table = this.table;
-    var recovering = 0;     // (only used when the grammar contains error recovery rules)
-    var TERROR = this.TERROR,
-        EOF = this.EOF;
-
-    var args = stack.slice.call(arguments, 1);
-
-    //this.reductionCount = this.shiftCount = 0;
-
-    var lexer;
-    if (this.__lexer__) {
-        lexer = this.__lexer__;
-    } else {
-        lexer = this.__lexer__ = Object.create(this.lexer);
-    }
-
-    var sharedState = {
-      yy: {}
-    };
-    // copy state
-    for (var k in this.yy) {
-      if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
-      }
-    }
-
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
-
-
-
-
-
-
-    lexer.setInput(input, sharedState.yy);
-
-
-
-
-
-
-    
-    if (typeof lexer.yytext === 'undefined') {
-        lexer.yytext = '';
-    }
-    var yytext = lexer.yytext;
-    if (typeof lexer.yylineno === 'undefined') {
-        lexer.yylineno = 0;
-    }
-
-
-    // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
-    }
-    // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
-    }
-
-    function popStack(n) {
-
-        if (!n) return;
-        stack.length = stack.length - 2 * n;
-        vstack.length = vstack.length - n;
-
-    }
-
-
-    function lex() {
-        var token;
-        token = lexer.lex() || EOF;
-        // if token isn't its numeric value, convert
-        if (typeof token !== 'number') {
-            token = self.symbols_[token] || token;
-        }
-        return token;
-    }
-
-
-    var symbol = null;
-    var preErrorSymbol = null;
-    var state, action, r;
-    var yyval = {};
-    var p, len, this_production;
-
-    var newState;
-    var expected = [];
-    var retval = false;
-
-    if (this.pre_parse) {
-        this.pre_parse.apply(this, [sharedState.yy].concat(args));
-    }
-    if (sharedState.yy.pre_parse) {
-        sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
-    }
-
-
-    // Return the rule stack depth where the nearest error rule can be found.
-    // Return FALSE when no error recovery rule was found.
-    function locateNearestErrorRecoveryRule(state) {
-        var stack_probe = stack.length - 1;
-        var depth = 0;
-
-        // try to recover from error
-        for (;;) {
-            // check for error recovery rule in this state
-            var action = table[state][TERROR];
-            if (action && action.length && action[0]) {
-                return depth;
-            }
-            if (state === 0 /* $accept rule */ || stack_probe < 2) {
-                return false; // No suitable error recovery rule available.
-            }
-            stack_probe -= 2; // popStack(1): [symbol, action]
-            state = stack[stack_probe];
-            ++depth;
-        }
-    }
-
-
-    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
-    // 
-    // The produced list may contain token or token set descriptions instead of the tokens
-    // themselves to help turning this output into something that easier to read by humans.
-    // 
-    // The returned list (array) will not contain any duplicate entries.
-    function collect_expected_token_set(state) {
-        var tokenset = [];
-        var check = {};
-        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
-        // If so, use that one instead of the less palatable token set.
-        if (self.state_descriptions_ && self.state_descriptions_[p]) {
-            return [
-                self.state_descriptions_[p]
-            ];
-        }
-        for (var p in table[state]) {
-            if (p !== TERROR) {
-                var d = self.describeSymbol(p);
-                if (d && !check[d]) {
-                    tokenset.push(d);
-                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
-                }
-            }
-        }
-        return tokenset;
-    }
-
-    try {
-        for (;;) {
-            // retrieve state number from top of stack
-            state = stack[stack.length - 1];
-
-            // use default actions if available
-            if (this.defaultActions[state]) {
-                action = this.defaultActions[state];
-            } else {
-                // The single `==` condition below covers both these `===` comparisons in a single
-                // operation:
-                // 
-                //     if (symbol === null || typeof symbol === 'undefined') ...
-                if (symbol == null) {
-                    symbol = lex();
-                }
-                // read action for current state and first input
-                action = table[state] && table[state][symbol];
-            }
-
-
-
-
-            // handle parse error
-            if (!action || !action.length || !action[0]) {
-                var error_rule_depth = 0;
-                var errStr = null;
-
-                if (!recovering) {
-                    // first see if there's any chance at hitting an error recovery rule:
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
-
-                    // Report error
-                    expected = collect_expected_token_set(state);
-                    if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
-                    } else {
-                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
-                    }
-                    if (expected.length) {
-                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
-                    } else {
-                        errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
-                    }
-                    r = this.parseError(errStr, p = {
-                        text: lexer.match,
-                        value: lexer.yytext,
-                        token: this.describeSymbol(symbol) || symbol,
-                        token_id: symbol,
-                        line: lexer.yylineno,
-                        loc: lexer.yylloc,
-                        expected: expected,
-                        recoverable: (error_rule_depth !== false),
-                        state_stack: stack,
-                        value_stack: vstack,
-
-                        lexer: lexer
-                    });
-
-                    if (!p.recoverable) {
-                        retval = r;
-                        break;
-                    }
-                } else if (preErrorSymbol !== EOF) {
-                    error_rule_depth = locateNearestErrorRecoveryRule(state);
-                }
-
-
-
-                // just recovered from another error
-                if (recovering === 3) {
-                    if (symbol === EOF || preErrorSymbol === EOF) {
-                        retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
-                            text: lexer.match,
-                            value: lexer.yytext,
-                            token: this.describeSymbol(symbol) || symbol,
-                            token_id: symbol,
-                            line: lexer.yylineno,
-                            loc: lexer.yylloc,
-                            expected: expected,
-                            recoverable: false,
-                            state_stack: stack,
-                            value_stack: vstack,
-
-                            lexer: lexer
-                        });
-                        break;
-                    }
-
-                    // discard current lookahead and grab another
-
-                    yytext = lexer.yytext;
-
-
-                    symbol = lex();
-
-
-                }
-
-                // try to recover from error
-                if (error_rule_depth === false) {
-                    retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
-                        text: lexer.match,
-                        value: lexer.yytext,
-                        token: this.describeSymbol(symbol) || symbol,
-                        token_id: symbol,
-                        line: lexer.yylineno,
-                        loc: lexer.yylloc,
-                        expected: expected,
-                        recoverable: false,
-                        state_stack: stack,
-                        value_stack: vstack,
-
-                        lexer: lexer
-                    });
-                    break;
-                }
-                popStack(error_rule_depth);
-
-                preErrorSymbol = (symbol === TERROR ? null : symbol); // save the lookahead token
-                symbol = TERROR;            // insert generic error symbol as new lookahead
-                recovering = 3;             // allow 3 real symbols to be shifted before reporting a new error
-
-
-
-                continue;
-            }
-
-
-
-            switch (action[0]) {
-            // catch misc. parse failures:
-            default:
-                // this shouldn't happen, unless resolve defaults are off
-                if (action[0] instanceof Array) {
-                    retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
-                        text: lexer.match,
-                        value: lexer.yytext,
-                        token: this.describeSymbol(symbol) || symbol,
-                        token_id: symbol,
-                        line: lexer.yylineno,
-                        loc: lexer.yylloc,
-                        expected: expected,
-                        recoverable: false,
-                        state_stack: stack,
-                        value_stack: vstack,
-
-                        lexer: lexer
-                    });
-                    break;
-                }
-                // Another case of better safe than sorry: in case state transitions come out of another error recovery process
-                // or a buggy LUT (LookUp Table):
-                retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
-                    text: lexer.match,
-                    value: lexer.yytext,
-                    token: this.describeSymbol(symbol) || symbol,
-                    token_id: symbol,
-                    line: lexer.yylineno,
-                    loc: lexer.yylloc,
-                    expected: expected,
-                    recoverable: false,
-                    state_stack: stack,
-                    value_stack: vstack,
-
-                    lexer: lexer
-                });
-                break;
-
-            // shift:
-            case 1: 
-                //this.shiftCount++;
-                stack.push(symbol);
-                vstack.push(lexer.yytext);
-
-                stack.push(action[1]); // push state
-                symbol = null;
-                if (!preErrorSymbol) { // normal execution / no error
-                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
-
-                    yytext = lexer.yytext;
-
-
-
-                    if (recovering > 0) {
-                        recovering--;
-
-                    }
-                } else {
-                    // error just occurred, resume old lookahead f/ before error
-                    symbol = preErrorSymbol;
-                    preErrorSymbol = null;
-
-                }
-    
-                continue;
-
-            // reduce:
-            case 2:
-                //this.reductionCount++;
-                newState = action[1];
-                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
-                len = this_production[1];
-
-
-
-
-
-
-                // perform semantic action
-                yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
-                // default location, uses first token for firsts, last for lasts
-
-
-
-
-
-
-
-
-
-
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, vstack].concat(args));
-
-                if (typeof r !== 'undefined') {
-                    retval = r;
-                    break;
-                }
-
-                // pop off stack
-                popStack(len);
-
-                stack.push(this_production[0]);    // push nonterminal (reduce)
-                vstack.push(yyval.$);
-
-                // goto new state = table[STATE][NONTERMINAL]
-                newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
-                stack.push(newState);
-
-                continue;
-
-            // accept:
-            case 3:
-                retval = true;
-                // Return the `$accept` rule's `$$` result, if available.
-                // 
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit, 
-                // default, action):
-                //   
-                //     $accept: <startSymbol> $end
-                //                  %{ $$ = $1; @$ = @1; %}
-                //     
-                // which, combined with the parse kernel's `$accept` state behaviour coded below, 
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result, 
-                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                // 
-                // In code:
-                // 
-                //                  %{
-                //                      @$ = @1;            // if location tracking support is included
-                //                      if (typeof $1 !== 'undefined')
-                //                          return $1;
-                //                      else
-                //                          return true;           // the default parse result if the rule actions don't produce anything
-                //                  %}
-                if (typeof yyval.$ !== 'undefined') {
-                    retval = yyval.$;
-                }
-                break;
-            }
-
-            // break out of loop: we accept or fail with error
-            break;
-        }
-    } catch (ex) {
-        // report exceptions through the parseError callback too:
-        retval = this.parseError('Parsing aborted due to exception.', {
-            exception: ex,
-            text: lexer.match,
-            value: lexer.yytext,
-            token: this.describeSymbol(symbol) || symbol,
-            token_id: symbol,
-            line: lexer.yylineno,
-            loc: lexer.yylloc,
-            // expected: expected,
-            recoverable: false,
-            state_stack: stack,
-            value_stack: vstack,
-
-            lexer: lexer
-        });
-    } finally {
-        var rv;
-
-        if (sharedState.yy.post_parse) {
-            rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, retval].concat(args));
-            if (typeof rv !== 'undefined') retval = rv;
-        }
-        if (this.post_parse) {
-            rv = this.post_parse.apply(this, [sharedState.yy, retval].concat(args));
-            if (typeof rv !== 'undefined') retval = rv;
-        }
-    }
-
-    return retval;
-}
-};
-
-
-var XRegExp = require('xregexp');
-
-function encodeRE (s) {
-    return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
-}
-
-function prepareString (s) {
-    // unescape slashes
-    s = s.replace(/\\\\/g, "\\");
-    s = encodeRE(s);
-    return s;
-};
-
-/* generated by jison-lex 0.3.4-123 */
-var lexer = (function () {
-// See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-// with userland code which might access the derived class in a 'classic' way.
-function JisonLexerError(msg, hash) {
-    Object.defineProperty(this, 'name', {
-        enumerable: false,
-        writable: false,
-        value: 'JisonLexerError'
-    });
-
-    if (msg == null) msg = '???';
-
-    Object.defineProperty(this, 'message', {
-        enumerable: false,
-        writable: true,
-        value: msg
-    });
-
-    this.hash = hash;
-
-    var stacktrace;
-    if (hash && hash.exception instanceof Error) {
-        var ex2 = hash.exception;
-        this.message = ex2.message || msg;
-        stacktrace = ex2.stack;
-    }
-    if (!stacktrace) {
-        if (Error.hasOwnProperty('captureStackTrace')) { // V8
-            Error.captureStackTrace(this, this.constructor);
-        } else {
-            stacktrace = (new Error(msg)).stack;
-        }
-    }
-    if (stacktrace) {
-        Object.defineProperty(this, 'stack', {
-            enumerable: false,
-            writable: false,
-            value: stacktrace
-        });
-    }
-}
-
-    if (typeof Object.setPrototypeOf === 'function') {
-        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
-    } else {
-        JisonLexerError.prototype = Object.create(Error.prototype);
-    }
-    JisonLexerError.prototype.constructor = JisonLexerError;
-    JisonLexerError.prototype.name = 'JisonLexerError';
-
-
-var lexer = {
-
-EOF:1,
-
-ERROR:2,
-
-parseError:function parseError(str, hash) {
-        if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-            return this.yy.parser.parseError(str, hash) || this.ERROR;
-        } else {
-            throw new this.JisonLexerError(str);
-        }
-    },
-
-// resets the lexer, sets new input
-setInput:function (input, yy) {
-        this.yy = yy || this.yy || {};
-        this._input = input;
-        this._more = this._backtrack = this._signaled_error_token = this.done = false;
-        this.yylineno = this.yyleng = 0;
-        this.yytext = this.matched = this.match = '';
-        this.conditionStack = ['INITIAL'];
-        this.yylloc = {
-            first_line: 1,
-            first_column: 0,
-            last_line: 1,
-            last_column: 0
-        };
-        if (this.options.ranges) {
-            this.yylloc.range = [0, 0];
-        }
-        this.offset = 0;
-        return this;
-    },
-
-// consumes and returns one char from the input
-input:function () {
-        if (!this._input) {
-            this.done = true;
-            return null;
-        }
-        var ch = this._input[0];
-        this.yytext += ch;
-        this.yyleng++;
-        this.offset++;
-        this.match += ch;
-        this.matched += ch;
-        // Count the linenumber up when we hit the LF (or a stand-alone CR).
-        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if
-        // it was all a single 'character' only.
-        var slice_len = 1;
-        var lines = false;
-        if (ch === '\n') {
-            lines = true;
-        } else if (ch === '\r') {
-            lines = true;
-            var ch2 = this._input[1];
-            if (ch2 === '\n') {
-                slice_len++;
-                ch += ch2;
-                this.yytext += ch2;
-                this.yyleng++;
-                this.offset++;
-                this.match += ch2;
-                this.matched += ch2;
-                if (this.options.ranges) {
-                    this.yylloc.range[1]++;
-                }
-            }
-        }
-        if (lines) {
-            this.yylineno++;
-            this.yylloc.last_line++;
-        } else {
-            this.yylloc.last_column++;
-        }
-        if (this.options.ranges) {
-            this.yylloc.range[1]++;
-        }
-
-        this._input = this._input.slice(slice_len);
-        return ch;
-    },
-
-// unshifts one char (or a string) into the input
-unput:function (ch) {
-        var len = ch.length;
-        var lines = ch.split(/(?:\r\n?|\n)/g);
-
-        this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length - len);
-        //this.yyleng -= len;
-        this.offset -= len;
-        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length - len);
-        this.matched = this.matched.substr(0, this.matched.length - len);
-
-        if (lines.length - 1) {
-            this.yylineno -= lines.length - 1;
-        }
-
-        this.yylloc.last_line = this.yylineno + 1;
-        this.yylloc.last_column = (lines ?
-                (lines.length === oldLines.length ? this.yylloc.first_column : 0)
-                + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len);
-
-        if (this.options.ranges) {
-            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
-        }
-        this.yyleng = this.yytext.length;
-        this.done = false;
-        return this;
-    },
-
-// When called from action, caches matched text and appends it on next action
-more:function () {
-        this._more = true;
-        return this;
-    },
-
-// When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
-        if (this.options.backtrack_lexer) {
-            this._backtrack = true;
-        } else {
-            // when the parseError() call returns, we MUST ensure that the error is registered.
-            // We accomplish this by signaling an 'error' token to be produced for the current
-            // .lex() run.
-            this._signaled_error_token = (this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), {
-                text: this.match,
-                token: null,
-                line: this.yylineno,
-                loc: this.yylloc,
-                lexer: this
-            }) || this.ERROR);
-        }
-        return this;
-    },
-
-// retain first n characters of the match
-less:function (n) {
-        this.unput(this.match.slice(n));
-    },
-
-// return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
-        var past = this.matched.substr(0, this.matched.length - this.match.length);
-        if (maxSize < 0)
-            maxSize = past.length;
-        else if (!maxSize)
-            maxSize = 20;
-        return (past.length > maxSize ? '...' + past.substr(-maxSize) : past);
-    },
-
-// return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
-        var next = this.match;
-        if (maxSize < 0)
-            maxSize = next.length + this._input.length;
-        else if (!maxSize)
-            maxSize = 20;
-        if (next.length < maxSize) {
-            next += this._input.substr(0, maxSize - next.length);
-        }
-        return (next.length > maxSize ? next.substr(0, maxSize) + '...' : next);
-    },
-
-// return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
-        var pre = this.pastInput().replace(/\s/g, ' ');
-        var c = new Array(pre.length + 1).join('-');
-        return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
-    },
-
-// test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
-        var token,
-            lines,
-            backup;
-
-        if (this.options.backtrack_lexer) {
-            // save context
-            backup = {
-                yylineno: this.yylineno,
-                yylloc: {
-                    first_line: this.yylloc.first_line,
-                    last_line: this.last_line,
-                    first_column: this.yylloc.first_column,
-                    last_column: this.yylloc.last_column
-                },
-                yytext: this.yytext,
-                match: this.match,
-                matches: this.matches,
-                matched: this.matched,
-                yyleng: this.yyleng,
-                offset: this.offset,
-                _more: this._more,
-                _input: this._input,
-                yy: this.yy,
-                conditionStack: this.conditionStack.slice(0),
-                done: this.done
-            };
-            if (this.options.ranges) {
-                backup.yylloc.range = this.yylloc.range.slice(0);
-            }
-        }
-
-        lines = match[0].match(/(?:\r\n?|\n).*/g);
-        if (lines) {
-            this.yylineno += lines.length;
-        }
-        this.yylloc = {
-            first_line: this.yylloc.last_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.last_column,
-            last_column: lines ?
-                         lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
-                         this.yylloc.last_column + match[0].length
-        };
-        this.yytext += match[0];
-        this.match += match[0];
-        this.matches = match;
-        this.yyleng = this.yytext.length;
-        if (this.options.ranges) {
-            this.yylloc.range = [this.offset, this.offset + this.yyleng];
-        }
-        this.offset += this.yyleng;
-        this._more = false;
-        this._backtrack = false;
-        this._input = this._input.slice(match[0].length);
-        this.matched += match[0];
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
-        if (this.done && this._input) {
-            this.done = false;
-        }
-        if (token) {
-            return token;
-        } else if (this._backtrack) {
-            // recover context
-            for (var k in backup) {
-                this[k] = backup[k];
-            }
-            return false; // rule action called reject() implying the next rule should be tested instead.
-        } else if (this._signaled_error_token) {
-            // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
-            token = this._signaled_error_token;
-            this._signaled_error_token = false;
-            return token;
-        }
-        return false;
-    },
-
-// return next match in input
-next:function () {
-        function clear() {
-            this.yytext = '';
-            this.yyleng = 0;
-            this.match = '';
-            this.matches = false;
-            this._more = false;
-            this._backtrack = false;
-        }
-
-        if (this.done) {
-            clear.call(this);
-            return this.EOF;
-        }
-        if (!this._input) {
-            this.done = true;
-        }
-
-        var token,
-            match,
-            tempMatch,
-            index;
-        if (!this._more) {
-            clear.call(this);
-        }
-        var rules = this._currentRules();
-        for (var i = 0; i < rules.length; i++) {
-            tempMatch = this._input.match(this.rules[rules[i]]);
-            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
-                match = tempMatch;
-                index = i;
-                if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rules[i]);
-                    if (token !== false) {
-                        return token;
-                    } else if (this._backtrack) {
-                        match = false;
-                        continue; // rule action called reject() implying a rule MISmatch.
-                    } else {
-                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
-                        return false;
-                    }
-                } else if (!this.options.flex) {
-                    break;
-                }
-            }
-        }
-        if (match) {
-            token = this.test_match(match, rules[index]);
-            if (token !== false) {
-                return token;
-            }
-            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
-            return false;
-        }
-        if (this._input === '') {
-            clear.call(this);
-            this.done = true;
-            return this.EOF;
-        } else {
-            token = this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
-                text: this.match + this._input,
-                token: null,
-                line: this.yylineno,
-                loc: this.yylloc,
-                lexer: this
-            }) || this.ERROR;
-            if (token === this.ERROR) {
-                // we can try to recover from a lexer error that parseError() did not 'recover' for us, by moving forward at least one character at a time:
-                if (!this.match.length) {
-                    this.input();
-                }
-            }
-            return token;
-        }
-    },
-
-// return next match that has a token
-lex:function lex() {
-        var r;
-        // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
-        if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.call(this);
-        }
-        while (!r) {
-            r = this.next();
-        }
-        if (typeof this.options.post_lex === 'function') {
-            // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.call(this, r) || r;
-        }
-        return r;
-    },
-
-// activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
-        this.conditionStack.push(condition);
-    },
-
-// pop the previously active lexer condition state off the condition stack
-popState:function popState() {
-        var n = this.conditionStack.length - 1;
-        if (n > 0) {
-            return this.conditionStack.pop();
-        } else {
-            return this.conditionStack[0];
-        }
-    },
-
-// produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
-        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
-        } else {
-            return this.conditions['INITIAL'].rules;
-        }
-    },
-
-// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
-        n = this.conditionStack.length - 1 - Math.abs(n || 0);
-        if (n >= 0) {
-            return this.conditionStack[n];
-        } else {
-            return 'INITIAL';
-        }
-    },
-
-// alias for begin(condition)
-pushState:function pushState(condition) {
-        this.begin(condition);
-    },
-
-// return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
-        return this.conditionStack.length;
-    },
-options: {
-  easy_keyword_rules: true,
-  ranges: true
-},
-JisonLexerError: JisonLexerError,
-performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) {
-
-var YYSTATE = YY_START;
-switch($avoiding_name_collisions) {
-case 2 : 
-/*! Conditions:: action */ 
-/*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 152; // regexp with braces or quotes (and no spaces) 
-break;
-case 7 : 
-/*! Conditions:: action */ 
-/*! Rule::       \{ */ 
- yy.depth++; return 123; 
-break;
-case 8 : 
-/*! Conditions:: action */ 
-/*! Rule::       \} */ 
- if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 125; 
-break;
-case 10 : 
-/*! Conditions:: conditions */ 
-/*! Rule::       > */ 
- this.popState(); return 62; 
-break;
-case 13 : 
-/*! Conditions:: rules */ 
-/*! Rule::       {BR}+ */ 
- /* empty */ 
-break;
-case 14 : 
-/*! Conditions:: rules */ 
-/*! Rule::       {WS}+{BR}+ */ 
- /* empty */ 
-break;
-case 15 : 
-/*! Conditions:: rules */ 
-/*! Rule::       \s+ */ 
- this.begin('indented'); 
-break;
-case 16 : 
-/*! Conditions:: rules */ 
-/*! Rule::       %% */ 
- this.begin('code'); return 130; 
-break;
-case 17 : 
-/*! Conditions:: rules */ 
-/*! Rule::       [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+ */ 
- 
-                                            // accept any non-regex, non-lex, non-string-delim,
-                                            // non-escape-starter, non-space character as-is
-                                            return 173;
-                                         
-break;
-case 20 : 
-/*! Conditions:: options */ 
-/*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
-break;
-case 21 : 
-/*! Conditions:: options */ 
-/*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
-break;
-case 23 : 
-/*! Conditions:: options */ 
-/*! Rule::       {BR}+ */ 
- this.popState(); return 176; 
-break;
-case 24 : 
-/*! Conditions:: options */ 
-/*! Rule::       {WS}+ */ 
- /* skip whitespace */ 
-break;
-case 26 : 
-/*! Conditions:: start_condition */ 
-/*! Rule::       {BR}+ */ 
- this.popState(); 
-break;
-case 27 : 
-/*! Conditions:: start_condition */ 
-/*! Rule::       {WS}+ */ 
- /* empty */ 
-break;
-case 28 : 
-/*! Conditions:: trail */ 
-/*! Rule::       {WS}*{BR}+ */ 
- this.begin('rules'); 
-break;
-case 29 : 
-/*! Conditions:: indented */ 
-/*! Rule::       \{ */ 
- yy.depth = 0; this.begin('action'); return 123; 
-break;
-case 30 : 
-/*! Conditions:: indented */ 
-/*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
-break;
-case 31 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
-break;
-case 32 : 
-/*! Conditions:: indented */ 
-/*! Rule::       %include\b */ 
- 
-                                            // This is an include instruction in place of an action:
-                                            // thanks to the `<indented>.+` rule immediately below we need to semi-duplicate
-                                            // the `%include` token recognition here vs. the almost-identical rule for the same
-                                            // further below.
-                                            // There's no real harm as we need to do something special in this case anyway:
-                                            // push 2 (two!) conditions.
-                                            //
-                                            // (Anecdotal: to find that we needed to place this almost-copy here to make the test grammar
-                                            // parse correctly took several hours as the debug facilities were - and are - too meager to
-                                            // quickly diagnose the problem while we hadn't. So the code got littered with debug prints
-                                            // and finally it hit me what the *F* went wrong, after which I saw I needed to add *this* rule!)
-
-                                            // first push the 'trail' condition which will be the follow-up after we're done parsing the path parameter...
-                                            this.pushState('trail');
-                                            // then push the immediate need: the 'path' condition.
-                                            this.pushState('path');
-                                            return 180;
-                                         
-break;
-case 33 : 
-/*! Conditions:: indented */ 
-/*! Rule::       .+ */ 
- this.begin('rules'); return 142; 
-break;
-case 34 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
- /* ignore */ 
-break;
-case 35 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/\/.* */ 
- /* ignore */ 
-break;
-case 36 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       {ID} */ 
- this.pushState('macro'); return 136; 
-break;
-case 37 : 
-/*! Conditions:: macro */ 
-/*! Rule::       {BR}+ */ 
- this.popState('macro'); 
-break;
-case 38 : 
-/*! Conditions:: macro */ 
-/*! Rule::       [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+ */ 
- 
-                                            // accept any non-regex, non-lex, non-string-delim,
-                                            // non-escape-starter, non-space character as-is
-                                            return 173;
-                                         
-break;
-case 39 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       {BR}+ */ 
- /* empty */ 
-break;
-case 40 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \s+ */ 
- /* empty */ 
-break;
-case 41 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 172; 
-break;
-case 42 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 172; 
-break;
-case 43 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \[ */ 
- this.pushState('set'); return 165; 
-break;
-case 56 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       < */ 
- this.begin('conditions'); return 60; 
-break;
-case 57 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/! */ 
- return 158;                    // treated as `(?!atom)` 
-break;
-case 58 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/ */ 
- return 47;                     // treated as `(?=atom)` 
-break;
-case 60 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 170; 
-break;
-case 63 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       %options\b */ 
- this.begin('options'); return 174; 
-break;
-case 64 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       %s\b */ 
- this.begin('start_condition'); return 138; 
-break;
-case 65 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       %x\b */ 
- this.begin('start_condition'); return 140; 
-break;
-case 66 : 
-/*! Conditions:: INITIAL trail code */ 
-/*! Rule::       %include\b */ 
- this.pushState('path'); return 180; 
-break;
-case 67 : 
-/*! Conditions:: INITIAL rules trail code */ 
-/*! Rule::       %{NAME}[^\r\n]+ */ 
- 
-                                            /* ignore unrecognized decl */
-                                            console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            return 145;
-                                         
-break;
-case 68 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       %% */ 
- this.begin('rules'); return 130; 
-break;
-case 74 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       . */ 
- throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */ 
-break;
-case 78 : 
-/*! Conditions:: set */ 
-/*! Rule::       \] */ 
- this.popState('set'); return 167; 
-break;
-case 80 : 
-/*! Conditions:: code */ 
-/*! Rule::       [^\r\n]+ */ 
- return 183;      // the bit of CODE just before EOF... 
-break;
-case 81 : 
-/*! Conditions:: path */ 
-/*! Rule::       {BR} */ 
- this.popState(); this.unput(yy_.yytext); 
-break;
-case 82 : 
-/*! Conditions:: path */ 
-/*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
-break;
-case 83 : 
-/*! Conditions:: path */ 
-/*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
-break;
-case 84 : 
-/*! Conditions:: path */ 
-/*! Rule::       {WS}+ */ 
- // skip whitespace in the line 
-break;
-case 85 : 
-/*! Conditions:: path */ 
-/*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 181; 
-break;
-case 86 : 
-/*! Conditions:: * */ 
-/*! Rule::       . */ 
- 
-                                            /* ignore unrecognized decl */
-                                            console.warn('ignoring unsupported lexer input: ', yy_.yytext, ' @ ' + JSON.stringify(yy_.yylloc) + 'while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                         
-break;
-default:
-  return this.simpleCaseActionClusters[$avoiding_name_collisions];
-}
-},
-simpleCaseActionClusters: {
-
-  /*! Conditions:: action */ 
-  /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 152,
-  /*! Conditions:: action */ 
-  /*! Rule::       \/\/.* */ 
-   1 : 152,
-  /*! Conditions:: action */ 
-  /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 152,
-  /*! Conditions:: action */ 
-  /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 152,
-  /*! Conditions:: action */ 
-  /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 152,
-  /*! Conditions:: action */ 
-  /*! Rule::       [^{}/"']+ */ 
-   6 : 152,
-  /*! Conditions:: conditions */ 
-  /*! Rule::       {NAME} */ 
-   9 : 136,
-  /*! Conditions:: conditions */ 
-  /*! Rule::       , */ 
-   11 : 44,
-  /*! Conditions:: conditions */ 
-  /*! Rule::       \* */ 
-   12 : 42,
-  /*! Conditions:: options */ 
-  /*! Rule::       {NAME} */ 
-   18 : 136,
-  /*! Conditions:: options */ 
-  /*! Rule::       = */ 
-   19 : 61,
-  /*! Conditions:: options */ 
-  /*! Rule::       [^\s\r\n]+ */ 
-   22 : 178,
-  /*! Conditions:: start_condition */ 
-  /*! Rule::       {ID} */ 
-   25 : 146,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \| */ 
-   44 : 124,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \(\?: */ 
-   45 : 157,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \(\?= */ 
-   46 : 157,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \(\?! */ 
-   47 : 157,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \( */ 
-   48 : 40,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \) */ 
-   49 : 41,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \+ */ 
-   50 : 43,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \* */ 
-   51 : 42,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \? */ 
-   52 : 63,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \^ */ 
-   53 : 94,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       , */ 
-   54 : 44,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       <<EOF>> */ 
-   55 : 36,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 170,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \$ */ 
-   61 : 36,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \. */ 
-   62 : 46,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 171,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \{{ID}\} */ 
-   70 : 164,
-  /*! Conditions:: set options */ 
-  /*! Rule::       \{{ID}\} */ 
-   71 : 164,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \{ */ 
-   72 : 123,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \} */ 
-   73 : 125,
-  /*! Conditions:: * */ 
-  /*! Rule::       $ */ 
-   75 : 132,
-  /*! Conditions:: set */ 
-  /*! Rule::       (\\\\|\\\]|[^\]{])+ */ 
-   76 : 169,
-  /*! Conditions:: set */ 
-  /*! Rule::       \{ */ 
-   77 : 169,
-  /*! Conditions:: code */ 
-  /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   79 : 183
-},
-rules: [
-/^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\/\/.*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:[\/"'][^{}\/"']+)/,
-/^(?:[^{}\/"']+)/,
-/^(?:\{)/,
-/^(?:\})/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
-/^(?:>)/,
-/^(?:,)/,
-/^(?:\*)/,
-/^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+(\r\n|\n|\r)+)/,
-/^(?:\s+)/,
-/^(?:%%)/,
-/^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
-/^(?:=)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:[^\s\r\n]+)/,
-/^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
-/^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
-/^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
-/^(?:\{)/,
-/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
-/^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
-/^(?:%include\b)/,
-/^(?:.+)/,
-/^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\/\/.*)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
-/^(?:(\r\n|\n|\r)+)/,
-/^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
-/^(?:(\r\n|\n|\r)+)/,
-/^(?:\s+)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:\[)/,
-/^(?:\|)/,
-/^(?:\(\?:)/,
-/^(?:\(\?=)/,
-/^(?:\(\?!)/,
-/^(?:\()/,
-/^(?:\))/,
-/^(?:\+)/,
-/^(?:\*)/,
-/^(?:\?)/,
-/^(?:\^)/,
-/^(?:,)/,
-/^(?:<<EOF>>)/,
-/^(?:<)/,
-/^(?:\/!)/,
-/^(?:\/)/,
-/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,
-/^(?:\\.)/,
-/^(?:\$)/,
-/^(?:\.)/,
-/^(?:%options\b)/,
-/^(?:%s\b)/,
-/^(?:%x\b)/,
-/^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
-/^(?:%%)/,
-/^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
-/^(?:\{)/,
-/^(?:\})/,
-/^(?:.)/,
-/^(?:$)/,
-/^(?:(\\\\|\\\]|[^\]{])+)/,
-/^(?:\{)/,
-/^(?:\])/,
-/^(?:[^\r\n]*(\r|\n)+)/,
-/^(?:[^\r\n]+)/,
-/^(?:(\r\n|\n|\r))/,
-/^(?:'[^\r\n]+')/,
-/^(?:"[^\r\n]+")/,
-/^(?:([^\S\r\n])+)/,
-/^(?:[^\s\r\n]+)/,
-/^(?:.)/
-],
-conditions: {
-  "code": {
-    rules: [
-      66,
-      67,
-      75,
-      79,
-      80,
-      86
-    ],
-    inclusive: false
-  },
-  "start_condition": {
-    rules: [
-      25,
-      26,
-      27,
-      75,
-      86
-    ],
-    inclusive: false
-  },
-  "options": {
-    rules: [
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      71,
-      75,
-      86
-    ],
-    inclusive: false
-  },
-  "conditions": {
-    rules: [
-      9,
-      10,
-      11,
-      12,
-      75,
-      86
-    ],
-    inclusive: false
-  },
-  "action": {
-    rules: [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      75,
-      86
-    ],
-    inclusive: false
-  },
-  "path": {
-    rules: [
-      75,
-      81,
-      82,
-      83,
-      84,
-      85,
-      86
-    ],
-    inclusive: false
-  },
-  "set": {
-    rules: [
-      71,
-      75,
-      76,
-      77,
-      78,
-      86
-    ],
-    inclusive: false
-  },
-  "indented": {
-    rules: [
-      29,
-      30,
-      31,
-      32,
-      33,
-      34,
-      35,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      61,
-      62,
-      63,
-      64,
-      65,
-      68,
-      69,
-      70,
-      72,
-      73,
-      74,
-      75,
-      86
-    ],
-    inclusive: true
-  },
-  "trail": {
-    rules: [
-      28,
-      31,
-      34,
-      35,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      61,
-      62,
-      63,
-      64,
-      65,
-      66,
-      67,
-      68,
-      69,
-      70,
-      72,
-      73,
-      74,
-      75,
-      86
-    ],
-    inclusive: true
-  },
-  "rules": {
-    rules: [
-      13,
-      14,
-      15,
-      16,
-      17,
-      31,
-      34,
-      35,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      61,
-      62,
-      63,
-      64,
-      65,
-      67,
-      68,
-      69,
-      70,
-      72,
-      73,
-      74,
-      75,
-      86
-    ],
-    inclusive: true
-  },
-  "macro": {
-    rules: [
-      31,
-      34,
-      35,
-      37,
-      38,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      61,
-      62,
-      63,
-      64,
-      65,
-      68,
-      69,
-      70,
-      72,
-      73,
-      74,
-      75,
-      86
-    ],
-    inclusive: true
-  },
-  "INITIAL": {
-    rules: [
-      31,
-      34,
-      35,
-      36,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      61,
-      62,
-      63,
-      64,
-      65,
-      66,
-      67,
-      68,
-      69,
-      70,
-      72,
-      73,
-      74,
-      75,
-      86
-    ],
-    inclusive: true
-  }
-}
-};
-
-return lexer;
-})();
-parser.lexer = lexer;
-
-function Parser() {
-  this.yy = {};
-}
-Parser.prototype = parser;
-parser.Parser = Parser;
-
-return new Parser();
-})();
-
-
-
-
-if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-  exports.parser = lexParser;
-  exports.Parser = lexParser.Parser;
-  exports.parse = function () {
-    return lexParser.parse.apply(lexParser, arguments);
-  };
-
-}
-
-},{"fs":13,"xregexp":24}],20:[function(require,module,exports){
+arguments[4][5][0].apply(exports,arguments)
+},{"dup":5,"fs":13,"xregexp":24}],20:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -29067,7 +25458,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.17-124",
+  "version": "0.4.17-126",
   "license": "MIT",
   "keywords": [
     "jison",
