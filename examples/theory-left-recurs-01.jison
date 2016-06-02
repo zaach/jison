@@ -24,7 +24,8 @@
 %%
 
 A
-	: B 						{$$ = [$B];}
+	: A B 						{$$ = [$A, $B];}
+	| α 						{$$ = [$α];}
 	;
 
 α
@@ -55,9 +56,9 @@ B
 var assert = require("assert");
 
 parser.main = function () {
-    var rv = parser.parse('ab');
+    var rv = parser.parse('a b');
     console.log("ab ==> ", rv);
-    assert.equal(rv, ["a", ["b"]]);
+    assert.deepEqual(rv, [[["αε"], "a"], "b"]);
 
 
     // if you get past the assert(), you're good.
