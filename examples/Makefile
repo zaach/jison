@@ -73,6 +73,7 @@ ALL_TARGETS =                                                   \
 			reduce_conflict                                     \
 			regex                                               \
 			semwhitespace                                       \
+			theory-left-recurs-01                               \
 			tikiwikiparser                                      \
 			unicode                                             \
 			unicode2                                            \
@@ -229,6 +230,10 @@ regex:
 semwhitespace:
 	$(JISON) ./$@.jison semwhitespace_lex.jison
 
+theory-left-recurs-01:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+	
 tikiwikiparser:
 	$(JISON) ./$@.jison
 
