@@ -46,7 +46,7 @@
   "devDependencies": {
     "test": ">=0.6.0",
     "uglify-js": ">=2.6.2",
-    "browserify": ">=13.0.0"
+    "browserify": ">=13.0.1"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
