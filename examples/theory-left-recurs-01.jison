@@ -24,17 +24,17 @@
 %%
 
 A
-	: A B 						{$$ = [$A, $B];}
-	| α 						{$$ = [$α];}
-	;
+    : A B                       {$$ = [$A, $B];}
+    | α                         {$$ = [$α];}
+    ;
 
 α
-	: ε 							{$$ = 'αε';}
-	;
+    : ε                         {$$ = 'αε';}
+    ;
 
 B
-	: ID
-	;
+    : ID
+    ;
 
 
 // ----------------------------------------------------------------------------------------
@@ -59,7 +59,6 @@ parser.main = function () {
     var rv = parser.parse('a b');
     console.log("ab ==> ", rv);
     assert.deepEqual(rv, [[["αε"], "a"], "b"]);
-
 
     // if you get past the assert(), you're good.
     console.log("tested OK");
