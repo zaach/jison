@@ -511,7 +511,7 @@ exports["test %import statement"] = function () {
 };
 
 // test advanced `%import symbols` functionality
-exports["test %import statement"] = function () {
+exports["test %import statement in second grammar picks up symbols from first grammar"] = function () {
     var grammar =
       '%lex\n%%\n\n\\s+      /* skip whitespace */\n' +
       'yy                     return \'y\';\n' +

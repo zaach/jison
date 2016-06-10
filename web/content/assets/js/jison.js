@@ -4672,7 +4672,9 @@ bnf.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
 
 // parse an embedded lex section
 var parseLex = function bnfParseLex(text) {
+    console.log("parseLex: ", text);
     text = text.replace(/(?:^%lex)|(?:\/lex$)/g, '');
+    console.log("parseLex NEXT: ", text);
     return jisonlex.parse(text);
 };
 
@@ -5913,7 +5915,7 @@ case 62 :
                 // treat this as part of an XRegExp `\p{...}` Unicode slug:
                 this.$ = $$[$0];
             } else {
-                this.$ = '{[' + $$[$0] + ']}';
+                this.$ = $$[$0];
             }
             //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ }); 
 break;
@@ -8298,14 +8300,14 @@ simpleCaseActionClusters: {
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*[^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff])?))/,
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
@@ -8314,14 +8316,14 @@ rules: [
 /^(?:\s+)/,
 /^(?:%%)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*[^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[^\s\r\n]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
 /^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
@@ -8332,7 +8334,7 @@ rules: [
 /^(?:.+)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
 /^(?:(\r\n|\n|\r)+)/,
@@ -8355,7 +8357,7 @@ rules: [
 /^(?:<)/,
 /^(?:\/!)/,
 /^(?:\/)/,
-/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,
+/^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[0-9A-F]{2}|u[0-9A-Fa-f]{4}))/,
 /^(?:\\.)/,
 /^(?:\$)/,
 /^(?:\.)/,
@@ -8363,11 +8365,11 @@ rules: [
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-/^(?:%([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?)[^\r\n]+)/,
+/^(?:%([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*[^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff])?)[^\n\r]+)/,
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\})/,
-/^(?:\{([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*)\})/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
@@ -11895,6 +11897,14 @@ case 47 :
 /*! Rule::       %options\b */ 
  this.pushState('options'); return 155; 
 break;
+case 48 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %lex{LEX_CONTENT}\/lex\b */ 
+  
+											console.log("lex block matched: ", yy_.yytext, this.match); 
+											return 139; 
+										 
+break;
 case 51 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
@@ -12087,9 +12097,6 @@ simpleCaseActionClusters: {
   /*! Rule::       %parse-param\b */ 
    46 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   48 : 139,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
    49 : 151,
   /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -12136,7 +12143,7 @@ rules: [
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?))/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*[^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
@@ -12147,8 +12154,8 @@ rules: [
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)\])/,
-/^(?:([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*))/,
+/^(?:\[([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*)\])/,
+/^(?:([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*))/,
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
@@ -12169,23 +12176,23 @@ rules: [
 /^(?:%token\b)/,
 /^(?:%parse-param\b)/,
 /^(?:%options\b)/,
-/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,
+/^(?:%lex((?:[^\S\r\n])*(?:(?:\r\n|\n|\r)[\w\W]*?)?(?:\r\n|\n|\r)(?:[^\S\r\n])*)\/lex\b)/,
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_](?:[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９-]*[A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９])?)[^\r\n]*)/,
-/^(?:<([A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_][A-Za-zªµºÀ-ÖØ-öø-ˁˆ-ˑˠ-ˤˬˮͅͰ-ʹͶͷͺ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-Ֆՙա-ևְ-ׇֽֿׁׂׅׄא-תװ-ײؐ-ؚؠ-ٗٙ-ٟٮ-ۓە-ۜۡ-ۭۨ-ۯۺ-ۼۿܐ-ܿݍ-ޱߊ-ߪߴߵߺࠀ-ࠗࠚ-ࠬࡀ-ࡘࢠ-ࢴࣣ-ࣰࣩ-ऻऽ-ौॎ-ॐॕ-ॣॱ-ঃঅ-ঌএঐও-নপ-রলশ-হঽ-ৄেৈোৌৎৗড়ঢ়য়-ৣৰৱਁ-ਃਅ-ਊਏਐਓ-ਨਪ-ਰਲਲ਼ਵਸ਼ਸਹਾ-ੂੇੈੋੌੑਖ਼-ੜਫ਼ੰ-ੵઁ-ઃઅ-ઍએ-ઑઓ-નપ-રલળવ-હઽ-ૅે-ૉોૌૐૠ-ૣૹଁ-ଃଅ-ଌଏଐଓ-ନପ-ରଲଳଵ-ହଽ-ୄେୈୋୌୖୗଡ଼ଢ଼ୟ-ୣୱஂஃஅ-ஊஎ-ஐஒ-கஙசஜஞடணதந-பம-ஹா-ூெ-ைொ-ௌௐௗఀ-ఃఅ-ఌఎ-ఐఒ-నప-హఽ-ౄె-ైొ-ౌౕౖౘ-ౚౠ-ౣಁ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹಽ-ೄೆ-ೈೊ-ೌೕೖೞೠ-ೣೱೲഁ-ഃഅ-ഌഎ-ഐഒ-ഺഽ-ൄെ-ൈൊ-ൌൎൗൟ-ൣൺ-ൿංඃඅ-ඖක-නඳ-රලව-ෆා-ුූෘ-ෟෲෳก-ฺเ-ๆํກຂຄງຈຊຍດ-ທນ-ຟມ-ຣລວສຫອ-ູົ-ຽເ-ໄໆໍໜ-ໟༀཀ-ཇཉ-ཬཱ-ཱྀྈ-ྗྙ-ྼက-ံးျ-ဿၐ-ၢၥ-ၨၮ-ႆႎႜႝႠ-ჅჇჍა-ჺჼ-ቈቊ-ቍቐ-ቖቘቚ-ቝበ-ኈኊ-ኍነ-ኰኲ-ኵኸ-ኾዀዂ-ዅወ-ዖዘ-ጐጒ-ጕጘ-ፚ፟ᎀ-ᎏᎠ-Ᏽᏸ-ᏽᐁ-ᙬᙯ-ᙿᚁ-ᚚᚠ-ᛪᛮ-ᛸᜀ-ᜌᜎ-ᜓᜠ-ᜳᝀ-ᝓᝠ-ᝬᝮ-ᝰᝲᝳក-ឳា-ៈៗៜᠠ-ᡷᢀ-ᢪᢰ-ᣵᤀ-ᤞᤠ-ᤫᤰ-ᤸᥐ-ᥭᥰ-ᥴᦀ-ᦫᦰ-ᧉᨀ-ᨛᨠ-ᩞᩡ-ᩴᪧᬀ-ᬳᬵ-ᭃᭅ-ᭋᮀ-ᮩᮬ-ᮯᮺ-ᯥᯧ-ᯱᰀ-ᰵᱍ-ᱏᱚ-ᱽᳩ-ᳬᳮ-ᳳᳵᳶᴀ-ᶿᷧ-ᷴḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼⁱⁿₐ-ₜℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℹℼ-ℿⅅ-ⅉⅎⅠ-ↈⒶ-ⓩⰀ-Ⱞⰰ-ⱞⱠ-ⳤⳫ-ⳮⳲⳳⴀ-ⴥⴧⴭⴰ-ⵧⵯⶀ-ⶖⶠ-ⶦⶨ-ⶮⶰ-ⶶⶸ-ⶾⷀ-ⷆⷈ-ⷎⷐ-ⷖⷘ-ⷞⷠ-ⷿⸯ々-〇〡-〩〱-〵〸-〼ぁ-ゖゝ-ゟァ-ヺー-ヿㄅ-ㄭㄱ-ㆎㆠ-ㆺㇰ-ㇿ㐀-䶵一-鿕ꀀ-ꒌꓐ-ꓽꔀ-ꘌꘐ-ꘟꘪꘫꙀ-ꙮꙴ-ꙻꙿ-ꛯꜗ-ꜟꜢ-ꞈꞋ-ꞭꞰ-ꞷꟷ-ꠁꠃ-ꠅꠇ-ꠊꠌ-ꠧꡀ-ꡳꢀ-ꣃꣲ-ꣷꣻꣽꤊ-ꤪꤰ-ꥒꥠ-ꥼꦀ-ꦲꦴ-ꦿꧏꧠ-ꧤꧦ-ꧯꧺ-ꧾꨀ-ꨶꩀ-ꩍꩠ-ꩶꩺꩾ-ꪾꫀꫂꫛ-ꫝꫠ-ꫯꫲ-ꫵꬁ-ꬆꬉ-ꬎꬑ-ꬖꬠ-ꬦꬨ-ꬮꬰ-ꭚꭜ-ꭥꭰ-ꯪ가-힣ힰ-ퟆퟋ-ퟻ豈-舘並-龎ﬀ-ﬆﬓ-ﬗיִ-ﬨשׁ-זּטּ-לּמּנּסּףּפּצּ-ﮱﯓ-ﴽﵐ-ﶏﶒ-ﷇﷰ-ﷻﹰ-ﹴﹶ-ﻼＡ-Ｚａ-ｚｦ-ﾾￂ-ￇￊ-ￏￒ-ￗￚ-ￜ_0-9²³¹¼-¾٠-٩۰-۹߀-߉०-९০-৯৴-৹੦-੯૦-૯୦-୯୲-୷௦-௲౦-౯౸-౾೦-೯൦-൵෦-෯๐-๙໐-໙༠-༳၀-၉႐-႙፩-፼ᛮ-ᛰ០-៩៰-៹᠐-᠙᥆-᥏᧐-᧚᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙⁰⁴-⁹₀-₉⅐-ↂↅ-↉①-⒛⓪-⓿❶-➓⳽〇〡-〩〸-〺㆒-㆕㈠-㈩㉈-㉏㉑-㉟㊀-㊉㊱-㊿꘠-꘩ꛦ-ꛯ꠰-꠵꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９]*)>)/,
+/^(?:%([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*[^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff])?)[^\n\r]*)/,
+/^(?:<([^\u0000-@\[-\^`{-\u00a9\u00ab-\u00b4\u00b6-\u00b9\u00bb-\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u0660-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06f0-\u06f9\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07c9\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964-\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4-\u09ef\u09f2-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a6f\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64-\u0b70\u0b72-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64-\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4-\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece-\u0edb\u0ee0-\u0eff\u0f01-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u1040-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f-\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u194f\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b7f\u1baa\u1bab\u1bb0-\u1bb9\u1be6\u1bf2-\u1bff\u1c36-\u1c4c\u1c50-\u1c59\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u2070\u2072-\u207e\u2080-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f-\u215f\u2189-\u24b5\u24ea-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u319f\u31bb-\u31ef\u3200-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua620-\ua629\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua83f\ua874-\ua87f\ua8c4-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe-\ua909\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9d0-\ua9df\ua9e5\ua9f0-\ua9f9\ua9ff\uaa37-\uaa3f\uaa4e-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff][^\u0000-\/:-@\[-\^`{-\u00a9\u00ab-\u00b1\u00b4\u00b6-\u00b8\u00bb\u00bf\u00d7\u00f7\u02c2-\u02c5\u02d2-\u02df\u02e5-\u02eb\u02ed\u02ef-\u0344\u0346-\u036f\u0375\u0378\u0379\u037e\u0380-\u0385\u0387\u038b\u038d\u03a2\u03f6\u0482-\u0489\u0530\u0557\u0558\u055a-\u0560\u0588-\u05af\u05be\u05c0\u05c3\u05c6\u05c8-\u05cf\u05eb-\u05ef\u05f3-\u060f\u061b-\u061f\u0658\u066a-\u066d\u06d4\u06dd-\u06e0\u06e9-\u06ec\u06fd\u06fe\u0700-\u070f\u0740-\u074c\u07b2-\u07bf\u07eb-\u07f3\u07f6-\u07f9\u07fb-\u07ff\u0818\u0819\u082d-\u083f\u0859-\u089f\u08b5-\u08e2\u08ea-\u08ef\u093c\u094d\u0951-\u0954\u0964\u0965\u0970\u0984\u098d\u098e\u0991\u0992\u09a9\u09b1\u09b3-\u09b5\u09ba-\u09bc\u09c5\u09c6\u09c9\u09ca\u09cd\u09cf-\u09d6\u09d8-\u09db\u09de\u09e4\u09e5\u09f2\u09f3\u09fa-\u0a00\u0a04\u0a0b-\u0a0e\u0a11\u0a12\u0a29\u0a31\u0a34\u0a37\u0a3a-\u0a3d\u0a43-\u0a46\u0a49\u0a4a\u0a4d-\u0a50\u0a52-\u0a58\u0a5d\u0a5f-\u0a65\u0a76-\u0a80\u0a84\u0a8e\u0a92\u0aa9\u0ab1\u0ab4\u0aba-\u0abc\u0ac6\u0aca\u0acd-\u0acf\u0ad1-\u0adf\u0ae4\u0ae5\u0af0-\u0af8\u0afa-\u0b00\u0b04\u0b0d\u0b0e\u0b11\u0b12\u0b29\u0b31\u0b34\u0b3a-\u0b3c\u0b45\u0b46\u0b49\u0b4a\u0b4d-\u0b55\u0b58-\u0b5b\u0b5e\u0b64\u0b65\u0b70\u0b78-\u0b81\u0b84\u0b8b-\u0b8d\u0b91\u0b96-\u0b98\u0b9b\u0b9d\u0ba0-\u0ba2\u0ba5-\u0ba7\u0bab-\u0bad\u0bba-\u0bbd\u0bc3-\u0bc5\u0bc9\u0bcd-\u0bcf\u0bd1-\u0bd6\u0bd8-\u0be5\u0bf3-\u0bff\u0c04\u0c0d\u0c11\u0c29\u0c3a-\u0c3c\u0c45\u0c49\u0c4d-\u0c54\u0c57\u0c5b-\u0c5f\u0c64\u0c65\u0c70-\u0c77\u0c7f\u0c80\u0c84\u0c8d\u0c91\u0ca9\u0cb4\u0cba-\u0cbc\u0cc5\u0cc9\u0ccd-\u0cd4\u0cd7-\u0cdd\u0cdf\u0ce4\u0ce5\u0cf0\u0cf3-\u0d00\u0d04\u0d0d\u0d11\u0d3b\u0d3c\u0d45\u0d49\u0d4d\u0d4f-\u0d56\u0d58-\u0d5e\u0d64\u0d65\u0d76-\u0d79\u0d80\u0d81\u0d84\u0d97-\u0d99\u0db2\u0dbc\u0dbe\u0dbf\u0dc7-\u0dce\u0dd5\u0dd7\u0de0-\u0de5\u0df0\u0df1\u0df4-\u0e00\u0e3b-\u0e3f\u0e47-\u0e4c\u0e4e\u0e4f\u0e5a-\u0e80\u0e83\u0e85\u0e86\u0e89\u0e8b\u0e8c\u0e8e-\u0e93\u0e98\u0ea0\u0ea4\u0ea6\u0ea8\u0ea9\u0eac\u0eba\u0ebe\u0ebf\u0ec5\u0ec7-\u0ecc\u0ece\u0ecf\u0eda\u0edb\u0ee0-\u0eff\u0f01-\u0f1f\u0f34-\u0f3f\u0f48\u0f6d-\u0f70\u0f82-\u0f87\u0f98\u0fbd-\u0fff\u1037\u1039\u103a\u104a-\u104f\u1063\u1064\u1069-\u106d\u1087-\u108d\u108f\u109a\u109b\u109e\u109f\u10c6\u10c8-\u10cc\u10ce\u10cf\u10fb\u1249\u124e\u124f\u1257\u1259\u125e\u125f\u1289\u128e\u128f\u12b1\u12b6\u12b7\u12bf\u12c1\u12c6\u12c7\u12d7\u1311\u1316\u1317\u135b-\u135e\u1360-\u1368\u137d-\u137f\u1390-\u139f\u13f6\u13f7\u13fe-\u1400\u166d\u166e\u1680\u169b-\u169f\u16eb-\u16ed\u16f9-\u16ff\u170d\u1714-\u171f\u1734-\u173f\u1754-\u175f\u176d\u1771\u1774-\u177f\u17b4\u17b5\u17c9-\u17d6\u17d8-\u17db\u17dd-\u17df\u17ea-\u17ef\u17fa-\u180f\u181a-\u181f\u1878-\u187f\u18ab-\u18af\u18f6-\u18ff\u191f\u192c-\u192f\u1939-\u1945\u196e\u196f\u1975-\u197f\u19ac-\u19af\u19ca-\u19cf\u19db-\u19ff\u1a1c-\u1a1f\u1a5f\u1a60\u1a75-\u1a7f\u1a8a-\u1a8f\u1a9a-\u1aa6\u1aa8-\u1aff\u1b34\u1b44\u1b4c-\u1b4f\u1b5a-\u1b7f\u1baa\u1bab\u1be6\u1bf2-\u1bff\u1c36-\u1c3f\u1c4a-\u1c4c\u1c7e-\u1ce8\u1ced\u1cf4\u1cf7-\u1cff\u1dc0-\u1de6\u1df5-\u1dff\u1f16\u1f17\u1f1e\u1f1f\u1f46\u1f47\u1f4e\u1f4f\u1f58\u1f5a\u1f5c\u1f5e\u1f7e\u1f7f\u1fb5\u1fbd\u1fbf-\u1fc1\u1fc5\u1fcd-\u1fcf\u1fd4\u1fd5\u1fdc-\u1fdf\u1fed-\u1ff1\u1ff5\u1ffd-\u206f\u2072\u2073\u207a-\u207e\u208a-\u208f\u209d-\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211e-\u2123\u2125\u2127\u2129\u212e\u213a\u213b\u2140-\u2144\u214a-\u214d\u214f\u218a-\u245f\u249c-\u24b5\u2500-\u2775\u2794-\u2bff\u2c2f\u2c5f\u2ce5-\u2cea\u2cef-\u2cf1\u2cf4-\u2cfc\u2cfe\u2cff\u2d26\u2d28-\u2d2c\u2d2e\u2d2f\u2d68-\u2d6e\u2d70-\u2d7f\u2d97-\u2d9f\u2da7\u2daf\u2db7\u2dbf\u2dc7\u2dcf\u2dd7\u2ddf\u2e00-\u2e2e\u2e30-\u3004\u3008-\u3020\u302a-\u3030\u3036\u3037\u303d-\u3040\u3097-\u309c\u30a0\u30fb\u3100-\u3104\u312e-\u3130\u318f-\u3191\u3196-\u319f\u31bb-\u31ef\u3200-\u321f\u322a-\u3247\u3250\u3260-\u327f\u328a-\u32b0\u32c0-\u33ff\u4db6-\u4dff\u9fd6-\u9fff\ua48d-\ua4cf\ua4fe\ua4ff\ua60d-\ua60f\ua62c-\ua63f\ua66f-\ua673\ua67c-\ua67e\ua6f0-\ua716\ua720\ua721\ua789\ua78a\ua7ae\ua7af\ua7b8-\ua7f6\ua802\ua806\ua80b\ua828-\ua82f\ua836-\ua83f\ua874-\ua87f\ua8c4-\ua8cf\ua8da-\ua8f1\ua8f8-\ua8fa\ua8fc\ua8fe\ua8ff\ua92b-\ua92f\ua953-\ua95f\ua97d-\ua97f\ua9b3\ua9c0-\ua9ce\ua9da-\ua9df\ua9e5\ua9ff\uaa37-\uaa3f\uaa4e\uaa4f\uaa5a-\uaa5f\uaa77-\uaa79\uaa7b-\uaa7d\uaabf\uaac1\uaac3-\uaada\uaade\uaadf\uaaf0\uaaf1\uaaf6-\uab00\uab07\uab08\uab0f\uab10\uab17-\uab1f\uab27\uab2f\uab5b\uab66-\uab6f\uabeb-\uabef\uabfa-\uabff\ud7a4-\ud7af\ud7c7-\ud7ca\ud7fc-\uf8ff\ufa6e\ufa6f\ufada-\ufaff\ufb07-\ufb12\ufb18-\ufb1c\ufb29\ufb37\ufb3d\ufb3f\ufb42\ufb45\ufbb2-\ufbd2\ufd3e-\ufd4f\ufd90\ufd91\ufdc8-\ufdef\ufdfc-\ufe6f\ufe75\ufefd-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\uffbf-\uffc1\uffc8\uffc9\uffd0\uffd1\uffd8\uffd9\uffdd-\uffff]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
 /^(?:->.*)/,
-/^(?:(0[xX][0-9a-fA-F]+))/,
-/^(?:([1-9][0-9]*)(?![xX0-9a-fA-F]))/,
+/^(?:(0[Xx][0-9A-Fa-f]+))/,
+/^(?:([1-9][0-9]*)(?![0-9A-FXa-fx]))/,
 /^(?:.)/,
 /^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
@@ -12555,7 +12562,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
         m = rules[i][0];
         if (typeof m === 'string') {
-            m = expandMacros(m, macros);
+            m = expandMacros(m, macros, opts);
             m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
@@ -12608,85 +12615,744 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     };
 }
 
+// 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
+function set2bitarray(bitarr, s) {
+    var orig = s;
+    var set_is_inverted = false;
+    console.log('set2bitarray: ', { s: s, set_is_inverted: set_is_inverted });
+    var apply = [];
+
+    function mark(d1, d2) {
+        if (d2 == null) d2 = d1;
+        console.log("mark: ", d1, d2, set_is_inverted);
+        for (var i = d1; i <= d2; i++) {
+            bitarr[i] = true;
+        }
+    }
+
+    function exec() {
+        apply.sort(function (a, b) {
+            return a[0] - b[0];
+        });           
+        // array gets sorted on entry [0] of each sub-array
+
+        console.log('exec: ', set_is_inverted);
+
+        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots:
+        if (set_is_inverted) {
+            for (var i = 0; i < 65536; i++) {
+                bitarr[i] = !bitarr[i];
+            }
+        }
+    }
+
+    function eval_escaped_code(s) {
+        // decode escaped code? If none, just take the character as-is
+        if (s.indexOf('\\') === 0) {
+            var l = s.substr(0, 2);
+            switch (l) {
+            case '\\c':
+                var c = s.charCodeAt(2) - 'A'.charCodeAt(0) + 1;
+                return String.fromCharCode(c);
+
+            case '\\x':
+                s = s.substr(2);
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\u':
+                s = s.substr(2);
+                if (s[0] === '{') {
+                    s = s.substr(1, s.length - 2);
+                }
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\0':
+            case '\\1':
+            case '\\2':
+            case '\\3':
+            case '\\4':
+            case '\\5':
+            case '\\6':
+            case '\\7':
+                s = s.substr(1);
+                var c = parseInt(s, 8);
+                return String.fromCharCode(c);
+
+            case '\\r':
+                return '\r';
+
+            case '\\n':
+                return '\n';
+
+            case '\\v':
+                return '\v';
+
+            case '\\f':
+                return '\f';
+
+            case '\\t':
+                return '\t';
+
+            case '\\r':
+                return '\r';
+
+            default:
+                // just the chracter itself:
+                return s.substr(1);
+            }
+        } else {
+            return s;
+        }
+    }
+
+    if (s && s.length) {
+        // inverted set?
+        if (s[0] === '^') {
+            set_is_inverted = !set_is_inverted;
+            s = s.substr(1);
+        }
+
+        // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
+        // This results in an OR operations when sets are joined/chained.
+
+        //console.log('set2bitarray: ', { l: bitarr, set_is_inverted: set_is_inverted });
+    
+        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+        var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+        while (s.length) {
+            var c1 = s.match(chr_re);
+            if (!c1) {
+                // hit an illegal escape sequence? cope anyway!
+                c1 = s[0];
+            } else {
+                c1 = c1[0];
+                // Quick hack for XRegExp escapes inside a regex `[...]` set definition: we *could* try to keep those
+                // intact but it's easier to unfold them here; this is not nice for when the grammar specifies explicit
+                // XRegExp support, but alas, we'll get there when we get there... ;-)
+                switch (c1) {
+                case '\\p':
+                    s = s.substr(c1.length);
+                    var c2 = s.match(xregexp_unicode_escape_re);
+                    if (c2) {
+                        c2 = c2[0];
+                        s = s.substr(c2.length);
+                        // expand escape:
+                        var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
+                        var xs = '' + xr;
+                        // remove the wrapping `/[...]/`:
+                        //console.log('expanding XRegExp escape: ', xr, ' --> ', xs);
+                        xs = xs.substr(2, xs.length - 4);
+                        // inject back into source string:
+                        s = xs + s;
+                        continue;
+                    }
+                    break;
+
+                case '\\S':
+                case '\\s':
+                case '\\W':
+                case '\\w':
+                case '\\d':
+                case '\\D':
+                    // these can't participate in a range, but need to be treated special:
+                    s = s.substr(c1.length);
+                    switch (c1[1]) {
+                    case 'S':
+                        // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(bitarr, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        console.log('intermediate output: ', bitarray2set(bitarr));
+                        continue;                    
+
+                    case 's':
+                        // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        continue;                    
+
+                    case 'D':
+                        // [^0-9]
+                        set2bitarray(bitarr, '^0-9');
+                        continue;                    
+
+                    case 'd':
+                        // [0-9]
+                        set2bitarray(bitarr, '0-9');
+                        continue;                    
+
+                    case 'W':
+                        // [^A-Za-z0-9_]
+                        set2bitarray(bitarr, '^A-Za-z0-9_');
+                        continue;                    
+
+                    case 'w':
+                        // [A-Za-z0-9_]
+                        set2bitarray(bitarr, 'A-Za-z0-9_');
+                        continue;                    
+                    }
+                    continue;
+
+                case '\\b':
+                    // matches a backspace: https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions#special-backspace
+                    c1 = '\u0008';
+                    break;
+                }
+            }
+            var v1 = eval_escaped_code(c1);
+            v1 = v1.charCodeAt(0);
+            s = s.substr(c1.length);
+            //console.log('chr = ', { c: c1, v: v1, s: s });
+
+            if (s[0] === '-' && s.length >= 2) {
+                // we can expect a range like 'a-z':
+                s = s.substr(1);
+                var c2 = s.match(chr_re);
+                if (!c2) {
+                    // hit an illegal escape sequence? cope anyway!
+                    c2 = s[0];
+                } else {
+                    c2 = c2[0];
+                }
+                var v2 = eval_escaped_code(c2);
+                v2 = v2.charCodeAt(0);
+                s = s.substr(c2.length);
+                //console.log('chr 2 = ', { c: c2, v: v2, s: s });
+
+                // legal ranges go UP, not /DOWN!
+                if (v1 <= v2) {
+                    mark(v1, v2);
+                } else {
+                    console.warn("INVALID CHARACTER RANGE found in regex: ", { re: orig, start: c1, start_n: v1, end: c2, end_n: v2 });
+                    mark(v1);
+                    mark('-'.charCodeAt(0));
+                    mark(v2);
+                }
+                continue;
+            }
+            mark(v1);
+        }
+
+        // Since a regex like `[^]` should match everything(?really?), we don't need to check if the MARK
+        // phase actually marked anything at all (apply.length > 0):
+        exec();
+    }
+}
+
+
+// convert a simple bitarray back into a regex set `[...]` content:
+function bitarray2set(l, output_inverted_variant) {
+    function i2c(i) {
+        var c;
+
+        switch (i) {
+        case 10:
+            return '\\n';
+
+        case 13:
+            return '\\r';
+
+        case 9:
+            return '\\t';
+
+        case 8:
+            return '\\b';
+
+        case 12:
+            return '\\f';
+
+        case 11:
+            return '\\v';
+
+        case 45:        // ASCII/Unicode for '-' dash
+            return '\\-';
+
+        case 91:        // '['
+            return '\\[';
+
+        case 92:        // '\\'
+            return '\\\\';
+
+        case 93:        // ']'
+            return '\\]';
+
+        case 94:        // ']'
+            return '\\^';
+        }
+        if (i < 32 || i > 127) {
+            c = '0000' + i.toString(16);
+            return '\\u' + c.substr(c.length - 4);
+        }
+        return String.fromCharCode(i);
+    }
+
+    //console.log('sentinel!');
+    // construct the inverse(?) set from the mark-set:
+    //
+    // Before we do that, we inject a sentinel so that our inner loops
+    // below can be simple and fast:
+    l[65536] = 1;
+    // now reconstruct the regex set:
+    var rv = [];
+    var i, j;
+    var entire_range_is_marked = false;
+    if (output_inverted_variant) {
+        // generate the inverted set, hence all unmarked slots are part of the output range:
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            //console.log('look for start @ :', i);
+            while (l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            //console.log('look for end @ :', i + 1);
+            for (j = i + 1; !l[j]; j++) {} /* empty loop */
+            // generate subset:
+            //console.log('found inv range:', i, j - 1);
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    } else {
+        // generate the non-inverted set, hence all logic checks are inverted here... 
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            //console.log('look for start @ :', i);
+            while (!l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            //console.log('look for end @ :', i + 1);
+            for (j = i + 1; l[j]; j++) {} /* empty loop */
+            if (j > 65536) {
+                j = 65536;
+            }
+            // generate subset:
+            //console.log('found inv range:', i, j - 1);
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    }
+
+    // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+    // When we find the entire Unicode range is in the output match set, we also replace this with 
+    // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
+    var s;
+    if (!rv.length) {
+        // entire range turnes out to be EXCLUDED: 
+        s = '^\\S\\s';
+    } else if (entire_range_is_marked) {
+        // entire range turnes out to be INCLUDED: 
+        s = '\\S\\s';
+    } else {
+        s = rv.join('');
+    }
+    console.log('end of find loop:', s, rv.length, !!output_inverted_variant);
+
+    return s;
+}
+
+
+// Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
+// ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+function reduceRegexToSet(s, name) {
+    var orig = s;
+    
+    console.log('REDUX: ', s);
+
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+
+    var l = new Array(65536 + 3);
+    var internal_state = 0;
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        console.log('C1: ', c1);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            throw new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                //console.log('inner A: ', inner, s);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    //console.log('inner B: ', inner);
+                    if (!inner) {
+                            // cope with illegal escape sequences too!
+                        throw new Error('illegal escape sequence at start of regex part: ' + s + '" of regex "' + orig + '"');
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                //console.log(set_content);
+                throw new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                throw new Error('regex set expression is broken in regex: ' + orig);
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+            if (!internal_state) {
+                set2bitarray(l, se);
+
+                // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`: 
+                internal_state = 1;
+            }
+            break;
+
+        // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
+        // something ready for use inside a regex set, e.g. `\\r\\n`.
+        // 
+        // > Of course, we realize that converting more complex piped constructs this way
+        // > will produce something you might not expect, e.g. `A|WORD2` which
+        // > would end up as the set `[AW]` which is something else than the input
+        // > entirely.
+        // > 
+        // > However, we can only depend on the user (grammar writer) to realize this and 
+        // > prevent this from happening by not creating such oddities in the input grammar. 
+        case '|':
+            // a|b --> [ab]
+            internal_state = 0;
+            break;
+
+        case '(':
+            // (a) --> a
+            //
+            // TODO - right now we treat this as 'too complex':
+
+            // Strip off some possible outer wrappers which we know how to remove.
+            // We don't worry about 'damaging' the regex as any too-complex regex will be caught
+            // in the validation check at the end; our 'strippers' here would not damage useful
+            // regexes anyway and them damaging the unacceptable ones is fine.
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+            s = s.replace(/^\^?(.*?)\$?$/, '$1');               // ^...$ --> ...  (catch these both inside and outside the outer grouping, hence do the ungrouping twice: one before, once after this)
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+            //console.log('REDUX B: ', s);
+
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '.':
+        case '*':
+        case '+':
+        case '?':
+            // wildcard
+            //
+            // TODO - right now we treat this as 'too complex':
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '{':                        // range, e.g. `x{1,3}`, or macro?
+            // TODO - right now we treat this as 'too complex':
+            throw new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        default:
+            // literal character or word: take the first character only and ignore the rest, so that
+            // the constructed set for `word|noun` would be `[wb]`:
+            if (!internal_state) {
+                set2bitarray(l, c1);
+
+                internal_state = 2;
+            }
+            break;
+        }
+    }
+
+    s = bitarray2set(l);
+
+    console.log("reduceRegexToSet result: ", s);
+
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        re = new XRegExp('[' + s + ']');
+        re.test(s[0]);
+
+        // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
+        // so we check for lingering UNESCAPED brackets in here as those cannot be:
+        if (/[^\\][\[\]]/.exec(s)) {
+            throw new Error('unescaped brackets in set data');
+        }
+    } catch (ex) {
+        // make sure we produce a set range expression which will fail badly when it is used
+        // in actual code:
+        s = '[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]'; 
+    }
+
+    return s;
+}
+
+
+// expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or 
+// elsewhere, which requires two different treatments to expand these macros.
+function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
+    var orig = s;
+    var regex_simple_size = 0;
+    var regex_previous_alts_simple_size = 0;
+
+    function errinfo() {
+        if (name) {
+            return 'macro [[' + name + ']]'; 
+        } else {
+            return 'regex [[' + orig + ']]';
+        }
+    }
+
+    //console.log('REDUX ELSEWHERE: ', s);
+
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+    var rv = [];
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        //console.log('C1: ', c1);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            throw new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            var l = new Array(65536 + 3);
+
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                //console.log('inner A: ', inner, s);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    //console.log('inner B: ', inner);
+                    if (!inner) {
+                            // cope with illegal escape sequences too!
+                        throw new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                //console.log(set_content);
+                throw new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                throw new Error(errinfo() + ': regex set expression is broken: apparently unterminated');
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+
+            //console.log('regex ex before expansion: ', se);
+
+            // expand any macros in here:
+            if (expandAllMacrosInSet_cb) {
+                se = expandAllMacrosInSet_cb(se);
+            }
+
+            //console.log('regex ex after expansion: ', se);
+
+            set2bitarray(l, se);
+
+            // find out which set expression is optimal in size:
+            var s1 = bitarray2set(l);
+            var s2 = /* '^' + */ bitarray2set(l, true);
+            if (s2[0] === '^') {
+                s2 = s2.substr(1);
+            } else {
+                s2 = '^' + s2;
+            }
+            // check if the source regex set potentially has any expansions (guestimate!)
+            //
+            // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
+            var has_expansions = (se.indexOf('{') >= 0);
+            console.log("regex sets: pick shortest one: ", { orig: se, s1: s1, s2: s2, has_expansions: has_expansions, choice: [se.length, s1.length, s2.length] });
+            if (s2.length < s1.length) {
+                s1 = s2;
+            }
+            if (!has_expansions && se.length < s1.length) {
+                s1 = se;
+            }
+            rv.push('[' + s1 + ']');
+            break;
+
+        // XRegExp Unicode escape, e.g. `\\p{Number}`:
+        case '\\p':
+            var c2 = s.match(xregexp_unicode_escape_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+        // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
+        // Treat it as a macro reference and see if it will expand to enything:
+        case '{':
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                var c3 = s[0];
+                s = s.substr(c3.length);
+                if (c3 === '}') {
+                    // possibly a macro name in there... Expand if possible:
+                    c2 = c1 + c2 + c3;
+                    if (expandAllMacrosElsewhere_cb) {
+                        c2 = expandAllMacrosElsewhere_cb(c2);
+                    }
+                } else {
+                    // not a well-terminated macro reference or something completely different: 
+                    // we do not even attempt to expand this as there's guaranteed nothing to expand
+                    // in this bit.
+                    c2 = c1 + c2 + c3;
+                }
+                rv.push(c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+        // Recognize some other regex elements, but there's no need to understand them all. 
+        //
+        // We are merely interested in any chunks now which do *not* include yet another regex set `[...]`
+        // nor any `{MACRO}` reference:
+        default:
+            // non-set character or word: see how much of this there is for us and then see if there
+            // are any macros still lurking inside there:
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+        }
+    }
+
+    //console.log("reduceRegex result: ", rv);
+
+    s = rv.join('');
+    
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        re = new XRegExp(s);
+        re.test(s[0]);
+    } catch (ex) {
+        // make sure we produce a regex expression which will fail badly when it is used
+        // in actual code:
+        throw new Error(errinfo() + ': expands to an invalid regex: /' + s + '/'); 
+    }
+
+    return s;
+}
+
+
+// 'normalize' a `[...]` set by inverting an inverted `[^...]` set:
+function normalizeSet(s, output_inverted_variant) {
+    var orig = s;
+
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+
+    if (s && s.length) {
+        // // inverted set?
+        // if (s[0] === '^') {
+        //     output_inverted_variant = !output_inverted_variant;
+        //     s = s.substr(1);
+        // }
+        //console.log('normalize: ', { s: s, inv: output_inverted_variant });
+
+        var l = new Array(65536 + 3);
+        set2bitarray(l, s);
+
+        s = bitarray2set(l, output_inverted_variant);
+    }
+
+    console.log('normalizeSet result: ', { re: s, orig: orig, inverted: output_inverted_variant });
+    return s;
+}
+
+
+
+
 // expand macros within macros and cache the result
 function prepareMacros(dict_macros, opts) {
     var macros = {};
-
-    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
-    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-    //
-    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
-    // `[^0-9]` in nested macros!
-    function reduceRegexToSet(s, name) {
-        // First make sure legal regexes such as `[-@]` or `[@-]` get their hyphens at the edges
-        // properly escaped as they'll otherwise produce havoc when being combined into new
-        // sets thanks to macro expansion inside the outer regex set expression.
-        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
-        for (var i = 0, len = m.length; i < len; i++) {
-            s = ' ' + m[i]; // make our life easier when we check the next regex(es)...
-
-            // Any unescaped '[' or ']' is the begin/end marker of a regex set, hence when 
-            // such sets start/end with a '-' dash, it's a *literal* dash, and since we expect
-            // to be merging regex sets, we MUST escape all literaL dashes like that.
-            s = s.replace(/([^\\])\[-/g, '$1[\\-').replace(/-\]/g, '\\-]');
-
-            // Catch the remains of constructs like `[0-9]|[a-z]`.
-            s = s.replace(/([^\\])\]\|\[/g, '$1');
-
-            // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
-            // something ready for use inside a regex set, e.g. `\\r\\n`.
-            // 
-            // > Of course, we realize that converting more complex piped constructs this way
-            // > will produce something you might not expect, e.g. `A|WORD2` -> `AWORD2` which
-            // > would then end up as the set `[AWORD2]` which is something else than the input
-            // > entirely.
-            // > 
-            // > However, we can only depend on the user (grammar writer) to realize this and 
-            // > prevent this from happening by not creating such oddities in the input grammar. 
-            s = s.replace(/([^\\])\|/g, '$1');
-
-            m[i] = s.substr(1, s.length - 1);
-        }
-        s = m.join('\\\\');
-
-        // Also remove the outer brackets if this thing is a set all by itself: we accept either
-        // `[0-9]` or `0-9` as good macro content to land in a (larger) set and this should
-        // take care of the `[]` brackets around the former.
-        // 
-        // Also strip off some other possible outer wrappers which we know how to remove.
-        // We don't worry about 'damaging' the regex as any too-complex regex will be caught
-        // in the validation check at the end; our 'strippers' here would not damage useful
-        // regexes anyway and them damaging the unacceptable ones is fine.
-        s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');       // (?:...) -> ...  and  (...) -> ...
-        s = s.replace(/^\[(.*?)\]$/, '$1');
-
-        // Now ensure that any `-` dash at the start or end of the set list is properly escaped:
-        // we won't have caught all of them yet above, just the ones in sub-sets!
-        
-        s = s.replace(/^-/, '\\-');
-        s = s.replace(/-$/, '\\-');
-
-        // When this result is suitable for use in a set, than we should be able to compile 
-        // it in a regex; that way we can easily validate whether macro X is fit to be used 
-        // inside a regex set:
-        try {
-            var re;
-            re = new XRegExp('[' + s + ']');
-            re.test(s[0]);
-
-            // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
-            // so we check for lingering UNESCAPED brackets in here as those cannot be:
-            if (/[^\\][\[\]]/.exec(s)) {
-                throw 'unescaped brackets in set data';
-            }
-        } catch (ex) {
-            // make sure we produce a set range expression which will fail badly when it is used
-            // in actual code:
-            s = '[macro \'' + name + '\' is unsuitable for use inside regex set expressions: "[' + s + ']"]'; 
-        }
-
-        return s;
-    }
 
     // expand a `{NAME}` macro which exists inside a `[...]` set:
     function expandMacroInSet(i) {
@@ -12694,44 +13360,65 @@ function prepareMacros(dict_macros, opts) {
         if (!macros[i]) {
             m = dict_macros[i];
 
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    // it doesn't matter if the lexer recognized that the inner macro(s)
-                    // were sitting inside a `[...]` set or not: the fact that they are used
-                    // here in macro `i` which itself sits in a set, makes them *all* live in
-                    // a set so all of them get the same treatment: set expansion style.
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
-                    }
-                    
-                    // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
-                    // macros here:
-                    if (XRegExp.isUnicodeSlug(k)) {
-                        // Work-around so that you can use `\p{ascii}` for an XRegExp slug
-                        // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
-                        // macro:
-                        if (k.toUpperCase() !== k) {
-                            throw 'Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.';
-                        }
-                    }
+            if (m.indexOf('{') >= 0) {
+                // set up our own record so we can detect definition loops:
+                macros[i] = {
+                    in_set: false,
+                    in_inv_set: false,
+                    elsewhere: null,
+                    raw: dict_macros[i]
+                };
 
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
+                for (k in dict_macros) {
+                    if (dict_macros.hasOwnProperty(k) && i !== k) {
+                        // it doesn't matter if the lexer recognized that the inner macro(s)
+                        // were sitting inside a `[...]` set or not: the fact that they are used
+                        // here in macro `i` which itself sits in a set, makes them *all* live in
+                        // a set so all of them get the same treatment: set expansion style.
+                        //
+                        // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
+                        // macros here:
+                        if (XRegExp.isUnicodeSlug(k)) {
+                            // Work-around so that you can use `\p{ascii}` for an XRegExp slug
+                            // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
+                            // macro:
+                            if (k.toUpperCase() !== k) {
+                                throw 'Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.';
+                            }
+                        }
+
+                        a = m.split('{' + k + '}');
+                        if (a.length > 1) {
+                            m = a.join(expandMacroInSet(k));
+                        }
                     }
                 }
             }
 
-            m = reduceRegexToSet(m, i);
+            try {
+                m = reduceRegexToSet(m, i);
+            } catch (ex) {
+                m = ex;
+            }
 
             macros[i] = {
-                in_set: m,
+                in_set: normalizeSet(m, false),
+                in_inv_set: normalizeSet(m, true),
                 elsewhere: null,
                 raw: dict_macros[i]
             };
         } else {
             m = macros[i].in_set;
+
+            if (m instanceof Error) {
+                // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                throw new Error(m.message);
+            }
+
+            // detect definition loop:
+            if (m === false) {
+                throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
 
         return m;
@@ -12740,36 +13427,97 @@ function prepareMacros(dict_macros, opts) {
     function expandMacroElsewhere(i) {
         var k, a, m;
 
-        if (!macros[i].elsewhere) {
+        if (macros[i].elsewhere == null) {
             m = dict_macros[i];
 
+            // set up our own record so we can detect definition loops:
+            macros[i].elsewhere = false;
+
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
-            // macro, hence we first expand those submacros all the way:
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(macros[k].in_set);
-                    }
-                    
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join('(?:' + expandMacroElsewhere(k) + ')');
-                    }
-                }
-            }
+            // macro or elsewhere, hence we must parse the regex:
+            m = reduceRegex(m, i, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
 
             macros[i].elsewhere = m;
         } else {
             m = macros[i].elsewhere;
+
+            // detect definition loop:
+            if (m === false) {
+                throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
+
+        //console.log("expandMacroElsewhere result: ", m);
 
         return m;
     }
 
+    function expandAllMacrosInSet(s) {
+        var i, m, x;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroInSet(i);
+                        s = a.join(x);
+                    }
+                    //console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+    function expandAllMacrosElsewhere(s) {
+        var i, m, x;
+
+        // When we process the remaining macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    // These are all submacro expansions, hence non-capturing grouping is applied:
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroElsewhere(i);
+                        s = a.join('(?:' + x + ')');
+                    }
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+
     var m, i;
     
-    if (opts.debug) console.log('\n############## RAW macros: ', dict_macros);
+    if (opts.debug || 1) console.log('\n############## RAW macros: ', dict_macros);
 
     // first we create the part of the dictionary which is targeting the use of macros
     // *inside* `[...]` sets; once we have completed that half of the expansions work,
@@ -12789,43 +13537,135 @@ function prepareMacros(dict_macros, opts) {
         }
     }
     
-    if (opts.debug) console.log('\n############### expanded macros: ', macros);
+    if (opts.debug || 1) console.log('\n############### expanded macros: ', macros);
     
     return macros;
 }
 
+
+
 // expand macros in a regex; expands them recursively
-function expandMacros(src, macros) {
-    var i, m;
+function expandMacros(src, macros, opts) {
+    var expansion_count = 0;
 
-    // first process *all* the macros inside [...] set expressions:
-    if (src.indexOf('{[{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
+    // By the time we call this function `expandMacros` we MUST have expanded and cached all macros already!
+    // Hence things should be easy in there:
 
-                src = src.split('{[{' + i + '}]}').join(m.in_set);
+    function expandAllMacrosInSet(s) {
+        var i, m, x;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        var x = m.in_set;
+
+                        if (x instanceof Error) {
+                            // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                            throw x;
+                        }
+
+                        // detect definition loop:
+                        if (x === false) {
+                            throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
+                        s = a.join(x);
+                        expansion_count++;
+                    }
+                    //console.log('attempt to expand in set: ', i, ' --> ', s, ' // ', a, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
             }
         }
+
+        //console.log('expandAllMacrosInSet output: ', s);
+
+        return s;
     }
 
-    // then process the remaining macro occurrences in the regex:
-    // every macro used in a lexer rule will become its own capture group. 
+    function expandAllMacrosElsewhere(s) {
+        var i, m, x;
+
+        // When we process the main macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        // These are all main macro expansions, hence CAPTURING grouping is applied:
+                        x = m.elsewhere;
+
+                        // detect definition loop:
+                        if (x === false) {
+                            throw new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
+                        s = a.join('(' + x + ')');
+                        expansion_count++;
+                    }
+                    //console.log('attempt to expand elsewhere: ', i, ' --> ', s, ' // ', a, ' // ', x);
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+
+    //console.log("expandMacros input: ", src);
+
+    // When we process the macro occurrences in the regex
+    // every macro used in a lexer rule will become its own capture group.
+    // 
     // Meanwhile the cached expansion will have expanded any submacros into
     // *NON*-capturing groups so that the backreference indexes remain as you'ld
     // expect and using macros doesn't require you to know exactly what your
     // used macro will expand into, i.e. which and how many submacros it has.
     // 
     // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
-    if (src.indexOf('{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
-
-                src = src.split('{' + i + '}').join('(' + m.elsewhere + ')');
-            }
+    var s2 = reduceRegex(src, null, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
+    // only when we did expand some actual macros do we take the re-interpreted/optimized/regenerated regex from reduceRegex()
+    // in order to keep our test cases simple and rules recognizable. This assumes the user can code good regexes on his own,
+    // as long as no macros are involved...
+    //
+    // Also pick the reduced regex when there (potentially) are XRegExp extensions in the original, e.g. `\\p{Number}`,
+    // unless the `xregexp` output option has been enabled.
+    if (expansion_count > 0 || (src.indexOf('\\p{') >= 0 && !opts.options.xregexp)) {
+        console.log("expandMacros S2 output: ", { src: src, s2: s2, expansion_count: expansion_count, xregexp_ON: !!opts.options.xregexp, has_xregexp_escapes: src.indexOf('\\p{') >= 0 });
+        src = s2;
+    } else {
+        // Check if the reduced regex is smaller in size; when it is, we still go with the new one!
+        console.log('check if reduced regex is smaller: ', { src: src, new: s2, choice: s2.length < src.length });
+        if (s2.length < src.length) {
+            src = s2;
         }
     }
+
+    //console.log("expandMacros output: ", src, " -- count = ", expansion_count);
 
     return src;
 }
@@ -13115,6 +13955,7 @@ function RegExpLexer(dict, input, tokens) {
                 }
             }
         }
+
         throw ex;
     });
 
