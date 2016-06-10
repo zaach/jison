@@ -364,6 +364,8 @@ pascal:
 compiled_calc:
 	$(JISON) -t ./$@_parse.jison
 	$(JISON) -t ./$@_exec.jison
+	$(JISON) -t ./$@_codegen.jison
+	$(JISON) -t ./$@_print.jison
 	node output/compiled_calc/compiled_calc_exec.js compiled_calc_input.txt
 
 
