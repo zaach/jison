@@ -81,7 +81,7 @@ and then execute your regular full-build command:
 
 When you are happy with the result, you can apply the new (previously bumped) version as a TAG to the current commit (which is not necessarily the commit where you ran `make bump` if you found some stuff to do along the way here ;-) ):
 
-	make tag
+	make git-tag
 
 ---
 
@@ -93,6 +93,6 @@ TL;DR: run these commands to bump our version, nuke all installed NPM packages a
 	make prep
 	make site
 
-	make tag
+	make git-tag
 
 ---
