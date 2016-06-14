@@ -54,6 +54,9 @@ examples_directory: build
 examples/error-handling: build
 	cd examples/ && make error-handling
 
+examples/misc: build
+	cd examples/ && make misc
+
 
 
 examples/ansic: build
@@ -280,6 +283,15 @@ examples/with_custom_lexer: build
 
 examples/yacc-error-recovery: build
 	cd examples/ && make yacc-error-recovery
+
+examples/lalr-but-not-slr: build
+	cd examples/ && make lalr-but-not-slr
+
+examples/lr-but-not-lalr: build
+	cd examples/ && make lr-but-not-lalr
+
+examples/theory-left-recurs-01: build
+	cd examples/ && make theory-left-recurs-01
 
 
 

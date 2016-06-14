@@ -97,7 +97,7 @@ prompt : /* null token */
  * it found a semicolon. Your parentheses and braces would be out of
  * balance for the rest of the input, and the whole parsing process would
  * be a waste of time. The same principle applies to any rule that shows
- * the error token followed by some other nonnull symbol: It
+ * the error token followed by some other non-null symbol: It
  * can lead to hopeless confusion in a lot of grammars.
  *
  * It is safer to write the rule in a form like this:
