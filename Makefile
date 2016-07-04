@@ -1,25 +1,29 @@
 
-all: build test examples/issue-293 examples/issue-254 examples/issue-289
+all: build test examples/issue-293 examples/issue-254 examples/issue-289-BAD
 
 prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: web/content/assets/js/jison.js
+site: build web-examples web/content/assets/js/jison.js compile-site 
 
 clean-site:
 	-@rm -rf web/tmp/
 	-@rm -rf web/output/jison/
+	-@rm -rf web/content/examples/
+	-rm web/content/assets/js/jison.js
+	-rm web/content/assets/js/calculator.js
 
-# `make compile-site` will perform a quick (re)build of the jison tool and the web pages, including the 'live' calculator example
-compile-site: build web-examples
+# `make compile-site` will perform a quick (re)build of the web pages
+compile-site: 
+	-@rm -rf web/tmp/
+	-@rm -rf web/content/examples/
+	cp -r examples web/content/examples/
+	cd web/ && nanoc compile
+
+web/content/assets/js/jison.js: build test web-examples examples
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
-	-@rm -rf web/tmp/
-	cd web/ && nanoc compile
-	cp -r examples web/output/jison/
-
-web/content/assets/js/jison.js: build test web-examples examples compile-site
 
 preview:
 	cd web/ && nanoc view &
@@ -49,6 +53,9 @@ examples_directory: build
 
 examples/error-handling: build
 	cd examples/ && make error-handling
+
+examples/misc: build
+	cd examples/ && make misc
 
 
 
@@ -199,6 +206,9 @@ examples/issue-254: build
 examples/issue-289: build
 	cd examples/ && make issue-289
 
+examples/issue-289-BAD: build
+	cd examples/ && make issue-289-BAD
+
 examples/issue-293: build
 	cd examples/ && make issue-293
 
@@ -210,6 +220,9 @@ examples/json_ast_js: build
 
 examples/json_js: build
 	cd examples/ && make json_js
+
+examples/klammergebirge: build
+	cd examples/ && make klammergebirge
 
 examples/lambdacalc: build
 	cd examples/ && make lambdacalc
@@ -234,6 +247,9 @@ examples/olmenu-proto2: build
 
 examples/phraser: build
 	cd examples/ && make phraser
+
+examples/pascal: build
+	cd examples/ && make pascal
 
 examples/parser-to-lexer-communication-test: build
 	cd examples/ && make parser-to-lexer-communication-test
@@ -268,6 +284,15 @@ examples/with_custom_lexer: build
 examples/yacc-error-recovery: build
 	cd examples/ && make yacc-error-recovery
 
+examples/lalr-but-not-slr: build
+	cd examples/ && make lalr-but-not-slr
+
+examples/lr-but-not-lalr: build
+	cd examples/ && make lr-but-not-lalr
+
+examples/theory-left-recurs-01: build
+	cd examples/ && make theory-left-recurs-01
+
 
 
 build: build_bnf build_lex
@@ -296,9 +321,11 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	@[ -d  modules/ebnf-parser/node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
@@ -365,7 +392,7 @@ git:
 	-git pull --all; git push --all
 
 
-clean:
+clean: clean-site
 	cd examples/ && make clean
 	cd modules/ebnf-parser && make clean
 	cd modules/jison-lex && make clean
@@ -377,14 +404,14 @@ clean:
 	-rm -rf node_modules/
 
 #
-# When you've run `make superclean` you must run `make` and `make deploy` to regenerate all content again.
+# When you've run `make superclean` you must run `make prep`, `make` and `make deploy` to regenerate all content again.
 #
 # The 'superclean' target is to be used when you need to update/edit the jison code generators and want to
 # make sure that jison is rebuilt from scratch.
 # The 'superclean' target is also useful in the above context for it enables you to find the 'originals'
 # of each part of the generator (lexer & parser) as all derived copies have been killed.
 #
-superclean: clean
+superclean: clean clean-site
 	cd examples/ && make superclean
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison-lex && make superclean
@@ -392,11 +419,6 @@ superclean: clean
 	cd modules/json2jison && make superclean
 	cd modules/lex-parser && make superclean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
-	-rm -rf web/output/
-	-rm -rf web/tmp/
-	#-rm -rf ./gh-pages/*
-	-rm -f web/content/assets/js/calculator.js
-	-rm -f web/content/assets/js/jison.js
 
 
 

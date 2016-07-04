@@ -76,15 +76,18 @@ exports["test | separated rules"] = function () {
 exports["test start symbol optional"] = function () {
 
     var grammar = {
-        tokens: "x y",
+        tokens: "x y z",
         bnf: {
-            "A" :"A x | A y | "
+            "A" :"A x | A y | B",
+            "B" :"z"
         }
     };
 
-    var parser = new Jison.Parser(grammar);
-    var ok = true;
-    assert.ok(ok, "no error");
+    var gen = Jison.Generator(grammar);
+    var parser = gen.createParser();
+    assert.ok(gen.nonterminals['A'], 'A must be identified as a non-terminal');
+    assert.ok(gen.startSymbol, 'A default startsymbol must be picked by Jison');
+    assert.ok(gen.startSymbol === 'A', 'The default startsymbol must match the first rule');
 };
 
 exports["test start symbol should be nonterminal"] = function () {
@@ -129,6 +132,9 @@ exports["test grammar options"] = function () {
 
     var gen = new Jison.Generator(grammar);
     assert.ok(gen);
+    assert.ok(gen.options);
+    assert.ok(gen.options.type);
+    assert.ok(gen.options.type === 'slr');
 };
 
 exports["test overwrite grammar options"] = function () {
@@ -145,6 +151,10 @@ exports["test overwrite grammar options"] = function () {
     };
 
     var gen = new Jison.Generator(grammar, {type: "lr0"});
+    assert.ok(gen);
+    assert.ok(gen.options);
+    assert.ok(gen.options.type);
+    assert.ok(gen.options.type === 'lr0');
     assert.equal(gen.constructor, Jison.LR0Generator);
 };
 
@@ -214,7 +224,7 @@ exports["test custom parse error method"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
     parser.lexer = new Lexer(lexData);
-    var result={};
+    var result = {};
     parser.yy.parseError = function (str, hash) {
         result = hash;
         throw str;
@@ -249,8 +259,8 @@ exports["test no default resolve"] = function () {
     var parser = gen.createParser();
     parser.lexer = new Lexer(lexData);
 
-    assert.ok(gen.table.length == 4, "table has 4 states");
-    assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
+    assert.ok(gen.table.length === 4, "table has 4 states");
+    assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
     assert.throws(function () { parser.parse("xx"); }, "throws parse error for multiple actions");
 };
 
@@ -408,7 +418,7 @@ exports["test lexer with no location support"] = function () {
     var loc = parser.parse('xx\nxy');
 };
 
-exports["test intance creation"] = function () {
+exports["test instance creation"] = function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -467,3 +477,20 @@ exports["test reentrant parsing"] = function () {
     assert.equal(result, "foobar");
 };
 
+exports["test generated parser must have working parse API method"] = function () {
+    var grammar = "%% A : A x | A y | ; %%";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+};
+
+exports["test generated parser must export added user-defined methods"] = function () {
+    var grammar = "%% A : A x | A y | ; %% parser.dummy = function () { return 42; };"
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx");
+    assert.ok(typeof parser.dummy === 'function');
+    assert.ok(parser.dummy() === 42);
+};
