@@ -2,7 +2,7 @@
 // 
 //       | NAT
 //
-// any of the alternative codings below will work, while the last is adviced:
+// any of the alternative codings below will work, while the last is advised:
 
 $$ = parseInt(yytext);
 $$ = parseInt($1);
