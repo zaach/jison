@@ -46,7 +46,7 @@ B   :   '<' '>'             -> '.'
 //      node ./test.js
 //
 // to see the output.
-S
+
 var assert = require("assert");
 
 parser.main = function () {
