@@ -1,3 +1,9 @@
+//
+// parse the left-recursive grammar:
+//
+//     A → αAB; α → ε
+//
+
 %lex
 
 %%
@@ -14,29 +20,21 @@
 
 /lex
 
-%start value
 
 %%
 
-value
-    : STR                           {$$ = $1;}
-    | '[' ']'                       {$$ = [];}
-    | '[' values ']'                {$$ = $2;}
-    | id '(' ')'                    {$$ = [$1, []];}
-    | id '(' values ')'             {$$ = [$1, $3];}
-;
+A
+    : A B                       {$$ = [$A, $B];}
+    | α                         {$$ = [$α];}
+    ;
 
-id
-    : ID                            {$$ = $1;}
-    | STR                           {$$ = $1;}
-;
+α
+    : ε                         {$$ = 'αε';}
+    ;
 
-values
-    : value                         {$$ = [$1];}
-    | values ',' value              {$$ = $1; $$.push($3);}
-;
-
-
+B
+    : ID
+    ;
 
 
 // ----------------------------------------------------------------------------------------
@@ -58,10 +56,9 @@ values
 var assert = require("assert");
 
 parser.main = function () {
-    var rv = parser.parse('a(b)');
-    console.log("a(b) ==> ", rv);
-    assert.equal(rv, ["a", ["b"]]);
-
+    var rv = parser.parse('a b');
+    console.log("ab ==> ", rv);
+    assert.deepEqual(rv, [[["αε"], "a"], "b"]);
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

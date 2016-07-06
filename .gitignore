@@ -5,8 +5,8 @@ node_modules
 *.bak
 *~
 
-web/output/
-web/tmp/
+web/
+modules/
 
 examples/output/
 

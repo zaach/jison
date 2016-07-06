@@ -13,6 +13,7 @@ var typal      = require('./util/typal').typal;
 var Set        = require('./util/set').Set;
 var Lexer      = require('./util/regexp-lexer.js');
 var ebnfParser = require('./util/ebnf-parser.js');
+var XRegExp    = require('xregexp');
 //var JSONSelect = require('JSONSelect');
 //var esprima    = require('esprima');
 //var escodegen  = require('escodegen');
@@ -200,7 +201,7 @@ generator.constructor = function Jison_Generator(grammar, opt) {
     this.DEBUG = this.options.debug || false;
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
-        console.log('Grammar::OPTIONS:\n', this.options);
+        Jison.print('Grammar::OPTIONS:\n', this.options);
     }
 
     this.processGrammar(grammar);
@@ -221,7 +222,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
         bnf = grammar.bnf = ebnfParser.transform(grammar.ebnf);
     }
     if (devDebug) {
-        console.log('processGrammar: ', JSON.stringify({
+        Jison.print('processGrammar: ', JSON.stringify({
             bnf: bnf,
             tokens: tokens,
             productions: productions
@@ -261,7 +262,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
                 predefined_symbols = JSON.parse(source);
             } catch (ex) {
                 if (devDebug) {
-                    console.log('%import symbols JSON fail: ', ex);
+                    console.error('%import symbols JSON fail: ', ex);
                 }
                 try {
                     var m = /[\r\n]\s*symbols_:\s*(\{[\s\S]*?\}),\s*[\r\n]/.exec(source);
@@ -271,7 +272,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
                     }
                 } catch (ex) {
                     if (devDebug) {
-                        console.log('%import symbols JISON output fail: ', ex);
+                        console.error('%import symbols JISON output fail: ', ex);
                     }
                 }
             }
@@ -290,7 +291,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
     this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, grammar.extra_tokens);
 
     if (devDebug > 1) {
-        console.log('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, 
+        Jison.print('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals, 
                     '\n###################################### TOKENS\n', tokens, 
                     '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens, 
                     '\n###################################### LEX\n', grammar.lex, 
@@ -387,7 +388,9 @@ generator.signalUnusedProductions = function () {
             assert(p.symbol === nt.symbol);
             assert(p.handle);
             var rhs = p.handle;
-            if (devDebug > 0) console.log('traverse / mark: ', nt.symbol, ' --> ', rhs);
+            if (devDebug > 0) {
+                Jison.print('traverse / mark: ', nt.symbol, ' --> ', rhs);
+            }
 
             for (var j = 0, len = rhs.length; j < len; j++) {
                 var sym = rhs[j];
@@ -430,7 +433,7 @@ generator.signalUnusedProductions = function () {
 
     // and kill the unused productions:
     this.productions = productions.filter(function (p) {
-        if (!p.reachable) console.warn('KILL PRODUCTION: ' + p);
+        if (!p.reachable) console.warn('KILL UNUSED PRODUCTION: ' + p);
         return p.reachable;
     });
 };
@@ -474,6 +477,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     symbols_.$accept = 0;
     symbols_[this.EOF] = 1;
     symbols_['$eof'] = 1;               // `$eof` is a synonym of `$end` for bison compatibility; this is the only place where two symbol names may map to a single symbol ID number!
+    symbols_['EOF'] = 1;                // `EOF` is a synonym of `$end` for bison compatibility; this is the only place where two symbol names may map to a single symbol ID number!
     symbols[0] = '$accept';
     symbols[1] = this.EOF;
 
@@ -513,11 +517,185 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     var hasErrorRecovery = false; // has error recovery
 
+    // Preprocess the action code block before we perform any `$n`, `@n` or `#n` expansions:
+    // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
+    // contain `$` or `#` prefixed bits which might look like references but aren't!)
+    //
+    // Also do NOT replace any $x, @x or #x macros inside any strings!
+    //  
+    // Note: 
+    // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
+    function preprocessActionCode(s) {
+        function replace_markers(cmt) {
+            cmt = cmt
+            .replace(/#/g, '\x01\x01')
+            .replace(/\$/g, '\x01\x02')
+            .replace(/@/g, '\x01\x03')
+            .replace(/\/\*/g, '\x01\x05')
+            .replace(/\/\//g, '\x01\x06')
+            .replace(/\'/g, '\x01\x07')
+            .replace(/\"/g, '\x01\x08')
+            // and also whiteout any other macros we're about to expand in there:
+            .replace(/\bYYABORT\b/g, '\x01\x14')
+            .replace(/\bYYACCEPT\b/g, '\x01\x15')
+            .replace(/\byyvstack\b/g, '\x01\x16')
+            .replace(/\byylstack\b/g, '\x01\x17')
+            .replace(/\byyerror\b/g, '\x01\x18')
+            .replace(/\byyerrok\b/g, '\x01\x19')
+            .replace(/\byyclearin\b/g, '\x01\x1A');
+
+            return cmt;
+        }
+
+        s = s
+        // do not trim any NEWLINES in the action block:
+        .replace(/^\s+/, '')
+        .replace(/\s+$/, '')
+        // unify CR/LF combo's:
+        .replace(/\r\n|\r/g, '\n')
+        // replace any '$', '@' and '#' in any C++-style comment line to prevent them from being expanded as if they were part of the action code proper:
+        .replace(/^\s*\/\/.+$/mg, function (_) {
+            return replace_markers(_);
+        })
+        // also process any //-comments trailing a line of code: 
+        // (we need to ensure these are real and not a bit of string, 
+        // which leaves those comments that are very hard to correctly 
+        // recognize with a simple regex, e.g. '// this isn't a #666 location ref!':
+        // we accept that we don't actually *parse* the action block and let these
+        // slip through... :-( )
+        //
+        // WARNING: without that `\n` inside the regex `[...]` set, the set *will*
+        // match a NEWLINE and thus *possibly* gobble TWO lines for the price of ONE,
+        // when the first line is an *empty* comment line, i.e. nothing trailing
+        // the `//` in there and thus the `[^'"]` regex matching the terminating NL *before*
+        // the `$` in the regex can get at it. Cave canem therefor!       |8-(
+        .replace(/\/\/[^'"\n]+$/mg, function (_) {
+            return replace_markers(_);
+        })
+        // now MARK all the not-too-tricky-to-recognize /*...*/ comment blocks and process those!
+        // (Here again we accept that we don't actually *parse* the action code and
+        // permit to let some of these slip, i.e. comment blocks which trail
+        // a line of code and contain string delimiter(s). :-( )
+        .replace(/^[^'"\n]*?\/\*/mg, '$1\x01\x04')				// comment starts the line, guaranteed not to be inside a string
+        .replace(/\/\*([^'"\n]*)$/mg, '\x01\x04$1')                             // comment does not contain any string sentinel in its first line
+        .replace(/\/\*([^\/]*?\*\/[^'"\n]*)$/mg, '\x01\x04$1')			// comment end marker near end of line and since the end is definitely not inside a string, there's bound to be comment start as well
+        // and find their END marker: first '*/' found wins!
+        // (The `[\s\S]` regex expression is a hack to ensure NEWLINES are matched
+        // by that set as well, i.e. this way we can easily cross line boundaries
+        // while searching for he end of the multiline comment we're trying to
+        // dig out by regex matching. Also note that we employ non-aggressive
+        // matching to ensure the regex matcher will find the FIRST occurrence of
+        // `*/` and mark that as the end of the regex match!)
+        .replace(/\x01\x04[\s\S]*?\*\//g, function (_) {
+            return replace_markers(_);
+        })
+        // Now that we have processed all comments in the code, it's time 
+        // to tackle the strings in the code: any strings must be kept intact
+        // as well. Regrettably, there's regexes which may carry quotes, 
+        // e.g. `/'/`, and escapes of quotes inside strings, e.g. `'\''`,
+        // which this a non-trivial task. This is when we reconsider whether
+        // we should run this stuff through Esprima and deal with that AST
+        // verbosity instead...? For now, we accept that regexes can screw
+        // us up, but we can handle strings of any kind, by first taking
+        // out all explicit `\\` non-escaping characters:
+        .replace(/\\\\/g, '\x01\x10')
+        // and then we take out all escaped quotes:
+        .replace(/\\\'/g, '\x01\x11')
+        .replace(/\\\"/g, '\x01\x12')
+        // and to top it off, we also take out any more-or-less basic regexes:
+        .replace(/\\\//g, '\x01\x13')
+
+        // WARNING: Without that prefix check this would also catch 
+        // `6/7 + $$ + 8/9` as if `/7 + $$ + 8/` would be a regex   :-(    
+        // but we need this one to ensure any quotes hiding inside 
+        // any regex in there is caught and marked, e.g. `/'/g`.
+        // Besides, this regex prefix is constructed to it preventing 
+        // the regex matching a `//....` comment line either!
+        .replace(/[^_a-zA-Z0-9\$\)\/][\s\n\r]*\/[^\n\/\*][^\n\/]*\//g, function (_) {
+            return replace_markers(_);
+        });
+
+        // ... which leaves us with plain strings of both persuasions to cover 
+        // next: we MUST do both at the same time, though or we'll be caught
+        // with our pants down in constructs like 
+        // `'"' + $$ + '"'` vs. `"'" + $$ + "'"`
+
+        var dqpos, sqpos, ccmtpos, cppcmtpos, first = -1;
+        for (var c = 0;; c++) {
+            first++;
+            dqpos = s.indexOf('"', first);
+            sqpos = s.indexOf("'", first);
+            // also look for remaining comments which contain quotes of any kind,
+            // as those will not have been caught by the previous global regexes:
+            ccmtpos = s.indexOf('/*', first);
+            cppcmtpos = s.indexOf('//', first);
+            first = s.length;
+            first = Math.min((dqpos >= 0 ? dqpos : first), (sqpos >= 0 ? sqpos : first), (ccmtpos >= 0 ? ccmtpos : first), (cppcmtpos >= 0 ? cppcmtpos : first));
+	    if (c % 10000 === 9999) {
+	    	console.log(dqpos, sqpos, ccmtpos, cppcmtpos, first, s.substr(first-100, 200));
+	    }
+            // now it matters which one came up first:
+            if (dqpos === first) {
+                s = s
+                .replace(/"[^"\n]*"/, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (sqpos === first) {
+                s = s
+                .replace(/'[^'\n]*'/, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (ccmtpos === first) {
+                s = s
+                .replace(/\/\*[\s\S]*?\*\//, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (cppcmtpos === first) {
+                s = s
+                .replace(/\/\/[^\n]*$/m, function (_) {
+                    return replace_markers(_);
+                });
+            } else {
+                break;
+            }
+        }
+        // Presto!
+        return s;
+    }
+
+    // Postprocess the action code block after we perform any `$n`, `@n` or `#n` expansions:
+    // revert the preprocessing!
+    function postprocessActionCode(s) {
+        s = s
+        // multiline comment start markers:
+        .replace(/\x01\x04/g, '/*')
+        .replace(/\x01\x05/g, '/*')
+        .replace(/\x01\x06/g, '//')
+        // revert markers:
+        .replace(/\x01\x01/g, '#')
+        .replace(/\x01\x02/g, '$')
+        .replace(/\x01\x03/g, '@')
+        // and revert the string and regex markers:
+        .replace(/\x01\x07/g, '\'')
+        .replace(/\x01\x08/g, '\"')
+        .replace(/\x01\x10/g, '\\\\')
+        .replace(/\x01\x11/g, '\\\'')
+        .replace(/\x01\x12/g, '\\\"')
+        .replace(/\x01\x13/g, '\\\/')
+        .replace(/\x01\x14/g, 'YYABORT')
+        .replace(/\x01\x15/g, 'YYACCEPT')
+        .replace(/\x01\x16/g, 'yyvstack')
+        .replace(/\x01\x17/g, 'yylstack')
+        .replace(/\x01\x18/g, 'yyerror')
+        .replace(/\x01\x19/g, 'yyerrok')
+        .replace(/\x01\x1A/g, 'yyclearin');
+        return s;
+    }
+
     // Strip off any insignificant whitespace from the user code to ensure that
     // otherwise identical actions are indeed matched up into a single actionGroup:
     function mkHashIndex(s) {
         return s.trim()
-        .replace(/\r\n|\r/g, '\n')
         .replace(/\s+$/mg, '')          // strip any trailing whitespace for each line of action code
         .replace(/^\s+/mg, '');         // ditto for leading whitespace for each line: we don't care about more or less clean indenting practices in the user code
     }
@@ -567,7 +745,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         } else {
             prods = bnf[symbol].slice(0);
         }
-        if (devDebug) console.log('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
+        if (devDebug) Jison.print('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
 
         prods.forEach(buildProduction);
     }
@@ -579,9 +757,9 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         terms = [], 
         terms_ = {};
     each(symbols_, function (id, sym) {
-        // `$eof` is a synonym of `$end` for bison compatibility; 
+        // `$eof` and `EOF` are synonyms of `$end` (`$eof` is for bison compatibility); 
         // this is the only place where two symbol names may map to a single symbol ID number
-        // and we do not want `$eof` to show up in the symbol tables of generated parsers
+        // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
         // as we use `$end` for that one!
         if (!nonterminals[sym] && sym !== '$eof') {
             terms.push(sym);
@@ -605,15 +783,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
     this.performAction = [].concat(
-        'function anonymous(' + parameters + ') {',
+        'function parser__PerformAction(' + parameters + ') {',
         actions, 
         '}'
     ).join('\n')
-    .replace(/YYABORT/g, 'return false')
-    .replace(/YYACCEPT/g, 'return true');
+    .replace(/\bYYABORT\b/g, 'return false')
+    .replace(/\bYYACCEPT\b/g, 'return true');
+
+    this.performAction = this.performAction
+    // this is needed to have it replaced with TWO(2) `$` dollars: 
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/ replace#Specifying_a_string_as_a_parameter
+    // --> you have to spec two $$ for the price of one $ when you want more than a single $ to appear in there.
+    .replace(/\byyvstack\b/g, '$$$$')
+    .replace(/\byylstack\b/g, '_$');
 
     var actionsBaseline = [
-        'function anonymous(' + parameters + ') {',
+        'function parser__PerformAction(' + parameters + ') {',
         '/* this == yyval */',
         '',
         'var $0 = $$.length - 1;',
@@ -652,7 +837,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYSTACK = analyzeFeatureUsage(this.performAction, /\byystack\b/g, 1);
 
     if (devDebug) {
-        console.log('Optimization analysis: ', {
+        Jison.print('Optimization analysis: ', {
             actionsAreAllDefault: this.actionsAreAllDefault,
             actionsUseYYLENG: this.actionsUseYYLENG,
             actionsUseYYLINENO: this.actionsUseYYLINENO,
@@ -674,6 +859,10 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     .replace(/\byyerror\b/g, 'yy.parser.parseError')
     .replace(/\byyerrok\b(?:\s*\(\s*\))?/g, 'yy.parser.yyErrOk()')
     .replace(/\byyclearin\b(?:\s*\(\s*\))?/g, 'yy.parser.yyClearIn()');
+
+    // Now that we've completed all macro expansions, it's time to execute
+    // the recovery code, i.e. the postprocess:
+    this.performAction = postprocessActionCode(this.performAction);
 
     function analyzeFeatureUsage(sourcecode, feature, threshold) {
         var found = sourcecode.match(feature);
@@ -728,7 +917,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             ls = rhs.substr(0, pos);
             // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
             rhs = rhs.substr(pos + 1);
-            var alias = rhs.match(/^\[[a-zA-Z_][a-zA-Z0-9_]*\]/);
+            var alias = rhs.match(new XRegExp("^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]"));
             if (alias) {
                 ls += alias[0];
                 rhs = rhs.substr(alias[0].length);
@@ -752,10 +941,20 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     // as that would break the generated code
     function postprocessComment(str) {
         if (Array.isArray(str)) {
-            str = str.join(' ');
+            str = str.map(function (_) {
+                return (_ === '' || _ == null) ? 'ε' : _;
+            }).join(' ');
+        }
+        if (str === '') {
+            str = 'ε';
         }
         str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
+    }
+
+    function provideSymbolAsSourcecode(sym) {
+        var ss = String(sym);
+        return ' /* ' + postprocessComment(ss) + ' */ ' + addSymbol(sym);
     }
 
     // helper: convert index string/number to proper JS add/subtract expression
@@ -773,7 +972,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             // do not generate code for superfluous `- 0` JS expression:
             return '';
         }
-        // the VERY UNusual situation: `$-1`: refencing *parent* rules' values
+        // the VERY UNusual situation: `$-1`: referencing *parent* rules' values
         if (v < 0) {
             return ' - ' + (len - v);
         }
@@ -794,7 +993,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         var r, rhs, i, 
             precedence_override;
 
-        if (devDebug) console.log('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
 
         if (handle.constructor === Array) {
             var aliased = [],
@@ -805,7 +1004,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
             for (i = 0; i < rhs.length; i++) {
                 // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = rhs[i].match(/\[[a-zA-Z_][a-zA-Z0-9_]*\]$/);
+                rhs_i = rhs[i].match(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$"));
                 if (rhs_i) {
                     rhs[i] = rhs[i].substr(0, rhs[i].length - rhs_i[0].length);
                     rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
@@ -827,7 +1026,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     'case', productions.length + 1, ':',
                     '\n/*! Production::    ', postprocessComment(symbol), ':'
                 ].concat(postprocessComment(handle[0]), '*/\n');
-                var action = handle[1];
+                var action = preprocessActionCode(handle[1]);
                 var actionHash;
                 var rule4msg = symbol + ': ' + rhs.join(' ');
 
@@ -839,11 +1038,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 // Here we expand those direct token/symbol references: #TOKEN#
                 action = action
                     .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
-                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(sym);
+                        return provideSymbolAsSourcecode(sym);
                     });
 
                 // replace named semantic values ($nonterminal)
-                if (action.match(/[$@#][a-zA-Z_][a-zA-Z0-9_]*/)) {
+                if (action.match(new XRegExp("[$@#][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*"))) {
                     var count = {},
                         names = {};
 
@@ -883,18 +1082,21 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                             addName(rhs[i]);
                         }
                     }
-                    action = action.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                    action = action.replace(new XRegExp("\\$([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '$' + names[pl] : str;
-                        }).replace(/@([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                        }).replace(new XRegExp("@([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '@' + names[pl] : str;
-                        }).replace(/#([a-zA-Z_][a-zA-Z0-9_]*)\b/g, function (str, pl) {
+                        }).replace(new XRegExp("#([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, pl) {
                             return names[pl] ? '#' + names[pl] : str;
                         });
                 }
                 action = action
-                    // replace references to $$ with this.$, and @$ with this._$
-                    .replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, 'this._$')
-
+                    // replace references to `$$` with `this.$`, `@$` with `this._$` and `#$` with the token ID of the current rule
+                    .replace(/\$\$/g, 'this.$')
+                    .replace(/@\$/g, 'this._$')
+                    .replace(/#\$/g, function (_) {
+                        return provideSymbolAsSourcecode(symbol);
+                    })
                     // replace semantic value references ($n) with stack value (stack[n])
                     .replace(/\$(-?\d+)\b/g, function (_, n) {
                         return '$$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
@@ -907,12 +1109,16 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     .replace(/#(-?\d+)\b/g, function (_, n) {
                         var i = parseInt(n, 10) - 1;
                         if (!rhs[i]) {
-                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '"');
+                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
                         }
-                        var sym = String(rhs[i]);
-                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(rhs[i]);
+                        return provideSymbolAsSourcecode(rhs[i]);
                     });
+                
                 actionHash = mkHashIndex(action);
+
+                // Delay running the postprocess (restore) process until we've done ALL macro expansions:
+                //action = postprocessActionCode(action);
+                
                 if (actionHash in actionGroups) {
                     actionGroups[actionHash].push(label);
                 } else {
@@ -938,7 +1144,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } else {
             // no action -> don't care about aliases; strip them.
-            handle = handle.replace(/\[[a-zA-Z_][a-zA-Z0-9_]*\]/g, '');
+            handle = handle.replace(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]", "g"), '');
             rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 if (rhs[i] === 'error') {
@@ -965,7 +1171,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     var new_prec = operators[r.handle[i]].precedence;
                     if (old_prec !== 0 && old_prec !== new_prec) {
                         prec_symbols.push(r.handle[i]);
-                        // console.log('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
+                        // Jison.print('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
                         if (new_prec < old_prec) {
                             winning_symbol = r.handle[i];
                         }
@@ -976,15 +1182,15 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     } else if (old_prec === 0) {
                         prec_symbols.push(r.handle[i]);
                         winning_symbol = r.handle[i];
-                        // console.log('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
+                        // Jison.print('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
                     }
                     r.precedence = new_prec;
                 }
             }
 
             if (prec_symbols.length > 1) {
-                if (self.DEBUG) {
-                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precendences: {' + prec_symbols.join(', ') + '}');
+                if (self.DEBUG || 1) {
+                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precedences: {' + prec_symbols.join(', ') + '}');
                 }
             }
         }
@@ -1054,12 +1260,6 @@ lookaheadMixin.computeLookaheads = function computeLookaheads() {
     this.nullableSets();
     this.firstSets();
     this.followSets();
-
-    if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER computeLookaheads:");
-        this.displayFollowSets();
-        console.log("\n");
-    }
 };
 
 lookaheadMixin.displayFollowSets = function displayFollowSets() {
@@ -1209,8 +1409,7 @@ lookaheadMixin.firstSets = function firstSets() {
 
 // fixed-point calculation of NULLABLE
 lookaheadMixin.nullableSets = function nullableSets() {
-    var firsts = this.firsts = {},
-        nonterminals = this.nonterminals,
+    var nonterminals = this.nonterminals,
         self = this,
         cont = true;
 
@@ -1300,17 +1499,17 @@ lrGeneratorMixin.buildTable = function buildTable() {
     this.states = this.canonicalCollection();
 
     if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
         this.displayFollowSets();
-        console.log("\n");
+        Jison.print("\n");
     }
 
     this.table = this.parseTable(this.states);
 
     if (this.DEBUG) {
-        console.log("\nSymbol/Follow sets AFTER parseTable:");
+        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
         this.displayFollowSets();
-        console.log("\n");
+        Jison.print("\n");
     }
 
     this.defaultActions = findDefaults(this.table);
@@ -1460,7 +1659,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
     states.has = {};
     states.has[firstState] = 0;
     
-    if (devDebug > 0) console.log('canonicalCollection: ', states.has);
+    if (devDebug > 0) Jison.print('canonicalCollection: ', states.has);
 
     while (marked !== states.size()) {
         itemSet = states.item(marked);
@@ -1698,7 +1897,10 @@ function generateGenericHeaderComment() {
         + ' * Returns a Parser object of the following structure:\n'
         + ' *\n'
         + ' *  Parser: {\n'
-        + ' *    yy: {}\n'
+        + ' *    yy: {}     The so-called "shared state" or rather the *source* of it;\n'
+        + ' *               the real "shared state" `yy` passed around to\n'
+        + ' *               the rule actions, etc. is a derivative/copy of this one,\n'
+        + ' *               not a direct reference!\n'
         + ' *  }\n'
         + ' *\n'
         + ' *  Parser.prototype: {\n'
@@ -1727,7 +1929,7 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
         + ' *               `parser.parse(str, ...)`\n'
         + ' *\n'
@@ -1756,27 +1958,29 @@ function generateGenericHeaderComment() {
         + ' *    parse: function(input),\n'
         + ' *\n'
         + ' *    lexer: {\n'
+        + ' *        yy: {...},           A reference to the so-called "shared state" `yy` once\n'
+        + ' *                             received via a call to the `.setInput(input, yy)` lexer API.\n'
         + ' *        EOF: 1,\n'
         + ' *        ERROR: 2,\n'
         + ' *        JisonLexerError: function(msg, hash),\n'
         + ' *        parseError: function(str, hash),\n'
-        + ' *        setInput: function(input),\n'
+        + ' *        setInput: function(input, [yy]),\n'
         + ' *        input: function(),\n'
         + ' *        unput: function(str),\n'
         + ' *        more: function(),\n'
         + ' *        reject: function(),\n'
         + ' *        less: function(n),\n'
-        + ' *        pastInput: function(),\n'
-        + ' *        upcomingInput: function(),\n'
+        + ' *        pastInput: function(n),\n'
+        + ' *        upcomingInput: function(n),\n'
         + ' *        showPosition: function(),\n'
         + ' *        test_match: function(regex_match_array, rule_index),\n'
         + ' *        next: function(),\n'
         + ' *        lex: function(),\n'
         + ' *        begin: function(condition),\n'
-        + ' *        popState: function(),\n'
-        + ' *        _currentRules: function(),\n'
-        + ' *        topState: function(),\n'
         + ' *        pushState: function(condition),\n'
+        + ' *        popState: function(),\n'
+        + ' *        topState: function(),\n'
+        + ' *        _currentRules: function(),\n'
         + ' *        stateStackSize: function(),\n'
         + ' *\n'
         + ' *        options: { ... lexer %options ... },\n'
@@ -1822,6 +2026,9 @@ function generateGenericHeaderComment() {
         + ' *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
         + ' *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,\n'
+        + ' *                  for instance, for advanced error analysis and reporting)\n'
+        + ' *    yy:          (object: the current parser internal "shared state" `yy`\n'
+        + ' *                  as is also available in the rule actions; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
         + ' *    lexer:       (reference to the current lexer instance used by the parser)\n'
         + ' *  }\n'
@@ -1914,7 +2121,7 @@ function generateGenericHeaderComment() {
 }
 
 /*
- * Mixin for common LR/LL/*an* parser behavior
+ * Mixin for common LR/LL/*any* parser behavior
  */
 var generatorMixin = {};
 
@@ -1923,7 +2130,7 @@ generatorMixin.generate = function parser_generate(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE::OPTIONS:\n', this.options);
+        Jison.print('GENERATE::OPTIONS:\n', this.options);
     }
     var code = '';
 
@@ -1958,7 +2165,7 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-AMD::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-AMD::OPTIONS:\n', this.options);
     }
     var module = this.generateModule_();
     var out = [
@@ -1988,7 +2195,7 @@ lrGeneratorMixin.generateESModule = function generateESModule(opt){
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-ES2015::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-ES2015::OPTIONS:\n', this.options);
     }
     var module = this.generateModule_();
     var out = [
@@ -2020,7 +2227,7 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-CommonJS::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-CommonJS::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var main = [];
@@ -2053,7 +2260,7 @@ generatorMixin.generateModule = function generateModule(opt) {
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
-        console.log('GENERATE-Module::OPTIONS:\n', this.options);
+        Jison.print('GENERATE-Module::OPTIONS:\n', this.options);
     }
     var moduleName = opt.moduleName || 'parser';
     var out = generateGenericHeaderComment();
@@ -2419,9 +2626,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         var k;
         for (var i = 0, len = a.length; i < len; i++) {
             k = a[i];
-            // `$eof` is a synonym of `$end` for bison compatibility; 
+            // `$eof` and `EOF` are synonyms of `$end` (`$eof` is for bison compatibility); 
             // this is the only place where two symbol names may map to a single symbol ID number
-            // and we do not want `$eof` to show up in the symbol tables of generated parsers
+            // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
             // as we use `$end` for that one!
             if (k !== '$eof') {
                 nt[k] = tbl[k];
@@ -2447,9 +2654,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                     if (!t) {
                         t = '%epsilon';
                     }
-                    // `$eof` is a synonym of `$end` for bison compatibility; 
+                    // `$eof` and `EOF` are synonyms of `$end` ('$eof' is for bison compatibility); 
                     // this is the only place where two symbol names may map to a single symbol ID number
-                    // and we do not want `$eof` to show up in the symbol tables of generated parsers
+                    // and we do not want `$eof`/`EOF` to show up in the symbol tables of generated parsers
                     // as we use `$end` for that one!
                     if (t === '$eof') {
                         t = '$end';
@@ -2518,7 +2725,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ');
+        js = js.replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ');
         js = js.replace(/^( +)pre_parse: true,$/gm, '$1pre_parse: ' + String(pre) + ',');
         js = js.replace(/^( +)post_parse: true,$/gm, '$1post_parse: ' + String(post) + ',');
         return js;
@@ -3473,6 +3680,20 @@ parser.describeSymbol = function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 };
@@ -3558,7 +3779,7 @@ parser.parse = function parse(input) {
 
             var js;
             try {
-                js = JSON.stringify(obj, null, 2).replace(/  "([a-zA-Z_][a-zA-Z0-9_]*)": /g, '  $1: ').replace(/[\n\s]+/g, ' ');
+                js = JSON.stringify(obj, null, 2).replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ').replace(/[\n\s]+/g, ' ');
             } catch (ex) {
                 js = String(obj);
             }
@@ -3780,6 +4001,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     if (yydebug) yydebug('error detected: ', { error_rule_depth: error_rule_depth });
@@ -3808,6 +4030,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                             state_stack: stack,
                             value_stack: vstack,
                             location_stack: lstack,
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -3837,6 +4060,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -3883,6 +4107,7 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                     state_stack: stack,
                     value_stack: vstack,
                     location_stack: lstack,
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -3908,6 +4133,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -3926,6 +4152,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                     state_stack: stack,
                     value_stack: vstack,
                     location_stack: lstack,
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -4050,6 +4277,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
             state_stack: stack,
             value_stack: vstack,
             location_stack: lstack,
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -4098,9 +4326,9 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.states = this.canonicalCollection();
 
         if (this.DEBUG) {
-            console.log("\nSymbol/Follow sets AFTER canonicalCollection:");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
             this.displayFollowSets();
-            console.log("\n");
+            Jison.print("\n");
         }
 
         this.terms_ = {};
@@ -4133,34 +4361,36 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.buildNewGrammar();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         newg.computeLookaheads();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR");
+            newg.displayFollowSets();
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         this.unionLookaheads();
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.states);
 
         if (this.DEBUG) {
-            console.log("Symbol/Follow sets AFTER parseTable: NEW GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR");
             newg.displayFollowSets();
-            console.log("Symbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
             this.displayFollowSets();
         }
 
@@ -4181,7 +4411,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             endStateNum = this.states.item(endStateNum).edges[productionHandle[i]] || endStateNum;
         }
         if (devDebug > 0) {
-            console.log('GO: ', {
+            Jison.print('GO: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 endState: endStateNum
@@ -4206,7 +4436,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             this.terms_[t] = productionHandle[i];
         }
         if (devDebug > 0) {
-            console.log('GOPATH: ', {
+            Jison.print('GOPATH: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 path: path,
@@ -4324,6 +4554,13 @@ var lalrGeneratorDebug = {
 var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     afterconstructor: function lr_aftercontructor() {
         this.computeLookaheads();
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            this.displayFollowSets();
+            Jison.print("\n");
+        }
+
         this.buildTable();
     }
 });
@@ -4405,17 +4642,33 @@ var LR1Generator = exports.LR1Generator = lr1.construct();
 /*
  * LL Parser
  */
-var ll = generator.beget(lookaheadMixin, generatorMixin, {
+var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: 'LL(1)',
 
     afterconstructor: function ll_aftercontructor() {
         this.computeLookaheads();
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            this.displayFollowSets();
+        }
+
         this.table = this.parseTable(this.productions);
+
+        if (this.DEBUG) {
+            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
+            this.displayFollowSets();
+        }
+
+        this.defaultActions = {}; // findDefaults(this.table);
+        //cleanupTable(this.table);
     },
 
-    parseTable: function llParseTable(productions) {
+    parseTable: function ll_ParseTable(productions) {
         var table = {},
+            symbols_ = this.symbols_,
             self = this;
+
         productions.forEach(function (production, i) {
             var row = table[production.symbol] || {};
             var tokens = production.first;
@@ -4435,44 +4688,6 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         });
 
         return table;
-    },
-
-    // Generates the code of the parser module, which consists of two parts:
-    // - module.commonCode: initialization code that should be placed before the module
-    // - module.moduleCode: code that creates the module object
-    generateModule_: function ll_GenerateModule_() {
-        // var parseFn = String(parser.parse);
-        // parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
-
-        // parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
-
-        // // always remove the feature markers in the template code.
-        // parseFn = removeFeatureMarkers(parseFn);
-
-        // parseFn = removeUnusedKernelFeatures(parseFn, this);
-
-        // Generate code with fresh variable names
-        nextVariableId = 0;
-        // var tableCode = this.generateTableCode(this.table);
-
-        // // Generate the initialization code
-        // var commonCode = tableCode.commonCode;
-
-
-        // Generate the module creation code
-        var moduleCode = '{\n';
-        moduleCode += [
-            'trace: ' + String(this.trace),
-            'JisonParserError: JisonParserError',
-            'yy: {}',
-            'self: ' + JSON.stringify(this, null, 2)
-            ].join(',\n');
-        moduleCode += '\n};';
-
-        return { 
-            commonCode: (new Array(100)).join('commonCode\n'), 
-            moduleCode: moduleCode 
-        };
     }
 });
 
@@ -4508,7 +4723,7 @@ return function Parser(g, options) {
 })();
 
 }).call(this,require('_process'))
-},{"../package.json":25,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"_process":21,"assert":12,"fs":13,"path":20}],3:[function(require,module,exports){
+},{"../package.json":25,"./util/ebnf-parser.js":3,"./util/regexp-lexer.js":8,"./util/set":9,"./util/typal":11,"_process":21,"assert":12,"fs":13,"path":20,"xregexp":24}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("./lex-parser");
@@ -4902,12 +5117,15 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
+/* parser generated by jison 0.4.17-131 */
 /*
  * Returns a Parser object of the following structure:
  *
  *  Parser: {
- *    yy: {}
+ *    yy: {}     The so-called "shared state" or rather the *source* of it;
+ *               the real "shared state" `yy` passed around to
+ *               the rule actions, etc. is a derivative/copy of this one,
+ *               not a direct reference!
  *  }
  *
  *  Parser.prototype: {
@@ -4936,7 +5154,7 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -4965,27 +5183,29 @@ exports.transform = EBNF.transform;
  *    parse: function(input),
  *
  *    lexer: {
+ *        yy: {...},           A reference to the so-called "shared state" `yy` once
+ *                             received via a call to the `.setInput(input, yy)` lexer API.
  *        EOF: 1,
  *        ERROR: 2,
  *        JisonLexerError: function(msg, hash),
  *        parseError: function(str, hash),
- *        setInput: function(input),
+ *        setInput: function(input, [yy]),
  *        input: function(),
  *        unput: function(str),
  *        more: function(),
  *        reject: function(),
  *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
+ *        pastInput: function(n),
+ *        upcomingInput: function(n),
  *        showPosition: function(),
  *        test_match: function(regex_match_array, rule_index),
  *        next: function(),
  *        lex: function(),
  *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
  *        pushState: function(condition),
+ *        popState: function(),
+ *        topState: function(),
+ *        _currentRules: function(),
  *        stateStackSize: function(),
  *
  *        options: { ... lexer %options ... },
@@ -5031,6 +5251,9 @@ exports.transform = EBNF.transform;
  *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    yy:          (object: the current parser internal "shared state" `yy`
+ *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
@@ -5297,74 +5520,74 @@ symbols_: {
   ",": 44,
   ".": 46,
   "/": 47,
-  "/!": 158,
+  "/!": 157,
   "<": 60,
   "=": 61,
   ">": 62,
   "?": 63,
-  "ACTION": 142,
-  "ACTION_BODY": 152,
-  "CHARACTER_LIT": 173,
-  "CODE": 183,
-  "EOF": 132,
-  "ESCAPE_CHAR": 170,
-  "INCLUDE": 180,
-  "NAME": 136,
-  "NAME_BRACE": 164,
-  "OPTIONS": 174,
-  "OPTIONS_END": 176,
-  "OPTION_VALUE": 178,
-  "PATH": 181,
-  "RANGE_REGEX": 171,
-  "REGEX_SET": 169,
-  "REGEX_SET_END": 167,
-  "REGEX_SET_START": 165,
-  "SPECIAL_GROUP": 157,
-  "START_COND": 146,
-  "START_EXC": 140,
-  "START_INC": 138,
-  "STRING_LIT": 172,
-  "UNKNOWN_DECL": 145,
+  "ACTION": 141,
+  "ACTION_BODY": 151,
+  "CHARACTER_LIT": 172,
+  "CODE": 182,
+  "EOF": 1,
+  "ESCAPE_CHAR": 169,
+  "INCLUDE": 179,
+  "NAME": 135,
+  "NAME_BRACE": 163,
+  "OPTIONS": 173,
+  "OPTIONS_END": 175,
+  "OPTION_VALUE": 177,
+  "PATH": 180,
+  "RANGE_REGEX": 170,
+  "REGEX_SET": 168,
+  "REGEX_SET_END": 166,
+  "REGEX_SET_START": 164,
+  "SPECIAL_GROUP": 156,
+  "START_COND": 145,
+  "START_EXC": 139,
+  "START_INC": 137,
+  "STRING_LIT": 171,
+  "UNKNOWN_DECL": 144,
   "^": 94,
-  "action": 149,
-  "action_body": 150,
-  "action_comments_body": 151,
-  "any_group_regex": 161,
-  "definition": 135,
+  "action": 148,
+  "action_body": 149,
+  "action_comments_body": 150,
+  "any_group_regex": 160,
+  "definition": 134,
   "definitions": 129,
   "error": 2,
-  "escape_char": 163,
-  "extra_lexer_module_code": 133,
-  "include_macro_code": 143,
+  "escape_char": 162,
+  "extra_lexer_module_code": 132,
+  "include_macro_code": 142,
   "init": 128,
   "lex": 127,
-  "module_code_chunk": 182,
-  "name_expansion": 159,
-  "name_list": 153,
-  "names_exclusive": 141,
-  "names_inclusive": 139,
-  "option": 177,
-  "option_list": 175,
-  "optional_module_code_chunk": 179,
-  "options": 144,
-  "range_regex": 160,
-  "regex": 137,
-  "regex_base": 156,
-  "regex_concat": 155,
-  "regex_list": 154,
-  "regex_set": 166,
-  "regex_set_atom": 168,
-  "rule": 147,
-  "rules": 134,
+  "module_code_chunk": 181,
+  "name_expansion": 158,
+  "name_list": 152,
+  "names_exclusive": 140,
+  "names_inclusive": 138,
+  "option": 176,
+  "option_list": 174,
+  "optional_module_code_chunk": 178,
+  "options": 143,
+  "range_regex": 159,
+  "regex": 136,
+  "regex_base": 155,
+  "regex_concat": 154,
+  "regex_list": 153,
+  "regex_set": 165,
+  "regex_set_atom": 167,
+  "rule": 146,
+  "rules": 133,
   "rules_and_epilogue": 131,
-  "start_conditions": 148,
-  "string": 162,
+  "start_conditions": 147,
+  "string": 161,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   36: "$",
   40: "(",
@@ -5383,30 +5606,29 @@ terminals_: {
   124: "|",
   125: "}",
   130: "%%",
-  132: "EOF",
-  136: "NAME",
-  138: "START_INC",
-  140: "START_EXC",
-  142: "ACTION",
-  145: "UNKNOWN_DECL",
-  146: "START_COND",
-  152: "ACTION_BODY",
-  157: "SPECIAL_GROUP",
-  158: "/!",
-  164: "NAME_BRACE",
-  165: "REGEX_SET_START",
-  167: "REGEX_SET_END",
-  169: "REGEX_SET",
-  170: "ESCAPE_CHAR",
-  171: "RANGE_REGEX",
-  172: "STRING_LIT",
-  173: "CHARACTER_LIT",
-  174: "OPTIONS",
-  176: "OPTIONS_END",
-  178: "OPTION_VALUE",
-  180: "INCLUDE",
-  181: "PATH",
-  183: "CODE"
+  135: "NAME",
+  137: "START_INC",
+  139: "START_EXC",
+  141: "ACTION",
+  144: "UNKNOWN_DECL",
+  145: "START_COND",
+  151: "ACTION_BODY",
+  156: "SPECIAL_GROUP",
+  157: "/!",
+  163: "NAME_BRACE",
+  164: "REGEX_SET_START",
+  166: "REGEX_SET_END",
+  168: "REGEX_SET",
+  169: "ESCAPE_CHAR",
+  170: "RANGE_REGEX",
+  171: "STRING_LIT",
+  172: "CHARACTER_LIT",
+  173: "OPTIONS",
+  175: "OPTIONS_END",
+  177: "OPTION_VALUE",
+  179: "INCLUDE",
+  180: "PATH",
+  182: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -5417,54 +5639,54 @@ productions_: bp({
   129,
   129,
   s,
-  [135, 7],
-  139,
-  139,
-  141,
-  141,
-  134,
-  134,
-  147,
-  s,
-  [149, 3],
-  150,
-  150,
-  151,
-  151,
+  [134, 7],
+  138,
+  138,
+  140,
+  140,
+  133,
+  133,
+  146,
   s,
   [148, 3],
-  153,
-  153,
-  137,
+  149,
+  149,
+  150,
+  150,
   s,
-  [154, 4],
-  155,
-  155,
+  [147, 3],
+  152,
+  152,
+  136,
   s,
-  [156, 15],
+  [153, 4],
+  154,
+  154,
+  s,
+  [155, 15],
+  158,
+  160,
+  165,
+  165,
+  167,
+  167,
+  162,
   159,
   161,
-  166,
-  166,
-  168,
-  168,
-  163,
-  160,
-  162,
-  162,
-  144,
-  175,
-  175,
+  161,
+  143,
+  174,
+  174,
   s,
-  [177, 3],
-  133,
-  133,
-  143,
-  143,
-  182,
-  182,
-  179,
-  179
+  [176, 3],
+  132,
+  132,
+  142,
+  142,
+  181,
+  181,
+  178,
+  178
 ]),
   rule: u([
   4,
@@ -5519,15 +5741,14 @@ productions_: bp({
   0
 ])
 }),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     lex : init definitions '%%' rules_and_epilogue */
- 
-          this.$ = $$[$0];
+ this.$ = $$[$0];
           if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
           if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
           if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
@@ -5546,52 +5767,40 @@ case 1 :
           }
           delete yy.options;
           delete yy.actionInclude;
-          return this.$;
-         
+          return this.$; 
 break;
 case 2 : 
 /*! Production::     rules_and_epilogue : EOF */
- 
-        this.$ = { rules: [] };
-       
+ this.$ = { rules: [] }; 
 break;
 case 3 : 
 /*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
           this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: [] };
-        }
-       
+        } 
 break;
 case 4 : 
 /*! Production::     rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
           this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: $$[$0 - 3] };
-        }
-       
+        } 
 break;
 case 5 : 
 /*! Production::     rules_and_epilogue : rules EOF */
- 
-        this.$ = { rules: $$[$0 - 1] };
-       
+ this.$ = { rules: $$[$0 - 1] }; 
 break;
 case 6 : 
-/*! Production::     init :  */
- 
-            yy.actionInclude = [];
-            if (!yy.options) yy.options = {};
-         
+/*! Production::     init : ε */
+ yy.actionInclude = [];
+            if (!yy.options) yy.options = {}; 
 break;
 case 7 : 
 /*! Production::     definitions : definition definitions */
- 
-          this.$ = $$[$0];
+ this.$ = $$[$0];
           if ($$[$0 - 1] != null) {
             if ('length' in $$[$0 - 1]) {
               this.$[0] = this.$[0] || {};
@@ -5605,16 +5814,15 @@ case 7 :
               this.$[2] = this.$[2] || [];
               this.$[2].push($$[$0 - 1].body);
             }
-          }
-         
+          } 
 break;
 case 8 : 
-/*! Production::     definitions :  */
-  this.$ = [null, null];  
+/*! Production::     definitions : ε */
+ this.$ = [null, null]; 
 break;
 case 9 : 
 /*! Production::     definition : NAME regex */
-  this.$ = [$$[$0 - 1], $$[$0]];  
+ this.$ = [$$[$0 - 1], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     definition : START_INC names_inclusive */
@@ -5636,69 +5844,69 @@ case 10 :
 /*! Production::     module_code_chunk : CODE */
  case 79 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 12 : 
 /*! Production::     definition : ACTION */
  case 13 : 
 /*! Production::     definition : include_macro_code */
-  yy.actionInclude.push($$[$0]); this.$ = null;  
+ yy.actionInclude.push($$[$0]); this.$ = null; 
 break;
 case 14 : 
 /*! Production::     definition : options */
-  this.$ = null;  
+ this.$ = null; 
 break;
 case 15 : 
 /*! Production::     definition : UNKNOWN_DECL */
-  this.$ = {type: 'unknown', body: $$[$0]};  
+ this.$ = {type: 'unknown', body: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     names_inclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0; 
 break;
 case 17 : 
 /*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0; 
 break;
 case 18 : 
 /*! Production::     names_exclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1; 
 break;
 case 19 : 
 /*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1; 
 break;
 case 20 : 
 /*! Production::     rules : rules rule */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 21 : 
 /*! Production::     rules : rule */
  case 33 : 
 /*! Production::     name_list : NAME */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 22 : 
 /*! Production::     rule : start_conditions regex action */
-  this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]];  
+ this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]]; 
 break;
 case 23 : 
 /*! Production::     action : '{' action_body '}' */
  case 30 : 
 /*! Production::     start_conditions : '<' name_list '>' */
-  this.$ = $$[$0 - 1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 28 : 
-/*! Production::     action_comments_body :  */
+/*! Production::     action_comments_body : ε */
  case 39 : 
-/*! Production::     regex_list :  */
+/*! Production::     regex_list : ε */
  case 80 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 29 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
@@ -5710,118 +5918,161 @@ case 29 :
 /*! Production::     regex_set : regex_set_atom regex_set */
  case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
-  this.$ = $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 31 : 
 /*! Production::     start_conditions : '<' '*' '>' */
-  this.$ = ['*'];  
+ this.$ = ['*']; 
 break;
 case 34 : 
 /*! Production::     name_list : name_list ',' NAME */
-  this.$ = $$[$0 - 2]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 2]; this.$.push($$[$0]); 
 break;
 case 35 : 
 /*! Production::     regex : regex_list */
- 
+ // Detect if the regex ends with a pure (Unicode) word;
+          // we *do* consider escaped characters which are 'alphanumeric' 
+          // to be equivalent to their non-escaped version, hence these are
+          // all valid 'words' for the 'easy keyword rules' option:
+          //
+          // - hello_kitty
+          // - γεια_σου_γατούλα
+          // - \u03B3\u03B5\u03B9\u03B1_\u03C3\u03BF\u03C5_\u03B3\u03B1\u03C4\u03BF\u03CD\u03BB\u03B1
+          //
+          // http://stackoverflow.com/questions/7885096/how-do-i-decode-a-string-with-escaped-unicode#12869914
+          //
+          // As we only check the *tail*, we also accept these as
+          // 'easy keywords':
+          //
+          // - %options
+          // - %foo-bar    
+          // - +++a:b:c1
+          //
+          // Note the dash in that last example: there the code will consider
+          // `bar` to be the keyword, which is fine with us as we're only
+          // interested in the taiol boundary and patching that one for
+          // the `easy_keyword_rules` option.
           this.$ = $$[$0];
-          if (yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
-              this.$ += "\\b";
-          }
-         
+          if (yy.options.easy_keyword_rules) {
+            try {
+              // We need to 'protect' JSON.parse here as keywords are allowed
+              // to contain double-quotes and other leading cruft.
+              // JSON.parse *does* gobble some escapes (such as `\b`) but
+              // we protect against that through a simple replace regex: 
+              // we're not interested in the special escapes' exact value 
+              // anyway.
+              // It will also catch escaped escapes (`\\`), which are not 
+              // word characters either, so no need to worry about 
+              // `JSON.parse()` 'correctly' converting convoluted constructs
+              // like '\\\\\\\\\\b' in here.
+              this.$ = this.$
+              .replace(/"/g, '.' /* '\\"' */)
+              .replace(/\\c[A-Z]/g, '.')
+              .replace(/\\[^xu0-9]/g, '.');
+
+              this.$ = JSON.parse('"' + this.$ + '"');
+              // a 'keyword' starts with an alphanumeric character, 
+              // followed by zero or more alphanumerics or digits:
+              if (this.$.match(/\w[\w\d]*$/u)) {
+                this.$ = $$[$0] + "\\b";
+              } else {
+                this.$ = $$[$0];
+              }
+            } catch (ex) {
+              this.$ = $$[$0];
+            }
+          } 
 break;
 case 36 : 
 /*! Production::     regex_list : regex_list '|' regex_concat */
-  this.$ = $$[$0 - 2] + '|' + $$[$0];  
+ this.$ = $$[$0 - 2] + '|' + $$[$0]; 
 break;
 case 37 : 
 /*! Production::     regex_list : regex_list '|' */
-  this.$ = $$[$0 - 1] + '|';  
+ this.$ = $$[$0 - 1] + '|'; 
 break;
 case 42 : 
 /*! Production::     regex_base : '(' regex_list ')' */
-  this.$ = '(' + $$[$0 - 1] + ')';  
+ this.$ = '(' + $$[$0 - 1] + ')'; 
 break;
 case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ')' */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + ')';  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + ')'; 
 break;
 case 44 : 
 /*! Production::     regex_base : regex_base '+' */
-  this.$ = $$[$0 - 1] + '+';  
+ this.$ = $$[$0 - 1] + '+'; 
 break;
 case 45 : 
 /*! Production::     regex_base : regex_base '*' */
-  this.$ = $$[$0 - 1] + '*';  
+ this.$ = $$[$0 - 1] + '*'; 
 break;
 case 46 : 
 /*! Production::     regex_base : regex_base '?' */
-  this.$ = $$[$0 - 1] + '?';  
+ this.$ = $$[$0 - 1] + '?'; 
 break;
 case 47 : 
 /*! Production::     regex_base : '/' regex_base */
-  this.$ = '(?=' + $$[$0] + ')';  
+ this.$ = '(?=' + $$[$0] + ')'; 
 break;
 case 48 : 
 /*! Production::     regex_base : '/!' regex_base */
-  this.$ = '(?!' + $$[$0] + ')';  
+ this.$ = '(?!' + $$[$0] + ')'; 
 break;
 case 52 : 
 /*! Production::     regex_base : '.' */
-  this.$ = '.';  
+ this.$ = '.'; 
 break;
 case 53 : 
 /*! Production::     regex_base : '^' */
-  this.$ = '^';  
+ this.$ = '^'; 
 break;
 case 54 : 
 /*! Production::     regex_base : '$' */
-  this.$ = '$';  
+ this.$ = '$'; 
 break;
 case 58 : 
 /*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
  case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 62 : 
 /*! Production::     regex_set_atom : name_expansion */
-  
-            if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) && $$[$0].toUpperCase() !== $$[$0]) {
+ if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) 
+                && $$[$0].toUpperCase() !== $$[$0]
+            ) {
                 // treat this as part of an XRegExp `\p{...}` Unicode slug:
                 this.$ = $$[$0];
             } else {
-                this.$ = '{[' + $$[$0] + ']}';
+                this.$ = $$[$0];
             }
-         
+            //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ }); 
 break;
 case 65 : 
 /*! Production::     string : STRING_LIT */
-  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
+ this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2)); 
 break;
 case 70 : 
 /*! Production::     option : NAME[option] */
-  yy.options[$$[$0]] = true;  
+ yy.options[$$[$0]] = true; 
 break;
 case 71 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 72 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  yy.options[$$[$0 - 2]] = $$[$0];  
+ yy.options[$$[$0 - 2]] = $$[$0]; 
 break;
 case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fs = require('fs');
+ var fs = require('fs');
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 76 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -5927,18 +6178,18 @@ table: bt({
   128,
   130,
   s,
-  [136, 4, 2],
-  145,
-  174,
-  180,
+  [135, 4, 2],
+  144,
+  173,
+  179,
   1,
   129,
   130,
-  135,
+  134,
   c,
   [11, 4],
+  142,
   143,
-  144,
   c,
   [13, 3],
   130,
@@ -5951,55 +6202,55 @@ table: bt({
   94,
   124,
   130,
+  135,
   136,
-  137,
   c,
   [41, 4],
   s,
-  [154, 6, 1],
+  [153, 6, 1],
   s,
-  [161, 5, 1],
-  170,
+  [160, 5, 1],
+  169,
+  171,
   172,
   173,
-  174,
-  180,
-  139,
-  146,
-  141,
-  146,
+  179,
+  138,
+  145,
+  140,
+  145,
   c,
   [67, 8],
   c,
   [8, 24],
   2,
-  181,
-  136,
-  175,
-  177,
+  180,
+  135,
+  174,
+  176,
+  1,
   c,
-  [70, 4],
+  [71, 4],
   60,
   94,
   123,
   124,
   130,
   131,
-  132,
-  134,
-  142,
+  133,
+  141,
+  146,
   147,
-  148,
+  156,
   157,
-  158,
   c,
   [65, 5],
-  180,
+  179,
   130,
   c,
   [37, 8],
   c,
-  [26, 3],
+  [25, 3],
   c,
   [10, 7],
   36,
@@ -6020,13 +6271,13 @@ table: bt({
   63,
   c,
   [31, 9],
+  156,
   157,
-  158,
-  160,
+  159,
   c,
   [27, 3],
   s,
-  [171, 4, 1],
+  [170, 4, 1],
   c,
   [56, 7],
   124,
@@ -6044,47 +6295,45 @@ table: bt({
   [103, 11],
   c,
   [27, 180],
-  167,
-  s,
-  [169, 6, 1],
-  180,
-  159,
-  164,
   166,
+  s,
+  [168, 6, 1],
+  179,
+  158,
+  163,
+  165,
+  167,
   168,
-  169,
   c,
   [115, 81],
   c,
   [16, 6],
-  146,
+  145,
   c,
   [9, 29],
   c,
-  [514, 9],
-  132,
+  [514, 10],
   c,
   [61, 10],
   c,
   [60, 4],
-  183,
+  182,
   c,
   [25, 25],
-  176,
-  136,
+  175,
+  135,
+  174,
   175,
   176,
-  177,
   61,
-  136,
-  176,
-  1,
-  1,
+  135,
+  175,
+  s,
+  [1, 3],
   132,
-  133,
+  178,
   179,
-  180,
-  182,
+  181,
   c,
   [41, 11],
   c,
@@ -6092,17 +6341,19 @@ table: bt({
   c,
   [21, 11],
   c,
-  [19, 12],
+  [19, 8],
   c,
-  [18, 3],
-  137,
-  142,
+  [463, 5],
+  123,
+  124,
+  136,
+  141,
   c,
   [503, 14],
-  180,
+  179,
   42,
-  136,
-  153,
+  135,
+  152,
   c,
   [605, 14],
   c,
@@ -6119,42 +6370,41 @@ table: bt({
   [167, 47],
   c,
   [28, 9],
-  167,
+  166,
   c,
   [508, 3],
+  166,
   167,
   168,
-  169,
-  164,
-  167,
+  163,
+  166,
   c,
   [3, 4],
   c,
   [425, 24],
-  174,
-  180,
-  176,
-  136,
-  178,
-  132,
-  132,
-  143,
-  180,
-  132,
-  180,
-  183,
-  c,
-  [3, 4],
-  c,
-  [377, 5],
+  173,
+  179,
+  175,
+  135,
+  177,
   1,
+  1,
+  142,
+  179,
+  1,
+  c,
+  [409, 3],
+  c,
+  [3, 3],
+  c,
+  [377, 6],
   c,
   [357, 19],
   123,
+  141,
   142,
-  143,
-  149,
-  180,
+  148,
+  179,
   44,
   62,
   62,
@@ -6164,41 +6414,41 @@ table: bt({
   [945, 47],
   c,
   [257, 62],
-  167,
-  136,
-  176,
+  166,
+  135,
+  175,
   c,
-  [529, 3],
+  [529, 4],
   c,
   [151, 6],
   c,
-  [160, 4],
+  [160, 3],
   c,
   [154, 20],
   125,
+  149,
   150,
   151,
-  152,
   c,
-  [535, 23],
+  [24, 19],
   c,
-  [554, 22],
+  [554, 26],
   c,
   [16, 9],
-  136,
+  135,
   c,
   [17, 16],
-  132,
+  1,
   1,
   123,
   125,
   123,
   125,
-  152,
+  151,
+  44,
+  62,
   c,
-  [229, 4],
-  c,
-  [104, 22],
+  [104, 24],
   c,
   [29, 3],
   c,
@@ -6235,9 +6485,9 @@ table: bt({
   s,
   [2, 25],
   c,
-  [73, 11],
+  [73, 12],
   c,
-  [50, 4],
+  [12, 3],
   c,
   [88, 13],
   c,
@@ -6261,11 +6511,11 @@ table: bt({
   c,
   [174, 132],
   c,
-  [577, 9],
+  [565, 10],
   c,
-  [465, 15],
+  [593, 24],
   c,
-  [235, 38],
+  [235, 28],
   c,
   [469, 15],
   c,
@@ -6279,13 +6529,15 @@ table: bt({
   c,
   [28, 36],
   c,
-  [891, 5],
+  [324, 4],
   c,
-  [81, 47],
+  [209, 39],
   c,
-  [377, 16],
+  [306, 10],
   c,
-  [388, 33],
+  [51, 26],
+  c,
+  [312, 22],
   c,
   [839, 102],
   c,
@@ -6390,11 +6642,11 @@ table: bt({
   s,
   [2, 32],
   c,
-  [53, 7],
+  [54, 8],
   c,
   [5, 4],
   c,
-  [45, 21],
+  [45, 20],
   c,
   [20, 9],
   c,
@@ -6404,11 +6656,11 @@ table: bt({
   c,
   [26, 8],
   c,
-  [39, 10],
+  [59, 16],
   c,
-  [54, 11],
+  [83, 6],
   c,
-  [50, 7],
+  [50, 6],
   c,
   [157, 10],
   c,
@@ -6426,15 +6678,17 @@ table: bt({
   c,
   [421, 4],
   c,
-  [454, 12],
+  [179, 12],
   c,
-  [188, 33],
+  [538, 24],
   c,
-  [441, 8],
+  [650, 14],
   c,
-  [657, 12],
+  [532, 11],
   c,
-  [556, 48],
+  [492, 9],
+  c,
+  [556, 43],
   c,
   [421, 137],
   c,
@@ -6508,13 +6762,13 @@ table: bt({
   41,
   40,
   44,
+  46,
   s,
   [32, 4],
   51,
   s,
   [32, 3],
   47,
-  46,
   s,
   [32, 9],
   7,
@@ -6612,10 +6866,10 @@ table: bt({
   80,
   80,
   75,
+  77,
   c,
   [538, 8],
   76,
-  77,
   s,
   [32, 9],
   s,
@@ -6837,6 +7091,20 @@ describeSymbol: function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 },
@@ -7051,6 +7319,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
 
@@ -7079,6 +7348,7 @@ parse: function parse(input) {
                             state_stack: stack,
                             value_stack: vstack,
 
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -7108,6 +7378,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -7142,6 +7413,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -7160,6 +7432,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -7284,6 +7557,7 @@ parse: function parse(input) {
             state_stack: stack,
             value_stack: vstack,
 
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -7317,7 +7591,7 @@ function prepareString (s) {
     return s;
 };
 
-/* generated by jison-lex 0.3.4-123 */
+/* generated by jison-lex 0.3.4-131 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -7377,7 +7651,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -7386,7 +7660,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -7407,7 +7681,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -7457,7 +7731,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -7488,13 +7762,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -7513,12 +7787,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
-        this.unput(this.match.slice(n));
+less:function lexer_less(n) {
+        return this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -7528,7 +7802,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -7541,14 +7815,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -7626,7 +7900,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -7704,7 +7978,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -7721,12 +7995,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
-        this.conditionStack.push(condition);
+begin:function lexer_begin(condition) {
+        return this.pushState(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -7736,7 +8010,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -7745,7 +8019,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -7755,12 +8029,13 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
-        this.begin(condition);
+pushState:function lexer_pushState(condition) {
+        this.conditionStack.push(condition);
+        return this;
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -7772,11 +8047,6 @@ performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) 
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
-case 2 : 
-/*! Conditions:: action */ 
-/*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 152; // regexp with braces or quotes (and no spaces) 
-break;
 case 7 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
@@ -7785,7 +8055,14 @@ break;
 case 8 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 125; 
+ 
+                                            if (yy.depth == 0) { 
+                                                this.begin('trail'); 
+                                            } else { 
+                                                yy.depth--; 
+                                            } 
+                                            return 125;
+                                         
 break;
 case 10 : 
 /*! Conditions:: conditions */ 
@@ -7818,23 +8095,23 @@ case 17 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 176; 
+ this.popState(); return 175; 
 break;
 case 24 : 
 /*! Conditions:: options */ 
@@ -7864,12 +8141,12 @@ break;
 case 30 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 31 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -7891,13 +8168,13 @@ case 32 :
                                             this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path');
-                                            return 180;
+                                            return 179;
                                          
 break;
 case 33 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .+ */ 
- this.begin('rules'); return 142; 
+ this.begin('rules'); return 141; 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7912,7 +8189,7 @@ break;
 case 36 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       {ID} */ 
- this.pushState('macro'); return 136; 
+ this.pushState('macro'); return 135; 
 break;
 case 37 : 
 /*! Conditions:: macro */ 
@@ -7925,7 +8202,7 @@ case 38 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 39 : 
@@ -7941,17 +8218,17 @@ break;
 case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 171; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 171; 
 break;
 case 43 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \[ */ 
- this.pushState('set'); return 165; 
+ this.pushState('set'); return 164; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7961,7 +8238,7 @@ break;
 case 57 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/! */ 
- return 158;                    // treated as `(?!atom)` 
+ return 157;                    // treated as `(?!atom)` 
 break;
 case 58 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -7971,27 +8248,27 @@ break;
 case 60 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 170; 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 169; 
 break;
 case 63 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %options\b */ 
- this.begin('options'); return 174; 
+ this.begin('options'); return 173; 
 break;
 case 64 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %s\b */ 
- this.begin('start_condition'); return 138; 
+ this.begin('start_condition'); return 137; 
 break;
 case 65 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %x\b */ 
- this.begin('start_condition'); return 140; 
+ this.begin('start_condition'); return 139; 
 break;
 case 66 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 180; 
+ this.pushState('path'); return 179; 
 break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
@@ -7999,7 +8276,7 @@ case 67 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            return 145;
+                                            return 144;
                                          
 break;
 case 68 : 
@@ -8015,12 +8292,12 @@ break;
 case 78 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
- this.popState('set'); return 167; 
+ this.popState('set'); return 166; 
 break;
 case 80 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 183;      // the bit of CODE just before EOF... 
+ return 182;      // the bit of CODE just before EOF... 
 break;
 case 81 : 
 /*! Conditions:: path */ 
@@ -8030,12 +8307,12 @@ break;
 case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 84 : 
 /*! Conditions:: path */ 
@@ -8045,7 +8322,7 @@ break;
 case 85 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 181; 
+ this.popState(); return 180; 
 break;
 case 86 : 
 /*! Conditions:: * */ 
@@ -8063,25 +8340,28 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 152,
+   0 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 152,
+   1 : 151,
+  /*! Conditions:: action */ 
+  /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
+   2 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 152,
+   3 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 152,
+   4 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 152,
+   5 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 152,
+   6 : 151,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
-   9 : 136,
+   9 : 135,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
    11 : 44,
@@ -8090,28 +8370,28 @@ simpleCaseActionClusters: {
    12 : 42,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   18 : 136,
+   18 : 135,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    19 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 178,
+   22 : 177,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   25 : 146,
+   25 : 145,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \| */ 
    44 : 124,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 157,
+   45 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?= */ 
-   46 : 157,
+   46 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?! */ 
-   47 : 157,
+   47 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \( */ 
    48 : 40,
@@ -8138,7 +8418,7 @@ simpleCaseActionClusters: {
    55 : 36,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 170,
+   59 : 169,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \$ */ 
    61 : 36,
@@ -8147,13 +8427,13 @@ simpleCaseActionClusters: {
    62 : 46,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 171,
+   69 : 170,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{{ID}\} */ 
-   70 : 164,
+   70 : 163,
   /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
-   71 : 164,
+   71 : 163,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{ */ 
    72 : 123,
@@ -8162,28 +8442,28 @@ simpleCaseActionClusters: {
    73 : 125,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   75 : 132,
+   75 : 1,
   /*! Conditions:: set */ 
-  /*! Rule::       (\\\\|\\\]|[^\]{])+ */ 
-   76 : 169,
+  /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */ 
+   76 : 168,
   /*! Conditions:: set */ 
   /*! Rule::       \{ */ 
-   77 : 169,
+   77 : 168,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   79 : 183
+   79 : 182
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
@@ -8192,14 +8472,14 @@ rules: [
 /^(?:\s+)/,
 /^(?:%%)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[^\s\r\n]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
 /^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
@@ -8210,7 +8490,7 @@ rules: [
 /^(?:.+)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
 /^(?:(\r\n|\n|\r)+)/,
@@ -8233,7 +8513,7 @@ rules: [
 /^(?:<)/,
 /^(?:\/!)/,
 /^(?:\/)/,
-/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,
+/^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[0-9A-F]{2}|u[0-9A-Fa-f]{4}))/,
 /^(?:\\.)/,
 /^(?:\$)/,
 /^(?:\.)/,
@@ -8241,16 +8521,16 @@ rules: [
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
+/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]+)/,
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
 /^(?:$)/,
-/^(?:(\\\\|\\\]|[^\]{])+)/,
+/^(?:(?:\\\\|\\\]|[^\]{])+)/,
 /^(?:\{)/,
 /^(?:\])/,
 /^(?:[^\r\n]*(\r|\n)+)/,
@@ -8620,7 +8900,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-123",
+  "version": "0.3.4-131",
   "keywords": [
     "jison",
     "parser",
@@ -8661,12 +8941,15 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
+/* parser generated by jison 0.4.17-131 */
 /*
  * Returns a Parser object of the following structure:
  *
  *  Parser: {
- *    yy: {}
+ *    yy: {}     The so-called "shared state" or rather the *source* of it;
+ *               the real "shared state" `yy` passed around to
+ *               the rule actions, etc. is a derivative/copy of this one,
+ *               not a direct reference!
  *  }
  *
  *  Parser.prototype: {
@@ -8695,7 +8978,7 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -8724,27 +9007,29 @@ module.exports={
  *    parse: function(input),
  *
  *    lexer: {
+ *        yy: {...},           A reference to the so-called "shared state" `yy` once
+ *                             received via a call to the `.setInput(input, yy)` lexer API.
  *        EOF: 1,
  *        ERROR: 2,
  *        JisonLexerError: function(msg, hash),
  *        parseError: function(str, hash),
- *        setInput: function(input),
+ *        setInput: function(input, [yy]),
  *        input: function(),
  *        unput: function(str),
  *        more: function(),
  *        reject: function(),
  *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
+ *        pastInput: function(n),
+ *        upcomingInput: function(n),
  *        showPosition: function(),
  *        test_match: function(regex_match_array, rule_index),
  *        next: function(),
  *        lex: function(),
  *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
  *        pushState: function(condition),
+ *        popState: function(),
+ *        topState: function(),
+ *        _currentRules: function(),
  *        stateStackSize: function(),
  *
  *        options: { ... lexer %options ... },
@@ -8790,6 +9075,9 @@ module.exports={
  *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    yy:          (object: the current parser internal "shared state" `yy`
+ *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
@@ -9056,85 +9344,85 @@ symbols_: {
   ";": 59,
   "=": 61,
   "?": 63,
-  "ACTION": 135,
-  "ACTION_BODY": 194,
-  "ALIAS": 189,
-  "ARROW_ACTION": 192,
-  "CODE": 199,
-  "DEBUG": 147,
-  "EOF": 132,
-  "EPSILON": 184,
-  "ID": 154,
-  "IMPORT": 149,
-  "INCLUDE": 196,
-  "INIT_CODE": 152,
-  "INTEGER": 176,
-  "LEFT": 167,
-  "LEX_BLOCK": 140,
-  "NAME": 160,
-  "NONASSOC": 169,
-  "OPTIONS": 156,
-  "OPTIONS_END": 158,
-  "OPTION_VALUE": 161,
-  "PARSER_TYPE": 164,
-  "PARSE_PARAM": 162,
-  "PATH": 197,
-  "PREC": 190,
-  "RIGHT": 168,
-  "START": 138,
-  "STRING": 155,
-  "TOKEN": 142,
-  "TOKEN_TYPE": 175,
-  "UNKNOWN_DECL": 148,
-  "action": 183,
-  "action_body": 191,
-  "action_comments_body": 193,
-  "action_ne": 153,
-  "associativity": 166,
-  "declaration": 137,
+  "ACTION": 134,
+  "ACTION_BODY": 193,
+  "ALIAS": 188,
+  "ARROW_ACTION": 191,
+  "CODE": 198,
+  "DEBUG": 146,
+  "EOF": 1,
+  "EPSILON": 183,
+  "ID": 153,
+  "IMPORT": 148,
+  "INCLUDE": 195,
+  "INIT_CODE": 151,
+  "INTEGER": 175,
+  "LEFT": 166,
+  "LEX_BLOCK": 139,
+  "NAME": 159,
+  "NONASSOC": 168,
+  "OPTIONS": 155,
+  "OPTIONS_END": 157,
+  "OPTION_VALUE": 160,
+  "PARSER_TYPE": 163,
+  "PARSE_PARAM": 161,
+  "PATH": 196,
+  "PREC": 189,
+  "RIGHT": 167,
+  "START": 137,
+  "STRING": 154,
+  "TOKEN": 141,
+  "TOKEN_TYPE": 174,
+  "UNKNOWN_DECL": 147,
+  "action": 182,
+  "action_body": 190,
+  "action_comments_body": 192,
+  "action_ne": 152,
+  "associativity": 165,
+  "declaration": 136,
   "declaration_list": 128,
   "error": 2,
-  "expression": 187,
-  "expression_suffix": 185,
-  "extra_parser_module_code": 133,
-  "full_token_definitions": 143,
+  "expression": 186,
+  "expression_suffix": 184,
+  "extra_parser_module_code": 132,
+  "full_token_definitions": 142,
   "grammar": 130,
-  "handle": 181,
-  "handle_action": 180,
-  "handle_list": 179,
-  "handle_sublist": 186,
-  "id": 139,
-  "id_list": 171,
-  "import_name": 150,
-  "import_path": 151,
-  "include_macro_code": 136,
-  "module_code_chunk": 198,
-  "one_full_token": 172,
-  "operator": 141,
-  "option": 159,
-  "option_list": 157,
-  "optional_action_header_block": 134,
+  "handle": 180,
+  "handle_action": 179,
+  "handle_list": 178,
+  "handle_sublist": 185,
+  "id": 138,
+  "id_list": 170,
+  "import_name": 149,
+  "import_path": 150,
+  "include_macro_code": 135,
+  "module_code_chunk": 197,
+  "one_full_token": 171,
+  "operator": 140,
+  "option": 158,
+  "option_list": 156,
+  "optional_action_header_block": 133,
   "optional_end_block": 131,
-  "optional_module_code_chunk": 195,
-  "optional_token_type": 170,
-  "options": 146,
-  "parse_param": 144,
-  "parser_type": 145,
-  "prec": 182,
-  "production": 178,
-  "production_list": 177,
+  "optional_module_code_chunk": 194,
+  "optional_token_type": 169,
+  "options": 145,
+  "parse_param": 143,
+  "parser_type": 144,
+  "prec": 181,
+  "production": 177,
+  "production_list": 176,
   "spec": 127,
-  "suffix": 188,
-  "symbol": 165,
-  "token_description": 174,
-  "token_list": 163,
-  "token_value": 173,
+  "suffix": 187,
+  "symbol": 164,
+  "token_description": 173,
+  "token_list": 162,
+  "token_value": 172,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -9148,36 +9436,35 @@ terminals_: {
   124: "|",
   125: "}",
   129: "%%",
-  132: "EOF",
-  135: "ACTION",
-  138: "START",
-  140: "LEX_BLOCK",
-  142: "TOKEN",
-  147: "DEBUG",
-  148: "UNKNOWN_DECL",
-  149: "IMPORT",
-  152: "INIT_CODE",
-  154: "ID",
-  155: "STRING",
-  156: "OPTIONS",
-  158: "OPTIONS_END",
-  160: "NAME",
-  161: "OPTION_VALUE",
-  162: "PARSE_PARAM",
-  164: "PARSER_TYPE",
-  167: "LEFT",
-  168: "RIGHT",
-  169: "NONASSOC",
-  175: "TOKEN_TYPE",
-  176: "INTEGER",
-  184: "EPSILON",
-  189: "ALIAS",
-  190: "PREC",
-  192: "ARROW_ACTION",
-  194: "ACTION_BODY",
-  196: "INCLUDE",
-  197: "PATH",
-  199: "CODE"
+  134: "ACTION",
+  137: "START",
+  139: "LEX_BLOCK",
+  141: "TOKEN",
+  146: "DEBUG",
+  147: "UNKNOWN_DECL",
+  148: "IMPORT",
+  151: "INIT_CODE",
+  153: "ID",
+  154: "STRING",
+  155: "OPTIONS",
+  157: "OPTIONS_END",
+  159: "NAME",
+  160: "OPTION_VALUE",
+  161: "PARSE_PARAM",
+  163: "PARSER_TYPE",
+  166: "LEFT",
+  167: "RIGHT",
+  168: "NONASSOC",
+  174: "TOKEN_TYPE",
+  175: "INTEGER",
+  183: "EPSILON",
+  188: "ALIAS",
+  189: "PREC",
+  191: "ARROW_ACTION",
+  193: "ACTION_BODY",
+  195: "INCLUDE",
+  196: "PATH",
+  198: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -9185,76 +9472,76 @@ productions_: bp({
   131,
   131,
   s,
-  [134, 3],
+  [133, 3],
   128,
   128,
   s,
-  [137, 13],
+  [136, 13],
+  149,
+  149,
   150,
   150,
-  151,
-  151,
-  146,
-  157,
-  157,
-  s,
-  [159, 3],
-  144,
   145,
-  141,
+  156,
+  156,
   s,
-  [166, 3],
-  163,
-  163,
+  [158, 3],
   143,
-  143,
+  144,
+  140,
   s,
-  [172, 3],
-  170,
-  170,
+  [165, 3],
+  162,
+  162,
+  142,
+  142,
+  s,
+  [171, 3],
+  169,
+  169,
+  172,
   173,
-  174,
-  171,
-  171,
+  170,
+  170,
   130,
+  176,
+  176,
   177,
-  177,
+  178,
   178,
   179,
   179,
   180,
   180,
-  181,
-  181,
-  186,
-  186,
   185,
   185,
+  184,
+  184,
   s,
-  [187, 3],
+  [186, 3],
   s,
-  [188, 4],
+  [187, 4],
+  181,
+  181,
+  164,
+  164,
+  138,
+  s,
+  [152, 4],
   182,
   182,
-  165,
-  165,
-  139,
   s,
-  [153, 4],
-  183,
-  183,
-  s,
-  [191, 4],
-  193,
-  193,
-  133,
-  133,
-  136,
-  136,
-  198,
-  198,
-  195,
-  195
+  [190, 4],
+  192,
+  192,
+  132,
+  132,
+  135,
+  135,
+  197,
+  197,
+  194,
+  194
 ]),
   rule: u([
   5,
@@ -9323,20 +9610,18 @@ productions_: bp({
   0
 ])
 }),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */, options) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */, options) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     spec : declaration_list '%%' grammar optional_end_block EOF */
- 
-            this.$ = $$[$0 - 4];
+ this.$ = $$[$0 - 4];
             if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
                 yy.addDeclaration(this.$, { include: $$[$0 - 1] });
             }
-            return extend(this.$, $$[$0 - 2]);
-         
+            return extend(this.$, $$[$0 - 2]); 
 break;
 case 3 : 
 /*! Production::     optional_end_block : '%%' extra_parser_module_code */
@@ -9368,82 +9653,80 @@ case 3 :
 /*! Production::     module_code_chunk : CODE */
  case 95 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 4 : 
-/*! Production::     optional_action_header_block :  */
+/*! Production::     optional_action_header_block : ε */
  case 8 : 
-/*! Production::     declaration_list :  */
-  this.$ = {};  
+/*! Production::     declaration_list : ε */
+ this.$ = {}; 
 break;
 case 5 : 
 /*! Production::     optional_action_header_block : optional_action_header_block ACTION */
  case 6 : 
 /*! Production::     optional_action_header_block : optional_action_header_block include_macro_code */
- 
-            this.$ = $$[$0 - 1];
-            yy.addDeclaration(this.$, { actionInclude: $$[$0] });
-         
+ this.$ = $$[$0 - 1];
+            yy.addDeclaration(this.$, { actionInclude: $$[$0] }); 
 break;
 case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
-  this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]);  
+ this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
 case 9 : 
 /*! Production::     declaration : START id */
-  this.$ = {start: $$[$0]};  
+ this.$ = {start: $$[$0]}; 
 break;
 case 10 : 
 /*! Production::     declaration : LEX_BLOCK */
-  this.$ = {lex: $$[$0]};  
+ this.$ = {lex: $$[$0]}; 
 break;
 case 11 : 
 /*! Production::     declaration : operator */
-  this.$ = {operator: $$[$0]};  
+ this.$ = {operator: $$[$0]}; 
 break;
 case 12 : 
 /*! Production::     declaration : TOKEN full_token_definitions */
-  this.$ = {token_list: $$[$0]};  
+ this.$ = {token_list: $$[$0]}; 
 break;
 case 13 : 
 /*! Production::     declaration : ACTION */
  case 14 : 
 /*! Production::     declaration : include_macro_code */
-  this.$ = {include: $$[$0]};  
+ this.$ = {include: $$[$0]}; 
 break;
 case 15 : 
 /*! Production::     declaration : parse_param */
-  this.$ = {parseParam: $$[$0]};  
+ this.$ = {parseParam: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     declaration : parser_type */
-  this.$ = {parserType: $$[$0]};  
+ this.$ = {parserType: $$[$0]}; 
 break;
 case 17 : 
 /*! Production::     declaration : options */
-  this.$ = {options: $$[$0]};  
+ this.$ = {options: $$[$0]}; 
 break;
 case 18 : 
 /*! Production::     declaration : DEBUG */
-  this.$ = {options: [['debug', true]]};  
+ this.$ = {options: [['debug', true]]}; 
 break;
 case 19 : 
 /*! Production::     declaration : UNKNOWN_DECL */
-  this.$ = {unknownDecl: $$[$0]};  
+ this.$ = {unknownDecl: $$[$0]}; 
 break;
 case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
-  this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}};  
+ this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}}; 
 break;
 case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
-  this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}};  
+ this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}}; 
 break;
 case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
  case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
-  this.$ = $$[$0 - 1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     option_list : option_list option */
@@ -9451,7 +9734,7 @@ case 27 :
 /*! Production::     token_list : token_list symbol */
  case 49 : 
 /*! Production::     id_list : id_list id */
-  this.$ = $$[$0 - 1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 28 : 
 /*! Production::     option_list : option */
@@ -9461,38 +9744,37 @@ case 28 :
 /*! Production::     id_list : id */
  case 56 : 
 /*! Production::     handle_list : handle_action */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 29 : 
 /*! Production::     option : NAME[option] */
-  this.$ = [$$[$0], true];  
+ this.$ = [$$[$0], true]; 
 break;
 case 30 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  this.$ = [$$[$0 - 2], $$[$0]];  
+ this.$ = [$$[$0 - 2], $$[$0]]; 
 break;
 case 34 : 
 /*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]);  
+ this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
 case 35 : 
 /*! Production::     associativity : LEFT */
-  this.$ = 'left';  
+ this.$ = 'left'; 
 break;
 case 36 : 
 /*! Production::     associativity : RIGHT */
-  this.$ = 'right';  
+ this.$ = 'right'; 
 break;
 case 37 : 
 /*! Production::     associativity : NONASSOC */
-  this.$ = 'nonassoc';  
+ this.$ = 'nonassoc'; 
 break;
 case 40 : 
 /*! Production::     full_token_definitions : optional_token_type id_list */
- 
-            var rv = [];
+ var rv = [];
             var lst = $$[$0];
             for (var i = 0, len = lst.length; i < len; i++) {
                 var id = lst[i];
@@ -9502,72 +9784,59 @@ case 40 :
                 }
                 rv.push(m);
             }
-            this.$ = rv;
-         
+            this.$ = rv; 
 break;
 case 41 : 
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
- 
-            var m = $$[$0];
+ var m = $$[$0];
             if ($$[$0 - 1]) {
                 m.type = $$[$0 - 1];
             }
-            this.$ = [m];
-         
+            this.$ = [m]; 
 break;
 case 42 : 
 /*! Production::     one_full_token : id token_value token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 2],
                 value: $$[$0 - 1]
-            };
-         
+            }; 
 break;
 case 43 : 
 /*! Production::     one_full_token : id token_description */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 description: $$[$0]
-            };
-         
+            }; 
 break;
 case 44 : 
 /*! Production::     one_full_token : id token_value */
- 
-            this.$ = {
+ this.$ = {
                 id: $$[$0 - 1],
                 value: $$[$0],
                 description: $token_description
-            };
-         
+            }; 
 break;
 case 45 : 
-/*! Production::     optional_token_type :  */
-  this.$ = false;  
+/*! Production::     optional_token_type : ε */
+ this.$ = false; 
 break;
 case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
- 
-            this.$ = $$[$0 - 1];
-            this.$.grammar = $$[$0];
-         
+ this.$ = $$[$0 - 1];
+            this.$.grammar = $$[$0]; 
 break;
 case 52 : 
 /*! Production::     production_list : production_list production */
- 
-            this.$ = $$[$0 - 1];
+ this.$ = $$[$0 - 1];
             if ($$[$0][0] in this.$) {
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             } else {
                 this.$[$$[$0][0]] = $$[$0][1];
-            }
-         
+            } 
 break;
 case 53 : 
 /*! Production::     production_list : production */
-  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
+ this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
 case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
@@ -9575,15 +9844,12 @@ case 54 :
 break;
 case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0]); 
 break;
 case 57 : 
 /*! Production::     handle_action : handle prec action */
- 
-            this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
+ this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
@@ -9592,52 +9858,39 @@ case 57 :
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 58 : 
 /*! Production::     handle_action : EPSILON action */
- 
-            this.$ = [''];
+ this.$ = [''];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 59 : 
 /*! Production::     handle : handle expression_suffix */
- 
-            this.$ = $$[$0 - 1];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 1];
+            this.$.push($$[$0]); 
 break;
 case 60 : 
-/*! Production::     handle :  */
- 
-            this.$ = [];
-         
+/*! Production::     handle : ε */
+ this.$ = []; 
 break;
 case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
- 
-            this.$ = $$[$0 - 2];
-            this.$.push($$[$0].join(' '));
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0].join(' ')); 
 break;
 case 62 : 
 /*! Production::     handle_sublist : handle */
- 
-            this.$ = [$$[$0].join(' ')];
-         
+ this.$ = [$$[$0].join(' ')]; 
 break;
 case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
- 
-            this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]";
-         
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]"; 
 break;
 case 64 : 
 /*! Production::     expression_suffix : expression suffix */
@@ -9645,14 +9898,11 @@ case 64 :
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
  case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
- 
-            this.$ = $$[$0 - 1] + $$[$0];
-         
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 66 : 
 /*! Production::     expression : STRING */
- 
-            // Re-encode the string *anyway* as it will
+ // Re-encode the string *anyway* as it will
             // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
             // to be able to handle all tokens, including *significant space*
             // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
@@ -9660,66 +9910,55 @@ case 66 :
                 this.$ = '"' + $$[$0] + '"';
             } else {
                 this.$ = "'" + $$[$0] + "'";
-            }
-         
+            } 
 break;
 case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
- 
-            this.$ = '(' + $$[$0 - 1].join(' | ') + ')';
-         
+ this.$ = '(' + $$[$0 - 1].join(' | ') + ')'; 
 break;
 case 68 : 
-/*! Production::     suffix :  */
+/*! Production::     suffix : ε */
  case 82 : 
-/*! Production::     action :  */
+/*! Production::     action : ε */
  case 83 : 
-/*! Production::     action_body :  */
+/*! Production::     action_body : ε */
  case 96 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 72 : 
 /*! Production::     prec : PREC symbol */
- 
-            this.$ = { prec: $$[$0] };
-         
+ this.$ = { prec: $$[$0] }; 
 break;
 case 73 : 
-/*! Production::     prec :  */
- 
-            this.$ = null;
-         
+/*! Production::     prec : ε */
+ this.$ = null; 
 break;
 case 80 : 
 /*! Production::     action_ne : ARROW_ACTION */
-  this.$ = '$$ =' + $$[$0] + ';';  
+ this.$ = '$$ =' + $$[$0] + ';'; 
 break;
 case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
-  this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-  this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+ var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 92 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -9833,91 +10072,91 @@ table: bt({
   127,
   128,
   129,
-  135,
-  138,
-  140,
-  142,
+  134,
+  137,
+  139,
+  141,
+  146,
   147,
   148,
-  149,
-  152,
-  156,
-  162,
-  164,
+  151,
+  155,
+  161,
+  163,
+  166,
   167,
   168,
-  169,
-  196,
+  195,
   1,
   129,
   s,
-  [135, 4, 1],
+  [134, 4, 1],
+  139,
   140,
   141,
-  142,
   s,
-  [144, 6, 1],
+  [143, 6, 1],
   c,
   [23, 4],
   s,
-  [166, 4, 1],
-  196,
+  [165, 4, 1],
+  195,
   130,
+  133,
   134,
-  135,
-  154,
-  196,
+  153,
+  195,
   c,
   [45, 16],
-  139,
-  154,
+  138,
+  153,
   c,
   [18, 16],
   c,
   [16, 16],
-  143,
-  154,
-  170,
-  175,
+  142,
+  153,
+  169,
+  174,
   c,
   [36, 32],
   c,
   [16, 80],
-  150,
+  149,
+  153,
   154,
-  155,
   c,
   [3, 3],
-  139,
+  138,
+  153,
   154,
-  155,
-  163,
-  165,
+  162,
+  164,
   2,
-  197,
+  196,
   c,
   [7, 5],
   c,
   [5, 3],
-  165,
-  157,
+  164,
+  156,
+  158,
   159,
-  160,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  1,
   129,
   131,
-  132,
+  134,
   135,
-  136,
-  139,
-  154,
+  138,
+  153,
+  176,
   177,
-  178,
   c,
   [57, 17],
   58,
@@ -9926,86 +10165,86 @@ table: bt({
   124,
   c,
   [20, 9],
+  153,
   154,
-  155,
   c,
   [22, 6],
-  176,
-  192,
+  175,
+  191,
   c,
   [247, 19],
+  170,
   171,
-  172,
+  153,
+  150,
+  153,
   154,
-  151,
-  154,
-  155,
   123,
-  135,
+  134,
+  153,
   154,
-  155,
-  192,
-  196,
+  191,
+  195,
   c,
   [6, 8],
-  136,
-  153,
+  135,
+  152,
   c,
   [42, 5],
-  139,
+  138,
   c,
   [63, 11],
-  165,
+  164,
   c,
   [159, 13],
   c,
   [82, 8],
-  196,
+  195,
   c,
   [103, 20],
-  192,
+  191,
   c,
-  [22, 24],
-  124,
-  s,
-  [129, 4, 3],
+  [22, 23],
+  1,
+  59,
   c,
-  [22, 7],
+  [22, 11],
   c,
   [64, 7],
-  199,
+  198,
   c,
   [21, 21],
   c,
   [124, 29],
   c,
   [37, 7],
+  157,
   158,
   159,
-  160,
-  158,
-  160,
+  157,
+  159,
   61,
-  158,
-  160,
+  157,
+  159,
+  1,
+  1,
   132,
-  132,
-  133,
+  194,
   195,
-  196,
+  197,
   198,
-  199,
+  1,
   129,
-  132,
-  139,
-  154,
-  178,
+  138,
+  153,
+  177,
   c,
   [472, 3],
   c,
-  [475, 4],
-  132,
-  154,
+  [3, 3],
+  1,
+  129,
+  153,
   58,
   c,
   [66, 11],
@@ -10013,58 +10252,57 @@ table: bt({
   [363, 32],
   c,
   [161, 8],
+  172,
   173,
-  174,
-  176,
+  175,
   c,
   [432, 65],
   123,
   125,
-  191,
+  190,
+  192,
   193,
-  194,
   c,
-  [211, 3],
+  [210, 11],
   c,
-  [23, 15],
+  [294, 8],
   c,
-  [18, 36],
+  [18, 35],
   c,
   [348, 18],
   c,
   [242, 17],
+  159,
+  159,
   160,
-  160,
-  161,
+  s,
+  [1, 3],
+  135,
+  195,
   1,
-  132,
-  132,
-  136,
-  196,
-  132,
-  196,
-  199,
+  c,
+  [311, 3],
   c,
   [3, 3],
-  c,
-  [231, 3],
+  129,
+  153,
   40,
   c,
   [361, 3],
   c,
   [435, 3],
+  178,
   179,
   180,
-  181,
-  184,
-  190,
+  183,
+  189,
   c,
   [476, 11],
   c,
   [243, 17],
   c,
   [82, 7],
-  174,
+  173,
   c,
   [192, 26],
   c,
@@ -10073,32 +10311,32 @@ table: bt({
   125,
   123,
   125,
-  194,
+  193,
   c,
   [3, 3],
-  158,
+  157,
   c,
   [365, 3],
   c,
-  [361, 6],
-  c,
-  [122, 3],
+  [361, 7],
+  195,
+  198,
   59,
   124,
   59,
   124,
   c,
   [123, 7],
-  182,
-  185,
-  187,
+  181,
+  184,
+  186,
   c,
   [122, 3],
   c,
   [12, 4],
-  136,
-  153,
-  183,
+  135,
+  152,
+  182,
   c,
   [607, 18],
   c,
@@ -10107,7 +10345,7 @@ table: bt({
   [290, 5],
   c,
   [81, 3],
-  132,
+  1,
   c,
   [191, 10],
   c,
@@ -10128,8 +10366,8 @@ table: bt({
   63,
   c,
   [18, 5],
+  187,
   188,
-  189,
   c,
   [20, 3],
   c,
@@ -10137,10 +10375,10 @@ table: bt({
   c,
   [15, 21],
   124,
+  153,
   154,
-  155,
-  181,
-  186,
+  180,
+  185,
   c,
   [162, 4],
   123,
@@ -10159,12 +10397,12 @@ table: bt({
   124,
   c,
   [73, 5],
-  185,
-  187,
+  184,
+  186,
   123,
   125,
+  192,
   193,
-  194,
   c,
   [145, 11],
   c,
@@ -10210,11 +10448,11 @@ table: bt({
   c,
   [5, 8],
   c,
-  [32, 10],
+  [149, 10],
   c,
-  [224, 4],
+  [3, 5],
   c,
-  [97, 59],
+  [97, 58],
   c,
   [64, 4],
   c,
@@ -10228,9 +10466,9 @@ table: bt({
   c,
   [124, 34],
   c,
-  [261, 10],
+  [22, 9],
   c,
-  [194, 6],
+  [194, 7],
   c,
   [200, 16],
   c,
@@ -10256,9 +10494,9 @@ table: bt({
   c,
   [40, 17],
   c,
-  [719, 11],
+  [17, 10],
   c,
-  [28, 15],
+  [68, 16],
   c,
   [757, 6],
   c,
@@ -10372,14 +10610,13 @@ table: bt({
   s,
   [2, 79],
   c,
-  [179, 19],
-  1,
+  [179, 20],
   c,
-  [21, 4],
+  [190, 23],
   c,
-  [80, 57],
+  [80, 38],
   c,
-  [61, 3],
+  [62, 3],
   c,
   [96, 16],
   c,
@@ -10415,7 +10652,9 @@ table: bt({
   c,
   [528, 6],
   c,
-  [612, 41],
+  [551, 4],
+  c,
+  [94, 37],
   c,
   [37, 15],
   c,
@@ -10499,8 +10738,8 @@ table: bt({
   36,
   37,
   37,
-  49,
   2,
+  49,
   51,
   29,
   19,
@@ -10786,6 +11025,20 @@ describeSymbol: function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 },
@@ -11000,6 +11253,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
 
@@ -11028,6 +11282,7 @@ parse: function parse(input) {
                             state_stack: stack,
                             value_stack: vstack,
 
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -11057,6 +11312,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -11091,6 +11347,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -11109,6 +11366,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -11233,6 +11491,7 @@ parse: function parse(input) {
             state_stack: stack,
             value_stack: vstack,
 
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -11267,7 +11526,7 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-123 */
+/* generated by jison-lex 0.3.4-131 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -11327,7 +11586,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -11336,7 +11595,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -11357,7 +11616,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -11407,7 +11666,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -11438,13 +11697,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -11463,12 +11722,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
-        this.unput(this.match.slice(n));
+less:function lexer_less(n) {
+        return this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -11478,7 +11737,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -11491,14 +11750,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -11576,7 +11835,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -11654,7 +11913,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -11671,12 +11930,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
-        this.conditionStack.push(condition);
+begin:function lexer_begin(condition) {
+        return this.pushState(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -11686,7 +11945,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -11695,7 +11954,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -11705,12 +11964,13 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
-        this.begin(condition);
+pushState:function lexer_pushState(condition) {
+        this.conditionStack.push(condition);
+        return this;
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -11742,186 +12002,195 @@ case 3 :
 /*! Rule::       %% */ 
  this.pushState('code'); return 129; 
 break;
-case 13 : 
+case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 14 : 
+case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 16 : 
+case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 158; 
+ this.popState(); return 157; 
 break;
-case 17 : 
+case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 18 : 
+case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 19 : 
+case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* skip newlines */ 
 break;
-case 20 : 
+case 24 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\/[^\r\n]* */ 
  /* skip single-line comment */ 
 break;
-case 21 : 
+case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* skip multi-line comment */ 
 break;
-case 22 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
-break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 188; 
 break;
-case 27 : 
+case 30 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       "[^"]+" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+break;
+case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
 break;
-case 32 : 
+case 36 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 129; 
 break;
-case 33 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 34 : 
+case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 146; 
 break;
-case 41 : 
+case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
- this.pushState('token'); return 142; 
-break;
-case 43 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       %options\b */ 
- this.pushState('options'); return 156; 
+ this.pushState('token'); return 141; 
 break;
 case 47 : 
-/*! Conditions:: INITIAL ebnf bnf code */ 
-/*! Rule::       %include\b */ 
- this.pushState('path'); return 196; 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %options\b */ 
+ this.pushState('options'); return 155; 
 break;
 case 48 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %lex{LEX_CONTENT}\/lex\b */ 
+  
+                                            // remove the %lex../lex wrapper and return the pure lex section:
+                                            yy_.yytext = this.matches[1];
+                                            return 139; 
+                                         
+break;
+case 51 : 
+/*! Conditions:: INITIAL ebnf bnf code */ 
+/*! Rule::       %include\b */ 
+ this.pushState('path'); return 195; 
+break;
+case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 148;
+                                            return 147;
                                          
 break;
-case 49 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 174; 
 break;
-case 50 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 134; 
 break;
-case 51 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 134; 
 break;
-case 52 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 123; 
 break;
-case 53 : 
+case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 191; 
 break;
-case 54 : 
+case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 175; 
 break;
-case 55 : 
+case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 175; 
 break;
-case 56 : 
+case 60 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 60 : 
+case 64 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 194; // regexp with braces or quotes (and no spaces) 
+ return 193; // regexp with braces or quotes (and no spaces) 
 break;
-case 65 : 
+case 69 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 123; 
 break;
-case 66 : 
+case 70 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 125; 
 break;
-case 68 : 
+case 72 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 199;      // the bit of CODE just before EOF... 
+ return 198;      // the bit of CODE just before EOF... 
 break;
-case 69 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 70 : 
+case 74 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 71 : 
+case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 72 : 
+case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 73 : 
+case 77 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 197; 
+ this.popState(); return 196; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -11931,109 +12200,118 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 184,
+   4 : 183,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 184,
+   5 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u0190 */ 
+   6 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u025B */ 
+   7 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03B5 */ 
+   8 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03F5 */ 
+   9 : 183,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   6 : 40,
+   10 : 40,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   7 : 41,
+   11 : 41,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   8 : 42,
+   12 : 42,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   9 : 63,
+   13 : 63,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   10 : 43,
+   14 : 43,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   11 : 160,
+   15 : 159,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   12 : 61,
+   16 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   15 : 161,
+   19 : 160,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   23 : 154,
+   27 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$end\b */ 
-   24 : 154,
+   28 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$eof\b */ 
-   25 : 154,
+   29 : 153,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   28 : 'TOKEN_WORD',
+   32 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   29 : 58,
+   33 : 58,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   30 : 59,
+   34 : 59,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   31 : 124,
+   35 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   35 : 164,
+   39 : 163,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   36 : 190,
+   40 : 189,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   37 : 138,
+   41 : 137,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   38 : 167,
+   42 : 166,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   39 : 168,
+   43 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   40 : 169,
+   44 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   42 : 162,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   44 : 140,
+   46 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   45 : 152,
+   49 : 151,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   46 : 149,
+   50 : 148,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   57 : 132,
+   61 : 1,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   58 : 194,
+   62 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   59 : 194,
+   63 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   61 : 194,
+   65 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   62 : 194,
+   66 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   63 : 194,
+   67 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   64 : 194,
+   68 : 193,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   67 : 199
+   71 : 198
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -12042,12 +12320,16 @@ rules: [
 /^(?:%%)/,
 /^(?:%empty\b)/,
 /^(?:%epsilon\b)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:\()/,
 /^(?:\))/,
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
@@ -12058,8 +12340,8 @@ rules: [
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
@@ -12080,23 +12362,23 @@ rules: [
 /^(?:%token\b)/,
 /^(?:%parse-param\b)/,
 /^(?:%options\b)/,
-/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,
+/^(?:%lex((?:[^\S\r\n])*(?:(?:\r\n|\n|\r)[\w\W]*?)?(?:\r\n|\n|\r)(?:[^\S\r\n])*)\/lex\b)/,
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]*)/,
-/^(?:<([a-zA-Z_][a-zA-Z0-9_]*)>)/,
+/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]*)/,
+/^(?:<([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
 /^(?:->.*)/,
-/^(?:(0[xX][0-9a-fA-F]+))/,
-/^(?:([1-9][0-9]*)(?![xX0-9a-fA-F]))/,
+/^(?:(0[Xx][0-9A-Fa-f]+))/,
+/^(?:([1-9][0-9]*)(?![0-9A-FXa-fx]))/,
 /^(?:.)/,
 /^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
@@ -12117,20 +12399,20 @@ conditions: {
       3,
       4,
       5,
-      18,
-      19,
-      20,
-      21,
+      6,
+      7,
+      8,
+      9,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12155,7 +12437,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -12169,20 +12455,20 @@ conditions: {
       8,
       9,
       10,
-      18,
-      19,
-      20,
-      21,
+      11,
+      12,
+      13,
+      14,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12207,7 +12493,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -12216,10 +12506,6 @@ conditions: {
       0,
       1,
       2,
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
@@ -12245,83 +12531,83 @@ conditions: {
       44,
       45,
       46,
+      47,
       48,
       49,
       50,
-      51,
       52,
       53,
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      57,
-      58,
-      59,
-      60,
       61,
       62,
       63,
       64,
       65,
-      66
+      66,
+      67,
+      68,
+      69,
+      70
     ],
     inclusive: false
   },
   "code": {
     rules: [
-      47,
-      57,
-      67,
-      68
+      51,
+      61,
+      71,
+      72
     ],
     inclusive: false
   },
   "path": {
     rules: [
-      57,
-      69,
-      70,
-      71,
-      72,
-      73
+      61,
+      73,
+      74,
+      75,
+      76,
+      77
     ],
     inclusive: false
   },
   "options": {
     rules: [
-      11,
-      12,
-      13,
-      14,
       15,
       16,
       17,
-      57
+      18,
+      19,
+      20,
+      21,
+      61
     ],
     inclusive: false
   },
   "INITIAL": {
     rules: [
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -12346,7 +12632,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   }
@@ -12407,11 +12697,11 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         macros = prepareMacros(dict.macros, opts);
     }
 
-    function tokenNumberReplacement (str, token) {
+    function tokenNumberReplacement(str, token) {
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
     }
 
-    // make sure a comment does not contain any embedded '*/' end-of-comment marker
+    // Make sure a comment does not contain any embedded '*/' end-of-comment marker
     // as that would break the generated code
     function postprocessComment(str) {
         if (Array.isArray(str)) {
@@ -12458,7 +12748,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
         m = rules[i][0];
         if (typeof m === 'string') {
-            m = expandMacros(m, macros);
+            m = expandMacros(m, macros, opts);
             m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
@@ -12511,117 +12801,780 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     };
 }
 
+// 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
+function set2bitarray(bitarr, s) {
+    var orig = s;
+    var set_is_inverted = false;
+    var apply = [];
+
+    function mark(d1, d2) {
+        if (d2 == null) d2 = d1;
+        for (var i = d1; i <= d2; i++) {
+            bitarr[i] = true;
+        }
+    }
+
+    function exec() {
+        // array gets sorted on entry [0] of each sub-array
+        apply.sort(function (a, b) {
+            return a[0] - b[0];
+        });           
+
+        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots:
+        if (set_is_inverted) {
+            for (var i = 0; i < 65536; i++) {
+                bitarr[i] = !bitarr[i];
+            }
+        }
+    }
+
+    function eval_escaped_code(s) {
+        // decode escaped code? If none, just take the character as-is
+        if (s.indexOf('\\') === 0) {
+            var l = s.substr(0, 2);
+            switch (l) {
+            case '\\c':
+                var c = s.charCodeAt(2) - 'A'.charCodeAt(0) + 1;
+                return String.fromCharCode(c);
+
+            case '\\x':
+                s = s.substr(2);
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\u':
+                s = s.substr(2);
+                if (s[0] === '{') {
+                    s = s.substr(1, s.length - 2);
+                }
+                var c = parseInt(s, 16);
+                return String.fromCharCode(c);
+
+            case '\\0':
+            case '\\1':
+            case '\\2':
+            case '\\3':
+            case '\\4':
+            case '\\5':
+            case '\\6':
+            case '\\7':
+                s = s.substr(1);
+                var c = parseInt(s, 8);
+                return String.fromCharCode(c);
+
+            case '\\r':
+                return '\r';
+
+            case '\\n':
+                return '\n';
+
+            case '\\v':
+                return '\v';
+
+            case '\\f':
+                return '\f';
+
+            case '\\t':
+                return '\t';
+
+            case '\\r':
+                return '\r';
+
+            default:
+                // just the chracter itself:
+                return s.substr(1);
+            }
+        } else {
+            return s;
+        }
+    }
+
+    if (s && s.length) {
+        // inverted set?
+        if (s[0] === '^') {
+            set_is_inverted = !set_is_inverted;
+            s = s.substr(1);
+        }
+
+        // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
+        // This results in an OR operations when sets are joined/chained.
+
+        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+        var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+        while (s.length) {
+            var c1 = s.match(chr_re);
+            if (!c1) {
+                // hit an illegal escape sequence? cope anyway!
+                c1 = s[0];
+            } else {
+                c1 = c1[0];
+                // Quick hack for XRegExp escapes inside a regex `[...]` set definition: we *could* try to keep those
+                // intact but it's easier to unfold them here; this is not nice for when the grammar specifies explicit
+                // XRegExp support, but alas, we'll get there when we get there... ;-)
+                switch (c1) {
+                case '\\p':
+                    s = s.substr(c1.length);
+                    var c2 = s.match(xregexp_unicode_escape_re);
+                    if (c2) {
+                        c2 = c2[0];
+                        s = s.substr(c2.length);
+                        // expand escape:
+                        var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
+                        var xs = '' + xr;
+                        // remove the wrapping `/[...]/`:
+                        xs = xs.substr(2, xs.length - 4);
+                        // inject back into source string:
+                        s = xs + s;
+                        continue;
+                    }
+                    break;
+
+                case '\\S':
+                case '\\s':
+                case '\\W':
+                case '\\w':
+                case '\\d':
+                case '\\D':
+                    // these can't participate in a range, but need to be treated special:
+                    s = s.substr(c1.length);
+                    switch (c1[1]) {
+                    case 'S':
+                        // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(bitarr, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        continue;                    
+
+                    case 's':
+                        // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
+                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
+                        continue;                    
+
+                    case 'D':
+                        // [^0-9]
+                        set2bitarray(bitarr, '^0-9');
+                        continue;                    
+
+                    case 'd':
+                        // [0-9]
+                        set2bitarray(bitarr, '0-9');
+                        continue;                    
+
+                    case 'W':
+                        // [^A-Za-z0-9_]
+                        set2bitarray(bitarr, '^A-Za-z0-9_');
+                        continue;                    
+
+                    case 'w':
+                        // [A-Za-z0-9_]
+                        set2bitarray(bitarr, 'A-Za-z0-9_');
+                        continue;                    
+                    }
+                    continue;
+
+                case '\\b':
+                    // matches a backspace: https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions#special-backspace
+                    c1 = '\u0008';
+                    break;
+                }
+            }
+            var v1 = eval_escaped_code(c1);
+            v1 = v1.charCodeAt(0);
+            s = s.substr(c1.length);
+
+            if (s[0] === '-' && s.length >= 2) {
+                // we can expect a range like 'a-z':
+                s = s.substr(1);
+                var c2 = s.match(chr_re);
+                if (!c2) {
+                    // hit an illegal escape sequence? cope anyway!
+                    c2 = s[0];
+                } else {
+                    c2 = c2[0];
+                }
+                var v2 = eval_escaped_code(c2);
+                v2 = v2.charCodeAt(0);
+                s = s.substr(c2.length);
+
+                // legal ranges go UP, not /DOWN!
+                if (v1 <= v2) {
+                    mark(v1, v2);
+                } else {
+                    console.warn("INVALID CHARACTER RANGE found in regex: ", { re: orig, start: c1, start_n: v1, end: c2, end_n: v2 });
+                    mark(v1);
+                    mark('-'.charCodeAt(0));
+                    mark(v2);
+                }
+                continue;
+            }
+            mark(v1);
+        }
+
+        // Since a regex like `[^]` should match everything(?really?), we don't need to check if the MARK
+        // phase actually marked anything at all (apply.length > 0):
+        exec();
+    }
+}
+
+
+// convert a simple bitarray back into a regex set `[...]` content:
+function bitarray2set(l, output_inverted_variant) {
+    function i2c(i) {
+        var c;
+
+        switch (i) {
+        case 10:
+            return '\\n';
+
+        case 13:
+            return '\\r';
+
+        case 9:
+            return '\\t';
+
+        case 8:
+            return '\\b';
+
+        case 12:
+            return '\\f';
+
+        case 11:
+            return '\\v';
+
+        case 45:        // ASCII/Unicode for '-' dash
+            return '\\-';
+
+        case 91:        // '['
+            return '\\[';
+
+        case 92:        // '\\'
+            return '\\\\';
+
+        case 93:        // ']'
+            return '\\]';
+
+        case 94:        // ']'
+            return '\\^';
+        }
+        // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
+        if (i >= 0xD800 && i < 0xDFFF) {
+            throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
+        }
+        if (i < 32 
+                || i > 0xFFF0 /* Unicode Specials, also in UTF16 */ 
+                || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
+                || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */ 
+            ) {
+            // Detail about a detail:
+            // U+2028 and U+2029 are part of the `\s` regex escape code (`\s` and `[\s]` match either of these) and when placed in a JavaScript
+            // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
+            // a b0rked generated parser, as the generated code would include this regex right here.
+            // Hence we MUST escape these buggers everywhere we go...
+            c = '0000' + i.toString(16);
+            return '\\u' + c.substr(c.length - 4);
+        }
+        return String.fromCharCode(i);
+    }
+
+    // construct the inverse(?) set from the mark-set:
+    //
+    // Before we do that, we inject a sentinel so that our inner loops
+    // below can be simple and fast:
+    l[65536] = 1;
+    // now reconstruct the regex set:
+    var rv = [];
+    var i, j;
+    var entire_range_is_marked = false;
+    if (output_inverted_variant) {
+        // generate the inverted set, hence all unmarked slots are part of the output range:
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            while (l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            for (j = i + 1; !l[j]; j++) {} /* empty loop */
+            // generate subset:
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    } else {
+        // generate the non-inverted set, hence all logic checks are inverted here... 
+        i = 0;
+        while (i <= 65535) {
+            // find first character not in original set:
+            while (!l[i]) {
+                i++;
+            }
+            if (i > 65535) {
+                break;
+            }
+            // find next character not in original set:
+            for (j = i + 1; l[j]; j++) {} /* empty loop */
+            if (j > 65536) {
+                j = 65536;
+            }
+            // generate subset:
+            rv.push(i2c(i));
+            if (j - 1 > i) {
+                entire_range_is_marked = (i === 0 && j === 65536);
+                rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
+            }
+            i = j;
+        }
+    }
+
+    // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+    // When we find the entire Unicode range is in the output match set, we also replace this with 
+    // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
+    var s;
+    if (!rv.length) {
+        // entire range turnes out to be EXCLUDED: 
+        s = '^\\S\\s';
+    } else if (entire_range_is_marked) {
+        // entire range turnes out to be INCLUDED: 
+        s = '\\S\\s';
+    } else {
+        s = rv.join('');
+    }
+
+    return s;
+}
+
+
+// Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
+// ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
+function reduceRegexToSet(s, name) {
+    var orig = s;
+
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+    
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+
+    var l = new Array(65536 + 3);
+    var internal_state = 0;
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            return new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    if (!inner) {
+                        // cope with illegal escape sequences too!
+                        return new Error('illegal escape sequence at start of regex part: ' + s + '" of regex "' + orig + '"');
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                return new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                return new Error('regex set expression is broken in regex: ' + orig);
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+            if (!internal_state) {
+                set2bitarray(l, se);
+
+                // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`: 
+                internal_state = 1;
+            }
+            break;
+
+        // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
+        // something ready for use inside a regex set, e.g. `\\r\\n`.
+        // 
+        // > Of course, we realize that converting more complex piped constructs this way
+        // > will produce something you might not expect, e.g. `A|WORD2` which
+        // > would end up as the set `[AW]` which is something else than the input
+        // > entirely.
+        // > 
+        // > However, we can only depend on the user (grammar writer) to realize this and 
+        // > prevent this from happening by not creating such oddities in the input grammar. 
+        case '|':
+            // a|b --> [ab]
+            internal_state = 0;
+            break;
+
+        case '(':
+            // (a) --> a
+            //
+            // TODO - right now we treat this as 'too complex':
+
+            // Strip off some possible outer wrappers which we know how to remove.
+            // We don't worry about 'damaging' the regex as any too-complex regex will be caught
+            // in the validation check at the end; our 'strippers' here would not damage useful
+            // regexes anyway and them damaging the unacceptable ones is fine.
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+            s = s.replace(/^\^?(.*?)\$?$/, '$1');               // ^...$ --> ...  (catch these both inside and outside the outer grouping, hence do the ungrouping twice: one before, once after this)
+            s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');         // (?:...) -> ...  and  (...) -> ...
+
+            return new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '.':
+        case '*':
+        case '+':
+        case '?':
+            // wildcard
+            //
+            // TODO - right now we treat this as 'too complex':
+            return new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        case '{':                        // range, e.g. `x{1,3}`, or macro?
+            // TODO - right now we treat this as 'too complex':
+            return new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + orig + ']"]'); 
+
+        default:
+            // literal character or word: take the first character only and ignore the rest, so that
+            // the constructed set for `word|noun` would be `[wb]`:
+            if (!internal_state) {
+                set2bitarray(l, c1);
+
+                internal_state = 2;
+            }
+            break;
+        }
+    }
+
+    s = bitarray2set(l);
+
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        assert(s);
+        assert(!(s instanceof Error));
+        re = new XRegExp('[' + s + ']');
+        re.test(s[0]);
+
+        // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
+        // so we check for lingering UNESCAPED brackets in here as those cannot be:
+        if (/[^\\][\[\]]/.exec(s)) {
+            throw new Error('unescaped brackets in set data');
+        }
+    } catch (ex) {
+        // make sure we produce a set range expression which will fail badly when it is used
+        // in actual code:
+        s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message); 
+    }
+
+    return s;
+}
+
+
+// expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or 
+// elsewhere, which requires two different treatments to expand these macros.
+function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElsewhere_cb) {
+    var orig = s;
+    var regex_simple_size = 0;
+    var regex_previous_alts_simple_size = 0;
+
+    function errinfo() {
+        if (name) {
+            return 'macro [[' + name + ']]'; 
+        } else {
+            return 'regex [[' + orig + ']]';
+        }
+    }
+
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+    
+    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+    var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+
+    var rv = [];
+
+    while (s.length) {
+        var c1 = s.match(chr_re);
+        if (!c1) {
+            // cope with illegal escape sequences too!
+            return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+        } else {
+            c1 = c1[0];
+        }
+        s = s.substr(c1.length);
+
+        switch (c1) {
+        case '[':
+            // this is starting a set within the regex: scan until end of set!
+            var set_content = [];
+            var l = new Array(65536 + 3);
+
+            while (s.length) {
+                var inner = s.match(set_part_re);
+                if (!inner) {
+                    inner = s.match(chr_re);
+                    if (!inner) {
+                        // cope with illegal escape sequences too!
+                        return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
+                    } else {
+                        inner = inner[0];
+                    }
+                    if (inner === ']') break;
+                } else {
+                    inner = inner[0];
+                }
+                set_content.push(inner);
+                s = s.substr(inner.length);
+            }
+
+            // ensure that we hit the terminating ']':
+            var c2 = s.match(chr_re);
+            if (!c2) {
+                // cope with illegal escape sequences too!
+                return new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
+            } else {
+                c2 = c2[0];
+            }
+            if (c2 !== ']') {
+                return new Error(errinfo() + ': regex set expression is broken: apparently unterminated');
+            }
+            s = s.substr(c2.length);
+
+            var se = set_content.join('');
+
+            // expand any macros in here:
+            if (expandAllMacrosInSet_cb) {
+                se = expandAllMacrosInSet_cb(se);
+                assert(se);
+                if (se instanceof Error) {
+                    return new Error(errinfo() + ': ' + se.message);
+                }
+            }
+
+            set2bitarray(l, se);
+
+            // find out which set expression is optimal in size:
+            var s1 = bitarray2set(l);
+            var s2 = /* '^' + */ bitarray2set(l, true);
+            if (s2[0] === '^') {
+                s2 = s2.substr(1);
+            } else {
+                s2 = '^' + s2;
+            }
+            // check if the source regex set potentially has any expansions (guestimate!)
+            //
+            // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
+            var has_expansions = (se.indexOf('{') >= 0);
+            if (s2.length < s1.length) {
+                s1 = s2;
+            }
+            if (!has_expansions && se.length < s1.length) {
+                s1 = se;
+            }
+            rv.push('[' + s1 + ']');
+            break;
+
+        // XRegExp Unicode escape, e.g. `\\p{Number}`:
+        case '\\p':
+            var c2 = s.match(xregexp_unicode_escape_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+        // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
+        // Treat it as a macro reference and see if it will expand to anything:
+        case '{':
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                var c3 = s[0];
+                s = s.substr(c3.length);
+                if (c3 === '}') {
+                    // possibly a macro name in there... Expand if possible:
+                    c2 = c1 + c2 + c3;
+                    if (expandAllMacrosElsewhere_cb) {
+                        c2 = expandAllMacrosElsewhere_cb(c2);
+                        assert(c2);
+                        if (c2 instanceof Error) {
+                            return new Error(errinfo() + ': ' + c2.message);
+                        }
+                    }
+                } else {
+                    // not a well-terminated macro reference or something completely different: 
+                    // we do not even attempt to expand this as there's guaranteed nothing to expand
+                    // in this bit.
+                    c2 = c1 + c2 + c3;
+                }
+                rv.push(c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+
+        // Recognize some other regex elements, but there's no need to understand them all. 
+        //
+        // We are merely interested in any chunks now which do *not* include yet another regex set `[...]`
+        // nor any `{MACRO}` reference:
+        default:
+            // non-set character or word: see how much of this there is for us and then see if there
+            // are any macros still lurking inside there:
+            var c2 = s.match(nothing_special_re);
+            if (c2) {
+                c2 = c2[0];
+                s = s.substr(c2.length);
+
+                // nothing to expand.
+                rv.push(c1 + c2);
+            } else {
+                // nothing to stretch this match, hence nothing to expand.
+                rv.push(c1);
+            }
+            break;
+        }
+    }
+
+    s = rv.join('');
+    
+    // When this result is suitable for use in a set, than we should be able to compile 
+    // it in a regex; that way we can easily validate whether macro X is fit to be used 
+    // inside a regex set:
+    try {
+        var re;
+        re = new XRegExp(s);
+        re.test(s[0]);
+    } catch (ex) {
+        // make sure we produce a regex expression which will fail badly when it is used
+        // in actual code:
+        return new Error(errinfo() + ': expands to an invalid regex: /' + s + '/'); 
+    }
+
+    return s;
+}
+
+
+// 'normalize' a `[...]` set by inverting an inverted `[^...]` set:
+function normalizeSet(s, output_inverted_variant) {
+    var orig = s;
+
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+
+    if (s && s.length) {
+        // // inverted set?
+        // if (s[0] === '^') {
+        //     output_inverted_variant = !output_inverted_variant;
+        //     s = s.substr(1);
+        // }
+
+        var l = new Array(65536 + 3);
+        set2bitarray(l, s);
+
+        s = bitarray2set(l, output_inverted_variant);
+    }
+
+    return s;
+}
+
+
+
+
 // expand macros within macros and cache the result
 function prepareMacros(dict_macros, opts) {
     var macros = {};
 
-    // Pretty brutal conversion of 'regex' in macro back to raw set: strip outer [...] when they're there;
-    // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-    //
-    // Of course this brutish approach is NOT SMART enough to cope with *negated* sets such as
-    // `[^0-9]` in nested macros!
-    function reduceRegexToSet(s, name) {
-        // First make sure legal regexes such as `[-@]` or `[@-]` get their hyphens at the edges
-        // properly escaped as they'll otherwise produce havoc when being combined into new
-        // sets thanks to macro expansion inside the outer regex set expression.
-        var m = s.split('\\\\'); // help us find out which chars in there are truly escaped
-        for (var i = 0, len = m.length; i < len; i++) {
-            s = ' ' + m[i]; // make our life easier when we check the next regex(es)...
-
-            // Any unescaped '[' or ']' is the begin/end marker of a regex set, hence when 
-            // such sets start/end with a '-' dash, it's a *literal* dash, and since we expect
-            // to be merging regex sets, we MUST escape all literaL dashes like that.
-            s = s.replace(/([^\\])\[-/g, '$1[\\-').replace(/-\]/g, '\\-]');
-
-            // Catch the remains of constructs like `[0-9]|[a-z]`.
-            s = s.replace(/([^\\])\]\|\[/g, '$1');
-
-            // Strip unescaped pipes to catch constructs like `\\r|\\n` and turn them into
-            // something ready for use inside a regex set, e.g. `\\r\\n`.
-            // 
-            // > Of course, we realize that converting more complex piped constructs this way
-            // > will produce something you might not expect, e.g. `A|WORD2` -> `AWORD2` which
-            // > would then end up as the set `[AWORD2]` which is something else than the input
-            // > entirely.
-            // > 
-            // > However, we can only depend on the user (grammar writer) to realize this and 
-            // > prevent this from happening by not creating such oddities in the input grammar. 
-            s = s.replace(/([^\\])\|/g, '$1');
-
-            m[i] = s.substr(1, s.length - 1);
-        }
-        s = m.join('\\\\');
-
-        // Also remove the outer brackets if this thing is a set all by itself: we accept either
-        // `[0-9]` or `0-9` as good macro content to land in a (larger) set and this should
-        // take care of the `[]` brackets around the former.
-        // 
-        // Also strip off some other possible outer wrappers which we know how to remove.
-        // We don't worry about 'damaging' the regex as any too-complex regex will be caught
-        // in the validation check at the end; our 'strippers' here would not damage useful
-        // regexes anyway and them damaging the unacceptable ones is fine.
-        s = s.replace(/^\((?:\?:)?(.*?)\)$/, '$1');       // (?:...) -> ...  and  (...) -> ...
-        s = s.replace(/^\[(.*?)\]$/, '$1');
-
-        // Now ensure that any `-` dash at the start or end of the set list is properly escaped:
-        // we won't have caught all of them yet above, just the ones in sub-sets!
-        
-        s = s.replace(/^-/, '\\-');
-        s = s.replace(/-$/, '\\-');
-
-        // When this result is suitable for use in a set, than we should be able to compile 
-        // it in a regex; that way we can easily validate whether macro X is fit to be used 
-        // inside a regex set:
-        try {
-            var re;
-            re = new XRegExp('[' + s + ']');
-            re.test(s[0]);
-
-            // One thing is apparently *not* caught by the RegExp compile action above: `[a[b]c]`
-            // so we check for lingering UNESCAPED brackets in here as those cannot be:
-            if (/[^\\][\[\]]/.exec(s)) {
-                throw 'unescaped brackets in set data';
-            }
-        } catch (ex) {
-            // make sure we produce a set range expression which will fail badly when it is used
-            // in actual code:
-            s = '[macro \'' + name + '\' is unsuitable for use inside regex set expressions: "[' + s + ']"]'; 
-        }
-
-        return s;
-    }
-
-    // expand a macro which exists inside a `[...]` set:
+    // expand a `{NAME}` macro which exists inside a `[...]` set:
     function expandMacroInSet(i) {
         var k, a, m;
         if (!macros[i]) {
             m = dict_macros[i];
 
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    // it doesn't matter if the lexer recognized that the inner macro(s)
-                    // were sitting inside a `[...]` set or not: the fact that they are used
-                    // here in macro `i` which itself sits in a set, makes them *all* live in
-                    // a set so all of them get the same treatment: set expansion style.
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
-                    }
-                    
-                    // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
-                    // macros here:
-                    if ((opts.xregexp || 1) && XRegExp.isUnicodeSlug(k)) {
-                        // Work-around so that you can use `\p{ascii}` for an XRegExp slug
-                        // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
-                        // macro:
-                        if (k.toUpperCase() !== k) {
-                            throw 'Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.';
-                        }
-                    }
+            if (m.indexOf('{') >= 0) {
+                // set up our own record so we can detect definition loops:
+                macros[i] = {
+                    in_set: false,
+                    in_inv_set: false,
+                    elsewhere: null,
+                    raw: dict_macros[i]
+                };
 
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join(expandMacroInSet(k));
+                for (k in dict_macros) {
+                    if (dict_macros.hasOwnProperty(k) && i !== k) {
+                        // it doesn't matter if the lexer recognized that the inner macro(s)
+                        // were sitting inside a `[...]` set or not: the fact that they are used
+                        // here in macro `i` which itself sits in a set, makes them *all* live in
+                        // a set so all of them get the same treatment: set expansion style.
+                        //
+                        // Note: make sure we don't try to expand any XRegExp `\p{...}` or `\P{...}`
+                        // macros here:
+                        if (XRegExp.isUnicodeSlug(k)) {
+                            // Work-around so that you can use `\p{ascii}` for an XRegExp slug
+                            // while using `\p{ASCII}` as a *macro expansion* of the `ASCII`
+                            // macro:
+                            if (k.toUpperCase() !== k) {
+                                m = new Error('Cannot use name "' + k + '" as a macro name as it clashes with the same XRegExp "\\p{..}" Unicode slug name. Use all-uppercase macro names, e.g. name your macro "' + k.toUpperCase() + '" to work around this issue or give your offending macro a different name.');
+                                break;
+                            }
+                        }
+
+                        a = m.split('{' + k + '}');
+                        if (a.length > 1) {
+                            var x = expandMacroInSet(k);
+                            assert(x);
+                            if (x instanceof Error) {
+                                m = x;
+                                break;
+                            }
+                            m = a.join(x);
+                        }
                     }
                 }
             }
@@ -12629,12 +13582,23 @@ function prepareMacros(dict_macros, opts) {
             m = reduceRegexToSet(m, i);
 
             macros[i] = {
-                in_set: m,
+                in_set: normalizeSet(m, false),
+                in_inv_set: normalizeSet(m, true),
                 elsewhere: null,
                 raw: dict_macros[i]
             };
         } else {
             m = macros[i].in_set;
+
+            if (m instanceof Error) {
+                // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                return new Error(m.message);
+            }
+
+            // detect definition loop:
+            if (m === false) {
+                return new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
 
         return m;
@@ -12643,32 +13607,104 @@ function prepareMacros(dict_macros, opts) {
     function expandMacroElsewhere(i) {
         var k, a, m;
 
-        if (!macros[i].elsewhere) {
+        if (macros[i].elsewhere == null) {
             m = dict_macros[i];
 
+            // set up our own record so we can detect definition loops:
+            macros[i].elsewhere = false;
+
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
-            // macro, hence we first expand those submacros all the way:
-            for (k in dict_macros) {
-                if (dict_macros.hasOwnProperty(k) && i !== k) {
-                    a = m.split('{[{' + k + '}]}');
-                    if (a.length > 1) {
-                        m = a.join(macros[k].in_set);
-                    }
-                    
-                    a = m.split('{' + k + '}');
-                    if (a.length > 1) {
-                        m = a.join('(?:' + expandMacroElsewhere(k) + ')');
-                    }
-                }
+            // macro or elsewhere, hence we must parse the regex:
+            m = reduceRegex(m, i, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
+            assert(m);
+            // propagate deferred exceptions = error reports.
+            if (m instanceof Error) {
+                return m;
             }
 
             macros[i].elsewhere = m;
         } else {
             m = macros[i].elsewhere;
+
+            if (m instanceof Error) {
+                // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                return m;
+            }
+
+            // detect definition loop:
+            if (m === false) {
+                return new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+            }
         }
 
         return m;
     }
+
+    function expandAllMacrosInSet(s) {
+        var i, x;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroInSet(i);
+                        assert(x);
+                        if (x instanceof Error) {
+                            return new Error('failure to expand the macro [' + i + '] in set [' + s + ']: ' + x.message);
+                        }
+                        s = a.join(x);
+                    }
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+    function expandAllMacrosElsewhere(s) {
+        var i, x;
+
+        // When we process the remaining macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    // These are all submacro expansions, hence non-capturing grouping is applied:
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        x = expandMacroElsewhere(i);
+                        assert(x);
+                        if (x instanceof Error) {
+                            return new Error('failure to expand the macro [' + i + '] in regex /' + s + '/: ' + x.message);
+                        }
+                        s = a.join('(?:' + x + ')');
+                    }
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
 
     var m, i;
     
@@ -12697,36 +13733,125 @@ function prepareMacros(dict_macros, opts) {
     return macros;
 }
 
+
+
 // expand macros in a regex; expands them recursively
-function expandMacros(src, macros) {
-    var i, m;
+function expandMacros(src, macros, opts) {
+    var expansion_count = 0;
 
-    // first process *all* the macros inside [...] set expressions:
-    if (src.indexOf('{[{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
+    // By the time we call this function `expandMacros` we MUST have expanded and cached all macros already!
+    // Hence things should be easy in there:
 
-                src = src.split('{[{' + i + '}]}').join(m.in_set);
+    function expandAllMacrosInSet(s) {
+        var i, m, x;
+
+        // process *all* the macros inside [...] set:
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        var x = m.in_set;
+
+                        assert(x);
+                        if (x instanceof Error) {
+                            // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
+                            throw x;
+                        }
+
+                        // detect definition loop:
+                        if (x === false) {
+                            return new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
+                        s = a.join(x);
+                        expansion_count++;
+                    }
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
             }
         }
+
+        return s;
     }
 
-    // then process the remaining macro occurrences in the regex:
-    // every macro used in a lexer rule will become its own capture group. 
+    function expandAllMacrosElsewhere(s) {
+        var i, m, x;
+
+        // When we process the main macro occurrences in the regex
+        // every macro used in a lexer rule will become its own capture group.
+        // 
+        // Meanwhile the cached expansion will expand any submacros into
+        // *NON*-capturing groups so that the backreference indexes remain as you'ld
+        // expect and using macros doesn't require you to know exactly what your
+        // used macro will expand into, i.e. which and how many submacros it has.
+        // 
+        // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
+        if (s.indexOf('{') >= 0) {
+            for (i in macros) {
+                if (macros.hasOwnProperty(i)) {
+                    m = macros[i];
+
+                    var a = s.split('{' + i + '}');
+                    if (a.length > 1) {
+                        // These are all main macro expansions, hence CAPTURING grouping is applied:
+                        x = m.elsewhere;
+                        assert(x);
+
+                        // detect definition loop:
+                        if (x === false) {
+                            return new Error('Macro name "' + i + '" has an illegal, looping, definition, i.e. it\'s definition references itself, either directly or indirectly, via other macros.');
+                        }
+
+                        s = a.join('(' + x + ')');
+                        expansion_count++;
+                    }
+
+                    // stop the brute-force expansion attempt when we done 'em all:
+                    if (s.indexOf('{') === -1) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return s;
+    }
+
+
+    // When we process the macro occurrences in the regex
+    // every macro used in a lexer rule will become its own capture group.
+    // 
     // Meanwhile the cached expansion will have expanded any submacros into
     // *NON*-capturing groups so that the backreference indexes remain as you'ld
     // expect and using macros doesn't require you to know exactly what your
     // used macro will expand into, i.e. which and how many submacros it has.
     // 
     // This is a BREAKING CHANGE from vanilla jison 0.4.15! 
-    if (src.indexOf('{') >= 0) {
-        for (i in macros) {
-            if (macros.hasOwnProperty(i)) {
-                m = macros[i];
-
-                src = src.split('{' + i + '}').join('(' + m.elsewhere + ')');
-            }
+    var s2 = reduceRegex(src, null, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
+    // propagate deferred exceptions = error reports.
+    if (s2 instanceof Error) {
+        throw s2;
+    }
+    
+    // only when we did expand some actual macros do we take the re-interpreted/optimized/regenerated regex from reduceRegex()
+    // in order to keep our test cases simple and rules recognizable. This assumes the user can code good regexes on his own,
+    // as long as no macros are involved...
+    //
+    // Also pick the reduced regex when there (potentially) are XRegExp extensions in the original, e.g. `\\p{Number}`,
+    // unless the `xregexp` output option has been enabled.
+    if (expansion_count > 0 || (src.indexOf('\\p{') >= 0 && !opts.options.xregexp)) {
+        src = s2;
+    } else {
+        // Check if the reduced regex is smaller in size; when it is, we still go with the new one!
+        if (s2.length < src.length) {
+            src = s2;
         }
     }
 
@@ -12901,15 +14026,23 @@ function RegExpLexer(dict, input, tokens) {
             // ```
             // var lexer = { bla... };
             // ```
-            var testcode = '' +
-                '// provide a local version for test purposes:\n' +
-                jisonLexerErrorDefinition.join('\n') + '\n' +
-                'function XRegExp(re, f) {\n' +
-                '  this.re = re;\n' +
-                '  this.flags = f;\n' +
-                '}\n' +
-                source + '\n' +
-                'return lexer;\n';
+            var testcode = [
+                '// provide a local version for test purposes:',
+                jisonLexerErrorDefinition.join('\n'),
+                '',
+                'var __hacky_counter__ = 0;',
+                'function XRegExp(re, f) {',
+                '  this.re = re;',
+                '  this.flags = f;',
+                '  var fake = /./;',    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
+                '  __hacky_counter__++;',
+                '  fake.__hacky_backy__ = __hacky_counter__;',
+                '  return fake;',
+                '}',
+                '',
+                source,
+                'return lexer;'].join('\n');
+            //console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
             var lexer_f = new Function('', testcode);
             var lexer = lexer_f();
 
@@ -13031,6 +14164,11 @@ function RegExpLexer(dict, input, tokens) {
         return generateAMDModule(opts);
     };
 
+    // internal APIs to aid testing:
+    lexer.getExpandedMacros = function () {
+        return opts.macros;
+    };
+
     return lexer;
 }
 
@@ -13040,7 +14178,7 @@ RegExpLexer.prototype = {
 
     // JisonLexerError: JisonLexerError,
 
-    parseError: function parseError(str, hash) {
+    parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -13049,7 +14187,7 @@ RegExpLexer.prototype = {
     },
     
     // resets the lexer, sets new input
-    setInput: function (input, yy) {
+    setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -13070,7 +14208,7 @@ RegExpLexer.prototype = {
     },
 
     // consumes and returns one char from the input
-    input: function () {
+    input: function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -13120,7 +14258,7 @@ RegExpLexer.prototype = {
     },
 
     // unshifts one char (or a string) into the input
-    unput: function (ch) {
+    unput: function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -13151,13 +14289,13 @@ RegExpLexer.prototype = {
     },
 
     // When called from action, caches matched text and appends it on next action
-    more: function () {
+    more: function lexer_more() {
         this._more = true;
         return this;
     },
 
     // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-    reject: function () {
+    reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -13176,12 +14314,12 @@ RegExpLexer.prototype = {
     },
 
     // retain first n characters of the match
-    less: function (n) {
-        this.unput(this.match.slice(n));
+    less: function lexer_less(n) {
+        return this.unput(this.match.slice(n));
     },
 
     // return (part of the) already matched input, i.e. for error messages
-    pastInput: function(maxSize) {
+    pastInput: function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -13191,7 +14329,7 @@ RegExpLexer.prototype = {
     },
 
     // return (part of the) upcoming input, i.e. for error messages
-    upcomingInput: function(maxSize) {
+    upcomingInput: function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -13204,14 +14342,14 @@ RegExpLexer.prototype = {
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-    showPosition: function () {
+    showPosition: function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
     // test the lexed token: return FALSE when not a match, otherwise return token
-    test_match: function(match, indexed_rule) {
+    test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -13289,7 +14427,7 @@ RegExpLexer.prototype = {
     },
 
     // return next match in input
-    next: function () {
+    next: function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -13367,7 +14505,7 @@ RegExpLexer.prototype = {
     },
 
     // return next match that has a token
-    lex: function lex () {
+    lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -13383,13 +14521,15 @@ RegExpLexer.prototype = {
         return r;
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-    begin: function begin (condition) {
-        this.conditionStack.push(condition);
+    // backwards compatible alias for `pushState()`; 
+    // the latter is symmetrical with `popState()` and we advise to use 
+    // those APIs in any modern lexer code, rather than `begin()`.
+    begin: function lexer_begin(condition) {
+        return this.pushState(condition);
     },
 
     // pop the previously active lexer condition state off the condition stack
-    popState: function popState () {
+    popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -13399,7 +14539,7 @@ RegExpLexer.prototype = {
     },
 
     // produce the lexer rule set which is active for the currently active lexer condition state
-    _currentRules: function _currentRules () {
+    _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -13408,7 +14548,7 @@ RegExpLexer.prototype = {
     },
 
     // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-    topState: function topState (n) {
+    topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -13417,13 +14557,14 @@ RegExpLexer.prototype = {
         }
     },
 
-    // alias for begin(condition)
-    pushState: function pushState (condition) {
-        this.begin(condition);
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    pushState: function lexer_pushState(condition) {
+        this.conditionStack.push(condition);
+        return this;
     },
 
     // return the number of states currently on the stack
-    stateStackSize: function stateStackSize() {
+    stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     }
 };
@@ -13828,7 +14969,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.17-123 */
+/* parser generated by jison 0.4.17-131 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -14205,22 +15346,22 @@ symbols_: {
   "*": 42,
   "+": 43,
   "?": 63,
-  "ALIAS": 136,
-  "EOF": 129,
-  "EPSILON": 131,
-  "SYMBOL": 137,
+  "ALIAS": 135,
+  "EOF": 1,
+  "EPSILON": 130,
+  "SYMBOL": 136,
   "error": 2,
-  "expression": 134,
-  "expression_suffixed": 133,
+  "expression": 133,
+  "expression_suffixed": 132,
   "handle": 128,
-  "handle_list": 130,
+  "handle_list": 129,
   "production": 127,
-  "rule": 132,
-  "suffix": 135,
+  "rule": 131,
+  "suffix": 134,
   "|": 124
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -14228,26 +15369,25 @@ terminals_: {
   43: "+",
   63: "?",
   124: "|",
-  129: "EOF",
-  131: "EPSILON",
-  136: "ALIAS",
-  137: "SYMBOL"
+  130: "EPSILON",
+  135: "ALIAS",
+  136: "SYMBOL"
 },
 productions_: bp({
   pop: u([
   127,
-  130,
-  130,
+  129,
+  129,
   s,
   [128, 3],
+  131,
+  131,
   132,
   132,
   133,
   133,
-  134,
-  134,
   s,
-  [135, 4]
+  [134, 4]
 ]),
   rule: u([
   2,
@@ -14269,53 +15409,51 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     production : handle EOF */
-  return $$[$0 - 1];  
+ return $$[$0 - 1]; 
 break;
 case 2 : 
 /*! Production::     handle_list : handle */
  case 7 : 
 /*! Production::     rule : expression_suffixed */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 3 : 
 /*! Production::     handle_list : handle_list '|' handle */
-  $$[$0 - 2].push($$[$0]);  
+ $$[$0 - 2].push($$[$0]); 
 break;
 case 4 : 
-/*! Production::     handle :  */
+/*! Production::     handle : ε */
  case 5 : 
 /*! Production::     handle : EPSILON */
-  this.$ = [];  
+ this.$ = []; 
 break;
 case 6 : 
 /*! Production::     handle : rule */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 8 : 
 /*! Production::     rule : rule expression_suffixed */
-  $$[$0 - 1].push($$[$0]);  
+ $$[$0 - 1].push($$[$0]); 
 break;
 case 9 : 
 /*! Production::     expression_suffixed : expression suffix ALIAS */
-  this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]];  
+ this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     expression_suffixed : expression suffix */
- 
-      if ($$[$0]) {
+ if ($$[$0]) {
         this.$ = [$$[$0], $$[$0 - 1]];
       } else {
         this.$ = $$[$0 - 1];
-      }
-     
+      } 
 break;
 case 11 : 
 /*! Production::     expression : SYMBOL */
-  this.$ = ['symbol', $$[$0]];  
+ this.$ = ['symbol', $$[$0]]; 
 break;
 case 12 : 
 /*! Production::     expression : '(' handle_list ')' */
-  this.$ = ['()', $$[$0 - 1]];  
+ this.$ = ['()', $$[$0 - 1]]; 
 break;
 }
 },
@@ -14342,58 +15480,55 @@ table: bt({
   2
 ]),
   symbol: u([
+  1,
   40,
   127,
   128,
-  129,
   s,
-  [131, 4, 1],
-  137,
-  1,
-  129,
+  [130, 4, 1],
+  136,
+  s,
+  [1, 3],
   41,
   124,
-  129,
+  1,
   40,
+  41,
+  124,
   c,
-  [4, 3],
+  [12, 4],
   c,
-  [12, 3],
+  [7, 3],
   c,
-  [7, 4],
-  c,
-  [5, 3],
+  [5, 4],
   42,
   43,
   63,
   124,
-  129,
+  134,
+  135,
+  c,
+  [10, 8],
   135,
   136,
   c,
-  [10, 8],
-  c,
-  [9, 4],
-  124,
-  128,
+  [23, 3],
   s,
-  [130, 5, 1],
-  137,
-  1,
+  [128, 6, 1],
+  c,
+  [46, 3],
   c,
   [35, 7],
   c,
-  [22, 7],
+  [22, 3],
   c,
-  [6, 15],
+  [6, 18],
   41,
   124,
-  41,
-  124,
   c,
-  [68, 12],
+  [75, 6],
   c,
-  [58, 6],
+  [58, 14],
   c,
   [57, 5],
   41,
@@ -14401,26 +15536,24 @@ table: bt({
 ]),
   type: u([
   2,
-  0,
-  0,
   2,
+  0,
+  0,
   c,
-  [4, 3],
+  [3, 3],
   0,
   2,
   1,
   s,
   [2, 8],
   c,
-  [17, 4],
+  [12, 3],
   s,
-  [2, 11],
+  [2, 12],
   c,
   [14, 14],
   c,
-  [30, 4],
-  c,
-  [46, 4],
+  [46, 8],
   s,
   [2, 51],
   c,
@@ -14444,58 +15577,59 @@ table: bt({
   [4, 3]
 ]),
   mode: u([
-  1,
   2,
   s,
-  [1, 3],
-  s,
-  [2, 3],
-  c,
-  [4, 8],
+  [1, 4],
   s,
   [2, 4],
   c,
-  [18, 6],
+  [5, 3],
+  c,
+  [8, 5],
+  c,
+  [12, 5],
+  c,
+  [19, 6],
+  c,
+  [15, 9],
+  c,
+  [18, 4],
+  c,
+  [15, 13],
   s,
-  [2, 10],
+  [2, 17],
   c,
-  [14, 3],
+  [49, 14],
   c,
-  [18, 12],
-  c,
-  [29, 14],
-  c,
-  [51, 8],
-  c,
-  [18, 17],
-  c,
-  [21, 6]
+  [53, 11]
 ]),
   goto: u([
-  8,
   4,
+  8,
   3,
   7,
   9,
   s,
   [5, 3],
+  6,
   8,
-  s,
-  [6, 3],
+  6,
+  6,
   s,
   [7, 6],
-  13,
-  13,
+  s,
+  [13, 3],
   12,
   14,
   s,
-  [13, 5],
+  [13, 4],
   s,
   [11, 9],
   8,
   4,
-  c,
-  [37, 3],
+  4,
+  3,
+  7,
   1,
   s,
   [8, 5],
@@ -14920,7 +16054,7 @@ parse: function parse(input) {
 }
 };
 
-/* generated by jison-lex 0.3.4-123 */
+/* generated by jison-lex 0.3.4-131 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -14980,7 +16114,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -14989,7 +16123,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -15010,7 +16144,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -15060,7 +16194,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -15091,13 +16225,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -15116,12 +16250,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -15131,7 +16265,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -15144,14 +16278,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -15229,7 +16363,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -15307,7 +16441,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -15324,12 +16458,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -15339,7 +16473,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -15348,7 +16482,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -15358,12 +16492,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {},
@@ -15380,7 +16514,7 @@ break;
 case 4 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 136; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 135; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -15390,58 +16524,74 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       {ID} */ 
-   1 : 137,
+   1 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$end */ 
-   2 : 137,
+   2 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$eof */ 
-   3 : 137,
+   3 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %empty */ 
-   5 : 131,
+   5 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %epsilon */ 
-   6 : 131,
+   6 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u0190 */ 
+   7 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u025B */ 
+   8 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03B5 */ 
+   9 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03F5 */ 
+   10 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   7 : 137,
+   11 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   8 : 137,
+   12 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \. */ 
-   9 : 137,
+   13 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \( */ 
-   10 : 40,
+   14 : 40,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \) */ 
-   11 : 41,
+   15 : 41,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   12 : 42,
+   16 : 42,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \? */ 
-   13 : 63,
+   17 : 63,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \| */ 
-   14 : 124,
+   18 : 124,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   15 : 43,
+   19 : 43,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   16 : 129
+   20 : 1
 },
 rules: [
 /^(?:\s+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:\$end)/,
 /^(?:\$eof)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
+/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
 /^(?:%empty)/,
 /^(?:%epsilon)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:'((?:\\'|(?!').)*)')/,
 /^(?:"((?:\\"|(?!").)*)")/,
 /^(?:\.)/,
@@ -15472,7 +16622,11 @@ conditions: {
       13,
       14,
       15,
-      16
+      16,
+      17,
+      18,
+      19,
+      20
     ],
     inclusive: true
   }
@@ -16091,7 +17245,7 @@ var parseLex = function bnfParseLex(text) {
 },{"./ebnf-transform":15,"./parser":16,"lex-parser":19}],15:[function(require,module,exports){
 arguments[4][4][0].apply(exports,arguments)
 },{"./transform-parser.js":17,"dup":4}],16:[function(require,module,exports){
-/* parser generated by jison 0.4.17-121 */
+/* parser generated by jison 0.4.17-130 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -16310,130 +17464,160 @@ arguments[4][4][0].apply(exports,arguments)
 var bnf = (function () {
 
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonParserError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonParserError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
+
     var stacktrace;
     if (hash && hash.exception instanceof Error) {
-      var ex2 = hash.exception;
-      this.message = ex2.message || msg;
-      stacktrace = ex2.stack;
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-      stacktrace = (new Error(msg)).stack;
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
     }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonParserError.prototype = Object.create(Error.prototype);
+
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
 
+
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 // helper: reconstruct the defaultActions[] table
 function bda(s) {
-        var rv = {};
-        var d = s.idx;
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var j = d[i];
-            rv[j] = [
-                p[i],
-                r[i]
-            ];
-        }
-        return rv;
+    var rv = {};
+    var d = s.idx;
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = [
+            p[i],
+            r[i]
+        ];
     }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -16456,85 +17640,85 @@ symbols_: {
   ";": 59,
   "=": 61,
   "?": 63,
-  "ACTION": 135,
-  "ACTION_BODY": 194,
-  "ALIAS": 189,
-  "ARROW_ACTION": 192,
-  "CODE": 199,
-  "DEBUG": 147,
-  "EOF": 132,
-  "EPSILON": 184,
-  "ID": 154,
-  "IMPORT": 149,
-  "INCLUDE": 196,
-  "INIT_CODE": 152,
-  "INTEGER": 176,
-  "LEFT": 167,
-  "LEX_BLOCK": 140,
-  "NAME": 160,
-  "NONASSOC": 169,
-  "OPTIONS": 156,
-  "OPTIONS_END": 158,
-  "OPTION_VALUE": 161,
-  "PARSER_TYPE": 164,
-  "PARSE_PARAM": 162,
-  "PATH": 197,
-  "PREC": 190,
-  "RIGHT": 168,
-  "START": 138,
-  "STRING": 155,
-  "TOKEN": 142,
-  "TOKEN_TYPE": 175,
-  "UNKNOWN_DECL": 148,
-  "action": 183,
-  "action_body": 191,
-  "action_comments_body": 193,
-  "action_ne": 153,
-  "associativity": 166,
-  "declaration": 137,
+  "ACTION": 134,
+  "ACTION_BODY": 193,
+  "ALIAS": 188,
+  "ARROW_ACTION": 191,
+  "CODE": 198,
+  "DEBUG": 146,
+  "EOF": 1,
+  "EPSILON": 183,
+  "ID": 153,
+  "IMPORT": 148,
+  "INCLUDE": 195,
+  "INIT_CODE": 151,
+  "INTEGER": 175,
+  "LEFT": 166,
+  "LEX_BLOCK": 139,
+  "NAME": 159,
+  "NONASSOC": 168,
+  "OPTIONS": 155,
+  "OPTIONS_END": 157,
+  "OPTION_VALUE": 160,
+  "PARSER_TYPE": 163,
+  "PARSE_PARAM": 161,
+  "PATH": 196,
+  "PREC": 189,
+  "RIGHT": 167,
+  "START": 137,
+  "STRING": 154,
+  "TOKEN": 141,
+  "TOKEN_TYPE": 174,
+  "UNKNOWN_DECL": 147,
+  "action": 182,
+  "action_body": 190,
+  "action_comments_body": 192,
+  "action_ne": 152,
+  "associativity": 165,
+  "declaration": 136,
   "declaration_list": 128,
   "error": 2,
-  "expression": 187,
-  "expression_suffix": 185,
-  "extra_parser_module_code": 133,
-  "full_token_definitions": 143,
+  "expression": 186,
+  "expression_suffix": 184,
+  "extra_parser_module_code": 132,
+  "full_token_definitions": 142,
   "grammar": 130,
-  "handle": 181,
-  "handle_action": 180,
-  "handle_list": 179,
-  "handle_sublist": 186,
-  "id": 139,
-  "id_list": 171,
-  "import_name": 150,
-  "import_path": 151,
-  "include_macro_code": 136,
-  "module_code_chunk": 198,
-  "one_full_token": 172,
-  "operator": 141,
-  "option": 159,
-  "option_list": 157,
-  "optional_action_header_block": 134,
+  "handle": 180,
+  "handle_action": 179,
+  "handle_list": 178,
+  "handle_sublist": 185,
+  "id": 138,
+  "id_list": 170,
+  "import_name": 149,
+  "import_path": 150,
+  "include_macro_code": 135,
+  "module_code_chunk": 197,
+  "one_full_token": 171,
+  "operator": 140,
+  "option": 158,
+  "option_list": 156,
+  "optional_action_header_block": 133,
   "optional_end_block": 131,
-  "optional_module_code_chunk": 195,
-  "optional_token_type": 170,
-  "options": 146,
-  "parse_param": 144,
-  "parser_type": 145,
-  "prec": 182,
-  "production": 178,
-  "production_list": 177,
+  "optional_module_code_chunk": 194,
+  "optional_token_type": 169,
+  "options": 145,
+  "parse_param": 143,
+  "parser_type": 144,
+  "prec": 181,
+  "production": 177,
+  "production_list": 176,
   "spec": 127,
-  "suffix": 188,
-  "symbol": 165,
-  "token_description": 174,
-  "token_list": 163,
-  "token_value": 173,
+  "suffix": 187,
+  "symbol": 164,
+  "token_description": 173,
+  "token_list": 162,
+  "token_value": 172,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -16548,36 +17732,35 @@ terminals_: {
   124: "|",
   125: "}",
   129: "%%",
-  132: "EOF",
-  135: "ACTION",
-  138: "START",
-  140: "LEX_BLOCK",
-  142: "TOKEN",
-  147: "DEBUG",
-  148: "UNKNOWN_DECL",
-  149: "IMPORT",
-  152: "INIT_CODE",
-  154: "ID",
-  155: "STRING",
-  156: "OPTIONS",
-  158: "OPTIONS_END",
-  160: "NAME",
-  161: "OPTION_VALUE",
-  162: "PARSE_PARAM",
-  164: "PARSER_TYPE",
-  167: "LEFT",
-  168: "RIGHT",
-  169: "NONASSOC",
-  175: "TOKEN_TYPE",
-  176: "INTEGER",
-  184: "EPSILON",
-  189: "ALIAS",
-  190: "PREC",
-  192: "ARROW_ACTION",
-  194: "ACTION_BODY",
-  196: "INCLUDE",
-  197: "PATH",
-  199: "CODE"
+  134: "ACTION",
+  137: "START",
+  139: "LEX_BLOCK",
+  141: "TOKEN",
+  146: "DEBUG",
+  147: "UNKNOWN_DECL",
+  148: "IMPORT",
+  151: "INIT_CODE",
+  153: "ID",
+  154: "STRING",
+  155: "OPTIONS",
+  157: "OPTIONS_END",
+  159: "NAME",
+  160: "OPTION_VALUE",
+  161: "PARSE_PARAM",
+  163: "PARSER_TYPE",
+  166: "LEFT",
+  167: "RIGHT",
+  168: "NONASSOC",
+  174: "TOKEN_TYPE",
+  175: "INTEGER",
+  183: "EPSILON",
+  188: "ALIAS",
+  189: "PREC",
+  191: "ARROW_ACTION",
+  193: "ACTION_BODY",
+  195: "INCLUDE",
+  196: "PATH",
+  198: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -16585,76 +17768,76 @@ productions_: bp({
   131,
   131,
   s,
-  [134, 3],
+  [133, 3],
   128,
   128,
   s,
-  [137, 13],
+  [136, 13],
+  149,
+  149,
   150,
   150,
-  151,
-  151,
-  146,
-  157,
-  157,
-  s,
-  [159, 3],
-  144,
   145,
-  141,
+  156,
+  156,
   s,
-  [166, 3],
-  163,
-  163,
+  [158, 3],
   143,
-  143,
+  144,
+  140,
   s,
-  [172, 3],
-  170,
-  170,
+  [165, 3],
+  162,
+  162,
+  142,
+  142,
+  s,
+  [171, 3],
+  169,
+  169,
+  172,
   173,
-  174,
-  171,
-  171,
+  170,
+  170,
   130,
+  176,
+  176,
   177,
-  177,
+  178,
   178,
   179,
   179,
   180,
   180,
-  181,
-  181,
-  186,
-  186,
   185,
   185,
+  184,
+  184,
   s,
-  [187, 3],
+  [186, 3],
   s,
-  [188, 4],
+  [187, 4],
+  181,
+  181,
+  164,
+  164,
+  138,
+  s,
+  [152, 4],
   182,
   182,
-  165,
-  165,
-  139,
   s,
-  [153, 4],
-  183,
-  183,
-  s,
-  [191, 4],
-  193,
-  193,
-  133,
-  133,
-  136,
-  136,
-  198,
-  198,
-  195,
-  195
+  [190, 4],
+  192,
+  192,
+  132,
+  132,
+  135,
+  135,
+  197,
+  197,
+  194,
+  194
 ]),
   rule: u([
   5,
@@ -16730,13 +17913,11 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     spec : declaration_list '%%' grammar optional_end_block EOF */
- 
-            this.$ = $$[$0-4];
-            if ($$[$0-1] && $$[$0-1].trim() !== '') {
-                yy.addDeclaration(this.$, { include: $$[$0-1] });
+ this.$ = $$[$0 - 4];
+            if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+                yy.addDeclaration(this.$, { include: $$[$0 - 1] });
             }
-            return extend(this.$, $$[$0-2]);
-         
+            return extend(this.$, $$[$0 - 2]); 
 break;
 case 3 : 
 /*! Production::     optional_end_block : '%%' extra_parser_module_code */
@@ -16768,82 +17949,80 @@ case 3 :
 /*! Production::     module_code_chunk : CODE */
  case 95 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 4 : 
-/*! Production::     optional_action_header_block :  */
+/*! Production::     optional_action_header_block : ε */
  case 8 : 
-/*! Production::     declaration_list :  */
-  this.$ = {};  
+/*! Production::     declaration_list : ε */
+ this.$ = {}; 
 break;
 case 5 : 
 /*! Production::     optional_action_header_block : optional_action_header_block ACTION */
  case 6 : 
 /*! Production::     optional_action_header_block : optional_action_header_block include_macro_code */
- 
-            this.$ = $$[$0-1];
-            yy.addDeclaration(this.$, { actionInclude: $$[$0] });
-         
+ this.$ = $$[$0 - 1];
+            yy.addDeclaration(this.$, { actionInclude: $$[$0] }); 
 break;
 case 7 : 
 /*! Production::     declaration_list : declaration_list declaration */
-  this.$ = $$[$0-1]; yy.addDeclaration(this.$, $$[$0]);  
+ this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]); 
 break;
 case 9 : 
 /*! Production::     declaration : START id */
-  this.$ = {start: $$[$0]};  
+ this.$ = {start: $$[$0]}; 
 break;
 case 10 : 
 /*! Production::     declaration : LEX_BLOCK */
-  this.$ = {lex: $$[$0]};  
+ this.$ = {lex: $$[$0]}; 
 break;
 case 11 : 
 /*! Production::     declaration : operator */
-  this.$ = {operator: $$[$0]};  
+ this.$ = {operator: $$[$0]}; 
 break;
 case 12 : 
 /*! Production::     declaration : TOKEN full_token_definitions */
-  this.$ = {token_list: $$[$0]};  
+ this.$ = {token_list: $$[$0]}; 
 break;
 case 13 : 
 /*! Production::     declaration : ACTION */
  case 14 : 
 /*! Production::     declaration : include_macro_code */
-  this.$ = {include: $$[$0]};  
+ this.$ = {include: $$[$0]}; 
 break;
 case 15 : 
 /*! Production::     declaration : parse_param */
-  this.$ = {parseParam: $$[$0]};  
+ this.$ = {parseParam: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     declaration : parser_type */
-  this.$ = {parserType: $$[$0]};  
+ this.$ = {parserType: $$[$0]}; 
 break;
 case 17 : 
 /*! Production::     declaration : options */
-  this.$ = {options: $$[$0]};  
+ this.$ = {options: $$[$0]}; 
 break;
 case 18 : 
 /*! Production::     declaration : DEBUG */
-  this.$ = {options: [['debug', true]]};  
+ this.$ = {options: [['debug', true]]}; 
 break;
 case 19 : 
 /*! Production::     declaration : UNKNOWN_DECL */
-  this.$ = {unknownDecl: $$[$0]};  
+ this.$ = {unknownDecl: $$[$0]}; 
 break;
 case 20 : 
 /*! Production::     declaration : IMPORT import_name import_path */
-  this.$ = {imports: {name: $$[$0-1], path: $$[$0]}};  
+ this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}}; 
 break;
 case 21 : 
 /*! Production::     declaration : INIT_CODE import_name action_ne */
-  this.$ = {initCode: {qualifier: $$[$0-1], include: $$[$0]}};  
+ this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}}; 
 break;
 case 26 : 
 /*! Production::     options : OPTIONS option_list OPTIONS_END */
  case 77 : 
 /*! Production::     action_ne : '{' action_body '}' */
-  this.$ = $$[$0-1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     option_list : option_list option */
@@ -16851,7 +18030,7 @@ case 27 :
 /*! Production::     token_list : token_list symbol */
  case 49 : 
 /*! Production::     id_list : id_list id */
-  this.$ = $$[$0-1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 28 : 
 /*! Production::     option_list : option */
@@ -16861,183 +18040,153 @@ case 28 :
 /*! Production::     id_list : id */
  case 56 : 
 /*! Production::     handle_list : handle_action */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 29 : 
 /*! Production::     option : NAME[option] */
-  this.$ = [$$[$0], true];  
+ this.$ = [$$[$0], true]; 
 break;
 case 30 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 31 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  this.$ = [$$[$0-2], $$[$0]];  
+ this.$ = [$$[$0 - 2], $$[$0]]; 
 break;
 case 34 : 
 /*! Production::     operator : associativity token_list */
-  this.$ = [$$[$0-1]]; this.$.push.apply(this.$, $$[$0]);  
+ this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]); 
 break;
 case 35 : 
 /*! Production::     associativity : LEFT */
-  this.$ = 'left';  
+ this.$ = 'left'; 
 break;
 case 36 : 
 /*! Production::     associativity : RIGHT */
-  this.$ = 'right';  
+ this.$ = 'right'; 
 break;
 case 37 : 
 /*! Production::     associativity : NONASSOC */
-  this.$ = 'nonassoc';  
+ this.$ = 'nonassoc'; 
 break;
 case 40 : 
 /*! Production::     full_token_definitions : optional_token_type id_list */
- 
-            var rv = [];
+ var rv = [];
             var lst = $$[$0];
             for (var i = 0, len = lst.length; i < len; i++) {
                 var id = lst[i];
                 var m = {id: id};
-                if ($$[$0-1]) {
-                    m.type = $$[$0-1];
+                if ($$[$0 - 1]) {
+                    m.type = $$[$0 - 1];
                 }
                 rv.push(m);
             }
-            this.$ = rv;
-         
+            this.$ = rv; 
 break;
 case 41 : 
 /*! Production::     full_token_definitions : optional_token_type one_full_token */
- 
-            var m = $$[$0];
-            if ($$[$0-1]) {
-                m.type = $$[$0-1];
+ var m = $$[$0];
+            if ($$[$0 - 1]) {
+                m.type = $$[$0 - 1];
             }
-            this.$ = [m];
-         
+            this.$ = [m]; 
 break;
 case 42 : 
 /*! Production::     one_full_token : id token_value token_description */
- 
-            this.$ = {
-                id: $$[$0-2],
-                value: $$[$0-1]
-            };
-         
+ this.$ = {
+                id: $$[$0 - 2],
+                value: $$[$0 - 1]
+            }; 
 break;
 case 43 : 
 /*! Production::     one_full_token : id token_description */
- 
-            this.$ = {
-                id: $$[$0-1],
+ this.$ = {
+                id: $$[$0 - 1],
                 description: $$[$0]
-            };
-         
+            }; 
 break;
 case 44 : 
 /*! Production::     one_full_token : id token_value */
- 
-            this.$ = {
-                id: $$[$0-1],
+ this.$ = {
+                id: $$[$0 - 1],
                 value: $$[$0],
                 description: $token_description
-            };
-         
+            }; 
 break;
 case 45 : 
-/*! Production::     optional_token_type :  */
-  this.$ = false;  
+/*! Production::     optional_token_type : ε */
+ this.$ = false; 
 break;
 case 51 : 
 /*! Production::     grammar : optional_action_header_block production_list */
- 
-            this.$ = $$[$0-1];
-            this.$.grammar = $$[$0];
-         
+ this.$ = $$[$0 - 1];
+            this.$.grammar = $$[$0]; 
 break;
 case 52 : 
 /*! Production::     production_list : production_list production */
- 
-            this.$ = $$[$0-1];
+ this.$ = $$[$0 - 1];
             if ($$[$0][0] in this.$) {
                 this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
             } else {
                 this.$[$$[$0][0]] = $$[$0][1];
-            }
-         
+            } 
 break;
 case 53 : 
 /*! Production::     production_list : production */
-  this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];  
+ this.$ = {}; this.$[$$[$0][0]] = $$[$0][1]; 
 break;
 case 54 : 
 /*! Production::     production : id ':' handle_list ';' */
- this.$ = [$$[$0-3], $$[$0-1]]; 
+ this.$ = [$$[$0 - 3], $$[$0 - 1]]; 
 break;
 case 55 : 
 /*! Production::     handle_list : handle_list '|' handle_action */
- 
-            this.$ = $$[$0-2];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0]); 
 break;
 case 57 : 
 /*! Production::     handle_action : handle prec action */
- 
-            this.$ = [($$[$0-2].length ? $$[$0-2].join(' ') : '')];
+ this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
-            if ($$[$0-1]) {
-                this.$.push($$[$0-1]);
+            if ($$[$0 - 1]) {
+                this.$.push($$[$0 - 1]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 58 : 
 /*! Production::     handle_action : EPSILON action */
- 
-            this.$ = [''];
+ this.$ = [''];
             if ($$[$0]) {
                 this.$.push($$[$0]);
             }
             if (this.$.length === 1) {
                 this.$ = this.$[0];
-            }
-         
+            } 
 break;
 case 59 : 
 /*! Production::     handle : handle expression_suffix */
- 
-            this.$ = $$[$0-1];
-            this.$.push($$[$0]);
-         
+ this.$ = $$[$0 - 1];
+            this.$.push($$[$0]); 
 break;
 case 60 : 
-/*! Production::     handle :  */
- 
-            this.$ = [];
-         
+/*! Production::     handle : ε */
+ this.$ = []; 
 break;
 case 61 : 
 /*! Production::     handle_sublist : handle_sublist '|' handle */
- 
-            this.$ = $$[$0-2];
-            this.$.push($$[$0].join(' '));
-         
+ this.$ = $$[$0 - 2];
+            this.$.push($$[$0].join(' ')); 
 break;
 case 62 : 
 /*! Production::     handle_sublist : handle */
- 
-            this.$ = [$$[$0].join(' ')];
-         
+ this.$ = [$$[$0].join(' ')]; 
 break;
 case 63 : 
 /*! Production::     expression_suffix : expression suffix ALIAS */
- 
-            this.$ = $$[$0-2] + $$[$0-1] + "[" + $$[$0] + "]";
-         
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]"; 
 break;
 case 64 : 
 /*! Production::     expression_suffix : expression suffix */
@@ -17045,14 +18194,11 @@ case 64 :
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
  case 94 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
- 
-            this.$ = $$[$0-1] + $$[$0];
-         
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 66 : 
 /*! Production::     expression : STRING */
- 
-            // Re-encode the string *anyway* as it will
+ // Re-encode the string *anyway* as it will
             // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
             // to be able to handle all tokens, including *significant space*
             // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
@@ -17060,66 +18206,55 @@ case 66 :
                 this.$ = '"' + $$[$0] + '"';
             } else {
                 this.$ = "'" + $$[$0] + "'";
-            }
-         
+            } 
 break;
 case 67 : 
 /*! Production::     expression : '(' handle_sublist ')' */
- 
-            this.$ = '(' + $$[$0-1].join(' | ') + ')';
-         
+ this.$ = '(' + $$[$0 - 1].join(' | ') + ')'; 
 break;
 case 68 : 
-/*! Production::     suffix :  */
+/*! Production::     suffix : ε */
  case 82 : 
-/*! Production::     action :  */
+/*! Production::     action : ε */
  case 83 : 
-/*! Production::     action_body :  */
+/*! Production::     action_body : ε */
  case 96 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 72 : 
 /*! Production::     prec : PREC symbol */
- 
-            this.$ = { prec: $$[$0] };
-         
+ this.$ = { prec: $$[$0] }; 
 break;
 case 73 : 
-/*! Production::     prec :  */
- 
-            this.$ = null;
-         
+/*! Production::     prec : ε */
+ this.$ = null; 
 break;
 case 80 : 
 /*! Production::     action_ne : ARROW_ACTION */
-  this.$ = '$$ =' + $$[$0] + ';';  
+ this.$ = '$$ =' + $$[$0] + ';'; 
 break;
 case 85 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 86 : 
 /*! Production::     action_body : action_body '{' action_body '}' */
-  this.$ = $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 90 : 
 /*! Production::     extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-  this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 91 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+ var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 92 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -17233,91 +18368,91 @@ table: bt({
   127,
   128,
   129,
-  135,
-  138,
-  140,
-  142,
+  134,
+  137,
+  139,
+  141,
+  146,
   147,
   148,
-  149,
-  152,
-  156,
-  162,
-  164,
+  151,
+  155,
+  161,
+  163,
+  166,
   167,
   168,
-  169,
-  196,
+  195,
   1,
   129,
   s,
-  [135, 4, 1],
+  [134, 4, 1],
+  139,
   140,
   141,
-  142,
   s,
-  [144, 6, 1],
+  [143, 6, 1],
   c,
   [23, 4],
   s,
-  [166, 4, 1],
-  196,
+  [165, 4, 1],
+  195,
   130,
+  133,
   134,
-  135,
-  154,
-  196,
+  153,
+  195,
   c,
   [45, 16],
-  139,
-  154,
+  138,
+  153,
   c,
   [18, 16],
   c,
   [16, 16],
-  143,
-  154,
-  170,
-  175,
+  142,
+  153,
+  169,
+  174,
   c,
   [36, 32],
   c,
   [16, 80],
-  150,
+  149,
+  153,
   154,
-  155,
   c,
   [3, 3],
-  139,
+  138,
+  153,
   154,
-  155,
-  163,
-  165,
+  162,
+  164,
   2,
-  197,
+  196,
   c,
   [7, 5],
   c,
   [5, 3],
-  165,
-  157,
+  164,
+  156,
+  158,
   159,
-  160,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  153,
   154,
-  155,
+  1,
   129,
   131,
-  132,
+  134,
   135,
-  136,
-  139,
-  154,
+  138,
+  153,
+  176,
   177,
-  178,
   c,
   [57, 17],
   58,
@@ -17326,86 +18461,86 @@ table: bt({
   124,
   c,
   [20, 9],
+  153,
   154,
-  155,
   c,
   [22, 6],
-  176,
-  192,
+  175,
+  191,
   c,
   [247, 19],
+  170,
   171,
-  172,
+  153,
+  150,
+  153,
   154,
-  151,
-  154,
-  155,
   123,
-  135,
+  134,
+  153,
   154,
-  155,
-  192,
-  196,
+  191,
+  195,
   c,
   [6, 8],
-  136,
-  153,
+  135,
+  152,
   c,
   [42, 5],
-  139,
+  138,
   c,
   [63, 11],
-  165,
+  164,
   c,
   [159, 13],
   c,
   [82, 8],
-  196,
+  195,
   c,
   [103, 20],
-  192,
+  191,
   c,
-  [22, 24],
-  124,
-  s,
-  [129, 4, 3],
+  [22, 23],
+  1,
+  59,
   c,
-  [22, 7],
+  [22, 11],
   c,
   [64, 7],
-  199,
+  198,
   c,
   [21, 21],
   c,
   [124, 29],
   c,
   [37, 7],
+  157,
   158,
   159,
-  160,
-  158,
-  160,
+  157,
+  159,
   61,
-  158,
-  160,
+  157,
+  159,
+  1,
+  1,
   132,
-  132,
-  133,
+  194,
   195,
-  196,
+  197,
   198,
-  199,
+  1,
   129,
-  132,
-  139,
-  154,
-  178,
+  138,
+  153,
+  177,
   c,
   [472, 3],
   c,
-  [475, 4],
-  132,
-  154,
+  [3, 3],
+  1,
+  129,
+  153,
   58,
   c,
   [66, 11],
@@ -17413,58 +18548,57 @@ table: bt({
   [363, 32],
   c,
   [161, 8],
+  172,
   173,
-  174,
-  176,
+  175,
   c,
   [432, 65],
   123,
   125,
-  191,
+  190,
+  192,
   193,
-  194,
   c,
-  [211, 3],
+  [210, 11],
   c,
-  [23, 15],
+  [294, 8],
   c,
-  [18, 36],
+  [18, 35],
   c,
   [348, 18],
   c,
   [242, 17],
+  159,
+  159,
   160,
-  160,
-  161,
+  s,
+  [1, 3],
+  135,
+  195,
   1,
-  132,
-  132,
-  136,
-  196,
-  132,
-  196,
-  199,
+  c,
+  [311, 3],
   c,
   [3, 3],
-  c,
-  [231, 3],
+  129,
+  153,
   40,
   c,
   [361, 3],
   c,
   [435, 3],
+  178,
   179,
   180,
-  181,
-  184,
-  190,
+  183,
+  189,
   c,
   [476, 11],
   c,
   [243, 17],
   c,
   [82, 7],
-  174,
+  173,
   c,
   [192, 26],
   c,
@@ -17473,32 +18607,32 @@ table: bt({
   125,
   123,
   125,
-  194,
+  193,
   c,
   [3, 3],
-  158,
+  157,
   c,
   [365, 3],
   c,
-  [361, 6],
-  c,
-  [122, 3],
+  [361, 7],
+  195,
+  198,
   59,
   124,
   59,
   124,
   c,
   [123, 7],
-  182,
-  185,
-  187,
+  181,
+  184,
+  186,
   c,
   [122, 3],
   c,
   [12, 4],
-  136,
-  153,
-  183,
+  135,
+  152,
+  182,
   c,
   [607, 18],
   c,
@@ -17507,7 +18641,7 @@ table: bt({
   [290, 5],
   c,
   [81, 3],
-  132,
+  1,
   c,
   [191, 10],
   c,
@@ -17528,8 +18662,8 @@ table: bt({
   63,
   c,
   [18, 5],
+  187,
   188,
-  189,
   c,
   [20, 3],
   c,
@@ -17537,10 +18671,10 @@ table: bt({
   c,
   [15, 21],
   124,
+  153,
   154,
-  155,
-  181,
-  186,
+  180,
+  185,
   c,
   [162, 4],
   123,
@@ -17559,12 +18693,12 @@ table: bt({
   124,
   c,
   [73, 5],
-  185,
-  187,
+  184,
+  186,
   123,
   125,
+  192,
   193,
-  194,
   c,
   [145, 11],
   c,
@@ -17610,11 +18744,11 @@ table: bt({
   c,
   [5, 8],
   c,
-  [32, 10],
+  [149, 10],
   c,
-  [224, 4],
+  [3, 5],
   c,
-  [97, 59],
+  [97, 58],
   c,
   [64, 4],
   c,
@@ -17628,9 +18762,9 @@ table: bt({
   c,
   [124, 34],
   c,
-  [261, 10],
+  [22, 9],
   c,
-  [194, 6],
+  [194, 7],
   c,
   [200, 16],
   c,
@@ -17656,9 +18790,9 @@ table: bt({
   c,
   [40, 17],
   c,
-  [719, 11],
+  [17, 10],
   c,
-  [28, 15],
+  [68, 16],
   c,
   [757, 6],
   c,
@@ -17772,14 +18906,13 @@ table: bt({
   s,
   [2, 79],
   c,
-  [179, 19],
-  1,
+  [179, 20],
   c,
-  [21, 4],
+  [190, 23],
   c,
-  [80, 57],
+  [80, 38],
   c,
-  [61, 3],
+  [62, 3],
   c,
   [96, 16],
   c,
@@ -17815,7 +18948,9 @@ table: bt({
   c,
   [528, 6],
   c,
-  [612, 41],
+  [551, 4],
+  c,
+  [94, 37],
   c,
   [37, 15],
   c,
@@ -17899,8 +19034,8 @@ table: bt({
   36,
   37,
   37,
-  49,
   2,
+  49,
   51,
   29,
   19,
@@ -18390,7 +19525,8 @@ parse: function parse(input) {
                     }
                     r = this.parseError(errStr, p = {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -18417,7 +19553,8 @@ parse: function parse(input) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
+                            value: lexer.yytext,
+                            token: this.describeSymbol(symbol) || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
                             loc: lexer.yylloc,
@@ -18445,7 +19582,8 @@ parse: function parse(input) {
                 if (error_rule_depth === false) {
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -18478,7 +19616,8 @@ parse: function parse(input) {
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -18495,7 +19634,8 @@ parse: function parse(input) {
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -18618,7 +19758,8 @@ parse: function parse(input) {
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -18661,21 +19802,59 @@ function extend(json, grammar) {
 }
 
 
-/* generated by jison-lex 0.3.4-121 */
+/* generated by jison-lex 0.3.4-130 */
 var lexer = (function () {
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonLexerError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonLexerError.prototype = Object.create(Error.prototype);
-JisonLexerError.prototype.constructor = JisonLexerError;
-JisonLexerError.prototype.name = 'JisonLexerError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+    } else {
+        JisonLexerError.prototype = Object.create(Error.prototype);
+    }
+    JisonLexerError.prototype.constructor = JisonLexerError;
+    JisonLexerError.prototype.name = 'JisonLexerError';
+
 
 var lexer = {
 
@@ -18683,7 +19862,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -18692,7 +19871,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -18713,7 +19892,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -18763,7 +19942,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -18794,13 +19973,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -18819,12 +19998,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -18834,7 +20013,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -18847,14 +20026,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -18932,7 +20111,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -19010,7 +20189,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -19027,12 +20206,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -19042,7 +20221,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -19051,7 +20230,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -19061,12 +20240,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -19098,186 +20277,195 @@ case 3 :
 /*! Rule::       %% */ 
  this.pushState('code'); return 129; 
 break;
-case 13 : 
+case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 14 : 
+case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 161; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 160; 
 break;
-case 16 : 
+case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 158; 
+ this.popState(); return 157; 
 break;
-case 17 : 
+case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 18 : 
+case 22 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 19 : 
+case 23 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* skip newlines */ 
 break;
-case 20 : 
+case 24 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\/[^\r\n]* */ 
  /* skip single-line comment */ 
 break;
-case 21 : 
+case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
  /* skip multi-line comment */ 
 break;
-case 22 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 189; 
-break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       "[^"]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 188; 
 break;
-case 27 : 
+case 30 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       "[^"]+" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
+break;
+case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '[^']+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 155; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 154; 
 break;
-case 32 : 
+case 36 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 129; 
 break;
-case 33 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 34 : 
+case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 147; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 146; 
 break;
-case 41 : 
+case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
- this.pushState('token'); return 142; 
-break;
-case 43 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       %options\b */ 
- this.pushState('options'); return 156; 
+ this.pushState('token'); return 141; 
 break;
 case 47 : 
-/*! Conditions:: INITIAL ebnf bnf code */ 
-/*! Rule::       %include\b */ 
- this.pushState('path'); return 196; 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %options\b */ 
+ this.pushState('options'); return 155; 
 break;
 case 48 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       %lex{LEX_CONTENT}\/lex\b */ 
+  
+                                            // remove the %lex../lex wrapper and return the pure lex section:
+                                            yy_.yytext = this.matches[1];
+                                            return 139; 
+                                         
+break;
+case 51 : 
+/*! Conditions:: INITIAL ebnf bnf code */ 
+/*! Rule::       %include\b */ 
+ this.pushState('path'); return 195; 
+break;
+case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}[^\r\n]* */ 
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 148;
+                                            return 147;
                                          
 break;
-case 49 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 175; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 174; 
 break;
-case 50 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 134; 
 break;
-case 51 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 135; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 134; 
 break;
-case 52 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 123; 
 break;
-case 53 : 
+case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 192; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 191; 
 break;
-case 54 : 
+case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 175; 
 break;
-case 55 : 
+case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 176; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 175; 
 break;
-case 56 : 
+case 60 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       . */ 
  
                                             throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
                                          
 break;
-case 60 : 
+case 64 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 194; // regexp with braces or quotes (and no spaces) 
+ return 193; // regexp with braces or quotes (and no spaces) 
 break;
-case 65 : 
+case 69 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 123; 
 break;
-case 66 : 
+case 70 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 125; 
 break;
-case 68 : 
+case 72 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 199;      // the bit of CODE just before EOF... 
+ return 198;      // the bit of CODE just before EOF... 
 break;
-case 69 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 70 : 
+case 74 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 71 : 
+case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 197; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 196; 
 break;
-case 72 : 
+case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 73 : 
+case 77 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 197; 
+ this.popState(); return 196; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -19287,109 +20475,118 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 184,
+   4 : 183,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 184,
+   5 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u0190 */ 
+   6 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u025B */ 
+   7 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03B5 */ 
+   8 : 183,
+  /*! Conditions:: bnf ebnf */ 
+  /*! Rule::       \u03F5 */ 
+   9 : 183,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
-   6 : 40,
+   10 : 40,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \) */ 
-   7 : 41,
+   11 : 41,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \* */ 
-   8 : 42,
+   12 : 42,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \? */ 
-   9 : 63,
+   13 : 63,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \+ */ 
-   10 : 43,
+   14 : 43,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   11 : 160,
+   15 : 159,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
-   12 : 61,
+   16 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   15 : 161,
+   19 : 160,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   23 : 154,
+   27 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$end\b */ 
-   24 : 154,
+   28 : 153,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$eof\b */ 
-   25 : 154,
+   29 : 153,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   28 : 'TOKEN_WORD',
+   32 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   29 : 58,
+   33 : 58,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   30 : 59,
+   34 : 59,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   31 : 124,
+   35 : 124,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   35 : 164,
+   39 : 163,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   36 : 190,
+   40 : 189,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   37 : 138,
+   41 : 137,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   38 : 167,
+   42 : 166,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   39 : 168,
+   43 : 167,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   40 : 169,
+   44 : 168,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   42 : 162,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %lex[\w\W]*?{BR}\s*\/lex\b */ 
-   44 : 140,
+   46 : 161,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   45 : 152,
+   49 : 151,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   46 : 149,
+   50 : 148,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   57 : 132,
+   61 : 1,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   58 : 194,
+   62 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   59 : 194,
+   63 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   61 : 194,
+   65 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   62 : 194,
+   66 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   63 : 194,
+   67 : 193,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   64 : 194,
+   68 : 193,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   67 : 199
+   71 : 198
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -19398,12 +20595,16 @@ rules: [
 /^(?:%%)/,
 /^(?:%empty\b)/,
 /^(?:%epsilon\b)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:\()/,
 /^(?:\))/,
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
@@ -19414,8 +20615,8 @@ rules: [
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
@@ -19436,23 +20637,23 @@ rules: [
 /^(?:%token\b)/,
 /^(?:%parse-param\b)/,
 /^(?:%options\b)/,
-/^(?:%lex[\w\W]*?(\r\n|\n|\r)\s*\/lex\b)/,
+/^(?:%lex((?:[^\S\r\n])*(?:(?:\r\n|\n|\r)[\w\W]*?)?(?:\r\n|\n|\r)(?:[^\S\r\n])*)\/lex\b)/,
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]*)/,
-/^(?:<([a-zA-Z_][a-zA-Z0-9_]*)>)/,
+/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]*)/,
+/^(?:<([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)>)/,
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
 /^(?:->.*)/,
-/^(?:(0[xX][0-9a-fA-F]+))/,
-/^(?:([1-9][0-9]*)(?![xX0-9a-fA-F]))/,
+/^(?:(0[Xx][0-9A-Fa-f]+))/,
+/^(?:([1-9][0-9]*)(?![0-9A-FXa-fx]))/,
 /^(?:.)/,
 /^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
@@ -19473,20 +20674,20 @@ conditions: {
       3,
       4,
       5,
-      18,
-      19,
-      20,
-      21,
+      6,
+      7,
+      8,
+      9,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19511,7 +20712,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -19525,20 +20730,20 @@ conditions: {
       8,
       9,
       10,
-      18,
-      19,
-      20,
-      21,
+      11,
+      12,
+      13,
+      14,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19563,7 +20768,11 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
@@ -19572,10 +20781,6 @@ conditions: {
       0,
       1,
       2,
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
@@ -19601,83 +20806,83 @@ conditions: {
       44,
       45,
       46,
+      47,
       48,
       49,
       50,
-      51,
       52,
       53,
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      57,
-      58,
-      59,
-      60,
       61,
       62,
       63,
       64,
       65,
-      66
+      66,
+      67,
+      68,
+      69,
+      70
     ],
     inclusive: false
   },
   "code": {
     rules: [
-      47,
-      57,
-      67,
-      68
+      51,
+      61,
+      71,
+      72
     ],
     inclusive: false
   },
   "path": {
     rules: [
-      57,
-      69,
-      70,
-      71,
-      72,
-      73
+      61,
+      73,
+      74,
+      75,
+      76,
+      77
     ],
     inclusive: false
   },
   "options": {
     rules: [
-      11,
-      12,
-      13,
-      14,
       15,
       16,
       17,
-      57
+      18,
+      19,
+      20,
+      21,
+      61
     ],
     inclusive: false
   },
   "INITIAL": {
     rules: [
-      18,
-      19,
-      20,
-      21,
       22,
       23,
       24,
       25,
       26,
       27,
+      28,
       29,
       30,
       31,
-      32,
       33,
       34,
       35,
@@ -19702,14 +20907,17 @@ conditions: {
       54,
       55,
       56,
-      57
+      57,
+      58,
+      59,
+      60,
+      61
     ],
     inclusive: true
   }
 }
 };
 
-// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -19719,7 +20927,6 @@ function Parser() {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
-// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -19728,16 +20935,16 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = bnf;
-exports.Parser = bnf.Parser;
-exports.parse = function () {
-  return bnf.parse.apply(bnf, arguments);
-};
+  exports.parser = bnf;
+  exports.Parser = bnf.Parser;
+  exports.parse = function () {
+    return bnf.parse.apply(bnf, arguments);
+  };
 
 }
 
 },{"./ebnf-transform":15,"fs":13}],17:[function(require,module,exports){
-/* parser generated by jison 0.4.17-121 */
+/* parser generated by jison 0.4.17-130 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -19956,116 +21163,146 @@ exports.parse = function () {
 var ebnf = (function () {
 
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonParserError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonParserError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
+
     var stacktrace;
     if (hash && hash.exception instanceof Error) {
-      var ex2 = hash.exception;
-      this.message = ex2.message || msg;
-      stacktrace = ex2.stack;
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-      stacktrace = (new Error(msg)).stack;
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
     }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonParserError.prototype = Object.create(Error.prototype);
+
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
 
+
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -20084,22 +21321,22 @@ symbols_: {
   "*": 42,
   "+": 43,
   "?": 63,
-  "ALIAS": 136,
-  "EOF": 129,
-  "EPSILON": 131,
-  "SYMBOL": 137,
+  "ALIAS": 135,
+  "EOF": 1,
+  "EPSILON": 130,
+  "SYMBOL": 136,
   "error": 2,
-  "expression": 134,
-  "expression_suffixed": 133,
+  "expression": 133,
+  "expression_suffixed": 132,
   "handle": 128,
-  "handle_list": 130,
+  "handle_list": 129,
   "production": 127,
-  "rule": 132,
-  "suffix": 135,
+  "rule": 131,
+  "suffix": 134,
   "|": 124
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   40: "(",
   41: ")",
@@ -20107,26 +21344,25 @@ terminals_: {
   43: "+",
   63: "?",
   124: "|",
-  129: "EOF",
-  131: "EPSILON",
-  136: "ALIAS",
-  137: "SYMBOL"
+  130: "EPSILON",
+  135: "ALIAS",
+  136: "SYMBOL"
 },
 productions_: bp({
   pop: u([
   127,
-  130,
-  130,
+  129,
+  129,
   s,
   [128, 3],
+  131,
+  131,
   132,
   132,
   133,
   133,
-  134,
-  134,
   s,
-  [135, 4]
+  [134, 4]
 ]),
   rule: u([
   2,
@@ -20148,53 +21384,51 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     production : handle EOF */
-  return $$[$0-1];  
+ return $$[$0 - 1]; 
 break;
 case 2 : 
 /*! Production::     handle_list : handle */
  case 7 : 
 /*! Production::     rule : expression_suffixed */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 3 : 
 /*! Production::     handle_list : handle_list '|' handle */
-  $$[$0-2].push($$[$0]);  
+ $$[$0 - 2].push($$[$0]); 
 break;
 case 4 : 
-/*! Production::     handle :  */
+/*! Production::     handle : ε */
  case 5 : 
 /*! Production::     handle : EPSILON */
-  this.$ = [];  
+ this.$ = []; 
 break;
 case 6 : 
 /*! Production::     handle : rule */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 8 : 
 /*! Production::     rule : rule expression_suffixed */
-  $$[$0-1].push($$[$0]);  
+ $$[$0 - 1].push($$[$0]); 
 break;
 case 9 : 
 /*! Production::     expression_suffixed : expression suffix ALIAS */
-  this.$ = ['xalias', $$[$0-1], $$[$0-2], $$[$0]];  
+ this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     expression_suffixed : expression suffix */
- 
-      if ($$[$0]) {
-        this.$ = [$$[$0], $$[$0-1]];
+ if ($$[$0]) {
+        this.$ = [$$[$0], $$[$0 - 1]];
       } else {
-        this.$ = $$[$0-1];
-      }
-     
+        this.$ = $$[$0 - 1];
+      } 
 break;
 case 11 : 
 /*! Production::     expression : SYMBOL */
-  this.$ = ['symbol', $$[$0]];  
+ this.$ = ['symbol', $$[$0]]; 
 break;
 case 12 : 
 /*! Production::     expression : '(' handle_list ')' */
-  this.$ = ['()', $$[$0-1]];  
+ this.$ = ['()', $$[$0 - 1]]; 
 break;
 }
 },
@@ -20221,58 +21455,55 @@ table: bt({
   2
 ]),
   symbol: u([
+  1,
   40,
   127,
   128,
-  129,
   s,
-  [131, 4, 1],
-  137,
-  1,
-  129,
+  [130, 4, 1],
+  136,
+  s,
+  [1, 3],
   41,
   124,
-  129,
+  1,
   40,
+  41,
+  124,
   c,
-  [4, 3],
+  [12, 4],
   c,
-  [12, 3],
+  [7, 3],
   c,
-  [7, 4],
-  c,
-  [5, 3],
+  [5, 4],
   42,
   43,
   63,
   124,
-  129,
+  134,
+  135,
+  c,
+  [10, 8],
   135,
   136,
   c,
-  [10, 8],
-  c,
-  [9, 4],
-  124,
-  128,
+  [23, 3],
   s,
-  [130, 5, 1],
-  137,
-  1,
+  [128, 6, 1],
+  c,
+  [46, 3],
   c,
   [35, 7],
   c,
-  [22, 7],
+  [22, 3],
   c,
-  [6, 15],
+  [6, 18],
   41,
   124,
-  41,
-  124,
   c,
-  [68, 12],
+  [75, 6],
   c,
-  [58, 6],
+  [58, 14],
   c,
   [57, 5],
   41,
@@ -20280,26 +21511,24 @@ table: bt({
 ]),
   type: u([
   2,
-  0,
-  0,
   2,
+  0,
+  0,
   c,
-  [4, 3],
+  [3, 3],
   0,
   2,
   1,
   s,
   [2, 8],
   c,
-  [17, 4],
+  [12, 3],
   s,
-  [2, 11],
+  [2, 12],
   c,
   [14, 14],
   c,
-  [30, 4],
-  c,
-  [46, 4],
+  [46, 8],
   s,
   [2, 51],
   c,
@@ -20323,58 +21552,59 @@ table: bt({
   [4, 3]
 ]),
   mode: u([
-  1,
   2,
   s,
-  [1, 3],
-  s,
-  [2, 3],
-  c,
-  [4, 8],
+  [1, 4],
   s,
   [2, 4],
   c,
-  [18, 6],
+  [5, 3],
+  c,
+  [8, 5],
+  c,
+  [12, 5],
+  c,
+  [19, 6],
+  c,
+  [15, 9],
+  c,
+  [18, 4],
+  c,
+  [15, 13],
   s,
-  [2, 10],
+  [2, 17],
   c,
-  [14, 3],
+  [49, 14],
   c,
-  [18, 12],
-  c,
-  [29, 14],
-  c,
-  [51, 8],
-  c,
-  [18, 17],
-  c,
-  [21, 6]
+  [53, 11]
 ]),
   goto: u([
-  8,
   4,
+  8,
   3,
   7,
   9,
   s,
   [5, 3],
+  6,
   8,
-  s,
-  [6, 3],
+  6,
+  6,
   s,
   [7, 6],
-  13,
-  13,
+  s,
+  [13, 3],
   12,
   14,
   s,
-  [13, 5],
+  [13, 4],
   s,
   [11, 9],
   8,
   4,
-  c,
-  [37, 3],
+  4,
+  3,
+  7,
   1,
   s,
   [8, 5],
@@ -20605,7 +21835,8 @@ parse: function parse(input) {
                 // we cannot recover from the error!
                 retval = this.parseError(errStr, {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -20628,7 +21859,8 @@ parse: function parse(input) {
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -20645,7 +21877,8 @@ parse: function parse(input) {
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -20767,7 +22000,8 @@ parse: function parse(input) {
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -20795,21 +22029,59 @@ parse: function parse(input) {
 }
 };
 
-/* generated by jison-lex 0.3.4-121 */
+/* generated by jison-lex 0.3.4-130 */
 var lexer = (function () {
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonLexerError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonLexerError.prototype = Object.create(Error.prototype);
-JisonLexerError.prototype.constructor = JisonLexerError;
-JisonLexerError.prototype.name = 'JisonLexerError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+    } else {
+        JisonLexerError.prototype = Object.create(Error.prototype);
+    }
+    JisonLexerError.prototype.constructor = JisonLexerError;
+    JisonLexerError.prototype.name = 'JisonLexerError';
+
 
 var lexer = {
 
@@ -20817,7 +22089,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -20826,7 +22098,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -20847,7 +22119,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -20897,7 +22169,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -20928,13 +22200,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -20953,12 +22225,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -20968,7 +22240,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -20981,14 +22253,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -21066,7 +22338,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -21144,7 +22416,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -21161,12 +22433,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -21176,7 +22448,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -21185,7 +22457,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -21195,12 +22467,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {},
@@ -21217,7 +22489,7 @@ break;
 case 4 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 136; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 135; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -21227,58 +22499,74 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       {ID} */ 
-   1 : 137,
+   1 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$end */ 
-   2 : 137,
+   2 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \$eof */ 
-   3 : 137,
+   3 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %empty */ 
-   5 : 131,
+   5 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       %epsilon */ 
-   6 : 131,
+   6 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u0190 */ 
+   7 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u025B */ 
+   8 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03B5 */ 
+   9 : 130,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \u03F5 */ 
+   10 : 130,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   7 : 137,
+   11 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   8 : 137,
+   12 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \. */ 
-   9 : 137,
+   13 : 136,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \( */ 
-   10 : 40,
+   14 : 40,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \) */ 
-   11 : 41,
+   15 : 41,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   12 : 42,
+   16 : 42,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \? */ 
-   13 : 63,
+   17 : 63,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \| */ 
-   14 : 124,
+   18 : 124,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   15 : 43,
+   19 : 43,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   16 : 129
+   20 : 1
 },
 rules: [
 /^(?:\s+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:\$end)/,
 /^(?:\$eof)/,
-/^(?:\[([a-zA-Z_][a-zA-Z0-9_]*)\])/,
+/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
 /^(?:%empty)/,
 /^(?:%epsilon)/,
+/^(?:\u0190)/,
+/^(?:\u025B)/,
+/^(?:\u03B5)/,
+/^(?:\u03F5)/,
 /^(?:'((?:\\'|(?!').)*)')/,
 /^(?:"((?:\\"|(?!").)*)")/,
 /^(?:\.)/,
@@ -21309,14 +22597,17 @@ conditions: {
       13,
       14,
       15,
-      16
+      16,
+      17,
+      18,
+      19,
+      20
     ],
     inclusive: true
   }
 }
 };
 
-// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -21326,7 +22617,6 @@ function Parser() {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
-// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -21335,11 +22625,11 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = ebnf;
-exports.Parser = ebnf.Parser;
-exports.parse = function () {
-  return ebnf.parse.apply(ebnf, arguments);
-};
+  exports.parser = ebnf;
+  exports.Parser = ebnf.Parser;
+  exports.parse = function () {
+    return ebnf.parse.apply(ebnf, arguments);
+  };
 
 }
 
@@ -21369,7 +22659,7 @@ if (typeof Object.create === 'function') {
 }
 
 },{}],19:[function(require,module,exports){
-/* parser generated by jison 0.4.17-121 */
+/* parser generated by jison 0.4.17-130 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -21588,130 +22878,160 @@ if (typeof Object.create === 'function') {
 var lexParser = (function () {
 
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonParserError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonParserError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
+
     var stacktrace;
     if (hash && hash.exception instanceof Error) {
-      var ex2 = hash.exception;
-      this.message = ex2.message || msg;
-      stacktrace = ex2.stack;
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-      stacktrace = (new Error(msg)).stack;
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
     }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonParserError.prototype = Object.create(Error.prototype);
+
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
+} else {
+    JisonParserError.prototype = Object.create(Error.prototype);
+}
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
 
+
 // helper: reconstruct the productions[] table
 function bp(s) {
-        var rv = [];
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = p.length; i < l; i++) {
-            rv.push([
-                p[i],
-                r[i]
-            ]);
-        }
-        return rv;
+    var rv = [];
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = p.length; i < l; i++) {
+        rv.push([
+            p[i],
+            r[i]
+        ]);
     }
+    return rv;
+}
 
 // helper: reconstruct the defaultActions[] table
 function bda(s) {
-        var rv = {};
-        var d = s.idx;
-        var p = s.pop;
-        var r = s.rule;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var j = d[i];
-            rv[j] = [
-                p[i],
-                r[i]
-            ];
-        }
-        return rv;
+    var rv = {};
+    var d = s.idx;
+    var p = s.pop;
+    var r = s.rule;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = [
+            p[i],
+            r[i]
+        ];
     }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
-        var rv = [];
-        var d = s.len;
-        var y = s.symbol;
-        var t = s.type;
-        var a = s.state;
-        var m = s.mode;
-        var g = s.goto;
-        for (var i = 0, l = d.length; i < l; i++) {
-            var n = d[i];
-            var q = {};
-            for (var j = 0; j < n; j++) {
-                var z = y.shift();
-                switch (t.shift()) {
-                case 2:
-                    q[z] = [
-                        m.shift(),
-                        g.shift()
-                    ];
-                    break;
+    var rv = [];
+    var d = s.len;
+    var y = s.symbol;
+    var t = s.type;
+    var a = s.state;
+    var m = s.mode;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var n = d[i];
+        var q = {};
+        for (var j = 0; j < n; j++) {
+            var z = y.shift();
+            switch (t.shift()) {
+            case 2:
+                q[z] = [
+                    m.shift(),
+                    g.shift()
+                ];
+                break;
 
-                case 0:
-                    q[z] = a.shift();
-                    break;
+            case 0:
+                q[z] = a.shift();
+                break;
 
-                default:
-                    // type === 1: accept
-                    q[z] = [
-                        3
-                    ];
-                }
+            default:
+                // type === 1: accept
+                q[z] = [
+                    3
+                ];
             }
-            rv.push(q);
         }
-        return rv;
+        rv.push(q);
     }
+    return rv;
+}
 
 // helper: runlength encoding with increment step: code, length: step (default step = 0)
 // `this` references an array
 function s(c, l, a) {
-        a = a || 0;
-        for (var i = 0; i < l; i++) {
-            this.push(c);
-            c += a;
-        }
+    a = a || 0;
+    for (var i = 0; i < l; i++) {
+        this.push(c);
+        c += a;
     }
+}
 
 // helper: duplicate sequence from *relative* offset and length.
 // `this` references an array
 function c(i, l) {
-        i = this.length - i;
-        for (l += i; i < l; i++) {
-            this.push(this[i]);
-        }
+    i = this.length - i;
+    for (l += i; i < l; i++) {
+        this.push(this[i]);
     }
+}
 
 // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
 function u(a) {
-        var rv = [];
-        for (var i = 0, l = a.length; i < l; i++) {
-            var e = a[i];
-            // Is this entry a helper function?
-            if (typeof e === 'function') {
-                i++;
-                e.apply(rv, a[i]);
-            } else {
-                rv.push(e);
-            }
+    var rv = [];
+    for (var i = 0, l = a.length; i < l; i++) {
+        var e = a[i];
+        // Is this entry a helper function?
+        if (typeof e === 'function') {
+            i++;
+            e.apply(rv, a[i]);
+        } else {
+            rv.push(e);
         }
-        return rv;
     }
+    return rv;
+}
 
 var parser = {
 EOF: 1,
@@ -21734,74 +23054,74 @@ symbols_: {
   ",": 44,
   ".": 46,
   "/": 47,
-  "/!": 158,
+  "/!": 157,
   "<": 60,
   "=": 61,
   ">": 62,
   "?": 63,
-  "ACTION": 142,
-  "ACTION_BODY": 152,
-  "CHARACTER_LIT": 173,
-  "CODE": 183,
-  "EOF": 132,
-  "ESCAPE_CHAR": 170,
-  "INCLUDE": 180,
-  "NAME": 136,
-  "NAME_BRACE": 164,
-  "OPTIONS": 174,
-  "OPTIONS_END": 176,
-  "OPTION_VALUE": 178,
-  "PATH": 181,
-  "RANGE_REGEX": 171,
-  "REGEX_SET": 169,
-  "REGEX_SET_END": 167,
-  "REGEX_SET_START": 165,
-  "SPECIAL_GROUP": 157,
-  "START_COND": 146,
-  "START_EXC": 140,
-  "START_INC": 138,
-  "STRING_LIT": 172,
-  "UNKNOWN_DECL": 145,
+  "ACTION": 141,
+  "ACTION_BODY": 151,
+  "CHARACTER_LIT": 172,
+  "CODE": 182,
+  "EOF": 1,
+  "ESCAPE_CHAR": 169,
+  "INCLUDE": 179,
+  "NAME": 135,
+  "NAME_BRACE": 163,
+  "OPTIONS": 173,
+  "OPTIONS_END": 175,
+  "OPTION_VALUE": 177,
+  "PATH": 180,
+  "RANGE_REGEX": 170,
+  "REGEX_SET": 168,
+  "REGEX_SET_END": 166,
+  "REGEX_SET_START": 164,
+  "SPECIAL_GROUP": 156,
+  "START_COND": 145,
+  "START_EXC": 139,
+  "START_INC": 137,
+  "STRING_LIT": 171,
+  "UNKNOWN_DECL": 144,
   "^": 94,
-  "action": 149,
-  "action_body": 150,
-  "action_comments_body": 151,
-  "any_group_regex": 161,
-  "definition": 135,
+  "action": 148,
+  "action_body": 149,
+  "action_comments_body": 150,
+  "any_group_regex": 160,
+  "definition": 134,
   "definitions": 129,
   "error": 2,
-  "escape_char": 163,
-  "extra_lexer_module_code": 133,
-  "include_macro_code": 143,
+  "escape_char": 162,
+  "extra_lexer_module_code": 132,
+  "include_macro_code": 142,
   "init": 128,
   "lex": 127,
-  "module_code_chunk": 182,
-  "name_expansion": 159,
-  "name_list": 153,
-  "names_exclusive": 141,
-  "names_inclusive": 139,
-  "option": 177,
-  "option_list": 175,
-  "optional_module_code_chunk": 179,
-  "options": 144,
-  "range_regex": 160,
-  "regex": 137,
-  "regex_base": 156,
-  "regex_concat": 155,
-  "regex_list": 154,
-  "regex_set": 166,
-  "regex_set_atom": 168,
-  "rule": 147,
-  "rules": 134,
+  "module_code_chunk": 181,
+  "name_expansion": 158,
+  "name_list": 152,
+  "names_exclusive": 140,
+  "names_inclusive": 138,
+  "option": 176,
+  "option_list": 174,
+  "optional_module_code_chunk": 178,
+  "options": 143,
+  "range_regex": 159,
+  "regex": 136,
+  "regex_base": 155,
+  "regex_concat": 154,
+  "regex_list": 153,
+  "regex_set": 165,
+  "regex_set_atom": 167,
+  "rule": 146,
+  "rules": 133,
   "rules_and_epilogue": 131,
-  "start_conditions": 148,
-  "string": 162,
+  "start_conditions": 147,
+  "string": 161,
   "{": 123,
   "|": 124,
   "}": 125
 },
 terminals_: {
-  1: "$end",
+  1: "EOF",
   2: "error",
   36: "$",
   40: "(",
@@ -21820,30 +23140,29 @@ terminals_: {
   124: "|",
   125: "}",
   130: "%%",
-  132: "EOF",
-  136: "NAME",
-  138: "START_INC",
-  140: "START_EXC",
-  142: "ACTION",
-  145: "UNKNOWN_DECL",
-  146: "START_COND",
-  152: "ACTION_BODY",
-  157: "SPECIAL_GROUP",
-  158: "/!",
-  164: "NAME_BRACE",
-  165: "REGEX_SET_START",
-  167: "REGEX_SET_END",
-  169: "REGEX_SET",
-  170: "ESCAPE_CHAR",
-  171: "RANGE_REGEX",
-  172: "STRING_LIT",
-  173: "CHARACTER_LIT",
-  174: "OPTIONS",
-  176: "OPTIONS_END",
-  178: "OPTION_VALUE",
-  180: "INCLUDE",
-  181: "PATH",
-  183: "CODE"
+  135: "NAME",
+  137: "START_INC",
+  139: "START_EXC",
+  141: "ACTION",
+  144: "UNKNOWN_DECL",
+  145: "START_COND",
+  151: "ACTION_BODY",
+  156: "SPECIAL_GROUP",
+  157: "/!",
+  163: "NAME_BRACE",
+  164: "REGEX_SET_START",
+  166: "REGEX_SET_END",
+  168: "REGEX_SET",
+  169: "ESCAPE_CHAR",
+  170: "RANGE_REGEX",
+  171: "STRING_LIT",
+  172: "CHARACTER_LIT",
+  173: "OPTIONS",
+  175: "OPTIONS_END",
+  177: "OPTION_VALUE",
+  179: "INCLUDE",
+  180: "PATH",
+  182: "CODE"
 },
 productions_: bp({
   pop: u([
@@ -21854,54 +23173,54 @@ productions_: bp({
   129,
   129,
   s,
-  [135, 7],
-  139,
-  139,
-  141,
-  141,
-  134,
-  134,
-  147,
-  s,
-  [149, 3],
-  150,
-  150,
-  151,
-  151,
+  [134, 7],
+  138,
+  138,
+  140,
+  140,
+  133,
+  133,
+  146,
   s,
   [148, 3],
-  153,
-  153,
-  137,
+  149,
+  149,
+  150,
+  150,
   s,
-  [154, 4],
-  155,
-  155,
+  [147, 3],
+  152,
+  152,
+  136,
   s,
-  [156, 15],
+  [153, 4],
+  154,
+  154,
+  s,
+  [155, 15],
+  158,
+  160,
+  165,
+  165,
+  167,
+  167,
+  162,
   159,
   161,
-  166,
-  166,
-  168,
-  168,
-  163,
-  160,
-  162,
-  162,
-  144,
-  175,
-  175,
+  161,
+  143,
+  174,
+  174,
   s,
-  [177, 3],
-  133,
-  133,
-  143,
-  143,
-  182,
-  182,
-  179,
-  179
+  [176, 3],
+  132,
+  132,
+  142,
+  142,
+  181,
+  181,
+  178,
+  178
 ]),
   rule: u([
   4,
@@ -21963,11 +23282,10 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1 : 
 /*! Production::     lex : init definitions '%%' rules_and_epilogue */
- 
-          this.$ = $$[$0];
-          if ($$[$0-2][0]) this.$.macros = $$[$0-2][0];
-          if ($$[$0-2][1]) this.$.startConditions = $$[$0-2][1];
-          if ($$[$0-2][2]) this.$.unknownDecls = $$[$0-2][2];
+ this.$ = $$[$0];
+          if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
+          if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
+          if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
           // if there are any options, add them all, otherwise set options to NULL:
           // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
           for (var k in yy.options) {
@@ -21983,75 +23301,62 @@ case 1 :
           }
           delete yy.options;
           delete yy.actionInclude;
-          return this.$;
-         
+          return this.$; 
 break;
 case 2 : 
 /*! Production::     rules_and_epilogue : EOF */
- 
-        this.$ = { rules: [] };
-       
+ this.$ = { rules: [] }; 
 break;
 case 3 : 
 /*! Production::     rules_and_epilogue : '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0-1] && $$[$0-1].trim() !== '') {
-          this.$ = { rules: [], moduleInclude: $$[$0-1] };
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+          this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
         } else {
           this.$ = { rules: [] };
-        }
-       
+        } 
 break;
 case 4 : 
 /*! Production::     rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
- 
-        if ($$[$0-1] && $$[$0-1].trim() !== '') {
-          this.$ = { rules: $$[$0-3], moduleInclude: $$[$0-1] };
+ if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
+          this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
         } else {
-          this.$ = { rules: $$[$0-3] };
-        }
-       
+          this.$ = { rules: $$[$0 - 3] };
+        } 
 break;
 case 5 : 
 /*! Production::     rules_and_epilogue : rules EOF */
- 
-        this.$ = { rules: $$[$0-1] };
-       
+ this.$ = { rules: $$[$0 - 1] }; 
 break;
 case 6 : 
-/*! Production::     init :  */
- 
-            yy.actionInclude = [];
-            if (!yy.options) yy.options = {};
-         
+/*! Production::     init : ε */
+ yy.actionInclude = [];
+            if (!yy.options) yy.options = {}; 
 break;
 case 7 : 
 /*! Production::     definitions : definition definitions */
- 
-          this.$ = $$[$0];
-          if ($$[$0-1] != null) {
-            if ('length' in $$[$0-1]) {
+ this.$ = $$[$0];
+          if ($$[$0 - 1] != null) {
+            if ('length' in $$[$0 - 1]) {
               this.$[0] = this.$[0] || {};
-              this.$[0][$$[$0-1][0]] = $$[$0-1][1];
-            } else if ($$[$0-1].type === 'names') {
+              this.$[0][$$[$0 - 1][0]] = $$[$0 - 1][1];
+            } else if ($$[$0 - 1].type === 'names') {
               this.$[1] = this.$[1] || {};
-              for (var name in $$[$0-1].names) {
-                this.$[1][name] = $$[$0-1].names[name];
+              for (var name in $$[$0 - 1].names) {
+                this.$[1][name] = $$[$0 - 1].names[name];
               }
-            } else if ($$[$0-1].type === 'unknown') {
+            } else if ($$[$0 - 1].type === 'unknown') {
               this.$[2] = this.$[2] || [];
-              this.$[2].push($$[$0-1].body);
+              this.$[2].push($$[$0 - 1].body);
             }
-          }
-         
+          } 
 break;
 case 8 : 
-/*! Production::     definitions :  */
-  this.$ = [null, null];  
+/*! Production::     definitions : ε */
+ this.$ = [null, null]; 
 break;
 case 9 : 
 /*! Production::     definition : NAME regex */
-  this.$ = [$$[$0-1], $$[$0]];  
+ this.$ = [$$[$0 - 1], $$[$0]]; 
 break;
 case 10 : 
 /*! Production::     definition : START_INC names_inclusive */
@@ -22073,69 +23378,69 @@ case 10 :
 /*! Production::     module_code_chunk : CODE */
  case 79 : 
 /*! Production::     optional_module_code_chunk : module_code_chunk */
-  this.$ = $$[$0];  
+ this.$ = $$[$0]; 
 break;
 case 12 : 
 /*! Production::     definition : ACTION */
  case 13 : 
 /*! Production::     definition : include_macro_code */
-  yy.actionInclude.push($$[$0]); this.$ = null;  
+ yy.actionInclude.push($$[$0]); this.$ = null; 
 break;
 case 14 : 
 /*! Production::     definition : options */
-  this.$ = null;  
+ this.$ = null; 
 break;
 case 15 : 
 /*! Production::     definition : UNKNOWN_DECL */
-  this.$ = {type: 'unknown', body: $$[$0]};  
+ this.$ = {type: 'unknown', body: $$[$0]}; 
 break;
 case 16 : 
 /*! Production::     names_inclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0; 
 break;
 case 17 : 
 /*! Production::     names_inclusive : names_inclusive START_COND */
-  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 0;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0; 
 break;
 case 18 : 
 /*! Production::     names_exclusive : START_COND */
-  this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;  
+ this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1; 
 break;
 case 19 : 
 /*! Production::     names_exclusive : names_exclusive START_COND */
-  this.$ = $$[$0-1]; this.$.names[$$[$0]] = 1;  
+ this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1; 
 break;
 case 20 : 
 /*! Production::     rules : rules rule */
-  this.$ = $$[$0-1]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 1]; this.$.push($$[$0]); 
 break;
 case 21 : 
 /*! Production::     rules : rule */
  case 33 : 
 /*! Production::     name_list : NAME */
-  this.$ = [$$[$0]];  
+ this.$ = [$$[$0]]; 
 break;
 case 22 : 
 /*! Production::     rule : start_conditions regex action */
-  this.$ = $$[$0-2] ? [$$[$0-2], $$[$0-1], $$[$0]] : [$$[$0-1], $$[$0]];  
+ this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]]; 
 break;
 case 23 : 
 /*! Production::     action : '{' action_body '}' */
  case 30 : 
 /*! Production::     start_conditions : '<' name_list '>' */
-  this.$ = $$[$0-1];  
+ this.$ = $$[$0 - 1]; 
 break;
 case 27 : 
 /*! Production::     action_body : action_body '{' action_body '}' action_comments_body */
-  this.$ = $$[$0-4] + $$[$0-3] + $$[$0-2] + $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 28 : 
-/*! Production::     action_comments_body :  */
+/*! Production::     action_comments_body : ε */
  case 39 : 
-/*! Production::     regex_list :  */
+/*! Production::     regex_list : ε */
  case 80 : 
-/*! Production::     optional_module_code_chunk :  */
-  this.$ = '';  
+/*! Production::     optional_module_code_chunk : ε */
+ this.$ = ''; 
 break;
 case 29 : 
 /*! Production::     action_comments_body : action_comments_body ACTION_BODY */
@@ -22147,118 +23452,161 @@ case 29 :
 /*! Production::     regex_set : regex_set_atom regex_set */
  case 78 : 
 /*! Production::     module_code_chunk : module_code_chunk CODE */
-  this.$ = $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 1] + $$[$0]; 
 break;
 case 31 : 
 /*! Production::     start_conditions : '<' '*' '>' */
-  this.$ = ['*'];  
+ this.$ = ['*']; 
 break;
 case 34 : 
 /*! Production::     name_list : name_list ',' NAME */
-  this.$ = $$[$0-2]; this.$.push($$[$0]);  
+ this.$ = $$[$0 - 2]; this.$.push($$[$0]); 
 break;
 case 35 : 
 /*! Production::     regex : regex_list */
- 
+ // Detect if the regex ends with a pure (Unicode) word;
+          // we *do* consider escaped characters which are 'alphanumeric' 
+          // to be equivalent to their non-escaped version, hence these are
+          // all valid 'words' for the 'easy keyword rules' option:
+          //
+          // - hello_kitty
+          // - γεια_σου_γατούλα
+          // - \u03B3\u03B5\u03B9\u03B1_\u03C3\u03BF\u03C5_\u03B3\u03B1\u03C4\u03BF\u03CD\u03BB\u03B1
+          //
+          // http://stackoverflow.com/questions/7885096/how-do-i-decode-a-string-with-escaped-unicode#12869914
+          //
+          // As we only check the *tail*, we also accept these as
+          // 'easy keywords':
+          //
+          // - %options
+          // - %foo-bar    
+          // - +++a:b:c1
+          //
+          // Note the dash in that last example: there the code will consider
+          // `bar` to be the keyword, which is fine with us as we're only
+          // interested in the taiol boundary and patching that one for
+          // the `easy_keyword_rules` option.
           this.$ = $$[$0];
-          if (yy.options.easy_keyword_rules && this.$.match(/[\w\d]$/) && !this.$.match(/\\(r|f|n|t|v|s|b|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}|[0-7]{1,3})$/)) {
-              this.$ += "\\b";
-          }
-         
+          if (yy.options.easy_keyword_rules) {
+            try {
+              // We need to 'protect' JSON.parse here as keywords are allowed
+              // to contain double-quotes and other leading cruft.
+              // JSON.parse *does* gobble some escapes (such as `\b`) but
+              // we protect against that through a simple replace regex: 
+              // we're not interested in the special escapes' exact value 
+              // anyway.
+              // It will also catch escaped escapes (`\\`), which are not 
+              // word characters either, so no need to worry about 
+              // `JSON.parse()` 'correctly' converting convoluted constructs
+              // like '\\\\\\\\\\b' in here.
+              this.$ = this.$
+              .replace(/"/g, '.' /* '\\"' */)
+              .replace(/\\c[A-Z]/g, '.')
+              .replace(/\\[^xu0-9]/g, '.');
+
+              this.$ = JSON.parse('"' + this.$ + '"');
+              // a 'keyword' starts with an alphanumeric character, 
+              // followed by zero or more alphanumerics or digits:
+              if (this.$.match(/\w[\w\d]*$/u)) {
+                this.$ = $$[$0] + "\\b";
+              } else {
+                this.$ = $$[$0];
+              }
+            } catch (ex) {
+              this.$ = $$[$0];
+            }
+          } 
 break;
 case 36 : 
 /*! Production::     regex_list : regex_list '|' regex_concat */
-  this.$ = $$[$0-2] + '|' + $$[$0];  
+ this.$ = $$[$0 - 2] + '|' + $$[$0]; 
 break;
 case 37 : 
 /*! Production::     regex_list : regex_list '|' */
-  this.$ = $$[$0-1] + '|';  
+ this.$ = $$[$0 - 1] + '|'; 
 break;
 case 42 : 
 /*! Production::     regex_base : '(' regex_list ')' */
-  this.$ = '(' + $$[$0-1] + ')';  
+ this.$ = '(' + $$[$0 - 1] + ')'; 
 break;
 case 43 : 
 /*! Production::     regex_base : SPECIAL_GROUP regex_list ')' */
-  this.$ = $$[$0-2] + $$[$0-1] + ')';  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + ')'; 
 break;
 case 44 : 
 /*! Production::     regex_base : regex_base '+' */
-  this.$ = $$[$0-1] + '+';  
+ this.$ = $$[$0 - 1] + '+'; 
 break;
 case 45 : 
 /*! Production::     regex_base : regex_base '*' */
-  this.$ = $$[$0-1] + '*';  
+ this.$ = $$[$0 - 1] + '*'; 
 break;
 case 46 : 
 /*! Production::     regex_base : regex_base '?' */
-  this.$ = $$[$0-1] + '?';  
+ this.$ = $$[$0 - 1] + '?'; 
 break;
 case 47 : 
 /*! Production::     regex_base : '/' regex_base */
-  this.$ = '(?=' + $$[$0] + ')';  
+ this.$ = '(?=' + $$[$0] + ')'; 
 break;
 case 48 : 
 /*! Production::     regex_base : '/!' regex_base */
-  this.$ = '(?!' + $$[$0] + ')';  
+ this.$ = '(?!' + $$[$0] + ')'; 
 break;
 case 52 : 
 /*! Production::     regex_base : '.' */
-  this.$ = '.';  
+ this.$ = '.'; 
 break;
 case 53 : 
 /*! Production::     regex_base : '^' */
-  this.$ = '^';  
+ this.$ = '^'; 
 break;
 case 54 : 
 /*! Production::     regex_base : '$' */
-  this.$ = '$';  
+ this.$ = '$'; 
 break;
 case 58 : 
 /*! Production::     any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
  case 74 : 
 /*! Production::     extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-  this.$ = $$[$0-2] + $$[$0-1] + $$[$0];  
+ this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0]; 
 break;
 case 62 : 
 /*! Production::     regex_set_atom : name_expansion */
-  
-            if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) && $$[$0].toUpperCase() !== $$[$0]) {
+ if (XRegExp.isUnicodeSlug($$[$0].replace(/[{}]/g, '')) 
+                && $$[$0].toUpperCase() !== $$[$0]
+            ) {
                 // treat this as part of an XRegExp `\p{...}` Unicode slug:
                 this.$ = $$[$0];
             } else {
-                this.$ = '{[' + $$[$0] + ']}';
+                this.$ = $$[$0];
             }
-         
+            //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ }); 
 break;
 case 65 : 
 /*! Production::     string : STRING_LIT */
-  this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));  
+ this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2)); 
 break;
 case 70 : 
 /*! Production::     option : NAME[option] */
-  yy.options[$$[$0]] = true;  
+ yy.options[$$[$0]] = true; 
 break;
 case 71 : 
 /*! Production::     option : NAME[option] '=' OPTION_VALUE[value] */
  case 72 : 
 /*! Production::     option : NAME[option] '=' NAME[value] */
-  yy.options[$$[$0-2]] = $$[$0];  
+ yy.options[$$[$0 - 2]] = $$[$0]; 
 break;
 case 75 : 
 /*! Production::     include_macro_code : INCLUDE PATH */
- 
-            var fs = require('fs');
+ var fs = require('fs');
             var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
             // And no, we don't support nested '%include':
-            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
-         
+            this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n'; 
 break;
 case 76 : 
 /*! Production::     include_macro_code : INCLUDE error */
- 
-            console.error("%include MUST be followed by a valid file path");
-         
+ console.error("%include MUST be followed by a valid file path"); 
 break;
 }
 },
@@ -22364,18 +23712,18 @@ table: bt({
   128,
   130,
   s,
-  [136, 4, 2],
-  145,
-  174,
-  180,
+  [135, 4, 2],
+  144,
+  173,
+  179,
   1,
   129,
   130,
-  135,
+  134,
   c,
   [11, 4],
+  142,
   143,
-  144,
   c,
   [13, 3],
   130,
@@ -22388,55 +23736,55 @@ table: bt({
   94,
   124,
   130,
+  135,
   136,
-  137,
   c,
   [41, 4],
   s,
-  [154, 6, 1],
+  [153, 6, 1],
   s,
-  [161, 5, 1],
-  170,
+  [160, 5, 1],
+  169,
+  171,
   172,
   173,
-  174,
-  180,
-  139,
-  146,
-  141,
-  146,
+  179,
+  138,
+  145,
+  140,
+  145,
   c,
   [67, 8],
   c,
   [8, 24],
   2,
-  181,
-  136,
-  175,
-  177,
+  180,
+  135,
+  174,
+  176,
+  1,
   c,
-  [70, 4],
+  [71, 4],
   60,
   94,
   123,
   124,
   130,
   131,
-  132,
-  134,
-  142,
+  133,
+  141,
+  146,
   147,
-  148,
+  156,
   157,
-  158,
   c,
   [65, 5],
-  180,
+  179,
   130,
   c,
   [37, 8],
   c,
-  [26, 3],
+  [25, 3],
   c,
   [10, 7],
   36,
@@ -22457,13 +23805,13 @@ table: bt({
   63,
   c,
   [31, 9],
+  156,
   157,
-  158,
-  160,
+  159,
   c,
   [27, 3],
   s,
-  [171, 4, 1],
+  [170, 4, 1],
   c,
   [56, 7],
   124,
@@ -22481,47 +23829,45 @@ table: bt({
   [103, 11],
   c,
   [27, 180],
-  167,
-  s,
-  [169, 6, 1],
-  180,
-  159,
-  164,
   166,
+  s,
+  [168, 6, 1],
+  179,
+  158,
+  163,
+  165,
+  167,
   168,
-  169,
   c,
   [115, 81],
   c,
   [16, 6],
-  146,
+  145,
   c,
   [9, 29],
   c,
-  [514, 9],
-  132,
+  [514, 10],
   c,
   [61, 10],
   c,
   [60, 4],
-  183,
+  182,
   c,
   [25, 25],
-  176,
-  136,
+  175,
+  135,
+  174,
   175,
   176,
-  177,
   61,
-  136,
-  176,
-  1,
-  1,
+  135,
+  175,
+  s,
+  [1, 3],
   132,
-  133,
+  178,
   179,
-  180,
-  182,
+  181,
   c,
   [41, 11],
   c,
@@ -22529,17 +23875,19 @@ table: bt({
   c,
   [21, 11],
   c,
-  [19, 12],
+  [19, 8],
   c,
-  [18, 3],
-  137,
-  142,
+  [463, 5],
+  123,
+  124,
+  136,
+  141,
   c,
   [503, 14],
-  180,
+  179,
   42,
-  136,
-  153,
+  135,
+  152,
   c,
   [605, 14],
   c,
@@ -22556,42 +23904,41 @@ table: bt({
   [167, 47],
   c,
   [28, 9],
-  167,
+  166,
   c,
   [508, 3],
+  166,
   167,
   168,
-  169,
-  164,
-  167,
+  163,
+  166,
   c,
   [3, 4],
   c,
   [425, 24],
-  174,
-  180,
-  176,
-  136,
-  178,
-  132,
-  132,
-  143,
-  180,
-  132,
-  180,
-  183,
-  c,
-  [3, 4],
-  c,
-  [377, 5],
+  173,
+  179,
+  175,
+  135,
+  177,
   1,
+  1,
+  142,
+  179,
+  1,
+  c,
+  [409, 3],
+  c,
+  [3, 3],
+  c,
+  [377, 6],
   c,
   [357, 19],
   123,
+  141,
   142,
-  143,
-  149,
-  180,
+  148,
+  179,
   44,
   62,
   62,
@@ -22601,41 +23948,41 @@ table: bt({
   [945, 47],
   c,
   [257, 62],
-  167,
-  136,
-  176,
+  166,
+  135,
+  175,
   c,
-  [529, 3],
+  [529, 4],
   c,
   [151, 6],
   c,
-  [160, 4],
+  [160, 3],
   c,
   [154, 20],
   125,
+  149,
   150,
   151,
-  152,
   c,
-  [535, 23],
+  [24, 19],
   c,
-  [554, 22],
+  [554, 26],
   c,
   [16, 9],
-  136,
+  135,
   c,
   [17, 16],
-  132,
+  1,
   1,
   123,
   125,
   123,
   125,
-  152,
+  151,
+  44,
+  62,
   c,
-  [229, 4],
-  c,
-  [104, 22],
+  [104, 24],
   c,
   [29, 3],
   c,
@@ -22672,9 +24019,9 @@ table: bt({
   s,
   [2, 25],
   c,
-  [73, 11],
+  [73, 12],
   c,
-  [50, 4],
+  [12, 3],
   c,
   [88, 13],
   c,
@@ -22698,11 +24045,11 @@ table: bt({
   c,
   [174, 132],
   c,
-  [577, 9],
+  [565, 10],
   c,
-  [465, 15],
+  [593, 24],
   c,
-  [235, 38],
+  [235, 28],
   c,
   [469, 15],
   c,
@@ -22716,13 +24063,15 @@ table: bt({
   c,
   [28, 36],
   c,
-  [891, 5],
+  [324, 4],
   c,
-  [81, 47],
+  [209, 39],
   c,
-  [377, 16],
+  [306, 10],
   c,
-  [388, 33],
+  [51, 26],
+  c,
+  [312, 22],
   c,
   [839, 102],
   c,
@@ -22827,11 +24176,11 @@ table: bt({
   s,
   [2, 32],
   c,
-  [53, 7],
+  [54, 8],
   c,
   [5, 4],
   c,
-  [45, 21],
+  [45, 20],
   c,
   [20, 9],
   c,
@@ -22841,11 +24190,11 @@ table: bt({
   c,
   [26, 8],
   c,
-  [39, 10],
+  [59, 16],
   c,
-  [54, 11],
+  [83, 6],
   c,
-  [50, 7],
+  [50, 6],
   c,
   [157, 10],
   c,
@@ -22863,15 +24212,17 @@ table: bt({
   c,
   [421, 4],
   c,
-  [454, 12],
+  [179, 12],
   c,
-  [188, 33],
+  [538, 24],
   c,
-  [441, 8],
+  [650, 14],
   c,
-  [657, 12],
+  [532, 11],
   c,
-  [556, 48],
+  [492, 9],
+  c,
+  [556, 43],
   c,
   [421, 137],
   c,
@@ -22945,13 +24296,13 @@ table: bt({
   41,
   40,
   44,
+  46,
   s,
   [32, 4],
   51,
   s,
   [32, 3],
   47,
-  46,
   s,
   [32, 9],
   7,
@@ -23049,10 +24400,10 @@ table: bt({
   80,
   80,
   75,
+  77,
   c,
   [538, 8],
   76,
-  77,
   s,
   [32, 9],
   s,
@@ -23478,7 +24829,8 @@ parse: function parse(input) {
                     }
                     r = this.parseError(errStr, p = {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -23505,7 +24857,8 @@ parse: function parse(input) {
                     if (symbol === EOF || preErrorSymbol === EOF) {
                         retval = this.parseError(errStr || 'Parsing halted while starting to recover from another error.', {
                             text: lexer.match,
-                            token: this.terminals_[symbol] || symbol,
+                            value: lexer.yytext,
+                            token: this.describeSymbol(symbol) || symbol,
                             token_id: symbol,
                             line: lexer.yylineno,
                             loc: lexer.yylloc,
@@ -23533,7 +24886,8 @@ parse: function parse(input) {
                 if (error_rule_depth === false) {
                     retval = this.parseError(errStr || 'Parsing halted. No suitable error recovery rule available.', {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -23566,7 +24920,8 @@ parse: function parse(input) {
                 if (action[0] instanceof Array) {
                     retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
                         text: lexer.match,
-                        token: this.terminals_[symbol] || symbol,
+                        value: lexer.yytext,
+                        token: this.describeSymbol(symbol) || symbol,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
@@ -23583,7 +24938,8 @@ parse: function parse(input) {
                 // or a buggy LUT (LookUp Table):
                 retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
                     text: lexer.match,
-                    token: this.terminals_[symbol] || symbol,
+                    value: lexer.yytext,
+                    token: this.describeSymbol(symbol) || symbol,
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
@@ -23706,7 +25062,8 @@ parse: function parse(input) {
         retval = this.parseError('Parsing aborted due to exception.', {
             exception: ex,
             text: lexer.match,
-            token: this.terminals_[symbol] || symbol,
+            value: lexer.yytext,
+            token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
             loc: lexer.yylloc,
@@ -23748,21 +25105,59 @@ function prepareString (s) {
     return s;
 };
 
-/* generated by jison-lex 0.3.4-121 */
+/* generated by jison-lex 0.3.4-130 */
 var lexer = (function () {
 // See also:
-// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript
+// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+// with userland code which might access the derived class in a 'classic' way.
 function JisonLexerError(msg, hash) {
-    this.message = msg;
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
     this.hash = hash;
-    var stacktrace = (new Error(msg)).stack;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
     if (stacktrace) {
-      this.stack = stacktrace;
+        Object.defineProperty(this, 'stack', {
+            enumerable: false,
+            writable: false,
+            value: stacktrace
+        });
     }
 }
-JisonLexerError.prototype = Object.create(Error.prototype);
-JisonLexerError.prototype.constructor = JisonLexerError;
-JisonLexerError.prototype.name = 'JisonLexerError';
+
+    if (typeof Object.setPrototypeOf === 'function') {
+        Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+    } else {
+        JisonLexerError.prototype = Object.create(Error.prototype);
+    }
+    JisonLexerError.prototype.constructor = JisonLexerError;
+    JisonLexerError.prototype.name = 'JisonLexerError';
+
 
 var lexer = {
 
@@ -23770,7 +25165,7 @@ EOF:1,
 
 ERROR:2,
 
-parseError:function parseError(str, hash) {
+parseError:function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
@@ -23779,7 +25174,7 @@ parseError:function parseError(str, hash) {
     },
 
 // resets the lexer, sets new input
-setInput:function (input, yy) {
+setInput:function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
@@ -23800,7 +25195,7 @@ setInput:function (input, yy) {
     },
 
 // consumes and returns one char from the input
-input:function () {
+input:function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -23850,7 +25245,7 @@ input:function () {
     },
 
 // unshifts one char (or a string) into the input
-unput:function (ch) {
+unput:function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -23881,13 +25276,13 @@ unput:function (ch) {
     },
 
 // When called from action, caches matched text and appends it on next action
-more:function () {
+more:function lexer_more() {
         this._more = true;
         return this;
     },
 
 // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function () {
+reject:function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -23906,12 +25301,12 @@ reject:function () {
     },
 
 // retain first n characters of the match
-less:function (n) {
+less:function lexer_less(n) {
         this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
-pastInput:function (maxSize) {
+pastInput:function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -23921,7 +25316,7 @@ pastInput:function (maxSize) {
     },
 
 // return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function (maxSize) {
+upcomingInput:function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -23934,14 +25329,14 @@ upcomingInput:function (maxSize) {
     },
 
 // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function () {
+showPosition:function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
 // test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function (match, indexed_rule) {
+test_match:function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
             backup;
@@ -24019,7 +25414,7 @@ test_match:function (match, indexed_rule) {
     },
 
 // return next match in input
-next:function () {
+next:function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -24097,7 +25492,7 @@ next:function () {
     },
 
 // return next match that has a token
-lex:function lex() {
+lex:function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -24114,12 +25509,12 @@ lex:function lex() {
     },
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function begin(condition) {
+begin:function lexer_begin(condition) {
         this.conditionStack.push(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
-popState:function popState() {
+popState:function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             return this.conditionStack.pop();
@@ -24129,7 +25524,7 @@ popState:function popState() {
     },
 
 // produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function _currentRules() {
+_currentRules:function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
         } else {
@@ -24138,7 +25533,7 @@ _currentRules:function _currentRules() {
     },
 
 // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function topState(n) {
+topState:function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -24148,12 +25543,12 @@ topState:function topState(n) {
     },
 
 // alias for begin(condition)
-pushState:function pushState(condition) {
+pushState:function lexer_pushState(condition) {
         this.begin(condition);
     },
 
 // return the number of states currently on the stack
-stateStackSize:function stateStackSize() {
+stateStackSize:function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {
@@ -24165,11 +25560,6 @@ performAction: function anonymous(yy, yy_, $avoiding_name_collisions, YY_START) 
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
-case 2 : 
-/*! Conditions:: action */ 
-/*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 152; // regexp with braces or quotes (and no spaces) 
-break;
 case 7 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
@@ -24178,7 +25568,14 @@ break;
 case 8 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
- if (yy.depth == 0) { this.begin('trail'); } else { yy.depth--; } return 125; 
+ 
+                                            if (yy.depth == 0) { 
+                                                this.begin('trail'); 
+                                            } else { 
+                                                yy.depth--; 
+                                            } 
+                                            return 125;
+                                         
 break;
 case 10 : 
 /*! Conditions:: conditions */ 
@@ -24211,23 +25608,23 @@ case 17 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 178; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 177; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 176; 
+ this.popState(); return 175; 
 break;
 case 24 : 
 /*! Conditions:: options */ 
@@ -24257,12 +25654,12 @@ break;
 case 30 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 31 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 142; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 141; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -24284,13 +25681,13 @@ case 32 :
                                             this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path');
-                                            return 180;
+                                            return 179;
                                          
 break;
 case 33 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .+ */ 
- this.begin('rules'); return 142; 
+ this.begin('rules'); return 141; 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -24305,7 +25702,7 @@ break;
 case 36 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       {ID} */ 
- this.pushState('macro'); return 136; 
+ this.pushState('macro'); return 135; 
 break;
 case 37 : 
 /*! Conditions:: macro */ 
@@ -24318,7 +25715,7 @@ case 38 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 173;
+                                            return 172;
                                          
 break;
 case 39 : 
@@ -24334,17 +25731,17 @@ break;
 case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 171; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 172; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 171; 
 break;
 case 43 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \[ */ 
- this.pushState('set'); return 165; 
+ this.pushState('set'); return 164; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -24354,7 +25751,7 @@ break;
 case 57 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/! */ 
- return 158;                    // treated as `(?!atom)` 
+ return 157;                    // treated as `(?!atom)` 
 break;
 case 58 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -24364,27 +25761,27 @@ break;
 case 60 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 170; 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 169; 
 break;
 case 63 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %options\b */ 
- this.begin('options'); return 174; 
+ this.begin('options'); return 173; 
 break;
 case 64 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %s\b */ 
- this.begin('start_condition'); return 138; 
+ this.begin('start_condition'); return 137; 
 break;
 case 65 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %x\b */ 
- this.begin('start_condition'); return 140; 
+ this.begin('start_condition'); return 139; 
 break;
 case 66 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 180; 
+ this.pushState('path'); return 179; 
 break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
@@ -24392,7 +25789,7 @@ case 67 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            return 145;
+                                            return 144;
                                          
 break;
 case 68 : 
@@ -24408,12 +25805,12 @@ break;
 case 78 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
- this.popState('set'); return 167; 
+ this.popState('set'); return 166; 
 break;
 case 80 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 183;      // the bit of CODE just before EOF... 
+ return 182;      // the bit of CODE just before EOF... 
 break;
 case 81 : 
 /*! Conditions:: path */ 
@@ -24423,12 +25820,12 @@ break;
 case 82 : 
 /*! Conditions:: path */ 
 /*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 181; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 180; 
 break;
 case 84 : 
 /*! Conditions:: path */ 
@@ -24438,7 +25835,7 @@ break;
 case 85 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 181; 
+ this.popState(); return 180; 
 break;
 case 86 : 
 /*! Conditions:: * */ 
@@ -24456,25 +25853,28 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 152,
+   0 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 152,
+   1 : 151,
+  /*! Conditions:: action */ 
+  /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
+   2 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 152,
+   3 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 152,
+   4 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 152,
+   5 : 151,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 152,
+   6 : 151,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
-   9 : 136,
+   9 : 135,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
    11 : 44,
@@ -24483,28 +25883,28 @@ simpleCaseActionClusters: {
    12 : 42,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   18 : 136,
+   18 : 135,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    19 : 61,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 178,
+   22 : 177,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   25 : 146,
+   25 : 145,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \| */ 
    44 : 124,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 157,
+   45 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?= */ 
-   46 : 157,
+   46 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?! */ 
-   47 : 157,
+   47 : 156,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \( */ 
    48 : 40,
@@ -24531,7 +25931,7 @@ simpleCaseActionClusters: {
    55 : 36,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 170,
+   59 : 169,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \$ */ 
    61 : 36,
@@ -24540,13 +25940,13 @@ simpleCaseActionClusters: {
    62 : 46,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 171,
+   69 : 170,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{{ID}\} */ 
-   70 : 164,
+   70 : 163,
   /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
-   71 : 164,
+   71 : 163,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{ */ 
    72 : 123,
@@ -24555,28 +25955,28 @@ simpleCaseActionClusters: {
    73 : 125,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   75 : 132,
+   75 : 1,
   /*! Conditions:: set */ 
-  /*! Rule::       (\\\\|\\\]|[^\]{])+ */ 
-   76 : 169,
+  /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */ 
+   76 : 168,
   /*! Conditions:: set */ 
   /*! Rule::       \{ */ 
-   77 : 169,
+   77 : 168,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   79 : 183
+   79 : 182
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ \/]*?['"{}'][^ ]*?\/)/,
+/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
@@ -24585,14 +25985,14 @@ rules: [
 /^(?:\s+)/,
 /^(?:%%)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[^\s\r\n]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\r\n])+)/,
 /^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
@@ -24603,7 +26003,7 @@ rules: [
 /^(?:.+)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:([a-zA-Z_][a-zA-Z0-9_]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
 /^(?:(\r\n|\n|\r)+)/,
@@ -24626,7 +26026,7 @@ rules: [
 /^(?:<)/,
 /^(?:\/!)/,
 /^(?:\/)/,
-/^(?:\\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}))/,
+/^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[0-9A-F]{2}|u[0-9A-Fa-f]{4}))/,
 /^(?:\\.)/,
 /^(?:\$)/,
 /^(?:\.)/,
@@ -24634,16 +26034,16 @@ rules: [
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-/^(?:%([a-zA-Z_](?:[a-zA-Z0-9_-]*[a-zA-Z0-9_])?)[^\r\n]+)/,
+/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]+)/,
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
-/^(?:\{([a-zA-Z_][a-zA-Z0-9_]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
+/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
 /^(?:$)/,
-/^(?:(\\\\|\\\]|[^\]{])+)/,
+/^(?:(?:\\\\|\\\]|[^\]{])+)/,
 /^(?:\{)/,
 /^(?:\])/,
 /^(?:[^\r\n]*(\r|\n)+)/,
@@ -24978,7 +26378,6 @@ conditions: {
 }
 };
 
-// lexer.JisonLexerError = JisonLexerError;
 return lexer;
 })();
 parser.lexer = lexer;
@@ -24988,7 +26387,6 @@ function Parser() {
 }
 Parser.prototype = parser;
 parser.Parser = Parser;
-// parser.JisonParserError = JisonParserError;
 
 return new Parser();
 })();
@@ -24997,11 +26395,11 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-exports.parser = lexParser;
-exports.Parser = lexParser.Parser;
-exports.parse = function () {
-  return lexParser.parse.apply(lexParser, arguments);
-};
+  exports.parser = lexParser;
+  exports.Parser = lexParser.Parser;
+  exports.parse = function () {
+    return lexParser.parse.apply(lexParser, arguments);
+  };
 
 }
 
@@ -25237,6 +26635,31 @@ var substr = 'ab'.substr(-1) === 'b'
 // shim for using process in browser
 
 var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+(function () {
+  try {
+    cachedSetTimeout = setTimeout;
+  } catch (e) {
+    cachedSetTimeout = function () {
+      throw new Error('setTimeout is not defined');
+    }
+  }
+  try {
+    cachedClearTimeout = clearTimeout;
+  } catch (e) {
+    cachedClearTimeout = function () {
+      throw new Error('clearTimeout is not defined');
+    }
+  }
+} ())
 var queue = [];
 var draining = false;
 var currentQueue;
@@ -25261,7 +26684,7 @@ function drainQueue() {
     if (draining) {
         return;
     }
-    var timeout = setTimeout(cleanUpNextTick);
+    var timeout = cachedSetTimeout(cleanUpNextTick);
     draining = true;
 
     var len = queue.length;
@@ -25278,7 +26701,7 @@ function drainQueue() {
     }
     currentQueue = null;
     draining = false;
-    clearTimeout(timeout);
+    cachedClearTimeout(timeout);
 }
 
 process.nextTick = function (fun) {
@@ -25290,7 +26713,7 @@ process.nextTick = function (fun) {
     }
     queue.push(new Item(fun, args));
     if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
+        cachedSetTimeout(drainQueue, 0);
     }
 };
 
@@ -25928,7 +27351,7 @@ function hasOwnProperty(obj, prop) {
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./support/isBuffer":22,"_process":21,"inherits":18}],24:[function(require,module,exports){
 /*!
- * XRegExp-All 3.1.0-dev
+ * XRegExp-All 3.1.2-3
  * <xregexp.com>
  * Steven Levithan (c) 2012-2015 MIT License
  */
@@ -25954,10 +27377,12 @@ function hasOwnProperty(obj, prop) {
     "use strict";
 
 /*!
- * XRegExp 3.1.0-dev
+ * XRegExp 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2007-2015 MIT License
+ * Steven Levithan (c) 2007-2016 MIT License
  */
+
+
 
 /**
  * XRegExp provides augmented, extensible regular expressions. You get additional regex syntax and
@@ -25966,71 +27391,83 @@ function hasOwnProperty(obj, prop) {
  * cross-browser inconsistencies.
  */
 
-    
+// ==--------------------------==
+// Private stuff
+// ==--------------------------==
 
-/* ==============================
- * Private variables
- * ============================== */
+// Property name used for extended regex instance data
+var REGEX_DATA = 'xregexp';
+// Optional features that can be installed and uninstalled
+var features = {
+    astral: false,
+    natives: false
+};
+// Native methods to use and restore ('native' is an ES3 reserved keyword)
+var nativ = {
+    exec: RegExp.prototype.exec,
+    test: RegExp.prototype.test,
+    match: String.prototype.match,
+    replace: String.prototype.replace,
+    split: String.prototype.split
+};
+// Storage for fixed/extended native methods
+var fixed = {};
+// Storage for regexes cached by `XRegExp.cache`
+var regexCache = {};
+// Storage for pattern details cached by the `XRegExp` constructor
+var patternCache = {};
+// Storage for regex syntax tokens added internally or by `XRegExp.addToken`
+var tokens = [];
+// Token scopes
+var defaultScope = 'default';
+var classScope = 'class';
+// Regexes that match native regex syntax, including octals
+var nativeTokens = {
+    // Any native multicharacter token in default scope, or any single character
+    'default': /\\(?:0(?:[0-3][0-7]{0,2}|[4-7][0-7]?)?|[1-9]\d*|x[\dA-Fa-f]{2}|u(?:[\dA-Fa-f]{4}|{[\dA-Fa-f]+})|c[A-Za-z]|[\s\S])|\(\?(?:[:=!]|<[=!])|[?*+]\?|{\d+(?:,\d*)?}\??|[\s\S]/,
+    // Any native multicharacter token in character class scope, or any single character
+    'class': /\\(?:[0-3][0-7]{0,2}|[4-7][0-7]?|x[\dA-Fa-f]{2}|u(?:[\dA-Fa-f]{4}|{[\dA-Fa-f]+})|c[A-Za-z]|[\s\S])|[\s\S]/
+};
+// Any backreference or dollar-prefixed character in replacement strings
+var replacementToken = /\$(?:{([\w$]+)}|(\d\d?|[\s\S]))/g;
+// Check for correct `exec` handling of nonparticipating capturing groups
+var correctExecNpcg = nativ.exec.call(/()??/, '')[1] === undefined;
+// Check for ES6 `flags` prop support
+var hasFlagsProp = /x/.flags !== undefined;
+// Shortcut to `Object.prototype.toString`
+var toString = {}.toString;
 
-    // Property name used for extended regex instance data
-    var REGEX_DATA = 'xregexp';
-    // Optional features that can be installed and uninstalled
-    var features = {
-        astral: false,
-        natives: false
-    };
-    // Native methods to use and restore ('native' is an ES3 reserved keyword)
-    var nativ = {
-        exec: RegExp.prototype.exec,
-        test: RegExp.prototype.test,
-        match: String.prototype.match,
-        replace: String.prototype.replace,
-        split: String.prototype.split
-    };
-    // Storage for fixed/extended native methods
-    var fixed = {};
-    // Storage for regexes cached by `XRegExp.cache`
-    var regexCache = {};
-    // Storage for pattern details cached by the `XRegExp` constructor
-    var patternCache = {};
-    // Storage for regex syntax tokens added internally or by `XRegExp.addToken`
-    var tokens = [];
-    // Token scopes
-    var defaultScope = 'default';
-    var classScope = 'class';
-    // Regexes that match native regex syntax, including octals
-    var nativeTokens = {
-        // Any native multicharacter token in default scope, or any single character
-        'default': /\\(?:0(?:[0-3][0-7]{0,2}|[4-7][0-7]?)?|[1-9]\d*|x[\dA-Fa-f]{2}|u(?:[\dA-Fa-f]{4}|{[\dA-Fa-f]+})|c[A-Za-z]|[\s\S])|\(\?[:=!]|[?*+]\?|{\d+(?:,\d*)?}\??|[\s\S]/,
-        // Any native multicharacter token in character class scope, or any single character
-        'class': /\\(?:[0-3][0-7]{0,2}|[4-7][0-7]?|x[\dA-Fa-f]{2}|u(?:[\dA-Fa-f]{4}|{[\dA-Fa-f]+})|c[A-Za-z]|[\s\S])|[\s\S]/
-    };
-    // Any backreference or dollar-prefixed character in replacement strings
-    var replacementToken = /\$(?:{([\w$]+)}|(\d\d?|[\s\S]))/g;
-    // Check for correct `exec` handling of nonparticipating capturing groups
-    var correctExecNpcg = nativ.exec.call(/()??/, '')[1] === undefined;
-    // Dummy regular expression for testing purposes
-    var dummyRegExp = /x/;
-    // Check for ES6 `u` flag support
-    var hasNativeU = 'unicode' in dummyRegExp;
-    // Check for ES6 `y` flag support
-    var hasNativeY = 'sticky' in dummyRegExp;
-    // Check for ES6 `flags` prop support
-    var hasFlagsProp = dummyRegExp.flags !== undefined;
-    // Tracker for known flags, including addon flags
-    var registeredFlags = {
-        g: true,
-        i: true,
-        m: true,
-        u: hasNativeU,
-        y: hasNativeY
-    };
-    // Shortcut to `Object.prototype.toString`
-    var toString = {}.toString;
-
-/* ==============================
- * Private functions
- * ============================== */
+function hasNativeFlag(flag) {
+    // Can't check based on the presense of properties/getters since browsers might support such
+    // properties even when they don't support the corresponding flag in regex construction (tested
+    // in Chrome 48, where `'unicode' in /x/` is true but trying to construct a regex with flag `u`
+    // throws an error)
+    var isSupported = true;
+    try {
+        // Can't use regex literals for testing even in a `try` because regex literals with
+        // unsupported flags cause a compilation error in IE
+        new RegExp('', flag);
+    } catch (exception) {
+        isSupported = false;
+    }
+    if (isSupported && flag === 'y') {
+        // Work around Safari 9.1.1 bug
+        return new RegExp('aa|.', 'y').test('b');
+    }
+    return isSupported;
+}
+// Check for ES6 `u` flag support
+var hasNativeU = hasNativeFlag('u');
+// Check for ES6 `y` flag support
+var hasNativeY = hasNativeFlag('y');
+// Tracker for known flags, including addon flags
+var registeredFlags = {
+    g: true,
+    i: true,
+    m: true,
+    u: hasNativeU,
+    y: hasNativeY
+};
 
 /**
  * Attaches extended data and `XRegExp.prototype` properties to a regex object.
@@ -26046,39 +27483,39 @@ function hasOwnProperty(obj, prop) {
  *   skipping some operations like attaching `XRegExp.prototype` properties.
  * @returns {RegExp} Augmented regex.
  */
-    function augment(regex, captureNames, xSource, xFlags, isNotNative, isInternalOnly) {
-        var p;
+function augment(regex, captureNames, xSource, xFlags, isNotNative, isInternalOnly) {
+    var p;
 
-        regex[REGEX_DATA] = {
-            captureNames: captureNames
-        };
+    regex[REGEX_DATA] = {
+        captureNames: captureNames
+    };
 
-        if (isInternalOnly) {
-            return regex;
-        }
-
-        // Can't auto-inherit these since the XRegExp constructor returns a nonprimitive value
-        if (regex.__proto__) {
-            regex.__proto__ = XRegExp.prototype;
-        } else {
-            for (p in XRegExp.prototype) {
-                // An `XRegExp.prototype.hasOwnProperty(p)` check wouldn't be worth it here, since
-                // this is performance sensitive, and enumerable `Object.prototype` or
-                // `RegExp.prototype` extensions exist on `regex.prototype` anyway
-                regex[p] = XRegExp.prototype[p];
-            }
-        }
-
-        regex[REGEX_DATA].source = xSource;
-        // Emulate the ES6 `flags` prop by ensuring flags are in alphabetical order
-        regex[REGEX_DATA].flags = xFlags ? xFlags.split('').sort().join('') : xFlags;
-
-        // signal whether the given regex is a standard RegExp one ('native') or does require
-        // one or more XRegExp specific features:
-        regex[REGEX_DATA].isNative = !isNotNative;
-
+    if (isInternalOnly) {
         return regex;
     }
+
+    // Can't auto-inherit these since the XRegExp constructor returns a nonprimitive value
+    if (regex.__proto__) {
+        regex.__proto__ = XRegExp.prototype;
+    } else {
+        for (p in XRegExp.prototype) {
+            // An `XRegExp.prototype.hasOwnProperty(p)` check wouldn't be worth it here, since this
+            // is performance sensitive, and enumerable `Object.prototype` or `RegExp.prototype`
+            // extensions exist on `regex.prototype` anyway
+            regex[p] = XRegExp.prototype[p];
+        }
+    }
+
+    regex[REGEX_DATA].source = xSource;
+    // Emulate the ES6 `flags` prop by ensuring flags are in alphabetical order
+    regex[REGEX_DATA].flags = xFlags ? xFlags.split('').sort().join('') : xFlags;
+
+    // signal whether the given regex is a standard RegExp one ('native') or does require
+    // one or more XRegExp specific features:
+    regex[REGEX_DATA].isNative = !isNotNative;
+
+    return regex;
+}
 
 /**
  * Removes any duplicate characters from the provided string.
@@ -26087,9 +27524,9 @@ function hasOwnProperty(obj, prop) {
  * @param {String} str String to remove duplicate characters from.
  * @returns {String} String with any duplicate characters removed.
  */
-    function clipDuplicates(str) {
-        return nativ.replace.call(str, /([\s\S])(?=[\s\S]*\1)/g, '');
-    }
+function clipDuplicates(str) {
+    return nativ.replace.call(str, /([\s\S])(?=[\s\S]*\1)/g, '');
+}
 
 /**
  * Copies a regex object while preserving extended data and augmenting with `XRegExp.prototype`
@@ -26108,69 +27545,69 @@ function hasOwnProperty(obj, prop) {
  *     skipping some operations like attaching `XRegExp.prototype` properties.
  * @returns {RegExp} Copy of the provided regex, possibly with modified flags.
  */
-    function copyRegex(regex, options) {
-        if (!XRegExp.isRegExp(regex)) {
-            throw new TypeError('Type RegExp expected');
-        }
-
-        var xData = regex[REGEX_DATA] || {},
-            flags = getNativeFlags(regex),
-            flagsToAdd = '',
-            flagsToRemove = '',
-            xregexpSource = null,
-            xregexpFlags = null,
-            customFlags;
-
-        options = options || {};
-
-        if (options.removeG) {flagsToRemove += 'g';}
-        if (options.removeY) {flagsToRemove += 'y';}
-        if (flagsToRemove) {
-            flags = nativ.replace.call(flags, new RegExp('[' + flagsToRemove + ']+', 'g'), '');
-        }
-
-        if (options.addG) {flagsToAdd += 'g';}
-        if (options.addY) {flagsToAdd += 'y';}
-        if (flagsToAdd) {
-            flags = clipDuplicates(flags + flagsToAdd);
-        }
-
-        if (!options.isInternalOnly) {
-            if (xData.source !== undefined) {
-                xregexpSource = xData.source;
-            }
-            // null or undefined; don't want to add to `flags` if the previous value was null, since
-            // that indicates we're not tracking original precompilation flags
-            if (xData.flags != null) {
-                // Flags are only added for non-internal regexes by `XRegExp.globalize`. Flags are
-                // never removed for non-internal regexes, so don't need to handle it
-                xregexpFlags = flagsToAdd ? clipDuplicates(xData.flags + flagsToAdd) : xData.flags;
-            }
-        }
-
-        // Augment with `XRegExp.prototype` properties, but use the native `RegExp` constructor to
-        // avoid searching for special tokens. That would be wrong for regexes constructed by
-        // `RegExp`, and unnecessary for regexes constructed by `XRegExp` because the regex has
-        // already undergone the translation to native regex syntax
-        var hasCaptureNames = hasNamedCapture(regex);
-
-        // Strip all but custom flags, except the 'A' flag
-        customFlags = flags;
-        if (xregexpFlags) {
-            customFlags += xregexpFlags;
-        }
-        customFlags = nativ.replace.call(clipDuplicates(customFlags), /[Agimuy]+/g, '');
-        regex = augment(
-            new RegExp(regex.source, flags),
-            hasCaptureNames ? xData.captureNames.slice(0) : null,
-            xregexpSource,
-            xregexpFlags,
-            customFlags || hasCaptureNames || regex.source !== xregexpSource,
-            options.isInternalOnly
-        );
-
-        return regex;
+function copyRegex(regex, options) {
+    if (!XRegExp.isRegExp(regex)) {
+        throw new TypeError('Type RegExp expected');
     }
+
+    var xData = regex[REGEX_DATA] || {},
+        flags = getNativeFlags(regex),
+        flagsToAdd = '',
+        flagsToRemove = '',
+        xregexpSource = null,
+        xregexpFlags = null,
+        customFlags;
+
+    options = options || {};
+
+    if (options.removeG) {flagsToRemove += 'g';}
+    if (options.removeY) {flagsToRemove += 'y';}
+    if (flagsToRemove) {
+        flags = nativ.replace.call(flags, new RegExp('[' + flagsToRemove + ']+', 'g'), '');
+    }
+
+    if (options.addG) {flagsToAdd += 'g';}
+    if (options.addY) {flagsToAdd += 'y';}
+    if (flagsToAdd) {
+        flags = clipDuplicates(flags + flagsToAdd);
+    }
+
+    if (!options.isInternalOnly) {
+        if (xData.source !== undefined) {
+            xregexpSource = xData.source;
+        }
+        // null or undefined; don't want to add to `flags` if the previous value was null, since
+        // that indicates we're not tracking original precompilation flags
+        if (xData.flags != null) {
+            // Flags are only added for non-internal regexes by `XRegExp.globalize`. Flags are never
+            // removed for non-internal regexes, so don't need to handle it
+            xregexpFlags = flagsToAdd ? clipDuplicates(xData.flags + flagsToAdd) : xData.flags;
+        }
+    }
+
+    // Augment with `XRegExp.prototype` properties, but use the native `RegExp` constructor to avoid
+    // searching for special tokens. That would be wrong for regexes constructed by `RegExp`, and
+    // unnecessary for regexes constructed by `XRegExp` because the regex has already undergone the
+    // translation to native regex syntax
+    var hasCaptureNames = hasNamedCapture(regex);
+
+    // Strip all but custom flags, except the 'A' flag
+    customFlags = flags;
+    if (xregexpFlags) {
+        customFlags += xregexpFlags;
+    }
+    customFlags = nativ.replace.call(clipDuplicates(customFlags), /[Agimuy]+/g, '');
+    regex = augment(
+        new RegExp(regex.source, flags),
+        hasCaptureNames ? xData.captureNames.slice(0) : null,
+        xregexpSource,
+        xregexpFlags,
+        customFlags || hasCaptureNames || regex.source !== xregexpSource,
+        options.isInternalOnly
+    );
+
+    return regex;
+}
 
 /**
  * Converts hexadecimal to decimal.
@@ -26179,9 +27616,9 @@ function hasOwnProperty(obj, prop) {
  * @param {String} hex
  * @returns {Number}
  */
-    function dec(hex) {
-        return parseInt(hex, 16);
-    }
+function dec(hex) {
+    return parseInt(hex, 16);
+}
 
 /**
  * Returns native `RegExp` flags used by a regex object.
@@ -26190,14 +27627,14 @@ function hasOwnProperty(obj, prop) {
  * @param {RegExp} regex Regex to check.
  * @returns {String} Native flags in use.
  */
-    function getNativeFlags(regex) {
-        return hasFlagsProp ?
-            regex.flags :
-            // Explicitly using `RegExp.prototype.toString` (rather than e.g. `String` or
-            // concatenation with an empty string) allows this to continue working predictably when
-            // `XRegExp.proptotype.toString` is overridden
-            nativ.exec.call(/\/([a-z]*)$/i, RegExp.prototype.toString.call(regex))[1];
-    }
+function getNativeFlags(regex) {
+    return hasFlagsProp ?
+        regex.flags :
+        // Explicitly using `RegExp.prototype.toString` (rather than e.g. `String` or concatenation
+        // with an empty string) allows this to continue working predictably when
+        // `XRegExp.proptotype.toString` is overridden
+        nativ.exec.call(/\/([a-z]*)$/i, RegExp.prototype.toString.call(regex))[1];
+}
 
 /**
  * Determines whether a regex has extended instance data used to track capture names.
@@ -26206,9 +27643,9 @@ function hasOwnProperty(obj, prop) {
  * @param {RegExp} regex Regex to check.
  * @returns {Boolean} Whether the regex uses named capture.
  */
-    function hasNamedCapture(regex) {
-        return !!(regex[REGEX_DATA] && regex[REGEX_DATA].captureNames);
-    }
+function hasNamedCapture(regex) {
+    return !!(regex[REGEX_DATA] && regex[REGEX_DATA].captureNames);
+}
 
 /**
  * Converts decimal to hexadecimal.
@@ -26217,9 +27654,9 @@ function hasOwnProperty(obj, prop) {
  * @param {Number|String} dec
  * @returns {String}
  */
-    function hex(dec) {
-        return parseInt(dec, 10).toString(16);
-    }
+function hex(dec) {
+    return parseInt(dec, 10).toString(16);
+}
 
 /**
  * Returns the first index at which a given value can be found in an array.
@@ -26229,17 +27666,17 @@ function hasOwnProperty(obj, prop) {
  * @param {*} value Value to locate in the array.
  * @returns {Number} Zero-based index at which the item is found, or -1.
  */
-    function indexOf(array, value) {
-        var len = array.length, i;
+function indexOf(array, value) {
+    var len = array.length, i;
 
-        for (i = 0; i < len; ++i) {
-            if (array[i] === value) {
-                return i;
-            }
+    for (i = 0; i < len; ++i) {
+        if (array[i] === value) {
+            return i;
         }
-
-        return -1;
     }
+
+    return -1;
+}
 
 /**
  * Determines whether a value is of the specified type, by resolving its internal [[Class]].
@@ -26249,9 +27686,9 @@ function hasOwnProperty(obj, prop) {
  * @param {String} type Type to check for, in TitleCase.
  * @returns {Boolean} Whether the object matches the type.
  */
-    function isType(value, type) {
-        return toString.call(value) === '[object ' + type + ']';
-    }
+function isType(value, type) {
+    return toString.call(value) === '[object ' + type + ']';
+}
 
 /**
  * Checks whether the next nonignorable token after the specified position is a quantifier.
@@ -26262,31 +27699,30 @@ function hasOwnProperty(obj, prop) {
  * @param {String} flags Flags used by the pattern.
  * @returns {Boolean} Whether the next token is a quantifier.
  */
-    function isQuantifierNext(pattern, pos, flags) {
-        return nativ.test.call(
-            flags.indexOf('x') > -1 ?
-                // Ignore any leading whitespace, line comments, and inline comments
-                /^(?:\s+|#.*|\(\?#[^)]*\))*(?:[?*+]|{\d+(?:,\d*)?})/ :
-                // Ignore any leading inline comments
-                /^(?:\(\?#[^)]*\))*(?:[?*+]|{\d+(?:,\d*)?})/,
-            pattern.slice(pos)
-        );
-    }
+function isQuantifierNext(pattern, pos, flags) {
+    return nativ.test.call(
+        flags.indexOf('x') > -1 ?
+            // Ignore any leading whitespace, line comments, and inline comments
+            /^(?:\s|#[^#\n]*|\(\?#[^)]*\))*(?:[?*+]|{\d+(?:,\d*)?})/ :
+            // Ignore any leading inline comments
+            /^(?:\(\?#[^)]*\))*(?:[?*+]|{\d+(?:,\d*)?})/,
+        pattern.slice(pos)
+    );
+}
 
 /**
- * Pads the provided string with as many leading zeros as needed to get to length 4. Used to produce
- * fixed-length hexadecimal values.
+ * Adds leading zeros if shorter than four characters. Used for fixed-length hexadecimal values.
  *
  * @private
  * @param {String} str
  * @returns {String}
  */
-    function pad4(str) {
-        while (str.length < 4) {
-            str = '0' + str;
-        }
-        return str;
+function pad4(str) {
+    while (str.length < 4) {
+        str = '0' + str;
     }
+    return str;
+}
 
 /**
  * Checks for flag-related errors, and strips/applies flags in a leading mode modifier. Offloads
@@ -26297,36 +27733,36 @@ function hasOwnProperty(obj, prop) {
  * @param {String} flags Any combination of flags.
  * @returns {Object} Object with properties `pattern` and `flags`.
  */
-    function prepareFlags(pattern, flags) {
-        var i;
+function prepareFlags(pattern, flags) {
+    var i;
 
-        // Recent browsers throw on duplicate flags, so copy this behavior for nonnative flags
-        if (clipDuplicates(flags) !== flags) {
-            throw new SyntaxError('Invalid duplicate regex flag ' + flags);
-        }
-
-        // Strip and apply a leading mode modifier with any combination of flags except g or y
-        pattern = nativ.replace.call(pattern, /^\(\?([\w$]+)\)/, function($0, $1) {
-            if (nativ.test.call(/[gy]/, $1)) {
-                throw new SyntaxError('Cannot use flag g or y in mode modifier ' + $0);
-            }
-            // Allow duplicate flags within the mode modifier
-            flags = clipDuplicates(flags + $1);
-            return '';
-        });
-
-        // Throw on unknown native or nonnative flags
-        for (i = 0; i < flags.length; ++i) {
-            if (!registeredFlags[flags.charAt(i)]) {
-                throw new SyntaxError('Unknown regex flag ' + flags.charAt(i));
-            }
-        }
-
-        return {
-            pattern: pattern,
-            flags: flags
-        };
+    // Recent browsers throw on duplicate flags, so copy this behavior for nonnative flags
+    if (clipDuplicates(flags) !== flags) {
+        throw new SyntaxError('Invalid duplicate regex flag ' + flags);
     }
+
+    // Strip and apply a leading mode modifier with any combination of flags except g or y
+    pattern = nativ.replace.call(pattern, /^\(\?([\w$]+)\)/, function($0, $1) {
+        if (nativ.test.call(/[gy]/, $1)) {
+            throw new SyntaxError('Cannot use flag g or y in mode modifier ' + $0);
+        }
+        // Allow duplicate flags within the mode modifier
+        flags = clipDuplicates(flags + $1);
+        return '';
+    });
+
+    // Throw on unknown native or nonnative flags
+    for (i = 0; i < flags.length; ++i) {
+        if (!registeredFlags[flags.charAt(i)]) {
+            throw new SyntaxError('Unknown regex flag ' + flags.charAt(i));
+        }
+    }
+
+    return {
+        pattern: pattern,
+        flags: flags
+    };
+}
 
 /**
  * Prepares an options object from the given value.
@@ -26335,19 +27771,19 @@ function hasOwnProperty(obj, prop) {
  * @param {String|Object} value Value to convert to an options object.
  * @returns {Object} Options object.
  */
-    function prepareOptions(value) {
-        var options = {};
+function prepareOptions(value) {
+    var options = {};
 
-        if (isType(value, 'String')) {
-            XRegExp.forEach(value, /[^\s,]+/, function(match) {
-                options[match] = true;
-            });
+    if (isType(value, 'String')) {
+        XRegExp.forEach(value, /[^\s,]+/, function(match) {
+            options[match] = true;
+        });
 
-            return options;
-        }
-
-        return value;
+        return options;
     }
+
+    return value;
+}
 
 /**
  * Registers a flag so it doesn't throw an 'unknown flag' error.
@@ -26355,13 +27791,13 @@ function hasOwnProperty(obj, prop) {
  * @private
  * @param {String} flag Single-character flag to register.
  */
-    function registerFlag(flag) {
-        if (!/^[\w$]$/.test(flag)) {
-            throw new Error('Flag must be a single character A-Za-z0-9_$');
-        }
-
-        registeredFlags[flag] = true;
+function registerFlag(flag) {
+    if (!/^[\w$]$/.test(flag)) {
+        throw new Error('Flag must be a single character A-Za-z0-9_$');
     }
+
+    registeredFlags[flag] = true;
+}
 
 /**
  * Runs built-in and custom regex syntax tokens in reverse insertion order at the specified
@@ -26375,38 +27811,38 @@ function hasOwnProperty(obj, prop) {
  * @param {Object} context Context object to use for token handler functions.
  * @returns {Object} Object with properties `matchLength`, `output`, and `reparse`; or `null`.
  */
-    function runTokens(pattern, flags, pos, scope, context) {
-        var i = tokens.length,
-            leadChar = pattern.charAt(pos),
-            result = null,
-            match,
-            t;
+function runTokens(pattern, flags, pos, scope, context) {
+    var i = tokens.length,
+        leadChar = pattern.charAt(pos),
+        result = null,
+        match,
+        t;
 
-        // Run in reverse insertion order
-        while (i--) {
-            t = tokens[i];
-            if (
-                (t.leadChar && t.leadChar !== leadChar) ||
-                (t.scope !== scope && t.scope !== 'all') ||
-                (t.flag && flags.indexOf(t.flag) === -1)
-            ) {
-                continue;
-            }
-
-            match = XRegExp.exec(pattern, t.regex, pos, 'sticky');
-            if (match) {
-                result = {
-                    matchLength: match[0].length,
-                    output: t.handler.call(context, match, scope, flags),
-                    reparse: t.reparse
-                };
-                // Finished with token tests
-                break;
-            }
+    // Run in reverse insertion order
+    while (i--) {
+        t = tokens[i];
+        if (
+            (t.leadChar && t.leadChar !== leadChar) ||
+            (t.scope !== scope && t.scope !== 'all') ||
+            (t.flag && flags.indexOf(t.flag) === -1)
+        ) {
+            continue;
         }
 
-        return result;
+        match = XRegExp.exec(pattern, t.regex, pos, 'sticky');
+        if (match) {
+            result = {
+                matchLength: match[0].length,
+                output: t.handler.call(context, match, scope, flags),
+                reparse: t.reparse
+            };
+            // Finished with token tests
+            break;
+        }
     }
+
+    return result;
+}
 
 /**
  * Enables or disables implicit astral mode opt-in. When enabled, flag A is automatically added to
@@ -26416,9 +27852,9 @@ function hasOwnProperty(obj, prop) {
  * @private
  * @param {Boolean} on `true` to enable; `false` to disable.
  */
-    function setAstral(on) {
-        features.astral = on;
-    }
+function setAstral(on) {
+    features.astral = on;
+}
 
 /**
  * Enables or disables native method overrides.
@@ -26426,15 +27862,15 @@ function hasOwnProperty(obj, prop) {
  * @private
  * @param {Boolean} on `true` to enable; `false` to disable.
  */
-    function setNatives(on) {
-        RegExp.prototype.exec = (on ? fixed : nativ).exec;
-        RegExp.prototype.test = (on ? fixed : nativ).test;
-        String.prototype.match = (on ? fixed : nativ).match;
-        String.prototype.replace = (on ? fixed : nativ).replace;
-        String.prototype.split = (on ? fixed : nativ).split;
+function setNatives(on) {
+    RegExp.prototype.exec = (on ? fixed : nativ).exec;
+    RegExp.prototype.test = (on ? fixed : nativ).test;
+    String.prototype.match = (on ? fixed : nativ).match;
+    String.prototype.replace = (on ? fixed : nativ).replace;
+    String.prototype.split = (on ? fixed : nativ).split;
 
-        features.natives = on;
-    }
+    features.natives = on;
+}
 
 /**
  * Returns the object, or throws an error if it is `null` or `undefined`. This is used to follow
@@ -26444,14 +27880,14 @@ function hasOwnProperty(obj, prop) {
  * @param {*} value Object to check and return.
  * @returns {*} The provided object.
  */
-    function toObject(value) {
-        // null or undefined
-        if (value == null) {
-            throw new TypeError('Cannot convert null or undefined to object');
-        }
-
-        return value;
+function toObject(value) {
+    // null or undefined
+    if (value == null) {
+        throw new TypeError('Cannot convert null or undefined to object');
     }
+
+    return value;
+}
 
 
 /**
@@ -26459,63 +27895,64 @@ function hasOwnProperty(obj, prop) {
  * regex objects or strings. Metacharacters are escaped in patterns provided as strings.
  * Backreferences in provided regex objects are automatically renumbered to work correctly. Native
  * flags used by provided regexes are ignored in favor of the `flags` argument.
- * @memberOf XRegExp
+ *
+ * @private
  * @param {Array} patterns Regexes and strings to combine.
  * @returns {Array} modified patterns RegExps and Strings to be combined.
  */
-    function prepareJoin(patterns) {
-        var parts = /(\()(?!\?)|\\([1-9]\d*)|\\[\s\S]|\[(?:[^\\\]]|\\[\s\S])*]/g,
-            output = [],
-            numCaptures = 0,
-            numPriorCaptures,
-            captureNames,
-            pattern,
-            rewrite = function(match, paren, backref) {
-                var name = captureNames[numCaptures - numPriorCaptures];
+function prepareJoin(patterns) {
+    var parts = /(\()(?!\?)|\\([1-9]\d*)|\\[\s\S]|\[(?:[^\\\]]|\\[\s\S])*]/g,
+        output = [],
+        numCaptures = 0,
+        numPriorCaptures,
+        captureNames,
+        pattern,
+        rewrite = function(match, paren, backref) {
+            var name = captureNames[numCaptures - numPriorCaptures];
 
-                // Capturing group
-                if (paren) {
-                    ++numCaptures;
-                    // If the current capture has a name, preserve the name
-                    if (name) {
-                        return '(?<' + name + '>';
-                    }
-                // Backreference
-                } else if (backref) {
-                    // Rewrite the backreference
-                    return '\\' + (+backref + numPriorCaptures);
+            // Capturing group
+            if (paren) {
+                ++numCaptures;
+                // If the current capture has a name, preserve the name
+                if (name) {
+                    return '(?<' + name + '>';
                 }
-
-                return match;
-            },
-            i;
-
-        if (!(isType(patterns, 'Array') && patterns.length)) {
-            throw new TypeError('Must provide a nonempty array of patterns to merge');
-        }
-
-        for (i = 0; i < patterns.length; ++i) {
-            pattern = patterns[i];
-
-            if (XRegExp.isRegExp(pattern)) {
-                numPriorCaptures = numCaptures;
-                captureNames = (pattern[REGEX_DATA] && pattern[REGEX_DATA].captureNames) || [];
-
-                // Rewrite backreferences. Passing to XRegExp dies on octals and ensures patterns
-                // are independently valid; helps keep this simple. Named captures are put back
-                output.push(nativ.replace.call(XRegExp(pattern.source).source, parts, rewrite));
-            } else {
-                output.push(XRegExp.escape(pattern));
+            // Backreference
+            } else if (backref) {
+                // Rewrite the backreference
+                return '\\' + (+backref + numPriorCaptures);
             }
-        }
 
-        return output;
+            return match;
+        },
+        i;
+
+    if (!(isType(patterns, 'Array') && patterns.length)) {
+        throw new TypeError('Must provide a nonempty array of patterns to merge');
     }
 
+    for (i = 0; i < patterns.length; ++i) {
+        pattern = patterns[i];
 
-/* ==============================
- * Constructor
- * ============================== */
+        if (XRegExp.isRegExp(pattern)) {
+            numPriorCaptures = numCaptures;
+            captureNames = (pattern[REGEX_DATA] && pattern[REGEX_DATA].captureNames) || [];
+
+            // Rewrite backreferences. Passing to XRegExp dies on octals and ensures patterns
+            // are independently valid; helps keep this simple. Named captures are put back
+            output.push(nativ.replace.call(XRegExp(pattern.source).source, parts, rewrite));
+        } else {
+            output.push(XRegExp.escape(pattern));
+        }
+    }
+
+    return output;
+}
+
+
+// ==--------------------------==
+// Constructor
+// ==--------------------------==
 
 /**
  * Creates an extended regular expression object for matching text with a pattern. Differs from a
@@ -26551,110 +27988,108 @@ function hasOwnProperty(obj, prop) {
  * // have fresh `lastIndex` properties (set to zero).
  * XRegExp(/regex/);
  */
-    function XRegExp(pattern, flags) {
-        var context = {
-                hasNamedCapture: false,
-                captureNames: []
-            },
-            scope = defaultScope,
-            output = '',
-            pos = 0,
-            result,
-            token,
-            generated,
-            appliedPattern,
-            appliedFlags;
-
-        if (XRegExp.isRegExp(pattern)) {
-            if (flags !== undefined) {
-                throw new TypeError('Cannot supply flags when copying a RegExp');
-            }
-            return copyRegex(pattern);
+function XRegExp(pattern, flags) {
+    if (XRegExp.isRegExp(pattern)) {
+        if (flags !== undefined) {
+            throw new TypeError('Cannot supply flags when copying a RegExp');
         }
-
-        // Copy the argument behavior of `RegExp`
-        pattern = pattern === undefined ? '' : String(pattern);
-        flags = flags === undefined ? '' : String(flags);
-
-        if (XRegExp.isInstalled('astral') && flags.indexOf('A') === -1) {
-            // This causes an error to be thrown if the Unicode Base addon is not available
-            flags += 'A';
-        }
-
-        if (!patternCache[pattern]) {
-            patternCache[pattern] = {};
-        }
-
-        if (!patternCache[pattern][flags]) {
-            // Check for flag-related errors, and strip/apply flags in a leading mode modifier
-            result = prepareFlags(pattern, flags);
-            appliedPattern = result.pattern;
-            appliedFlags = result.flags;
-
-            // Use XRegExp's tokens to translate the pattern to a native regex pattern.
-            // `appliedPattern.length` may change on each iteration if tokens use `reparse`
-            while (pos < appliedPattern.length) {
-                do {
-                    // Check for custom tokens at the current position
-                    result = runTokens(appliedPattern, appliedFlags, pos, scope, context);
-                    // If the matched token used the `reparse` option, splice its output into the
-                    // pattern before running tokens again at the same position
-                    if (result && result.reparse) {
-                        appliedPattern = appliedPattern.slice(0, pos) +
-                            result.output +
-                            appliedPattern.slice(pos + result.matchLength);
-                    }
-                } while (result && result.reparse);
-
-                if (result) {
-                    output += result.output;
-                    pos += (result.matchLength || 1);
-                } else {
-                    // Get the native token at the current position
-                    token = XRegExp.exec(appliedPattern, nativeTokens[scope], pos, 'sticky')[0];
-                    output += token;
-                    pos += token.length;
-                    if (token === '[' && scope === defaultScope) {
-                        scope = classScope;
-                    } else if (token === ']' && scope === classScope) {
-                        scope = defaultScope;
-                    }
-                }
-            }
-
-            patternCache[pattern][flags] = {
-                // Cleanup token cruft: repeated `(?:)(?:)` and leading/trailing `(?:)`
-                pattern: nativ.replace.call(output, /\(\?:\)(?:[*+?]|\{\d+(?:,\d*)?})?\??(?=\(\?:\))|^\(\?:\)(?:[*+?]|\{\d+(?:,\d*)?})?\??|\(\?:\)(?:[*+?]|\{\d+(?:,\d*)?})?\??$/g, ''),
-                // Strip all but native flags
-                flags: nativ.replace.call(appliedFlags, /[^gimuy]+/g, ''),
-                // `context.captureNames` has an item for each capturing group, even if unnamed
-                captures: context.hasNamedCapture ? context.captureNames : null
-            };
-        }
-
-        generated = patternCache[pattern][flags];
-        
-        // Strip all but custom flags, except the 'A' flag
-        var customFlags = flags;
-        if (appliedFlags) {
-            customFlags += appliedFlags;
-        }
-        customFlags = nativ.replace.call(clipDuplicates(customFlags), /[Agimuy]+/g, '');
-        return augment(
-            new RegExp(generated.pattern, generated.flags),
-            generated.captures,
-            pattern,
-            flags,
-            customFlags || generated.captures || generated.pattern !== pattern
-        );
+        return copyRegex(pattern);
     }
 
-// Add `RegExp.prototype` to the prototype chain
-    XRegExp.prototype = new RegExp();
+    // Copy the argument behavior of `RegExp`
+    pattern = pattern === undefined ? '' : String(pattern);
+    flags = flags === undefined ? '' : String(flags);
 
-/* ==============================
- * Public properties
- * ============================== */
+    if (XRegExp.isInstalled('astral') && flags.indexOf('A') === -1) {
+        // This causes an error to be thrown if the Unicode Base addon is not available
+        flags += 'A';
+    }
+
+    if (!patternCache[pattern]) {
+        patternCache[pattern] = {};
+    }
+
+    if (!patternCache[pattern][flags]) {
+        var context = {
+            hasNamedCapture: false,
+            captureNames: []
+        };
+        var scope = defaultScope;
+        var output = '';
+        var pos = 0;
+        var result;
+
+        // Check for flag-related errors, and strip/apply flags in a leading mode modifier
+        var applied = prepareFlags(pattern, flags);
+        var appliedPattern = applied.pattern;
+        var appliedFlags = applied.flags;
+
+        // Use XRegExp's tokens to translate the pattern to a native regex pattern.
+        // `appliedPattern.length` may change on each iteration if tokens use `reparse`
+        while (pos < appliedPattern.length) {
+            do {
+                // Check for custom tokens at the current position
+                result = runTokens(appliedPattern, appliedFlags, pos, scope, context);
+                // If the matched token used the `reparse` option, splice its output into the
+                // pattern before running tokens again at the same position
+                if (result && result.reparse) {
+                    appliedPattern = appliedPattern.slice(0, pos) +
+                        result.output +
+                        appliedPattern.slice(pos + result.matchLength);
+                }
+            } while (result && result.reparse);
+
+            if (result) {
+                output += result.output;
+                pos += (result.matchLength || 1);
+            } else {
+                // Get the native token at the current position
+                var token = XRegExp.exec(appliedPattern, nativeTokens[scope], pos, 'sticky')[0];
+                output += token;
+                pos += token.length;
+                if (token === '[' && scope === defaultScope) {
+                    scope = classScope;
+                } else if (token === ']' && scope === classScope) {
+                    scope = defaultScope;
+                }
+            }
+        }
+
+        patternCache[pattern][flags] = {
+            // Use basic cleanup to collapse repeated empty groups like `(?:)(?:)` to `(?:)`. Empty
+            // groups are sometimes inserted during regex transpilation in order to keep tokens
+            // separated. However, more than one empty group in a row is never needed.
+            pattern: nativ.replace.call(output, /(?:\(\?:\))+/g, '(?:)'),
+            // Strip all but native flags
+            flags: nativ.replace.call(appliedFlags, /[^gimuy]+/g, ''),
+            // `context.captureNames` has an item for each capturing group, even if unnamed
+            captures: context.hasNamedCapture ? context.captureNames : null
+        };
+    }
+
+    var generated = patternCache[pattern][flags];
+        
+    // Strip all but custom flags, except the 'A' flag
+    var customFlags = flags;
+    if (appliedFlags) {
+        customFlags += appliedFlags;
+    }
+    customFlags = nativ.replace.call(clipDuplicates(customFlags), /[Agimuy]+/g, '');
+    return augment(
+        new RegExp(generated.pattern, generated.flags),
+        generated.captures,
+        pattern,
+        flags,
+        customFlags || generated.captures || generated.pattern !== pattern
+    );
+}
+
+// Add `RegExp.prototype` to the prototype chain
+XRegExp.prototype = new RegExp();
+
+// ==--------------------------==
+// Public properties
+// ==--------------------------==
 
 /**
  * The XRegExp version number as a string containing three dot-separated parts. For example,
@@ -26664,11 +28099,17 @@ function hasOwnProperty(obj, prop) {
  * @memberOf XRegExp
  * @type String
  */
-    XRegExp.version = '3.1.0-dev';
+XRegExp.version = '3.1.1';
 
-/* ==============================
- * Public methods
- * ============================== */
+// ==--------------------------==
+// Public methods
+// ==--------------------------==
+
+// Intentionally undocumented; used in tests and addons
+XRegExp._hasNativeFlag = hasNativeFlag;
+XRegExp._dec = dec;
+XRegExp._hex = hex;
+XRegExp._pad4 = pad4;
 
 /**
  * Extends XRegExp syntax and allows custom flags. This is used internally and can be used to
@@ -26719,39 +28160,39 @@ function hasOwnProperty(obj, prop) {
  * XRegExp('a+', 'U').exec('aaa')[0]; // -> 'a'
  * XRegExp('a+?', 'U').exec('aaa')[0]; // -> 'aaa'
  */
-    XRegExp.addToken = function(regex, handler, options) {
-        options = options || {};
-        var optionalFlags = options.optionalFlags, i;
+XRegExp.addToken = function(regex, handler, options) {
+    options = options || {};
+    var optionalFlags = options.optionalFlags, i;
 
-        if (options.flag) {
-            registerFlag(options.flag);
+    if (options.flag) {
+        registerFlag(options.flag);
+    }
+
+    if (optionalFlags) {
+        optionalFlags = nativ.split.call(optionalFlags, '');
+        for (i = 0; i < optionalFlags.length; ++i) {
+            registerFlag(optionalFlags[i]);
         }
+    }
 
-        if (optionalFlags) {
-            optionalFlags = nativ.split.call(optionalFlags, '');
-            for (i = 0; i < optionalFlags.length; ++i) {
-                registerFlag(optionalFlags[i]);
-            }
-        }
+    // Add to the private list of syntax tokens
+    tokens.push({
+        regex: copyRegex(regex, {
+            addG: true,
+            addY: hasNativeY,
+            isInternalOnly: true
+        }),
+        handler: handler,
+        scope: options.scope || defaultScope,
+        flag: options.flag,
+        reparse: options.reparse,
+        leadChar: options.leadChar
+    });
 
-        // Add to the private list of syntax tokens
-        tokens.push({
-            regex: copyRegex(regex, {
-                addG: true,
-                addY: hasNativeY,
-                isInternalOnly: true
-            }),
-            handler: handler,
-            scope: options.scope || defaultScope,
-            flag: options.flag,
-            reparse: options.reparse,
-            leadChar: options.leadChar
-        });
-
-        // Reset the pattern cache used by the `XRegExp` constructor, since the same pattern and
-        // flags might now produce different results
-        XRegExp.cache.flush('patterns');
-    };
+    // Reset the pattern cache used by the `XRegExp` constructor, since the same pattern and flags
+    // might now produce different results
+    XRegExp.cache.flush('patterns');
+};
 
 /**
  * Caches and returns the result of calling `XRegExp(pattern, flags)`. On any subsequent call with
@@ -26767,25 +28208,25 @@ function hasOwnProperty(obj, prop) {
  *   // The regex is compiled once only
  * }
  */
-    XRegExp.cache = function(pattern, flags) {
-        if (!regexCache[pattern]) {
-            regexCache[pattern] = {};
-        }
-        return regexCache[pattern][flags] || (
-            regexCache[pattern][flags] = XRegExp(pattern, flags)
-        );
-    };
+XRegExp.cache = function(pattern, flags) {
+    if (!regexCache[pattern]) {
+        regexCache[pattern] = {};
+    }
+    return regexCache[pattern][flags] || (
+        regexCache[pattern][flags] = XRegExp(pattern, flags)
+    );
+};
 
-// Intentionally undocumented
-    XRegExp.cache.flush = function(cacheName) {
-        if (cacheName === 'patterns') {
-            // Flush the pattern cache used by the `XRegExp` constructor
-            patternCache = {};
-        } else {
-            // Flush the regex cache populated by `XRegExp.cache`
-            regexCache = {};
-        }
-    };
+// Intentionally undocumented; used in tests
+XRegExp.cache.flush = function(cacheName) {
+    if (cacheName === 'patterns') {
+        // Flush the pattern cache used by the `XRegExp` constructor
+        patternCache = {};
+    } else {
+        // Flush the regex cache populated by `XRegExp.cache`
+        regexCache = {};
+    }
+};
 
 /**
  * Escapes any regular expression metacharacters, for use when matching literal strings. The result
@@ -26799,9 +28240,9 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.escape('Escaped? <.>');
  * // -> 'Escaped\?\ <\.>'
  */
-    XRegExp.escape = function(str) {
-        return nativ.replace.call(toObject(str), /[-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-    };
+XRegExp.escape = function(str) {
+    return nativ.replace.call(toObject(str), /[-\[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+};
 
 /**
  * Executes a regex search in a specified string. Returns a match array or `null`. If the provided
@@ -26832,44 +28273,44 @@ function hasOwnProperty(obj, prop) {
  * }
  * // result -> ['2', '3', '4']
  */
-    XRegExp.exec = function(str, regex, pos, sticky) {
-        var cacheKey = 'g',
-            addY = false,
-            match,
-            r2;
+XRegExp.exec = function(str, regex, pos, sticky) {
+    var cacheKey = 'g',
+        addY = false,
+        match,
+        r2;
 
-        addY = hasNativeY && !!(sticky || (regex.sticky && sticky !== false));
-        if (addY) {
-            cacheKey += 'y';
-        }
+    addY = hasNativeY && !!(sticky || (regex.sticky && sticky !== false));
+    if (addY) {
+        cacheKey += 'y';
+    }
 
-        regex[REGEX_DATA] = regex[REGEX_DATA] || {};
+    regex[REGEX_DATA] = regex[REGEX_DATA] || {};
 
-        // Shares cached copies with `XRegExp.match`/`replace`
-        r2 = regex[REGEX_DATA][cacheKey] || (
-            regex[REGEX_DATA][cacheKey] = copyRegex(regex, {
-                addG: true,
-                addY: addY,
-                removeY: sticky === false,
-                isInternalOnly: true
-            })
-        );
+    // Shares cached copies with `XRegExp.match`/`replace`
+    r2 = regex[REGEX_DATA][cacheKey] || (
+        regex[REGEX_DATA][cacheKey] = copyRegex(regex, {
+            addG: true,
+            addY: addY,
+            removeY: sticky === false,
+            isInternalOnly: true
+        })
+    );
 
-        r2.lastIndex = pos = pos || 0;
+    r2.lastIndex = pos = pos || 0;
 
-        // Fixed `exec` required for `lastIndex` fix, named backreferences, etc.
-        match = fixed.exec.call(r2, str);
+    // Fixed `exec` required for `lastIndex` fix, named backreferences, etc.
+    match = fixed.exec.call(r2, str);
 
-        if (sticky && match && match.index !== pos) {
-            match = null;
-        }
+    if (sticky && match && match.index !== pos) {
+        match = null;
+    }
 
-        if (regex.global) {
-            regex.lastIndex = match ? r2.lastIndex : 0;
-        }
+    if (regex.global) {
+        regex.lastIndex = match ? r2.lastIndex : 0;
+    }
 
-        return match;
-    };
+    return match;
+};
 
 /**
  * Executes a provided function once per regex match. Searches always start at the beginning of the
@@ -26893,23 +28334,23 @@ function hasOwnProperty(obj, prop) {
  * });
  * // evens -> [2, 4]
  */
-    XRegExp.forEach = function(str, regex, callback) {
-        var pos = 0,
-            i = -1,
-            match;
+XRegExp.forEach = function(str, regex, callback) {
+    var pos = 0,
+        i = -1,
+        match;
 
-        while ((match = XRegExp.exec(str, regex, pos))) {
-            // Because `regex` is provided to `callback`, the function could use the deprecated/
-            // nonstandard `RegExp.prototype.compile` to mutate the regex. However, since
-            // `XRegExp.exec` doesn't use `lastIndex` to set the search position, this can't lead
-            // to an infinite loop, at least. Actually, because of the way `XRegExp.exec` caches
-            // globalized versions of regexes, mutating the regex will not have any effect on the
-            // iteration or matched strings, which is a nice side effect that brings extra safety
-            callback(match, ++i, str, regex);
+    while ((match = XRegExp.exec(str, regex, pos))) {
+        // Because `regex` is provided to `callback`, the function could use the deprecated/
+        // nonstandard `RegExp.prototype.compile` to mutate the regex. However, since `XRegExp.exec`
+        // doesn't use `lastIndex` to set the search position, this can't lead to an infinite loop,
+        // at least. Actually, because of the way `XRegExp.exec` caches globalized versions of
+        // regexes, mutating the regex will not have any effect on the iteration or matched strings,
+        // which is a nice side effect that brings extra safety.
+        callback(match, ++i, str, regex);
 
-            pos = match.index + (match[0].length || 1);
-        }
-    };
+        pos = match.index + (match[0].length || 1);
+    }
+};
 
 /**
  * Copies a regex object and adds flag `g`. The copy maintains extended data, is augmented with
@@ -26924,13 +28365,13 @@ function hasOwnProperty(obj, prop) {
  * var globalCopy = XRegExp.globalize(/regex/);
  * globalCopy.global; // -> true
  */
-    XRegExp.globalize = function(regex) {
-        return copyRegex(regex, {addG: true});
-    };
+XRegExp.globalize = function(regex) {
+    return copyRegex(regex, {addG: true});
+};
 
 /**
  * Installs optional features according to the specified options. Can be undone using
- * {@link #XRegExp.uninstall}.
+ * `XRegExp.uninstall`.
  *
  * @memberOf XRegExp
  * @param {Object|String} options Options object or string.
@@ -26941,41 +28382,40 @@ function hasOwnProperty(obj, prop) {
  *   // Enables support for astral code points in Unicode addons (implicitly sets flag A)
  *   astral: true,
  *
- *   // Overrides native regex methods with fixed/extended versions that support named
- *   // backreferences and fix numerous cross-browser bugs
+ *   // DEPRECATED: Overrides native regex methods with fixed/extended versions
  *   natives: true
  * });
  *
  * // With an options string
  * XRegExp.install('astral natives');
  */
-    XRegExp.install = function(options) {
-        options = prepareOptions(options);
+XRegExp.install = function(options) {
+    options = prepareOptions(options);
 
-        if (!features.astral && options.astral) {
-            setAstral(true);
-        }
+    if (!features.astral && options.astral) {
+        setAstral(true);
+    }
 
-        if (!features.natives && options.natives) {
-            setNatives(true);
-        }
-    };
+    if (!features.natives && options.natives) {
+        setNatives(true);
+    }
+};
 
 /**
  * Checks whether an individual optional feature is installed.
  *
  * @memberOf XRegExp
  * @param {String} feature Name of the feature to check. One of:
- *   <li>`natives`
  *   <li>`astral`
+ *   <li>`natives`
  * @returns {Boolean} Whether the feature is installed.
  * @example
  *
- * XRegExp.isInstalled('natives');
+ * XRegExp.isInstalled('astral');
  */
-    XRegExp.isInstalled = function(feature) {
-        return !!(features[feature]);
-    };
+XRegExp.isInstalled = function(feature) {
+    return !!(features[feature]);
+};
 
 /**
  * Returns `true` if an object is a regex; `false` if it isn't. This works correctly for regexes
@@ -26991,10 +28431,10 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.isRegExp(RegExp('^', 'm')); // -> true
  * XRegExp.isRegExp(XRegExp('(?s).')); // -> true
  */
-    XRegExp.isRegExp = function(value) {
-        return toString.call(value) === '[object RegExp]';
-        //return isType(value, 'RegExp');
-    };
+XRegExp.isRegExp = function(value) {
+    return toString.call(value) === '[object RegExp]';
+    //return isType(value, 'RegExp');
+};
 
 /**
  * Returns the first matched string, or in global mode, an array containing all matched strings.
@@ -27023,36 +28463,35 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.match('abc', /\w/, 'all'); // -> ['a', 'b', 'c']
  * XRegExp.match('abc', /x/, 'all'); // -> []
  */
-    XRegExp.match = function(str, regex, scope) {
-        var global = (regex.global && scope !== 'one') || scope === 'all',
-            cacheKey = ((global ? 'g' : '') + (regex.sticky ? 'y' : '')) || 'noGY',
-            result,
-            r2;
+XRegExp.match = function(str, regex, scope) {
+    var global = (regex.global && scope !== 'one') || scope === 'all',
+        cacheKey = ((global ? 'g' : '') + (regex.sticky ? 'y' : '')) || 'noGY',
+        result,
+        r2;
 
-        regex[REGEX_DATA] = regex[REGEX_DATA] || {};
+    regex[REGEX_DATA] = regex[REGEX_DATA] || {};
 
-        // Shares cached copies with `XRegExp.exec`/`replace`
-        r2 = regex[REGEX_DATA][cacheKey] || (
-            regex[REGEX_DATA][cacheKey] = copyRegex(regex, {
-                addG: !!global,
-                addY: !!regex.sticky,
-                removeG: scope === 'one',
-                isInternalOnly: true
-            })
+    // Shares cached copies with `XRegExp.exec`/`replace`
+    r2 = regex[REGEX_DATA][cacheKey] || (
+        regex[REGEX_DATA][cacheKey] = copyRegex(regex, {
+            addG: !!global,
+            removeG: scope === 'one',
+            isInternalOnly: true
+        })
+    );
+
+    result = nativ.match.call(toObject(str), r2);
+
+    if (regex.global) {
+        regex.lastIndex = (
+            (scope === 'one' && result) ?
+                // Can't use `r2.lastIndex` since `r2` is nonglobal in this case
+                (result.index + result[0].length) : 0
         );
+    }
 
-        result = nativ.match.call(toObject(str), r2);
-
-        if (regex.global) {
-            regex.lastIndex = (
-                (scope === 'one' && result) ?
-                    // Can't use `r2.lastIndex` since `r2` is nonglobal in this case
-                    (result.index + result[0].length) : 0
-            );
-        }
-
-        return global ? (result || []) : (result && result[0]);
-    };
+    return global ? (result || []) : (result && result[0]);
+};
 
 /**
  * Retrieves the matches from searching a string using a chain of regexes that successively search
@@ -27082,38 +28521,37 @@ function hasOwnProperty(obj, prop) {
  * ]);
  * // -> ['xregexp.com', 'www.google.com']
  */
-    XRegExp.matchChain = function(str, chain) {
-        return (function recurseChain(values, level) {
-            var item = chain[level].regex ? chain[level] : {regex: chain[level]},
-                matches = [],
-                addMatch = function(match) {
-                    if (item.backref) {
-                        /* Safari 4.0.5 (but not 5.0.5+) inappropriately uses sparse arrays to hold
-                         * the `undefined`s for backreferences to nonparticipating capturing
-                         * groups. In such cases, a `hasOwnProperty` or `in` check on its own would
-                         * inappropriately throw the exception, so also check if the backreference
-                         * is a number that is within the bounds of the array.
-                         */
-                        if (!(match.hasOwnProperty(item.backref) || +item.backref < match.length)) {
-                            throw new ReferenceError('Backreference to undefined group: ' + item.backref);
-                        }
+XRegExp.matchChain = function(str, chain) {
+    return (function recurseChain(values, level) {
+        var item = chain[level].regex ? chain[level] : {regex: chain[level]};
+        var matches = [];
 
-                        matches.push(match[item.backref] || '');
-                    } else {
-                        matches.push(match[0]);
-                    }
-                },
-                i;
+        function addMatch(match) {
+            if (item.backref) {
+                // Safari 4.0.5 (but not 5.0.5+) inappropriately uses sparse arrays to hold the
+                // `undefined`s for backreferences to nonparticipating capturing groups. In such
+                // cases, a `hasOwnProperty` or `in` check on its own would inappropriately throw
+                // the exception, so also check if the backreference is a number that is within the
+                // bounds of the array.
+                if (!(match.hasOwnProperty(item.backref) || +item.backref < match.length)) {
+                    throw new ReferenceError('Backreference to undefined group: ' + item.backref);
+                }
 
-            for (i = 0; i < values.length; ++i) {
-                XRegExp.forEach(values[i], item.regex, addMatch);
+                matches.push(match[item.backref] || '');
+            } else {
+                matches.push(match[0]);
             }
+        }
 
-            return ((level === chain.length - 1) || !matches.length) ?
-                matches :
-                recurseChain(matches, level + 1);
-        }([str], 0));
-    };
+        for (var i = 0; i < values.length; ++i) {
+            XRegExp.forEach(values[i], item.regex, addMatch);
+        }
+
+        return ((level === chain.length - 1) || !matches.length) ?
+            matches :
+            recurseChain(matches, level + 1);
+    }([str], 0));
+};
 
 /**
  * Returns a new string with one or all matches of a pattern replaced. The pattern can be a string
@@ -27162,46 +28600,45 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.replace('RegExp builds RegExps', 'RegExp', 'XRegExp', 'all');
  * // -> 'XRegExp builds XRegExps'
  */
-    XRegExp.replace = function(str, search, replacement, scope) {
-        var isRegex = XRegExp.isRegExp(search),
-            global = (search.global && scope !== 'one') || scope === 'all',
-            cacheKey = ((global ? 'g' : '') + (search.sticky ? 'y' : '')) || 'noGY',
-            s2 = search,
-            result;
+XRegExp.replace = function(str, search, replacement, scope) {
+    var isRegex = XRegExp.isRegExp(search),
+        global = (search.global && scope !== 'one') || scope === 'all',
+        cacheKey = ((global ? 'g' : '') + (search.sticky ? 'y' : '')) || 'noGY',
+        s2 = search,
+        result;
 
-        if (isRegex) {
-            search[REGEX_DATA] = search[REGEX_DATA] || {};
+    if (isRegex) {
+        search[REGEX_DATA] = search[REGEX_DATA] || {};
 
-            // Shares cached copies with `XRegExp.exec`/`match`. Since a copy is used, `search`'s
-            // `lastIndex` isn't updated *during* replacement iterations
-            s2 = search[REGEX_DATA][cacheKey] || (
-                search[REGEX_DATA][cacheKey] = copyRegex(search, {
-                    addG: !!global,
-                    addY: !!search.sticky,
-                    removeG: scope === 'one',
-                    isInternalOnly: true
-                })
-            );
-        } else if (global) {
-            s2 = new RegExp(XRegExp.escape(String(search)), 'g');
-        }
+        // Shares cached copies with `XRegExp.exec`/`match`. Since a copy is used, `search`'s
+        // `lastIndex` isn't updated *during* replacement iterations
+        s2 = search[REGEX_DATA][cacheKey] || (
+            search[REGEX_DATA][cacheKey] = copyRegex(search, {
+                addG: !!global,
+                removeG: scope === 'one',
+                isInternalOnly: true
+            })
+        );
+    } else if (global) {
+        s2 = new RegExp(XRegExp.escape(String(search)), 'g');
+    }
 
-        // Fixed `replace` required for named backreferences, etc.
-        result = fixed.replace.call(toObject(str), s2, replacement);
+    // Fixed `replace` required for named backreferences, etc.
+    result = fixed.replace.call(toObject(str), s2, replacement);
 
-        if (isRegex && search.global) {
-            // Fixes IE, Safari bug (last tested IE 9, Safari 5.1)
-            search.lastIndex = 0;
-        }
+    if (isRegex && search.global) {
+        // Fixes IE, Safari bug (last tested IE 9, Safari 5.1)
+        search.lastIndex = 0;
+    }
 
-        return result;
-    };
+    return result;
+};
 
 /**
- * Performs batch processing of string replacements. Used like {@link #XRegExp.replace}, but
- * accepts an array of replacement details. Later replacements operate on the output of earlier
- * replacements. Replacement details are accepted as an array with a regex or string to search for,
- * the replacement string or function, and an optional scope of 'one' or 'all'. Uses the XRegExp
+ * Performs batch processing of string replacements. Used like `XRegExp.replace`, but accepts an
+ * array of replacement details. Later replacements operate on the output of earlier replacements.
+ * Replacement details are accepted as an array with a regex or string to search for, the
+ * replacement string or function, and an optional scope of 'one' or 'all'. Uses the XRegExp
  * replacement text syntax, which supports named backreference properties via `${name}`.
  *
  * @memberOf XRegExp
@@ -27221,16 +28658,16 @@ function hasOwnProperty(obj, prop) {
  *   }]
  * ]);
  */
-    XRegExp.replaceEach = function(str, replacements) {
-        var i, r;
+XRegExp.replaceEach = function(str, replacements) {
+    var i, r;
 
-        for (i = 0; i < replacements.length; ++i) {
-            r = replacements[i];
-            str = XRegExp.replace(str, r[0], r[1], r[2]);
-        }
+    for (i = 0; i < replacements.length; ++i) {
+        r = replacements[i];
+        str = XRegExp.replace(str, r[0], r[1], r[2]);
+    }
 
-        return str;
-    };
+    return str;
+};
 
 /**
  * Splits a string into an array of strings using a regex or string separator. Matches of the
@@ -27258,9 +28695,9 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.split('..word1..', /([a-z]+)(\d+)/i);
  * // -> ['..', 'word', '1', '..']
  */
-    XRegExp.split = function(str, separator, limit) {
-        return fixed.split.call(toObject(str), separator, limit);
-    };
+XRegExp.split = function(str, separator, limit) {
+    return fixed.split.call(toObject(str), separator, limit);
+};
 
 /**
  * Executes a regex search in a specified string. Returns `true` or `false`. Optional `pos` and
@@ -27285,14 +28722,14 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.test('abc', /c/, 0, 'sticky'); // -> false
  * XRegExp.test('abc', /c/, 2, 'sticky'); // -> true
  */
-    XRegExp.test = function(str, regex, pos, sticky) {
-        // Do this the easy way :-)
-        return !!XRegExp.exec(str, regex, pos, sticky);
-    };
+XRegExp.test = function(str, regex, pos, sticky) {
+    // Do this the easy way :-)
+    return !!XRegExp.exec(str, regex, pos, sticky);
+};
 
 /**
  * Uninstalls optional features according to the specified options. All optional features start out
- * uninstalled, so this is used to undo the actions of {@link #XRegExp.install}.
+ * uninstalled, so this is used to undo the actions of `XRegExp.install`.
  *
  * @memberOf XRegExp
  * @param {Object|String} options Options object or string.
@@ -27303,24 +28740,24 @@ function hasOwnProperty(obj, prop) {
  *   // Disables support for astral code points in Unicode addons
  *   astral: true,
  *
- *   // Restores native regex methods
+ *   // DEPRECATED: Restores native regex methods
  *   natives: true
  * });
  *
  * // With an options string
  * XRegExp.uninstall('astral natives');
  */
-    XRegExp.uninstall = function(options) {
-        options = prepareOptions(options);
+XRegExp.uninstall = function(options) {
+    options = prepareOptions(options);
 
-        if (features.astral && options.astral) {
-            setAstral(false);
-        }
+    if (features.astral && options.astral) {
+        setAstral(false);
+    }
 
-        if (features.natives && options.natives) {
-            setNatives(false);
-        }
-    };
+    if (features.natives && options.natives) {
+        setNatives(false);
+    }
+};
 
 /**
  * Returns an XRegExp object that is the concatenation of the given patterns. Patterns can be provided as
@@ -27328,6 +28765,7 @@ function hasOwnProperty(obj, prop) {
  * Backreferences in provided regex objects are automatically renumbered to work correctly within
  * the larger combined pattern. Native flags used by provided regexes are ignored in favor of the
  * `flags` argument.
+ *
  * @memberOf XRegExp
  * @param {Array} patterns Regexes and strings to combine.
  * @param {String|RegExp} separator Regex or string to use as the joining separator.
@@ -27338,12 +28776,12 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.join(['a+b*c', /(dogs)\1/, /(cats)\1/], 'i');
  * // -> /a\+b\*c(dogs)\1(cats)\2/i
  */
-    XRegExp.join = function(patterns, separator, flags) {
-        separator = separator || "";
-        var separatorStr = XRegExp.isRegExp(separator) ? separator.source : XRegExp.escape(separator),
-            output = prepareJoin(patterns);
-        return XRegExp(output.join(separatorStr), flags);
-    };
+XRegExp.join = function(patterns, separator, flags) {
+    separator = separator || "";
+    var separatorStr = XRegExp.isRegExp(separator) ? separator.source : XRegExp.escape(separator),
+        output = prepareJoin(patterns);
+    return XRegExp(output.join(separatorStr), flags);
+};
 
 /**
  * Returns an XRegExp object that is the union of the given patterns. Patterns can be provided as
@@ -27361,9 +28799,9 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.union(['a+b*c', /(dogs)\1/, /(cats)\1/], 'i');
  * // -> /a\+b\*c|(dogs)\1|(cats)\2/i
  */
-    XRegExp.union = function(patterns, flags) {
-        return XRegExp.join(patterns, /|/, flags);
-    };
+XRegExp.union = function(patterns, flags) {
+    return XRegExp.join(patterns, /|/, flags);
+};
 
 /* ==============================
  * Fixed/extended native methods
@@ -27378,61 +28816,61 @@ function hasOwnProperty(obj, prop) {
  * @param {String} str String to search.
  * @returns {Array} Match array with named backreference properties, or `null`.
  */
-    fixed.exec = function(str) {
-        var origLastIndex = this.lastIndex,
-            match = nativ.exec.apply(this, arguments),
-            name,
-            r2,
-            i;
+fixed.exec = function(str) {
+    var origLastIndex = this.lastIndex,
+        match = nativ.exec.apply(this, arguments),
+        name,
+        r2,
+        i;
 
-        if (match) {
-            // Fix browsers whose `exec` methods don't return `undefined` for nonparticipating
-            // capturing groups. This fixes IE 5.5-8, but not IE 9's quirks mode or emulation of
-            // older IEs. IE 9 in standards mode follows the spec
-            if (!correctExecNpcg && match.length > 1 && indexOf(match, '') > -1) {
-                r2 = copyRegex(this, {
-                    removeG: true,
-                    isInternalOnly: true
-                });
-                // Using `str.slice(match.index)` rather than `match[0]` in case lookahead allowed
-                // matching due to characters outside the match
-                nativ.replace.call(String(str).slice(match.index), r2, function() {
-                    var len = arguments.length, i;
-                    // Skip index 0 and the last 2
-                    for (i = 1; i < len - 2; ++i) {
-                        if (arguments[i] === undefined) {
-                            match[i] = undefined;
-                        }
+    if (match) {
+        // Fix browsers whose `exec` methods don't return `undefined` for nonparticipating capturing
+        // groups. This fixes IE 5.5-8, but not IE 9's quirks mode or emulation of older IEs. IE 9
+        // in standards mode follows the spec.
+        if (!correctExecNpcg && match.length > 1 && indexOf(match, '') > -1) {
+            r2 = copyRegex(this, {
+                removeG: true,
+                isInternalOnly: true
+            });
+            // Using `str.slice(match.index)` rather than `match[0]` in case lookahead allowed
+            // matching due to characters outside the match
+            nativ.replace.call(String(str).slice(match.index), r2, function() {
+                var len = arguments.length, i;
+                // Skip index 0 and the last 2
+                for (i = 1; i < len - 2; ++i) {
+                    if (arguments[i] === undefined) {
+                        match[i] = undefined;
                     }
-                });
-            }
+                }
+            });
+        }
 
-            // Attach named capture properties
-            if (this[REGEX_DATA] && this[REGEX_DATA].captureNames) {
-                // Skip index 0
-                for (i = 1; i < match.length; ++i) {
-                    name = this[REGEX_DATA].captureNames[i - 1];
-                    if (name) {
-                        if (match[i] != undefined || match[name] == undefined) {
-                            match[name] = match[i];
-                        }
+        // Attach named capture properties
+        if (this[REGEX_DATA] && this[REGEX_DATA].captureNames) {
+            // Skip index 0
+            for (i = 1; i < match.length; ++i) {
+                name = this[REGEX_DATA].captureNames[i - 1];
+                if (name) {
+                    if (match[i] != undefined || match[name] == undefined) {
+                        match[name] = match[i];
                     }
                 }
             }
-
-            // Fix browsers that increment `lastIndex` after zero-length matches
-            if (this.global && !match[0].length && (this.lastIndex > match.index)) {
-                this.lastIndex = match.index;
-            }
         }
 
-        if (!this.global) {
-            // Fixes IE, Opera bug (last tested IE 9, Opera 11.6)
-            this.lastIndex = origLastIndex;
+        // Fix browsers that increment `lastIndex` after zero-length matches
+        if (this.global && !match[0].length && (this.lastIndex > match.index)) {
+            this.lastIndex = match.index;
         }
+    }
 
-        return match;
-    };
+    if (!this.global) {
+        // Fixes IE, Opera bug (last tested IE 9, Opera 11.6)
+        this.lastIndex = origLastIndex;
+    }
+
+    return match;
+};
 
 /**
  * Fixes browser bugs in the native `RegExp.prototype.test`. Calling `XRegExp.install('natives')`
@@ -27442,10 +28880,10 @@ function hasOwnProperty(obj, prop) {
  * @param {String} str String to search.
  * @returns {Boolean} Whether the regex matched the provided value.
  */
-    fixed.test = function(str) {
-        // Do this the easy way :-)
-        return !!fixed.exec.call(this, str);
-    };
+fixed.test = function(str) {
+    // Do this the easy way :-)
+    return !!fixed.exec.call(this, str);
+};
 
 /**
  * Adds named capture support (with backreferences returned as `result.name`), and fixes browser
@@ -27457,22 +28895,22 @@ function hasOwnProperty(obj, prop) {
  * @returns {Array} If `regex` uses flag g, an array of match strings or `null`. Without flag g,
  *   the result of calling `regex.exec(this)`.
  */
-    fixed.match = function(regex) {
-        var result;
+fixed.match = function(regex) {
+    var result;
 
-        if (!XRegExp.isRegExp(regex)) {
-            // Use the native `RegExp` rather than `XRegExp`
-            regex = new RegExp(regex);
-        } else if (regex.global) {
-            result = nativ.match.apply(this, arguments);
-            // Fixes IE bug
-            regex.lastIndex = 0;
+    if (!XRegExp.isRegExp(regex)) {
+        // Use the native `RegExp` rather than `XRegExp`
+        regex = new RegExp(regex);
+    } else if (regex.global) {
+        result = nativ.match.apply(this, arguments);
+        // Fixes IE bug
+        regex.lastIndex = 0;
 
-            return result;
-        }
+        return result;
+    }
 
-        return fixed.exec.call(regex, toObject(this));
-    };
+    return fixed.exec.call(regex, toObject(this));
+};
 
 /**
  * Adds support for `${n}` tokens for named and numbered backreferences in replacement text, and
@@ -27488,128 +28926,128 @@ function hasOwnProperty(obj, prop) {
  * @param {String|Function} replacement Replacement string or a function invoked to create it.
  * @returns {String} New string with one or all matches replaced.
  */
-    fixed.replace = function(search, replacement) {
-        var isRegex = XRegExp.isRegExp(search),
-            origLastIndex,
-            captureNames,
-            result;
+fixed.replace = function(search, replacement) {
+    var isRegex = XRegExp.isRegExp(search),
+        origLastIndex,
+        captureNames,
+        result;
 
-        if (isRegex) {
-            if (search[REGEX_DATA]) {
-                captureNames = search[REGEX_DATA].captureNames;
-            }
-            // Only needed if `search` is nonglobal
-            origLastIndex = search.lastIndex;
-        } else {
-            search += ''; // Type-convert
+    if (isRegex) {
+        if (search[REGEX_DATA]) {
+            captureNames = search[REGEX_DATA].captureNames;
         }
+        // Only needed if `search` is nonglobal
+        origLastIndex = search.lastIndex;
+    } else {
+        search += ''; // Type-convert
+    }
 
-        // Don't use `typeof`; some older browsers return 'function' for regex objects
-        if (isType(replacement, 'Function')) {
-            // Stringifying `this` fixes a bug in IE < 9 where the last argument in replacement
-            // functions isn't type-converted to a string
-            result = nativ.replace.call(String(this), search, function() {
-                var args = arguments, i;
-                if (captureNames) {
-                    // Change the `arguments[0]` string primitive to a `String` object that can
-                    // store properties. This really does need to use `String` as a constructor
-                    args[0] = new String(args[0]);
-                    // Store named backreferences on the first argument
-                    for (i = 0; i < captureNames.length; ++i) {
-                        if (captureNames[i]) {
-                            args[0][captureNames[i]] = args[i + 1];
-                        }
+    // Don't use `typeof`; some older browsers return 'function' for regex objects
+    if (isType(replacement, 'Function')) {
+        // Stringifying `this` fixes a bug in IE < 9 where the last argument in replacement
+        // functions isn't type-converted to a string
+        result = nativ.replace.call(String(this), search, function() {
+            var args = arguments, i;
+            if (captureNames) {
+                // Change the `arguments[0]` string primitive to a `String` object that can store
+                // properties. This really does need to use `String` as a constructor
+                args[0] = new String(args[0]);
+                // Store named backreferences on the first argument
+                for (i = 0; i < captureNames.length; ++i) {
+                    if (captureNames[i]) {
+                        args[0][captureNames[i]] = args[i + 1];
                     }
                 }
-                // Update `lastIndex` before calling `replacement`. Fixes IE, Chrome, Firefox,
-                // Safari bug (last tested IE 9, Chrome 17, Firefox 11, Safari 5.1)
-                if (isRegex && search.global) {
-                    search.lastIndex = args[args.length - 2] + args[0].length;
-                }
-                // ES6 specs the context for replacement functions as `undefined`
-                return replacement.apply(undefined, args);
-            });
-        } else {
-            // Ensure that the last value of `args` will be a string when given nonstring `this`,
-            // while still throwing on null or undefined context
-            result = nativ.replace.call(this == null ? this : String(this), search, function() {
-                // Keep this function's `arguments` available through closure
-                var args = arguments;
-                return nativ.replace.call(String(replacement), replacementToken, function($0, $1, $2) {
-                    var n;
-                    // Named or numbered backreference with curly braces
-                    if ($1) {
-                        // XRegExp behavior for `${n}`:
-                        // 1. Backreference to numbered capture, if `n` is an integer. Use `0` for
-                        //    for the entire match. Any number of leading zeros may be used.
-                        // 2. Backreference to named capture `n`, if it exists and is not an
-                        //    integer overridden by numbered capture. In practice, this does not
-                        //    overlap with numbered capture since XRegExp does not allow named
-                        //    capture to use a bare integer as the name.
-                        // 3. If the name or number does not refer to an existing capturing group,
-                        //    it's an error.
-                        n = +$1; // Type-convert; drop leading zeros
-                        if (n <= args.length - 3) {
-                            return args[n] || '';
-                        }
-                        // Groups with the same name is an error, else would need `lastIndexOf`
-                        n = captureNames ? indexOf(captureNames, $1) : -1;
-                        if (n < 0) {
-                            throw new SyntaxError('Backreference to undefined group ' + $0);
-                        }
-                        return args[n + 1] || '';
-                    }
-                    // Else, special variable or numbered backreference without curly braces
-                    if ($2 === '$') { // $$
-                        return '$';
-                    }
-                    if ($2 === '&' || +$2 === 0) { // $&, $0 (not followed by 1-9), $00
-                        return args[0];
-                    }
-                    if ($2 === '`') { // $` (left context)
-                        return args[args.length - 1].slice(0, args[args.length - 2]);
-                    }
-                    if ($2 === "'") { // $' (right context)
-                        return args[args.length - 1].slice(args[args.length - 2] + args[0].length);
-                    }
-                    // Else, numbered backreference without curly braces
-                    $2 = +$2; // Type-convert; drop leading zero
-                    // XRegExp behavior for `$n` and `$nn`:
-                    // - Backrefs end after 1 or 2 digits. Use `${..}` for more digits.
-                    // - `$1` is an error if no capturing groups.
-                    // - `$10` is an error if less than 10 capturing groups. Use `${1}0` instead.
-                    // - `$01` is `$1` if at least one capturing group, else it's an error.
-                    // - `$0` (not followed by 1-9) and `$00` are the entire match.
-                    // Native behavior, for comparison:
-                    // - Backrefs end after 1 or 2 digits. Cannot reference capturing group 100+.
-                    // - `$1` is a literal `$1` if no capturing groups.
-                    // - `$10` is `$1` followed by a literal `0` if less than 10 capturing groups.
-                    // - `$01` is `$1` if at least one capturing group, else it's a literal `$01`.
-                    // - `$0` is a literal `$0`.
-                    if (!isNaN($2)) {
-                        if ($2 > args.length - 3) {
-                            throw new SyntaxError('Backreference to undefined group ' + $0);
-                        }
-                        return args[$2] || '';
-                    }
-                    // `$` followed by an unsupported char is an error, unlike native JS
-                    throw new SyntaxError('Invalid token ' + $0);
-                });
-            });
-        }
-
-        if (isRegex) {
-            if (search.global) {
-                // Fixes IE, Safari bug (last tested IE 9, Safari 5.1)
-                search.lastIndex = 0;
-            } else {
-                // Fixes IE, Opera bug (last tested IE 9, Opera 11.6)
-                search.lastIndex = origLastIndex;
             }
-        }
+            // Update `lastIndex` before calling `replacement`. Fixes IE, Chrome, Firefox, Safari
+            // bug (last tested IE 9, Chrome 17, Firefox 11, Safari 5.1)
+            if (isRegex && search.global) {
+                search.lastIndex = args[args.length - 2] + args[0].length;
+            }
+            // ES6 specs the context for replacement functions as `undefined`
+            return replacement.apply(undefined, args);
+        });
+    } else {
+        // Ensure that the last value of `args` will be a string when given nonstring `this`,
+        // while still throwing on null or undefined context
+        result = nativ.replace.call(this == null ? this : String(this), search, function() {
+            // Keep this function's `arguments` available through closure
+            var args = arguments;
+            return nativ.replace.call(String(replacement), replacementToken, function($0, $1, $2) {
+                var n;
+                // Named or numbered backreference with curly braces
+                if ($1) {
+                    // XRegExp behavior for `${n}`:
+                    // 1. Backreference to numbered capture, if `n` is an integer. Use `0` for the
+                    //    entire match. Any number of leading zeros may be used.
+                    // 2. Backreference to named capture `n`, if it exists and is not an integer
+                    //    overridden by numbered capture. In practice, this does not overlap with
+                    //    numbered capture since XRegExp does not allow named capture to use a bare
+                    //    integer as the name.
+                    // 3. If the name or number does not refer to an existing capturing group, it's
+                    //    an error.
+                    n = +$1; // Type-convert; drop leading zeros
+                    if (n <= args.length - 3) {
+                        return args[n] || '';
+                    }
+                    // Groups with the same name is an error, else would need `lastIndexOf`
+                    n = captureNames ? indexOf(captureNames, $1) : -1;
+                    if (n < 0) {
+                        throw new SyntaxError('Backreference to undefined group ' + $0);
+                    }
+                    return args[n + 1] || '';
+                }
+                // Else, special variable or numbered backreference without curly braces
+                if ($2 === '$') { // $$
+                    return '$';
+                }
+                if ($2 === '&' || +$2 === 0) { // $&, $0 (not followed by 1-9), $00
+                    return args[0];
+                }
+                if ($2 === '`') { // $` (left context)
+                    return args[args.length - 1].slice(0, args[args.length - 2]);
+                }
+                if ($2 === "'") { // $' (right context)
+                    return args[args.length - 1].slice(args[args.length - 2] + args[0].length);
+                }
+                // Else, numbered backreference without curly braces
+                $2 = +$2; // Type-convert; drop leading zero
+                // XRegExp behavior for `$n` and `$nn`:
+                // - Backrefs end after 1 or 2 digits. Use `${..}` for more digits.
+                // - `$1` is an error if no capturing groups.
+                // - `$10` is an error if less than 10 capturing groups. Use `${1}0` instead.
+                // - `$01` is `$1` if at least one capturing group, else it's an error.
+                // - `$0` (not followed by 1-9) and `$00` are the entire match.
+                // Native behavior, for comparison:
+                // - Backrefs end after 1 or 2 digits. Cannot reference capturing group 100+.
+                // - `$1` is a literal `$1` if no capturing groups.
+                // - `$10` is `$1` followed by a literal `0` if less than 10 capturing groups.
+                // - `$01` is `$1` if at least one capturing group, else it's a literal `$01`.
+                // - `$0` is a literal `$0`.
+                if (!isNaN($2)) {
+                    if ($2 > args.length - 3) {
+                        throw new SyntaxError('Backreference to undefined group ' + $0);
+                    }
+                    return args[$2] || '';
+                }
+                // `$` followed by an unsupported char is an error, unlike native JS
+                throw new SyntaxError('Invalid token ' + $0);
+            });
+        });
+    }
 
-        return result;
-    };
+    if (isRegex) {
+        if (search.global) {
+            // Fixes IE, Safari bug (last tested IE 9, Safari 5.1)
+            search.lastIndex = 0;
+        } else {
+            // Fixes IE, Opera bug (last tested IE 9, Opera 11.6)
+            search.lastIndex = origLastIndex;
+        }
+    }
+
+    return result;
+};
 
 /**
  * Fixes browser bugs in the native `String.prototype.split`. Calling `XRegExp.install('natives')`
@@ -27620,75 +29058,75 @@ function hasOwnProperty(obj, prop) {
  * @param {Number} [limit] Maximum number of items to include in the result array.
  * @returns {Array} Array of substrings.
  */
-    fixed.split = function(separator, limit) {
-        if (!XRegExp.isRegExp(separator)) {
-            // Browsers handle nonregex split correctly, so use the faster native method
-            return nativ.split.apply(this, arguments);
-        }
+fixed.split = function(separator, limit) {
+    if (!XRegExp.isRegExp(separator)) {
+        // Browsers handle nonregex split correctly, so use the faster native method
+        return nativ.split.apply(this, arguments);
+    }
 
-        var str = String(this),
-            output = [],
-            origLastIndex = separator.lastIndex,
-            lastLastIndex = 0,
-            lastLength;
+    var str = String(this),
+        output = [],
+        origLastIndex = separator.lastIndex,
+        lastLastIndex = 0,
+        lastLength;
 
-        // Values for `limit`, per the spec:
-        // If undefined: pow(2,32) - 1
-        // If 0, Infinity, or NaN: 0
-        // If positive number: limit = floor(limit); if (limit >= pow(2,32)) limit -= pow(2,32);
-        // If negative number: pow(2,32) - floor(abs(limit))
-        // If other: Type-convert, then use the above rules
-        // This line fails in very strange ways for some values of `limit` in Opera 10.5-10.63,
-        // unless Opera Dragonfly is open (go figure). It works in at least Opera 9.5-10.1 and 11+
-        limit = (limit === undefined ? -1 : limit) >>> 0;
+    // Values for `limit`, per the spec:
+    // If undefined: pow(2,32) - 1
+    // If 0, Infinity, or NaN: 0
+    // If positive number: limit = floor(limit); if (limit >= pow(2,32)) limit -= pow(2,32);
+    // If negative number: pow(2,32) - floor(abs(limit))
+    // If other: Type-convert, then use the above rules
+    // This line fails in very strange ways for some values of `limit` in Opera 10.5-10.63, unless
+    // Opera Dragonfly is open (go figure). It works in at least Opera 9.5-10.1 and 11+
+    limit = (limit === undefined ? -1 : limit) >>> 0;
 
-        XRegExp.forEach(str, separator, function(match) {
-            // This condition is not the same as `if (match[0].length)`
-            if ((match.index + match[0].length) > lastLastIndex) {
-                output.push(str.slice(lastLastIndex, match.index));
-                if (match.length > 1 && match.index < str.length) {
-                    Array.prototype.push.apply(output, match.slice(1));
-                }
-                lastLength = match[0].length;
-                lastLastIndex = match.index + lastLength;
+    XRegExp.forEach(str, separator, function(match) {
+        // This condition is not the same as `if (match[0].length)`
+        if ((match.index + match[0].length) > lastLastIndex) {
+            output.push(str.slice(lastLastIndex, match.index));
+            if (match.length > 1 && match.index < str.length) {
+                Array.prototype.push.apply(output, match.slice(1));
             }
-        });
-
-        if (lastLastIndex === str.length) {
-            if (!nativ.test.call(separator, '') || lastLength) {
-                output.push('');
-            }
-        } else {
-            output.push(str.slice(lastLastIndex));
+            lastLength = match[0].length;
+            lastLastIndex = match.index + lastLength;
         }
+    });
 
-        separator.lastIndex = origLastIndex;
-        return output.length > limit ? output.slice(0, limit) : output;
-    };
+    if (lastLastIndex === str.length) {
+        if (!nativ.test.call(separator, '') || lastLength) {
+            output.push('');
+        }
+    } else {
+        output.push(str.slice(lastLastIndex));
+    }
 
-/* ==============================
- * Built-in syntax/flag tokens
- * ============================== */
+    separator.lastIndex = origLastIndex;
+    return output.length > limit ? output.slice(0, limit) : output;
+};
+
+// ==--------------------------==
+// Built-in syntax/flag tokens
+// ==--------------------------==
 
 /*
  * Letter escapes that natively match literal characters: `\a`, `\A`, etc. These should be
  * SyntaxErrors but are allowed in web reality. XRegExp makes them errors for cross-browser
  * consistency and to reserve their syntax, but lets them be superseded by addons.
  */
-    XRegExp.addToken(
-        /\\([ABCE-RTUVXYZaeg-mopqyz]|c(?![A-Za-z])|u(?![\dA-Fa-f]{4}|{[\dA-Fa-f]+})|x(?![\dA-Fa-f]{2}))/,
-        function(match, scope) {
-            // \B is allowed in default scope only
-            if (match[1] === 'B' && scope === defaultScope) {
-                return match[0];
-            }
-            throw new SyntaxError('Invalid escape ' + match[0]);
-        },
-        {
-            scope: 'all',
-            leadChar: '\\'
+XRegExp.addToken(
+    /\\([ABCE-RTUVXYZaeg-mopqyz]|c(?![A-Za-z])|u(?![\dA-Fa-f]{4}|{[\dA-Fa-f]+})|x(?![\dA-Fa-f]{2}))/,
+    function(match, scope) {
+        // \B is allowed in default scope only
+        if (match[1] === 'B' && scope === defaultScope) {
+            return match[0];
         }
-    );
+        throw new SyntaxError('Invalid escape ' + match[0]);
+    },
+    {
+        scope: 'all',
+        leadChar: '\\'
+    }
+);
 
 /*
  * Unicode code point escape with curly braces: `\u{N..}`. `N..` is any one or more digit
@@ -27698,134 +29136,137 @@ function hasOwnProperty(obj, prop) {
  * if you follow a `\u{N..}` token that references a code point above U+FFFF with a quantifier, or
  * if you use the same in a character class.
  */
-    XRegExp.addToken(
-        /\\u{([\dA-Fa-f]+)}/,
-        function(match, scope, flags) {
-            var code = dec(match[1]);
-            if (code > 0x10FFFF) {
-                throw new SyntaxError('Invalid Unicode code point ' + match[0]);
-            }
-            if (code <= 0xFFFF) {
-                // Converting to \uNNNN avoids needing to escape the literal character and keep it
-                // separate from preceding tokens
-                return '\\u' + pad4(hex(code));
-            }
-            // If `code` is between 0xFFFF and 0x10FFFF, require and defer to native handling
-            if (hasNativeU && flags.indexOf('u') > -1) {
-                return match[0];
-            }
-            throw new SyntaxError('Cannot use Unicode code point above \\u{FFFF} without flag u');
-        },
-        {
-            scope: 'all',
-            leadChar: '\\'
+XRegExp.addToken(
+    /\\u{([\dA-Fa-f]+)}/,
+    function(match, scope, flags) {
+        var code = dec(match[1]);
+        if (code > 0x10FFFF) {
+            throw new SyntaxError('Invalid Unicode code point ' + match[0]);
         }
-    );
+        if (code <= 0xFFFF) {
+            // Converting to \uNNNN avoids needing to escape the literal character and keep it
+            // separate from preceding tokens
+            return '\\u' + pad4(hex(code));
+        }
+        // If `code` is between 0xFFFF and 0x10FFFF, require and defer to native handling
+        if (hasNativeU && flags.indexOf('u') > -1) {
+            return match[0];
+        }
+        throw new SyntaxError('Cannot use Unicode code point above \\u{FFFF} without flag u');
+    },
+    {
+        scope: 'all',
+        leadChar: '\\'
+    }
+);
 
 /*
  * Empty character class: `[]` or `[^]`. This fixes a critical cross-browser syntax inconsistency.
  * Unless this is standardized (per the ES spec), regex syntax can't be accurately parsed because
  * character class endings can't be determined.
  */
-    XRegExp.addToken(
-        /\[(\^?)]/,
-        function(match) {
-            // For cross-browser compatibility with ES3, convert [] to \b\B and [^] to [\s\S].
-            // (?!) should work like \b\B, but is unreliable in some versions of Firefox
-            return match[1] ? '[\\s\\S]' : '\\b\\B';
-        },
-        {leadChar: '['}
-    );
+XRegExp.addToken(
+    /\[(\^?)]/,
+    function(match) {
+        // For cross-browser compatibility with ES3, convert [] to \b\B and [^] to [\s\S].
+        // (?!) should work like \b\B, but is unreliable in some versions of Firefox
+        return match[1] ? '[\\s\\S]' : '\\b\\B';
+    },
+    {leadChar: '['}
+);
 
 /*
  * Comment pattern: `(?# )`. Inline comments are an alternative to the line comments allowed in
  * free-spacing mode (flag x).
  */
-    XRegExp.addToken(
-        /\(\?#[^)]*\)/,
-        function(match, scope, flags) {
-            // Keep tokens separated unless the following token is a quantifier
-            return isQuantifierNext(match.input, match.index + match[0].length, flags) ?
-                '' : '(?:)';
-        },
-        {leadChar: '('}
-    );
+XRegExp.addToken(
+    /\(\?#[^)]*\)/,
+    function(match, scope, flags) {
+        // Keep tokens separated unless the following token is a quantifier. This avoids e.g.
+        // inadvertedly changing `\1(?#)1` to `\11`.
+        return isQuantifierNext(match.input, match.index + match[0].length, flags) ?
+            '' : '(?:)';
+    },
+    {leadChar: '('}
+);
 
 /*
  * Whitespace and line comments, in free-spacing mode (aka extended mode, flag x) only.
  */
-    XRegExp.addToken(
-        /\s+|#.*/,
-        function(match, scope, flags) {
-            // Keep tokens separated unless the following token is a quantifier
-            return isQuantifierNext(match.input, match.index + match[0].length, flags) ?
-                '' : '(?:)';
-        },
-        {flag: 'x'}
-    );
+XRegExp.addToken(
+    /\s+|#[^\n]*\n?/,
+    function(match, scope, flags) {
+        // Keep tokens separated unless the following token is a quantifier. This avoids e.g.
+        // inadvertedly changing `\1 1` to `\11`.
+        return isQuantifierNext(match.input, match.index + match[0].length, flags) ?
+            '' : '(?:)';
+    },
+    {flag: 'x'}
+);
 
 /*
  * Dot, in dotall mode (aka singleline mode, flag s) only.
  */
-    XRegExp.addToken(
-        /\./,
-        function() {
-            return '[\\s\\S]';
-        },
-        {
-            flag: 's',
-            leadChar: '.'
-        }
-    );
+XRegExp.addToken(
+    /\./,
+    function() {
+        return '[\\s\\S]';
+    },
+    {
+        flag: 's',
+        leadChar: '.'
+    }
+);
 
 /*
  * Named backreference: `\k<name>`. Backreference names can use the characters A-Z, a-z, 0-9, _,
  * and $ only. Also allows numbered backreferences as `\k<n>`.
  */
-    XRegExp.addToken(
-        /\\k<([\w$]+)>/,
-        function(match) {
-            // Groups with the same name is an error, else would need `lastIndexOf`
-            var index = isNaN(match[1]) ? (indexOf(this.captureNames, match[1]) + 1) : +match[1],
-                endIndex = match.index + match[0].length;
-            if (!index || index > this.captureNames.length) {
-                throw new SyntaxError('Backreference to undefined group ' + match[0]);
-            }
-            // Keep backreferences separate from subsequent literal numbers
-            return '\\' + index + (
-                endIndex === match.input.length || isNaN(match.input.charAt(endIndex)) ?
-                    '' : '(?:)'
-            );
-        },
-        {leadChar: '\\'}
-    );
+XRegExp.addToken(
+    /\\k<([\w$]+)>/,
+    function(match) {
+        // Groups with the same name is an error, else would need `lastIndexOf`
+        var index = isNaN(match[1]) ? (indexOf(this.captureNames, match[1]) + 1) : +match[1],
+            endIndex = match.index + match[0].length;
+        if (!index || index > this.captureNames.length) {
+            throw new SyntaxError('Backreference to undefined group ' + match[0]);
+        }
+        // Keep backreferences separate from subsequent literal numbers. This avoids e.g.
+        // inadvertedly changing `(?<n>)\k<n>1` to `()\11`.
+        return '\\' + index + (
+            endIndex === match.input.length || isNaN(match.input.charAt(endIndex)) ?
+                '' : '(?:)'
+        );
+    },
+    {leadChar: '\\'}
+);
 
 /*
  * Numbered backreference or octal, plus any following digits: `\0`, `\11`, etc. Octals except `\0`
  * not followed by 0-9 and backreferences to unopened capture groups throw an error. Other matches
  * are returned unaltered. IE < 9 doesn't support backreferences above `\99` in regex syntax.
  */
-    XRegExp.addToken(
-        /\\(\d+)/,
-        function(match, scope) {
-            if (
-                !(
-                    scope === defaultScope &&
-                    /^[1-9]/.test(match[1]) &&
-                    +match[1] <= this.captureNames.length
-                ) &&
-                match[1] !== '0'
-            ) {
-                throw new SyntaxError('Cannot use octal escape or backreference to undefined group ' +
-                    match[0]);
-            }
-            return match[0];
-        },
-        {
-            scope: 'all',
-            leadChar: '\\'
+XRegExp.addToken(
+    /\\(\d+)/,
+    function(match, scope) {
+        if (
+            !(
+                scope === defaultScope &&
+                /^[1-9]/.test(match[1]) &&
+                +match[1] <= this.captureNames.length
+            ) &&
+            match[1] !== '0'
+        ) {
+            throw new SyntaxError('Cannot use octal escape or backreference to undefined group ' +
+                match[0]);
         }
-    );
+        return match[0];
+    },
+    {
+        scope: 'all',
+        leadChar: '\\'
+    }
+);
 
 /*
  * Named capturing group; match the opening delimiter only: `(?<name>`. Capture names can use the
@@ -27834,65 +29275,66 @@ function hasOwnProperty(obj, prop) {
  * supported the Python-style syntax. Otherwise, XRegExp might treat numbered backreferences to
  * Python-style named capture as octals.
  */
-    XRegExp.addToken(
-        /\(\?P?<([\w$]+)>/,
-        function(match) {
-            // Disallow bare integers as names because named backreferences are added to match
-            // arrays and therefore numeric properties may lead to incorrect lookups
-            if (!isNaN(match[1])) {
-                throw new SyntaxError('Cannot use integer as capture name ' + match[0]);
-            }
-            if (match[1] === 'length' || match[1] === '__proto__') {
-                throw new SyntaxError('Cannot use reserved word as capture name ' + match[0]);
-            }
-            if (indexOf(this.captureNames, match[1]) > -1) {
-                throw new SyntaxError('Cannot use same name for multiple groups ' + match[0]);
-            }
-            this.captureNames.push(match[1]);
-            this.hasNamedCapture = true;
-            return '(';
-        },
-        {leadChar: '('}
-    );
+XRegExp.addToken(
+    /\(\?P?<([\w$]+)>/,
+    function(match) {
+        // Disallow bare integers as names because named backreferences are added to match arrays
+        // and therefore numeric properties may lead to incorrect lookups
+        if (!isNaN(match[1])) {
+            throw new SyntaxError('Cannot use integer as capture name ' + match[0]);
+        }
+        if (match[1] === 'length' || match[1] === '__proto__') {
+            throw new SyntaxError('Cannot use reserved word as capture name ' + match[0]);
+        }
+        if (indexOf(this.captureNames, match[1]) > -1) {
+            throw new SyntaxError('Cannot use same name for multiple groups ' + match[0]);
+        }
+        this.captureNames.push(match[1]);
+        this.hasNamedCapture = true;
+        return '(';
+    },
+    {leadChar: '('}
+);
 
 /*
  * Capturing group; match the opening parenthesis only. Required for support of named capturing
  * groups. Also adds explicit capture mode (flag n).
  */
-    XRegExp.addToken(
-        /\((?!\?)/,
-        function(match, scope, flags) {
-            if (flags.indexOf('n') > -1) {
-                return '(?:';
-            }
-            this.captureNames.push(null);
-            return '(';
-        },
-        {
-            optionalFlags: 'n',
-            leadChar: '('
+XRegExp.addToken(
+    /\((?!\?)/,
+    function(match, scope, flags) {
+        if (flags.indexOf('n') > -1) {
+            return '(?:';
         }
-    );
+        this.captureNames.push(null);
+        return '(';
+    },
+    {
+        optionalFlags: 'n',
+        leadChar: '('
+    }
+);
 
-/* ==============================
- * Expose XRegExp
- * ============================== */
+// ==--------------------------==
+// Expose XRegExp
+// ==--------------------------==
 
-    
+
 
 /*!
- * XRegExp.build 3.1.0-dev
+ * XRegExp.build 3.1.1
  * <xregexp.com>
- * Steven Levithan (c) 2012-2015 MIT License
+ * Steven Levithan (c) 2012-2016 MIT License
  * Inspired by Lea Verou's RegExp.create <lea.verou.me>
  */
 
 
-    
 
-    var 
-        subParts = /(\()(?!\?)|\\([1-9]\d*)|\\[\s\S]|\[(?:[^\\\]]|\\[\s\S])*]/g,
-        parts = XRegExp.union([/\({{([\w$]+)}}\)|{{([\w$]+)}}/, subParts], 'g');
+
+
+var REGEX_DATA = 'xregexp';
+var subParts = /(\()(?!\?)|\\([1-9]\d*)|\\[\s\S]|\[(?:[^\\\]]|\\[\s\S])*]/g;
+var parts = XRegExp.union([/\({{([\w$]+)}}\)|{{([\w$]+)}}/, subParts], 'g');
 
 /**
  * Strips a leading `^` and trailing unescaped `$`, if both are present.
@@ -27901,17 +29343,23 @@ function hasOwnProperty(obj, prop) {
  * @param {String} pattern Pattern to process.
  * @returns {String} Pattern with edge anchors removed.
  */
-    function deanchor(pattern) {
-        var leadingAnchor = /^\^/,
-            trailingAnchor = /\$$/;
+function deanchor(pattern) {
+    // Allow any number of empty noncapturing groups before/after anchors, because regexes
+    // built/generated by XRegExp sometimes include them
+    var leadingAnchor = /^(?:\(\?:\))*\^/,
+        trailingAnchor = /\$(?:\(\?:\))*$/;
 
+    if (
+        leadingAnchor.test(pattern) &&
+        trailingAnchor.test(pattern) &&
         // Ensure that the trailing `$` isn't escaped
-        if (leadingAnchor.test(pattern) && trailingAnchor.test(pattern.replace(/\\[\s\S]/g, ''))) {
-            return pattern.replace(leadingAnchor, '').replace(trailingAnchor, '');
-        }
-
-        return pattern;
+        trailingAnchor.test(pattern.replace(/\\[\s\S]/g, ''))
+    ) {
+        return pattern.replace(leadingAnchor, '').replace(trailingAnchor, '');
     }
+
+    return pattern;
+}
 
 /**
  * Converts the provided value to an XRegExp. Native RegExp flags are not preserved.
@@ -27920,22 +29368,22 @@ function hasOwnProperty(obj, prop) {
  * @param {String|RegExp} value Value to convert.
  * @returns {RegExp} XRegExp object with XRegExp syntax applied.
  */
-    function asXRegExp(value) {
-        return XRegExp.isRegExp(value) ?
-            (value[REGEX_DATA] && value[REGEX_DATA].captureNames ?
-                // Don't recompile, to preserve capture names
-                value :
-                // Recompile as XRegExp
-                XRegExp(value.source)
-            ) :
-            // Compile string as XRegExp
-            XRegExp(value);
-    }
+function asXRegExp(value) {
+    return XRegExp.isRegExp(value) ?
+        (value[REGEX_DATA] && value[REGEX_DATA].captureNames ?
+            // Don't recompile, to preserve capture names
+            value :
+            // Recompile as XRegExp
+            XRegExp(value.source)
+        ) :
+        // Compile string as XRegExp
+        XRegExp(value);
+}
 
 /**
- * Builds regexes using named subpatterns, for readability and pattern reuse. Backreferences in the
- * outer pattern and provided subpatterns are automatically renumbered to work correctly. Native
- * flags used by provided subpatterns are ignored in favor of the `flags` argument.
+ * Builds regexes using named subpatterns, for readability and pattern reuse. Backreferences in
+ * the outer pattern and provided subpatterns are automatically renumbered to work correctly.
+ * Native flags used by provided subpatterns are ignored in favor of the `flags` argument.
  *
  * @memberOf XRegExp
  * @param {String} pattern XRegExp pattern using `{{name}}` for embedded subpatterns. Allows
@@ -27957,124 +29405,136 @@ function hasOwnProperty(obj, prop) {
  * time.test('10:59'); // -> true
  * XRegExp.exec('10:59', time).minutes; // -> '59'
  */
-    XRegExp.build = function(pattern, subs, flags) {
-        var inlineFlags = /^\(\?([\w$]+)\)/.exec(pattern),
-            data = {},
-            numCaps = 0, // 'Caps' is short for captures
-            numPriorCaps,
-            numOuterCaps = 0,
-            outerCapsMap = [0],
-            outerCapNames,
-            sub,
-            p;
+XRegExp.build = function(pattern, subs, flags) {
+    var inlineFlags = /^\(\?([\w$]+)\)/.exec(pattern),
+        data = {},
+        numCaps = 0, // 'Caps' is short for captures
+        numPriorCaps,
+        numOuterCaps = 0,
+        outerCapsMap = [0],
+        outerCapNames,
+        sub,
+        p;
 
-        // Add flags within a leading mode modifier to the overall pattern's flags
-        if (inlineFlags) {
-            flags = flags || '';
-            inlineFlags[1].replace(/./g, function(flag) {
-                // Don't add duplicates
-                flags += (flags.indexOf(flag) > -1 ? '' : flag);
-            });
+    // Add flags within a leading mode modifier to the overall pattern's flags
+    if (inlineFlags) {
+        flags = flags || '';
+        inlineFlags[1].replace(/./g, function(flag) {
+            // Don't add duplicates
+            flags += (flags.indexOf(flag) > -1 ? '' : flag);
+        });
+    }
+
+    for (p in subs) {
+        if (subs.hasOwnProperty(p)) {
+            // Passing to XRegExp enables extended syntax and ensures independent validity,
+            // lest an unescaped `(`, `)`, `[`, or trailing `\` breaks the `(?:)` wrapper. For
+            // subpatterns provided as native regexes, it dies on octals and adds the property
+            // used to hold extended regex instance data, for simplicity
+            sub = asXRegExp(subs[p]);
+            data[p] = {
+                // Deanchoring allows embedding independently useful anchored regexes. If you
+                // really need to keep your anchors, double them (i.e., `^^...$$`)
+                pattern: deanchor(sub.source),
+                names: sub[REGEX_DATA].captureNames || []
+            };
         }
+    }
 
-        for (p in subs) {
-            if (subs.hasOwnProperty(p)) {
-                // Passing to XRegExp enables extended syntax and ensures independent validity,
-                // lest an unescaped `(`, `)`, `[`, or trailing `\` breaks the `(?:)` wrapper. For
-                // subpatterns provided as native regexes, it dies on octals and adds the property
-                // used to hold extended regex instance data, for simplicity
-                sub = asXRegExp(subs[p]);
-                data[p] = {
-                    // Deanchoring allows embedding independently useful anchored regexes. If you
-                    // really need to keep your anchors, double them (i.e., `^^...$$`)
-                    pattern: deanchor(sub.source),
-                    names: sub[REGEX_DATA].captureNames || []
-                };
+    // Passing to XRegExp dies on octals and ensures the outer pattern is independently valid;
+    // helps keep this simple. Named captures will be put back
+    pattern = asXRegExp(pattern);
+    outerCapNames = pattern[REGEX_DATA].captureNames || [];
+    pattern = pattern.source.replace(parts, function($0, $1, $2, $3, $4) {
+        var subName = $1 || $2,
+            capName,
+            intro,
+            localCapIndex;
+        // Named subpattern
+        if (subName) {
+            if (!data.hasOwnProperty(subName)) {
+                throw new ReferenceError('Undefined property ' + $0);
             }
-        }
-
-        // Passing to XRegExp dies on octals and ensures the outer pattern is independently valid;
-        // helps keep this simple. Named captures will be put back
-        pattern = asXRegExp(pattern);
-        outerCapNames = pattern[REGEX_DATA].captureNames || [];
-        pattern = pattern.source.replace(parts, function($0, $1, $2, $3, $4) {
-            var subName = $1 || $2, capName, intro;
-            // Named subpattern
-            if (subName) {
-                if (!data.hasOwnProperty(subName)) {
-                    throw new ReferenceError('Undefined property ' + $0);
-                }
-                // Named subpattern was wrapped in a capturing group
-                if ($1) {
-                    capName = outerCapNames[numOuterCaps];
-                    outerCapsMap[++numOuterCaps] = ++numCaps;
-                    // If it's a named group, preserve the name. Otherwise, use the subpattern name
-                    // as the capture name
-                    intro = '(?<' + (capName || subName) + '>';
-                } else {
-                    intro = '(?:';
-                }
-                numPriorCaps = numCaps;
-                return intro + data[subName].pattern.replace(subParts, function(match, paren, backref) {
-                    // Capturing group
-                    if (paren) {
-                        capName = data[subName].names[numCaps - numPriorCaps];
-                        ++numCaps;
-                        // If the current capture has a name, preserve the name
-                        if (capName) {
-                            return '(?<' + capName + '>';
-                        }
-                    // Backreference
-                    } else if (backref) {
-                        // Rewrite the backreference
-                        return '\\' + (+backref + numPriorCaps);
-                    }
-                    return match;
-                }) + ')';
-            }
-            // Capturing group
-            if ($3) {
+            // Named subpattern was wrapped in a capturing group
+            if ($1) {
                 capName = outerCapNames[numOuterCaps];
                 outerCapsMap[++numOuterCaps] = ++numCaps;
-                // If the current capture has a name, preserve the name
-                if (capName) {
-                    return '(?<' + capName + '>';
-                }
-            // Backreference
-            } else if ($4) {
-                // Rewrite the backreference
-                return '\\' + outerCapsMap[+$4];
+                // If it's a named group, preserve the name. Otherwise, use the subpattern name
+                // as the capture name
+                intro = '(?<' + (capName || subName) + '>';
+            } else {
+                intro = '(?:';
             }
-            return $0;
-        });
+            numPriorCaps = numCaps;
+            return intro + data[subName].pattern.replace(subParts, function(match, paren, backref) {
+                // Capturing group
+                if (paren) {
+                    capName = data[subName].names[numCaps - numPriorCaps];
+                    ++numCaps;
+                    // If the current capture has a name, preserve the name
+                    if (capName) {
+                        return '(?<' + capName + '>';
+                    }
+                // Backreference
+                } else if (backref) {
+                    localCapIndex = +backref - 1;
+                    // Rewrite the backreference
+                    return data[subName].names[localCapIndex] ?
+                        // Need to preserve the backreference name in case using flag `n`
+                        '\\k<' + data[subName].names[localCapIndex] + '>' :
+                        '\\' + (+backref + numPriorCaps);
+                }
+                return match;
+            }) + ')';
+        }
+        // Capturing group
+        if ($3) {
+            capName = outerCapNames[numOuterCaps];
+            outerCapsMap[++numOuterCaps] = ++numCaps;
+            // If the current capture has a name, preserve the name
+            if (capName) {
+                return '(?<' + capName + '>';
+            }
+        // Backreference
+        } else if ($4) {
+            localCapIndex = +$4 - 1;
+            // Rewrite the backreference
+            return outerCapNames[localCapIndex] ?
+                // Need to preserve the backreference name in case using flag `n`
+                '\\k<' + outerCapNames[localCapIndex] + '>' :
+                '\\' + outerCapsMap[+$4];
+        }
+        return $0;
+    });
 
-        return XRegExp(pattern, flags);
-    };
+    return XRegExp(pattern, flags);
+};
 
 
 
 /*!
- * XRegExp.matchRecursive 3.1.0-dev
+ * XRegExp.matchRecursive 3.1.1
  * <xregexp.com>
- * Steven Levithan (c) 2009-2015 MIT License
+ * Steven Levithan (c) 2009-2016 MIT License
  */
 
 
-    
+
+
 
 /**
  * Returns a match detail object composed of the provided values.
  *
  * @private
  */
-    function row(name, value, start, end) {
-        return {
-            name: name,
-            value: value,
-            start: start,
-            end: end
-        };
-    }
+function row(name, value, start, end) {
+    return {
+        name: name,
+        value: value,
+        start: start,
+        end: end
+    };
+}
 
 /**
  * Returns an array of match strings between outermost left and right delimiters, or an array of
@@ -28126,174 +29586,183 @@ function hasOwnProperty(obj, prop) {
  * XRegExp.matchRecursive(str, '<', '>', 'gy');
  * // -> ['1', '<<2>>', '3']
  */
-    XRegExp.matchRecursive = function(str, left, right, flags, options) {
-        flags = flags || '';
-        options = options || {};
-        var global = flags.indexOf('g') > -1,
-            sticky = flags.indexOf('y') > -1,
-            // Flag `y` is controlled internally
-            basicFlags = flags.replace(/y/g, ''),
-            escapeChar = options.escapeChar,
-            vN = options.valueNames,
-            output = [],
-            openTokens = 0,
-            delimStart = 0,
-            delimEnd = 0,
-            lastOuterEnd = 0,
-            outerStart,
-            innerStart,
-            leftMatch,
-            rightMatch,
-            esc;
-        left = XRegExp(left, basicFlags);
-        right = XRegExp(right, basicFlags);
+XRegExp.matchRecursive = function(str, left, right, flags, options) {
+    flags = flags || '';
+    options = options || {};
+    var global = flags.indexOf('g') > -1,
+        sticky = flags.indexOf('y') > -1,
+        // Flag `y` is controlled internally
+        basicFlags = flags.replace(/y/g, ''),
+        escapeChar = options.escapeChar,
+        vN = options.valueNames,
+        output = [],
+        openTokens = 0,
+        delimStart = 0,
+        delimEnd = 0,
+        lastOuterEnd = 0,
+        outerStart,
+        innerStart,
+        leftMatch,
+        rightMatch,
+        esc;
+    left = XRegExp(left, basicFlags);
+    right = XRegExp(right, basicFlags);
 
+    if (escapeChar) {
+        if (escapeChar.length > 1) {
+            throw new Error('Cannot use more than one escape character');
+        }
+        escapeChar = XRegExp.escape(escapeChar);
+        // Using `XRegExp.union` safely rewrites backreferences in `left` and `right`
+        esc = new RegExp(
+            '(?:' + escapeChar + '[\\S\\s]|(?:(?!' +
+                XRegExp.union([left, right]).source +
+                ')[^' + escapeChar + '])+)+',
+            // Flags `gy` not needed here
+            flags.replace(/[^imu]+/g, '')
+        );
+    }
+
+    while (true) {
+        // If using an escape character, advance to the delimiter's next starting position,
+        // skipping any escaped characters in between
         if (escapeChar) {
-            if (escapeChar.length > 1) {
-                throw new Error('Cannot use more than one escape character');
-            }
-            escapeChar = XRegExp.escape(escapeChar);
-            // Using `XRegExp.union` safely rewrites backreferences in `left` and `right`
-            esc = new RegExp(
-                '(?:' + escapeChar + '[\\S\\s]|(?:(?!' +
-                    XRegExp.union([left, right]).source +
-                    ')[^' + escapeChar + '])+)+',
-                // Flags `gy` not needed here
-                flags.replace(/[^imu]+/g, '')
-            );
+            delimEnd += (XRegExp.exec(str, esc, delimEnd, 'sticky') || [''])[0].length;
         }
-
-        while (true) {
-            // If using an escape character, advance to the delimiter's next starting position,
-            // skipping any escaped characters in between
-            if (escapeChar) {
-                delimEnd += (XRegExp.exec(str, esc, delimEnd, 'sticky') || [''])[0].length;
-            }
-            leftMatch = XRegExp.exec(str, left, delimEnd);
-            rightMatch = XRegExp.exec(str, right, delimEnd);
-            // Keep the leftmost match only
-            if (leftMatch && rightMatch) {
-                if (leftMatch.index <= rightMatch.index) {
-                    rightMatch = null;
-                } else {
-                    leftMatch = null;
-                }
-            }
-            // Paths (LM: leftMatch, RM: rightMatch, OT: openTokens):
-            // LM | RM | OT | Result
-            // 1  | 0  | 1  | loop
-            // 1  | 0  | 0  | loop
-            // 0  | 1  | 1  | loop
-            // 0  | 1  | 0  | throw
-            // 0  | 0  | 1  | throw
-            // 0  | 0  | 0  | break
-            // The paths above don't include the sticky mode special case. The loop ends after the
-            // first completed match if not `global`.
-            if (leftMatch || rightMatch) {
-                delimStart = (leftMatch || rightMatch).index;
-                delimEnd = delimStart + (leftMatch || rightMatch)[0].length;
-            } else if (!openTokens) {
-                break;
-            }
-            if (sticky && !openTokens && delimStart > lastOuterEnd) {
-                break;
-            }
-            if (leftMatch) {
-                if (!openTokens) {
-                    outerStart = delimStart;
-                    innerStart = delimEnd;
-                }
-                ++openTokens;
-            } else if (rightMatch && openTokens) {
-                if (!--openTokens) {
-                    if (vN) {
-                        if (vN[0] && outerStart > lastOuterEnd) {
-                            output.push(row(vN[0], str.slice(lastOuterEnd, outerStart), lastOuterEnd, outerStart));
-                        }
-                        if (vN[1]) {
-                            output.push(row(vN[1], str.slice(outerStart, innerStart), outerStart, innerStart));
-                        }
-                        if (vN[2]) {
-                            output.push(row(vN[2], str.slice(innerStart, delimStart), innerStart, delimStart));
-                        }
-                        if (vN[3]) {
-                            output.push(row(vN[3], str.slice(delimStart, delimEnd), delimStart, delimEnd));
-                        }
-                    } else {
-                        output.push(str.slice(innerStart, delimStart));
-                    }
-                    lastOuterEnd = delimEnd;
-                    if (!global) {
-                        break;
-                    }
-                }
+        leftMatch = XRegExp.exec(str, left, delimEnd);
+        rightMatch = XRegExp.exec(str, right, delimEnd);
+        // Keep the leftmost match only
+        if (leftMatch && rightMatch) {
+            if (leftMatch.index <= rightMatch.index) {
+                rightMatch = null;
             } else {
-                throw new Error('Unbalanced delimiter found in string');
-            }
-            // If the delimiter matched an empty string, avoid an infinite loop
-            if (delimStart === delimEnd) {
-                ++delimEnd;
+                leftMatch = null;
             }
         }
-
-        if (global && !sticky && vN && vN[0] && str.length > lastOuterEnd) {
-            output.push(row(vN[0], str.slice(lastOuterEnd), lastOuterEnd, str.length));
+        // Paths (LM: leftMatch, RM: rightMatch, OT: openTokens):
+        // LM | RM | OT | Result
+        // 1  | 0  | 1  | loop
+        // 1  | 0  | 0  | loop
+        // 0  | 1  | 1  | loop
+        // 0  | 1  | 0  | throw
+        // 0  | 0  | 1  | throw
+        // 0  | 0  | 0  | break
+        // The paths above don't include the sticky mode special case. The loop ends after the
+        // first completed match if not `global`.
+        if (leftMatch || rightMatch) {
+            delimStart = (leftMatch || rightMatch).index;
+            delimEnd = delimStart + (leftMatch || rightMatch)[0].length;
+        } else if (!openTokens) {
+            break;
         }
+        if (sticky && !openTokens && delimStart > lastOuterEnd) {
+            break;
+        }
+        if (leftMatch) {
+            if (!openTokens) {
+                outerStart = delimStart;
+                innerStart = delimEnd;
+            }
+            ++openTokens;
+        } else if (rightMatch && openTokens) {
+            if (!--openTokens) {
+                if (vN) {
+                    if (vN[0] && outerStart > lastOuterEnd) {
+                        output.push(row(vN[0], str.slice(lastOuterEnd, outerStart), lastOuterEnd, outerStart));
+                    }
+                    if (vN[1]) {
+                        output.push(row(vN[1], str.slice(outerStart, innerStart), outerStart, innerStart));
+                    }
+                    if (vN[2]) {
+                        output.push(row(vN[2], str.slice(innerStart, delimStart), innerStart, delimStart));
+                    }
+                    if (vN[3]) {
+                        output.push(row(vN[3], str.slice(delimStart, delimEnd), delimStart, delimEnd));
+                    }
+                } else {
+                    output.push(str.slice(innerStart, delimStart));
+                }
+                lastOuterEnd = delimEnd;
+                if (!global) {
+                    break;
+                }
+            }
+        } else {
+            throw new Error('Unbalanced delimiter found in string');
+        }
+        // If the delimiter matched an empty string, avoid an infinite loop
+        if (delimStart === delimEnd) {
+            ++delimEnd;
+        }
+    }
 
-        return output;
-    };
+    if (global && !sticky && vN && vN[0] && str.length > lastOuterEnd) {
+        output.push(row(vN[0], str.slice(lastOuterEnd), lastOuterEnd, str.length));
+    }
+
+    return output;
+};
 
 
 
 /*!
- * XRegExp Unicode Base 3.1.0-dev
+ * XRegExp Unicode Base 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2008-2015 MIT License
+ * Steven Levithan (c) 2008-2016 MIT License
  */
+
+
+
+
 
 /**
  * Adds base support for Unicode matching:
  * - Adds syntax `\p{..}` for matching Unicode tokens. Tokens can be inverted using `\P{..}` or
- *   `\p{^..}`. Token names ignore case, spaces, hyphens, and underscores. You can omit the braces
- *   for token names that are a single letter (e.g. `\pL` or `PL`).
+ *   `\p{^..}`. Token names ignore case, spaces, hyphens, and underscores. You can omit the
+ *   braces for token names that are a single letter (e.g. `\pL` or `PL`).
  * - Adds flag A (astral), which enables 21-bit Unicode support.
  * - Adds the `XRegExp.addUnicodeData` method used by other addons to provide character data.
  *
- * Unicode Base relies on externally provided Unicode character data. Official addons are available
- * to provide data for Unicode categories, scripts, blocks, and properties.
+ * Unicode Base relies on externally provided Unicode character data. Official addons are
+ * available to provide data for Unicode categories, scripts, blocks, and properties.
  *
  * @requires XRegExp
  */
 
-    
+// ==--------------------------==
+// Private stuff
+// ==--------------------------==
 
 // Storage for Unicode data
-    var unicode = {};
+var unicode = {};
 
-/* ==============================
- * Private functions
- * ============================== */
+// Reuse utils
+var dec = XRegExp._dec;
+var hex = XRegExp._hex;
+var pad4 = XRegExp._pad4;
 
 // Generates a token lookup name: lowercase, with hyphens, spaces, and underscores removed
-    function normalize(name) {
-        return name.replace(/[- _]+/g, '').toLowerCase();
-    }
+function normalize(name) {
+    return name.replace(/[- _]+/g, '').toLowerCase();
+}
 
 // Gets the decimal code of a literal code unit, \xHH, \uHHHH, or a backslash-escaped literal
-    function charCode(chr) {
-        var esc = /^\\[xu](.+)/.exec(chr);
-        return esc ?
-            dec(esc[1]) :
-            chr.charCodeAt(chr.charAt(0) === '\\' ? 1 : 0);
-    }
+function charCode(chr) {
+    var esc = /^\\[xu](.+)/.exec(chr);
+    return esc ?
+        dec(esc[1]) :
+        chr.charCodeAt(chr.charAt(0) === '\\' ? 1 : 0);
+}
 
 // Inverts a list of ordered BMP characters and ranges
-    function invertBmp(range) {
-        var output = '',
-            lastEnd = -1,
-            start;
-        XRegExp.forEach(range, /(\\x..|\\u....|\\?[\s\S])(?:-(\\x..|\\u....|\\?[\s\S]))?/, function(m) {
-            start = charCode(m[1]);
+function invertBmp(range) {
+    var output = '',
+        lastEnd = -1;
+    XRegExp.forEach(
+    range, 
+    /(\\x..|\\u....|\\?[\s\S])(?:-(\\x..|\\u....|\\?[\s\S]))?/, 
+    function(m) {
+            var start = charCode(m[1]);
             if (start > lastEnd + 1) {
                 output += '\\u' + pad4(hex(lastEnd + 1));
                 if (start > lastEnd + 2) {
@@ -28301,132 +29770,134 @@ function hasOwnProperty(obj, prop) {
                 }
             }
             lastEnd = charCode(m[2] || m[1]);
-        });
-        if (lastEnd < 0xFFFF) {
-            output += '\\u' + pad4(hex(lastEnd + 1));
-            if (lastEnd < 0xFFFE) {
-                output += '-\\uFFFF';
-            }
         }
-        return output;
+);
+    if (lastEnd < 0xFFFF) {
+        output += '\\u' + pad4(hex(lastEnd + 1));
+        if (lastEnd < 0xFFFE) {
+            output += '-\\uFFFF';
+        }
     }
+    return output;
+}
 
 // Generates an inverted BMP range on first use
-    function cacheInvertedBmp(slug) {
-        var prop = 'b!';
-        return unicode[slug][prop] || (
-            unicode[slug][prop] = invertBmp(unicode[slug].bmp)
-        );
-    }
+function cacheInvertedBmp(slug) {
+    var prop = 'b!';
+    return unicode[slug][prop] || (
+        unicode[slug][prop] = invertBmp(unicode[slug].bmp)
+    );
+}
 
 // Combines and optionally negates BMP and astral data
-    function buildAstral(slug, isNegated) {
-        var item = unicode[slug],
-            combined = '';
-        if (item.bmp && !item.isBmpLast) {
-            combined = '[' + item.bmp + ']' + (item.astral ? '|' : '');
-        }
-        if (item.astral) {
-            combined += item.astral;
-        }
-        if (item.isBmpLast && item.bmp) {
-            combined += (item.astral ? '|' : '') + '[' + item.bmp + ']';
-        }
-        // Astral Unicode tokens always match a code point, never a code unit
-        return isNegated ?
-            '(?:(?!' + combined + ')(?:[\uD800-\uDBFF][\uDC00-\uDFFF]|[\0-\uFFFF]))' :
-            '(?:' + combined + ')';
+function buildAstral(slug, isNegated) {
+    var item = unicode[slug],
+        combined = '';
+    if (item.bmp && !item.isBmpLast) {
+        combined = '[' + item.bmp + ']' + (item.astral ? '|' : '');
     }
+    if (item.astral) {
+        combined += item.astral;
+    }
+    if (item.isBmpLast && item.bmp) {
+        combined += (item.astral ? '|' : '') + '[' + item.bmp + ']';
+    }
+    // Astral Unicode tokens always match a code point, never a code unit
+    return isNegated ?
+        '(?:(?!' + combined + ')(?:[\uD800-\uDBFF][\uDC00-\uDFFF]|[\0-\uFFFF]))' :
+        '(?:' + combined + ')';
+}
 
 // Builds a complete astral pattern on first use
-    function cacheAstral(slug, isNegated) {
-        var prop = isNegated ? 'a!' : 'a=';
-        return unicode[slug][prop] || (
-            unicode[slug][prop] = buildAstral(slug, isNegated)
-        );
-    }
+function cacheAstral(slug, isNegated) {
+    var prop = isNegated ? 'a!' : 'a=';
+    return unicode[slug][prop] || (
+        unicode[slug][prop] = buildAstral(slug, isNegated)
+    );
+}
 
-/* ==============================
- * Core functionality
- * ============================== */
+// ==--------------------------==
+// Core functionality
+// ==--------------------------==
 
 /*
  * Add Unicode token syntax: \p{..}, \P{..}, \p{^..}. Also add astral mode (flag A).
  */
-    XRegExp.addToken(
-        // Use `*` instead of `+` to avoid capturing `^` as the token name in `\p{^}`
-        /\\([pP])(?:{(\^?)([^}]*)}|([A-Za-z]))/,
-        function(match, scope, flags) {
-            var ERR_DOUBLE_NEG = 'Invalid double negation ',
-                ERR_UNKNOWN_NAME = 'Unknown Unicode token ',
-                ERR_UNKNOWN_REF = 'Unicode token missing data ',
-                ERR_ASTRAL_ONLY = 'Astral mode required for Unicode token ',
-                ERR_ASTRAL_IN_CLASS = 'Astral mode does not support Unicode tokens within character classes',
-                // Negated via \P{..} or \p{^..}
-                isNegated = match[1] === 'P' || !!match[2],
-                // Switch from BMP (0-FFFF) to astral (0-10FFFF) mode via flag A
-                isAstralMode = flags.indexOf('A') > -1,
-                // Token lookup name. Check `[4]` first to avoid passing `undefined` via `\p{}`
-                slug = normalize(match[4] || match[3]),
-                // Token data object
-                item = unicode[slug];
+XRegExp.addToken(
+    // Use `*` instead of `+` to avoid capturing `^` as the token name in `\p{^}`
+    /\\([pP])(?:{(\^?)([^}]*)}|([A-Za-z]))/,
+    function(match, scope, flags) {
+        var ERR_DOUBLE_NEG = 'Invalid double negation ',
+            ERR_UNKNOWN_NAME = 'Unknown Unicode token ',
+            ERR_UNKNOWN_REF = 'Unicode token missing data ',
+            ERR_ASTRAL_ONLY = 'Astral mode required for Unicode token ',
+            ERR_ASTRAL_IN_CLASS = 'Astral mode does not support Unicode tokens within character classes',
+            // Negated via \P{..} or \p{^..}
+            isNegated = match[1] === 'P' || !!match[2],
+            // Switch from BMP (0-FFFF) to astral (0-10FFFF) mode via flag A
+            isAstralMode = flags.indexOf('A') > -1,
+            // Token lookup name. Check `[4]` first to avoid passing `undefined` via `\p{}`
+            slug = normalize(match[4] || match[3]),
+            // Token data object
+            item = unicode[slug];
 
-            if (match[1] === 'P' && match[2]) {
-                throw new SyntaxError(ERR_DOUBLE_NEG + match[0]);
-            }
-            if (!unicode.hasOwnProperty(slug)) {
-                throw new SyntaxError(ERR_UNKNOWN_NAME + match[0]);
-            }
-
-            // Switch to the negated form of the referenced Unicode token
-            if (item.inverseOf) {
-                slug = normalize(item.inverseOf);
-                if (!unicode.hasOwnProperty(slug)) {
-                    throw new ReferenceError(ERR_UNKNOWN_REF + match[0] + ' -> ' + item.inverseOf);
-                }
-                item = unicode[slug];
-                isNegated = !isNegated;
-            }
-
-            if (!(item.bmp || isAstralMode)) {
-                throw new SyntaxError(ERR_ASTRAL_ONLY + match[0]);
-            }
-            if (isAstralMode) {
-                if (scope === 'class') {
-                    throw new SyntaxError(ERR_ASTRAL_IN_CLASS);
-                }
-
-                return cacheAstral(slug, isNegated);
-            }
-
-            return scope === 'class' ?
-                (isNegated ? cacheInvertedBmp(slug) : item.bmp) :
-                (isNegated ? '[^' : '[') + item.bmp + ']';
-        },
-        {
-            scope: 'all',
-            optionalFlags: 'A',
-            leadChar: '\\'
+        if (match[1] === 'P' && match[2]) {
+            throw new SyntaxError(ERR_DOUBLE_NEG + match[0]);
         }
-    );
+        if (!unicode.hasOwnProperty(slug)) {
+            throw new SyntaxError(ERR_UNKNOWN_NAME + match[0]);
+        }
+
+        // Switch to the negated form of the referenced Unicode token
+        if (item.inverseOf) {
+            slug = normalize(item.inverseOf);
+            if (!unicode.hasOwnProperty(slug)) {
+                throw new ReferenceError(ERR_UNKNOWN_REF + match[0] + ' -> ' + item.inverseOf);
+            }
+            item = unicode[slug];
+            isNegated = !isNegated;
+        }
+
+        if (!(item.bmp || isAstralMode)) {
+            throw new SyntaxError(ERR_ASTRAL_ONLY + match[0]);
+        }
+        if (isAstralMode) {
+            if (scope === 'class') {
+                throw new SyntaxError(ERR_ASTRAL_IN_CLASS);
+            }
+
+            return cacheAstral(slug, isNegated);
+        }
+
+        return scope === 'class' ?
+            (isNegated ? cacheInvertedBmp(slug) : item.bmp) :
+            (isNegated ? '[^' : '[') + item.bmp + ']';
+    },
+    {
+        scope: 'all',
+        optionalFlags: 'A',
+        leadChar: '\\'
+    }
+);
 
 /**
  * Adds to the list of Unicode tokens that XRegExp regexes can match via `\p` or `\P`.
  *
  * @memberOf XRegExp
- * @param {Array} data Objects with named character ranges. Each object may have properties `name`,
- *   `alias`, `isBmpLast`, `inverseOf`, `bmp`, and `astral`. All but `name` are optional, although
- *   one of `bmp` or `astral` is required (unless `inverseOf` is set). If `astral` is absent, the
- *   `bmp` data is used for BMP and astral modes. If `bmp` is absent, the name errors in BMP mode
- *   but works in astral mode. If both `bmp` and `astral` are provided, the `bmp` data only is used
- *   in BMP mode, and the combination of `bmp` and `astral` data is used in astral mode.
- *   `isBmpLast` is needed when a token matches orphan high surrogates *and* uses surrogate pairs
- *   to match astral code points. The `bmp` and `astral` data should be a combination of literal
- *   characters and `\xHH` or `\uHHHH` escape sequences, with hyphens to create ranges. Any regex
- *   metacharacters in the data should be escaped, apart from range-creating hyphens. The `astral`
- *   data can additionally use character classes and alternation, and should use surrogate pairs to
- *   represent astral code points. `inverseOf` can be used to avoid duplicating character data if a
- *   Unicode token is defined as the exact inverse of another token.
+ * @param {Array} data Objects with named character ranges. Each object may have properties
+ *   `name`, `alias`, `isBmpLast`, `inverseOf`, `bmp`, and `astral`. All but `name` are
+ *   optional, although one of `bmp` or `astral` is required (unless `inverseOf` is set). If
+ *   `astral` is absent, the `bmp` data is used for BMP and astral modes. If `bmp` is absent,
+ *   the name errors in BMP mode but works in astral mode. If both `bmp` and `astral` are
+ *   provided, the `bmp` data only is used in BMP mode, and the combination of `bmp` and
+ *   `astral` data is used in astral mode. `isBmpLast` is needed when a token matches orphan
+ *   high surrogates *and* uses surrogate pairs to match astral code points. The `bmp` and
+ *   `astral` data should be a combination of literal characters and `\xHH` or `\uHHHH` escape
+ *   sequences, with hyphens to create ranges. Any regex metacharacters in the data should be
+ *   escaped, apart from range-creating hyphens. The `astral` data can additionally use
+ *   character classes and alternation, and should use surrogate pairs to represent astral code
+ *   points. `inverseOf` can be used to avoid duplicating character data if a Unicode token is
+ *   defined as the exact inverse of another token.
  * @example
  *
  * // Basic use
@@ -28437,30 +29908,30 @@ function hasOwnProperty(obj, prop) {
  * }]);
  * XRegExp('\\p{XDigit}:\\p{Hexadecimal}+').test('0:3D'); // -> true
  */
-    XRegExp.addUnicodeData = function(data) {
-        var ERR_NO_NAME = 'Unicode token requires name',
-            ERR_NO_DATA = 'Unicode token has no character data ',
-            item,
-            i;
+XRegExp.addUnicodeData = function(data) {
+    var ERR_NO_NAME = 'Unicode token requires name',
+        ERR_NO_DATA = 'Unicode token has no character data ',
+        item,
+        i;
 
-        for (i = 0; i < data.length; ++i) {
-            item = data[i];
-            if (!item.name) {
-                throw new Error(ERR_NO_NAME);
-            }
-            if (!(item.inverseOf || item.bmp || item.astral)) {
-                throw new Error(ERR_NO_DATA + item.name);
-            }
-            unicode[normalize(item.name)] = item;
-            if (item.alias) {
-                unicode[normalize(item.alias)] = item;
-            }
+    for (i = 0; i < data.length; ++i) {
+        item = data[i];
+        if (!item.name) {
+            throw new Error(ERR_NO_NAME);
         }
+        if (!(item.inverseOf || item.bmp || item.astral)) {
+            throw new Error(ERR_NO_DATA + item.name);
+        }
+        unicode[normalize(item.name)] = item;
+        if (item.alias) {
+            unicode[normalize(item.alias)] = item;
+        }
+    }
 
-        // Reset the pattern cache used by the `XRegExp` constructor, since the same pattern and
-        // flags might now produce different results
-        XRegExp.cache.flush('patterns');
-    };
+    // Reset the pattern cache used by the `XRegExp` constructor, since the same pattern and
+    // flags might now produce different results
+    XRegExp.cache.flush('patterns');
+};
 
 /**
  * Test if the given name is a legal Unicode Slug for use in XRegExp `\p` or `\P` regex constructs.
@@ -28474,1344 +29945,1353 @@ function hasOwnProperty(obj, prop) {
  * @return {Object} Truthy when the name matches a Unicode slug (the internal slug definition
  *   object is returned); `false` when the name does not match *any* Unicode name or alias. 
  */
-    XRegExp.isUnicodeSlug = function(name) {
-        return unicode[normalize(name)] || false;
-    };
+XRegExp.isUnicodeSlug = function(name) {
+    return unicode[normalize(name)] || false;
+};
 
 
 
 /*!
- * XRegExp Unicode Blocks 3.1.0-dev
+ * XRegExp Unicode Blocks 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2010-2015 MIT License
+ * Steven Levithan (c) 2010-2016 MIT License
  * Unicode data by Mathias Bynens <mathiasbynens.be>
  */
 
+
+
+
+
 /**
- * Adds support for all Unicode blocks. Block names use the prefix 'In'. E.g., `\p{InBasicLatin}`.
- * Token names are case insensitive, and any spaces, hyphens, and underscores are ignored.
+ * Adds support for all Unicode blocks. Block names use the prefix 'In'. E.g.,
+ * `\p{InBasicLatin}`. Token names are case insensitive, and any spaces, hyphens, and
+ * underscores are ignored.
  *
  * Uses Unicode 8.0.0.
  *
  * @requires XRegExp, Unicode Base
  */
 
-    
+if (!XRegExp.addUnicodeData) {
+    throw new ReferenceError('Unicode Base must be loaded before Unicode Blocks');
+}
 
-    if (!XRegExp.addUnicodeData) {
-        throw new ReferenceError('Unicode Base must be loaded before Unicode Blocks');
+XRegExp.addUnicodeData([
+    {
+        name: 'InAegean_Numbers',
+        astral: '\uD800[\uDD00-\uDD3F]'
+    },
+    {
+        name: 'InAhom',
+        astral: '\uD805[\uDF00-\uDF3F]'
+    },
+    {
+        name: 'InAlchemical_Symbols',
+        astral: '\uD83D[\uDF00-\uDF7F]'
+    },
+    {
+        name: 'InAlphabetic_Presentation_Forms',
+        bmp: '\uFB00-\uFB4F'
+    },
+    {
+        name: 'InAnatolian_Hieroglyphs',
+        astral: '\uD811[\uDC00-\uDE7F]'
+    },
+    {
+        name: 'InAncient_Greek_Musical_Notation',
+        astral: '\uD834[\uDE00-\uDE4F]'
+    },
+    {
+        name: 'InAncient_Greek_Numbers',
+        astral: '\uD800[\uDD40-\uDD8F]'
+    },
+    {
+        name: 'InAncient_Symbols',
+        astral: '\uD800[\uDD90-\uDDCF]'
+    },
+    {
+        name: 'InArabic',
+        bmp: '\u0600-\u06FF'
+    },
+    {
+        name: 'InArabic_Extended_A',
+        bmp: '\u08A0-\u08FF'
+    },
+    {
+        name: 'InArabic_Mathematical_Alphabetic_Symbols',
+        astral: '\uD83B[\uDE00-\uDEFF]'
+    },
+    {
+        name: 'InArabic_Presentation_Forms_A',
+        bmp: '\uFB50-\uFDFF'
+    },
+    {
+        name: 'InArabic_Presentation_Forms_B',
+        bmp: '\uFE70-\uFEFF'
+    },
+    {
+        name: 'InArabic_Supplement',
+        bmp: '\u0750-\u077F'
+    },
+    {
+        name: 'InArmenian',
+        bmp: '\u0530-\u058F'
+    },
+    {
+        name: 'InArrows',
+        bmp: '\u2190-\u21FF'
+    },
+    {
+        name: 'InAvestan',
+        astral: '\uD802[\uDF00-\uDF3F]'
+    },
+    {
+        name: 'InBalinese',
+        bmp: '\u1B00-\u1B7F'
+    },
+    {
+        name: 'InBamum',
+        bmp: '\uA6A0-\uA6FF'
+    },
+    {
+        name: 'InBamum_Supplement',
+        astral: '\uD81A[\uDC00-\uDE3F]'
+    },
+    {
+        name: 'InBasic_Latin',
+        bmp: '\0-\x7F'
+    },
+    {
+        name: 'InBassa_Vah',
+        astral: '\uD81A[\uDED0-\uDEFF]'
+    },
+    {
+        name: 'InBatak',
+        bmp: '\u1BC0-\u1BFF'
+    },
+    {
+        name: 'InBengali',
+        bmp: '\u0980-\u09FF'
+    },
+    {
+        name: 'InBlock_Elements',
+        bmp: '\u2580-\u259F'
+    },
+    {
+        name: 'InBopomofo',
+        bmp: '\u3100-\u312F'
+    },
+    {
+        name: 'InBopomofo_Extended',
+        bmp: '\u31A0-\u31BF'
+    },
+    {
+        name: 'InBox_Drawing',
+        bmp: '\u2500-\u257F'
+    },
+    {
+        name: 'InBrahmi',
+        astral: '\uD804[\uDC00-\uDC7F]'
+    },
+    {
+        name: 'InBraille_Patterns',
+        bmp: '\u2800-\u28FF'
+    },
+    {
+        name: 'InBuginese',
+        bmp: '\u1A00-\u1A1F'
+    },
+    {
+        name: 'InBuhid',
+        bmp: '\u1740-\u175F'
+    },
+    {
+        name: 'InByzantine_Musical_Symbols',
+        astral: '\uD834[\uDC00-\uDCFF]'
+    },
+    {
+        name: 'InCJK_Compatibility',
+        bmp: '\u3300-\u33FF'
+    },
+    {
+        name: 'InCJK_Compatibility_Forms',
+        bmp: '\uFE30-\uFE4F'
+    },
+    {
+        name: 'InCJK_Compatibility_Ideographs',
+        bmp: '\uF900-\uFAFF'
+    },
+    {
+        name: 'InCJK_Compatibility_Ideographs_Supplement',
+        astral: '\uD87E[\uDC00-\uDE1F]'
+    },
+    {
+        name: 'InCJK_Radicals_Supplement',
+        bmp: '\u2E80-\u2EFF'
+    },
+    {
+        name: 'InCJK_Strokes',
+        bmp: '\u31C0-\u31EF'
+    },
+    {
+        name: 'InCJK_Symbols_and_Punctuation',
+        bmp: '\u3000-\u303F'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs',
+        bmp: '\u4E00-\u9FFF'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs_Extension_A',
+        bmp: '\u3400-\u4DBF'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs_Extension_B',
+        astral: '[\uD840-\uD868][\uDC00-\uDFFF]|\uD869[\uDC00-\uDEDF]'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs_Extension_C',
+        astral: '\uD86D[\uDC00-\uDF3F]|[\uD86A-\uD86C][\uDC00-\uDFFF]|\uD869[\uDF00-\uDFFF]'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs_Extension_D',
+        astral: '\uD86D[\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1F]'
+    },
+    {
+        name: 'InCJK_Unified_Ideographs_Extension_E',
+        astral: '[\uD86F-\uD872][\uDC00-\uDFFF]|\uD873[\uDC00-\uDEAF]|\uD86E[\uDC20-\uDFFF]'
+    },
+    {
+        name: 'InCarian',
+        astral: '\uD800[\uDEA0-\uDEDF]'
+    },
+    {
+        name: 'InCaucasian_Albanian',
+        astral: '\uD801[\uDD30-\uDD6F]'
+    },
+    {
+        name: 'InChakma',
+        astral: '\uD804[\uDD00-\uDD4F]'
+    },
+    {
+        name: 'InCham',
+        bmp: '\uAA00-\uAA5F'
+    },
+    {
+        name: 'InCherokee',
+        bmp: '\u13A0-\u13FF'
+    },
+    {
+        name: 'InCherokee_Supplement',
+        bmp: '\uAB70-\uABBF'
+    },
+    {
+        name: 'InCombining_Diacritical_Marks',
+        bmp: '\u0300-\u036F'
+    },
+    {
+        name: 'InCombining_Diacritical_Marks_Extended',
+        bmp: '\u1AB0-\u1AFF'
+    },
+    {
+        name: 'InCombining_Diacritical_Marks_Supplement',
+        bmp: '\u1DC0-\u1DFF'
+    },
+    {
+        name: 'InCombining_Diacritical_Marks_for_Symbols',
+        bmp: '\u20D0-\u20FF'
+    },
+    {
+        name: 'InCombining_Half_Marks',
+        bmp: '\uFE20-\uFE2F'
+    },
+    {
+        name: 'InCommon_Indic_Number_Forms',
+        bmp: '\uA830-\uA83F'
+    },
+    {
+        name: 'InControl_Pictures',
+        bmp: '\u2400-\u243F'
+    },
+    {
+        name: 'InCoptic',
+        bmp: '\u2C80-\u2CFF'
+    },
+    {
+        name: 'InCoptic_Epact_Numbers',
+        astral: '\uD800[\uDEE0-\uDEFF]'
+    },
+    {
+        name: 'InCounting_Rod_Numerals',
+        astral: '\uD834[\uDF60-\uDF7F]'
+    },
+    {
+        name: 'InCuneiform',
+        astral: '\uD808[\uDC00-\uDFFF]'
+    },
+    {
+        name: 'InCuneiform_Numbers_and_Punctuation',
+        astral: '\uD809[\uDC00-\uDC7F]'
+    },
+    {
+        name: 'InCurrency_Symbols',
+        bmp: '\u20A0-\u20CF'
+    },
+    {
+        name: 'InCypriot_Syllabary',
+        astral: '\uD802[\uDC00-\uDC3F]'
+    },
+    {
+        name: 'InCyrillic',
+        bmp: '\u0400-\u04FF'
+    },
+    {
+        name: 'InCyrillic_Extended_A',
+        bmp: '\u2DE0-\u2DFF'
+    },
+    {
+        name: 'InCyrillic_Extended_B',
+        bmp: '\uA640-\uA69F'
+    },
+    {
+        name: 'InCyrillic_Supplement',
+        bmp: '\u0500-\u052F'
+    },
+    {
+        name: 'InDeseret',
+        astral: '\uD801[\uDC00-\uDC4F]'
+    },
+    {
+        name: 'InDevanagari',
+        bmp: '\u0900-\u097F'
+    },
+    {
+        name: 'InDevanagari_Extended',
+        bmp: '\uA8E0-\uA8FF'
+    },
+    {
+        name: 'InDingbats',
+        bmp: '\u2700-\u27BF'
+    },
+    {
+        name: 'InDomino_Tiles',
+        astral: '\uD83C[\uDC30-\uDC9F]'
+    },
+    {
+        name: 'InDuployan',
+        astral: '\uD82F[\uDC00-\uDC9F]'
+    },
+    {
+        name: 'InEarly_Dynastic_Cuneiform',
+        astral: '\uD809[\uDC80-\uDD4F]'
+    },
+    {
+        name: 'InEgyptian_Hieroglyphs',
+        astral: '\uD80C[\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2F]'
+    },
+    {
+        name: 'InElbasan',
+        astral: '\uD801[\uDD00-\uDD2F]'
+    },
+    {
+        name: 'InEmoticons',
+        astral: '\uD83D[\uDE00-\uDE4F]'
+    },
+    {
+        name: 'InEnclosed_Alphanumeric_Supplement',
+        astral: '\uD83C[\uDD00-\uDDFF]'
+    },
+    {
+        name: 'InEnclosed_Alphanumerics',
+        bmp: '\u2460-\u24FF'
+    },
+    {
+        name: 'InEnclosed_CJK_Letters_and_Months',
+        bmp: '\u3200-\u32FF'
+    },
+    {
+        name: 'InEnclosed_Ideographic_Supplement',
+        astral: '\uD83C[\uDE00-\uDEFF]'
+    },
+    {
+        name: 'InEthiopic',
+        bmp: '\u1200-\u137F'
+    },
+    {
+        name: 'InEthiopic_Extended',
+        bmp: '\u2D80-\u2DDF'
+    },
+    {
+        name: 'InEthiopic_Extended_A',
+        bmp: '\uAB00-\uAB2F'
+    },
+    {
+        name: 'InEthiopic_Supplement',
+        bmp: '\u1380-\u139F'
+    },
+    {
+        name: 'InGeneral_Punctuation',
+        bmp: '\u2000-\u206F'
+    },
+    {
+        name: 'InGeometric_Shapes',
+        bmp: '\u25A0-\u25FF'
+    },
+    {
+        name: 'InGeometric_Shapes_Extended',
+        astral: '\uD83D[\uDF80-\uDFFF]'
+    },
+    {
+        name: 'InGeorgian',
+        bmp: '\u10A0-\u10FF'
+    },
+    {
+        name: 'InGeorgian_Supplement',
+        bmp: '\u2D00-\u2D2F'
+    },
+    {
+        name: 'InGlagolitic',
+        bmp: '\u2C00-\u2C5F'
+    },
+    {
+        name: 'InGothic',
+        astral: '\uD800[\uDF30-\uDF4F]'
+    },
+    {
+        name: 'InGrantha',
+        astral: '\uD804[\uDF00-\uDF7F]'
+    },
+    {
+        name: 'InGreek_Extended',
+        bmp: '\u1F00-\u1FFF'
+    },
+    {
+        name: 'InGreek_and_Coptic',
+        bmp: '\u0370-\u03FF'
+    },
+    {
+        name: 'InGujarati',
+        bmp: '\u0A80-\u0AFF'
+    },
+    {
+        name: 'InGurmukhi',
+        bmp: '\u0A00-\u0A7F'
+    },
+    {
+        name: 'InHalfwidth_and_Fullwidth_Forms',
+        bmp: '\uFF00-\uFFEF'
+    },
+    {
+        name: 'InHangul_Compatibility_Jamo',
+        bmp: '\u3130-\u318F'
+    },
+    {
+        name: 'InHangul_Jamo',
+        bmp: '\u1100-\u11FF'
+    },
+    {
+        name: 'InHangul_Jamo_Extended_A',
+        bmp: '\uA960-\uA97F'
+    },
+    {
+        name: 'InHangul_Jamo_Extended_B',
+        bmp: '\uD7B0-\uD7FF'
+    },
+    {
+        name: 'InHangul_Syllables',
+        bmp: '\uAC00-\uD7AF'
+    },
+    {
+        name: 'InHanunoo',
+        bmp: '\u1720-\u173F'
+    },
+    {
+        name: 'InHatran',
+        astral: '\uD802[\uDCE0-\uDCFF]'
+    },
+    {
+        name: 'InHebrew',
+        bmp: '\u0590-\u05FF'
+    },
+    {
+        name: 'InHigh_Private_Use_Surrogates',
+        bmp: '\uDB80-\uDBFF'
+    },
+    {
+        name: 'InHigh_Surrogates',
+        bmp: '\uD800-\uDB7F'
+    },
+    {
+        name: 'InHiragana',
+        bmp: '\u3040-\u309F'
+    },
+    {
+        name: 'InIPA_Extensions',
+        bmp: '\u0250-\u02AF'
+    },
+    {
+        name: 'InIdeographic_Description_Characters',
+        bmp: '\u2FF0-\u2FFF'
+    },
+    {
+        name: 'InImperial_Aramaic',
+        astral: '\uD802[\uDC40-\uDC5F]'
+    },
+    {
+        name: 'InInscriptional_Pahlavi',
+        astral: '\uD802[\uDF60-\uDF7F]'
+    },
+    {
+        name: 'InInscriptional_Parthian',
+        astral: '\uD802[\uDF40-\uDF5F]'
+    },
+    {
+        name: 'InJavanese',
+        bmp: '\uA980-\uA9DF'
+    },
+    {
+        name: 'InKaithi',
+        astral: '\uD804[\uDC80-\uDCCF]'
+    },
+    {
+        name: 'InKana_Supplement',
+        astral: '\uD82C[\uDC00-\uDCFF]'
+    },
+    {
+        name: 'InKanbun',
+        bmp: '\u3190-\u319F'
+    },
+    {
+        name: 'InKangxi_Radicals',
+        bmp: '\u2F00-\u2FDF'
+    },
+    {
+        name: 'InKannada',
+        bmp: '\u0C80-\u0CFF'
+    },
+    {
+        name: 'InKatakana',
+        bmp: '\u30A0-\u30FF'
+    },
+    {
+        name: 'InKatakana_Phonetic_Extensions',
+        bmp: '\u31F0-\u31FF'
+    },
+    {
+        name: 'InKayah_Li',
+        bmp: '\uA900-\uA92F'
+    },
+    {
+        name: 'InKharoshthi',
+        astral: '\uD802[\uDE00-\uDE5F]'
+    },
+    {
+        name: 'InKhmer',
+        bmp: '\u1780-\u17FF'
+    },
+    {
+        name: 'InKhmer_Symbols',
+        bmp: '\u19E0-\u19FF'
+    },
+    {
+        name: 'InKhojki',
+        astral: '\uD804[\uDE00-\uDE4F]'
+    },
+    {
+        name: 'InKhudawadi',
+        astral: '\uD804[\uDEB0-\uDEFF]'
+    },
+    {
+        name: 'InLao',
+        bmp: '\u0E80-\u0EFF'
+    },
+    {
+        name: 'InLatin_Extended_Additional',
+        bmp: '\u1E00-\u1EFF'
+    },
+    {
+        name: 'InLatin_Extended_A',
+        bmp: '\u0100-\u017F'
+    },
+    {
+        name: 'InLatin_Extended_B',
+        bmp: '\u0180-\u024F'
+    },
+    {
+        name: 'InLatin_Extended_C',
+        bmp: '\u2C60-\u2C7F'
+    },
+    {
+        name: 'InLatin_Extended_D',
+        bmp: '\uA720-\uA7FF'
+    },
+    {
+        name: 'InLatin_Extended_E',
+        bmp: '\uAB30-\uAB6F'
+    },
+    {
+        name: 'InLatin_1_Supplement',
+        bmp: '\x80-\xFF'
+    },
+    {
+        name: 'InLepcha',
+        bmp: '\u1C00-\u1C4F'
+    },
+    {
+        name: 'InLetterlike_Symbols',
+        bmp: '\u2100-\u214F'
+    },
+    {
+        name: 'InLimbu',
+        bmp: '\u1900-\u194F'
+    },
+    {
+        name: 'InLinear_A',
+        astral: '\uD801[\uDE00-\uDF7F]'
+    },
+    {
+        name: 'InLinear_B_Ideograms',
+        astral: '\uD800[\uDC80-\uDCFF]'
+    },
+    {
+        name: 'InLinear_B_Syllabary',
+        astral: '\uD800[\uDC00-\uDC7F]'
+    },
+    {
+        name: 'InLisu',
+        bmp: '\uA4D0-\uA4FF'
+    },
+    {
+        name: 'InLow_Surrogates',
+        bmp: '\uDC00-\uDFFF'
+    },
+    {
+        name: 'InLycian',
+        astral: '\uD800[\uDE80-\uDE9F]'
+    },
+    {
+        name: 'InLydian',
+        astral: '\uD802[\uDD20-\uDD3F]'
+    },
+    {
+        name: 'InMahajani',
+        astral: '\uD804[\uDD50-\uDD7F]'
+    },
+    {
+        name: 'InMahjong_Tiles',
+        astral: '\uD83C[\uDC00-\uDC2F]'
+    },
+    {
+        name: 'InMalayalam',
+        bmp: '\u0D00-\u0D7F'
+    },
+    {
+        name: 'InMandaic',
+        bmp: '\u0840-\u085F'
+    },
+    {
+        name: 'InManichaean',
+        astral: '\uD802[\uDEC0-\uDEFF]'
+    },
+    {
+        name: 'InMathematical_Alphanumeric_Symbols',
+        astral: '\uD835[\uDC00-\uDFFF]'
+    },
+    {
+        name: 'InMathematical_Operators',
+        bmp: '\u2200-\u22FF'
+    },
+    {
+        name: 'InMeetei_Mayek',
+        bmp: '\uABC0-\uABFF'
+    },
+    {
+        name: 'InMeetei_Mayek_Extensions',
+        bmp: '\uAAE0-\uAAFF'
+    },
+    {
+        name: 'InMende_Kikakui',
+        astral: '\uD83A[\uDC00-\uDCDF]'
+    },
+    {
+        name: 'InMeroitic_Cursive',
+        astral: '\uD802[\uDDA0-\uDDFF]'
+    },
+    {
+        name: 'InMeroitic_Hieroglyphs',
+        astral: '\uD802[\uDD80-\uDD9F]'
+    },
+    {
+        name: 'InMiao',
+        astral: '\uD81B[\uDF00-\uDF9F]'
+    },
+    {
+        name: 'InMiscellaneous_Mathematical_Symbols_A',
+        bmp: '\u27C0-\u27EF'
+    },
+    {
+        name: 'InMiscellaneous_Mathematical_Symbols_B',
+        bmp: '\u2980-\u29FF'
+    },
+    {
+        name: 'InMiscellaneous_Symbols',
+        bmp: '\u2600-\u26FF'
+    },
+    {
+        name: 'InMiscellaneous_Symbols_and_Arrows',
+        bmp: '\u2B00-\u2BFF'
+    },
+    {
+        name: 'InMiscellaneous_Symbols_and_Pictographs',
+        astral: '\uD83D[\uDC00-\uDDFF]|\uD83C[\uDF00-\uDFFF]'
+    },
+    {
+        name: 'InMiscellaneous_Technical',
+        bmp: '\u2300-\u23FF'
+    },
+    {
+        name: 'InModi',
+        astral: '\uD805[\uDE00-\uDE5F]'
+    },
+    {
+        name: 'InModifier_Tone_Letters',
+        bmp: '\uA700-\uA71F'
+    },
+    {
+        name: 'InMongolian',
+        bmp: '\u1800-\u18AF'
+    },
+    {
+        name: 'InMro',
+        astral: '\uD81A[\uDE40-\uDE6F]'
+    },
+    {
+        name: 'InMultani',
+        astral: '\uD804[\uDE80-\uDEAF]'
+    },
+    {
+        name: 'InMusical_Symbols',
+        astral: '\uD834[\uDD00-\uDDFF]'
+    },
+    {
+        name: 'InMyanmar',
+        bmp: '\u1000-\u109F'
+    },
+    {
+        name: 'InMyanmar_Extended_A',
+        bmp: '\uAA60-\uAA7F'
+    },
+    {
+        name: 'InMyanmar_Extended_B',
+        bmp: '\uA9E0-\uA9FF'
+    },
+    {
+        name: 'InNKo',
+        bmp: '\u07C0-\u07FF'
+    },
+    {
+        name: 'InNabataean',
+        astral: '\uD802[\uDC80-\uDCAF]'
+    },
+    {
+        name: 'InNew_Tai_Lue',
+        bmp: '\u1980-\u19DF'
+    },
+    {
+        name: 'InNumber_Forms',
+        bmp: '\u2150-\u218F'
+    },
+    {
+        name: 'InOgham',
+        bmp: '\u1680-\u169F'
+    },
+    {
+        name: 'InOl_Chiki',
+        bmp: '\u1C50-\u1C7F'
+    },
+    {
+        name: 'InOld_Hungarian',
+        astral: '\uD803[\uDC80-\uDCFF]'
+    },
+    {
+        name: 'InOld_Italic',
+        astral: '\uD800[\uDF00-\uDF2F]'
+    },
+    {
+        name: 'InOld_North_Arabian',
+        astral: '\uD802[\uDE80-\uDE9F]'
+    },
+    {
+        name: 'InOld_Permic',
+        astral: '\uD800[\uDF50-\uDF7F]'
+    },
+    {
+        name: 'InOld_Persian',
+        astral: '\uD800[\uDFA0-\uDFDF]'
+    },
+    {
+        name: 'InOld_South_Arabian',
+        astral: '\uD802[\uDE60-\uDE7F]'
+    },
+    {
+        name: 'InOld_Turkic',
+        astral: '\uD803[\uDC00-\uDC4F]'
+    },
+    {
+        name: 'InOptical_Character_Recognition',
+        bmp: '\u2440-\u245F'
+    },
+    {
+        name: 'InOriya',
+        bmp: '\u0B00-\u0B7F'
+    },
+    {
+        name: 'InOrnamental_Dingbats',
+        astral: '\uD83D[\uDE50-\uDE7F]'
+    },
+    {
+        name: 'InOsmanya',
+        astral: '\uD801[\uDC80-\uDCAF]'
+    },
+    {
+        name: 'InPahawh_Hmong',
+        astral: '\uD81A[\uDF00-\uDF8F]'
+    },
+    {
+        name: 'InPalmyrene',
+        astral: '\uD802[\uDC60-\uDC7F]'
+    },
+    {
+        name: 'InPau_Cin_Hau',
+        astral: '\uD806[\uDEC0-\uDEFF]'
+    },
+    {
+        name: 'InPhags_pa',
+        bmp: '\uA840-\uA87F'
+    },
+    {
+        name: 'InPhaistos_Disc',
+        astral: '\uD800[\uDDD0-\uDDFF]'
+    },
+    {
+        name: 'InPhoenician',
+        astral: '\uD802[\uDD00-\uDD1F]'
+    },
+    {
+        name: 'InPhonetic_Extensions',
+        bmp: '\u1D00-\u1D7F'
+    },
+    {
+        name: 'InPhonetic_Extensions_Supplement',
+        bmp: '\u1D80-\u1DBF'
+    },
+    {
+        name: 'InPlaying_Cards',
+        astral: '\uD83C[\uDCA0-\uDCFF]'
+    },
+    {
+        name: 'InPrivate_Use_Area',
+        bmp: '\uE000-\uF8FF'
+    },
+    {
+        name: 'InPsalter_Pahlavi',
+        astral: '\uD802[\uDF80-\uDFAF]'
+    },
+    {
+        name: 'InRejang',
+        bmp: '\uA930-\uA95F'
+    },
+    {
+        name: 'InRumi_Numeral_Symbols',
+        astral: '\uD803[\uDE60-\uDE7F]'
+    },
+    {
+        name: 'InRunic',
+        bmp: '\u16A0-\u16FF'
+    },
+    {
+        name: 'InSamaritan',
+        bmp: '\u0800-\u083F'
+    },
+    {
+        name: 'InSaurashtra',
+        bmp: '\uA880-\uA8DF'
+    },
+    {
+        name: 'InSharada',
+        astral: '\uD804[\uDD80-\uDDDF]'
+    },
+    {
+        name: 'InShavian',
+        astral: '\uD801[\uDC50-\uDC7F]'
+    },
+    {
+        name: 'InShorthand_Format_Controls',
+        astral: '\uD82F[\uDCA0-\uDCAF]'
+    },
+    {
+        name: 'InSiddham',
+        astral: '\uD805[\uDD80-\uDDFF]'
+    },
+    {
+        name: 'InSinhala',
+        bmp: '\u0D80-\u0DFF'
+    },
+    {
+        name: 'InSinhala_Archaic_Numbers',
+        astral: '\uD804[\uDDE0-\uDDFF]'
+    },
+    {
+        name: 'InSmall_Form_Variants',
+        bmp: '\uFE50-\uFE6F'
+    },
+    {
+        name: 'InSora_Sompeng',
+        astral: '\uD804[\uDCD0-\uDCFF]'
+    },
+    {
+        name: 'InSpacing_Modifier_Letters',
+        bmp: '\u02B0-\u02FF'
+    },
+    {
+        name: 'InSpecials',
+        bmp: '\uFFF0-\uFFFF'
+    },
+    {
+        name: 'InSundanese',
+        bmp: '\u1B80-\u1BBF'
+    },
+    {
+        name: 'InSundanese_Supplement',
+        bmp: '\u1CC0-\u1CCF'
+    },
+    {
+        name: 'InSuperscripts_and_Subscripts',
+        bmp: '\u2070-\u209F'
+    },
+    {
+        name: 'InSupplemental_Arrows_A',
+        bmp: '\u27F0-\u27FF'
+    },
+    {
+        name: 'InSupplemental_Arrows_B',
+        bmp: '\u2900-\u297F'
+    },
+    {
+        name: 'InSupplemental_Arrows_C',
+        astral: '\uD83E[\uDC00-\uDCFF]'
+    },
+    {
+        name: 'InSupplemental_Mathematical_Operators',
+        bmp: '\u2A00-\u2AFF'
+    },
+    {
+        name: 'InSupplemental_Punctuation',
+        bmp: '\u2E00-\u2E7F'
+    },
+    {
+        name: 'InSupplemental_Symbols_and_Pictographs',
+        astral: '\uD83E[\uDD00-\uDDFF]'
+    },
+    {
+        name: 'InSupplementary_Private_Use_Area_A',
+        astral: '[\uDB80-\uDBBF][\uDC00-\uDFFF]'
+    },
+    {
+        name: 'InSupplementary_Private_Use_Area_B',
+        astral: '[\uDBC0-\uDBFF][\uDC00-\uDFFF]'
+    },
+    {
+        name: 'InSutton_SignWriting',
+        astral: '\uD836[\uDC00-\uDEAF]'
+    },
+    {
+        name: 'InSyloti_Nagri',
+        bmp: '\uA800-\uA82F'
+    },
+    {
+        name: 'InSyriac',
+        bmp: '\u0700-\u074F'
+    },
+    {
+        name: 'InTagalog',
+        bmp: '\u1700-\u171F'
+    },
+    {
+        name: 'InTagbanwa',
+        bmp: '\u1760-\u177F'
+    },
+    {
+        name: 'InTags',
+        astral: '\uDB40[\uDC00-\uDC7F]'
+    },
+    {
+        name: 'InTai_Le',
+        bmp: '\u1950-\u197F'
+    },
+    {
+        name: 'InTai_Tham',
+        bmp: '\u1A20-\u1AAF'
+    },
+    {
+        name: 'InTai_Viet',
+        bmp: '\uAA80-\uAADF'
+    },
+    {
+        name: 'InTai_Xuan_Jing_Symbols',
+        astral: '\uD834[\uDF00-\uDF5F]'
+    },
+    {
+        name: 'InTakri',
+        astral: '\uD805[\uDE80-\uDECF]'
+    },
+    {
+        name: 'InTamil',
+        bmp: '\u0B80-\u0BFF'
+    },
+    {
+        name: 'InTelugu',
+        bmp: '\u0C00-\u0C7F'
+    },
+    {
+        name: 'InThaana',
+        bmp: '\u0780-\u07BF'
+    },
+    {
+        name: 'InThai',
+        bmp: '\u0E00-\u0E7F'
+    },
+    {
+        name: 'InTibetan',
+        bmp: '\u0F00-\u0FFF'
+    },
+    {
+        name: 'InTifinagh',
+        bmp: '\u2D30-\u2D7F'
+    },
+    {
+        name: 'InTirhuta',
+        astral: '\uD805[\uDC80-\uDCDF]'
+    },
+    {
+        name: 'InTransport_and_Map_Symbols',
+        astral: '\uD83D[\uDE80-\uDEFF]'
+    },
+    {
+        name: 'InUgaritic',
+        astral: '\uD800[\uDF80-\uDF9F]'
+    },
+    {
+        name: 'InUnified_Canadian_Aboriginal_Syllabics',
+        bmp: '\u1400-\u167F'
+    },
+    {
+        name: 'InUnified_Canadian_Aboriginal_Syllabics_Extended',
+        bmp: '\u18B0-\u18FF'
+    },
+    {
+        name: 'InVai',
+        bmp: '\uA500-\uA63F'
+    },
+    {
+        name: 'InVariation_Selectors',
+        bmp: '\uFE00-\uFE0F'
+    },
+    {
+        name: 'InVariation_Selectors_Supplement',
+        astral: '\uDB40[\uDD00-\uDDEF]'
+    },
+    {
+        name: 'InVedic_Extensions',
+        bmp: '\u1CD0-\u1CFF'
+    },
+    {
+        name: 'InVertical_Forms',
+        bmp: '\uFE10-\uFE1F'
+    },
+    {
+        name: 'InWarang_Citi',
+        astral: '\uD806[\uDCA0-\uDCFF]'
+    },
+    {
+        name: 'InYi_Radicals',
+        bmp: '\uA490-\uA4CF'
+    },
+    {
+        name: 'InYi_Syllables',
+        bmp: '\uA000-\uA48F'
+    },
+    {
+        name: 'InYijing_Hexagram_Symbols',
+        bmp: '\u4DC0-\u4DFF'
     }
-
-    XRegExp.addUnicodeData([
-        {
-            name: 'InAegean_Numbers',
-            astral: '\uD800[\uDD00-\uDD3F]'
-        },
-        {
-            name: 'InAhom',
-            astral: '\uD805[\uDF00-\uDF3F]'
-        },
-        {
-            name: 'InAlchemical_Symbols',
-            astral: '\uD83D[\uDF00-\uDF7F]'
-        },
-        {
-            name: 'InAlphabetic_Presentation_Forms',
-            bmp: '\uFB00-\uFB4F'
-        },
-        {
-            name: 'InAnatolian_Hieroglyphs',
-            astral: '\uD811[\uDC00-\uDE7F]'
-        },
-        {
-            name: 'InAncient_Greek_Musical_Notation',
-            astral: '\uD834[\uDE00-\uDE4F]'
-        },
-        {
-            name: 'InAncient_Greek_Numbers',
-            astral: '\uD800[\uDD40-\uDD8F]'
-        },
-        {
-            name: 'InAncient_Symbols',
-            astral: '\uD800[\uDD90-\uDDCF]'
-        },
-        {
-            name: 'InArabic',
-            bmp: '\u0600-\u06FF'
-        },
-        {
-            name: 'InArabic_Extended_A',
-            bmp: '\u08A0-\u08FF'
-        },
-        {
-            name: 'InArabic_Mathematical_Alphabetic_Symbols',
-            astral: '\uD83B[\uDE00-\uDEFF]'
-        },
-        {
-            name: 'InArabic_Presentation_Forms_A',
-            bmp: '\uFB50-\uFDFF'
-        },
-        {
-            name: 'InArabic_Presentation_Forms_B',
-            bmp: '\uFE70-\uFEFF'
-        },
-        {
-            name: 'InArabic_Supplement',
-            bmp: '\u0750-\u077F'
-        },
-        {
-            name: 'InArmenian',
-            bmp: '\u0530-\u058F'
-        },
-        {
-            name: 'InArrows',
-            bmp: '\u2190-\u21FF'
-        },
-        {
-            name: 'InAvestan',
-            astral: '\uD802[\uDF00-\uDF3F]'
-        },
-        {
-            name: 'InBalinese',
-            bmp: '\u1B00-\u1B7F'
-        },
-        {
-            name: 'InBamum',
-            bmp: '\uA6A0-\uA6FF'
-        },
-        {
-            name: 'InBamum_Supplement',
-            astral: '\uD81A[\uDC00-\uDE3F]'
-        },
-        {
-            name: 'InBasic_Latin',
-            bmp: '\0-\x7F'
-        },
-        {
-            name: 'InBassa_Vah',
-            astral: '\uD81A[\uDED0-\uDEFF]'
-        },
-        {
-            name: 'InBatak',
-            bmp: '\u1BC0-\u1BFF'
-        },
-        {
-            name: 'InBengali',
-            bmp: '\u0980-\u09FF'
-        },
-        {
-            name: 'InBlock_Elements',
-            bmp: '\u2580-\u259F'
-        },
-        {
-            name: 'InBopomofo',
-            bmp: '\u3100-\u312F'
-        },
-        {
-            name: 'InBopomofo_Extended',
-            bmp: '\u31A0-\u31BF'
-        },
-        {
-            name: 'InBox_Drawing',
-            bmp: '\u2500-\u257F'
-        },
-        {
-            name: 'InBrahmi',
-            astral: '\uD804[\uDC00-\uDC7F]'
-        },
-        {
-            name: 'InBraille_Patterns',
-            bmp: '\u2800-\u28FF'
-        },
-        {
-            name: 'InBuginese',
-            bmp: '\u1A00-\u1A1F'
-        },
-        {
-            name: 'InBuhid',
-            bmp: '\u1740-\u175F'
-        },
-        {
-            name: 'InByzantine_Musical_Symbols',
-            astral: '\uD834[\uDC00-\uDCFF]'
-        },
-        {
-            name: 'InCJK_Compatibility',
-            bmp: '\u3300-\u33FF'
-        },
-        {
-            name: 'InCJK_Compatibility_Forms',
-            bmp: '\uFE30-\uFE4F'
-        },
-        {
-            name: 'InCJK_Compatibility_Ideographs',
-            bmp: '\uF900-\uFAFF'
-        },
-        {
-            name: 'InCJK_Compatibility_Ideographs_Supplement',
-            astral: '\uD87E[\uDC00-\uDE1F]'
-        },
-        {
-            name: 'InCJK_Radicals_Supplement',
-            bmp: '\u2E80-\u2EFF'
-        },
-        {
-            name: 'InCJK_Strokes',
-            bmp: '\u31C0-\u31EF'
-        },
-        {
-            name: 'InCJK_Symbols_and_Punctuation',
-            bmp: '\u3000-\u303F'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs',
-            bmp: '\u4E00-\u9FFF'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs_Extension_A',
-            bmp: '\u3400-\u4DBF'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs_Extension_B',
-            astral: '[\uD840-\uD868][\uDC00-\uDFFF]|\uD869[\uDC00-\uDEDF]'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs_Extension_C',
-            astral: '\uD86D[\uDC00-\uDF3F]|[\uD86A-\uD86C][\uDC00-\uDFFF]|\uD869[\uDF00-\uDFFF]'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs_Extension_D',
-            astral: '\uD86D[\uDF40-\uDFFF]|\uD86E[\uDC00-\uDC1F]'
-        },
-        {
-            name: 'InCJK_Unified_Ideographs_Extension_E',
-            astral: '[\uD86F-\uD872][\uDC00-\uDFFF]|\uD873[\uDC00-\uDEAF]|\uD86E[\uDC20-\uDFFF]'
-        },
-        {
-            name: 'InCarian',
-            astral: '\uD800[\uDEA0-\uDEDF]'
-        },
-        {
-            name: 'InCaucasian_Albanian',
-            astral: '\uD801[\uDD30-\uDD6F]'
-        },
-        {
-            name: 'InChakma',
-            astral: '\uD804[\uDD00-\uDD4F]'
-        },
-        {
-            name: 'InCham',
-            bmp: '\uAA00-\uAA5F'
-        },
-        {
-            name: 'InCherokee',
-            bmp: '\u13A0-\u13FF'
-        },
-        {
-            name: 'InCherokee_Supplement',
-            bmp: '\uAB70-\uABBF'
-        },
-        {
-            name: 'InCombining_Diacritical_Marks',
-            bmp: '\u0300-\u036F'
-        },
-        {
-            name: 'InCombining_Diacritical_Marks_Extended',
-            bmp: '\u1AB0-\u1AFF'
-        },
-        {
-            name: 'InCombining_Diacritical_Marks_Supplement',
-            bmp: '\u1DC0-\u1DFF'
-        },
-        {
-            name: 'InCombining_Diacritical_Marks_for_Symbols',
-            bmp: '\u20D0-\u20FF'
-        },
-        {
-            name: 'InCombining_Half_Marks',
-            bmp: '\uFE20-\uFE2F'
-        },
-        {
-            name: 'InCommon_Indic_Number_Forms',
-            bmp: '\uA830-\uA83F'
-        },
-        {
-            name: 'InControl_Pictures',
-            bmp: '\u2400-\u243F'
-        },
-        {
-            name: 'InCoptic',
-            bmp: '\u2C80-\u2CFF'
-        },
-        {
-            name: 'InCoptic_Epact_Numbers',
-            astral: '\uD800[\uDEE0-\uDEFF]'
-        },
-        {
-            name: 'InCounting_Rod_Numerals',
-            astral: '\uD834[\uDF60-\uDF7F]'
-        },
-        {
-            name: 'InCuneiform',
-            astral: '\uD808[\uDC00-\uDFFF]'
-        },
-        {
-            name: 'InCuneiform_Numbers_and_Punctuation',
-            astral: '\uD809[\uDC00-\uDC7F]'
-        },
-        {
-            name: 'InCurrency_Symbols',
-            bmp: '\u20A0-\u20CF'
-        },
-        {
-            name: 'InCypriot_Syllabary',
-            astral: '\uD802[\uDC00-\uDC3F]'
-        },
-        {
-            name: 'InCyrillic',
-            bmp: '\u0400-\u04FF'
-        },
-        {
-            name: 'InCyrillic_Extended_A',
-            bmp: '\u2DE0-\u2DFF'
-        },
-        {
-            name: 'InCyrillic_Extended_B',
-            bmp: '\uA640-\uA69F'
-        },
-        {
-            name: 'InCyrillic_Supplement',
-            bmp: '\u0500-\u052F'
-        },
-        {
-            name: 'InDeseret',
-            astral: '\uD801[\uDC00-\uDC4F]'
-        },
-        {
-            name: 'InDevanagari',
-            bmp: '\u0900-\u097F'
-        },
-        {
-            name: 'InDevanagari_Extended',
-            bmp: '\uA8E0-\uA8FF'
-        },
-        {
-            name: 'InDingbats',
-            bmp: '\u2700-\u27BF'
-        },
-        {
-            name: 'InDomino_Tiles',
-            astral: '\uD83C[\uDC30-\uDC9F]'
-        },
-        {
-            name: 'InDuployan',
-            astral: '\uD82F[\uDC00-\uDC9F]'
-        },
-        {
-            name: 'InEarly_Dynastic_Cuneiform',
-            astral: '\uD809[\uDC80-\uDD4F]'
-        },
-        {
-            name: 'InEgyptian_Hieroglyphs',
-            astral: '\uD80C[\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2F]'
-        },
-        {
-            name: 'InElbasan',
-            astral: '\uD801[\uDD00-\uDD2F]'
-        },
-        {
-            name: 'InEmoticons',
-            astral: '\uD83D[\uDE00-\uDE4F]'
-        },
-        {
-            name: 'InEnclosed_Alphanumeric_Supplement',
-            astral: '\uD83C[\uDD00-\uDDFF]'
-        },
-        {
-            name: 'InEnclosed_Alphanumerics',
-            bmp: '\u2460-\u24FF'
-        },
-        {
-            name: 'InEnclosed_CJK_Letters_and_Months',
-            bmp: '\u3200-\u32FF'
-        },
-        {
-            name: 'InEnclosed_Ideographic_Supplement',
-            astral: '\uD83C[\uDE00-\uDEFF]'
-        },
-        {
-            name: 'InEthiopic',
-            bmp: '\u1200-\u137F'
-        },
-        {
-            name: 'InEthiopic_Extended',
-            bmp: '\u2D80-\u2DDF'
-        },
-        {
-            name: 'InEthiopic_Extended_A',
-            bmp: '\uAB00-\uAB2F'
-        },
-        {
-            name: 'InEthiopic_Supplement',
-            bmp: '\u1380-\u139F'
-        },
-        {
-            name: 'InGeneral_Punctuation',
-            bmp: '\u2000-\u206F'
-        },
-        {
-            name: 'InGeometric_Shapes',
-            bmp: '\u25A0-\u25FF'
-        },
-        {
-            name: 'InGeometric_Shapes_Extended',
-            astral: '\uD83D[\uDF80-\uDFFF]'
-        },
-        {
-            name: 'InGeorgian',
-            bmp: '\u10A0-\u10FF'
-        },
-        {
-            name: 'InGeorgian_Supplement',
-            bmp: '\u2D00-\u2D2F'
-        },
-        {
-            name: 'InGlagolitic',
-            bmp: '\u2C00-\u2C5F'
-        },
-        {
-            name: 'InGothic',
-            astral: '\uD800[\uDF30-\uDF4F]'
-        },
-        {
-            name: 'InGrantha',
-            astral: '\uD804[\uDF00-\uDF7F]'
-        },
-        {
-            name: 'InGreek_Extended',
-            bmp: '\u1F00-\u1FFF'
-        },
-        {
-            name: 'InGreek_and_Coptic',
-            bmp: '\u0370-\u03FF'
-        },
-        {
-            name: 'InGujarati',
-            bmp: '\u0A80-\u0AFF'
-        },
-        {
-            name: 'InGurmukhi',
-            bmp: '\u0A00-\u0A7F'
-        },
-        {
-            name: 'InHalfwidth_and_Fullwidth_Forms',
-            bmp: '\uFF00-\uFFEF'
-        },
-        {
-            name: 'InHangul_Compatibility_Jamo',
-            bmp: '\u3130-\u318F'
-        },
-        {
-            name: 'InHangul_Jamo',
-            bmp: '\u1100-\u11FF'
-        },
-        {
-            name: 'InHangul_Jamo_Extended_A',
-            bmp: '\uA960-\uA97F'
-        },
-        {
-            name: 'InHangul_Jamo_Extended_B',
-            bmp: '\uD7B0-\uD7FF'
-        },
-        {
-            name: 'InHangul_Syllables',
-            bmp: '\uAC00-\uD7AF'
-        },
-        {
-            name: 'InHanunoo',
-            bmp: '\u1720-\u173F'
-        },
-        {
-            name: 'InHatran',
-            astral: '\uD802[\uDCE0-\uDCFF]'
-        },
-        {
-            name: 'InHebrew',
-            bmp: '\u0590-\u05FF'
-        },
-        {
-            name: 'InHigh_Private_Use_Surrogates',
-            bmp: '\uDB80-\uDBFF'
-        },
-        {
-            name: 'InHigh_Surrogates',
-            bmp: '\uD800-\uDB7F'
-        },
-        {
-            name: 'InHiragana',
-            bmp: '\u3040-\u309F'
-        },
-        {
-            name: 'InIPA_Extensions',
-            bmp: '\u0250-\u02AF'
-        },
-        {
-            name: 'InIdeographic_Description_Characters',
-            bmp: '\u2FF0-\u2FFF'
-        },
-        {
-            name: 'InImperial_Aramaic',
-            astral: '\uD802[\uDC40-\uDC5F]'
-        },
-        {
-            name: 'InInscriptional_Pahlavi',
-            astral: '\uD802[\uDF60-\uDF7F]'
-        },
-        {
-            name: 'InInscriptional_Parthian',
-            astral: '\uD802[\uDF40-\uDF5F]'
-        },
-        {
-            name: 'InJavanese',
-            bmp: '\uA980-\uA9DF'
-        },
-        {
-            name: 'InKaithi',
-            astral: '\uD804[\uDC80-\uDCCF]'
-        },
-        {
-            name: 'InKana_Supplement',
-            astral: '\uD82C[\uDC00-\uDCFF]'
-        },
-        {
-            name: 'InKanbun',
-            bmp: '\u3190-\u319F'
-        },
-        {
-            name: 'InKangxi_Radicals',
-            bmp: '\u2F00-\u2FDF'
-        },
-        {
-            name: 'InKannada',
-            bmp: '\u0C80-\u0CFF'
-        },
-        {
-            name: 'InKatakana',
-            bmp: '\u30A0-\u30FF'
-        },
-        {
-            name: 'InKatakana_Phonetic_Extensions',
-            bmp: '\u31F0-\u31FF'
-        },
-        {
-            name: 'InKayah_Li',
-            bmp: '\uA900-\uA92F'
-        },
-        {
-            name: 'InKharoshthi',
-            astral: '\uD802[\uDE00-\uDE5F]'
-        },
-        {
-            name: 'InKhmer',
-            bmp: '\u1780-\u17FF'
-        },
-        {
-            name: 'InKhmer_Symbols',
-            bmp: '\u19E0-\u19FF'
-        },
-        {
-            name: 'InKhojki',
-            astral: '\uD804[\uDE00-\uDE4F]'
-        },
-        {
-            name: 'InKhudawadi',
-            astral: '\uD804[\uDEB0-\uDEFF]'
-        },
-        {
-            name: 'InLao',
-            bmp: '\u0E80-\u0EFF'
-        },
-        {
-            name: 'InLatin_Extended_Additional',
-            bmp: '\u1E00-\u1EFF'
-        },
-        {
-            name: 'InLatin_Extended_A',
-            bmp: '\u0100-\u017F'
-        },
-        {
-            name: 'InLatin_Extended_B',
-            bmp: '\u0180-\u024F'
-        },
-        {
-            name: 'InLatin_Extended_C',
-            bmp: '\u2C60-\u2C7F'
-        },
-        {
-            name: 'InLatin_Extended_D',
-            bmp: '\uA720-\uA7FF'
-        },
-        {
-            name: 'InLatin_Extended_E',
-            bmp: '\uAB30-\uAB6F'
-        },
-        {
-            name: 'InLatin_1_Supplement',
-            bmp: '\x80-\xFF'
-        },
-        {
-            name: 'InLepcha',
-            bmp: '\u1C00-\u1C4F'
-        },
-        {
-            name: 'InLetterlike_Symbols',
-            bmp: '\u2100-\u214F'
-        },
-        {
-            name: 'InLimbu',
-            bmp: '\u1900-\u194F'
-        },
-        {
-            name: 'InLinear_A',
-            astral: '\uD801[\uDE00-\uDF7F]'
-        },
-        {
-            name: 'InLinear_B_Ideograms',
-            astral: '\uD800[\uDC80-\uDCFF]'
-        },
-        {
-            name: 'InLinear_B_Syllabary',
-            astral: '\uD800[\uDC00-\uDC7F]'
-        },
-        {
-            name: 'InLisu',
-            bmp: '\uA4D0-\uA4FF'
-        },
-        {
-            name: 'InLow_Surrogates',
-            bmp: '\uDC00-\uDFFF'
-        },
-        {
-            name: 'InLycian',
-            astral: '\uD800[\uDE80-\uDE9F]'
-        },
-        {
-            name: 'InLydian',
-            astral: '\uD802[\uDD20-\uDD3F]'
-        },
-        {
-            name: 'InMahajani',
-            astral: '\uD804[\uDD50-\uDD7F]'
-        },
-        {
-            name: 'InMahjong_Tiles',
-            astral: '\uD83C[\uDC00-\uDC2F]'
-        },
-        {
-            name: 'InMalayalam',
-            bmp: '\u0D00-\u0D7F'
-        },
-        {
-            name: 'InMandaic',
-            bmp: '\u0840-\u085F'
-        },
-        {
-            name: 'InManichaean',
-            astral: '\uD802[\uDEC0-\uDEFF]'
-        },
-        {
-            name: 'InMathematical_Alphanumeric_Symbols',
-            astral: '\uD835[\uDC00-\uDFFF]'
-        },
-        {
-            name: 'InMathematical_Operators',
-            bmp: '\u2200-\u22FF'
-        },
-        {
-            name: 'InMeetei_Mayek',
-            bmp: '\uABC0-\uABFF'
-        },
-        {
-            name: 'InMeetei_Mayek_Extensions',
-            bmp: '\uAAE0-\uAAFF'
-        },
-        {
-            name: 'InMende_Kikakui',
-            astral: '\uD83A[\uDC00-\uDCDF]'
-        },
-        {
-            name: 'InMeroitic_Cursive',
-            astral: '\uD802[\uDDA0-\uDDFF]'
-        },
-        {
-            name: 'InMeroitic_Hieroglyphs',
-            astral: '\uD802[\uDD80-\uDD9F]'
-        },
-        {
-            name: 'InMiao',
-            astral: '\uD81B[\uDF00-\uDF9F]'
-        },
-        {
-            name: 'InMiscellaneous_Mathematical_Symbols_A',
-            bmp: '\u27C0-\u27EF'
-        },
-        {
-            name: 'InMiscellaneous_Mathematical_Symbols_B',
-            bmp: '\u2980-\u29FF'
-        },
-        {
-            name: 'InMiscellaneous_Symbols',
-            bmp: '\u2600-\u26FF'
-        },
-        {
-            name: 'InMiscellaneous_Symbols_and_Arrows',
-            bmp: '\u2B00-\u2BFF'
-        },
-        {
-            name: 'InMiscellaneous_Symbols_and_Pictographs',
-            astral: '\uD83D[\uDC00-\uDDFF]|\uD83C[\uDF00-\uDFFF]'
-        },
-        {
-            name: 'InMiscellaneous_Technical',
-            bmp: '\u2300-\u23FF'
-        },
-        {
-            name: 'InModi',
-            astral: '\uD805[\uDE00-\uDE5F]'
-        },
-        {
-            name: 'InModifier_Tone_Letters',
-            bmp: '\uA700-\uA71F'
-        },
-        {
-            name: 'InMongolian',
-            bmp: '\u1800-\u18AF'
-        },
-        {
-            name: 'InMro',
-            astral: '\uD81A[\uDE40-\uDE6F]'
-        },
-        {
-            name: 'InMultani',
-            astral: '\uD804[\uDE80-\uDEAF]'
-        },
-        {
-            name: 'InMusical_Symbols',
-            astral: '\uD834[\uDD00-\uDDFF]'
-        },
-        {
-            name: 'InMyanmar',
-            bmp: '\u1000-\u109F'
-        },
-        {
-            name: 'InMyanmar_Extended_A',
-            bmp: '\uAA60-\uAA7F'
-        },
-        {
-            name: 'InMyanmar_Extended_B',
-            bmp: '\uA9E0-\uA9FF'
-        },
-        {
-            name: 'InNKo',
-            bmp: '\u07C0-\u07FF'
-        },
-        {
-            name: 'InNabataean',
-            astral: '\uD802[\uDC80-\uDCAF]'
-        },
-        {
-            name: 'InNew_Tai_Lue',
-            bmp: '\u1980-\u19DF'
-        },
-        {
-            name: 'InNumber_Forms',
-            bmp: '\u2150-\u218F'
-        },
-        {
-            name: 'InOgham',
-            bmp: '\u1680-\u169F'
-        },
-        {
-            name: 'InOl_Chiki',
-            bmp: '\u1C50-\u1C7F'
-        },
-        {
-            name: 'InOld_Hungarian',
-            astral: '\uD803[\uDC80-\uDCFF]'
-        },
-        {
-            name: 'InOld_Italic',
-            astral: '\uD800[\uDF00-\uDF2F]'
-        },
-        {
-            name: 'InOld_North_Arabian',
-            astral: '\uD802[\uDE80-\uDE9F]'
-        },
-        {
-            name: 'InOld_Permic',
-            astral: '\uD800[\uDF50-\uDF7F]'
-        },
-        {
-            name: 'InOld_Persian',
-            astral: '\uD800[\uDFA0-\uDFDF]'
-        },
-        {
-            name: 'InOld_South_Arabian',
-            astral: '\uD802[\uDE60-\uDE7F]'
-        },
-        {
-            name: 'InOld_Turkic',
-            astral: '\uD803[\uDC00-\uDC4F]'
-        },
-        {
-            name: 'InOptical_Character_Recognition',
-            bmp: '\u2440-\u245F'
-        },
-        {
-            name: 'InOriya',
-            bmp: '\u0B00-\u0B7F'
-        },
-        {
-            name: 'InOrnamental_Dingbats',
-            astral: '\uD83D[\uDE50-\uDE7F]'
-        },
-        {
-            name: 'InOsmanya',
-            astral: '\uD801[\uDC80-\uDCAF]'
-        },
-        {
-            name: 'InPahawh_Hmong',
-            astral: '\uD81A[\uDF00-\uDF8F]'
-        },
-        {
-            name: 'InPalmyrene',
-            astral: '\uD802[\uDC60-\uDC7F]'
-        },
-        {
-            name: 'InPau_Cin_Hau',
-            astral: '\uD806[\uDEC0-\uDEFF]'
-        },
-        {
-            name: 'InPhags_pa',
-            bmp: '\uA840-\uA87F'
-        },
-        {
-            name: 'InPhaistos_Disc',
-            astral: '\uD800[\uDDD0-\uDDFF]'
-        },
-        {
-            name: 'InPhoenician',
-            astral: '\uD802[\uDD00-\uDD1F]'
-        },
-        {
-            name: 'InPhonetic_Extensions',
-            bmp: '\u1D00-\u1D7F'
-        },
-        {
-            name: 'InPhonetic_Extensions_Supplement',
-            bmp: '\u1D80-\u1DBF'
-        },
-        {
-            name: 'InPlaying_Cards',
-            astral: '\uD83C[\uDCA0-\uDCFF]'
-        },
-        {
-            name: 'InPrivate_Use_Area',
-            bmp: '\uE000-\uF8FF'
-        },
-        {
-            name: 'InPsalter_Pahlavi',
-            astral: '\uD802[\uDF80-\uDFAF]'
-        },
-        {
-            name: 'InRejang',
-            bmp: '\uA930-\uA95F'
-        },
-        {
-            name: 'InRumi_Numeral_Symbols',
-            astral: '\uD803[\uDE60-\uDE7F]'
-        },
-        {
-            name: 'InRunic',
-            bmp: '\u16A0-\u16FF'
-        },
-        {
-            name: 'InSamaritan',
-            bmp: '\u0800-\u083F'
-        },
-        {
-            name: 'InSaurashtra',
-            bmp: '\uA880-\uA8DF'
-        },
-        {
-            name: 'InSharada',
-            astral: '\uD804[\uDD80-\uDDDF]'
-        },
-        {
-            name: 'InShavian',
-            astral: '\uD801[\uDC50-\uDC7F]'
-        },
-        {
-            name: 'InShorthand_Format_Controls',
-            astral: '\uD82F[\uDCA0-\uDCAF]'
-        },
-        {
-            name: 'InSiddham',
-            astral: '\uD805[\uDD80-\uDDFF]'
-        },
-        {
-            name: 'InSinhala',
-            bmp: '\u0D80-\u0DFF'
-        },
-        {
-            name: 'InSinhala_Archaic_Numbers',
-            astral: '\uD804[\uDDE0-\uDDFF]'
-        },
-        {
-            name: 'InSmall_Form_Variants',
-            bmp: '\uFE50-\uFE6F'
-        },
-        {
-            name: 'InSora_Sompeng',
-            astral: '\uD804[\uDCD0-\uDCFF]'
-        },
-        {
-            name: 'InSpacing_Modifier_Letters',
-            bmp: '\u02B0-\u02FF'
-        },
-        {
-            name: 'InSpecials',
-            bmp: '\uFFF0-\uFFFF'
-        },
-        {
-            name: 'InSundanese',
-            bmp: '\u1B80-\u1BBF'
-        },
-        {
-            name: 'InSundanese_Supplement',
-            bmp: '\u1CC0-\u1CCF'
-        },
-        {
-            name: 'InSuperscripts_and_Subscripts',
-            bmp: '\u2070-\u209F'
-        },
-        {
-            name: 'InSupplemental_Arrows_A',
-            bmp: '\u27F0-\u27FF'
-        },
-        {
-            name: 'InSupplemental_Arrows_B',
-            bmp: '\u2900-\u297F'
-        },
-        {
-            name: 'InSupplemental_Arrows_C',
-            astral: '\uD83E[\uDC00-\uDCFF]'
-        },
-        {
-            name: 'InSupplemental_Mathematical_Operators',
-            bmp: '\u2A00-\u2AFF'
-        },
-        {
-            name: 'InSupplemental_Punctuation',
-            bmp: '\u2E00-\u2E7F'
-        },
-        {
-            name: 'InSupplemental_Symbols_and_Pictographs',
-            astral: '\uD83E[\uDD00-\uDDFF]'
-        },
-        {
-            name: 'InSupplementary_Private_Use_Area_A',
-            astral: '[\uDB80-\uDBBF][\uDC00-\uDFFF]'
-        },
-        {
-            name: 'InSupplementary_Private_Use_Area_B',
-            astral: '[\uDBC0-\uDBFF][\uDC00-\uDFFF]'
-        },
-        {
-            name: 'InSutton_SignWriting',
-            astral: '\uD836[\uDC00-\uDEAF]'
-        },
-        {
-            name: 'InSyloti_Nagri',
-            bmp: '\uA800-\uA82F'
-        },
-        {
-            name: 'InSyriac',
-            bmp: '\u0700-\u074F'
-        },
-        {
-            name: 'InTagalog',
-            bmp: '\u1700-\u171F'
-        },
-        {
-            name: 'InTagbanwa',
-            bmp: '\u1760-\u177F'
-        },
-        {
-            name: 'InTags',
-            astral: '\uDB40[\uDC00-\uDC7F]'
-        },
-        {
-            name: 'InTai_Le',
-            bmp: '\u1950-\u197F'
-        },
-        {
-            name: 'InTai_Tham',
-            bmp: '\u1A20-\u1AAF'
-        },
-        {
-            name: 'InTai_Viet',
-            bmp: '\uAA80-\uAADF'
-        },
-        {
-            name: 'InTai_Xuan_Jing_Symbols',
-            astral: '\uD834[\uDF00-\uDF5F]'
-        },
-        {
-            name: 'InTakri',
-            astral: '\uD805[\uDE80-\uDECF]'
-        },
-        {
-            name: 'InTamil',
-            bmp: '\u0B80-\u0BFF'
-        },
-        {
-            name: 'InTelugu',
-            bmp: '\u0C00-\u0C7F'
-        },
-        {
-            name: 'InThaana',
-            bmp: '\u0780-\u07BF'
-        },
-        {
-            name: 'InThai',
-            bmp: '\u0E00-\u0E7F'
-        },
-        {
-            name: 'InTibetan',
-            bmp: '\u0F00-\u0FFF'
-        },
-        {
-            name: 'InTifinagh',
-            bmp: '\u2D30-\u2D7F'
-        },
-        {
-            name: 'InTirhuta',
-            astral: '\uD805[\uDC80-\uDCDF]'
-        },
-        {
-            name: 'InTransport_and_Map_Symbols',
-            astral: '\uD83D[\uDE80-\uDEFF]'
-        },
-        {
-            name: 'InUgaritic',
-            astral: '\uD800[\uDF80-\uDF9F]'
-        },
-        {
-            name: 'InUnified_Canadian_Aboriginal_Syllabics',
-            bmp: '\u1400-\u167F'
-        },
-        {
-            name: 'InUnified_Canadian_Aboriginal_Syllabics_Extended',
-            bmp: '\u18B0-\u18FF'
-        },
-        {
-            name: 'InVai',
-            bmp: '\uA500-\uA63F'
-        },
-        {
-            name: 'InVariation_Selectors',
-            bmp: '\uFE00-\uFE0F'
-        },
-        {
-            name: 'InVariation_Selectors_Supplement',
-            astral: '\uDB40[\uDD00-\uDDEF]'
-        },
-        {
-            name: 'InVedic_Extensions',
-            bmp: '\u1CD0-\u1CFF'
-        },
-        {
-            name: 'InVertical_Forms',
-            bmp: '\uFE10-\uFE1F'
-        },
-        {
-            name: 'InWarang_Citi',
-            astral: '\uD806[\uDCA0-\uDCFF]'
-        },
-        {
-            name: 'InYi_Radicals',
-            bmp: '\uA490-\uA4CF'
-        },
-        {
-            name: 'InYi_Syllables',
-            bmp: '\uA000-\uA48F'
-        },
-        {
-            name: 'InYijing_Hexagram_Symbols',
-            bmp: '\u4DC0-\u4DFF'
-        }
-    ]);
+]);
 
 
 
 /*!
- * XRegExp Unicode Categories 3.1.0-dev
+ * XRegExp Unicode Categories 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2010-2015 MIT License
+ * Steven Levithan (c) 2010-2016 MIT License
  * Unicode data by Mathias Bynens <mathiasbynens.be>
  */
+
+
+
+
 
 /**
  * Adds support for Unicode's general categories. E.g., `\p{Lu}` or `\p{Uppercase Letter}`. See
- * category descriptions in UAX #44 <http://unicode.org/reports/tr44/#GC_Values_Table>. Token names
- * are case insensitive, and any spaces, hyphens, and underscores are ignored.
+ * category descriptions in UAX #44 <http://unicode.org/reports/tr44/#GC_Values_Table>. Token
+ * names are case insensitive, and any spaces, hyphens, and underscores are ignored.
  *
  * Uses Unicode 8.0.0.
  *
  * @requires XRegExp, Unicode Base
  */
 
-    
+if (!XRegExp.addUnicodeData) {
+    throw new ReferenceError('Unicode Base must be loaded before Unicode Categories');
+}
 
-    if (!XRegExp.addUnicodeData) {
-        throw new ReferenceError('Unicode Base must be loaded before Unicode Categories');
+XRegExp.addUnicodeData([
+    {
+        name: 'C',
+        alias: 'Other',
+        isBmpLast: true,
+        bmp: '\0-\x1F\x7F-\x9F\xAD\u0378\u0379\u0380-\u0383\u038B\u038D\u03A2\u0530\u0557\u0558\u0560\u0588\u058B\u058C\u0590\u05C8-\u05CF\u05EB-\u05EF\u05F5-\u0605\u061C\u061D\u06DD\u070E\u070F\u074B\u074C\u07B2-\u07BF\u07FB-\u07FF\u082E\u082F\u083F\u085C\u085D\u085F-\u089F\u08B5-\u08E2\u0984\u098D\u098E\u0991\u0992\u09A9\u09B1\u09B3-\u09B5\u09BA\u09BB\u09C5\u09C6\u09C9\u09CA\u09CF-\u09D6\u09D8-\u09DB\u09DE\u09E4\u09E5\u09FC-\u0A00\u0A04\u0A0B-\u0A0E\u0A11\u0A12\u0A29\u0A31\u0A34\u0A37\u0A3A\u0A3B\u0A3D\u0A43-\u0A46\u0A49\u0A4A\u0A4E-\u0A50\u0A52-\u0A58\u0A5D\u0A5F-\u0A65\u0A76-\u0A80\u0A84\u0A8E\u0A92\u0AA9\u0AB1\u0AB4\u0ABA\u0ABB\u0AC6\u0ACA\u0ACE\u0ACF\u0AD1-\u0ADF\u0AE4\u0AE5\u0AF2-\u0AF8\u0AFA-\u0B00\u0B04\u0B0D\u0B0E\u0B11\u0B12\u0B29\u0B31\u0B34\u0B3A\u0B3B\u0B45\u0B46\u0B49\u0B4A\u0B4E-\u0B55\u0B58-\u0B5B\u0B5E\u0B64\u0B65\u0B78-\u0B81\u0B84\u0B8B-\u0B8D\u0B91\u0B96-\u0B98\u0B9B\u0B9D\u0BA0-\u0BA2\u0BA5-\u0BA7\u0BAB-\u0BAD\u0BBA-\u0BBD\u0BC3-\u0BC5\u0BC9\u0BCE\u0BCF\u0BD1-\u0BD6\u0BD8-\u0BE5\u0BFB-\u0BFF\u0C04\u0C0D\u0C11\u0C29\u0C3A-\u0C3C\u0C45\u0C49\u0C4E-\u0C54\u0C57\u0C5B-\u0C5F\u0C64\u0C65\u0C70-\u0C77\u0C80\u0C84\u0C8D\u0C91\u0CA9\u0CB4\u0CBA\u0CBB\u0CC5\u0CC9\u0CCE-\u0CD4\u0CD7-\u0CDD\u0CDF\u0CE4\u0CE5\u0CF0\u0CF3-\u0D00\u0D04\u0D0D\u0D11\u0D3B\u0D3C\u0D45\u0D49\u0D4F-\u0D56\u0D58-\u0D5E\u0D64\u0D65\u0D76-\u0D78\u0D80\u0D81\u0D84\u0D97-\u0D99\u0DB2\u0DBC\u0DBE\u0DBF\u0DC7-\u0DC9\u0DCB-\u0DCE\u0DD5\u0DD7\u0DE0-\u0DE5\u0DF0\u0DF1\u0DF5-\u0E00\u0E3B-\u0E3E\u0E5C-\u0E80\u0E83\u0E85\u0E86\u0E89\u0E8B\u0E8C\u0E8E-\u0E93\u0E98\u0EA0\u0EA4\u0EA6\u0EA8\u0EA9\u0EAC\u0EBA\u0EBE\u0EBF\u0EC5\u0EC7\u0ECE\u0ECF\u0EDA\u0EDB\u0EE0-\u0EFF\u0F48\u0F6D-\u0F70\u0F98\u0FBD\u0FCD\u0FDB-\u0FFF\u10C6\u10C8-\u10CC\u10CE\u10CF\u1249\u124E\u124F\u1257\u1259\u125E\u125F\u1289\u128E\u128F\u12B1\u12B6\u12B7\u12BF\u12C1\u12C6\u12C7\u12D7\u1311\u1316\u1317\u135B\u135C\u137D-\u137F\u139A-\u139F\u13F6\u13F7\u13FE\u13FF\u169D-\u169F\u16F9-\u16FF\u170D\u1715-\u171F\u1737-\u173F\u1754-\u175F\u176D\u1771\u1774-\u177F\u17DE\u17DF\u17EA-\u17EF\u17FA-\u17FF\u180E\u180F\u181A-\u181F\u1878-\u187F\u18AB-\u18AF\u18F6-\u18FF\u191F\u192C-\u192F\u193C-\u193F\u1941-\u1943\u196E\u196F\u1975-\u197F\u19AC-\u19AF\u19CA-\u19CF\u19DB-\u19DD\u1A1C\u1A1D\u1A5F\u1A7D\u1A7E\u1A8A-\u1A8F\u1A9A-\u1A9F\u1AAE\u1AAF\u1ABF-\u1AFF\u1B4C-\u1B4F\u1B7D-\u1B7F\u1BF4-\u1BFB\u1C38-\u1C3A\u1C4A-\u1C4C\u1C80-\u1CBF\u1CC8-\u1CCF\u1CF7\u1CFA-\u1CFF\u1DF6-\u1DFB\u1F16\u1F17\u1F1E\u1F1F\u1F46\u1F47\u1F4E\u1F4F\u1F58\u1F5A\u1F5C\u1F5E\u1F7E\u1F7F\u1FB5\u1FC5\u1FD4\u1FD5\u1FDC\u1FF0\u1FF1\u1FF5\u1FFF\u200B-\u200F\u202A-\u202E\u2060-\u206F\u2072\u2073\u208F\u209D-\u209F\u20BF-\u20CF\u20F1-\u20FF\u218C-\u218F\u23FB-\u23FF\u2427-\u243F\u244B-\u245F\u2B74\u2B75\u2B96\u2B97\u2BBA-\u2BBC\u2BC9\u2BD2-\u2BEB\u2BF0-\u2BFF\u2C2F\u2C5F\u2CF4-\u2CF8\u2D26\u2D28-\u2D2C\u2D2E\u2D2F\u2D68-\u2D6E\u2D71-\u2D7E\u2D97-\u2D9F\u2DA7\u2DAF\u2DB7\u2DBF\u2DC7\u2DCF\u2DD7\u2DDF\u2E43-\u2E7F\u2E9A\u2EF4-\u2EFF\u2FD6-\u2FEF\u2FFC-\u2FFF\u3040\u3097\u3098\u3100-\u3104\u312E-\u3130\u318F\u31BB-\u31BF\u31E4-\u31EF\u321F\u32FF\u4DB6-\u4DBF\u9FD6-\u9FFF\uA48D-\uA48F\uA4C7-\uA4CF\uA62C-\uA63F\uA6F8-\uA6FF\uA7AE\uA7AF\uA7B8-\uA7F6\uA82C-\uA82F\uA83A-\uA83F\uA878-\uA87F\uA8C5-\uA8CD\uA8DA-\uA8DF\uA8FE\uA8FF\uA954-\uA95E\uA97D-\uA97F\uA9CE\uA9DA-\uA9DD\uA9FF\uAA37-\uAA3F\uAA4E\uAA4F\uAA5A\uAA5B\uAAC3-\uAADA\uAAF7-\uAB00\uAB07\uAB08\uAB0F\uAB10\uAB17-\uAB1F\uAB27\uAB2F\uAB66-\uAB6F\uABEE\uABEF\uABFA-\uABFF\uD7A4-\uD7AF\uD7C7-\uD7CA\uD7FC-\uF8FF\uFA6E\uFA6F\uFADA-\uFAFF\uFB07-\uFB12\uFB18-\uFB1C\uFB37\uFB3D\uFB3F\uFB42\uFB45\uFBC2-\uFBD2\uFD40-\uFD4F\uFD90\uFD91\uFDC8-\uFDEF\uFDFE\uFDFF\uFE1A-\uFE1F\uFE53\uFE67\uFE6C-\uFE6F\uFE75\uFEFD-\uFF00\uFFBF-\uFFC1\uFFC8\uFFC9\uFFD0\uFFD1\uFFD8\uFFD9\uFFDD-\uFFDF\uFFE7\uFFEF-\uFFFB\uFFFE\uFFFF',
+        astral: '\uD834[\uDCF6-\uDCFF\uDD27\uDD28\uDD73-\uDD7A\uDDE9-\uDDFF\uDE46-\uDEFF\uDF57-\uDF5F\uDF72-\uDFFF]|\uD836[\uDE8C-\uDE9A\uDEA0\uDEB0-\uDFFF]|\uD83C[\uDC2C-\uDC2F\uDC94-\uDC9F\uDCAF\uDCB0\uDCC0\uDCD0\uDCF6-\uDCFF\uDD0D-\uDD0F\uDD2F\uDD6C-\uDD6F\uDD9B-\uDDE5\uDE03-\uDE0F\uDE3B-\uDE3F\uDE49-\uDE4F\uDE52-\uDEFF]|\uD81A[\uDE39-\uDE3F\uDE5F\uDE6A-\uDE6D\uDE70-\uDECF\uDEEE\uDEEF\uDEF6-\uDEFF\uDF46-\uDF4F\uDF5A\uDF62\uDF78-\uDF7C\uDF90-\uDFFF]|\uD809[\uDC6F\uDC75-\uDC7F\uDD44-\uDFFF]|\uD81B[\uDC00-\uDEFF\uDF45-\uDF4F\uDF7F-\uDF8E\uDFA0-\uDFFF]|\uD86E[\uDC1E\uDC1F]|\uD83D[\uDD7A\uDDA4\uDED1-\uDEDF\uDEED-\uDEEF\uDEF4-\uDEFF\uDF74-\uDF7F\uDFD5-\uDFFF]|\uD801[\uDC9E\uDC9F\uDCAA-\uDCFF\uDD28-\uDD2F\uDD64-\uDD6E\uDD70-\uDDFF\uDF37-\uDF3F\uDF56-\uDF5F\uDF68-\uDFFF]|\uD800[\uDC0C\uDC27\uDC3B\uDC3E\uDC4E\uDC4F\uDC5E-\uDC7F\uDCFB-\uDCFF\uDD03-\uDD06\uDD34-\uDD36\uDD8D-\uDD8F\uDD9C-\uDD9F\uDDA1-\uDDCF\uDDFE-\uDE7F\uDE9D-\uDE9F\uDED1-\uDEDF\uDEFC-\uDEFF\uDF24-\uDF2F\uDF4B-\uDF4F\uDF7B-\uDF7F\uDF9E\uDFC4-\uDFC7\uDFD6-\uDFFF]|\uD869[\uDED7-\uDEFF]|\uD83B[\uDC00-\uDDFF\uDE04\uDE20\uDE23\uDE25\uDE26\uDE28\uDE33\uDE38\uDE3A\uDE3C-\uDE41\uDE43-\uDE46\uDE48\uDE4A\uDE4C\uDE50\uDE53\uDE55\uDE56\uDE58\uDE5A\uDE5C\uDE5E\uDE60\uDE63\uDE65\uDE66\uDE6B\uDE73\uDE78\uDE7D\uDE7F\uDE8A\uDE9C-\uDEA0\uDEA4\uDEAA\uDEBC-\uDEEF\uDEF2-\uDFFF]|\uD87E[\uDE1E-\uDFFF]|\uDB40[\uDC00-\uDCFF\uDDF0-\uDFFF]|\uD804[\uDC4E-\uDC51\uDC70-\uDC7E\uDCBD\uDCC2-\uDCCF\uDCE9-\uDCEF\uDCFA-\uDCFF\uDD35\uDD44-\uDD4F\uDD77-\uDD7F\uDDCE\uDDCF\uDDE0\uDDF5-\uDDFF\uDE12\uDE3E-\uDE7F\uDE87\uDE89\uDE8E\uDE9E\uDEAA-\uDEAF\uDEEB-\uDEEF\uDEFA-\uDEFF\uDF04\uDF0D\uDF0E\uDF11\uDF12\uDF29\uDF31\uDF34\uDF3A\uDF3B\uDF45\uDF46\uDF49\uDF4A\uDF4E\uDF4F\uDF51-\uDF56\uDF58-\uDF5C\uDF64\uDF65\uDF6D-\uDF6F\uDF75-\uDFFF]|\uD83A[\uDCC5\uDCC6\uDCD7-\uDFFF]|\uD80D[\uDC2F-\uDFFF]|\uD86D[\uDF35-\uDF3F]|[\uD807\uD80A\uD80B\uD80E-\uD810\uD812-\uD819\uD81C-\uD82B\uD82D\uD82E\uD830-\uD833\uD837-\uD839\uD83F\uD874-\uD87D\uD87F-\uDB3F\uDB41-\uDBFF][\uDC00-\uDFFF]|\uD806[\uDC00-\uDC9F\uDCF3-\uDCFE\uDD00-\uDEBF\uDEF9-\uDFFF]|\uD803[\uDC49-\uDC7F\uDCB3-\uDCBF\uDCF3-\uDCF9\uDD00-\uDE5F\uDE7F-\uDFFF]|\uD835[\uDC55\uDC9D\uDCA0\uDCA1\uDCA3\uDCA4\uDCA7\uDCA8\uDCAD\uDCBA\uDCBC\uDCC4\uDD06\uDD0B\uDD0C\uDD15\uDD1D\uDD3A\uDD3F\uDD45\uDD47-\uDD49\uDD51\uDEA6\uDEA7\uDFCC\uDFCD]|\uD805[\uDC00-\uDC7F\uDCC8-\uDCCF\uDCDA-\uDD7F\uDDB6\uDDB7\uDDDE-\uDDFF\uDE45-\uDE4F\uDE5A-\uDE7F\uDEB8-\uDEBF\uDECA-\uDEFF\uDF1A-\uDF1C\uDF2C-\uDF2F\uDF40-\uDFFF]|\uD802[\uDC06\uDC07\uDC09\uDC36\uDC39-\uDC3B\uDC3D\uDC3E\uDC56\uDC9F-\uDCA6\uDCB0-\uDCDF\uDCF3\uDCF6-\uDCFA\uDD1C-\uDD1E\uDD3A-\uDD3E\uDD40-\uDD7F\uDDB8-\uDDBB\uDDD0\uDDD1\uDE04\uDE07-\uDE0B\uDE14\uDE18\uDE34-\uDE37\uDE3B-\uDE3E\uDE48-\uDE4F\uDE59-\uDE5F\uDEA0-\uDEBF\uDEE7-\uDEEA\uDEF7-\uDEFF\uDF36-\uDF38\uDF56\uDF57\uDF73-\uDF77\uDF92-\uDF98\uDF9D-\uDFA8\uDFB0-\uDFFF]|\uD808[\uDF9A-\uDFFF]|\uD82F[\uDC6B-\uDC6F\uDC7D-\uDC7F\uDC89-\uDC8F\uDC9A\uDC9B\uDCA0-\uDFFF]|\uD82C[\uDC02-\uDFFF]|\uD811[\uDE47-\uDFFF]|\uD83E[\uDC0C-\uDC0F\uDC48-\uDC4F\uDC5A-\uDC5F\uDC88-\uDC8F\uDCAE-\uDD0F\uDD19-\uDD7F\uDD85-\uDDBF\uDDC1-\uDFFF]|\uD873[\uDEA2-\uDFFF]'
+    },
+    {
+        name: 'Cc',
+        alias: 'Control',
+        bmp: '\0-\x1F\x7F-\x9F'
+    },
+    {
+        name: 'Cf',
+        alias: 'Format',
+        bmp: '\xAD\u0600-\u0605\u061C\u06DD\u070F\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB',
+        astral: '\uDB40[\uDC01\uDC20-\uDC7F]|\uD82F[\uDCA0-\uDCA3]|\uD834[\uDD73-\uDD7A]|\uD804\uDCBD'
+    },
+    {
+        name: 'Cn',
+        alias: 'Unassigned',
+        bmp: '\u0378\u0379\u0380-\u0383\u038B\u038D\u03A2\u0530\u0557\u0558\u0560\u0588\u058B\u058C\u0590\u05C8-\u05CF\u05EB-\u05EF\u05F5-\u05FF\u061D\u070E\u074B\u074C\u07B2-\u07BF\u07FB-\u07FF\u082E\u082F\u083F\u085C\u085D\u085F-\u089F\u08B5-\u08E2\u0984\u098D\u098E\u0991\u0992\u09A9\u09B1\u09B3-\u09B5\u09BA\u09BB\u09C5\u09C6\u09C9\u09CA\u09CF-\u09D6\u09D8-\u09DB\u09DE\u09E4\u09E5\u09FC-\u0A00\u0A04\u0A0B-\u0A0E\u0A11\u0A12\u0A29\u0A31\u0A34\u0A37\u0A3A\u0A3B\u0A3D\u0A43-\u0A46\u0A49\u0A4A\u0A4E-\u0A50\u0A52-\u0A58\u0A5D\u0A5F-\u0A65\u0A76-\u0A80\u0A84\u0A8E\u0A92\u0AA9\u0AB1\u0AB4\u0ABA\u0ABB\u0AC6\u0ACA\u0ACE\u0ACF\u0AD1-\u0ADF\u0AE4\u0AE5\u0AF2-\u0AF8\u0AFA-\u0B00\u0B04\u0B0D\u0B0E\u0B11\u0B12\u0B29\u0B31\u0B34\u0B3A\u0B3B\u0B45\u0B46\u0B49\u0B4A\u0B4E-\u0B55\u0B58-\u0B5B\u0B5E\u0B64\u0B65\u0B78-\u0B81\u0B84\u0B8B-\u0B8D\u0B91\u0B96-\u0B98\u0B9B\u0B9D\u0BA0-\u0BA2\u0BA5-\u0BA7\u0BAB-\u0BAD\u0BBA-\u0BBD\u0BC3-\u0BC5\u0BC9\u0BCE\u0BCF\u0BD1-\u0BD6\u0BD8-\u0BE5\u0BFB-\u0BFF\u0C04\u0C0D\u0C11\u0C29\u0C3A-\u0C3C\u0C45\u0C49\u0C4E-\u0C54\u0C57\u0C5B-\u0C5F\u0C64\u0C65\u0C70-\u0C77\u0C80\u0C84\u0C8D\u0C91\u0CA9\u0CB4\u0CBA\u0CBB\u0CC5\u0CC9\u0CCE-\u0CD4\u0CD7-\u0CDD\u0CDF\u0CE4\u0CE5\u0CF0\u0CF3-\u0D00\u0D04\u0D0D\u0D11\u0D3B\u0D3C\u0D45\u0D49\u0D4F-\u0D56\u0D58-\u0D5E\u0D64\u0D65\u0D76-\u0D78\u0D80\u0D81\u0D84\u0D97-\u0D99\u0DB2\u0DBC\u0DBE\u0DBF\u0DC7-\u0DC9\u0DCB-\u0DCE\u0DD5\u0DD7\u0DE0-\u0DE5\u0DF0\u0DF1\u0DF5-\u0E00\u0E3B-\u0E3E\u0E5C-\u0E80\u0E83\u0E85\u0E86\u0E89\u0E8B\u0E8C\u0E8E-\u0E93\u0E98\u0EA0\u0EA4\u0EA6\u0EA8\u0EA9\u0EAC\u0EBA\u0EBE\u0EBF\u0EC5\u0EC7\u0ECE\u0ECF\u0EDA\u0EDB\u0EE0-\u0EFF\u0F48\u0F6D-\u0F70\u0F98\u0FBD\u0FCD\u0FDB-\u0FFF\u10C6\u10C8-\u10CC\u10CE\u10CF\u1249\u124E\u124F\u1257\u1259\u125E\u125F\u1289\u128E\u128F\u12B1\u12B6\u12B7\u12BF\u12C1\u12C6\u12C7\u12D7\u1311\u1316\u1317\u135B\u135C\u137D-\u137F\u139A-\u139F\u13F6\u13F7\u13FE\u13FF\u169D-\u169F\u16F9-\u16FF\u170D\u1715-\u171F\u1737-\u173F\u1754-\u175F\u176D\u1771\u1774-\u177F\u17DE\u17DF\u17EA-\u17EF\u17FA-\u17FF\u180F\u181A-\u181F\u1878-\u187F\u18AB-\u18AF\u18F6-\u18FF\u191F\u192C-\u192F\u193C-\u193F\u1941-\u1943\u196E\u196F\u1975-\u197F\u19AC-\u19AF\u19CA-\u19CF\u19DB-\u19DD\u1A1C\u1A1D\u1A5F\u1A7D\u1A7E\u1A8A-\u1A8F\u1A9A-\u1A9F\u1AAE\u1AAF\u1ABF-\u1AFF\u1B4C-\u1B4F\u1B7D-\u1B7F\u1BF4-\u1BFB\u1C38-\u1C3A\u1C4A-\u1C4C\u1C80-\u1CBF\u1CC8-\u1CCF\u1CF7\u1CFA-\u1CFF\u1DF6-\u1DFB\u1F16\u1F17\u1F1E\u1F1F\u1F46\u1F47\u1F4E\u1F4F\u1F58\u1F5A\u1F5C\u1F5E\u1F7E\u1F7F\u1FB5\u1FC5\u1FD4\u1FD5\u1FDC\u1FF0\u1FF1\u1FF5\u1FFF\u2065\u2072\u2073\u208F\u209D-\u209F\u20BF-\u20CF\u20F1-\u20FF\u218C-\u218F\u23FB-\u23FF\u2427-\u243F\u244B-\u245F\u2B74\u2B75\u2B96\u2B97\u2BBA-\u2BBC\u2BC9\u2BD2-\u2BEB\u2BF0-\u2BFF\u2C2F\u2C5F\u2CF4-\u2CF8\u2D26\u2D28-\u2D2C\u2D2E\u2D2F\u2D68-\u2D6E\u2D71-\u2D7E\u2D97-\u2D9F\u2DA7\u2DAF\u2DB7\u2DBF\u2DC7\u2DCF\u2DD7\u2DDF\u2E43-\u2E7F\u2E9A\u2EF4-\u2EFF\u2FD6-\u2FEF\u2FFC-\u2FFF\u3040\u3097\u3098\u3100-\u3104\u312E-\u3130\u318F\u31BB-\u31BF\u31E4-\u31EF\u321F\u32FF\u4DB6-\u4DBF\u9FD6-\u9FFF\uA48D-\uA48F\uA4C7-\uA4CF\uA62C-\uA63F\uA6F8-\uA6FF\uA7AE\uA7AF\uA7B8-\uA7F6\uA82C-\uA82F\uA83A-\uA83F\uA878-\uA87F\uA8C5-\uA8CD\uA8DA-\uA8DF\uA8FE\uA8FF\uA954-\uA95E\uA97D-\uA97F\uA9CE\uA9DA-\uA9DD\uA9FF\uAA37-\uAA3F\uAA4E\uAA4F\uAA5A\uAA5B\uAAC3-\uAADA\uAAF7-\uAB00\uAB07\uAB08\uAB0F\uAB10\uAB17-\uAB1F\uAB27\uAB2F\uAB66-\uAB6F\uABEE\uABEF\uABFA-\uABFF\uD7A4-\uD7AF\uD7C7-\uD7CA\uD7FC-\uD7FF\uFA6E\uFA6F\uFADA-\uFAFF\uFB07-\uFB12\uFB18-\uFB1C\uFB37\uFB3D\uFB3F\uFB42\uFB45\uFBC2-\uFBD2\uFD40-\uFD4F\uFD90\uFD91\uFDC8-\uFDEF\uFDFE\uFDFF\uFE1A-\uFE1F\uFE53\uFE67\uFE6C-\uFE6F\uFE75\uFEFD\uFEFE\uFF00\uFFBF-\uFFC1\uFFC8\uFFC9\uFFD0\uFFD1\uFFD8\uFFD9\uFFDD-\uFFDF\uFFE7\uFFEF-\uFFF8\uFFFE\uFFFF',
+        astral: '\uDB40[\uDC00\uDC02-\uDC1F\uDC80-\uDCFF\uDDF0-\uDFFF]|\uD834[\uDCF6-\uDCFF\uDD27\uDD28\uDDE9-\uDDFF\uDE46-\uDEFF\uDF57-\uDF5F\uDF72-\uDFFF]|\uD83C[\uDC2C-\uDC2F\uDC94-\uDC9F\uDCAF\uDCB0\uDCC0\uDCD0\uDCF6-\uDCFF\uDD0D-\uDD0F\uDD2F\uDD6C-\uDD6F\uDD9B-\uDDE5\uDE03-\uDE0F\uDE3B-\uDE3F\uDE49-\uDE4F\uDE52-\uDEFF]|\uD81A[\uDE39-\uDE3F\uDE5F\uDE6A-\uDE6D\uDE70-\uDECF\uDEEE\uDEEF\uDEF6-\uDEFF\uDF46-\uDF4F\uDF5A\uDF62\uDF78-\uDF7C\uDF90-\uDFFF]|\uD809[\uDC6F\uDC75-\uDC7F\uDD44-\uDFFF]|\uD81B[\uDC00-\uDEFF\uDF45-\uDF4F\uDF7F-\uDF8E\uDFA0-\uDFFF]|\uD86E[\uDC1E\uDC1F]|\uD83D[\uDD7A\uDDA4\uDED1-\uDEDF\uDEED-\uDEEF\uDEF4-\uDEFF\uDF74-\uDF7F\uDFD5-\uDFFF]|\uD801[\uDC9E\uDC9F\uDCAA-\uDCFF\uDD28-\uDD2F\uDD64-\uDD6E\uDD70-\uDDFF\uDF37-\uDF3F\uDF56-\uDF5F\uDF68-\uDFFF]|\uD800[\uDC0C\uDC27\uDC3B\uDC3E\uDC4E\uDC4F\uDC5E-\uDC7F\uDCFB-\uDCFF\uDD03-\uDD06\uDD34-\uDD36\uDD8D-\uDD8F\uDD9C-\uDD9F\uDDA1-\uDDCF\uDDFE-\uDE7F\uDE9D-\uDE9F\uDED1-\uDEDF\uDEFC-\uDEFF\uDF24-\uDF2F\uDF4B-\uDF4F\uDF7B-\uDF7F\uDF9E\uDFC4-\uDFC7\uDFD6-\uDFFF]|\uD869[\uDED7-\uDEFF]|\uD83B[\uDC00-\uDDFF\uDE04\uDE20\uDE23\uDE25\uDE26\uDE28\uDE33\uDE38\uDE3A\uDE3C-\uDE41\uDE43-\uDE46\uDE48\uDE4A\uDE4C\uDE50\uDE53\uDE55\uDE56\uDE58\uDE5A\uDE5C\uDE5E\uDE60\uDE63\uDE65\uDE66\uDE6B\uDE73\uDE78\uDE7D\uDE7F\uDE8A\uDE9C-\uDEA0\uDEA4\uDEAA\uDEBC-\uDEEF\uDEF2-\uDFFF]|[\uDBBF\uDBFF][\uDFFE\uDFFF]|\uD87E[\uDE1E-\uDFFF]|\uD82F[\uDC6B-\uDC6F\uDC7D-\uDC7F\uDC89-\uDC8F\uDC9A\uDC9B\uDCA4-\uDFFF]|\uD83A[\uDCC5\uDCC6\uDCD7-\uDFFF]|\uD80D[\uDC2F-\uDFFF]|\uD86D[\uDF35-\uDF3F]|[\uD807\uD80A\uD80B\uD80E-\uD810\uD812-\uD819\uD81C-\uD82B\uD82D\uD82E\uD830-\uD833\uD837-\uD839\uD83F\uD874-\uD87D\uD87F-\uDB3F\uDB41-\uDB7F][\uDC00-\uDFFF]|\uD806[\uDC00-\uDC9F\uDCF3-\uDCFE\uDD00-\uDEBF\uDEF9-\uDFFF]|\uD803[\uDC49-\uDC7F\uDCB3-\uDCBF\uDCF3-\uDCF9\uDD00-\uDE5F\uDE7F-\uDFFF]|\uD835[\uDC55\uDC9D\uDCA0\uDCA1\uDCA3\uDCA4\uDCA7\uDCA8\uDCAD\uDCBA\uDCBC\uDCC4\uDD06\uDD0B\uDD0C\uDD15\uDD1D\uDD3A\uDD3F\uDD45\uDD47-\uDD49\uDD51\uDEA6\uDEA7\uDFCC\uDFCD]|\uD836[\uDE8C-\uDE9A\uDEA0\uDEB0-\uDFFF]|\uD805[\uDC00-\uDC7F\uDCC8-\uDCCF\uDCDA-\uDD7F\uDDB6\uDDB7\uDDDE-\uDDFF\uDE45-\uDE4F\uDE5A-\uDE7F\uDEB8-\uDEBF\uDECA-\uDEFF\uDF1A-\uDF1C\uDF2C-\uDF2F\uDF40-\uDFFF]|\uD802[\uDC06\uDC07\uDC09\uDC36\uDC39-\uDC3B\uDC3D\uDC3E\uDC56\uDC9F-\uDCA6\uDCB0-\uDCDF\uDCF3\uDCF6-\uDCFA\uDD1C-\uDD1E\uDD3A-\uDD3E\uDD40-\uDD7F\uDDB8-\uDDBB\uDDD0\uDDD1\uDE04\uDE07-\uDE0B\uDE14\uDE18\uDE34-\uDE37\uDE3B-\uDE3E\uDE48-\uDE4F\uDE59-\uDE5F\uDEA0-\uDEBF\uDEE7-\uDEEA\uDEF7-\uDEFF\uDF36-\uDF38\uDF56\uDF57\uDF73-\uDF77\uDF92-\uDF98\uDF9D-\uDFA8\uDFB0-\uDFFF]|\uD808[\uDF9A-\uDFFF]|\uD804[\uDC4E-\uDC51\uDC70-\uDC7E\uDCC2-\uDCCF\uDCE9-\uDCEF\uDCFA-\uDCFF\uDD35\uDD44-\uDD4F\uDD77-\uDD7F\uDDCE\uDDCF\uDDE0\uDDF5-\uDDFF\uDE12\uDE3E-\uDE7F\uDE87\uDE89\uDE8E\uDE9E\uDEAA-\uDEAF\uDEEB-\uDEEF\uDEFA-\uDEFF\uDF04\uDF0D\uDF0E\uDF11\uDF12\uDF29\uDF31\uDF34\uDF3A\uDF3B\uDF45\uDF46\uDF49\uDF4A\uDF4E\uDF4F\uDF51-\uDF56\uDF58-\uDF5C\uDF64\uDF65\uDF6D-\uDF6F\uDF75-\uDFFF]|\uD82C[\uDC02-\uDFFF]|\uD811[\uDE47-\uDFFF]|\uD83E[\uDC0C-\uDC0F\uDC48-\uDC4F\uDC5A-\uDC5F\uDC88-\uDC8F\uDCAE-\uDD0F\uDD19-\uDD7F\uDD85-\uDDBF\uDDC1-\uDFFF]|\uD873[\uDEA2-\uDFFF]'
+    },
+    {
+        name: 'Co',
+        alias: 'Private_Use',
+        bmp: '\uE000-\uF8FF',
+        astral: '[\uDB80-\uDBBE\uDBC0-\uDBFE][\uDC00-\uDFFF]|[\uDBBF\uDBFF][\uDC00-\uDFFD]'
+    },
+    {
+        name: 'Cs',
+        alias: 'Surrogate',
+        bmp: '\uD800-\uDFFF'
+    },
+    {
+        name: 'L',
+        alias: 'Letter',
+        bmp: 'A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16F1-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2183\u2184\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005\u3006\u3031-\u3035\u303B\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6E5\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
+        astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD83A[\uDC00-\uDCC4]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF40\uDF42-\uDF49\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD809[\uDC80-\uDD43]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD811[\uDC00-\uDE46]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD82C[\uDC00\uDC01]|\uD873[\uDC00-\uDEA1]'
+    },
+    {
+        name: 'Ll',
+        alias: 'Lowercase_Letter',
+        bmp: 'a-z\xB5\xDF-\xF6\xF8-\xFF\u0101\u0103\u0105\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131\u0133\u0135\u0137\u0138\u013A\u013C\u013E\u0140\u0142\u0144\u0146\u0148\u0149\u014B\u014D\u014F\u0151\u0153\u0155\u0157\u0159\u015B\u015D\u015F\u0161\u0163\u0165\u0167\u0169\u016B\u016D\u016F\u0171\u0173\u0175\u0177\u017A\u017C\u017E-\u0180\u0183\u0185\u0188\u018C\u018D\u0192\u0195\u0199-\u019B\u019E\u01A1\u01A3\u01A5\u01A8\u01AA\u01AB\u01AD\u01B0\u01B4\u01B6\u01B9\u01BA\u01BD-\u01BF\u01C6\u01C9\u01CC\u01CE\u01D0\u01D2\u01D4\u01D6\u01D8\u01DA\u01DC\u01DD\u01DF\u01E1\u01E3\u01E5\u01E7\u01E9\u01EB\u01ED\u01EF\u01F0\u01F3\u01F5\u01F9\u01FB\u01FD\u01FF\u0201\u0203\u0205\u0207\u0209\u020B\u020D\u020F\u0211\u0213\u0215\u0217\u0219\u021B\u021D\u021F\u0221\u0223\u0225\u0227\u0229\u022B\u022D\u022F\u0231\u0233-\u0239\u023C\u023F\u0240\u0242\u0247\u0249\u024B\u024D\u024F-\u0293\u0295-\u02AF\u0371\u0373\u0377\u037B-\u037D\u0390\u03AC-\u03CE\u03D0\u03D1\u03D5-\u03D7\u03D9\u03DB\u03DD\u03DF\u03E1\u03E3\u03E5\u03E7\u03E9\u03EB\u03ED\u03EF-\u03F3\u03F5\u03F8\u03FB\u03FC\u0430-\u045F\u0461\u0463\u0465\u0467\u0469\u046B\u046D\u046F\u0471\u0473\u0475\u0477\u0479\u047B\u047D\u047F\u0481\u048B\u048D\u048F\u0491\u0493\u0495\u0497\u0499\u049B\u049D\u049F\u04A1\u04A3\u04A5\u04A7\u04A9\u04AB\u04AD\u04AF\u04B1\u04B3\u04B5\u04B7\u04B9\u04BB\u04BD\u04BF\u04C2\u04C4\u04C6\u04C8\u04CA\u04CC\u04CE\u04CF\u04D1\u04D3\u04D5\u04D7\u04D9\u04DB\u04DD\u04DF\u04E1\u04E3\u04E5\u04E7\u04E9\u04EB\u04ED\u04EF\u04F1\u04F3\u04F5\u04F7\u04F9\u04FB\u04FD\u04FF\u0501\u0503\u0505\u0507\u0509\u050B\u050D\u050F\u0511\u0513\u0515\u0517\u0519\u051B\u051D\u051F\u0521\u0523\u0525\u0527\u0529\u052B\u052D\u052F\u0561-\u0587\u13F8-\u13FD\u1D00-\u1D2B\u1D6B-\u1D77\u1D79-\u1D9A\u1E01\u1E03\u1E05\u1E07\u1E09\u1E0B\u1E0D\u1E0F\u1E11\u1E13\u1E15\u1E17\u1E19\u1E1B\u1E1D\u1E1F\u1E21\u1E23\u1E25\u1E27\u1E29\u1E2B\u1E2D\u1E2F\u1E31\u1E33\u1E35\u1E37\u1E39\u1E3B\u1E3D\u1E3F\u1E41\u1E43\u1E45\u1E47\u1E49\u1E4B\u1E4D\u1E4F\u1E51\u1E53\u1E55\u1E57\u1E59\u1E5B\u1E5D\u1E5F\u1E61\u1E63\u1E65\u1E67\u1E69\u1E6B\u1E6D\u1E6F\u1E71\u1E73\u1E75\u1E77\u1E79\u1E7B\u1E7D\u1E7F\u1E81\u1E83\u1E85\u1E87\u1E89\u1E8B\u1E8D\u1E8F\u1E91\u1E93\u1E95-\u1E9D\u1E9F\u1EA1\u1EA3\u1EA5\u1EA7\u1EA9\u1EAB\u1EAD\u1EAF\u1EB1\u1EB3\u1EB5\u1EB7\u1EB9\u1EBB\u1EBD\u1EBF\u1EC1\u1EC3\u1EC5\u1EC7\u1EC9\u1ECB\u1ECD\u1ECF\u1ED1\u1ED3\u1ED5\u1ED7\u1ED9\u1EDB\u1EDD\u1EDF\u1EE1\u1EE3\u1EE5\u1EE7\u1EE9\u1EEB\u1EED\u1EEF\u1EF1\u1EF3\u1EF5\u1EF7\u1EF9\u1EFB\u1EFD\u1EFF-\u1F07\u1F10-\u1F15\u1F20-\u1F27\u1F30-\u1F37\u1F40-\u1F45\u1F50-\u1F57\u1F60-\u1F67\u1F70-\u1F7D\u1F80-\u1F87\u1F90-\u1F97\u1FA0-\u1FA7\u1FB0-\u1FB4\u1FB6\u1FB7\u1FBE\u1FC2-\u1FC4\u1FC6\u1FC7\u1FD0-\u1FD3\u1FD6\u1FD7\u1FE0-\u1FE7\u1FF2-\u1FF4\u1FF6\u1FF7\u210A\u210E\u210F\u2113\u212F\u2134\u2139\u213C\u213D\u2146-\u2149\u214E\u2184\u2C30-\u2C5E\u2C61\u2C65\u2C66\u2C68\u2C6A\u2C6C\u2C71\u2C73\u2C74\u2C76-\u2C7B\u2C81\u2C83\u2C85\u2C87\u2C89\u2C8B\u2C8D\u2C8F\u2C91\u2C93\u2C95\u2C97\u2C99\u2C9B\u2C9D\u2C9F\u2CA1\u2CA3\u2CA5\u2CA7\u2CA9\u2CAB\u2CAD\u2CAF\u2CB1\u2CB3\u2CB5\u2CB7\u2CB9\u2CBB\u2CBD\u2CBF\u2CC1\u2CC3\u2CC5\u2CC7\u2CC9\u2CCB\u2CCD\u2CCF\u2CD1\u2CD3\u2CD5\u2CD7\u2CD9\u2CDB\u2CDD\u2CDF\u2CE1\u2CE3\u2CE4\u2CEC\u2CEE\u2CF3\u2D00-\u2D25\u2D27\u2D2D\uA641\uA643\uA645\uA647\uA649\uA64B\uA64D\uA64F\uA651\uA653\uA655\uA657\uA659\uA65B\uA65D\uA65F\uA661\uA663\uA665\uA667\uA669\uA66B\uA66D\uA681\uA683\uA685\uA687\uA689\uA68B\uA68D\uA68F\uA691\uA693\uA695\uA697\uA699\uA69B\uA723\uA725\uA727\uA729\uA72B\uA72D\uA72F-\uA731\uA733\uA735\uA737\uA739\uA73B\uA73D\uA73F\uA741\uA743\uA745\uA747\uA749\uA74B\uA74D\uA74F\uA751\uA753\uA755\uA757\uA759\uA75B\uA75D\uA75F\uA761\uA763\uA765\uA767\uA769\uA76B\uA76D\uA76F\uA771-\uA778\uA77A\uA77C\uA77F\uA781\uA783\uA785\uA787\uA78C\uA78E\uA791\uA793-\uA795\uA797\uA799\uA79B\uA79D\uA79F\uA7A1\uA7A3\uA7A5\uA7A7\uA7A9\uA7B5\uA7B7\uA7FA\uAB30-\uAB5A\uAB60-\uAB65\uAB70-\uABBF\uFB00-\uFB06\uFB13-\uFB17\uFF41-\uFF5A',
+        astral: '\uD803[\uDCC0-\uDCF2]|\uD835[\uDC1A-\uDC33\uDC4E-\uDC54\uDC56-\uDC67\uDC82-\uDC9B\uDCB6-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDCCF\uDCEA-\uDD03\uDD1E-\uDD37\uDD52-\uDD6B\uDD86-\uDD9F\uDDBA-\uDDD3\uDDEE-\uDE07\uDE22-\uDE3B\uDE56-\uDE6F\uDE8A-\uDEA5\uDEC2-\uDEDA\uDEDC-\uDEE1\uDEFC-\uDF14\uDF16-\uDF1B\uDF36-\uDF4E\uDF50-\uDF55\uDF70-\uDF88\uDF8A-\uDF8F\uDFAA-\uDFC2\uDFC4-\uDFC9\uDFCB]|\uD801[\uDC28-\uDC4F]|\uD806[\uDCC0-\uDCDF]'
+    },
+    {
+        name: 'Lm',
+        alias: 'Modifier_Letter',
+        bmp: '\u02B0-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0374\u037A\u0559\u0640\u06E5\u06E6\u07F4\u07F5\u07FA\u081A\u0824\u0828\u0971\u0E46\u0EC6\u10FC\u17D7\u1843\u1AA7\u1C78-\u1C7D\u1D2C-\u1D6A\u1D78\u1D9B-\u1DBF\u2071\u207F\u2090-\u209C\u2C7C\u2C7D\u2D6F\u2E2F\u3005\u3031-\u3035\u303B\u309D\u309E\u30FC-\u30FE\uA015\uA4F8-\uA4FD\uA60C\uA67F\uA69C\uA69D\uA717-\uA71F\uA770\uA788\uA7F8\uA7F9\uA9CF\uA9E6\uAA70\uAADD\uAAF3\uAAF4\uAB5C-\uAB5F\uFF70\uFF9E\uFF9F',
+        astral: '\uD81A[\uDF40-\uDF43]|\uD81B[\uDF93-\uDF9F]'
+    },
+    {
+        name: 'Lo',
+        alias: 'Other_Letter',
+        bmp: '\xAA\xBA\u01BB\u01C0-\u01C3\u0294\u05D0-\u05EA\u05F0-\u05F2\u0620-\u063F\u0641-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u0800-\u0815\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0972-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E45\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10D0-\u10FA\u10FD-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16F1-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17DC\u1820-\u1842\u1844-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C77\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u2135-\u2138\u2D30-\u2D67\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3006\u303C\u3041-\u3096\u309F\u30A1-\u30FA\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA014\uA016-\uA48C\uA4D0-\uA4F7\uA500-\uA60B\uA610-\uA61F\uA62A\uA62B\uA66E\uA6A0-\uA6E5\uA78F\uA7F7\uA7FB-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9E0-\uA9E4\uA9E7-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA6F\uAA71-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB\uAADC\uAAE0-\uAAEA\uAAF2\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uABC0-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF66-\uFF6F\uFF71-\uFF9D\uFFA0-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
+        astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD83A[\uDC00-\uDCC4]|\uD803[\uDC00-\uDC48]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF40\uDF42-\uDF49\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|\uD81B[\uDF00-\uDF44\uDF50]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCFF\uDEC0-\uDEF8]|\uD809[\uDC80-\uDD43]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF63-\uDF77\uDF7D-\uDF8F]|\uD801[\uDC50-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD811[\uDC00-\uDE46]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD82C[\uDC00\uDC01]|\uD873[\uDC00-\uDEA1]'
+    },
+    {
+        name: 'Lt',
+        alias: 'Titlecase_Letter',
+        bmp: '\u01C5\u01C8\u01CB\u01F2\u1F88-\u1F8F\u1F98-\u1F9F\u1FA8-\u1FAF\u1FBC\u1FCC\u1FFC'
+    },
+    {
+        name: 'Lu',
+        alias: 'Uppercase_Letter',
+        bmp: 'A-Z\xC0-\xD6\xD8-\xDE\u0100\u0102\u0104\u0106\u0108\u010A\u010C\u010E\u0110\u0112\u0114\u0116\u0118\u011A\u011C\u011E\u0120\u0122\u0124\u0126\u0128\u012A\u012C\u012E\u0130\u0132\u0134\u0136\u0139\u013B\u013D\u013F\u0141\u0143\u0145\u0147\u014A\u014C\u014E\u0150\u0152\u0154\u0156\u0158\u015A\u015C\u015E\u0160\u0162\u0164\u0166\u0168\u016A\u016C\u016E\u0170\u0172\u0174\u0176\u0178\u0179\u017B\u017D\u0181\u0182\u0184\u0186\u0187\u0189-\u018B\u018E-\u0191\u0193\u0194\u0196-\u0198\u019C\u019D\u019F\u01A0\u01A2\u01A4\u01A6\u01A7\u01A9\u01AC\u01AE\u01AF\u01B1-\u01B3\u01B5\u01B7\u01B8\u01BC\u01C4\u01C7\u01CA\u01CD\u01CF\u01D1\u01D3\u01D5\u01D7\u01D9\u01DB\u01DE\u01E0\u01E2\u01E4\u01E6\u01E8\u01EA\u01EC\u01EE\u01F1\u01F4\u01F6-\u01F8\u01FA\u01FC\u01FE\u0200\u0202\u0204\u0206\u0208\u020A\u020C\u020E\u0210\u0212\u0214\u0216\u0218\u021A\u021C\u021E\u0220\u0222\u0224\u0226\u0228\u022A\u022C\u022E\u0230\u0232\u023A\u023B\u023D\u023E\u0241\u0243-\u0246\u0248\u024A\u024C\u024E\u0370\u0372\u0376\u037F\u0386\u0388-\u038A\u038C\u038E\u038F\u0391-\u03A1\u03A3-\u03AB\u03CF\u03D2-\u03D4\u03D8\u03DA\u03DC\u03DE\u03E0\u03E2\u03E4\u03E6\u03E8\u03EA\u03EC\u03EE\u03F4\u03F7\u03F9\u03FA\u03FD-\u042F\u0460\u0462\u0464\u0466\u0468\u046A\u046C\u046E\u0470\u0472\u0474\u0476\u0478\u047A\u047C\u047E\u0480\u048A\u048C\u048E\u0490\u0492\u0494\u0496\u0498\u049A\u049C\u049E\u04A0\u04A2\u04A4\u04A6\u04A8\u04AA\u04AC\u04AE\u04B0\u04B2\u04B4\u04B6\u04B8\u04BA\u04BC\u04BE\u04C0\u04C1\u04C3\u04C5\u04C7\u04C9\u04CB\u04CD\u04D0\u04D2\u04D4\u04D6\u04D8\u04DA\u04DC\u04DE\u04E0\u04E2\u04E4\u04E6\u04E8\u04EA\u04EC\u04EE\u04F0\u04F2\u04F4\u04F6\u04F8\u04FA\u04FC\u04FE\u0500\u0502\u0504\u0506\u0508\u050A\u050C\u050E\u0510\u0512\u0514\u0516\u0518\u051A\u051C\u051E\u0520\u0522\u0524\u0526\u0528\u052A\u052C\u052E\u0531-\u0556\u10A0-\u10C5\u10C7\u10CD\u13A0-\u13F5\u1E00\u1E02\u1E04\u1E06\u1E08\u1E0A\u1E0C\u1E0E\u1E10\u1E12\u1E14\u1E16\u1E18\u1E1A\u1E1C\u1E1E\u1E20\u1E22\u1E24\u1E26\u1E28\u1E2A\u1E2C\u1E2E\u1E30\u1E32\u1E34\u1E36\u1E38\u1E3A\u1E3C\u1E3E\u1E40\u1E42\u1E44\u1E46\u1E48\u1E4A\u1E4C\u1E4E\u1E50\u1E52\u1E54\u1E56\u1E58\u1E5A\u1E5C\u1E5E\u1E60\u1E62\u1E64\u1E66\u1E68\u1E6A\u1E6C\u1E6E\u1E70\u1E72\u1E74\u1E76\u1E78\u1E7A\u1E7C\u1E7E\u1E80\u1E82\u1E84\u1E86\u1E88\u1E8A\u1E8C\u1E8E\u1E90\u1E92\u1E94\u1E9E\u1EA0\u1EA2\u1EA4\u1EA6\u1EA8\u1EAA\u1EAC\u1EAE\u1EB0\u1EB2\u1EB4\u1EB6\u1EB8\u1EBA\u1EBC\u1EBE\u1EC0\u1EC2\u1EC4\u1EC6\u1EC8\u1ECA\u1ECC\u1ECE\u1ED0\u1ED2\u1ED4\u1ED6\u1ED8\u1EDA\u1EDC\u1EDE\u1EE0\u1EE2\u1EE4\u1EE6\u1EE8\u1EEA\u1EEC\u1EEE\u1EF0\u1EF2\u1EF4\u1EF6\u1EF8\u1EFA\u1EFC\u1EFE\u1F08-\u1F0F\u1F18-\u1F1D\u1F28-\u1F2F\u1F38-\u1F3F\u1F48-\u1F4D\u1F59\u1F5B\u1F5D\u1F5F\u1F68-\u1F6F\u1FB8-\u1FBB\u1FC8-\u1FCB\u1FD8-\u1FDB\u1FE8-\u1FEC\u1FF8-\u1FFB\u2102\u2107\u210B-\u210D\u2110-\u2112\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u2130-\u2133\u213E\u213F\u2145\u2183\u2C00-\u2C2E\u2C60\u2C62-\u2C64\u2C67\u2C69\u2C6B\u2C6D-\u2C70\u2C72\u2C75\u2C7E-\u2C80\u2C82\u2C84\u2C86\u2C88\u2C8A\u2C8C\u2C8E\u2C90\u2C92\u2C94\u2C96\u2C98\u2C9A\u2C9C\u2C9E\u2CA0\u2CA2\u2CA4\u2CA6\u2CA8\u2CAA\u2CAC\u2CAE\u2CB0\u2CB2\u2CB4\u2CB6\u2CB8\u2CBA\u2CBC\u2CBE\u2CC0\u2CC2\u2CC4\u2CC6\u2CC8\u2CCA\u2CCC\u2CCE\u2CD0\u2CD2\u2CD4\u2CD6\u2CD8\u2CDA\u2CDC\u2CDE\u2CE0\u2CE2\u2CEB\u2CED\u2CF2\uA640\uA642\uA644\uA646\uA648\uA64A\uA64C\uA64E\uA650\uA652\uA654\uA656\uA658\uA65A\uA65C\uA65E\uA660\uA662\uA664\uA666\uA668\uA66A\uA66C\uA680\uA682\uA684\uA686\uA688\uA68A\uA68C\uA68E\uA690\uA692\uA694\uA696\uA698\uA69A\uA722\uA724\uA726\uA728\uA72A\uA72C\uA72E\uA732\uA734\uA736\uA738\uA73A\uA73C\uA73E\uA740\uA742\uA744\uA746\uA748\uA74A\uA74C\uA74E\uA750\uA752\uA754\uA756\uA758\uA75A\uA75C\uA75E\uA760\uA762\uA764\uA766\uA768\uA76A\uA76C\uA76E\uA779\uA77B\uA77D\uA77E\uA780\uA782\uA784\uA786\uA78B\uA78D\uA790\uA792\uA796\uA798\uA79A\uA79C\uA79E\uA7A0\uA7A2\uA7A4\uA7A6\uA7A8\uA7AA-\uA7AD\uA7B0-\uA7B4\uA7B6\uFF21-\uFF3A',
+        astral: '\uD806[\uDCA0-\uDCBF]|\uD803[\uDC80-\uDCB2]|\uD801[\uDC00-\uDC27]|\uD835[\uDC00-\uDC19\uDC34-\uDC4D\uDC68-\uDC81\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB5\uDCD0-\uDCE9\uDD04\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD38\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD6C-\uDD85\uDDA0-\uDDB9\uDDD4-\uDDED\uDE08-\uDE21\uDE3C-\uDE55\uDE70-\uDE89\uDEA8-\uDEC0\uDEE2-\uDEFA\uDF1C-\uDF34\uDF56-\uDF6E\uDF90-\uDFA8\uDFCA]'
+    },
+    {
+        name: 'M',
+        alias: 'Mark',
+        bmp: '\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C03\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D01-\u0D03\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C4\uA8E0-\uA8F1\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F',
+        astral: '\uD805[\uDCB0-\uDCC3\uDDAF-\uDDB5\uDDB8-\uDDC0\uDDDC\uDDDD\uDE30-\uDE40\uDEAB-\uDEB7\uDF1D-\uDF2B]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD804[\uDC00-\uDC02\uDC38-\uDC46\uDC7F-\uDC82\uDCB0-\uDCBA\uDD00-\uDD02\uDD27-\uDD34\uDD73\uDD80-\uDD82\uDDB3-\uDDC0\uDDCA-\uDDCC\uDE2C-\uDE37\uDEDF-\uDEEA\uDF00-\uDF03\uDF3C\uDF3E-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF57\uDF62\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD81B[\uDF51-\uDF7E\uDF8F-\uDF92]|\uD81A[\uDEF0-\uDEF4\uDF30-\uDF36]|\uD82F[\uDC9D\uDC9E]|\uD800[\uDDFD\uDEE0\uDF76-\uDF7A]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD802[\uDE01-\uDE03\uDE05\uDE06\uDE0C-\uDE0F\uDE38-\uDE3A\uDE3F\uDEE5\uDEE6]|\uD83A[\uDCD0-\uDCD6]|\uDB40[\uDD00-\uDDEF]'
+    },
+    {
+        name: 'Mc',
+        alias: 'Spacing_Mark',
+        bmp: '\u0903\u093B\u093E-\u0940\u0949-\u094C\u094E\u094F\u0982\u0983\u09BE-\u09C0\u09C7\u09C8\u09CB\u09CC\u09D7\u0A03\u0A3E-\u0A40\u0A83\u0ABE-\u0AC0\u0AC9\u0ACB\u0ACC\u0B02\u0B03\u0B3E\u0B40\u0B47\u0B48\u0B4B\u0B4C\u0B57\u0BBE\u0BBF\u0BC1\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCC\u0BD7\u0C01-\u0C03\u0C41-\u0C44\u0C82\u0C83\u0CBE\u0CC0-\u0CC4\u0CC7\u0CC8\u0CCA\u0CCB\u0CD5\u0CD6\u0D02\u0D03\u0D3E-\u0D40\u0D46-\u0D48\u0D4A-\u0D4C\u0D57\u0D82\u0D83\u0DCF-\u0DD1\u0DD8-\u0DDF\u0DF2\u0DF3\u0F3E\u0F3F\u0F7F\u102B\u102C\u1031\u1038\u103B\u103C\u1056\u1057\u1062-\u1064\u1067-\u106D\u1083\u1084\u1087-\u108C\u108F\u109A-\u109C\u17B6\u17BE-\u17C5\u17C7\u17C8\u1923-\u1926\u1929-\u192B\u1930\u1931\u1933-\u1938\u1A19\u1A1A\u1A55\u1A57\u1A61\u1A63\u1A64\u1A6D-\u1A72\u1B04\u1B35\u1B3B\u1B3D-\u1B41\u1B43\u1B44\u1B82\u1BA1\u1BA6\u1BA7\u1BAA\u1BE7\u1BEA-\u1BEC\u1BEE\u1BF2\u1BF3\u1C24-\u1C2B\u1C34\u1C35\u1CE1\u1CF2\u1CF3\u302E\u302F\uA823\uA824\uA827\uA880\uA881\uA8B4-\uA8C3\uA952\uA953\uA983\uA9B4\uA9B5\uA9BA\uA9BB\uA9BD-\uA9C0\uAA2F\uAA30\uAA33\uAA34\uAA4D\uAA7B\uAA7D\uAAEB\uAAEE\uAAEF\uAAF5\uABE3\uABE4\uABE6\uABE7\uABE9\uABEA\uABEC',
+        astral: '\uD834[\uDD65\uDD66\uDD6D-\uDD72]|\uD804[\uDC00\uDC02\uDC82\uDCB0-\uDCB2\uDCB7\uDCB8\uDD2C\uDD82\uDDB3-\uDDB5\uDDBF\uDDC0\uDE2C-\uDE2E\uDE32\uDE33\uDE35\uDEE0-\uDEE2\uDF02\uDF03\uDF3E\uDF3F\uDF41-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF57\uDF62\uDF63]|\uD805[\uDCB0-\uDCB2\uDCB9\uDCBB-\uDCBE\uDCC1\uDDAF-\uDDB1\uDDB8-\uDDBB\uDDBE\uDE30-\uDE32\uDE3B\uDE3C\uDE3E\uDEAC\uDEAE\uDEAF\uDEB6\uDF20\uDF21\uDF26]|\uD81B[\uDF51-\uDF7E]'
+    },
+    {
+        name: 'Me',
+        alias: 'Enclosing_Mark',
+        bmp: '\u0488\u0489\u1ABE\u20DD-\u20E0\u20E2-\u20E4\uA670-\uA672'
+    },
+    {
+        name: 'Mn',
+        alias: 'Nonspacing_Mark',
+        bmp: '\u0300-\u036F\u0483-\u0487\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08E3-\u0902\u093A\u093C\u0941-\u0948\u094D\u0951-\u0957\u0962\u0963\u0981\u09BC\u09C1-\u09C4\u09CD\u09E2\u09E3\u0A01\u0A02\u0A3C\u0A41\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81\u0A82\u0ABC\u0AC1-\u0AC5\u0AC7\u0AC8\u0ACD\u0AE2\u0AE3\u0B01\u0B3C\u0B3F\u0B41-\u0B44\u0B4D\u0B56\u0B62\u0B63\u0B82\u0BC0\u0BCD\u0C00\u0C3E-\u0C40\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81\u0CBC\u0CBF\u0CC6\u0CCC\u0CCD\u0CE2\u0CE3\u0D01\u0D41-\u0D44\u0D4D\u0D62\u0D63\u0DCA\u0DD2-\u0DD4\u0DD6\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F71-\u0F7E\u0F80-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102D-\u1030\u1032-\u1037\u1039\u103A\u103D\u103E\u1058\u1059\u105E-\u1060\u1071-\u1074\u1082\u1085\u1086\u108D\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4\u17B5\u17B7-\u17BD\u17C6\u17C9-\u17D3\u17DD\u180B-\u180D\u18A9\u1920-\u1922\u1927\u1928\u1932\u1939-\u193B\u1A17\u1A18\u1A1B\u1A56\u1A58-\u1A5E\u1A60\u1A62\u1A65-\u1A6C\u1A73-\u1A7C\u1A7F\u1AB0-\u1ABD\u1B00-\u1B03\u1B34\u1B36-\u1B3A\u1B3C\u1B42\u1B6B-\u1B73\u1B80\u1B81\u1BA2-\u1BA5\u1BA8\u1BA9\u1BAB-\u1BAD\u1BE6\u1BE8\u1BE9\u1BED\u1BEF-\u1BF1\u1C2C-\u1C33\u1C36\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE0\u1CE2-\u1CE8\u1CED\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302D\u3099\u309A\uA66F\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA825\uA826\uA8C4\uA8E0-\uA8F1\uA926-\uA92D\uA947-\uA951\uA980-\uA982\uA9B3\uA9B6-\uA9B9\uA9BC\uA9E5\uAA29-\uAA2E\uAA31\uAA32\uAA35\uAA36\uAA43\uAA4C\uAA7C\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEC\uAAED\uAAF6\uABE5\uABE8\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F',
+        astral: '\uD805[\uDCB3-\uDCB8\uDCBA\uDCBF\uDCC0\uDCC2\uDCC3\uDDB2-\uDDB5\uDDBC\uDDBD\uDDBF\uDDC0\uDDDC\uDDDD\uDE33-\uDE3A\uDE3D\uDE3F\uDE40\uDEAB\uDEAD\uDEB0-\uDEB5\uDEB7\uDF1D-\uDF1F\uDF22-\uDF25\uDF27-\uDF2B]|\uD834[\uDD67-\uDD69\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD81A[\uDEF0-\uDEF4\uDF30-\uDF36]|\uD81B[\uDF8F-\uDF92]|\uD82F[\uDC9D\uDC9E]|\uD800[\uDDFD\uDEE0\uDF76-\uDF7A]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD802[\uDE01-\uDE03\uDE05\uDE06\uDE0C-\uDE0F\uDE38-\uDE3A\uDE3F\uDEE5\uDEE6]|\uD804[\uDC01\uDC38-\uDC46\uDC7F-\uDC81\uDCB3-\uDCB6\uDCB9\uDCBA\uDD00-\uDD02\uDD27-\uDD2B\uDD2D-\uDD34\uDD73\uDD80\uDD81\uDDB6-\uDDBE\uDDCA-\uDDCC\uDE2F-\uDE31\uDE34\uDE36\uDE37\uDEDF\uDEE3-\uDEEA\uDF00\uDF01\uDF3C\uDF40\uDF66-\uDF6C\uDF70-\uDF74]|\uD83A[\uDCD0-\uDCD6]|\uDB40[\uDD00-\uDDEF]'
+    },
+    {
+        name: 'N',
+        alias: 'Number',
+        bmp: '0-9\xB2\xB3\xB9\xBC-\xBE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0DE6-\u0DEF\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uA9F0-\uA9F9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19',
+        astral: '\uD800[\uDD07-\uDD33\uDD40-\uDD78\uDD8A\uDD8B\uDEE1-\uDEFB\uDF20-\uDF23\uDF41\uDF4A\uDFD1-\uDFD5]|\uD801[\uDCA0-\uDCA9]|\uD803[\uDCFA-\uDCFF\uDE60-\uDE7E]|\uD835[\uDFCE-\uDFFF]|\uD83A[\uDCC7-\uDCCF]|\uD81A[\uDE60-\uDE69\uDF50-\uDF59\uDF5B-\uDF61]|\uD806[\uDCE0-\uDCF2]|\uD804[\uDC52-\uDC6F\uDCF0-\uDCF9\uDD36-\uDD3F\uDDD0-\uDDD9\uDDE1-\uDDF4\uDEF0-\uDEF9]|\uD834[\uDF60-\uDF71]|\uD83C[\uDD00-\uDD0C]|\uD809[\uDC00-\uDC6E]|\uD802[\uDC58-\uDC5F\uDC79-\uDC7F\uDCA7-\uDCAF\uDCFB-\uDCFF\uDD16-\uDD1B\uDDBC\uDDBD\uDDC0-\uDDCF\uDDD2-\uDDFF\uDE40-\uDE47\uDE7D\uDE7E\uDE9D-\uDE9F\uDEEB-\uDEEF\uDF58-\uDF5F\uDF78-\uDF7F\uDFA9-\uDFAF]|\uD805[\uDCD0-\uDCD9\uDE50-\uDE59\uDEC0-\uDEC9\uDF30-\uDF3B]'
+    },
+    {
+        name: 'Nd',
+        alias: 'Decimal_Number',
+        bmp: '0-9\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0BE6-\u0BEF\u0C66-\u0C6F\u0CE6-\u0CEF\u0D66-\u0D6F\u0DE6-\u0DEF\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F29\u1040-\u1049\u1090-\u1099\u17E0-\u17E9\u1810-\u1819\u1946-\u194F\u19D0-\u19D9\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\uA620-\uA629\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uA9F0-\uA9F9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19',
+        astral: '\uD801[\uDCA0-\uDCA9]|\uD835[\uDFCE-\uDFFF]|\uD805[\uDCD0-\uDCD9\uDE50-\uDE59\uDEC0-\uDEC9\uDF30-\uDF39]|\uD806[\uDCE0-\uDCE9]|\uD804[\uDC66-\uDC6F\uDCF0-\uDCF9\uDD36-\uDD3F\uDDD0-\uDDD9\uDEF0-\uDEF9]|\uD81A[\uDE60-\uDE69\uDF50-\uDF59]'
+    },
+    {
+        name: 'Nl',
+        alias: 'Letter_Number',
+        bmp: '\u16EE-\u16F0\u2160-\u2182\u2185-\u2188\u3007\u3021-\u3029\u3038-\u303A\uA6E6-\uA6EF',
+        astral: '\uD809[\uDC00-\uDC6E]|\uD800[\uDD40-\uDD74\uDF41\uDF4A\uDFD1-\uDFD5]'
+    },
+    {
+        name: 'No',
+        alias: 'Other_Number',
+        bmp: '\xB2\xB3\xB9\xBC-\xBE\u09F4-\u09F9\u0B72-\u0B77\u0BF0-\u0BF2\u0C78-\u0C7E\u0D70-\u0D75\u0F2A-\u0F33\u1369-\u137C\u17F0-\u17F9\u19DA\u2070\u2074-\u2079\u2080-\u2089\u2150-\u215F\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA830-\uA835',
+        astral: '\uD804[\uDC52-\uDC65\uDDE1-\uDDF4]|\uD803[\uDCFA-\uDCFF\uDE60-\uDE7E]|\uD83C[\uDD00-\uDD0C]|\uD806[\uDCEA-\uDCF2]|\uD83A[\uDCC7-\uDCCF]|\uD802[\uDC58-\uDC5F\uDC79-\uDC7F\uDCA7-\uDCAF\uDCFB-\uDCFF\uDD16-\uDD1B\uDDBC\uDDBD\uDDC0-\uDDCF\uDDD2-\uDDFF\uDE40-\uDE47\uDE7D\uDE7E\uDE9D-\uDE9F\uDEEB-\uDEEF\uDF58-\uDF5F\uDF78-\uDF7F\uDFA9-\uDFAF]|\uD805[\uDF3A\uDF3B]|\uD81A[\uDF5B-\uDF61]|\uD834[\uDF60-\uDF71]|\uD800[\uDD07-\uDD33\uDD75-\uDD78\uDD8A\uDD8B\uDEE1-\uDEFB\uDF20-\uDF23]'
+    },
+    {
+        name: 'P',
+        alias: 'Punctuation',
+        bmp: '\x21-\x23\x25-\\x2A\x2C-\x2F\x3A\x3B\\x3F\x40\\x5B-\\x5D\x5F\\x7B\x7D\xA1\xA7\xAB\xB6\xB7\xBB\xBF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E42\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65',
+        astral: '\uD802[\uDC57\uDD1F\uDD3F\uDE50-\uDE58\uDE7F\uDEF0-\uDEF6\uDF39-\uDF3F\uDF99-\uDF9C]|\uD809[\uDC70-\uDC74]|\uD805[\uDCC6\uDDC1-\uDDD7\uDE41-\uDE43\uDF3C-\uDF3E]|\uD836[\uDE87-\uDE8B]|\uD801\uDD6F|\uD82F\uDC9F|\uD804[\uDC47-\uDC4D\uDCBB\uDCBC\uDCBE-\uDCC1\uDD40-\uDD43\uDD74\uDD75\uDDC5-\uDDC9\uDDCD\uDDDB\uDDDD-\uDDDF\uDE38-\uDE3D\uDEA9]|\uD800[\uDD00-\uDD02\uDF9F\uDFD0]|\uD81A[\uDE6E\uDE6F\uDEF5\uDF37-\uDF3B\uDF44]'
+    },
+    {
+        name: 'Pc',
+        alias: 'Connector_Punctuation',
+        bmp: '\x5F\u203F\u2040\u2054\uFE33\uFE34\uFE4D-\uFE4F\uFF3F'
+    },
+    {
+        name: 'Pd',
+        alias: 'Dash_Punctuation',
+        bmp: '\\x2D\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D'
+    },
+    {
+        name: 'Pe',
+        alias: 'Close_Punctuation',
+        bmp: '\\x29\\x5D\x7D\u0F3B\u0F3D\u169C\u2046\u207E\u208E\u2309\u230B\u232A\u2769\u276B\u276D\u276F\u2771\u2773\u2775\u27C6\u27E7\u27E9\u27EB\u27ED\u27EF\u2984\u2986\u2988\u298A\u298C\u298E\u2990\u2992\u2994\u2996\u2998\u29D9\u29DB\u29FD\u2E23\u2E25\u2E27\u2E29\u3009\u300B\u300D\u300F\u3011\u3015\u3017\u3019\u301B\u301E\u301F\uFD3E\uFE18\uFE36\uFE38\uFE3A\uFE3C\uFE3E\uFE40\uFE42\uFE44\uFE48\uFE5A\uFE5C\uFE5E\uFF09\uFF3D\uFF5D\uFF60\uFF63'
+    },
+    {
+        name: 'Pf',
+        alias: 'Final_Punctuation',
+        bmp: '\xBB\u2019\u201D\u203A\u2E03\u2E05\u2E0A\u2E0D\u2E1D\u2E21'
+    },
+    {
+        name: 'Pi',
+        alias: 'Initial_Punctuation',
+        bmp: '\xAB\u2018\u201B\u201C\u201F\u2039\u2E02\u2E04\u2E09\u2E0C\u2E1C\u2E20'
+    },
+    {
+        name: 'Po',
+        alias: 'Other_Punctuation',
+        bmp: '\x21-\x23\x25-\x27\\x2A\x2C\\x2E\x2F\x3A\x3B\\x3F\x40\\x5C\xA1\xA7\xB6\xB7\xBF\u037E\u0387\u055A-\u055F\u0589\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u166D\u166E\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u1805\u1807-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2016\u2017\u2020-\u2027\u2030-\u2038\u203B-\u203E\u2041-\u2043\u2047-\u2051\u2053\u2055-\u205E\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00\u2E01\u2E06-\u2E08\u2E0B\u2E0E-\u2E16\u2E18\u2E19\u2E1B\u2E1E\u2E1F\u2E2A-\u2E2E\u2E30-\u2E39\u2E3C-\u2E3F\u2E41\u3001-\u3003\u303D\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFE10-\uFE16\uFE19\uFE30\uFE45\uFE46\uFE49-\uFE4C\uFE50-\uFE52\uFE54-\uFE57\uFE5F-\uFE61\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF07\uFF0A\uFF0C\uFF0E\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3C\uFF61\uFF64\uFF65',
+        astral: '\uD802[\uDC57\uDD1F\uDD3F\uDE50-\uDE58\uDE7F\uDEF0-\uDEF6\uDF39-\uDF3F\uDF99-\uDF9C]|\uD809[\uDC70-\uDC74]|\uD805[\uDCC6\uDDC1-\uDDD7\uDE41-\uDE43\uDF3C-\uDF3E]|\uD836[\uDE87-\uDE8B]|\uD801\uDD6F|\uD82F\uDC9F|\uD804[\uDC47-\uDC4D\uDCBB\uDCBC\uDCBE-\uDCC1\uDD40-\uDD43\uDD74\uDD75\uDDC5-\uDDC9\uDDCD\uDDDB\uDDDD-\uDDDF\uDE38-\uDE3D\uDEA9]|\uD800[\uDD00-\uDD02\uDF9F\uDFD0]|\uD81A[\uDE6E\uDE6F\uDEF5\uDF37-\uDF3B\uDF44]'
+    },
+    {
+        name: 'Ps',
+        alias: 'Open_Punctuation',
+        bmp: '\\x28\\x5B\\x7B\u0F3A\u0F3C\u169B\u201A\u201E\u2045\u207D\u208D\u2308\u230A\u2329\u2768\u276A\u276C\u276E\u2770\u2772\u2774\u27C5\u27E6\u27E8\u27EA\u27EC\u27EE\u2983\u2985\u2987\u2989\u298B\u298D\u298F\u2991\u2993\u2995\u2997\u29D8\u29DA\u29FC\u2E22\u2E24\u2E26\u2E28\u2E42\u3008\u300A\u300C\u300E\u3010\u3014\u3016\u3018\u301A\u301D\uFD3F\uFE17\uFE35\uFE37\uFE39\uFE3B\uFE3D\uFE3F\uFE41\uFE43\uFE47\uFE59\uFE5B\uFE5D\uFF08\uFF3B\uFF5B\uFF5F\uFF62'
+    },
+    {
+        name: 'S',
+        alias: 'Symbol',
+        bmp: '\\x24\\x2B\x3C-\x3E\\x5E\x60\\x7C\x7E\xA2-\xA6\xA8\xA9\xAC\xAE-\xB1\xB4\xB8\xD7\xF7\u02C2-\u02C5\u02D2-\u02DF\u02E5-\u02EB\u02ED\u02EF-\u02FF\u0375\u0384\u0385\u03F6\u0482\u058D-\u058F\u0606-\u0608\u060B\u060E\u060F\u06DE\u06E9\u06FD\u06FE\u07F6\u09F2\u09F3\u09FA\u09FB\u0AF1\u0B70\u0BF3-\u0BFA\u0C7F\u0D79\u0E3F\u0F01-\u0F03\u0F13\u0F15-\u0F17\u0F1A-\u0F1F\u0F34\u0F36\u0F38\u0FBE-\u0FC5\u0FC7-\u0FCC\u0FCE\u0FCF\u0FD5-\u0FD8\u109E\u109F\u1390-\u1399\u17DB\u1940\u19DE-\u19FF\u1B61-\u1B6A\u1B74-\u1B7C\u1FBD\u1FBF-\u1FC1\u1FCD-\u1FCF\u1FDD-\u1FDF\u1FED-\u1FEF\u1FFD\u1FFE\u2044\u2052\u207A-\u207C\u208A-\u208C\u20A0-\u20BE\u2100\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211E-\u2123\u2125\u2127\u2129\u212E\u213A\u213B\u2140-\u2144\u214A-\u214D\u214F\u218A\u218B\u2190-\u2307\u230C-\u2328\u232B-\u23FA\u2400-\u2426\u2440-\u244A\u249C-\u24E9\u2500-\u2767\u2794-\u27C4\u27C7-\u27E5\u27F0-\u2982\u2999-\u29D7\u29DC-\u29FB\u29FE-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2CE5-\u2CEA\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u2FF0-\u2FFB\u3004\u3012\u3013\u3020\u3036\u3037\u303E\u303F\u309B\u309C\u3190\u3191\u3196-\u319F\u31C0-\u31E3\u3200-\u321E\u322A-\u3247\u3250\u3260-\u327F\u328A-\u32B0\u32C0-\u32FE\u3300-\u33FF\u4DC0-\u4DFF\uA490-\uA4C6\uA700-\uA716\uA720\uA721\uA789\uA78A\uA828-\uA82B\uA836-\uA839\uAA77-\uAA79\uAB5B\uFB29\uFBB2-\uFBC1\uFDFC\uFDFD\uFE62\uFE64-\uFE66\uFE69\uFF04\uFF0B\uFF1C-\uFF1E\uFF3E\uFF40\uFF5C\uFF5E\uFFE0-\uFFE6\uFFE8-\uFFEE\uFFFC\uFFFD',
+        astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFF]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD835[\uDEC1\uDEDB\uDEFB\uDF15\uDF35\uDF4F\uDF6F\uDF89\uDFA9\uDFC3]|\uD800[\uDD37-\uDD3F\uDD79-\uDD89\uDD8C\uDD90-\uDD9B\uDDA0\uDDD0-\uDDFC]|\uD82F\uDC9C|\uD805\uDF3F|\uD802[\uDC77\uDC78\uDEC8]|\uD81A[\uDF3C-\uDF3F\uDF45]|\uD836[\uDC00-\uDDFF\uDE37-\uDE3A\uDE6D-\uDE74\uDE76-\uDE83\uDE85\uDE86]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD64\uDD6A-\uDD6C\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDE00-\uDE41\uDE45\uDF00-\uDF56]|\uD83B[\uDEF0\uDEF1]'
+    },
+    {
+        name: 'Sc',
+        alias: 'Currency_Symbol',
+        bmp: '\\x24\xA2-\xA5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\u20A0-\u20BE\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6'
+    },
+    {
+        name: 'Sk',
+        alias: 'Modifier_Symbol',
+        bmp: '\\x5E\x60\xA8\xAF\xB4\xB8\u02C2-\u02C5\u02D2-\u02DF\u02E5-\u02EB\u02ED\u02EF-\u02FF\u0375\u0384\u0385\u1FBD\u1FBF-\u1FC1\u1FCD-\u1FCF\u1FDD-\u1FDF\u1FED-\u1FEF\u1FFD\u1FFE\u309B\u309C\uA700-\uA716\uA720\uA721\uA789\uA78A\uAB5B\uFBB2-\uFBC1\uFF3E\uFF40\uFFE3',
+        astral: '\uD83C[\uDFFB-\uDFFF]'
+    },
+    {
+        name: 'Sm',
+        alias: 'Math_Symbol',
+        bmp: '\\x2B\x3C-\x3E\\x7C\x7E\xAC\xB1\xD7\xF7\u03F6\u0606-\u0608\u2044\u2052\u207A-\u207C\u208A-\u208C\u2118\u2140-\u2144\u214B\u2190-\u2194\u219A\u219B\u21A0\u21A3\u21A6\u21AE\u21CE\u21CF\u21D2\u21D4\u21F4-\u22FF\u2320\u2321\u237C\u239B-\u23B3\u23DC-\u23E1\u25B7\u25C1\u25F8-\u25FF\u266F\u27C0-\u27C4\u27C7-\u27E5\u27F0-\u27FF\u2900-\u2982\u2999-\u29D7\u29DC-\u29FB\u29FE-\u2AFF\u2B30-\u2B44\u2B47-\u2B4C\uFB29\uFE62\uFE64-\uFE66\uFF0B\uFF1C-\uFF1E\uFF5C\uFF5E\uFFE2\uFFE9-\uFFEC',
+        astral: '\uD83B[\uDEF0\uDEF1]|\uD835[\uDEC1\uDEDB\uDEFB\uDF15\uDF35\uDF4F\uDF6F\uDF89\uDFA9\uDFC3]'
+    },
+    {
+        name: 'So',
+        alias: 'Other_Symbol',
+        bmp: '\xA6\xA9\xAE\xB0\u0482\u058D\u058E\u060E\u060F\u06DE\u06E9\u06FD\u06FE\u07F6\u09FA\u0B70\u0BF3-\u0BF8\u0BFA\u0C7F\u0D79\u0F01-\u0F03\u0F13\u0F15-\u0F17\u0F1A-\u0F1F\u0F34\u0F36\u0F38\u0FBE-\u0FC5\u0FC7-\u0FCC\u0FCE\u0FCF\u0FD5-\u0FD8\u109E\u109F\u1390-\u1399\u1940\u19DE-\u19FF\u1B61-\u1B6A\u1B74-\u1B7C\u2100\u2101\u2103-\u2106\u2108\u2109\u2114\u2116\u2117\u211E-\u2123\u2125\u2127\u2129\u212E\u213A\u213B\u214A\u214C\u214D\u214F\u218A\u218B\u2195-\u2199\u219C-\u219F\u21A1\u21A2\u21A4\u21A5\u21A7-\u21AD\u21AF-\u21CD\u21D0\u21D1\u21D3\u21D5-\u21F3\u2300-\u2307\u230C-\u231F\u2322-\u2328\u232B-\u237B\u237D-\u239A\u23B4-\u23DB\u23E2-\u23FA\u2400-\u2426\u2440-\u244A\u249C-\u24E9\u2500-\u25B6\u25B8-\u25C0\u25C2-\u25F7\u2600-\u266E\u2670-\u2767\u2794-\u27BF\u2800-\u28FF\u2B00-\u2B2F\u2B45\u2B46\u2B4D-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2CE5-\u2CEA\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u2FF0-\u2FFB\u3004\u3012\u3013\u3020\u3036\u3037\u303E\u303F\u3190\u3191\u3196-\u319F\u31C0-\u31E3\u3200-\u321E\u322A-\u3247\u3250\u3260-\u327F\u328A-\u32B0\u32C0-\u32FE\u3300-\u33FF\u4DC0-\u4DFF\uA490-\uA4C6\uA828-\uA82B\uA836\uA837\uA839\uAA77-\uAA79\uFDFD\uFFE4\uFFE8\uFFED\uFFEE\uFFFC\uFFFD',
+        astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFA]|\uD800[\uDD37-\uDD3F\uDD79-\uDD89\uDD8C\uDD90-\uDD9B\uDDA0\uDDD0-\uDDFC]|\uD82F\uDC9C|\uD805\uDF3F|\uD802[\uDC77\uDC78\uDEC8]|\uD81A[\uDF3C-\uDF3F\uDF45]|\uD836[\uDC00-\uDDFF\uDE37-\uDE3A\uDE6D-\uDE74\uDE76-\uDE83\uDE85\uDE86]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD64\uDD6A-\uDD6C\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDE00-\uDE41\uDE45\uDF00-\uDF56]'
+    },
+    {
+        name: 'Z',
+        alias: 'Separator',
+        bmp: '\x20\xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000'
+    },
+    {
+        name: 'Zl',
+        alias: 'Line_Separator',
+        bmp: '\u2028'
+    },
+    {
+        name: 'Zp',
+        alias: 'Paragraph_Separator',
+        bmp: '\u2029'
+    },
+    {
+        name: 'Zs',
+        alias: 'Space_Separator',
+        bmp: '\x20\xA0\u1680\u2000-\u200A\u202F\u205F\u3000'
     }
-
-    XRegExp.addUnicodeData([
-        {
-            name: 'C',
-            alias: 'Other',
-            isBmpLast: true,
-            bmp: '\0-\x1F\x7F-\x9F\xAD\u0378\u0379\u0380-\u0383\u038B\u038D\u03A2\u0530\u0557\u0558\u0560\u0588\u058B\u058C\u0590\u05C8-\u05CF\u05EB-\u05EF\u05F5-\u0605\u061C\u061D\u06DD\u070E\u070F\u074B\u074C\u07B2-\u07BF\u07FB-\u07FF\u082E\u082F\u083F\u085C\u085D\u085F-\u089F\u08B5-\u08E2\u0984\u098D\u098E\u0991\u0992\u09A9\u09B1\u09B3-\u09B5\u09BA\u09BB\u09C5\u09C6\u09C9\u09CA\u09CF-\u09D6\u09D8-\u09DB\u09DE\u09E4\u09E5\u09FC-\u0A00\u0A04\u0A0B-\u0A0E\u0A11\u0A12\u0A29\u0A31\u0A34\u0A37\u0A3A\u0A3B\u0A3D\u0A43-\u0A46\u0A49\u0A4A\u0A4E-\u0A50\u0A52-\u0A58\u0A5D\u0A5F-\u0A65\u0A76-\u0A80\u0A84\u0A8E\u0A92\u0AA9\u0AB1\u0AB4\u0ABA\u0ABB\u0AC6\u0ACA\u0ACE\u0ACF\u0AD1-\u0ADF\u0AE4\u0AE5\u0AF2-\u0AF8\u0AFA-\u0B00\u0B04\u0B0D\u0B0E\u0B11\u0B12\u0B29\u0B31\u0B34\u0B3A\u0B3B\u0B45\u0B46\u0B49\u0B4A\u0B4E-\u0B55\u0B58-\u0B5B\u0B5E\u0B64\u0B65\u0B78-\u0B81\u0B84\u0B8B-\u0B8D\u0B91\u0B96-\u0B98\u0B9B\u0B9D\u0BA0-\u0BA2\u0BA5-\u0BA7\u0BAB-\u0BAD\u0BBA-\u0BBD\u0BC3-\u0BC5\u0BC9\u0BCE\u0BCF\u0BD1-\u0BD6\u0BD8-\u0BE5\u0BFB-\u0BFF\u0C04\u0C0D\u0C11\u0C29\u0C3A-\u0C3C\u0C45\u0C49\u0C4E-\u0C54\u0C57\u0C5B-\u0C5F\u0C64\u0C65\u0C70-\u0C77\u0C80\u0C84\u0C8D\u0C91\u0CA9\u0CB4\u0CBA\u0CBB\u0CC5\u0CC9\u0CCE-\u0CD4\u0CD7-\u0CDD\u0CDF\u0CE4\u0CE5\u0CF0\u0CF3-\u0D00\u0D04\u0D0D\u0D11\u0D3B\u0D3C\u0D45\u0D49\u0D4F-\u0D56\u0D58-\u0D5E\u0D64\u0D65\u0D76-\u0D78\u0D80\u0D81\u0D84\u0D97-\u0D99\u0DB2\u0DBC\u0DBE\u0DBF\u0DC7-\u0DC9\u0DCB-\u0DCE\u0DD5\u0DD7\u0DE0-\u0DE5\u0DF0\u0DF1\u0DF5-\u0E00\u0E3B-\u0E3E\u0E5C-\u0E80\u0E83\u0E85\u0E86\u0E89\u0E8B\u0E8C\u0E8E-\u0E93\u0E98\u0EA0\u0EA4\u0EA6\u0EA8\u0EA9\u0EAC\u0EBA\u0EBE\u0EBF\u0EC5\u0EC7\u0ECE\u0ECF\u0EDA\u0EDB\u0EE0-\u0EFF\u0F48\u0F6D-\u0F70\u0F98\u0FBD\u0FCD\u0FDB-\u0FFF\u10C6\u10C8-\u10CC\u10CE\u10CF\u1249\u124E\u124F\u1257\u1259\u125E\u125F\u1289\u128E\u128F\u12B1\u12B6\u12B7\u12BF\u12C1\u12C6\u12C7\u12D7\u1311\u1316\u1317\u135B\u135C\u137D-\u137F\u139A-\u139F\u13F6\u13F7\u13FE\u13FF\u169D-\u169F\u16F9-\u16FF\u170D\u1715-\u171F\u1737-\u173F\u1754-\u175F\u176D\u1771\u1774-\u177F\u17DE\u17DF\u17EA-\u17EF\u17FA-\u17FF\u180E\u180F\u181A-\u181F\u1878-\u187F\u18AB-\u18AF\u18F6-\u18FF\u191F\u192C-\u192F\u193C-\u193F\u1941-\u1943\u196E\u196F\u1975-\u197F\u19AC-\u19AF\u19CA-\u19CF\u19DB-\u19DD\u1A1C\u1A1D\u1A5F\u1A7D\u1A7E\u1A8A-\u1A8F\u1A9A-\u1A9F\u1AAE\u1AAF\u1ABF-\u1AFF\u1B4C-\u1B4F\u1B7D-\u1B7F\u1BF4-\u1BFB\u1C38-\u1C3A\u1C4A-\u1C4C\u1C80-\u1CBF\u1CC8-\u1CCF\u1CF7\u1CFA-\u1CFF\u1DF6-\u1DFB\u1F16\u1F17\u1F1E\u1F1F\u1F46\u1F47\u1F4E\u1F4F\u1F58\u1F5A\u1F5C\u1F5E\u1F7E\u1F7F\u1FB5\u1FC5\u1FD4\u1FD5\u1FDC\u1FF0\u1FF1\u1FF5\u1FFF\u200B-\u200F\u202A-\u202E\u2060-\u206F\u2072\u2073\u208F\u209D-\u209F\u20BF-\u20CF\u20F1-\u20FF\u218C-\u218F\u23FB-\u23FF\u2427-\u243F\u244B-\u245F\u2B74\u2B75\u2B96\u2B97\u2BBA-\u2BBC\u2BC9\u2BD2-\u2BEB\u2BF0-\u2BFF\u2C2F\u2C5F\u2CF4-\u2CF8\u2D26\u2D28-\u2D2C\u2D2E\u2D2F\u2D68-\u2D6E\u2D71-\u2D7E\u2D97-\u2D9F\u2DA7\u2DAF\u2DB7\u2DBF\u2DC7\u2DCF\u2DD7\u2DDF\u2E43-\u2E7F\u2E9A\u2EF4-\u2EFF\u2FD6-\u2FEF\u2FFC-\u2FFF\u3040\u3097\u3098\u3100-\u3104\u312E-\u3130\u318F\u31BB-\u31BF\u31E4-\u31EF\u321F\u32FF\u4DB6-\u4DBF\u9FD6-\u9FFF\uA48D-\uA48F\uA4C7-\uA4CF\uA62C-\uA63F\uA6F8-\uA6FF\uA7AE\uA7AF\uA7B8-\uA7F6\uA82C-\uA82F\uA83A-\uA83F\uA878-\uA87F\uA8C5-\uA8CD\uA8DA-\uA8DF\uA8FE\uA8FF\uA954-\uA95E\uA97D-\uA97F\uA9CE\uA9DA-\uA9DD\uA9FF\uAA37-\uAA3F\uAA4E\uAA4F\uAA5A\uAA5B\uAAC3-\uAADA\uAAF7-\uAB00\uAB07\uAB08\uAB0F\uAB10\uAB17-\uAB1F\uAB27\uAB2F\uAB66-\uAB6F\uABEE\uABEF\uABFA-\uABFF\uD7A4-\uD7AF\uD7C7-\uD7CA\uD7FC-\uF8FF\uFA6E\uFA6F\uFADA-\uFAFF\uFB07-\uFB12\uFB18-\uFB1C\uFB37\uFB3D\uFB3F\uFB42\uFB45\uFBC2-\uFBD2\uFD40-\uFD4F\uFD90\uFD91\uFDC8-\uFDEF\uFDFE\uFDFF\uFE1A-\uFE1F\uFE53\uFE67\uFE6C-\uFE6F\uFE75\uFEFD-\uFF00\uFFBF-\uFFC1\uFFC8\uFFC9\uFFD0\uFFD1\uFFD8\uFFD9\uFFDD-\uFFDF\uFFE7\uFFEF-\uFFFB\uFFFE\uFFFF',
-            astral: '\uD834[\uDCF6-\uDCFF\uDD27\uDD28\uDD73-\uDD7A\uDDE9-\uDDFF\uDE46-\uDEFF\uDF57-\uDF5F\uDF72-\uDFFF]|\uD836[\uDE8C-\uDE9A\uDEA0\uDEB0-\uDFFF]|\uD83C[\uDC2C-\uDC2F\uDC94-\uDC9F\uDCAF\uDCB0\uDCC0\uDCD0\uDCF6-\uDCFF\uDD0D-\uDD0F\uDD2F\uDD6C-\uDD6F\uDD9B-\uDDE5\uDE03-\uDE0F\uDE3B-\uDE3F\uDE49-\uDE4F\uDE52-\uDEFF]|\uD81A[\uDE39-\uDE3F\uDE5F\uDE6A-\uDE6D\uDE70-\uDECF\uDEEE\uDEEF\uDEF6-\uDEFF\uDF46-\uDF4F\uDF5A\uDF62\uDF78-\uDF7C\uDF90-\uDFFF]|\uD809[\uDC6F\uDC75-\uDC7F\uDD44-\uDFFF]|\uD81B[\uDC00-\uDEFF\uDF45-\uDF4F\uDF7F-\uDF8E\uDFA0-\uDFFF]|\uD86E[\uDC1E\uDC1F]|\uD83D[\uDD7A\uDDA4\uDED1-\uDEDF\uDEED-\uDEEF\uDEF4-\uDEFF\uDF74-\uDF7F\uDFD5-\uDFFF]|\uD801[\uDC9E\uDC9F\uDCAA-\uDCFF\uDD28-\uDD2F\uDD64-\uDD6E\uDD70-\uDDFF\uDF37-\uDF3F\uDF56-\uDF5F\uDF68-\uDFFF]|\uD800[\uDC0C\uDC27\uDC3B\uDC3E\uDC4E\uDC4F\uDC5E-\uDC7F\uDCFB-\uDCFF\uDD03-\uDD06\uDD34-\uDD36\uDD8D-\uDD8F\uDD9C-\uDD9F\uDDA1-\uDDCF\uDDFE-\uDE7F\uDE9D-\uDE9F\uDED1-\uDEDF\uDEFC-\uDEFF\uDF24-\uDF2F\uDF4B-\uDF4F\uDF7B-\uDF7F\uDF9E\uDFC4-\uDFC7\uDFD6-\uDFFF]|\uD869[\uDED7-\uDEFF]|\uD83B[\uDC00-\uDDFF\uDE04\uDE20\uDE23\uDE25\uDE26\uDE28\uDE33\uDE38\uDE3A\uDE3C-\uDE41\uDE43-\uDE46\uDE48\uDE4A\uDE4C\uDE50\uDE53\uDE55\uDE56\uDE58\uDE5A\uDE5C\uDE5E\uDE60\uDE63\uDE65\uDE66\uDE6B\uDE73\uDE78\uDE7D\uDE7F\uDE8A\uDE9C-\uDEA0\uDEA4\uDEAA\uDEBC-\uDEEF\uDEF2-\uDFFF]|\uD87E[\uDE1E-\uDFFF]|\uDB40[\uDC00-\uDCFF\uDDF0-\uDFFF]|\uD804[\uDC4E-\uDC51\uDC70-\uDC7E\uDCBD\uDCC2-\uDCCF\uDCE9-\uDCEF\uDCFA-\uDCFF\uDD35\uDD44-\uDD4F\uDD77-\uDD7F\uDDCE\uDDCF\uDDE0\uDDF5-\uDDFF\uDE12\uDE3E-\uDE7F\uDE87\uDE89\uDE8E\uDE9E\uDEAA-\uDEAF\uDEEB-\uDEEF\uDEFA-\uDEFF\uDF04\uDF0D\uDF0E\uDF11\uDF12\uDF29\uDF31\uDF34\uDF3A\uDF3B\uDF45\uDF46\uDF49\uDF4A\uDF4E\uDF4F\uDF51-\uDF56\uDF58-\uDF5C\uDF64\uDF65\uDF6D-\uDF6F\uDF75-\uDFFF]|\uD83A[\uDCC5\uDCC6\uDCD7-\uDFFF]|\uD80D[\uDC2F-\uDFFF]|\uD86D[\uDF35-\uDF3F]|[\uD807\uD80A\uD80B\uD80E-\uD810\uD812-\uD819\uD81C-\uD82B\uD82D\uD82E\uD830-\uD833\uD837-\uD839\uD83F\uD874-\uD87D\uD87F-\uDB3F\uDB41-\uDBFF][\uDC00-\uDFFF]|\uD806[\uDC00-\uDC9F\uDCF3-\uDCFE\uDD00-\uDEBF\uDEF9-\uDFFF]|\uD803[\uDC49-\uDC7F\uDCB3-\uDCBF\uDCF3-\uDCF9\uDD00-\uDE5F\uDE7F-\uDFFF]|\uD835[\uDC55\uDC9D\uDCA0\uDCA1\uDCA3\uDCA4\uDCA7\uDCA8\uDCAD\uDCBA\uDCBC\uDCC4\uDD06\uDD0B\uDD0C\uDD15\uDD1D\uDD3A\uDD3F\uDD45\uDD47-\uDD49\uDD51\uDEA6\uDEA7\uDFCC\uDFCD]|\uD805[\uDC00-\uDC7F\uDCC8-\uDCCF\uDCDA-\uDD7F\uDDB6\uDDB7\uDDDE-\uDDFF\uDE45-\uDE4F\uDE5A-\uDE7F\uDEB8-\uDEBF\uDECA-\uDEFF\uDF1A-\uDF1C\uDF2C-\uDF2F\uDF40-\uDFFF]|\uD802[\uDC06\uDC07\uDC09\uDC36\uDC39-\uDC3B\uDC3D\uDC3E\uDC56\uDC9F-\uDCA6\uDCB0-\uDCDF\uDCF3\uDCF6-\uDCFA\uDD1C-\uDD1E\uDD3A-\uDD3E\uDD40-\uDD7F\uDDB8-\uDDBB\uDDD0\uDDD1\uDE04\uDE07-\uDE0B\uDE14\uDE18\uDE34-\uDE37\uDE3B-\uDE3E\uDE48-\uDE4F\uDE59-\uDE5F\uDEA0-\uDEBF\uDEE7-\uDEEA\uDEF7-\uDEFF\uDF36-\uDF38\uDF56\uDF57\uDF73-\uDF77\uDF92-\uDF98\uDF9D-\uDFA8\uDFB0-\uDFFF]|\uD808[\uDF9A-\uDFFF]|\uD82F[\uDC6B-\uDC6F\uDC7D-\uDC7F\uDC89-\uDC8F\uDC9A\uDC9B\uDCA0-\uDFFF]|\uD82C[\uDC02-\uDFFF]|\uD811[\uDE47-\uDFFF]|\uD83E[\uDC0C-\uDC0F\uDC48-\uDC4F\uDC5A-\uDC5F\uDC88-\uDC8F\uDCAE-\uDD0F\uDD19-\uDD7F\uDD85-\uDDBF\uDDC1-\uDFFF]|\uD873[\uDEA2-\uDFFF]'
-        },
-        {
-            name: 'Cc',
-            alias: 'Control',
-            bmp: '\0-\x1F\x7F-\x9F'
-        },
-        {
-            name: 'Cf',
-            alias: 'Format',
-            bmp: '\xAD\u0600-\u0605\u061C\u06DD\u070F\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB',
-            astral: '\uDB40[\uDC01\uDC20-\uDC7F]|\uD82F[\uDCA0-\uDCA3]|\uD834[\uDD73-\uDD7A]|\uD804\uDCBD'
-        },
-        {
-            name: 'Cn',
-            alias: 'Unassigned',
-            bmp: '\u0378\u0379\u0380-\u0383\u038B\u038D\u03A2\u0530\u0557\u0558\u0560\u0588\u058B\u058C\u0590\u05C8-\u05CF\u05EB-\u05EF\u05F5-\u05FF\u061D\u070E\u074B\u074C\u07B2-\u07BF\u07FB-\u07FF\u082E\u082F\u083F\u085C\u085D\u085F-\u089F\u08B5-\u08E2\u0984\u098D\u098E\u0991\u0992\u09A9\u09B1\u09B3-\u09B5\u09BA\u09BB\u09C5\u09C6\u09C9\u09CA\u09CF-\u09D6\u09D8-\u09DB\u09DE\u09E4\u09E5\u09FC-\u0A00\u0A04\u0A0B-\u0A0E\u0A11\u0A12\u0A29\u0A31\u0A34\u0A37\u0A3A\u0A3B\u0A3D\u0A43-\u0A46\u0A49\u0A4A\u0A4E-\u0A50\u0A52-\u0A58\u0A5D\u0A5F-\u0A65\u0A76-\u0A80\u0A84\u0A8E\u0A92\u0AA9\u0AB1\u0AB4\u0ABA\u0ABB\u0AC6\u0ACA\u0ACE\u0ACF\u0AD1-\u0ADF\u0AE4\u0AE5\u0AF2-\u0AF8\u0AFA-\u0B00\u0B04\u0B0D\u0B0E\u0B11\u0B12\u0B29\u0B31\u0B34\u0B3A\u0B3B\u0B45\u0B46\u0B49\u0B4A\u0B4E-\u0B55\u0B58-\u0B5B\u0B5E\u0B64\u0B65\u0B78-\u0B81\u0B84\u0B8B-\u0B8D\u0B91\u0B96-\u0B98\u0B9B\u0B9D\u0BA0-\u0BA2\u0BA5-\u0BA7\u0BAB-\u0BAD\u0BBA-\u0BBD\u0BC3-\u0BC5\u0BC9\u0BCE\u0BCF\u0BD1-\u0BD6\u0BD8-\u0BE5\u0BFB-\u0BFF\u0C04\u0C0D\u0C11\u0C29\u0C3A-\u0C3C\u0C45\u0C49\u0C4E-\u0C54\u0C57\u0C5B-\u0C5F\u0C64\u0C65\u0C70-\u0C77\u0C80\u0C84\u0C8D\u0C91\u0CA9\u0CB4\u0CBA\u0CBB\u0CC5\u0CC9\u0CCE-\u0CD4\u0CD7-\u0CDD\u0CDF\u0CE4\u0CE5\u0CF0\u0CF3-\u0D00\u0D04\u0D0D\u0D11\u0D3B\u0D3C\u0D45\u0D49\u0D4F-\u0D56\u0D58-\u0D5E\u0D64\u0D65\u0D76-\u0D78\u0D80\u0D81\u0D84\u0D97-\u0D99\u0DB2\u0DBC\u0DBE\u0DBF\u0DC7-\u0DC9\u0DCB-\u0DCE\u0DD5\u0DD7\u0DE0-\u0DE5\u0DF0\u0DF1\u0DF5-\u0E00\u0E3B-\u0E3E\u0E5C-\u0E80\u0E83\u0E85\u0E86\u0E89\u0E8B\u0E8C\u0E8E-\u0E93\u0E98\u0EA0\u0EA4\u0EA6\u0EA8\u0EA9\u0EAC\u0EBA\u0EBE\u0EBF\u0EC5\u0EC7\u0ECE\u0ECF\u0EDA\u0EDB\u0EE0-\u0EFF\u0F48\u0F6D-\u0F70\u0F98\u0FBD\u0FCD\u0FDB-\u0FFF\u10C6\u10C8-\u10CC\u10CE\u10CF\u1249\u124E\u124F\u1257\u1259\u125E\u125F\u1289\u128E\u128F\u12B1\u12B6\u12B7\u12BF\u12C1\u12C6\u12C7\u12D7\u1311\u1316\u1317\u135B\u135C\u137D-\u137F\u139A-\u139F\u13F6\u13F7\u13FE\u13FF\u169D-\u169F\u16F9-\u16FF\u170D\u1715-\u171F\u1737-\u173F\u1754-\u175F\u176D\u1771\u1774-\u177F\u17DE\u17DF\u17EA-\u17EF\u17FA-\u17FF\u180F\u181A-\u181F\u1878-\u187F\u18AB-\u18AF\u18F6-\u18FF\u191F\u192C-\u192F\u193C-\u193F\u1941-\u1943\u196E\u196F\u1975-\u197F\u19AC-\u19AF\u19CA-\u19CF\u19DB-\u19DD\u1A1C\u1A1D\u1A5F\u1A7D\u1A7E\u1A8A-\u1A8F\u1A9A-\u1A9F\u1AAE\u1AAF\u1ABF-\u1AFF\u1B4C-\u1B4F\u1B7D-\u1B7F\u1BF4-\u1BFB\u1C38-\u1C3A\u1C4A-\u1C4C\u1C80-\u1CBF\u1CC8-\u1CCF\u1CF7\u1CFA-\u1CFF\u1DF6-\u1DFB\u1F16\u1F17\u1F1E\u1F1F\u1F46\u1F47\u1F4E\u1F4F\u1F58\u1F5A\u1F5C\u1F5E\u1F7E\u1F7F\u1FB5\u1FC5\u1FD4\u1FD5\u1FDC\u1FF0\u1FF1\u1FF5\u1FFF\u2065\u2072\u2073\u208F\u209D-\u209F\u20BF-\u20CF\u20F1-\u20FF\u218C-\u218F\u23FB-\u23FF\u2427-\u243F\u244B-\u245F\u2B74\u2B75\u2B96\u2B97\u2BBA-\u2BBC\u2BC9\u2BD2-\u2BEB\u2BF0-\u2BFF\u2C2F\u2C5F\u2CF4-\u2CF8\u2D26\u2D28-\u2D2C\u2D2E\u2D2F\u2D68-\u2D6E\u2D71-\u2D7E\u2D97-\u2D9F\u2DA7\u2DAF\u2DB7\u2DBF\u2DC7\u2DCF\u2DD7\u2DDF\u2E43-\u2E7F\u2E9A\u2EF4-\u2EFF\u2FD6-\u2FEF\u2FFC-\u2FFF\u3040\u3097\u3098\u3100-\u3104\u312E-\u3130\u318F\u31BB-\u31BF\u31E4-\u31EF\u321F\u32FF\u4DB6-\u4DBF\u9FD6-\u9FFF\uA48D-\uA48F\uA4C7-\uA4CF\uA62C-\uA63F\uA6F8-\uA6FF\uA7AE\uA7AF\uA7B8-\uA7F6\uA82C-\uA82F\uA83A-\uA83F\uA878-\uA87F\uA8C5-\uA8CD\uA8DA-\uA8DF\uA8FE\uA8FF\uA954-\uA95E\uA97D-\uA97F\uA9CE\uA9DA-\uA9DD\uA9FF\uAA37-\uAA3F\uAA4E\uAA4F\uAA5A\uAA5B\uAAC3-\uAADA\uAAF7-\uAB00\uAB07\uAB08\uAB0F\uAB10\uAB17-\uAB1F\uAB27\uAB2F\uAB66-\uAB6F\uABEE\uABEF\uABFA-\uABFF\uD7A4-\uD7AF\uD7C7-\uD7CA\uD7FC-\uD7FF\uFA6E\uFA6F\uFADA-\uFAFF\uFB07-\uFB12\uFB18-\uFB1C\uFB37\uFB3D\uFB3F\uFB42\uFB45\uFBC2-\uFBD2\uFD40-\uFD4F\uFD90\uFD91\uFDC8-\uFDEF\uFDFE\uFDFF\uFE1A-\uFE1F\uFE53\uFE67\uFE6C-\uFE6F\uFE75\uFEFD\uFEFE\uFF00\uFFBF-\uFFC1\uFFC8\uFFC9\uFFD0\uFFD1\uFFD8\uFFD9\uFFDD-\uFFDF\uFFE7\uFFEF-\uFFF8\uFFFE\uFFFF',
-            astral: '\uDB40[\uDC00\uDC02-\uDC1F\uDC80-\uDCFF\uDDF0-\uDFFF]|\uD834[\uDCF6-\uDCFF\uDD27\uDD28\uDDE9-\uDDFF\uDE46-\uDEFF\uDF57-\uDF5F\uDF72-\uDFFF]|\uD83C[\uDC2C-\uDC2F\uDC94-\uDC9F\uDCAF\uDCB0\uDCC0\uDCD0\uDCF6-\uDCFF\uDD0D-\uDD0F\uDD2F\uDD6C-\uDD6F\uDD9B-\uDDE5\uDE03-\uDE0F\uDE3B-\uDE3F\uDE49-\uDE4F\uDE52-\uDEFF]|\uD81A[\uDE39-\uDE3F\uDE5F\uDE6A-\uDE6D\uDE70-\uDECF\uDEEE\uDEEF\uDEF6-\uDEFF\uDF46-\uDF4F\uDF5A\uDF62\uDF78-\uDF7C\uDF90-\uDFFF]|\uD809[\uDC6F\uDC75-\uDC7F\uDD44-\uDFFF]|\uD81B[\uDC00-\uDEFF\uDF45-\uDF4F\uDF7F-\uDF8E\uDFA0-\uDFFF]|\uD86E[\uDC1E\uDC1F]|\uD83D[\uDD7A\uDDA4\uDED1-\uDEDF\uDEED-\uDEEF\uDEF4-\uDEFF\uDF74-\uDF7F\uDFD5-\uDFFF]|\uD801[\uDC9E\uDC9F\uDCAA-\uDCFF\uDD28-\uDD2F\uDD64-\uDD6E\uDD70-\uDDFF\uDF37-\uDF3F\uDF56-\uDF5F\uDF68-\uDFFF]|\uD800[\uDC0C\uDC27\uDC3B\uDC3E\uDC4E\uDC4F\uDC5E-\uDC7F\uDCFB-\uDCFF\uDD03-\uDD06\uDD34-\uDD36\uDD8D-\uDD8F\uDD9C-\uDD9F\uDDA1-\uDDCF\uDDFE-\uDE7F\uDE9D-\uDE9F\uDED1-\uDEDF\uDEFC-\uDEFF\uDF24-\uDF2F\uDF4B-\uDF4F\uDF7B-\uDF7F\uDF9E\uDFC4-\uDFC7\uDFD6-\uDFFF]|\uD869[\uDED7-\uDEFF]|\uD83B[\uDC00-\uDDFF\uDE04\uDE20\uDE23\uDE25\uDE26\uDE28\uDE33\uDE38\uDE3A\uDE3C-\uDE41\uDE43-\uDE46\uDE48\uDE4A\uDE4C\uDE50\uDE53\uDE55\uDE56\uDE58\uDE5A\uDE5C\uDE5E\uDE60\uDE63\uDE65\uDE66\uDE6B\uDE73\uDE78\uDE7D\uDE7F\uDE8A\uDE9C-\uDEA0\uDEA4\uDEAA\uDEBC-\uDEEF\uDEF2-\uDFFF]|[\uDBBF\uDBFF][\uDFFE\uDFFF]|\uD87E[\uDE1E-\uDFFF]|\uD82F[\uDC6B-\uDC6F\uDC7D-\uDC7F\uDC89-\uDC8F\uDC9A\uDC9B\uDCA4-\uDFFF]|\uD83A[\uDCC5\uDCC6\uDCD7-\uDFFF]|\uD80D[\uDC2F-\uDFFF]|\uD86D[\uDF35-\uDF3F]|[\uD807\uD80A\uD80B\uD80E-\uD810\uD812-\uD819\uD81C-\uD82B\uD82D\uD82E\uD830-\uD833\uD837-\uD839\uD83F\uD874-\uD87D\uD87F-\uDB3F\uDB41-\uDB7F][\uDC00-\uDFFF]|\uD806[\uDC00-\uDC9F\uDCF3-\uDCFE\uDD00-\uDEBF\uDEF9-\uDFFF]|\uD803[\uDC49-\uDC7F\uDCB3-\uDCBF\uDCF3-\uDCF9\uDD00-\uDE5F\uDE7F-\uDFFF]|\uD835[\uDC55\uDC9D\uDCA0\uDCA1\uDCA3\uDCA4\uDCA7\uDCA8\uDCAD\uDCBA\uDCBC\uDCC4\uDD06\uDD0B\uDD0C\uDD15\uDD1D\uDD3A\uDD3F\uDD45\uDD47-\uDD49\uDD51\uDEA6\uDEA7\uDFCC\uDFCD]|\uD836[\uDE8C-\uDE9A\uDEA0\uDEB0-\uDFFF]|\uD805[\uDC00-\uDC7F\uDCC8-\uDCCF\uDCDA-\uDD7F\uDDB6\uDDB7\uDDDE-\uDDFF\uDE45-\uDE4F\uDE5A-\uDE7F\uDEB8-\uDEBF\uDECA-\uDEFF\uDF1A-\uDF1C\uDF2C-\uDF2F\uDF40-\uDFFF]|\uD802[\uDC06\uDC07\uDC09\uDC36\uDC39-\uDC3B\uDC3D\uDC3E\uDC56\uDC9F-\uDCA6\uDCB0-\uDCDF\uDCF3\uDCF6-\uDCFA\uDD1C-\uDD1E\uDD3A-\uDD3E\uDD40-\uDD7F\uDDB8-\uDDBB\uDDD0\uDDD1\uDE04\uDE07-\uDE0B\uDE14\uDE18\uDE34-\uDE37\uDE3B-\uDE3E\uDE48-\uDE4F\uDE59-\uDE5F\uDEA0-\uDEBF\uDEE7-\uDEEA\uDEF7-\uDEFF\uDF36-\uDF38\uDF56\uDF57\uDF73-\uDF77\uDF92-\uDF98\uDF9D-\uDFA8\uDFB0-\uDFFF]|\uD808[\uDF9A-\uDFFF]|\uD804[\uDC4E-\uDC51\uDC70-\uDC7E\uDCC2-\uDCCF\uDCE9-\uDCEF\uDCFA-\uDCFF\uDD35\uDD44-\uDD4F\uDD77-\uDD7F\uDDCE\uDDCF\uDDE0\uDDF5-\uDDFF\uDE12\uDE3E-\uDE7F\uDE87\uDE89\uDE8E\uDE9E\uDEAA-\uDEAF\uDEEB-\uDEEF\uDEFA-\uDEFF\uDF04\uDF0D\uDF0E\uDF11\uDF12\uDF29\uDF31\uDF34\uDF3A\uDF3B\uDF45\uDF46\uDF49\uDF4A\uDF4E\uDF4F\uDF51-\uDF56\uDF58-\uDF5C\uDF64\uDF65\uDF6D-\uDF6F\uDF75-\uDFFF]|\uD82C[\uDC02-\uDFFF]|\uD811[\uDE47-\uDFFF]|\uD83E[\uDC0C-\uDC0F\uDC48-\uDC4F\uDC5A-\uDC5F\uDC88-\uDC8F\uDCAE-\uDD0F\uDD19-\uDD7F\uDD85-\uDDBF\uDDC1-\uDFFF]|\uD873[\uDEA2-\uDFFF]'
-        },
-        {
-            name: 'Co',
-            alias: 'Private_Use',
-            bmp: '\uE000-\uF8FF',
-            astral: '[\uDB80-\uDBBE\uDBC0-\uDBFE][\uDC00-\uDFFF]|[\uDBBF\uDBFF][\uDC00-\uDFFD]'
-        },
-        {
-            name: 'Cs',
-            alias: 'Surrogate',
-            bmp: '\uD800-\uDFFF'
-        },
-        {
-            name: 'L',
-            alias: 'Letter',
-            bmp: 'A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05D0-\u05EA\u05F0-\u05F2\u0620-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06E5\u06E6\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0815\u081A\u0824\u0828\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0971-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E46\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EC6\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16F1-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17D7\u17DC\u1820-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1AA7\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u1D00-\u1DBF\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2183\u2184\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2E2F\u3005\u3006\u3031-\u3035\u303B\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA67F-\uA69D\uA6A0-\uA6E5\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEA\uAAF2-\uAAF4\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
-            astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD83A[\uDC00-\uDCC4]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF40\uDF42-\uDF49\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|\uD81B[\uDF00-\uDF44\uDF50\uDF93-\uDF9F]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD809[\uDC80-\uDD43]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD811[\uDC00-\uDE46]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD82C[\uDC00\uDC01]|\uD873[\uDC00-\uDEA1]'
-        },
-        {
-            name: 'Ll',
-            alias: 'Lowercase_Letter',
-            bmp: 'a-z\xB5\xDF-\xF6\xF8-\xFF\u0101\u0103\u0105\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131\u0133\u0135\u0137\u0138\u013A\u013C\u013E\u0140\u0142\u0144\u0146\u0148\u0149\u014B\u014D\u014F\u0151\u0153\u0155\u0157\u0159\u015B\u015D\u015F\u0161\u0163\u0165\u0167\u0169\u016B\u016D\u016F\u0171\u0173\u0175\u0177\u017A\u017C\u017E-\u0180\u0183\u0185\u0188\u018C\u018D\u0192\u0195\u0199-\u019B\u019E\u01A1\u01A3\u01A5\u01A8\u01AA\u01AB\u01AD\u01B0\u01B4\u01B6\u01B9\u01BA\u01BD-\u01BF\u01C6\u01C9\u01CC\u01CE\u01D0\u01D2\u01D4\u01D6\u01D8\u01DA\u01DC\u01DD\u01DF\u01E1\u01E3\u01E5\u01E7\u01E9\u01EB\u01ED\u01EF\u01F0\u01F3\u01F5\u01F9\u01FB\u01FD\u01FF\u0201\u0203\u0205\u0207\u0209\u020B\u020D\u020F\u0211\u0213\u0215\u0217\u0219\u021B\u021D\u021F\u0221\u0223\u0225\u0227\u0229\u022B\u022D\u022F\u0231\u0233-\u0239\u023C\u023F\u0240\u0242\u0247\u0249\u024B\u024D\u024F-\u0293\u0295-\u02AF\u0371\u0373\u0377\u037B-\u037D\u0390\u03AC-\u03CE\u03D0\u03D1\u03D5-\u03D7\u03D9\u03DB\u03DD\u03DF\u03E1\u03E3\u03E5\u03E7\u03E9\u03EB\u03ED\u03EF-\u03F3\u03F5\u03F8\u03FB\u03FC\u0430-\u045F\u0461\u0463\u0465\u0467\u0469\u046B\u046D\u046F\u0471\u0473\u0475\u0477\u0479\u047B\u047D\u047F\u0481\u048B\u048D\u048F\u0491\u0493\u0495\u0497\u0499\u049B\u049D\u049F\u04A1\u04A3\u04A5\u04A7\u04A9\u04AB\u04AD\u04AF\u04B1\u04B3\u04B5\u04B7\u04B9\u04BB\u04BD\u04BF\u04C2\u04C4\u04C6\u04C8\u04CA\u04CC\u04CE\u04CF\u04D1\u04D3\u04D5\u04D7\u04D9\u04DB\u04DD\u04DF\u04E1\u04E3\u04E5\u04E7\u04E9\u04EB\u04ED\u04EF\u04F1\u04F3\u04F5\u04F7\u04F9\u04FB\u04FD\u04FF\u0501\u0503\u0505\u0507\u0509\u050B\u050D\u050F\u0511\u0513\u0515\u0517\u0519\u051B\u051D\u051F\u0521\u0523\u0525\u0527\u0529\u052B\u052D\u052F\u0561-\u0587\u13F8-\u13FD\u1D00-\u1D2B\u1D6B-\u1D77\u1D79-\u1D9A\u1E01\u1E03\u1E05\u1E07\u1E09\u1E0B\u1E0D\u1E0F\u1E11\u1E13\u1E15\u1E17\u1E19\u1E1B\u1E1D\u1E1F\u1E21\u1E23\u1E25\u1E27\u1E29\u1E2B\u1E2D\u1E2F\u1E31\u1E33\u1E35\u1E37\u1E39\u1E3B\u1E3D\u1E3F\u1E41\u1E43\u1E45\u1E47\u1E49\u1E4B\u1E4D\u1E4F\u1E51\u1E53\u1E55\u1E57\u1E59\u1E5B\u1E5D\u1E5F\u1E61\u1E63\u1E65\u1E67\u1E69\u1E6B\u1E6D\u1E6F\u1E71\u1E73\u1E75\u1E77\u1E79\u1E7B\u1E7D\u1E7F\u1E81\u1E83\u1E85\u1E87\u1E89\u1E8B\u1E8D\u1E8F\u1E91\u1E93\u1E95-\u1E9D\u1E9F\u1EA1\u1EA3\u1EA5\u1EA7\u1EA9\u1EAB\u1EAD\u1EAF\u1EB1\u1EB3\u1EB5\u1EB7\u1EB9\u1EBB\u1EBD\u1EBF\u1EC1\u1EC3\u1EC5\u1EC7\u1EC9\u1ECB\u1ECD\u1ECF\u1ED1\u1ED3\u1ED5\u1ED7\u1ED9\u1EDB\u1EDD\u1EDF\u1EE1\u1EE3\u1EE5\u1EE7\u1EE9\u1EEB\u1EED\u1EEF\u1EF1\u1EF3\u1EF5\u1EF7\u1EF9\u1EFB\u1EFD\u1EFF-\u1F07\u1F10-\u1F15\u1F20-\u1F27\u1F30-\u1F37\u1F40-\u1F45\u1F50-\u1F57\u1F60-\u1F67\u1F70-\u1F7D\u1F80-\u1F87\u1F90-\u1F97\u1FA0-\u1FA7\u1FB0-\u1FB4\u1FB6\u1FB7\u1FBE\u1FC2-\u1FC4\u1FC6\u1FC7\u1FD0-\u1FD3\u1FD6\u1FD7\u1FE0-\u1FE7\u1FF2-\u1FF4\u1FF6\u1FF7\u210A\u210E\u210F\u2113\u212F\u2134\u2139\u213C\u213D\u2146-\u2149\u214E\u2184\u2C30-\u2C5E\u2C61\u2C65\u2C66\u2C68\u2C6A\u2C6C\u2C71\u2C73\u2C74\u2C76-\u2C7B\u2C81\u2C83\u2C85\u2C87\u2C89\u2C8B\u2C8D\u2C8F\u2C91\u2C93\u2C95\u2C97\u2C99\u2C9B\u2C9D\u2C9F\u2CA1\u2CA3\u2CA5\u2CA7\u2CA9\u2CAB\u2CAD\u2CAF\u2CB1\u2CB3\u2CB5\u2CB7\u2CB9\u2CBB\u2CBD\u2CBF\u2CC1\u2CC3\u2CC5\u2CC7\u2CC9\u2CCB\u2CCD\u2CCF\u2CD1\u2CD3\u2CD5\u2CD7\u2CD9\u2CDB\u2CDD\u2CDF\u2CE1\u2CE3\u2CE4\u2CEC\u2CEE\u2CF3\u2D00-\u2D25\u2D27\u2D2D\uA641\uA643\uA645\uA647\uA649\uA64B\uA64D\uA64F\uA651\uA653\uA655\uA657\uA659\uA65B\uA65D\uA65F\uA661\uA663\uA665\uA667\uA669\uA66B\uA66D\uA681\uA683\uA685\uA687\uA689\uA68B\uA68D\uA68F\uA691\uA693\uA695\uA697\uA699\uA69B\uA723\uA725\uA727\uA729\uA72B\uA72D\uA72F-\uA731\uA733\uA735\uA737\uA739\uA73B\uA73D\uA73F\uA741\uA743\uA745\uA747\uA749\uA74B\uA74D\uA74F\uA751\uA753\uA755\uA757\uA759\uA75B\uA75D\uA75F\uA761\uA763\uA765\uA767\uA769\uA76B\uA76D\uA76F\uA771-\uA778\uA77A\uA77C\uA77F\uA781\uA783\uA785\uA787\uA78C\uA78E\uA791\uA793-\uA795\uA797\uA799\uA79B\uA79D\uA79F\uA7A1\uA7A3\uA7A5\uA7A7\uA7A9\uA7B5\uA7B7\uA7FA\uAB30-\uAB5A\uAB60-\uAB65\uAB70-\uABBF\uFB00-\uFB06\uFB13-\uFB17\uFF41-\uFF5A',
-            astral: '\uD803[\uDCC0-\uDCF2]|\uD835[\uDC1A-\uDC33\uDC4E-\uDC54\uDC56-\uDC67\uDC82-\uDC9B\uDCB6-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDCCF\uDCEA-\uDD03\uDD1E-\uDD37\uDD52-\uDD6B\uDD86-\uDD9F\uDDBA-\uDDD3\uDDEE-\uDE07\uDE22-\uDE3B\uDE56-\uDE6F\uDE8A-\uDEA5\uDEC2-\uDEDA\uDEDC-\uDEE1\uDEFC-\uDF14\uDF16-\uDF1B\uDF36-\uDF4E\uDF50-\uDF55\uDF70-\uDF88\uDF8A-\uDF8F\uDFAA-\uDFC2\uDFC4-\uDFC9\uDFCB]|\uD801[\uDC28-\uDC4F]|\uD806[\uDCC0-\uDCDF]'
-        },
-        {
-            name: 'Lm',
-            alias: 'Modifier_Letter',
-            bmp: '\u02B0-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0374\u037A\u0559\u0640\u06E5\u06E6\u07F4\u07F5\u07FA\u081A\u0824\u0828\u0971\u0E46\u0EC6\u10FC\u17D7\u1843\u1AA7\u1C78-\u1C7D\u1D2C-\u1D6A\u1D78\u1D9B-\u1DBF\u2071\u207F\u2090-\u209C\u2C7C\u2C7D\u2D6F\u2E2F\u3005\u3031-\u3035\u303B\u309D\u309E\u30FC-\u30FE\uA015\uA4F8-\uA4FD\uA60C\uA67F\uA69C\uA69D\uA717-\uA71F\uA770\uA788\uA7F8\uA7F9\uA9CF\uA9E6\uAA70\uAADD\uAAF3\uAAF4\uAB5C-\uAB5F\uFF70\uFF9E\uFF9F',
-            astral: '\uD81A[\uDF40-\uDF43]|\uD81B[\uDF93-\uDF9F]'
-        },
-        {
-            name: 'Lo',
-            alias: 'Other_Letter',
-            bmp: '\xAA\xBA\u01BB\u01C0-\u01C3\u0294\u05D0-\u05EA\u05F0-\u05F2\u0620-\u063F\u0641-\u064A\u066E\u066F\u0671-\u06D3\u06D5\u06EE\u06EF\u06FA-\u06FC\u06FF\u0710\u0712-\u072F\u074D-\u07A5\u07B1\u07CA-\u07EA\u0800-\u0815\u0840-\u0858\u08A0-\u08B4\u0904-\u0939\u093D\u0950\u0958-\u0961\u0972-\u0980\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD\u09CE\u09DC\u09DD\u09DF-\u09E1\u09F0\u09F1\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A59-\u0A5C\u0A5E\u0A72-\u0A74\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD\u0AD0\u0AE0\u0AE1\u0AF9\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D\u0B5C\u0B5D\u0B5F-\u0B61\u0B71\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BD0\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D\u0C58-\u0C5A\u0C60\u0C61\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD\u0CDE\u0CE0\u0CE1\u0CF1\u0CF2\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D\u0D4E\u0D5F-\u0D61\u0D7A-\u0D7F\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0E01-\u0E30\u0E32\u0E33\u0E40-\u0E45\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB0\u0EB2\u0EB3\u0EBD\u0EC0-\u0EC4\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F88-\u0F8C\u1000-\u102A\u103F\u1050-\u1055\u105A-\u105D\u1061\u1065\u1066\u106E-\u1070\u1075-\u1081\u108E\u10D0-\u10FA\u10FD-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u1380-\u138F\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16F1-\u16F8\u1700-\u170C\u170E-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176C\u176E-\u1770\u1780-\u17B3\u17DC\u1820-\u1842\u1844-\u1877\u1880-\u18A8\u18AA\u18B0-\u18F5\u1900-\u191E\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A16\u1A20-\u1A54\u1B05-\u1B33\u1B45-\u1B4B\u1B83-\u1BA0\u1BAE\u1BAF\u1BBA-\u1BE5\u1C00-\u1C23\u1C4D-\u1C4F\u1C5A-\u1C77\u1CE9-\u1CEC\u1CEE-\u1CF1\u1CF5\u1CF6\u2135-\u2138\u2D30-\u2D67\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u3006\u303C\u3041-\u3096\u309F\u30A1-\u30FA\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA014\uA016-\uA48C\uA4D0-\uA4F7\uA500-\uA60B\uA610-\uA61F\uA62A\uA62B\uA66E\uA6A0-\uA6E5\uA78F\uA7F7\uA7FB-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA822\uA840-\uA873\uA882-\uA8B3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA925\uA930-\uA946\uA960-\uA97C\uA984-\uA9B2\uA9E0-\uA9E4\uA9E7-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA28\uAA40-\uAA42\uAA44-\uAA4B\uAA60-\uAA6F\uAA71-\uAA76\uAA7A\uAA7E-\uAAAF\uAAB1\uAAB5\uAAB6\uAAB9-\uAABD\uAAC0\uAAC2\uAADB\uAADC\uAAE0-\uAAEA\uAAF2\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uABC0-\uABE2\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB1D\uFB1F-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF66-\uFF6F\uFF71-\uFF9D\uFFA0-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
-            astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD83A[\uDC00-\uDCC4]|\uD803[\uDC00-\uDC48]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF40\uDF42-\uDF49\uDF50-\uDF75\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|\uD81B[\uDF00-\uDF44\uDF50]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD805[\uDC80-\uDCAF\uDCC4\uDCC5\uDCC7\uDD80-\uDDAE\uDDD8-\uDDDB\uDE00-\uDE2F\uDE44\uDE80-\uDEAA\uDF00-\uDF19]|\uD806[\uDCFF\uDEC0-\uDEF8]|\uD809[\uDC80-\uDD43]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00\uDE10-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD804[\uDC03-\uDC37\uDC83-\uDCAF\uDCD0-\uDCE8\uDD03-\uDD26\uDD50-\uDD72\uDD76\uDD83-\uDDB2\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE2B\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEDE\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D\uDF50\uDF5D-\uDF61]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF2F\uDF63-\uDF77\uDF7D-\uDF8F]|\uD801[\uDC50-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD811[\uDC00-\uDE46]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99]|\uD82C[\uDC00\uDC01]|\uD873[\uDC00-\uDEA1]'
-        },
-        {
-            name: 'Lt',
-            alias: 'Titlecase_Letter',
-            bmp: '\u01C5\u01C8\u01CB\u01F2\u1F88-\u1F8F\u1F98-\u1F9F\u1FA8-\u1FAF\u1FBC\u1FCC\u1FFC'
-        },
-        {
-            name: 'Lu',
-            alias: 'Uppercase_Letter',
-            bmp: 'A-Z\xC0-\xD6\xD8-\xDE\u0100\u0102\u0104\u0106\u0108\u010A\u010C\u010E\u0110\u0112\u0114\u0116\u0118\u011A\u011C\u011E\u0120\u0122\u0124\u0126\u0128\u012A\u012C\u012E\u0130\u0132\u0134\u0136\u0139\u013B\u013D\u013F\u0141\u0143\u0145\u0147\u014A\u014C\u014E\u0150\u0152\u0154\u0156\u0158\u015A\u015C\u015E\u0160\u0162\u0164\u0166\u0168\u016A\u016C\u016E\u0170\u0172\u0174\u0176\u0178\u0179\u017B\u017D\u0181\u0182\u0184\u0186\u0187\u0189-\u018B\u018E-\u0191\u0193\u0194\u0196-\u0198\u019C\u019D\u019F\u01A0\u01A2\u01A4\u01A6\u01A7\u01A9\u01AC\u01AE\u01AF\u01B1-\u01B3\u01B5\u01B7\u01B8\u01BC\u01C4\u01C7\u01CA\u01CD\u01CF\u01D1\u01D3\u01D5\u01D7\u01D9\u01DB\u01DE\u01E0\u01E2\u01E4\u01E6\u01E8\u01EA\u01EC\u01EE\u01F1\u01F4\u01F6-\u01F8\u01FA\u01FC\u01FE\u0200\u0202\u0204\u0206\u0208\u020A\u020C\u020E\u0210\u0212\u0214\u0216\u0218\u021A\u021C\u021E\u0220\u0222\u0224\u0226\u0228\u022A\u022C\u022E\u0230\u0232\u023A\u023B\u023D\u023E\u0241\u0243-\u0246\u0248\u024A\u024C\u024E\u0370\u0372\u0376\u037F\u0386\u0388-\u038A\u038C\u038E\u038F\u0391-\u03A1\u03A3-\u03AB\u03CF\u03D2-\u03D4\u03D8\u03DA\u03DC\u03DE\u03E0\u03E2\u03E4\u03E6\u03E8\u03EA\u03EC\u03EE\u03F4\u03F7\u03F9\u03FA\u03FD-\u042F\u0460\u0462\u0464\u0466\u0468\u046A\u046C\u046E\u0470\u0472\u0474\u0476\u0478\u047A\u047C\u047E\u0480\u048A\u048C\u048E\u0490\u0492\u0494\u0496\u0498\u049A\u049C\u049E\u04A0\u04A2\u04A4\u04A6\u04A8\u04AA\u04AC\u04AE\u04B0\u04B2\u04B4\u04B6\u04B8\u04BA\u04BC\u04BE\u04C0\u04C1\u04C3\u04C5\u04C7\u04C9\u04CB\u04CD\u04D0\u04D2\u04D4\u04D6\u04D8\u04DA\u04DC\u04DE\u04E0\u04E2\u04E4\u04E6\u04E8\u04EA\u04EC\u04EE\u04F0\u04F2\u04F4\u04F6\u04F8\u04FA\u04FC\u04FE\u0500\u0502\u0504\u0506\u0508\u050A\u050C\u050E\u0510\u0512\u0514\u0516\u0518\u051A\u051C\u051E\u0520\u0522\u0524\u0526\u0528\u052A\u052C\u052E\u0531-\u0556\u10A0-\u10C5\u10C7\u10CD\u13A0-\u13F5\u1E00\u1E02\u1E04\u1E06\u1E08\u1E0A\u1E0C\u1E0E\u1E10\u1E12\u1E14\u1E16\u1E18\u1E1A\u1E1C\u1E1E\u1E20\u1E22\u1E24\u1E26\u1E28\u1E2A\u1E2C\u1E2E\u1E30\u1E32\u1E34\u1E36\u1E38\u1E3A\u1E3C\u1E3E\u1E40\u1E42\u1E44\u1E46\u1E48\u1E4A\u1E4C\u1E4E\u1E50\u1E52\u1E54\u1E56\u1E58\u1E5A\u1E5C\u1E5E\u1E60\u1E62\u1E64\u1E66\u1E68\u1E6A\u1E6C\u1E6E\u1E70\u1E72\u1E74\u1E76\u1E78\u1E7A\u1E7C\u1E7E\u1E80\u1E82\u1E84\u1E86\u1E88\u1E8A\u1E8C\u1E8E\u1E90\u1E92\u1E94\u1E9E\u1EA0\u1EA2\u1EA4\u1EA6\u1EA8\u1EAA\u1EAC\u1EAE\u1EB0\u1EB2\u1EB4\u1EB6\u1EB8\u1EBA\u1EBC\u1EBE\u1EC0\u1EC2\u1EC4\u1EC6\u1EC8\u1ECA\u1ECC\u1ECE\u1ED0\u1ED2\u1ED4\u1ED6\u1ED8\u1EDA\u1EDC\u1EDE\u1EE0\u1EE2\u1EE4\u1EE6\u1EE8\u1EEA\u1EEC\u1EEE\u1EF0\u1EF2\u1EF4\u1EF6\u1EF8\u1EFA\u1EFC\u1EFE\u1F08-\u1F0F\u1F18-\u1F1D\u1F28-\u1F2F\u1F38-\u1F3F\u1F48-\u1F4D\u1F59\u1F5B\u1F5D\u1F5F\u1F68-\u1F6F\u1FB8-\u1FBB\u1FC8-\u1FCB\u1FD8-\u1FDB\u1FE8-\u1FEC\u1FF8-\u1FFB\u2102\u2107\u210B-\u210D\u2110-\u2112\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u2130-\u2133\u213E\u213F\u2145\u2183\u2C00-\u2C2E\u2C60\u2C62-\u2C64\u2C67\u2C69\u2C6B\u2C6D-\u2C70\u2C72\u2C75\u2C7E-\u2C80\u2C82\u2C84\u2C86\u2C88\u2C8A\u2C8C\u2C8E\u2C90\u2C92\u2C94\u2C96\u2C98\u2C9A\u2C9C\u2C9E\u2CA0\u2CA2\u2CA4\u2CA6\u2CA8\u2CAA\u2CAC\u2CAE\u2CB0\u2CB2\u2CB4\u2CB6\u2CB8\u2CBA\u2CBC\u2CBE\u2CC0\u2CC2\u2CC4\u2CC6\u2CC8\u2CCA\u2CCC\u2CCE\u2CD0\u2CD2\u2CD4\u2CD6\u2CD8\u2CDA\u2CDC\u2CDE\u2CE0\u2CE2\u2CEB\u2CED\u2CF2\uA640\uA642\uA644\uA646\uA648\uA64A\uA64C\uA64E\uA650\uA652\uA654\uA656\uA658\uA65A\uA65C\uA65E\uA660\uA662\uA664\uA666\uA668\uA66A\uA66C\uA680\uA682\uA684\uA686\uA688\uA68A\uA68C\uA68E\uA690\uA692\uA694\uA696\uA698\uA69A\uA722\uA724\uA726\uA728\uA72A\uA72C\uA72E\uA732\uA734\uA736\uA738\uA73A\uA73C\uA73E\uA740\uA742\uA744\uA746\uA748\uA74A\uA74C\uA74E\uA750\uA752\uA754\uA756\uA758\uA75A\uA75C\uA75E\uA760\uA762\uA764\uA766\uA768\uA76A\uA76C\uA76E\uA779\uA77B\uA77D\uA77E\uA780\uA782\uA784\uA786\uA78B\uA78D\uA790\uA792\uA796\uA798\uA79A\uA79C\uA79E\uA7A0\uA7A2\uA7A4\uA7A6\uA7A8\uA7AA-\uA7AD\uA7B0-\uA7B4\uA7B6\uFF21-\uFF3A',
-            astral: '\uD806[\uDCA0-\uDCBF]|\uD803[\uDC80-\uDCB2]|\uD801[\uDC00-\uDC27]|\uD835[\uDC00-\uDC19\uDC34-\uDC4D\uDC68-\uDC81\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB5\uDCD0-\uDCE9\uDD04\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD38\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD6C-\uDD85\uDDA0-\uDDB9\uDDD4-\uDDED\uDE08-\uDE21\uDE3C-\uDE55\uDE70-\uDE89\uDEA8-\uDEC0\uDEE2-\uDEFA\uDF1C-\uDF34\uDF56-\uDF6E\uDF90-\uDFA8\uDFCA]'
-        },
-        {
-            name: 'M',
-            alias: 'Mark',
-            bmp: '\u0300-\u036F\u0483-\u0489\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08E3-\u0903\u093A-\u093C\u093E-\u094F\u0951-\u0957\u0962\u0963\u0981-\u0983\u09BC\u09BE-\u09C4\u09C7\u09C8\u09CB-\u09CD\u09D7\u09E2\u09E3\u0A01-\u0A03\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81-\u0A83\u0ABC\u0ABE-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AE2\u0AE3\u0B01-\u0B03\u0B3C\u0B3E-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B62\u0B63\u0B82\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD7\u0C00-\u0C03\u0C3E-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81-\u0C83\u0CBC\u0CBE-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CE2\u0CE3\u0D01-\u0D03\u0D3E-\u0D44\u0D46-\u0D48\u0D4A-\u0D4D\u0D57\u0D62\u0D63\u0D82\u0D83\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F3E\u0F3F\u0F71-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102B-\u103E\u1056-\u1059\u105E-\u1060\u1062-\u1064\u1067-\u106D\u1071-\u1074\u1082-\u108D\u108F\u109A-\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4-\u17D3\u17DD\u180B-\u180D\u18A9\u1920-\u192B\u1930-\u193B\u1A17-\u1A1B\u1A55-\u1A5E\u1A60-\u1A7C\u1A7F\u1AB0-\u1ABE\u1B00-\u1B04\u1B34-\u1B44\u1B6B-\u1B73\u1B80-\u1B82\u1BA1-\u1BAD\u1BE6-\u1BF3\u1C24-\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE8\u1CED\u1CF2-\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u20D0-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302F\u3099\u309A\uA66F-\uA672\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA823-\uA827\uA880\uA881\uA8B4-\uA8C4\uA8E0-\uA8F1\uA926-\uA92D\uA947-\uA953\uA980-\uA983\uA9B3-\uA9C0\uA9E5\uAA29-\uAA36\uAA43\uAA4C\uAA4D\uAA7B-\uAA7D\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEB-\uAAEF\uAAF5\uAAF6\uABE3-\uABEA\uABEC\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F',
-            astral: '\uD805[\uDCB0-\uDCC3\uDDAF-\uDDB5\uDDB8-\uDDC0\uDDDC\uDDDD\uDE30-\uDE40\uDEAB-\uDEB7\uDF1D-\uDF2B]|\uD834[\uDD65-\uDD69\uDD6D-\uDD72\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD804[\uDC00-\uDC02\uDC38-\uDC46\uDC7F-\uDC82\uDCB0-\uDCBA\uDD00-\uDD02\uDD27-\uDD34\uDD73\uDD80-\uDD82\uDDB3-\uDDC0\uDDCA-\uDDCC\uDE2C-\uDE37\uDEDF-\uDEEA\uDF00-\uDF03\uDF3C\uDF3E-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF57\uDF62\uDF63\uDF66-\uDF6C\uDF70-\uDF74]|\uD81B[\uDF51-\uDF7E\uDF8F-\uDF92]|\uD81A[\uDEF0-\uDEF4\uDF30-\uDF36]|\uD82F[\uDC9D\uDC9E]|\uD800[\uDDFD\uDEE0\uDF76-\uDF7A]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD802[\uDE01-\uDE03\uDE05\uDE06\uDE0C-\uDE0F\uDE38-\uDE3A\uDE3F\uDEE5\uDEE6]|\uD83A[\uDCD0-\uDCD6]|\uDB40[\uDD00-\uDDEF]'
-        },
-        {
-            name: 'Mc',
-            alias: 'Spacing_Mark',
-            bmp: '\u0903\u093B\u093E-\u0940\u0949-\u094C\u094E\u094F\u0982\u0983\u09BE-\u09C0\u09C7\u09C8\u09CB\u09CC\u09D7\u0A03\u0A3E-\u0A40\u0A83\u0ABE-\u0AC0\u0AC9\u0ACB\u0ACC\u0B02\u0B03\u0B3E\u0B40\u0B47\u0B48\u0B4B\u0B4C\u0B57\u0BBE\u0BBF\u0BC1\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCC\u0BD7\u0C01-\u0C03\u0C41-\u0C44\u0C82\u0C83\u0CBE\u0CC0-\u0CC4\u0CC7\u0CC8\u0CCA\u0CCB\u0CD5\u0CD6\u0D02\u0D03\u0D3E-\u0D40\u0D46-\u0D48\u0D4A-\u0D4C\u0D57\u0D82\u0D83\u0DCF-\u0DD1\u0DD8-\u0DDF\u0DF2\u0DF3\u0F3E\u0F3F\u0F7F\u102B\u102C\u1031\u1038\u103B\u103C\u1056\u1057\u1062-\u1064\u1067-\u106D\u1083\u1084\u1087-\u108C\u108F\u109A-\u109C\u17B6\u17BE-\u17C5\u17C7\u17C8\u1923-\u1926\u1929-\u192B\u1930\u1931\u1933-\u1938\u1A19\u1A1A\u1A55\u1A57\u1A61\u1A63\u1A64\u1A6D-\u1A72\u1B04\u1B35\u1B3B\u1B3D-\u1B41\u1B43\u1B44\u1B82\u1BA1\u1BA6\u1BA7\u1BAA\u1BE7\u1BEA-\u1BEC\u1BEE\u1BF2\u1BF3\u1C24-\u1C2B\u1C34\u1C35\u1CE1\u1CF2\u1CF3\u302E\u302F\uA823\uA824\uA827\uA880\uA881\uA8B4-\uA8C3\uA952\uA953\uA983\uA9B4\uA9B5\uA9BA\uA9BB\uA9BD-\uA9C0\uAA2F\uAA30\uAA33\uAA34\uAA4D\uAA7B\uAA7D\uAAEB\uAAEE\uAAEF\uAAF5\uABE3\uABE4\uABE6\uABE7\uABE9\uABEA\uABEC',
-            astral: '\uD834[\uDD65\uDD66\uDD6D-\uDD72]|\uD804[\uDC00\uDC02\uDC82\uDCB0-\uDCB2\uDCB7\uDCB8\uDD2C\uDD82\uDDB3-\uDDB5\uDDBF\uDDC0\uDE2C-\uDE2E\uDE32\uDE33\uDE35\uDEE0-\uDEE2\uDF02\uDF03\uDF3E\uDF3F\uDF41-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF57\uDF62\uDF63]|\uD805[\uDCB0-\uDCB2\uDCB9\uDCBB-\uDCBE\uDCC1\uDDAF-\uDDB1\uDDB8-\uDDBB\uDDBE\uDE30-\uDE32\uDE3B\uDE3C\uDE3E\uDEAC\uDEAE\uDEAF\uDEB6\uDF20\uDF21\uDF26]|\uD81B[\uDF51-\uDF7E]'
-        },
-        {
-            name: 'Me',
-            alias: 'Enclosing_Mark',
-            bmp: '\u0488\u0489\u1ABE\u20DD-\u20E0\u20E2-\u20E4\uA670-\uA672'
-        },
-        {
-            name: 'Mn',
-            alias: 'Nonspacing_Mark',
-            bmp: '\u0300-\u036F\u0483-\u0487\u0591-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0711\u0730-\u074A\u07A6-\u07B0\u07EB-\u07F3\u0816-\u0819\u081B-\u0823\u0825-\u0827\u0829-\u082D\u0859-\u085B\u08E3-\u0902\u093A\u093C\u0941-\u0948\u094D\u0951-\u0957\u0962\u0963\u0981\u09BC\u09C1-\u09C4\u09CD\u09E2\u09E3\u0A01\u0A02\u0A3C\u0A41\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A70\u0A71\u0A75\u0A81\u0A82\u0ABC\u0AC1-\u0AC5\u0AC7\u0AC8\u0ACD\u0AE2\u0AE3\u0B01\u0B3C\u0B3F\u0B41-\u0B44\u0B4D\u0B56\u0B62\u0B63\u0B82\u0BC0\u0BCD\u0C00\u0C3E-\u0C40\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C62\u0C63\u0C81\u0CBC\u0CBF\u0CC6\u0CCC\u0CCD\u0CE2\u0CE3\u0D01\u0D41-\u0D44\u0D4D\u0D62\u0D63\u0DCA\u0DD2-\u0DD4\u0DD6\u0E31\u0E34-\u0E3A\u0E47-\u0E4E\u0EB1\u0EB4-\u0EB9\u0EBB\u0EBC\u0EC8-\u0ECD\u0F18\u0F19\u0F35\u0F37\u0F39\u0F71-\u0F7E\u0F80-\u0F84\u0F86\u0F87\u0F8D-\u0F97\u0F99-\u0FBC\u0FC6\u102D-\u1030\u1032-\u1037\u1039\u103A\u103D\u103E\u1058\u1059\u105E-\u1060\u1071-\u1074\u1082\u1085\u1086\u108D\u109D\u135D-\u135F\u1712-\u1714\u1732-\u1734\u1752\u1753\u1772\u1773\u17B4\u17B5\u17B7-\u17BD\u17C6\u17C9-\u17D3\u17DD\u180B-\u180D\u18A9\u1920-\u1922\u1927\u1928\u1932\u1939-\u193B\u1A17\u1A18\u1A1B\u1A56\u1A58-\u1A5E\u1A60\u1A62\u1A65-\u1A6C\u1A73-\u1A7C\u1A7F\u1AB0-\u1ABD\u1B00-\u1B03\u1B34\u1B36-\u1B3A\u1B3C\u1B42\u1B6B-\u1B73\u1B80\u1B81\u1BA2-\u1BA5\u1BA8\u1BA9\u1BAB-\u1BAD\u1BE6\u1BE8\u1BE9\u1BED\u1BEF-\u1BF1\u1C2C-\u1C33\u1C36\u1C37\u1CD0-\u1CD2\u1CD4-\u1CE0\u1CE2-\u1CE8\u1CED\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u20D0-\u20DC\u20E1\u20E5-\u20F0\u2CEF-\u2CF1\u2D7F\u2DE0-\u2DFF\u302A-\u302D\u3099\u309A\uA66F\uA674-\uA67D\uA69E\uA69F\uA6F0\uA6F1\uA802\uA806\uA80B\uA825\uA826\uA8C4\uA8E0-\uA8F1\uA926-\uA92D\uA947-\uA951\uA980-\uA982\uA9B3\uA9B6-\uA9B9\uA9BC\uA9E5\uAA29-\uAA2E\uAA31\uAA32\uAA35\uAA36\uAA43\uAA4C\uAA7C\uAAB0\uAAB2-\uAAB4\uAAB7\uAAB8\uAABE\uAABF\uAAC1\uAAEC\uAAED\uAAF6\uABE5\uABE8\uABED\uFB1E\uFE00-\uFE0F\uFE20-\uFE2F',
-            astral: '\uD805[\uDCB3-\uDCB8\uDCBA\uDCBF\uDCC0\uDCC2\uDCC3\uDDB2-\uDDB5\uDDBC\uDDBD\uDDBF\uDDC0\uDDDC\uDDDD\uDE33-\uDE3A\uDE3D\uDE3F\uDE40\uDEAB\uDEAD\uDEB0-\uDEB5\uDEB7\uDF1D-\uDF1F\uDF22-\uDF25\uDF27-\uDF2B]|\uD834[\uDD67-\uDD69\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD\uDE42-\uDE44]|\uD81A[\uDEF0-\uDEF4\uDF30-\uDF36]|\uD81B[\uDF8F-\uDF92]|\uD82F[\uDC9D\uDC9E]|\uD800[\uDDFD\uDEE0\uDF76-\uDF7A]|\uD836[\uDE00-\uDE36\uDE3B-\uDE6C\uDE75\uDE84\uDE9B-\uDE9F\uDEA1-\uDEAF]|\uD802[\uDE01-\uDE03\uDE05\uDE06\uDE0C-\uDE0F\uDE38-\uDE3A\uDE3F\uDEE5\uDEE6]|\uD804[\uDC01\uDC38-\uDC46\uDC7F-\uDC81\uDCB3-\uDCB6\uDCB9\uDCBA\uDD00-\uDD02\uDD27-\uDD2B\uDD2D-\uDD34\uDD73\uDD80\uDD81\uDDB6-\uDDBE\uDDCA-\uDDCC\uDE2F-\uDE31\uDE34\uDE36\uDE37\uDEDF\uDEE3-\uDEEA\uDF00\uDF01\uDF3C\uDF40\uDF66-\uDF6C\uDF70-\uDF74]|\uD83A[\uDCD0-\uDCD6]|\uDB40[\uDD00-\uDDEF]'
-        },
-        {
-            name: 'N',
-            alias: 'Number',
-            bmp: '0-9\xB2\xB3\xB9\xBC-\xBE\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u09F4-\u09F9\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0B72-\u0B77\u0BE6-\u0BF2\u0C66-\u0C6F\u0C78-\u0C7E\u0CE6-\u0CEF\u0D66-\u0D75\u0DE6-\u0DEF\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F33\u1040-\u1049\u1090-\u1099\u1369-\u137C\u16EE-\u16F0\u17E0-\u17E9\u17F0-\u17F9\u1810-\u1819\u1946-\u194F\u19D0-\u19DA\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\u2070\u2074-\u2079\u2080-\u2089\u2150-\u2182\u2185-\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3007\u3021-\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uA9F0-\uA9F9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19',
-            astral: '\uD800[\uDD07-\uDD33\uDD40-\uDD78\uDD8A\uDD8B\uDEE1-\uDEFB\uDF20-\uDF23\uDF41\uDF4A\uDFD1-\uDFD5]|\uD801[\uDCA0-\uDCA9]|\uD803[\uDCFA-\uDCFF\uDE60-\uDE7E]|\uD835[\uDFCE-\uDFFF]|\uD83A[\uDCC7-\uDCCF]|\uD81A[\uDE60-\uDE69\uDF50-\uDF59\uDF5B-\uDF61]|\uD806[\uDCE0-\uDCF2]|\uD804[\uDC52-\uDC6F\uDCF0-\uDCF9\uDD36-\uDD3F\uDDD0-\uDDD9\uDDE1-\uDDF4\uDEF0-\uDEF9]|\uD834[\uDF60-\uDF71]|\uD83C[\uDD00-\uDD0C]|\uD809[\uDC00-\uDC6E]|\uD802[\uDC58-\uDC5F\uDC79-\uDC7F\uDCA7-\uDCAF\uDCFB-\uDCFF\uDD16-\uDD1B\uDDBC\uDDBD\uDDC0-\uDDCF\uDDD2-\uDDFF\uDE40-\uDE47\uDE7D\uDE7E\uDE9D-\uDE9F\uDEEB-\uDEEF\uDF58-\uDF5F\uDF78-\uDF7F\uDFA9-\uDFAF]|\uD805[\uDCD0-\uDCD9\uDE50-\uDE59\uDEC0-\uDEC9\uDF30-\uDF3B]'
-        },
-        {
-            name: 'Nd',
-            alias: 'Decimal_Number',
-            bmp: '0-9\u0660-\u0669\u06F0-\u06F9\u07C0-\u07C9\u0966-\u096F\u09E6-\u09EF\u0A66-\u0A6F\u0AE6-\u0AEF\u0B66-\u0B6F\u0BE6-\u0BEF\u0C66-\u0C6F\u0CE6-\u0CEF\u0D66-\u0D6F\u0DE6-\u0DEF\u0E50-\u0E59\u0ED0-\u0ED9\u0F20-\u0F29\u1040-\u1049\u1090-\u1099\u17E0-\u17E9\u1810-\u1819\u1946-\u194F\u19D0-\u19D9\u1A80-\u1A89\u1A90-\u1A99\u1B50-\u1B59\u1BB0-\u1BB9\u1C40-\u1C49\u1C50-\u1C59\uA620-\uA629\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uA9F0-\uA9F9\uAA50-\uAA59\uABF0-\uABF9\uFF10-\uFF19',
-            astral: '\uD801[\uDCA0-\uDCA9]|\uD835[\uDFCE-\uDFFF]|\uD805[\uDCD0-\uDCD9\uDE50-\uDE59\uDEC0-\uDEC9\uDF30-\uDF39]|\uD806[\uDCE0-\uDCE9]|\uD804[\uDC66-\uDC6F\uDCF0-\uDCF9\uDD36-\uDD3F\uDDD0-\uDDD9\uDEF0-\uDEF9]|\uD81A[\uDE60-\uDE69\uDF50-\uDF59]'
-        },
-        {
-            name: 'Nl',
-            alias: 'Letter_Number',
-            bmp: '\u16EE-\u16F0\u2160-\u2182\u2185-\u2188\u3007\u3021-\u3029\u3038-\u303A\uA6E6-\uA6EF',
-            astral: '\uD809[\uDC00-\uDC6E]|\uD800[\uDD40-\uDD74\uDF41\uDF4A\uDFD1-\uDFD5]'
-        },
-        {
-            name: 'No',
-            alias: 'Other_Number',
-            bmp: '\xB2\xB3\xB9\xBC-\xBE\u09F4-\u09F9\u0B72-\u0B77\u0BF0-\u0BF2\u0C78-\u0C7E\u0D70-\u0D75\u0F2A-\u0F33\u1369-\u137C\u17F0-\u17F9\u19DA\u2070\u2074-\u2079\u2080-\u2089\u2150-\u215F\u2189\u2460-\u249B\u24EA-\u24FF\u2776-\u2793\u2CFD\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-\u325F\u3280-\u3289\u32B1-\u32BF\uA830-\uA835',
-            astral: '\uD804[\uDC52-\uDC65\uDDE1-\uDDF4]|\uD803[\uDCFA-\uDCFF\uDE60-\uDE7E]|\uD83C[\uDD00-\uDD0C]|\uD806[\uDCEA-\uDCF2]|\uD83A[\uDCC7-\uDCCF]|\uD802[\uDC58-\uDC5F\uDC79-\uDC7F\uDCA7-\uDCAF\uDCFB-\uDCFF\uDD16-\uDD1B\uDDBC\uDDBD\uDDC0-\uDDCF\uDDD2-\uDDFF\uDE40-\uDE47\uDE7D\uDE7E\uDE9D-\uDE9F\uDEEB-\uDEEF\uDF58-\uDF5F\uDF78-\uDF7F\uDFA9-\uDFAF]|\uD805[\uDF3A\uDF3B]|\uD81A[\uDF5B-\uDF61]|\uD834[\uDF60-\uDF71]|\uD800[\uDD07-\uDD33\uDD75-\uDD78\uDD8A\uDD8B\uDEE1-\uDEFB\uDF20-\uDF23]'
-        },
-        {
-            name: 'P',
-            alias: 'Punctuation',
-            bmp: '\x21-\x23\x25-\\x2A\x2C-\x2F\x3A\x3B\\x3F\x40\\x5B-\\x5D\x5F\\x7B\x7D\xA1\xA7\xAB\xB6\xB7\xBB\xBF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166D\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E42\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65',
-            astral: '\uD802[\uDC57\uDD1F\uDD3F\uDE50-\uDE58\uDE7F\uDEF0-\uDEF6\uDF39-\uDF3F\uDF99-\uDF9C]|\uD809[\uDC70-\uDC74]|\uD805[\uDCC6\uDDC1-\uDDD7\uDE41-\uDE43\uDF3C-\uDF3E]|\uD836[\uDE87-\uDE8B]|\uD801\uDD6F|\uD82F\uDC9F|\uD804[\uDC47-\uDC4D\uDCBB\uDCBC\uDCBE-\uDCC1\uDD40-\uDD43\uDD74\uDD75\uDDC5-\uDDC9\uDDCD\uDDDB\uDDDD-\uDDDF\uDE38-\uDE3D\uDEA9]|\uD800[\uDD00-\uDD02\uDF9F\uDFD0]|\uD81A[\uDE6E\uDE6F\uDEF5\uDF37-\uDF3B\uDF44]'
-        },
-        {
-            name: 'Pc',
-            alias: 'Connector_Punctuation',
-            bmp: '\x5F\u203F\u2040\u2054\uFE33\uFE34\uFE4D-\uFE4F\uFF3F'
-        },
-        {
-            name: 'Pd',
-            alias: 'Dash_Punctuation',
-            bmp: '\\x2D\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D'
-        },
-        {
-            name: 'Pe',
-            alias: 'Close_Punctuation',
-            bmp: '\\x29\\x5D\x7D\u0F3B\u0F3D\u169C\u2046\u207E\u208E\u2309\u230B\u232A\u2769\u276B\u276D\u276F\u2771\u2773\u2775\u27C6\u27E7\u27E9\u27EB\u27ED\u27EF\u2984\u2986\u2988\u298A\u298C\u298E\u2990\u2992\u2994\u2996\u2998\u29D9\u29DB\u29FD\u2E23\u2E25\u2E27\u2E29\u3009\u300B\u300D\u300F\u3011\u3015\u3017\u3019\u301B\u301E\u301F\uFD3E\uFE18\uFE36\uFE38\uFE3A\uFE3C\uFE3E\uFE40\uFE42\uFE44\uFE48\uFE5A\uFE5C\uFE5E\uFF09\uFF3D\uFF5D\uFF60\uFF63'
-        },
-        {
-            name: 'Pf',
-            alias: 'Final_Punctuation',
-            bmp: '\xBB\u2019\u201D\u203A\u2E03\u2E05\u2E0A\u2E0D\u2E1D\u2E21'
-        },
-        {
-            name: 'Pi',
-            alias: 'Initial_Punctuation',
-            bmp: '\xAB\u2018\u201B\u201C\u201F\u2039\u2E02\u2E04\u2E09\u2E0C\u2E1C\u2E20'
-        },
-        {
-            name: 'Po',
-            alias: 'Other_Punctuation',
-            bmp: '\x21-\x23\x25-\x27\\x2A\x2C\\x2E\x2F\x3A\x3B\\x3F\x40\\x5C\xA1\xA7\xB6\xB7\xBF\u037E\u0387\u055A-\u055F\u0589\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u0AF0\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u166D\u166E\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u1805\u1807-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2016\u2017\u2020-\u2027\u2030-\u2038\u203B-\u203E\u2041-\u2043\u2047-\u2051\u2053\u2055-\u205E\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00\u2E01\u2E06-\u2E08\u2E0B\u2E0E-\u2E16\u2E18\u2E19\u2E1B\u2E1E\u2E1F\u2E2A-\u2E2E\u2E30-\u2E39\u2E3C-\u2E3F\u2E41\u3001-\u3003\u303D\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFE10-\uFE16\uFE19\uFE30\uFE45\uFE46\uFE49-\uFE4C\uFE50-\uFE52\uFE54-\uFE57\uFE5F-\uFE61\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF07\uFF0A\uFF0C\uFF0E\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3C\uFF61\uFF64\uFF65',
-            astral: '\uD802[\uDC57\uDD1F\uDD3F\uDE50-\uDE58\uDE7F\uDEF0-\uDEF6\uDF39-\uDF3F\uDF99-\uDF9C]|\uD809[\uDC70-\uDC74]|\uD805[\uDCC6\uDDC1-\uDDD7\uDE41-\uDE43\uDF3C-\uDF3E]|\uD836[\uDE87-\uDE8B]|\uD801\uDD6F|\uD82F\uDC9F|\uD804[\uDC47-\uDC4D\uDCBB\uDCBC\uDCBE-\uDCC1\uDD40-\uDD43\uDD74\uDD75\uDDC5-\uDDC9\uDDCD\uDDDB\uDDDD-\uDDDF\uDE38-\uDE3D\uDEA9]|\uD800[\uDD00-\uDD02\uDF9F\uDFD0]|\uD81A[\uDE6E\uDE6F\uDEF5\uDF37-\uDF3B\uDF44]'
-        },
-        {
-            name: 'Ps',
-            alias: 'Open_Punctuation',
-            bmp: '\\x28\\x5B\\x7B\u0F3A\u0F3C\u169B\u201A\u201E\u2045\u207D\u208D\u2308\u230A\u2329\u2768\u276A\u276C\u276E\u2770\u2772\u2774\u27C5\u27E6\u27E8\u27EA\u27EC\u27EE\u2983\u2985\u2987\u2989\u298B\u298D\u298F\u2991\u2993\u2995\u2997\u29D8\u29DA\u29FC\u2E22\u2E24\u2E26\u2E28\u2E42\u3008\u300A\u300C\u300E\u3010\u3014\u3016\u3018\u301A\u301D\uFD3F\uFE17\uFE35\uFE37\uFE39\uFE3B\uFE3D\uFE3F\uFE41\uFE43\uFE47\uFE59\uFE5B\uFE5D\uFF08\uFF3B\uFF5B\uFF5F\uFF62'
-        },
-        {
-            name: 'S',
-            alias: 'Symbol',
-            bmp: '\\x24\\x2B\x3C-\x3E\\x5E\x60\\x7C\x7E\xA2-\xA6\xA8\xA9\xAC\xAE-\xB1\xB4\xB8\xD7\xF7\u02C2-\u02C5\u02D2-\u02DF\u02E5-\u02EB\u02ED\u02EF-\u02FF\u0375\u0384\u0385\u03F6\u0482\u058D-\u058F\u0606-\u0608\u060B\u060E\u060F\u06DE\u06E9\u06FD\u06FE\u07F6\u09F2\u09F3\u09FA\u09FB\u0AF1\u0B70\u0BF3-\u0BFA\u0C7F\u0D79\u0E3F\u0F01-\u0F03\u0F13\u0F15-\u0F17\u0F1A-\u0F1F\u0F34\u0F36\u0F38\u0FBE-\u0FC5\u0FC7-\u0FCC\u0FCE\u0FCF\u0FD5-\u0FD8\u109E\u109F\u1390-\u1399\u17DB\u1940\u19DE-\u19FF\u1B61-\u1B6A\u1B74-\u1B7C\u1FBD\u1FBF-\u1FC1\u1FCD-\u1FCF\u1FDD-\u1FDF\u1FED-\u1FEF\u1FFD\u1FFE\u2044\u2052\u207A-\u207C\u208A-\u208C\u20A0-\u20BE\u2100\u2101\u2103-\u2106\u2108\u2109\u2114\u2116-\u2118\u211E-\u2123\u2125\u2127\u2129\u212E\u213A\u213B\u2140-\u2144\u214A-\u214D\u214F\u218A\u218B\u2190-\u2307\u230C-\u2328\u232B-\u23FA\u2400-\u2426\u2440-\u244A\u249C-\u24E9\u2500-\u2767\u2794-\u27C4\u27C7-\u27E5\u27F0-\u2982\u2999-\u29D7\u29DC-\u29FB\u29FE-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2CE5-\u2CEA\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u2FF0-\u2FFB\u3004\u3012\u3013\u3020\u3036\u3037\u303E\u303F\u309B\u309C\u3190\u3191\u3196-\u319F\u31C0-\u31E3\u3200-\u321E\u322A-\u3247\u3250\u3260-\u327F\u328A-\u32B0\u32C0-\u32FE\u3300-\u33FF\u4DC0-\u4DFF\uA490-\uA4C6\uA700-\uA716\uA720\uA721\uA789\uA78A\uA828-\uA82B\uA836-\uA839\uAA77-\uAA79\uAB5B\uFB29\uFBB2-\uFBC1\uFDFC\uFDFD\uFE62\uFE64-\uFE66\uFE69\uFF04\uFF0B\uFF1C-\uFF1E\uFF3E\uFF40\uFF5C\uFF5E\uFFE0-\uFFE6\uFFE8-\uFFEE\uFFFC\uFFFD',
-            astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFF]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD835[\uDEC1\uDEDB\uDEFB\uDF15\uDF35\uDF4F\uDF6F\uDF89\uDFA9\uDFC3]|\uD800[\uDD37-\uDD3F\uDD79-\uDD89\uDD8C\uDD90-\uDD9B\uDDA0\uDDD0-\uDDFC]|\uD82F\uDC9C|\uD805\uDF3F|\uD802[\uDC77\uDC78\uDEC8]|\uD81A[\uDF3C-\uDF3F\uDF45]|\uD836[\uDC00-\uDDFF\uDE37-\uDE3A\uDE6D-\uDE74\uDE76-\uDE83\uDE85\uDE86]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD64\uDD6A-\uDD6C\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDE00-\uDE41\uDE45\uDF00-\uDF56]|\uD83B[\uDEF0\uDEF1]'
-        },
-        {
-            name: 'Sc',
-            alias: 'Currency_Symbol',
-            bmp: '\\x24\xA2-\xA5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\u20A0-\u20BE\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6'
-        },
-        {
-            name: 'Sk',
-            alias: 'Modifier_Symbol',
-            bmp: '\\x5E\x60\xA8\xAF\xB4\xB8\u02C2-\u02C5\u02D2-\u02DF\u02E5-\u02EB\u02ED\u02EF-\u02FF\u0375\u0384\u0385\u1FBD\u1FBF-\u1FC1\u1FCD-\u1FCF\u1FDD-\u1FDF\u1FED-\u1FEF\u1FFD\u1FFE\u309B\u309C\uA700-\uA716\uA720\uA721\uA789\uA78A\uAB5B\uFBB2-\uFBC1\uFF3E\uFF40\uFFE3',
-            astral: '\uD83C[\uDFFB-\uDFFF]'
-        },
-        {
-            name: 'Sm',
-            alias: 'Math_Symbol',
-            bmp: '\\x2B\x3C-\x3E\\x7C\x7E\xAC\xB1\xD7\xF7\u03F6\u0606-\u0608\u2044\u2052\u207A-\u207C\u208A-\u208C\u2118\u2140-\u2144\u214B\u2190-\u2194\u219A\u219B\u21A0\u21A3\u21A6\u21AE\u21CE\u21CF\u21D2\u21D4\u21F4-\u22FF\u2320\u2321\u237C\u239B-\u23B3\u23DC-\u23E1\u25B7\u25C1\u25F8-\u25FF\u266F\u27C0-\u27C4\u27C7-\u27E5\u27F0-\u27FF\u2900-\u2982\u2999-\u29D7\u29DC-\u29FB\u29FE-\u2AFF\u2B30-\u2B44\u2B47-\u2B4C\uFB29\uFE62\uFE64-\uFE66\uFF0B\uFF1C-\uFF1E\uFF5C\uFF5E\uFFE2\uFFE9-\uFFEC',
-            astral: '\uD83B[\uDEF0\uDEF1]|\uD835[\uDEC1\uDEDB\uDEFB\uDF15\uDF35\uDF4F\uDF6F\uDF89\uDFA9\uDFC3]'
-        },
-        {
-            name: 'So',
-            alias: 'Other_Symbol',
-            bmp: '\xA6\xA9\xAE\xB0\u0482\u058D\u058E\u060E\u060F\u06DE\u06E9\u06FD\u06FE\u07F6\u09FA\u0B70\u0BF3-\u0BF8\u0BFA\u0C7F\u0D79\u0F01-\u0F03\u0F13\u0F15-\u0F17\u0F1A-\u0F1F\u0F34\u0F36\u0F38\u0FBE-\u0FC5\u0FC7-\u0FCC\u0FCE\u0FCF\u0FD5-\u0FD8\u109E\u109F\u1390-\u1399\u1940\u19DE-\u19FF\u1B61-\u1B6A\u1B74-\u1B7C\u2100\u2101\u2103-\u2106\u2108\u2109\u2114\u2116\u2117\u211E-\u2123\u2125\u2127\u2129\u212E\u213A\u213B\u214A\u214C\u214D\u214F\u218A\u218B\u2195-\u2199\u219C-\u219F\u21A1\u21A2\u21A4\u21A5\u21A7-\u21AD\u21AF-\u21CD\u21D0\u21D1\u21D3\u21D5-\u21F3\u2300-\u2307\u230C-\u231F\u2322-\u2328\u232B-\u237B\u237D-\u239A\u23B4-\u23DB\u23E2-\u23FA\u2400-\u2426\u2440-\u244A\u249C-\u24E9\u2500-\u25B6\u25B8-\u25C0\u25C2-\u25F7\u2600-\u266E\u2670-\u2767\u2794-\u27BF\u2800-\u28FF\u2B00-\u2B2F\u2B45\u2B46\u2B4D-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2CE5-\u2CEA\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u2FF0-\u2FFB\u3004\u3012\u3013\u3020\u3036\u3037\u303E\u303F\u3190\u3191\u3196-\u319F\u31C0-\u31E3\u3200-\u321E\u322A-\u3247\u3250\u3260-\u327F\u328A-\u32B0\u32C0-\u32FE\u3300-\u33FF\u4DC0-\u4DFF\uA490-\uA4C6\uA828-\uA82B\uA836\uA837\uA839\uAA77-\uAA79\uFDFD\uFFE4\uFFE8\uFFED\uFFEE\uFFFC\uFFFD',
-            astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFA]|\uD800[\uDD37-\uDD3F\uDD79-\uDD89\uDD8C\uDD90-\uDD9B\uDDA0\uDDD0-\uDDFC]|\uD82F\uDC9C|\uD805\uDF3F|\uD802[\uDC77\uDC78\uDEC8]|\uD81A[\uDF3C-\uDF3F\uDF45]|\uD836[\uDC00-\uDDFF\uDE37-\uDE3A\uDE6D-\uDE74\uDE76-\uDE83\uDE85\uDE86]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD64\uDD6A-\uDD6C\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDE00-\uDE41\uDE45\uDF00-\uDF56]'
-        },
-        {
-            name: 'Z',
-            alias: 'Separator',
-            bmp: '\x20\xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000'
-        },
-        {
-            name: 'Zl',
-            alias: 'Line_Separator',
-            bmp: '\u2028'
-        },
-        {
-            name: 'Zp',
-            alias: 'Paragraph_Separator',
-            bmp: '\u2029'
-        },
-        {
-            name: 'Zs',
-            alias: 'Space_Separator',
-            bmp: '\x20\xA0\u1680\u2000-\u200A\u202F\u205F\u3000'
-        }
-    ]);
+]);
 
 
 
 /*!
- * XRegExp Unicode Properties 3.1.0-dev
+ * XRegExp Unicode Properties 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2012-2015 MIT License
+ * Steven Levithan (c) 2012-2016 MIT License
  * Unicode data by Mathias Bynens <mathiasbynens.be>
  */
 
+
+
+
+
 /**
  * Adds properties to meet the UTS #18 Level 1 RL1.2 requirements for Unicode regex support. See
- * <http://unicode.org/reports/tr18/#RL1.2>. Following are definitions of these properties from UAX
- * #44 <http://unicode.org/reports/tr44/>:
+ * <http://unicode.org/reports/tr18/#RL1.2>. Following are definitions of these properties from
+ * UAX #44 <http://unicode.org/reports/tr44/>:
  *
  * - Alphabetic
- *   Characters with the Alphabetic property. Generated from: Lowercase + Uppercase + Lt + Lm + Lo +
- *   Nl + Other_Alphabetic.
+ *   Characters with the Alphabetic property. Generated from: Lowercase + Uppercase + Lt + Lm +
+ *   Lo + Nl + Other_Alphabetic.
  *
  * - Default_Ignorable_Code_Point
- *   For programmatic determination of default ignorable code points. New characters that should be
- *   ignored in rendering (unless explicitly supported) will be assigned in these ranges, permitting
- *   programs to correctly handle the default rendering of such characters when not otherwise
- *   supported.
+ *   For programmatic determination of default ignorable code points. New characters that should
+ *   be ignored in rendering (unless explicitly supported) will be assigned in these ranges,
+ *   permitting programs to correctly handle the default rendering of such characters when not
+ *   otherwise supported.
  *
  * - Lowercase
  *   Characters with the Lowercase property. Generated from: Ll + Other_Lowercase.
@@ -29826,8 +31306,8 @@ function hasOwnProperty(obj, prop) {
  *   Spaces, separator characters and other control characters which should be treated by
  *   programming languages as "white space" for the purpose of parsing elements.
  *
- * The properties ASCII, Any, and Assigned are also included but are not defined in UAX #44. UTS #18
- * RL1.2 additionally requires support for Unicode scripts and general categories. These are
+ * The properties ASCII, Any, and Assigned are also included but are not defined in UAX #44. UTS
+ * #18 RL1.2 additionally requires support for Unicode scripts and general categories. These are
  * included in XRegExp's Unicode Categories and Unicode Scripts addons.
  *
  * Token names are case insensitive, and any spaces, hyphens, and underscores are ignored.
@@ -29837,623 +31317,623 @@ function hasOwnProperty(obj, prop) {
  * @requires XRegExp, Unicode Base
  */
 
-    
+if (!XRegExp.addUnicodeData) {
+    throw new ReferenceError('Unicode Base must be loaded before Unicode Properties');
+}
 
-    if (!XRegExp.addUnicodeData) {
-        throw new ReferenceError('Unicode Base must be loaded before Unicode Properties');
+var unicodeData = [
+    {
+        name: 'ASCII',
+        bmp: '\0-\x7F'
+    },
+    {
+        name: 'Alphabetic',
+        bmp: 'A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0345\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0657\u0659-\u065F\u066E-\u06D3\u06D5-\u06DC\u06E1-\u06E8\u06ED-\u06EF\u06FA-\u06FC\u06FF\u0710-\u073F\u074D-\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0817\u081A-\u082C\u0840-\u0858\u08A0-\u08B4\u08E3-\u08E9\u08F0-\u093B\u093D-\u094C\u094E-\u0950\u0955-\u0963\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD-\u09C4\u09C7\u09C8\u09CB\u09CC\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09F0\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3E-\u0A42\u0A47\u0A48\u0A4B\u0A4C\u0A51\u0A59-\u0A5C\u0A5E\u0A70-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD-\u0AC5\u0AC7-\u0AC9\u0ACB\u0ACC\u0AD0\u0AE0-\u0AE3\u0AF9\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D-\u0B44\u0B47\u0B48\u0B4B\u0B4C\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCC\u0BD0\u0BD7\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4C\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCC\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CF1\u0CF2\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4C\u0D4E\u0D57\u0D5F-\u0D63\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E46\u0E4D\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0ECD\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F71-\u0F81\u0F88-\u0F97\u0F99-\u0FBC\u1000-\u1036\u1038\u103B-\u103F\u1050-\u1062\u1065-\u1068\u106E-\u1086\u108E\u109C\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135F\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1713\u1720-\u1733\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17B3\u17B6-\u17C8\u17D7\u17DC\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u1938\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A1B\u1A20-\u1A5E\u1A61-\u1A74\u1AA7\u1B00-\u1B33\u1B35-\u1B43\u1B45-\u1B4B\u1B80-\u1BA9\u1BAC-\u1BAF\u1BBA-\u1BE5\u1BE7-\u1BF1\u1C00-\u1C35\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF3\u1CF5\u1CF6\u1D00-\u1DBF\u1DE7-\u1DF4\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u24B6-\u24E9\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u2E2F\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA674-\uA67B\uA67F-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA827\uA840-\uA873\uA880-\uA8C3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA92A\uA930-\uA952\uA960-\uA97C\uA980-\uA9B2\uA9B4-\uA9BF\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA60-\uAA76\uAA7A\uAA7E-\uAABE\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF5\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
+        astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD804[\uDC00-\uDC45\uDC82-\uDCB8\uDCD0-\uDCE8\uDD00-\uDD32\uDD50-\uDD72\uDD76\uDD80-\uDDBF\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE34\uDE37\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEE8\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D-\uDF44\uDF47\uDF48\uDF4B\uDF4C\uDF50\uDF57\uDF5D-\uDF63]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD83A[\uDC00-\uDCC4]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF36\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD83C[\uDD30-\uDD49\uDD50-\uDD69\uDD70-\uDD89]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9E]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD805[\uDC80-\uDCC1\uDCC4\uDCC5\uDCC7\uDD80-\uDDB5\uDDB8-\uDDBE\uDDD8-\uDDDD\uDE00-\uDE3E\uDE40\uDE44\uDE80-\uDEB5\uDF00-\uDF19\uDF1D-\uDF2A]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD811[\uDC00-\uDE46]|\uD82C[\uDC00\uDC01]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF93-\uDF9F]|\uD873[\uDC00-\uDEA1]'
+    },
+    {
+        name: 'Any',
+        isBmpLast: true,
+        bmp: '\0-\uFFFF',
+        astral: '[\uD800-\uDBFF][\uDC00-\uDFFF]'
+    },
+    {
+        name: 'Default_Ignorable_Code_Point',
+        bmp: '\xAD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF0-\uFFF8',
+        astral: '[\uDB40-\uDB43][\uDC00-\uDFFF]|\uD834[\uDD73-\uDD7A]|\uD82F[\uDCA0-\uDCA3]'
+    },
+    {
+        name: 'Lowercase',
+        bmp: 'a-z\xAA\xB5\xBA\xDF-\xF6\xF8-\xFF\u0101\u0103\u0105\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131\u0133\u0135\u0137\u0138\u013A\u013C\u013E\u0140\u0142\u0144\u0146\u0148\u0149\u014B\u014D\u014F\u0151\u0153\u0155\u0157\u0159\u015B\u015D\u015F\u0161\u0163\u0165\u0167\u0169\u016B\u016D\u016F\u0171\u0173\u0175\u0177\u017A\u017C\u017E-\u0180\u0183\u0185\u0188\u018C\u018D\u0192\u0195\u0199-\u019B\u019E\u01A1\u01A3\u01A5\u01A8\u01AA\u01AB\u01AD\u01B0\u01B4\u01B6\u01B9\u01BA\u01BD-\u01BF\u01C6\u01C9\u01CC\u01CE\u01D0\u01D2\u01D4\u01D6\u01D8\u01DA\u01DC\u01DD\u01DF\u01E1\u01E3\u01E5\u01E7\u01E9\u01EB\u01ED\u01EF\u01F0\u01F3\u01F5\u01F9\u01FB\u01FD\u01FF\u0201\u0203\u0205\u0207\u0209\u020B\u020D\u020F\u0211\u0213\u0215\u0217\u0219\u021B\u021D\u021F\u0221\u0223\u0225\u0227\u0229\u022B\u022D\u022F\u0231\u0233-\u0239\u023C\u023F\u0240\u0242\u0247\u0249\u024B\u024D\u024F-\u0293\u0295-\u02B8\u02C0\u02C1\u02E0-\u02E4\u0345\u0371\u0373\u0377\u037A-\u037D\u0390\u03AC-\u03CE\u03D0\u03D1\u03D5-\u03D7\u03D9\u03DB\u03DD\u03DF\u03E1\u03E3\u03E5\u03E7\u03E9\u03EB\u03ED\u03EF-\u03F3\u03F5\u03F8\u03FB\u03FC\u0430-\u045F\u0461\u0463\u0465\u0467\u0469\u046B\u046D\u046F\u0471\u0473\u0475\u0477\u0479\u047B\u047D\u047F\u0481\u048B\u048D\u048F\u0491\u0493\u0495\u0497\u0499\u049B\u049D\u049F\u04A1\u04A3\u04A5\u04A7\u04A9\u04AB\u04AD\u04AF\u04B1\u04B3\u04B5\u04B7\u04B9\u04BB\u04BD\u04BF\u04C2\u04C4\u04C6\u04C8\u04CA\u04CC\u04CE\u04CF\u04D1\u04D3\u04D5\u04D7\u04D9\u04DB\u04DD\u04DF\u04E1\u04E3\u04E5\u04E7\u04E9\u04EB\u04ED\u04EF\u04F1\u04F3\u04F5\u04F7\u04F9\u04FB\u04FD\u04FF\u0501\u0503\u0505\u0507\u0509\u050B\u050D\u050F\u0511\u0513\u0515\u0517\u0519\u051B\u051D\u051F\u0521\u0523\u0525\u0527\u0529\u052B\u052D\u052F\u0561-\u0587\u13F8-\u13FD\u1D00-\u1DBF\u1E01\u1E03\u1E05\u1E07\u1E09\u1E0B\u1E0D\u1E0F\u1E11\u1E13\u1E15\u1E17\u1E19\u1E1B\u1E1D\u1E1F\u1E21\u1E23\u1E25\u1E27\u1E29\u1E2B\u1E2D\u1E2F\u1E31\u1E33\u1E35\u1E37\u1E39\u1E3B\u1E3D\u1E3F\u1E41\u1E43\u1E45\u1E47\u1E49\u1E4B\u1E4D\u1E4F\u1E51\u1E53\u1E55\u1E57\u1E59\u1E5B\u1E5D\u1E5F\u1E61\u1E63\u1E65\u1E67\u1E69\u1E6B\u1E6D\u1E6F\u1E71\u1E73\u1E75\u1E77\u1E79\u1E7B\u1E7D\u1E7F\u1E81\u1E83\u1E85\u1E87\u1E89\u1E8B\u1E8D\u1E8F\u1E91\u1E93\u1E95-\u1E9D\u1E9F\u1EA1\u1EA3\u1EA5\u1EA7\u1EA9\u1EAB\u1EAD\u1EAF\u1EB1\u1EB3\u1EB5\u1EB7\u1EB9\u1EBB\u1EBD\u1EBF\u1EC1\u1EC3\u1EC5\u1EC7\u1EC9\u1ECB\u1ECD\u1ECF\u1ED1\u1ED3\u1ED5\u1ED7\u1ED9\u1EDB\u1EDD\u1EDF\u1EE1\u1EE3\u1EE5\u1EE7\u1EE9\u1EEB\u1EED\u1EEF\u1EF1\u1EF3\u1EF5\u1EF7\u1EF9\u1EFB\u1EFD\u1EFF-\u1F07\u1F10-\u1F15\u1F20-\u1F27\u1F30-\u1F37\u1F40-\u1F45\u1F50-\u1F57\u1F60-\u1F67\u1F70-\u1F7D\u1F80-\u1F87\u1F90-\u1F97\u1FA0-\u1FA7\u1FB0-\u1FB4\u1FB6\u1FB7\u1FBE\u1FC2-\u1FC4\u1FC6\u1FC7\u1FD0-\u1FD3\u1FD6\u1FD7\u1FE0-\u1FE7\u1FF2-\u1FF4\u1FF6\u1FF7\u2071\u207F\u2090-\u209C\u210A\u210E\u210F\u2113\u212F\u2134\u2139\u213C\u213D\u2146-\u2149\u214E\u2170-\u217F\u2184\u24D0-\u24E9\u2C30-\u2C5E\u2C61\u2C65\u2C66\u2C68\u2C6A\u2C6C\u2C71\u2C73\u2C74\u2C76-\u2C7D\u2C81\u2C83\u2C85\u2C87\u2C89\u2C8B\u2C8D\u2C8F\u2C91\u2C93\u2C95\u2C97\u2C99\u2C9B\u2C9D\u2C9F\u2CA1\u2CA3\u2CA5\u2CA7\u2CA9\u2CAB\u2CAD\u2CAF\u2CB1\u2CB3\u2CB5\u2CB7\u2CB9\u2CBB\u2CBD\u2CBF\u2CC1\u2CC3\u2CC5\u2CC7\u2CC9\u2CCB\u2CCD\u2CCF\u2CD1\u2CD3\u2CD5\u2CD7\u2CD9\u2CDB\u2CDD\u2CDF\u2CE1\u2CE3\u2CE4\u2CEC\u2CEE\u2CF3\u2D00-\u2D25\u2D27\u2D2D\uA641\uA643\uA645\uA647\uA649\uA64B\uA64D\uA64F\uA651\uA653\uA655\uA657\uA659\uA65B\uA65D\uA65F\uA661\uA663\uA665\uA667\uA669\uA66B\uA66D\uA681\uA683\uA685\uA687\uA689\uA68B\uA68D\uA68F\uA691\uA693\uA695\uA697\uA699\uA69B-\uA69D\uA723\uA725\uA727\uA729\uA72B\uA72D\uA72F-\uA731\uA733\uA735\uA737\uA739\uA73B\uA73D\uA73F\uA741\uA743\uA745\uA747\uA749\uA74B\uA74D\uA74F\uA751\uA753\uA755\uA757\uA759\uA75B\uA75D\uA75F\uA761\uA763\uA765\uA767\uA769\uA76B\uA76D\uA76F-\uA778\uA77A\uA77C\uA77F\uA781\uA783\uA785\uA787\uA78C\uA78E\uA791\uA793-\uA795\uA797\uA799\uA79B\uA79D\uA79F\uA7A1\uA7A3\uA7A5\uA7A7\uA7A9\uA7B5\uA7B7\uA7F8-\uA7FA\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABBF\uFB00-\uFB06\uFB13-\uFB17\uFF41-\uFF5A',
+        astral: '\uD803[\uDCC0-\uDCF2]|\uD835[\uDC1A-\uDC33\uDC4E-\uDC54\uDC56-\uDC67\uDC82-\uDC9B\uDCB6-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDCCF\uDCEA-\uDD03\uDD1E-\uDD37\uDD52-\uDD6B\uDD86-\uDD9F\uDDBA-\uDDD3\uDDEE-\uDE07\uDE22-\uDE3B\uDE56-\uDE6F\uDE8A-\uDEA5\uDEC2-\uDEDA\uDEDC-\uDEE1\uDEFC-\uDF14\uDF16-\uDF1B\uDF36-\uDF4E\uDF50-\uDF55\uDF70-\uDF88\uDF8A-\uDF8F\uDFAA-\uDFC2\uDFC4-\uDFC9\uDFCB]|\uD801[\uDC28-\uDC4F]|\uD806[\uDCC0-\uDCDF]'
+    },
+    {
+        name: 'Noncharacter_Code_Point',
+        bmp: '\uFDD0-\uFDEF\uFFFE\uFFFF',
+        astral: '[\uDB3F\uDB7F\uDBBF\uDBFF\uD83F\uD87F\uD8BF\uDAFF\uD97F\uD9BF\uD9FF\uDA3F\uD8FF\uDABF\uDA7F\uD93F][\uDFFE\uDFFF]'
+    },
+    {
+        name: 'Uppercase',
+        bmp: 'A-Z\xC0-\xD6\xD8-\xDE\u0100\u0102\u0104\u0106\u0108\u010A\u010C\u010E\u0110\u0112\u0114\u0116\u0118\u011A\u011C\u011E\u0120\u0122\u0124\u0126\u0128\u012A\u012C\u012E\u0130\u0132\u0134\u0136\u0139\u013B\u013D\u013F\u0141\u0143\u0145\u0147\u014A\u014C\u014E\u0150\u0152\u0154\u0156\u0158\u015A\u015C\u015E\u0160\u0162\u0164\u0166\u0168\u016A\u016C\u016E\u0170\u0172\u0174\u0176\u0178\u0179\u017B\u017D\u0181\u0182\u0184\u0186\u0187\u0189-\u018B\u018E-\u0191\u0193\u0194\u0196-\u0198\u019C\u019D\u019F\u01A0\u01A2\u01A4\u01A6\u01A7\u01A9\u01AC\u01AE\u01AF\u01B1-\u01B3\u01B5\u01B7\u01B8\u01BC\u01C4\u01C7\u01CA\u01CD\u01CF\u01D1\u01D3\u01D5\u01D7\u01D9\u01DB\u01DE\u01E0\u01E2\u01E4\u01E6\u01E8\u01EA\u01EC\u01EE\u01F1\u01F4\u01F6-\u01F8\u01FA\u01FC\u01FE\u0200\u0202\u0204\u0206\u0208\u020A\u020C\u020E\u0210\u0212\u0214\u0216\u0218\u021A\u021C\u021E\u0220\u0222\u0224\u0226\u0228\u022A\u022C\u022E\u0230\u0232\u023A\u023B\u023D\u023E\u0241\u0243-\u0246\u0248\u024A\u024C\u024E\u0370\u0372\u0376\u037F\u0386\u0388-\u038A\u038C\u038E\u038F\u0391-\u03A1\u03A3-\u03AB\u03CF\u03D2-\u03D4\u03D8\u03DA\u03DC\u03DE\u03E0\u03E2\u03E4\u03E6\u03E8\u03EA\u03EC\u03EE\u03F4\u03F7\u03F9\u03FA\u03FD-\u042F\u0460\u0462\u0464\u0466\u0468\u046A\u046C\u046E\u0470\u0472\u0474\u0476\u0478\u047A\u047C\u047E\u0480\u048A\u048C\u048E\u0490\u0492\u0494\u0496\u0498\u049A\u049C\u049E\u04A0\u04A2\u04A4\u04A6\u04A8\u04AA\u04AC\u04AE\u04B0\u04B2\u04B4\u04B6\u04B8\u04BA\u04BC\u04BE\u04C0\u04C1\u04C3\u04C5\u04C7\u04C9\u04CB\u04CD\u04D0\u04D2\u04D4\u04D6\u04D8\u04DA\u04DC\u04DE\u04E0\u04E2\u04E4\u04E6\u04E8\u04EA\u04EC\u04EE\u04F0\u04F2\u04F4\u04F6\u04F8\u04FA\u04FC\u04FE\u0500\u0502\u0504\u0506\u0508\u050A\u050C\u050E\u0510\u0512\u0514\u0516\u0518\u051A\u051C\u051E\u0520\u0522\u0524\u0526\u0528\u052A\u052C\u052E\u0531-\u0556\u10A0-\u10C5\u10C7\u10CD\u13A0-\u13F5\u1E00\u1E02\u1E04\u1E06\u1E08\u1E0A\u1E0C\u1E0E\u1E10\u1E12\u1E14\u1E16\u1E18\u1E1A\u1E1C\u1E1E\u1E20\u1E22\u1E24\u1E26\u1E28\u1E2A\u1E2C\u1E2E\u1E30\u1E32\u1E34\u1E36\u1E38\u1E3A\u1E3C\u1E3E\u1E40\u1E42\u1E44\u1E46\u1E48\u1E4A\u1E4C\u1E4E\u1E50\u1E52\u1E54\u1E56\u1E58\u1E5A\u1E5C\u1E5E\u1E60\u1E62\u1E64\u1E66\u1E68\u1E6A\u1E6C\u1E6E\u1E70\u1E72\u1E74\u1E76\u1E78\u1E7A\u1E7C\u1E7E\u1E80\u1E82\u1E84\u1E86\u1E88\u1E8A\u1E8C\u1E8E\u1E90\u1E92\u1E94\u1E9E\u1EA0\u1EA2\u1EA4\u1EA6\u1EA8\u1EAA\u1EAC\u1EAE\u1EB0\u1EB2\u1EB4\u1EB6\u1EB8\u1EBA\u1EBC\u1EBE\u1EC0\u1EC2\u1EC4\u1EC6\u1EC8\u1ECA\u1ECC\u1ECE\u1ED0\u1ED2\u1ED4\u1ED6\u1ED8\u1EDA\u1EDC\u1EDE\u1EE0\u1EE2\u1EE4\u1EE6\u1EE8\u1EEA\u1EEC\u1EEE\u1EF0\u1EF2\u1EF4\u1EF6\u1EF8\u1EFA\u1EFC\u1EFE\u1F08-\u1F0F\u1F18-\u1F1D\u1F28-\u1F2F\u1F38-\u1F3F\u1F48-\u1F4D\u1F59\u1F5B\u1F5D\u1F5F\u1F68-\u1F6F\u1FB8-\u1FBB\u1FC8-\u1FCB\u1FD8-\u1FDB\u1FE8-\u1FEC\u1FF8-\u1FFB\u2102\u2107\u210B-\u210D\u2110-\u2112\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u2130-\u2133\u213E\u213F\u2145\u2160-\u216F\u2183\u24B6-\u24CF\u2C00-\u2C2E\u2C60\u2C62-\u2C64\u2C67\u2C69\u2C6B\u2C6D-\u2C70\u2C72\u2C75\u2C7E-\u2C80\u2C82\u2C84\u2C86\u2C88\u2C8A\u2C8C\u2C8E\u2C90\u2C92\u2C94\u2C96\u2C98\u2C9A\u2C9C\u2C9E\u2CA0\u2CA2\u2CA4\u2CA6\u2CA8\u2CAA\u2CAC\u2CAE\u2CB0\u2CB2\u2CB4\u2CB6\u2CB8\u2CBA\u2CBC\u2CBE\u2CC0\u2CC2\u2CC4\u2CC6\u2CC8\u2CCA\u2CCC\u2CCE\u2CD0\u2CD2\u2CD4\u2CD6\u2CD8\u2CDA\u2CDC\u2CDE\u2CE0\u2CE2\u2CEB\u2CED\u2CF2\uA640\uA642\uA644\uA646\uA648\uA64A\uA64C\uA64E\uA650\uA652\uA654\uA656\uA658\uA65A\uA65C\uA65E\uA660\uA662\uA664\uA666\uA668\uA66A\uA66C\uA680\uA682\uA684\uA686\uA688\uA68A\uA68C\uA68E\uA690\uA692\uA694\uA696\uA698\uA69A\uA722\uA724\uA726\uA728\uA72A\uA72C\uA72E\uA732\uA734\uA736\uA738\uA73A\uA73C\uA73E\uA740\uA742\uA744\uA746\uA748\uA74A\uA74C\uA74E\uA750\uA752\uA754\uA756\uA758\uA75A\uA75C\uA75E\uA760\uA762\uA764\uA766\uA768\uA76A\uA76C\uA76E\uA779\uA77B\uA77D\uA77E\uA780\uA782\uA784\uA786\uA78B\uA78D\uA790\uA792\uA796\uA798\uA79A\uA79C\uA79E\uA7A0\uA7A2\uA7A4\uA7A6\uA7A8\uA7AA-\uA7AD\uA7B0-\uA7B4\uA7B6\uFF21-\uFF3A',
+        astral: '\uD806[\uDCA0-\uDCBF]|\uD803[\uDC80-\uDCB2]|\uD835[\uDC00-\uDC19\uDC34-\uDC4D\uDC68-\uDC81\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB5\uDCD0-\uDCE9\uDD04\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD38\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD6C-\uDD85\uDDA0-\uDDB9\uDDD4-\uDDED\uDE08-\uDE21\uDE3C-\uDE55\uDE70-\uDE89\uDEA8-\uDEC0\uDEE2-\uDEFA\uDF1C-\uDF34\uDF56-\uDF6E\uDF90-\uDFA8\uDFCA]|\uD801[\uDC00-\uDC27]|\uD83C[\uDD30-\uDD49\uDD50-\uDD69\uDD70-\uDD89]'
+    },
+    {
+        name: 'White_Space',
+        bmp: '\x09-\x0D\x20\x85\xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000'
     }
+];
 
-    var unicodeData = [
-        {
-            name: 'ASCII',
-            bmp: '\0-\x7F'
-        },
-        {
-            name: 'Alphabetic',
-            bmp: 'A-Za-z\xAA\xB5\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02C1\u02C6-\u02D1\u02E0-\u02E4\u02EC\u02EE\u0345\u0370-\u0374\u0376\u0377\u037A-\u037D\u037F\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03F5\u03F7-\u0481\u048A-\u052F\u0531-\u0556\u0559\u0561-\u0587\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7\u05D0-\u05EA\u05F0-\u05F2\u0610-\u061A\u0620-\u0657\u0659-\u065F\u066E-\u06D3\u06D5-\u06DC\u06E1-\u06E8\u06ED-\u06EF\u06FA-\u06FC\u06FF\u0710-\u073F\u074D-\u07B1\u07CA-\u07EA\u07F4\u07F5\u07FA\u0800-\u0817\u081A-\u082C\u0840-\u0858\u08A0-\u08B4\u08E3-\u08E9\u08F0-\u093B\u093D-\u094C\u094E-\u0950\u0955-\u0963\u0971-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BD-\u09C4\u09C7\u09C8\u09CB\u09CC\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09F0\u09F1\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3E-\u0A42\u0A47\u0A48\u0A4B\u0A4C\u0A51\u0A59-\u0A5C\u0A5E\u0A70-\u0A75\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABD-\u0AC5\u0AC7-\u0AC9\u0ACB\u0ACC\u0AD0\u0AE0-\u0AE3\u0AF9\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3D-\u0B44\u0B47\u0B48\u0B4B\u0B4C\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B71\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCC\u0BD0\u0BD7\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4C\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBD-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCC\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CF1\u0CF2\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4C\u0D4E\u0D57\u0D5F-\u0D63\u0D7A-\u0D7F\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DF2\u0DF3\u0E01-\u0E3A\u0E40-\u0E46\u0E4D\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0ECD\u0EDC-\u0EDF\u0F00\u0F40-\u0F47\u0F49-\u0F6C\u0F71-\u0F81\u0F88-\u0F97\u0F99-\u0FBC\u1000-\u1036\u1038\u103B-\u103F\u1050-\u1062\u1065-\u1068\u106E-\u1086\u108E\u109C\u109D\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135F\u1380-\u138F\u13A0-\u13F5\u13F8-\u13FD\u1401-\u166C\u166F-\u167F\u1681-\u169A\u16A0-\u16EA\u16EE-\u16F8\u1700-\u170C\u170E-\u1713\u1720-\u1733\u1740-\u1753\u1760-\u176C\u176E-\u1770\u1772\u1773\u1780-\u17B3\u17B6-\u17C8\u17D7\u17DC\u1820-\u1877\u1880-\u18AA\u18B0-\u18F5\u1900-\u191E\u1920-\u192B\u1930-\u1938\u1950-\u196D\u1970-\u1974\u1980-\u19AB\u19B0-\u19C9\u1A00-\u1A1B\u1A20-\u1A5E\u1A61-\u1A74\u1AA7\u1B00-\u1B33\u1B35-\u1B43\u1B45-\u1B4B\u1B80-\u1BA9\u1BAC-\u1BAF\u1BBA-\u1BE5\u1BE7-\u1BF1\u1C00-\u1C35\u1C4D-\u1C4F\u1C5A-\u1C7D\u1CE9-\u1CEC\u1CEE-\u1CF3\u1CF5\u1CF6\u1D00-\u1DBF\u1DE7-\u1DF4\u1E00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FBC\u1FBE\u1FC2-\u1FC4\u1FC6-\u1FCC\u1FD0-\u1FD3\u1FD6-\u1FDB\u1FE0-\u1FEC\u1FF2-\u1FF4\u1FF6-\u1FFC\u2071\u207F\u2090-\u209C\u2102\u2107\u210A-\u2113\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u212F-\u2139\u213C-\u213F\u2145-\u2149\u214E\u2160-\u2188\u24B6-\u24E9\u2C00-\u2C2E\u2C30-\u2C5E\u2C60-\u2CE4\u2CEB-\u2CEE\u2CF2\u2CF3\u2D00-\u2D25\u2D27\u2D2D\u2D30-\u2D67\u2D6F\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\u2DE0-\u2DFF\u2E2F\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303C\u3041-\u3096\u309D-\u309F\u30A1-\u30FA\u30FC-\u30FF\u3105-\u312D\u3131-\u318E\u31A0-\u31BA\u31F0-\u31FF\u3400-\u4DB5\u4E00-\u9FD5\uA000-\uA48C\uA4D0-\uA4FD\uA500-\uA60C\uA610-\uA61F\uA62A\uA62B\uA640-\uA66E\uA674-\uA67B\uA67F-\uA6EF\uA717-\uA71F\uA722-\uA788\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA801\uA803-\uA805\uA807-\uA80A\uA80C-\uA827\uA840-\uA873\uA880-\uA8C3\uA8F2-\uA8F7\uA8FB\uA8FD\uA90A-\uA92A\uA930-\uA952\uA960-\uA97C\uA980-\uA9B2\uA9B4-\uA9BF\uA9CF\uA9E0-\uA9E4\uA9E6-\uA9EF\uA9FA-\uA9FE\uAA00-\uAA36\uAA40-\uAA4D\uAA60-\uAA76\uAA7A\uAA7E-\uAABE\uAAC0\uAAC2\uAADB-\uAADD\uAAE0-\uAAEF\uAAF2-\uAAF5\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABEA\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uF900-\uFA6D\uFA70-\uFAD9\uFB00-\uFB06\uFB13-\uFB17\uFB1D-\uFB28\uFB2A-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFBB1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFB\uFE70-\uFE74\uFE76-\uFEFC\uFF21-\uFF3A\uFF41-\uFF5A\uFF66-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC',
-            astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|\uD804[\uDC00-\uDC45\uDC82-\uDCB8\uDCD0-\uDCE8\uDD00-\uDD32\uDD50-\uDD72\uDD76\uDD80-\uDDBF\uDDC1-\uDDC4\uDDDA\uDDDC\uDE00-\uDE11\uDE13-\uDE34\uDE37\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA8\uDEB0-\uDEE8\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3D-\uDF44\uDF47\uDF48\uDF4B\uDF4C\uDF50\uDF57\uDF5D-\uDF63]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD803[\uDC00-\uDC48\uDC80-\uDCB2\uDCC0-\uDCF2]|\uD83A[\uDC00-\uDCC4]|\uD81A[\uDC00-\uDE38\uDE40-\uDE5E\uDED0-\uDEED\uDF00-\uDF36\uDF40-\uDF43\uDF63-\uDF77\uDF7D-\uDF8F]|\uD801[\uDC00-\uDC9D\uDD00-\uDD27\uDD30-\uDD63\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]|\uD83C[\uDD30-\uDD49\uDD50-\uDD69\uDD70-\uDD89]|\uD80D[\uDC00-\uDC2E]|\uD87E[\uDC00-\uDE1D]|[\uD80C\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDEC0\uDEC2-\uDEDA\uDEDC-\uDEFA\uDEFC-\uDF14\uDF16-\uDF34\uDF36-\uDF4E\uDF50-\uDF6E\uDF70-\uDF88\uDF8A-\uDFA8\uDFAA-\uDFC2\uDFC4-\uDFCB]|\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9E]|\uD808[\uDC00-\uDF99]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB]|\uD805[\uDC80-\uDCC1\uDCC4\uDCC5\uDCC7\uDD80-\uDDB5\uDDB8-\uDDBE\uDDD8-\uDDDD\uDE00-\uDE3E\uDE40\uDE44\uDE80-\uDEB5\uDF00-\uDF19\uDF1D-\uDF2A]|\uD809[\uDC00-\uDC6E\uDC80-\uDD43]|\uD806[\uDCA0-\uDCDF\uDCFF\uDEC0-\uDEF8]|\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA\uDD40-\uDD74\uDE80-\uDE9C\uDEA0-\uDED0\uDF00-\uDF1F\uDF30-\uDF4A\uDF50-\uDF7A\uDF80-\uDF9D\uDFA0-\uDFC3\uDFC8-\uDFCF\uDFD1-\uDFD5]|\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F-\uDC55\uDC60-\uDC76\uDC80-\uDC9E\uDCE0-\uDCF2\uDCF4\uDCF5\uDD00-\uDD15\uDD20-\uDD39\uDD80-\uDDB7\uDDBE\uDDBF\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE60-\uDE7C\uDE80-\uDE9C\uDEC0-\uDEC7\uDEC9-\uDEE4\uDF00-\uDF35\uDF40-\uDF55\uDF60-\uDF72\uDF80-\uDF91]|\uD811[\uDC00-\uDE46]|\uD82C[\uDC00\uDC01]|\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF93-\uDF9F]|\uD873[\uDC00-\uDEA1]'
-        },
-        {
-            name: 'Any',
-            isBmpLast: true,
-            bmp: '\0-\uFFFF',
-            astral: '[\uD800-\uDBFF][\uDC00-\uDFFF]'
-        },
-        {
-            name: 'Default_Ignorable_Code_Point',
-            bmp: '\xAD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF0-\uFFF8',
-            astral: '[\uDB40-\uDB43][\uDC00-\uDFFF]|\uD834[\uDD73-\uDD7A]|\uD82F[\uDCA0-\uDCA3]'
-        },
-        {
-            name: 'Lowercase',
-            bmp: 'a-z\xAA\xB5\xBA\xDF-\xF6\xF8-\xFF\u0101\u0103\u0105\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131\u0133\u0135\u0137\u0138\u013A\u013C\u013E\u0140\u0142\u0144\u0146\u0148\u0149\u014B\u014D\u014F\u0151\u0153\u0155\u0157\u0159\u015B\u015D\u015F\u0161\u0163\u0165\u0167\u0169\u016B\u016D\u016F\u0171\u0173\u0175\u0177\u017A\u017C\u017E-\u0180\u0183\u0185\u0188\u018C\u018D\u0192\u0195\u0199-\u019B\u019E\u01A1\u01A3\u01A5\u01A8\u01AA\u01AB\u01AD\u01B0\u01B4\u01B6\u01B9\u01BA\u01BD-\u01BF\u01C6\u01C9\u01CC\u01CE\u01D0\u01D2\u01D4\u01D6\u01D8\u01DA\u01DC\u01DD\u01DF\u01E1\u01E3\u01E5\u01E7\u01E9\u01EB\u01ED\u01EF\u01F0\u01F3\u01F5\u01F9\u01FB\u01FD\u01FF\u0201\u0203\u0205\u0207\u0209\u020B\u020D\u020F\u0211\u0213\u0215\u0217\u0219\u021B\u021D\u021F\u0221\u0223\u0225\u0227\u0229\u022B\u022D\u022F\u0231\u0233-\u0239\u023C\u023F\u0240\u0242\u0247\u0249\u024B\u024D\u024F-\u0293\u0295-\u02B8\u02C0\u02C1\u02E0-\u02E4\u0345\u0371\u0373\u0377\u037A-\u037D\u0390\u03AC-\u03CE\u03D0\u03D1\u03D5-\u03D7\u03D9\u03DB\u03DD\u03DF\u03E1\u03E3\u03E5\u03E7\u03E9\u03EB\u03ED\u03EF-\u03F3\u03F5\u03F8\u03FB\u03FC\u0430-\u045F\u0461\u0463\u0465\u0467\u0469\u046B\u046D\u046F\u0471\u0473\u0475\u0477\u0479\u047B\u047D\u047F\u0481\u048B\u048D\u048F\u0491\u0493\u0495\u0497\u0499\u049B\u049D\u049F\u04A1\u04A3\u04A5\u04A7\u04A9\u04AB\u04AD\u04AF\u04B1\u04B3\u04B5\u04B7\u04B9\u04BB\u04BD\u04BF\u04C2\u04C4\u04C6\u04C8\u04CA\u04CC\u04CE\u04CF\u04D1\u04D3\u04D5\u04D7\u04D9\u04DB\u04DD\u04DF\u04E1\u04E3\u04E5\u04E7\u04E9\u04EB\u04ED\u04EF\u04F1\u04F3\u04F5\u04F7\u04F9\u04FB\u04FD\u04FF\u0501\u0503\u0505\u0507\u0509\u050B\u050D\u050F\u0511\u0513\u0515\u0517\u0519\u051B\u051D\u051F\u0521\u0523\u0525\u0527\u0529\u052B\u052D\u052F\u0561-\u0587\u13F8-\u13FD\u1D00-\u1DBF\u1E01\u1E03\u1E05\u1E07\u1E09\u1E0B\u1E0D\u1E0F\u1E11\u1E13\u1E15\u1E17\u1E19\u1E1B\u1E1D\u1E1F\u1E21\u1E23\u1E25\u1E27\u1E29\u1E2B\u1E2D\u1E2F\u1E31\u1E33\u1E35\u1E37\u1E39\u1E3B\u1E3D\u1E3F\u1E41\u1E43\u1E45\u1E47\u1E49\u1E4B\u1E4D\u1E4F\u1E51\u1E53\u1E55\u1E57\u1E59\u1E5B\u1E5D\u1E5F\u1E61\u1E63\u1E65\u1E67\u1E69\u1E6B\u1E6D\u1E6F\u1E71\u1E73\u1E75\u1E77\u1E79\u1E7B\u1E7D\u1E7F\u1E81\u1E83\u1E85\u1E87\u1E89\u1E8B\u1E8D\u1E8F\u1E91\u1E93\u1E95-\u1E9D\u1E9F\u1EA1\u1EA3\u1EA5\u1EA7\u1EA9\u1EAB\u1EAD\u1EAF\u1EB1\u1EB3\u1EB5\u1EB7\u1EB9\u1EBB\u1EBD\u1EBF\u1EC1\u1EC3\u1EC5\u1EC7\u1EC9\u1ECB\u1ECD\u1ECF\u1ED1\u1ED3\u1ED5\u1ED7\u1ED9\u1EDB\u1EDD\u1EDF\u1EE1\u1EE3\u1EE5\u1EE7\u1EE9\u1EEB\u1EED\u1EEF\u1EF1\u1EF3\u1EF5\u1EF7\u1EF9\u1EFB\u1EFD\u1EFF-\u1F07\u1F10-\u1F15\u1F20-\u1F27\u1F30-\u1F37\u1F40-\u1F45\u1F50-\u1F57\u1F60-\u1F67\u1F70-\u1F7D\u1F80-\u1F87\u1F90-\u1F97\u1FA0-\u1FA7\u1FB0-\u1FB4\u1FB6\u1FB7\u1FBE\u1FC2-\u1FC4\u1FC6\u1FC7\u1FD0-\u1FD3\u1FD6\u1FD7\u1FE0-\u1FE7\u1FF2-\u1FF4\u1FF6\u1FF7\u2071\u207F\u2090-\u209C\u210A\u210E\u210F\u2113\u212F\u2134\u2139\u213C\u213D\u2146-\u2149\u214E\u2170-\u217F\u2184\u24D0-\u24E9\u2C30-\u2C5E\u2C61\u2C65\u2C66\u2C68\u2C6A\u2C6C\u2C71\u2C73\u2C74\u2C76-\u2C7D\u2C81\u2C83\u2C85\u2C87\u2C89\u2C8B\u2C8D\u2C8F\u2C91\u2C93\u2C95\u2C97\u2C99\u2C9B\u2C9D\u2C9F\u2CA1\u2CA3\u2CA5\u2CA7\u2CA9\u2CAB\u2CAD\u2CAF\u2CB1\u2CB3\u2CB5\u2CB7\u2CB9\u2CBB\u2CBD\u2CBF\u2CC1\u2CC3\u2CC5\u2CC7\u2CC9\u2CCB\u2CCD\u2CCF\u2CD1\u2CD3\u2CD5\u2CD7\u2CD9\u2CDB\u2CDD\u2CDF\u2CE1\u2CE3\u2CE4\u2CEC\u2CEE\u2CF3\u2D00-\u2D25\u2D27\u2D2D\uA641\uA643\uA645\uA647\uA649\uA64B\uA64D\uA64F\uA651\uA653\uA655\uA657\uA659\uA65B\uA65D\uA65F\uA661\uA663\uA665\uA667\uA669\uA66B\uA66D\uA681\uA683\uA685\uA687\uA689\uA68B\uA68D\uA68F\uA691\uA693\uA695\uA697\uA699\uA69B-\uA69D\uA723\uA725\uA727\uA729\uA72B\uA72D\uA72F-\uA731\uA733\uA735\uA737\uA739\uA73B\uA73D\uA73F\uA741\uA743\uA745\uA747\uA749\uA74B\uA74D\uA74F\uA751\uA753\uA755\uA757\uA759\uA75B\uA75D\uA75F\uA761\uA763\uA765\uA767\uA769\uA76B\uA76D\uA76F-\uA778\uA77A\uA77C\uA77F\uA781\uA783\uA785\uA787\uA78C\uA78E\uA791\uA793-\uA795\uA797\uA799\uA79B\uA79D\uA79F\uA7A1\uA7A3\uA7A5\uA7A7\uA7A9\uA7B5\uA7B7\uA7F8-\uA7FA\uAB30-\uAB5A\uAB5C-\uAB65\uAB70-\uABBF\uFB00-\uFB06\uFB13-\uFB17\uFF41-\uFF5A',
-            astral: '\uD803[\uDCC0-\uDCF2]|\uD835[\uDC1A-\uDC33\uDC4E-\uDC54\uDC56-\uDC67\uDC82-\uDC9B\uDCB6-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDCCF\uDCEA-\uDD03\uDD1E-\uDD37\uDD52-\uDD6B\uDD86-\uDD9F\uDDBA-\uDDD3\uDDEE-\uDE07\uDE22-\uDE3B\uDE56-\uDE6F\uDE8A-\uDEA5\uDEC2-\uDEDA\uDEDC-\uDEE1\uDEFC-\uDF14\uDF16-\uDF1B\uDF36-\uDF4E\uDF50-\uDF55\uDF70-\uDF88\uDF8A-\uDF8F\uDFAA-\uDFC2\uDFC4-\uDFC9\uDFCB]|\uD801[\uDC28-\uDC4F]|\uD806[\uDCC0-\uDCDF]'
-        },
-        {
-            name: 'Noncharacter_Code_Point',
-            bmp: '\uFDD0-\uFDEF\uFFFE\uFFFF',
-            astral: '[\uDB3F\uDB7F\uDBBF\uDBFF\uD83F\uD87F\uD8BF\uDAFF\uD97F\uD9BF\uD9FF\uDA3F\uD8FF\uDABF\uDA7F\uD93F][\uDFFE\uDFFF]'
-        },
-        {
-            name: 'Uppercase',
-            bmp: 'A-Z\xC0-\xD6\xD8-\xDE\u0100\u0102\u0104\u0106\u0108\u010A\u010C\u010E\u0110\u0112\u0114\u0116\u0118\u011A\u011C\u011E\u0120\u0122\u0124\u0126\u0128\u012A\u012C\u012E\u0130\u0132\u0134\u0136\u0139\u013B\u013D\u013F\u0141\u0143\u0145\u0147\u014A\u014C\u014E\u0150\u0152\u0154\u0156\u0158\u015A\u015C\u015E\u0160\u0162\u0164\u0166\u0168\u016A\u016C\u016E\u0170\u0172\u0174\u0176\u0178\u0179\u017B\u017D\u0181\u0182\u0184\u0186\u0187\u0189-\u018B\u018E-\u0191\u0193\u0194\u0196-\u0198\u019C\u019D\u019F\u01A0\u01A2\u01A4\u01A6\u01A7\u01A9\u01AC\u01AE\u01AF\u01B1-\u01B3\u01B5\u01B7\u01B8\u01BC\u01C4\u01C7\u01CA\u01CD\u01CF\u01D1\u01D3\u01D5\u01D7\u01D9\u01DB\u01DE\u01E0\u01E2\u01E4\u01E6\u01E8\u01EA\u01EC\u01EE\u01F1\u01F4\u01F6-\u01F8\u01FA\u01FC\u01FE\u0200\u0202\u0204\u0206\u0208\u020A\u020C\u020E\u0210\u0212\u0214\u0216\u0218\u021A\u021C\u021E\u0220\u0222\u0224\u0226\u0228\u022A\u022C\u022E\u0230\u0232\u023A\u023B\u023D\u023E\u0241\u0243-\u0246\u0248\u024A\u024C\u024E\u0370\u0372\u0376\u037F\u0386\u0388-\u038A\u038C\u038E\u038F\u0391-\u03A1\u03A3-\u03AB\u03CF\u03D2-\u03D4\u03D8\u03DA\u03DC\u03DE\u03E0\u03E2\u03E4\u03E6\u03E8\u03EA\u03EC\u03EE\u03F4\u03F7\u03F9\u03FA\u03FD-\u042F\u0460\u0462\u0464\u0466\u0468\u046A\u046C\u046E\u0470\u0472\u0474\u0476\u0478\u047A\u047C\u047E\u0480\u048A\u048C\u048E\u0490\u0492\u0494\u0496\u0498\u049A\u049C\u049E\u04A0\u04A2\u04A4\u04A6\u04A8\u04AA\u04AC\u04AE\u04B0\u04B2\u04B4\u04B6\u04B8\u04BA\u04BC\u04BE\u04C0\u04C1\u04C3\u04C5\u04C7\u04C9\u04CB\u04CD\u04D0\u04D2\u04D4\u04D6\u04D8\u04DA\u04DC\u04DE\u04E0\u04E2\u04E4\u04E6\u04E8\u04EA\u04EC\u04EE\u04F0\u04F2\u04F4\u04F6\u04F8\u04FA\u04FC\u04FE\u0500\u0502\u0504\u0506\u0508\u050A\u050C\u050E\u0510\u0512\u0514\u0516\u0518\u051A\u051C\u051E\u0520\u0522\u0524\u0526\u0528\u052A\u052C\u052E\u0531-\u0556\u10A0-\u10C5\u10C7\u10CD\u13A0-\u13F5\u1E00\u1E02\u1E04\u1E06\u1E08\u1E0A\u1E0C\u1E0E\u1E10\u1E12\u1E14\u1E16\u1E18\u1E1A\u1E1C\u1E1E\u1E20\u1E22\u1E24\u1E26\u1E28\u1E2A\u1E2C\u1E2E\u1E30\u1E32\u1E34\u1E36\u1E38\u1E3A\u1E3C\u1E3E\u1E40\u1E42\u1E44\u1E46\u1E48\u1E4A\u1E4C\u1E4E\u1E50\u1E52\u1E54\u1E56\u1E58\u1E5A\u1E5C\u1E5E\u1E60\u1E62\u1E64\u1E66\u1E68\u1E6A\u1E6C\u1E6E\u1E70\u1E72\u1E74\u1E76\u1E78\u1E7A\u1E7C\u1E7E\u1E80\u1E82\u1E84\u1E86\u1E88\u1E8A\u1E8C\u1E8E\u1E90\u1E92\u1E94\u1E9E\u1EA0\u1EA2\u1EA4\u1EA6\u1EA8\u1EAA\u1EAC\u1EAE\u1EB0\u1EB2\u1EB4\u1EB6\u1EB8\u1EBA\u1EBC\u1EBE\u1EC0\u1EC2\u1EC4\u1EC6\u1EC8\u1ECA\u1ECC\u1ECE\u1ED0\u1ED2\u1ED4\u1ED6\u1ED8\u1EDA\u1EDC\u1EDE\u1EE0\u1EE2\u1EE4\u1EE6\u1EE8\u1EEA\u1EEC\u1EEE\u1EF0\u1EF2\u1EF4\u1EF6\u1EF8\u1EFA\u1EFC\u1EFE\u1F08-\u1F0F\u1F18-\u1F1D\u1F28-\u1F2F\u1F38-\u1F3F\u1F48-\u1F4D\u1F59\u1F5B\u1F5D\u1F5F\u1F68-\u1F6F\u1FB8-\u1FBB\u1FC8-\u1FCB\u1FD8-\u1FDB\u1FE8-\u1FEC\u1FF8-\u1FFB\u2102\u2107\u210B-\u210D\u2110-\u2112\u2115\u2119-\u211D\u2124\u2126\u2128\u212A-\u212D\u2130-\u2133\u213E\u213F\u2145\u2160-\u216F\u2183\u24B6-\u24CF\u2C00-\u2C2E\u2C60\u2C62-\u2C64\u2C67\u2C69\u2C6B\u2C6D-\u2C70\u2C72\u2C75\u2C7E-\u2C80\u2C82\u2C84\u2C86\u2C88\u2C8A\u2C8C\u2C8E\u2C90\u2C92\u2C94\u2C96\u2C98\u2C9A\u2C9C\u2C9E\u2CA0\u2CA2\u2CA4\u2CA6\u2CA8\u2CAA\u2CAC\u2CAE\u2CB0\u2CB2\u2CB4\u2CB6\u2CB8\u2CBA\u2CBC\u2CBE\u2CC0\u2CC2\u2CC4\u2CC6\u2CC8\u2CCA\u2CCC\u2CCE\u2CD0\u2CD2\u2CD4\u2CD6\u2CD8\u2CDA\u2CDC\u2CDE\u2CE0\u2CE2\u2CEB\u2CED\u2CF2\uA640\uA642\uA644\uA646\uA648\uA64A\uA64C\uA64E\uA650\uA652\uA654\uA656\uA658\uA65A\uA65C\uA65E\uA660\uA662\uA664\uA666\uA668\uA66A\uA66C\uA680\uA682\uA684\uA686\uA688\uA68A\uA68C\uA68E\uA690\uA692\uA694\uA696\uA698\uA69A\uA722\uA724\uA726\uA728\uA72A\uA72C\uA72E\uA732\uA734\uA736\uA738\uA73A\uA73C\uA73E\uA740\uA742\uA744\uA746\uA748\uA74A\uA74C\uA74E\uA750\uA752\uA754\uA756\uA758\uA75A\uA75C\uA75E\uA760\uA762\uA764\uA766\uA768\uA76A\uA76C\uA76E\uA779\uA77B\uA77D\uA77E\uA780\uA782\uA784\uA786\uA78B\uA78D\uA790\uA792\uA796\uA798\uA79A\uA79C\uA79E\uA7A0\uA7A2\uA7A4\uA7A6\uA7A8\uA7AA-\uA7AD\uA7B0-\uA7B4\uA7B6\uFF21-\uFF3A',
-            astral: '\uD806[\uDCA0-\uDCBF]|\uD803[\uDC80-\uDCB2]|\uD835[\uDC00-\uDC19\uDC34-\uDC4D\uDC68-\uDC81\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB5\uDCD0-\uDCE9\uDD04\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD38\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD6C-\uDD85\uDDA0-\uDDB9\uDDD4-\uDDED\uDE08-\uDE21\uDE3C-\uDE55\uDE70-\uDE89\uDEA8-\uDEC0\uDEE2-\uDEFA\uDF1C-\uDF34\uDF56-\uDF6E\uDF90-\uDFA8\uDFCA]|\uD801[\uDC00-\uDC27]|\uD83C[\uDD30-\uDD49\uDD50-\uDD69\uDD70-\uDD89]'
-        },
-        {
-            name: 'White_Space',
-            bmp: '\x09-\x0D\x20\x85\xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000'
-        }
-    ];
+// Add non-generated data
+unicodeData.push({
+    name: 'Assigned',
+    // Since this is defined as the inverse of Unicode category Cn (Unassigned), the Unicode
+    // Categories addon is required to use this property
+    inverseOf: 'Cn'
+});
 
-    // Add non-generated data
-    unicodeData.push({
-        name: 'Assigned',
-        // Since this is defined as the inverse of Unicode category Cn (Unassigned), the Unicode
-        // Categories addon is required to use this property
-        inverseOf: 'Cn'
-    });
-
-    XRegExp.addUnicodeData(unicodeData);
+XRegExp.addUnicodeData(unicodeData);
 
 
 
 /*!
- * XRegExp Unicode Scripts 3.1.0-dev
+ * XRegExp Unicode Scripts 3.1.2-3
  * <xregexp.com>
- * Steven Levithan (c) 2010-2015 MIT License
+ * Steven Levithan (c) 2010-2016 MIT License
  * Unicode data by Mathias Bynens <mathiasbynens.be>
  */
 
+
+
+
+
 /**
- * Adds support for all Unicode scripts. E.g., `\p{Latin}`. Token names are case insensitive, and
- * any spaces, hyphens, and underscores are ignored.
+ * Adds support for all Unicode scripts. E.g., `\p{Latin}`. Token names are case insensitive,
+ * and any spaces, hyphens, and underscores are ignored.
  *
  * Uses Unicode 8.0.0.
  *
  * @requires XRegExp, Unicode Base
  */
 
-    
+if (!XRegExp.addUnicodeData) {
+    throw new ReferenceError('Unicode Base must be loaded before Unicode Scripts');
+}
 
-    if (!XRegExp.addUnicodeData) {
-        throw new ReferenceError('Unicode Base must be loaded before Unicode Scripts');
+XRegExp.addUnicodeData([
+    {
+        name: 'Ahom',
+        astral: '\uD805[\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF3F]'
+    },
+    {
+        name: 'Anatolian_Hieroglyphs',
+        astral: '\uD811[\uDC00-\uDE46]'
+    },
+    {
+        name: 'Arabic',
+        bmp: '\u0600-\u0604\u0606-\u060B\u060D-\u061A\u061E\u0620-\u063F\u0641-\u064A\u0656-\u066F\u0671-\u06DC\u06DE-\u06FF\u0750-\u077F\u08A0-\u08B4\u08E3-\u08FF\uFB50-\uFBC1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFD\uFE70-\uFE74\uFE76-\uFEFC',
+        astral: '\uD803[\uDE60-\uDE7E]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB\uDEF0\uDEF1]'
+    },
+    {
+        name: 'Armenian',
+        bmp: '\u0531-\u0556\u0559-\u055F\u0561-\u0587\u058A\u058D-\u058F\uFB13-\uFB17'
+    },
+    {
+        name: 'Avestan',
+        astral: '\uD802[\uDF00-\uDF35\uDF39-\uDF3F]'
+    },
+    {
+        name: 'Balinese',
+        bmp: '\u1B00-\u1B4B\u1B50-\u1B7C'
+    },
+    {
+        name: 'Bamum',
+        bmp: '\uA6A0-\uA6F7',
+        astral: '\uD81A[\uDC00-\uDE38]'
+    },
+    {
+        name: 'Bassa_Vah',
+        astral: '\uD81A[\uDED0-\uDEED\uDEF0-\uDEF5]'
+    },
+    {
+        name: 'Batak',
+        bmp: '\u1BC0-\u1BF3\u1BFC-\u1BFF'
+    },
+    {
+        name: 'Bengali',
+        bmp: '\u0980-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09FB'
+    },
+    {
+        name: 'Bopomofo',
+        bmp: '\u02EA\u02EB\u3105-\u312D\u31A0-\u31BA'
+    },
+    {
+        name: 'Brahmi',
+        astral: '\uD804[\uDC00-\uDC4D\uDC52-\uDC6F\uDC7F]'
+    },
+    {
+        name: 'Braille',
+        bmp: '\u2800-\u28FF'
+    },
+    {
+        name: 'Buginese',
+        bmp: '\u1A00-\u1A1B\u1A1E\u1A1F'
+    },
+    {
+        name: 'Buhid',
+        bmp: '\u1740-\u1753'
+    },
+    {
+        name: 'Canadian_Aboriginal',
+        bmp: '\u1400-\u167F\u18B0-\u18F5'
+    },
+    {
+        name: 'Carian',
+        astral: '\uD800[\uDEA0-\uDED0]'
+    },
+    {
+        name: 'Caucasian_Albanian',
+        astral: '\uD801[\uDD30-\uDD63\uDD6F]'
+    },
+    {
+        name: 'Chakma',
+        astral: '\uD804[\uDD00-\uDD34\uDD36-\uDD43]'
+    },
+    {
+        name: 'Cham',
+        bmp: '\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA5C-\uAA5F'
+    },
+    {
+        name: 'Cherokee',
+        bmp: '\u13A0-\u13F5\u13F8-\u13FD\uAB70-\uABBF'
+    },
+    {
+        name: 'Common',
+        bmp: '\0-\x40\\x5B-\x60\\x7B-\xA9\xAB-\xB9\xBB-\xBF\xD7\xF7\u02B9-\u02DF\u02E5-\u02E9\u02EC-\u02FF\u0374\u037E\u0385\u0387\u0589\u0605\u060C\u061B\u061C\u061F\u0640\u06DD\u0964\u0965\u0E3F\u0FD5-\u0FD8\u10FB\u16EB-\u16ED\u1735\u1736\u1802\u1803\u1805\u1CD3\u1CE1\u1CE9-\u1CEC\u1CEE-\u1CF3\u1CF5\u1CF6\u2000-\u200B\u200E-\u2064\u2066-\u2070\u2074-\u207E\u2080-\u208E\u20A0-\u20BE\u2100-\u2125\u2127-\u2129\u212C-\u2131\u2133-\u214D\u214F-\u215F\u2189-\u218B\u2190-\u23FA\u2400-\u2426\u2440-\u244A\u2460-\u27FF\u2900-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2E00-\u2E42\u2FF0-\u2FFB\u3000-\u3004\u3006\u3008-\u3020\u3030-\u3037\u303C-\u303F\u309B\u309C\u30A0\u30FB\u30FC\u3190-\u319F\u31C0-\u31E3\u3220-\u325F\u327F-\u32CF\u3358-\u33FF\u4DC0-\u4DFF\uA700-\uA721\uA788-\uA78A\uA830-\uA839\uA92E\uA9CF\uAB5B\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE66\uFE68-\uFE6B\uFEFF\uFF01-\uFF20\uFF3B-\uFF40\uFF5B-\uFF65\uFF70\uFF9E\uFF9F\uFFE0-\uFFE6\uFFE8-\uFFEE\uFFF9-\uFFFD',
+        astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD82F[\uDCA0-\uDCA3]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDFCB\uDFCE-\uDFFF]|\uDB40[\uDC01\uDC20-\uDC7F]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD800[\uDD00-\uDD02\uDD07-\uDD33\uDD37-\uDD3F\uDD90-\uDD9B\uDDD0-\uDDFC\uDEE1-\uDEFB]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD66\uDD6A-\uDD7A\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDF00-\uDF56\uDF60-\uDF71]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD00-\uDD0C\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFF]'
+    },
+    {
+        name: 'Coptic',
+        bmp: '\u03E2-\u03EF\u2C80-\u2CF3\u2CF9-\u2CFF'
+    },
+    {
+        name: 'Cuneiform',
+        astral: '\uD809[\uDC00-\uDC6E\uDC70-\uDC74\uDC80-\uDD43]|\uD808[\uDC00-\uDF99]'
+    },
+    {
+        name: 'Cypriot',
+        astral: '\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F]'
+    },
+    {
+        name: 'Cyrillic',
+        bmp: '\u0400-\u0484\u0487-\u052F\u1D2B\u1D78\u2DE0-\u2DFF\uA640-\uA69F\uFE2E\uFE2F'
+    },
+    {
+        name: 'Deseret',
+        astral: '\uD801[\uDC00-\uDC4F]'
+    },
+    {
+        name: 'Devanagari',
+        bmp: '\u0900-\u0950\u0953-\u0963\u0966-\u097F\uA8E0-\uA8FD'
+    },
+    {
+        name: 'Duployan',
+        astral: '\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9C-\uDC9F]'
+    },
+    {
+        name: 'Egyptian_Hieroglyphs',
+        astral: '\uD80C[\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]'
+    },
+    {
+        name: 'Elbasan',
+        astral: '\uD801[\uDD00-\uDD27]'
+    },
+    {
+        name: 'Ethiopic',
+        bmp: '\u1200-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u137C\u1380-\u1399\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E'
+    },
+    {
+        name: 'Georgian',
+        bmp: '\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u10FF\u2D00-\u2D25\u2D27\u2D2D'
+    },
+    {
+        name: 'Glagolitic',
+        bmp: '\u2C00-\u2C2E\u2C30-\u2C5E'
+    },
+    {
+        name: 'Gothic',
+        astral: '\uD800[\uDF30-\uDF4A]'
+    },
+    {
+        name: 'Grantha',
+        astral: '\uD804[\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]'
+    },
+    {
+        name: 'Greek',
+        bmp: '\u0370-\u0373\u0375-\u0377\u037A-\u037D\u037F\u0384\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03E1\u03F0-\u03FF\u1D26-\u1D2A\u1D5D-\u1D61\u1D66-\u1D6A\u1DBF\u1F00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FC4\u1FC6-\u1FD3\u1FD6-\u1FDB\u1FDD-\u1FEF\u1FF2-\u1FF4\u1FF6-\u1FFE\u2126\uAB65',
+        astral: '\uD800[\uDD40-\uDD8C\uDDA0]|\uD834[\uDE00-\uDE45]'
+    },
+    {
+        name: 'Gujarati',
+        bmp: '\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AF1\u0AF9'
+    },
+    {
+        name: 'Gurmukhi',
+        bmp: '\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75'
+    },
+    {
+        name: 'Han',
+        bmp: '\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u3005\u3007\u3021-\u3029\u3038-\u303B\u3400-\u4DB5\u4E00-\u9FD5\uF900-\uFA6D\uFA70-\uFAD9',
+        astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|[\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD87E[\uDC00-\uDE1D]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD873[\uDC00-\uDEA1]'
+    },
+    {
+        name: 'Hangul',
+        bmp: '\u1100-\u11FF\u302E\u302F\u3131-\u318E\u3200-\u321E\u3260-\u327E\uA960-\uA97C\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uFFA0-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC'
+    },
+    {
+        name: 'Hanunoo',
+        bmp: '\u1720-\u1734'
+    },
+    {
+        name: 'Hatran',
+        astral: '\uD802[\uDCE0-\uDCF2\uDCF4\uDCF5\uDCFB-\uDCFF]'
+    },
+    {
+        name: 'Hebrew',
+        bmp: '\u0591-\u05C7\u05D0-\u05EA\u05F0-\u05F4\uFB1D-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFB4F'
+    },
+    {
+        name: 'Hiragana',
+        bmp: '\u3041-\u3096\u309D-\u309F',
+        astral: '\uD82C\uDC01|\uD83C\uDE00'
+    },
+    {
+        name: 'Imperial_Aramaic',
+        astral: '\uD802[\uDC40-\uDC55\uDC57-\uDC5F]'
+    },
+    {
+        name: 'Inherited',
+        bmp: '\u0300-\u036F\u0485\u0486\u064B-\u0655\u0670\u0951\u0952\u1AB0-\u1ABE\u1CD0-\u1CD2\u1CD4-\u1CE0\u1CE2-\u1CE8\u1CED\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u200C\u200D\u20D0-\u20F0\u302A-\u302D\u3099\u309A\uFE00-\uFE0F\uFE20-\uFE2D',
+        astral: '\uD834[\uDD67-\uDD69\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD]|\uD800[\uDDFD\uDEE0]|\uDB40[\uDD00-\uDDEF]'
+    },
+    {
+        name: 'Inscriptional_Pahlavi',
+        astral: '\uD802[\uDF60-\uDF72\uDF78-\uDF7F]'
+    },
+    {
+        name: 'Inscriptional_Parthian',
+        astral: '\uD802[\uDF40-\uDF55\uDF58-\uDF5F]'
+    },
+    {
+        name: 'Javanese',
+        bmp: '\uA980-\uA9CD\uA9D0-\uA9D9\uA9DE\uA9DF'
+    },
+    {
+        name: 'Kaithi',
+        astral: '\uD804[\uDC80-\uDCC1]'
+    },
+    {
+        name: 'Kannada',
+        bmp: '\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2'
+    },
+    {
+        name: 'Katakana',
+        bmp: '\u30A1-\u30FA\u30FD-\u30FF\u31F0-\u31FF\u32D0-\u32FE\u3300-\u3357\uFF66-\uFF6F\uFF71-\uFF9D',
+        astral: '\uD82C\uDC00'
+    },
+    {
+        name: 'Kayah_Li',
+        bmp: '\uA900-\uA92D\uA92F'
+    },
+    {
+        name: 'Kharoshthi',
+        astral: '\uD802[\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F-\uDE47\uDE50-\uDE58]'
+    },
+    {
+        name: 'Khmer',
+        bmp: '\u1780-\u17DD\u17E0-\u17E9\u17F0-\u17F9\u19E0-\u19FF'
+    },
+    {
+        name: 'Khojki',
+        astral: '\uD804[\uDE00-\uDE11\uDE13-\uDE3D]'
+    },
+    {
+        name: 'Khudawadi',
+        astral: '\uD804[\uDEB0-\uDEEA\uDEF0-\uDEF9]'
+    },
+    {
+        name: 'Lao',
+        bmp: '\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF'
+    },
+    {
+        name: 'Latin',
+        bmp: 'A-Za-z\xAA\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02B8\u02E0-\u02E4\u1D00-\u1D25\u1D2C-\u1D5C\u1D62-\u1D65\u1D6B-\u1D77\u1D79-\u1DBE\u1E00-\u1EFF\u2071\u207F\u2090-\u209C\u212A\u212B\u2132\u214E\u2160-\u2188\u2C60-\u2C7F\uA722-\uA787\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA7FF\uAB30-\uAB5A\uAB5C-\uAB64\uFB00-\uFB06\uFF21-\uFF3A\uFF41-\uFF5A'
+    },
+    {
+        name: 'Lepcha',
+        bmp: '\u1C00-\u1C37\u1C3B-\u1C49\u1C4D-\u1C4F'
+    },
+    {
+        name: 'Limbu',
+        bmp: '\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1940\u1944-\u194F'
+    },
+    {
+        name: 'Linear_A',
+        astral: '\uD801[\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]'
+    },
+    {
+        name: 'Linear_B',
+        astral: '\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA]'
+    },
+    {
+        name: 'Lisu',
+        bmp: '\uA4D0-\uA4FF'
+    },
+    {
+        name: 'Lycian',
+        astral: '\uD800[\uDE80-\uDE9C]'
+    },
+    {
+        name: 'Lydian',
+        astral: '\uD802[\uDD20-\uDD39\uDD3F]'
+    },
+    {
+        name: 'Mahajani',
+        astral: '\uD804[\uDD50-\uDD76]'
+    },
+    {
+        name: 'Malayalam',
+        bmp: '\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D57\u0D5F-\u0D63\u0D66-\u0D75\u0D79-\u0D7F'
+    },
+    {
+        name: 'Mandaic',
+        bmp: '\u0840-\u085B\u085E'
+    },
+    {
+        name: 'Manichaean',
+        astral: '\uD802[\uDEC0-\uDEE6\uDEEB-\uDEF6]'
+    },
+    {
+        name: 'Meetei_Mayek',
+        bmp: '\uAAE0-\uAAF6\uABC0-\uABED\uABF0-\uABF9'
+    },
+    {
+        name: 'Mende_Kikakui',
+        astral: '\uD83A[\uDC00-\uDCC4\uDCC7-\uDCD6]'
+    },
+    {
+        name: 'Meroitic_Cursive',
+        astral: '\uD802[\uDDA0-\uDDB7\uDDBC-\uDDCF\uDDD2-\uDDFF]'
+    },
+    {
+        name: 'Meroitic_Hieroglyphs',
+        astral: '\uD802[\uDD80-\uDD9F]'
+    },
+    {
+        name: 'Miao',
+        astral: '\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F]'
+    },
+    {
+        name: 'Modi',
+        astral: '\uD805[\uDE00-\uDE44\uDE50-\uDE59]'
+    },
+    {
+        name: 'Mongolian',
+        bmp: '\u1800\u1801\u1804\u1806-\u180E\u1810-\u1819\u1820-\u1877\u1880-\u18AA'
+    },
+    {
+        name: 'Mro',
+        astral: '\uD81A[\uDE40-\uDE5E\uDE60-\uDE69\uDE6E\uDE6F]'
+    },
+    {
+        name: 'Multani',
+        astral: '\uD804[\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA9]'
+    },
+    {
+        name: 'Myanmar',
+        bmp: '\u1000-\u109F\uA9E0-\uA9FE\uAA60-\uAA7F'
+    },
+    {
+        name: 'Nabataean',
+        astral: '\uD802[\uDC80-\uDC9E\uDCA7-\uDCAF]'
+    },
+    {
+        name: 'New_Tai_Lue',
+        bmp: '\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19DA\u19DE\u19DF'
+    },
+    {
+        name: 'Nko',
+        bmp: '\u07C0-\u07FA'
+    },
+    {
+        name: 'Ogham',
+        bmp: '\u1680-\u169C'
+    },
+    {
+        name: 'Ol_Chiki',
+        bmp: '\u1C50-\u1C7F'
+    },
+    {
+        name: 'Old_Hungarian',
+        astral: '\uD803[\uDC80-\uDCB2\uDCC0-\uDCF2\uDCFA-\uDCFF]'
+    },
+    {
+        name: 'Old_Italic',
+        astral: '\uD800[\uDF00-\uDF23]'
+    },
+    {
+        name: 'Old_North_Arabian',
+        astral: '\uD802[\uDE80-\uDE9F]'
+    },
+    {
+        name: 'Old_Permic',
+        astral: '\uD800[\uDF50-\uDF7A]'
+    },
+    {
+        name: 'Old_Persian',
+        astral: '\uD800[\uDFA0-\uDFC3\uDFC8-\uDFD5]'
+    },
+    {
+        name: 'Old_South_Arabian',
+        astral: '\uD802[\uDE60-\uDE7F]'
+    },
+    {
+        name: 'Old_Turkic',
+        astral: '\uD803[\uDC00-\uDC48]'
+    },
+    {
+        name: 'Oriya',
+        bmp: '\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B77'
+    },
+    {
+        name: 'Osmanya',
+        astral: '\uD801[\uDC80-\uDC9D\uDCA0-\uDCA9]'
+    },
+    {
+        name: 'Pahawh_Hmong',
+        astral: '\uD81A[\uDF00-\uDF45\uDF50-\uDF59\uDF5B-\uDF61\uDF63-\uDF77\uDF7D-\uDF8F]'
+    },
+    {
+        name: 'Palmyrene',
+        astral: '\uD802[\uDC60-\uDC7F]'
+    },
+    {
+        name: 'Pau_Cin_Hau',
+        astral: '\uD806[\uDEC0-\uDEF8]'
+    },
+    {
+        name: 'Phags_Pa',
+        bmp: '\uA840-\uA877'
+    },
+    {
+        name: 'Phoenician',
+        astral: '\uD802[\uDD00-\uDD1B\uDD1F]'
+    },
+    {
+        name: 'Psalter_Pahlavi',
+        astral: '\uD802[\uDF80-\uDF91\uDF99-\uDF9C\uDFA9-\uDFAF]'
+    },
+    {
+        name: 'Rejang',
+        bmp: '\uA930-\uA953\uA95F'
+    },
+    {
+        name: 'Runic',
+        bmp: '\u16A0-\u16EA\u16EE-\u16F8'
+    },
+    {
+        name: 'Samaritan',
+        bmp: '\u0800-\u082D\u0830-\u083E'
+    },
+    {
+        name: 'Saurashtra',
+        bmp: '\uA880-\uA8C4\uA8CE-\uA8D9'
+    },
+    {
+        name: 'Sharada',
+        astral: '\uD804[\uDD80-\uDDCD\uDDD0-\uDDDF]'
+    },
+    {
+        name: 'Shavian',
+        astral: '\uD801[\uDC50-\uDC7F]'
+    },
+    {
+        name: 'Siddham',
+        astral: '\uD805[\uDD80-\uDDB5\uDDB8-\uDDDD]'
+    },
+    {
+        name: 'SignWriting',
+        astral: '\uD836[\uDC00-\uDE8B\uDE9B-\uDE9F\uDEA1-\uDEAF]'
+    },
+    {
+        name: 'Sinhala',
+        bmp: '\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2-\u0DF4',
+        astral: '\uD804[\uDDE1-\uDDF4]'
+    },
+    {
+        name: 'Sora_Sompeng',
+        astral: '\uD804[\uDCD0-\uDCE8\uDCF0-\uDCF9]'
+    },
+    {
+        name: 'Sundanese',
+        bmp: '\u1B80-\u1BBF\u1CC0-\u1CC7'
+    },
+    {
+        name: 'Syloti_Nagri',
+        bmp: '\uA800-\uA82B'
+    },
+    {
+        name: 'Syriac',
+        bmp: '\u0700-\u070D\u070F-\u074A\u074D-\u074F'
+    },
+    {
+        name: 'Tagalog',
+        bmp: '\u1700-\u170C\u170E-\u1714'
+    },
+    {
+        name: 'Tagbanwa',
+        bmp: '\u1760-\u176C\u176E-\u1770\u1772\u1773'
+    },
+    {
+        name: 'Tai_Le',
+        bmp: '\u1950-\u196D\u1970-\u1974'
+    },
+    {
+        name: 'Tai_Tham',
+        bmp: '\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA0-\u1AAD'
+    },
+    {
+        name: 'Tai_Viet',
+        bmp: '\uAA80-\uAAC2\uAADB-\uAADF'
+    },
+    {
+        name: 'Takri',
+        astral: '\uD805[\uDE80-\uDEB7\uDEC0-\uDEC9]'
+    },
+    {
+        name: 'Tamil',
+        bmp: '\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BFA'
+    },
+    {
+        name: 'Telugu',
+        bmp: '\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C78-\u0C7F'
+    },
+    {
+        name: 'Thaana',
+        bmp: '\u0780-\u07B1'
+    },
+    {
+        name: 'Thai',
+        bmp: '\u0E01-\u0E3A\u0E40-\u0E5B'
+    },
+    {
+        name: 'Tibetan',
+        bmp: '\u0F00-\u0F47\u0F49-\u0F6C\u0F71-\u0F97\u0F99-\u0FBC\u0FBE-\u0FCC\u0FCE-\u0FD4\u0FD9\u0FDA'
+    },
+    {
+        name: 'Tifinagh',
+        bmp: '\u2D30-\u2D67\u2D6F\u2D70\u2D7F'
+    },
+    {
+        name: 'Tirhuta',
+        astral: '\uD805[\uDC80-\uDCC7\uDCD0-\uDCD9]'
+    },
+    {
+        name: 'Ugaritic',
+        astral: '\uD800[\uDF80-\uDF9D\uDF9F]'
+    },
+    {
+        name: 'Vai',
+        bmp: '\uA500-\uA62B'
+    },
+    {
+        name: 'Warang_Citi',
+        astral: '\uD806[\uDCA0-\uDCF2\uDCFF]'
+    },
+    {
+        name: 'Yi',
+        bmp: '\uA000-\uA48C\uA490-\uA4C6'
     }
-
-    XRegExp.addUnicodeData([
-        {
-            name: 'Ahom',
-            astral: '\uD805[\uDF00-\uDF19\uDF1D-\uDF2B\uDF30-\uDF3F]'
-        },
-        {
-            name: 'Anatolian_Hieroglyphs',
-            astral: '\uD811[\uDC00-\uDE46]'
-        },
-        {
-            name: 'Arabic',
-            bmp: '\u0600-\u0604\u0606-\u060B\u060D-\u061A\u061E\u0620-\u063F\u0641-\u064A\u0656-\u066F\u0671-\u06DC\u06DE-\u06FF\u0750-\u077F\u08A0-\u08B4\u08E3-\u08FF\uFB50-\uFBC1\uFBD3-\uFD3D\uFD50-\uFD8F\uFD92-\uFDC7\uFDF0-\uFDFD\uFE70-\uFE74\uFE76-\uFEFC',
-            astral: '\uD803[\uDE60-\uDE7E]|\uD83B[\uDE00-\uDE03\uDE05-\uDE1F\uDE21\uDE22\uDE24\uDE27\uDE29-\uDE32\uDE34-\uDE37\uDE39\uDE3B\uDE42\uDE47\uDE49\uDE4B\uDE4D-\uDE4F\uDE51\uDE52\uDE54\uDE57\uDE59\uDE5B\uDE5D\uDE5F\uDE61\uDE62\uDE64\uDE67-\uDE6A\uDE6C-\uDE72\uDE74-\uDE77\uDE79-\uDE7C\uDE7E\uDE80-\uDE89\uDE8B-\uDE9B\uDEA1-\uDEA3\uDEA5-\uDEA9\uDEAB-\uDEBB\uDEF0\uDEF1]'
-        },
-        {
-            name: 'Armenian',
-            bmp: '\u0531-\u0556\u0559-\u055F\u0561-\u0587\u058A\u058D-\u058F\uFB13-\uFB17'
-        },
-        {
-            name: 'Avestan',
-            astral: '\uD802[\uDF00-\uDF35\uDF39-\uDF3F]'
-        },
-        {
-            name: 'Balinese',
-            bmp: '\u1B00-\u1B4B\u1B50-\u1B7C'
-        },
-        {
-            name: 'Bamum',
-            bmp: '\uA6A0-\uA6F7',
-            astral: '\uD81A[\uDC00-\uDE38]'
-        },
-        {
-            name: 'Bassa_Vah',
-            astral: '\uD81A[\uDED0-\uDEED\uDEF0-\uDEF5]'
-        },
-        {
-            name: 'Batak',
-            bmp: '\u1BC0-\u1BF3\u1BFC-\u1BFF'
-        },
-        {
-            name: 'Bengali',
-            bmp: '\u0980-\u0983\u0985-\u098C\u098F\u0990\u0993-\u09A8\u09AA-\u09B0\u09B2\u09B6-\u09B9\u09BC-\u09C4\u09C7\u09C8\u09CB-\u09CE\u09D7\u09DC\u09DD\u09DF-\u09E3\u09E6-\u09FB'
-        },
-        {
-            name: 'Bopomofo',
-            bmp: '\u02EA\u02EB\u3105-\u312D\u31A0-\u31BA'
-        },
-        {
-            name: 'Brahmi',
-            astral: '\uD804[\uDC00-\uDC4D\uDC52-\uDC6F\uDC7F]'
-        },
-        {
-            name: 'Braille',
-            bmp: '\u2800-\u28FF'
-        },
-        {
-            name: 'Buginese',
-            bmp: '\u1A00-\u1A1B\u1A1E\u1A1F'
-        },
-        {
-            name: 'Buhid',
-            bmp: '\u1740-\u1753'
-        },
-        {
-            name: 'Canadian_Aboriginal',
-            bmp: '\u1400-\u167F\u18B0-\u18F5'
-        },
-        {
-            name: 'Carian',
-            astral: '\uD800[\uDEA0-\uDED0]'
-        },
-        {
-            name: 'Caucasian_Albanian',
-            astral: '\uD801[\uDD30-\uDD63\uDD6F]'
-        },
-        {
-            name: 'Chakma',
-            astral: '\uD804[\uDD00-\uDD34\uDD36-\uDD43]'
-        },
-        {
-            name: 'Cham',
-            bmp: '\uAA00-\uAA36\uAA40-\uAA4D\uAA50-\uAA59\uAA5C-\uAA5F'
-        },
-        {
-            name: 'Cherokee',
-            bmp: '\u13A0-\u13F5\u13F8-\u13FD\uAB70-\uABBF'
-        },
-        {
-            name: 'Common',
-            bmp: '\0-\x40\\x5B-\x60\\x7B-\xA9\xAB-\xB9\xBB-\xBF\xD7\xF7\u02B9-\u02DF\u02E5-\u02E9\u02EC-\u02FF\u0374\u037E\u0385\u0387\u0589\u0605\u060C\u061B\u061C\u061F\u0640\u06DD\u0964\u0965\u0E3F\u0FD5-\u0FD8\u10FB\u16EB-\u16ED\u1735\u1736\u1802\u1803\u1805\u1CD3\u1CE1\u1CE9-\u1CEC\u1CEE-\u1CF3\u1CF5\u1CF6\u2000-\u200B\u200E-\u2064\u2066-\u2070\u2074-\u207E\u2080-\u208E\u20A0-\u20BE\u2100-\u2125\u2127-\u2129\u212C-\u2131\u2133-\u214D\u214F-\u215F\u2189-\u218B\u2190-\u23FA\u2400-\u2426\u2440-\u244A\u2460-\u27FF\u2900-\u2B73\u2B76-\u2B95\u2B98-\u2BB9\u2BBD-\u2BC8\u2BCA-\u2BD1\u2BEC-\u2BEF\u2E00-\u2E42\u2FF0-\u2FFB\u3000-\u3004\u3006\u3008-\u3020\u3030-\u3037\u303C-\u303F\u309B\u309C\u30A0\u30FB\u30FC\u3190-\u319F\u31C0-\u31E3\u3220-\u325F\u327F-\u32CF\u3358-\u33FF\u4DC0-\u4DFF\uA700-\uA721\uA788-\uA78A\uA830-\uA839\uA92E\uA9CF\uAB5B\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE66\uFE68-\uFE6B\uFEFF\uFF01-\uFF20\uFF3B-\uFF40\uFF5B-\uFF65\uFF70\uFF9E\uFF9F\uFFE0-\uFFE6\uFFE8-\uFFEE\uFFF9-\uFFFD',
-            astral: '\uD83E[\uDC00-\uDC0B\uDC10-\uDC47\uDC50-\uDC59\uDC60-\uDC87\uDC90-\uDCAD\uDD10-\uDD18\uDD80-\uDD84\uDDC0]|\uD82F[\uDCA0-\uDCA3]|\uD835[\uDC00-\uDC54\uDC56-\uDC9C\uDC9E\uDC9F\uDCA2\uDCA5\uDCA6\uDCA9-\uDCAC\uDCAE-\uDCB9\uDCBB\uDCBD-\uDCC3\uDCC5-\uDD05\uDD07-\uDD0A\uDD0D-\uDD14\uDD16-\uDD1C\uDD1E-\uDD39\uDD3B-\uDD3E\uDD40-\uDD44\uDD46\uDD4A-\uDD50\uDD52-\uDEA5\uDEA8-\uDFCB\uDFCE-\uDFFF]|\uDB40[\uDC01\uDC20-\uDC7F]|\uD83D[\uDC00-\uDD79\uDD7B-\uDDA3\uDDA5-\uDED0\uDEE0-\uDEEC\uDEF0-\uDEF3\uDF00-\uDF73\uDF80-\uDFD4]|\uD800[\uDD00-\uDD02\uDD07-\uDD33\uDD37-\uDD3F\uDD90-\uDD9B\uDDD0-\uDDFC\uDEE1-\uDEFB]|\uD834[\uDC00-\uDCF5\uDD00-\uDD26\uDD29-\uDD66\uDD6A-\uDD7A\uDD83\uDD84\uDD8C-\uDDA9\uDDAE-\uDDE8\uDF00-\uDF56\uDF60-\uDF71]|\uD83C[\uDC00-\uDC2B\uDC30-\uDC93\uDCA0-\uDCAE\uDCB1-\uDCBF\uDCC1-\uDCCF\uDCD1-\uDCF5\uDD00-\uDD0C\uDD10-\uDD2E\uDD30-\uDD6B\uDD70-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE10-\uDE3A\uDE40-\uDE48\uDE50\uDE51\uDF00-\uDFFF]'
-        },
-        {
-            name: 'Coptic',
-            bmp: '\u03E2-\u03EF\u2C80-\u2CF3\u2CF9-\u2CFF'
-        },
-        {
-            name: 'Cuneiform',
-            astral: '\uD809[\uDC00-\uDC6E\uDC70-\uDC74\uDC80-\uDD43]|\uD808[\uDC00-\uDF99]'
-        },
-        {
-            name: 'Cypriot',
-            astral: '\uD802[\uDC00-\uDC05\uDC08\uDC0A-\uDC35\uDC37\uDC38\uDC3C\uDC3F]'
-        },
-        {
-            name: 'Cyrillic',
-            bmp: '\u0400-\u0484\u0487-\u052F\u1D2B\u1D78\u2DE0-\u2DFF\uA640-\uA69F\uFE2E\uFE2F'
-        },
-        {
-            name: 'Deseret',
-            astral: '\uD801[\uDC00-\uDC4F]'
-        },
-        {
-            name: 'Devanagari',
-            bmp: '\u0900-\u0950\u0953-\u0963\u0966-\u097F\uA8E0-\uA8FD'
-        },
-        {
-            name: 'Duployan',
-            astral: '\uD82F[\uDC00-\uDC6A\uDC70-\uDC7C\uDC80-\uDC88\uDC90-\uDC99\uDC9C-\uDC9F]'
-        },
-        {
-            name: 'Egyptian_Hieroglyphs',
-            astral: '\uD80C[\uDC00-\uDFFF]|\uD80D[\uDC00-\uDC2E]'
-        },
-        {
-            name: 'Elbasan',
-            astral: '\uD801[\uDD00-\uDD27]'
-        },
-        {
-            name: 'Ethiopic',
-            bmp: '\u1200-\u1248\u124A-\u124D\u1250-\u1256\u1258\u125A-\u125D\u1260-\u1288\u128A-\u128D\u1290-\u12B0\u12B2-\u12B5\u12B8-\u12BE\u12C0\u12C2-\u12C5\u12C8-\u12D6\u12D8-\u1310\u1312-\u1315\u1318-\u135A\u135D-\u137C\u1380-\u1399\u2D80-\u2D96\u2DA0-\u2DA6\u2DA8-\u2DAE\u2DB0-\u2DB6\u2DB8-\u2DBE\u2DC0-\u2DC6\u2DC8-\u2DCE\u2DD0-\u2DD6\u2DD8-\u2DDE\uAB01-\uAB06\uAB09-\uAB0E\uAB11-\uAB16\uAB20-\uAB26\uAB28-\uAB2E'
-        },
-        {
-            name: 'Georgian',
-            bmp: '\u10A0-\u10C5\u10C7\u10CD\u10D0-\u10FA\u10FC-\u10FF\u2D00-\u2D25\u2D27\u2D2D'
-        },
-        {
-            name: 'Glagolitic',
-            bmp: '\u2C00-\u2C2E\u2C30-\u2C5E'
-        },
-        {
-            name: 'Gothic',
-            astral: '\uD800[\uDF30-\uDF4A]'
-        },
-        {
-            name: 'Grantha',
-            astral: '\uD804[\uDF00-\uDF03\uDF05-\uDF0C\uDF0F\uDF10\uDF13-\uDF28\uDF2A-\uDF30\uDF32\uDF33\uDF35-\uDF39\uDF3C-\uDF44\uDF47\uDF48\uDF4B-\uDF4D\uDF50\uDF57\uDF5D-\uDF63\uDF66-\uDF6C\uDF70-\uDF74]'
-        },
-        {
-            name: 'Greek',
-            bmp: '\u0370-\u0373\u0375-\u0377\u037A-\u037D\u037F\u0384\u0386\u0388-\u038A\u038C\u038E-\u03A1\u03A3-\u03E1\u03F0-\u03FF\u1D26-\u1D2A\u1D5D-\u1D61\u1D66-\u1D6A\u1DBF\u1F00-\u1F15\u1F18-\u1F1D\u1F20-\u1F45\u1F48-\u1F4D\u1F50-\u1F57\u1F59\u1F5B\u1F5D\u1F5F-\u1F7D\u1F80-\u1FB4\u1FB6-\u1FC4\u1FC6-\u1FD3\u1FD6-\u1FDB\u1FDD-\u1FEF\u1FF2-\u1FF4\u1FF6-\u1FFE\u2126\uAB65',
-            astral: '\uD800[\uDD40-\uDD8C\uDDA0]|\uD834[\uDE00-\uDE45]'
-        },
-        {
-            name: 'Gujarati',
-            bmp: '\u0A81-\u0A83\u0A85-\u0A8D\u0A8F-\u0A91\u0A93-\u0AA8\u0AAA-\u0AB0\u0AB2\u0AB3\u0AB5-\u0AB9\u0ABC-\u0AC5\u0AC7-\u0AC9\u0ACB-\u0ACD\u0AD0\u0AE0-\u0AE3\u0AE6-\u0AF1\u0AF9'
-        },
-        {
-            name: 'Gurmukhi',
-            bmp: '\u0A01-\u0A03\u0A05-\u0A0A\u0A0F\u0A10\u0A13-\u0A28\u0A2A-\u0A30\u0A32\u0A33\u0A35\u0A36\u0A38\u0A39\u0A3C\u0A3E-\u0A42\u0A47\u0A48\u0A4B-\u0A4D\u0A51\u0A59-\u0A5C\u0A5E\u0A66-\u0A75'
-        },
-        {
-            name: 'Han',
-            bmp: '\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u3005\u3007\u3021-\u3029\u3038-\u303B\u3400-\u4DB5\u4E00-\u9FD5\uF900-\uFA6D\uFA70-\uFAD9',
-            astral: '\uD86E[\uDC00-\uDC1D\uDC20-\uDFFF]|[\uD840-\uD868\uD86A-\uD86C\uD86F-\uD872][\uDC00-\uDFFF]|\uD86D[\uDC00-\uDF34\uDF40-\uDFFF]|\uD87E[\uDC00-\uDE1D]|\uD869[\uDC00-\uDED6\uDF00-\uDFFF]|\uD873[\uDC00-\uDEA1]'
-        },
-        {
-            name: 'Hangul',
-            bmp: '\u1100-\u11FF\u302E\u302F\u3131-\u318E\u3200-\u321E\u3260-\u327E\uA960-\uA97C\uAC00-\uD7A3\uD7B0-\uD7C6\uD7CB-\uD7FB\uFFA0-\uFFBE\uFFC2-\uFFC7\uFFCA-\uFFCF\uFFD2-\uFFD7\uFFDA-\uFFDC'
-        },
-        {
-            name: 'Hanunoo',
-            bmp: '\u1720-\u1734'
-        },
-        {
-            name: 'Hatran',
-            astral: '\uD802[\uDCE0-\uDCF2\uDCF4\uDCF5\uDCFB-\uDCFF]'
-        },
-        {
-            name: 'Hebrew',
-            bmp: '\u0591-\u05C7\u05D0-\u05EA\u05F0-\u05F4\uFB1D-\uFB36\uFB38-\uFB3C\uFB3E\uFB40\uFB41\uFB43\uFB44\uFB46-\uFB4F'
-        },
-        {
-            name: 'Hiragana',
-            bmp: '\u3041-\u3096\u309D-\u309F',
-            astral: '\uD82C\uDC01|\uD83C\uDE00'
-        },
-        {
-            name: 'Imperial_Aramaic',
-            astral: '\uD802[\uDC40-\uDC55\uDC57-\uDC5F]'
-        },
-        {
-            name: 'Inherited',
-            bmp: '\u0300-\u036F\u0485\u0486\u064B-\u0655\u0670\u0951\u0952\u1AB0-\u1ABE\u1CD0-\u1CD2\u1CD4-\u1CE0\u1CE2-\u1CE8\u1CED\u1CF4\u1CF8\u1CF9\u1DC0-\u1DF5\u1DFC-\u1DFF\u200C\u200D\u20D0-\u20F0\u302A-\u302D\u3099\u309A\uFE00-\uFE0F\uFE20-\uFE2D',
-            astral: '\uD834[\uDD67-\uDD69\uDD7B-\uDD82\uDD85-\uDD8B\uDDAA-\uDDAD]|\uD800[\uDDFD\uDEE0]|\uDB40[\uDD00-\uDDEF]'
-        },
-        {
-            name: 'Inscriptional_Pahlavi',
-            astral: '\uD802[\uDF60-\uDF72\uDF78-\uDF7F]'
-        },
-        {
-            name: 'Inscriptional_Parthian',
-            astral: '\uD802[\uDF40-\uDF55\uDF58-\uDF5F]'
-        },
-        {
-            name: 'Javanese',
-            bmp: '\uA980-\uA9CD\uA9D0-\uA9D9\uA9DE\uA9DF'
-        },
-        {
-            name: 'Kaithi',
-            astral: '\uD804[\uDC80-\uDCC1]'
-        },
-        {
-            name: 'Kannada',
-            bmp: '\u0C81-\u0C83\u0C85-\u0C8C\u0C8E-\u0C90\u0C92-\u0CA8\u0CAA-\u0CB3\u0CB5-\u0CB9\u0CBC-\u0CC4\u0CC6-\u0CC8\u0CCA-\u0CCD\u0CD5\u0CD6\u0CDE\u0CE0-\u0CE3\u0CE6-\u0CEF\u0CF1\u0CF2'
-        },
-        {
-            name: 'Katakana',
-            bmp: '\u30A1-\u30FA\u30FD-\u30FF\u31F0-\u31FF\u32D0-\u32FE\u3300-\u3357\uFF66-\uFF6F\uFF71-\uFF9D',
-            astral: '\uD82C\uDC00'
-        },
-        {
-            name: 'Kayah_Li',
-            bmp: '\uA900-\uA92D\uA92F'
-        },
-        {
-            name: 'Kharoshthi',
-            astral: '\uD802[\uDE00-\uDE03\uDE05\uDE06\uDE0C-\uDE13\uDE15-\uDE17\uDE19-\uDE33\uDE38-\uDE3A\uDE3F-\uDE47\uDE50-\uDE58]'
-        },
-        {
-            name: 'Khmer',
-            bmp: '\u1780-\u17DD\u17E0-\u17E9\u17F0-\u17F9\u19E0-\u19FF'
-        },
-        {
-            name: 'Khojki',
-            astral: '\uD804[\uDE00-\uDE11\uDE13-\uDE3D]'
-        },
-        {
-            name: 'Khudawadi',
-            astral: '\uD804[\uDEB0-\uDEEA\uDEF0-\uDEF9]'
-        },
-        {
-            name: 'Lao',
-            bmp: '\u0E81\u0E82\u0E84\u0E87\u0E88\u0E8A\u0E8D\u0E94-\u0E97\u0E99-\u0E9F\u0EA1-\u0EA3\u0EA5\u0EA7\u0EAA\u0EAB\u0EAD-\u0EB9\u0EBB-\u0EBD\u0EC0-\u0EC4\u0EC6\u0EC8-\u0ECD\u0ED0-\u0ED9\u0EDC-\u0EDF'
-        },
-        {
-            name: 'Latin',
-            bmp: 'A-Za-z\xAA\xBA\xC0-\xD6\xD8-\xF6\xF8-\u02B8\u02E0-\u02E4\u1D00-\u1D25\u1D2C-\u1D5C\u1D62-\u1D65\u1D6B-\u1D77\u1D79-\u1DBE\u1E00-\u1EFF\u2071\u207F\u2090-\u209C\u212A\u212B\u2132\u214E\u2160-\u2188\u2C60-\u2C7F\uA722-\uA787\uA78B-\uA7AD\uA7B0-\uA7B7\uA7F7-\uA7FF\uAB30-\uAB5A\uAB5C-\uAB64\uFB00-\uFB06\uFF21-\uFF3A\uFF41-\uFF5A'
-        },
-        {
-            name: 'Lepcha',
-            bmp: '\u1C00-\u1C37\u1C3B-\u1C49\u1C4D-\u1C4F'
-        },
-        {
-            name: 'Limbu',
-            bmp: '\u1900-\u191E\u1920-\u192B\u1930-\u193B\u1940\u1944-\u194F'
-        },
-        {
-            name: 'Linear_A',
-            astral: '\uD801[\uDE00-\uDF36\uDF40-\uDF55\uDF60-\uDF67]'
-        },
-        {
-            name: 'Linear_B',
-            astral: '\uD800[\uDC00-\uDC0B\uDC0D-\uDC26\uDC28-\uDC3A\uDC3C\uDC3D\uDC3F-\uDC4D\uDC50-\uDC5D\uDC80-\uDCFA]'
-        },
-        {
-            name: 'Lisu',
-            bmp: '\uA4D0-\uA4FF'
-        },
-        {
-            name: 'Lycian',
-            astral: '\uD800[\uDE80-\uDE9C]'
-        },
-        {
-            name: 'Lydian',
-            astral: '\uD802[\uDD20-\uDD39\uDD3F]'
-        },
-        {
-            name: 'Mahajani',
-            astral: '\uD804[\uDD50-\uDD76]'
-        },
-        {
-            name: 'Malayalam',
-            bmp: '\u0D01-\u0D03\u0D05-\u0D0C\u0D0E-\u0D10\u0D12-\u0D3A\u0D3D-\u0D44\u0D46-\u0D48\u0D4A-\u0D4E\u0D57\u0D5F-\u0D63\u0D66-\u0D75\u0D79-\u0D7F'
-        },
-        {
-            name: 'Mandaic',
-            bmp: '\u0840-\u085B\u085E'
-        },
-        {
-            name: 'Manichaean',
-            astral: '\uD802[\uDEC0-\uDEE6\uDEEB-\uDEF6]'
-        },
-        {
-            name: 'Meetei_Mayek',
-            bmp: '\uAAE0-\uAAF6\uABC0-\uABED\uABF0-\uABF9'
-        },
-        {
-            name: 'Mende_Kikakui',
-            astral: '\uD83A[\uDC00-\uDCC4\uDCC7-\uDCD6]'
-        },
-        {
-            name: 'Meroitic_Cursive',
-            astral: '\uD802[\uDDA0-\uDDB7\uDDBC-\uDDCF\uDDD2-\uDDFF]'
-        },
-        {
-            name: 'Meroitic_Hieroglyphs',
-            astral: '\uD802[\uDD80-\uDD9F]'
-        },
-        {
-            name: 'Miao',
-            astral: '\uD81B[\uDF00-\uDF44\uDF50-\uDF7E\uDF8F-\uDF9F]'
-        },
-        {
-            name: 'Modi',
-            astral: '\uD805[\uDE00-\uDE44\uDE50-\uDE59]'
-        },
-        {
-            name: 'Mongolian',
-            bmp: '\u1800\u1801\u1804\u1806-\u180E\u1810-\u1819\u1820-\u1877\u1880-\u18AA'
-        },
-        {
-            name: 'Mro',
-            astral: '\uD81A[\uDE40-\uDE5E\uDE60-\uDE69\uDE6E\uDE6F]'
-        },
-        {
-            name: 'Multani',
-            astral: '\uD804[\uDE80-\uDE86\uDE88\uDE8A-\uDE8D\uDE8F-\uDE9D\uDE9F-\uDEA9]'
-        },
-        {
-            name: 'Myanmar',
-            bmp: '\u1000-\u109F\uA9E0-\uA9FE\uAA60-\uAA7F'
-        },
-        {
-            name: 'Nabataean',
-            astral: '\uD802[\uDC80-\uDC9E\uDCA7-\uDCAF]'
-        },
-        {
-            name: 'New_Tai_Lue',
-            bmp: '\u1980-\u19AB\u19B0-\u19C9\u19D0-\u19DA\u19DE\u19DF'
-        },
-        {
-            name: 'Nko',
-            bmp: '\u07C0-\u07FA'
-        },
-        {
-            name: 'Ogham',
-            bmp: '\u1680-\u169C'
-        },
-        {
-            name: 'Ol_Chiki',
-            bmp: '\u1C50-\u1C7F'
-        },
-        {
-            name: 'Old_Hungarian',
-            astral: '\uD803[\uDC80-\uDCB2\uDCC0-\uDCF2\uDCFA-\uDCFF]'
-        },
-        {
-            name: 'Old_Italic',
-            astral: '\uD800[\uDF00-\uDF23]'
-        },
-        {
-            name: 'Old_North_Arabian',
-            astral: '\uD802[\uDE80-\uDE9F]'
-        },
-        {
-            name: 'Old_Permic',
-            astral: '\uD800[\uDF50-\uDF7A]'
-        },
-        {
-            name: 'Old_Persian',
-            astral: '\uD800[\uDFA0-\uDFC3\uDFC8-\uDFD5]'
-        },
-        {
-            name: 'Old_South_Arabian',
-            astral: '\uD802[\uDE60-\uDE7F]'
-        },
-        {
-            name: 'Old_Turkic',
-            astral: '\uD803[\uDC00-\uDC48]'
-        },
-        {
-            name: 'Oriya',
-            bmp: '\u0B01-\u0B03\u0B05-\u0B0C\u0B0F\u0B10\u0B13-\u0B28\u0B2A-\u0B30\u0B32\u0B33\u0B35-\u0B39\u0B3C-\u0B44\u0B47\u0B48\u0B4B-\u0B4D\u0B56\u0B57\u0B5C\u0B5D\u0B5F-\u0B63\u0B66-\u0B77'
-        },
-        {
-            name: 'Osmanya',
-            astral: '\uD801[\uDC80-\uDC9D\uDCA0-\uDCA9]'
-        },
-        {
-            name: 'Pahawh_Hmong',
-            astral: '\uD81A[\uDF00-\uDF45\uDF50-\uDF59\uDF5B-\uDF61\uDF63-\uDF77\uDF7D-\uDF8F]'
-        },
-        {
-            name: 'Palmyrene',
-            astral: '\uD802[\uDC60-\uDC7F]'
-        },
-        {
-            name: 'Pau_Cin_Hau',
-            astral: '\uD806[\uDEC0-\uDEF8]'
-        },
-        {
-            name: 'Phags_Pa',
-            bmp: '\uA840-\uA877'
-        },
-        {
-            name: 'Phoenician',
-            astral: '\uD802[\uDD00-\uDD1B\uDD1F]'
-        },
-        {
-            name: 'Psalter_Pahlavi',
-            astral: '\uD802[\uDF80-\uDF91\uDF99-\uDF9C\uDFA9-\uDFAF]'
-        },
-        {
-            name: 'Rejang',
-            bmp: '\uA930-\uA953\uA95F'
-        },
-        {
-            name: 'Runic',
-            bmp: '\u16A0-\u16EA\u16EE-\u16F8'
-        },
-        {
-            name: 'Samaritan',
-            bmp: '\u0800-\u082D\u0830-\u083E'
-        },
-        {
-            name: 'Saurashtra',
-            bmp: '\uA880-\uA8C4\uA8CE-\uA8D9'
-        },
-        {
-            name: 'Sharada',
-            astral: '\uD804[\uDD80-\uDDCD\uDDD0-\uDDDF]'
-        },
-        {
-            name: 'Shavian',
-            astral: '\uD801[\uDC50-\uDC7F]'
-        },
-        {
-            name: 'Siddham',
-            astral: '\uD805[\uDD80-\uDDB5\uDDB8-\uDDDD]'
-        },
-        {
-            name: 'SignWriting',
-            astral: '\uD836[\uDC00-\uDE8B\uDE9B-\uDE9F\uDEA1-\uDEAF]'
-        },
-        {
-            name: 'Sinhala',
-            bmp: '\u0D82\u0D83\u0D85-\u0D96\u0D9A-\u0DB1\u0DB3-\u0DBB\u0DBD\u0DC0-\u0DC6\u0DCA\u0DCF-\u0DD4\u0DD6\u0DD8-\u0DDF\u0DE6-\u0DEF\u0DF2-\u0DF4',
-            astral: '\uD804[\uDDE1-\uDDF4]'
-        },
-        {
-            name: 'Sora_Sompeng',
-            astral: '\uD804[\uDCD0-\uDCE8\uDCF0-\uDCF9]'
-        },
-        {
-            name: 'Sundanese',
-            bmp: '\u1B80-\u1BBF\u1CC0-\u1CC7'
-        },
-        {
-            name: 'Syloti_Nagri',
-            bmp: '\uA800-\uA82B'
-        },
-        {
-            name: 'Syriac',
-            bmp: '\u0700-\u070D\u070F-\u074A\u074D-\u074F'
-        },
-        {
-            name: 'Tagalog',
-            bmp: '\u1700-\u170C\u170E-\u1714'
-        },
-        {
-            name: 'Tagbanwa',
-            bmp: '\u1760-\u176C\u176E-\u1770\u1772\u1773'
-        },
-        {
-            name: 'Tai_Le',
-            bmp: '\u1950-\u196D\u1970-\u1974'
-        },
-        {
-            name: 'Tai_Tham',
-            bmp: '\u1A20-\u1A5E\u1A60-\u1A7C\u1A7F-\u1A89\u1A90-\u1A99\u1AA0-\u1AAD'
-        },
-        {
-            name: 'Tai_Viet',
-            bmp: '\uAA80-\uAAC2\uAADB-\uAADF'
-        },
-        {
-            name: 'Takri',
-            astral: '\uD805[\uDE80-\uDEB7\uDEC0-\uDEC9]'
-        },
-        {
-            name: 'Tamil',
-            bmp: '\u0B82\u0B83\u0B85-\u0B8A\u0B8E-\u0B90\u0B92-\u0B95\u0B99\u0B9A\u0B9C\u0B9E\u0B9F\u0BA3\u0BA4\u0BA8-\u0BAA\u0BAE-\u0BB9\u0BBE-\u0BC2\u0BC6-\u0BC8\u0BCA-\u0BCD\u0BD0\u0BD7\u0BE6-\u0BFA'
-        },
-        {
-            name: 'Telugu',
-            bmp: '\u0C00-\u0C03\u0C05-\u0C0C\u0C0E-\u0C10\u0C12-\u0C28\u0C2A-\u0C39\u0C3D-\u0C44\u0C46-\u0C48\u0C4A-\u0C4D\u0C55\u0C56\u0C58-\u0C5A\u0C60-\u0C63\u0C66-\u0C6F\u0C78-\u0C7F'
-        },
-        {
-            name: 'Thaana',
-            bmp: '\u0780-\u07B1'
-        },
-        {
-            name: 'Thai',
-            bmp: '\u0E01-\u0E3A\u0E40-\u0E5B'
-        },
-        {
-            name: 'Tibetan',
-            bmp: '\u0F00-\u0F47\u0F49-\u0F6C\u0F71-\u0F97\u0F99-\u0FBC\u0FBE-\u0FCC\u0FCE-\u0FD4\u0FD9\u0FDA'
-        },
-        {
-            name: 'Tifinagh',
-            bmp: '\u2D30-\u2D67\u2D6F\u2D70\u2D7F'
-        },
-        {
-            name: 'Tirhuta',
-            astral: '\uD805[\uDC80-\uDCC7\uDCD0-\uDCD9]'
-        },
-        {
-            name: 'Ugaritic',
-            astral: '\uD800[\uDF80-\uDF9D\uDF9F]'
-        },
-        {
-            name: 'Vai',
-            bmp: '\uA500-\uA62B'
-        },
-        {
-            name: 'Warang_Citi',
-            astral: '\uD806[\uDCA0-\uDCF2\uDCFF]'
-        },
-        {
-            name: 'Yi',
-            bmp: '\uA000-\uA48C\uA490-\uA4C6'
-        }
-    ]);
+]);
 
 
 
@@ -30471,7 +31951,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.17-123",
+  "version": "0.4.17-131",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -30511,7 +31991,7 @@ module.exports={
   "devDependencies": {
     "test": ">=0.6.0",
     "uglify-js": ">=2.6.2",
-    "browserify": ">=13.0.0"
+    "browserify": ">=13.0.1"
   },
   "scripts": {
     "test": "node tests/all-tests.js"

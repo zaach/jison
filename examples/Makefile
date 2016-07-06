@@ -4,6 +4,79 @@
 
 JISON = node ../lib/cli.js -o ./output/$@/ --main
 
+ERROR_HANDLING_TARGETS =                                        \
+			error-handling-and-yyclearin                        \
+			error-handling-and-yyerrok-loopfix                  \
+			error-handling-and-yyerrok-looping1                 \
+			error-handling-and-yyerrok-looping2                 \
+			error-handling-and-yyerrok-macro                    \
+			error-handling-and-yyerrok-part1                    \
+			error-handling-and-yyerrok-part2                    \
+			error-handling-and-yyerrok-part3                    \
+			error-handling-and-yyerrok-part4a                   \
+			error-handling-and-yyerrok-part4b                   \
+			error-handling-and-yyerrok-part5                    \
+			error-recognition-actions                           \
+			yacc-error-recovery
+
+
+
+MISC_TARGETS =                                                   \
+			basic                                               \
+			basic2                                              \
+			basic2_lex                                          \
+			basic_lex                                           \
+			basic_w_error_rule                                  \
+			bloop                                               \
+			calc_LA_on_demand                                   \
+			calculator                                          \
+			calculator_json                                     \
+			ccalc                                               \
+			classy                                              \
+			classy_ast                                          \
+			comments                                            \
+			compiled_calc                                       \
+			dism                                                \
+			dism_lr0                                            \
+			dot                                                 \
+			$(ERROR_HANDLING_TARGETS)                           \
+			error-only                                          \
+			faking-multiple-start-rules                         \
+			faking-multiple-start-rules-alt                     \
+			flow                                                \
+			formula                                             \
+			grammar                                             \
+			handlebars-BAD                                          \
+			happyhappy                                          \
+			inherited_y                                         \
+			issue-254                                           \
+			issue-289-BAD                                           \
+			issue-293                                           \
+			json_ast_js                                         \
+			json_js                                             \
+			klammergebirge                                      \
+			lalr-but-not-slr                                    \
+			lambdacalc                                          \
+			lex                                                 \
+			lr-but-not-lalr                                     \
+			mfcalc                                              \
+			no-prec-hack-needed									\
+			nv_classy_ast                                       \
+			olmenu-proto2                                       \
+			parser-to-lexer-communication-test                  \
+			phraser                                             \
+			precedence                                          \
+			reduce_conflict                                     \
+			regex                                               \
+			semwhitespace                                       \
+			theory-left-recurs-01                               \
+			unicode                                             \
+			unicode2                                            \
+			with-includes                                       \
+			with_custom_lexer
+
+
+
 ALL_TARGETS =                                                   \
 			ansic                                               \
 			basic                                               \
@@ -29,19 +102,8 @@ ALL_TARGETS =                                                   \
 			dism                                                \
 			dism_lr0                                            \
 			dot                                                 \
-			error-handling-and-yyclearin                        \
-			error-handling-and-yyerrok-loopfix                  \
-			error-handling-and-yyerrok-looping1                 \
-			error-handling-and-yyerrok-looping2                 \
-			error-handling-and-yyerrok-macro                    \
-			error-handling-and-yyerrok-part1                    \
-			error-handling-and-yyerrok-part2                    \
-			error-handling-and-yyerrok-part3                    \
-			error-handling-and-yyerrok-part4a                   \
-			error-handling-and-yyerrok-part4b                   \
-			error-handling-and-yyerrok-part5                    \
+			$(ERROR_HANDLING_TARGETS)                           \
 			error-only                                          \
-			error-recognition-actions                           \
 			faking-multiple-start-rules                         \
 			faking-multiple-start-rules-alt                     \
 			flow                                                \
@@ -59,44 +121,32 @@ ALL_TARGETS =                                                   \
 			json_ast_js                                         \
 			json_js                                             \
 			klammergebirge                                      \
+			lalr-but-not-slr                                    \
 			lambdacalc                                          \
 			lex                                                 \
 			lojban-300                                          \
+			lr-but-not-lalr                                     \
 			mermaid                                             \
 			mfcalc                                              \
+			no-prec-hack-needed									\
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
+			parser-to-lexer-communication-test                  \
 			pascal-BAD                                              \
 			phraser                                             \
-			parser-to-lexer-communication-test                  \
 			precedence                                          \
 			reduce_conflict                                     \
 			regex                                               \
 			semwhitespace                                       \
+			theory-left-recurs-01                               \
 			tikiwikiparser                                      \
 			unicode                                             \
 			unicode2                                            \
 			with-includes                                       \
-			with_custom_lexer                                   \
-			yacc-error-recovery
+			with_custom_lexer
 
 
 
-
-ERROR_HANDLING_TARGETS =                                        \
-			error-handling-and-yyclearin                        \
-			error-handling-and-yyerrok-loopfix                  \
-			error-handling-and-yyerrok-looping1                 \
-			error-handling-and-yyerrok-looping2                 \
-			error-handling-and-yyerrok-macro                    \
-			error-handling-and-yyerrok-part1                    \
-			error-handling-and-yyerrok-part2                    \
-			error-handling-and-yyerrok-part3                    \
-			error-handling-and-yyerrok-part4a                   \
-			error-handling-and-yyerrok-part4b                   \
-			error-handling-and-yyerrok-part5                    \
-			error-recognition-actions                           \
-			yacc-error-recovery
 
 
 
@@ -295,6 +345,10 @@ lojban-300:
 mfcalc:
 	$(JISON) ./$@.jison
 
+no-prec-hack-needed:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+
 olmenu-proto2:
 	$(JISON) ./$@.jison
 
@@ -355,10 +409,30 @@ faking-multiple-start-rules-alt:
 pascal:
 	$(JISON) ./$@.y ./$@.l
 
+# couple of examples which test theoretical grammars published in various papers about LR et al:
+
+# build *AND* run the test:
+lalr-but-not-slr:
+	$(JISON) -p lalr ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+lr-but-not-lalr:
+	$(JISON) -p lr ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+theory-left-recurs-01:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
+
+
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
 	$(JISON) -t ./$@_parse.jison
 	$(JISON) -t ./$@_exec.jison
+	$(JISON) -t ./$@_codegen.jison
+	$(JISON) -t ./$@_print.jison
 	node output/compiled_calc/compiled_calc_exec.js compiled_calc_input.txt
 
 
@@ -367,3 +441,5 @@ handlebars-BAD:
 pascal-BAD:
 
 issue-289-BAD:
+
+
