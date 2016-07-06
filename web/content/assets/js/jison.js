@@ -521,16 +521,29 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
     // contain `$` or `#` prefixed bits which might look like references but aren't!)
     //
+    // Also do NOT replace any $x, @x or #x macros inside any strings!
+    //  
     // Note: 
     // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
     function preprocessActionCode(s) {
         function replace_markers(cmt) {
             cmt = cmt
-            .replace(/#/g, '\x01')
-            .replace(/\$/g, '\x02')
-            .replace(/@/g, '\x03')
-            .replace(/\/\*/g, '\x05')
-            .replace(/\/\//g, '\x06');
+            .replace(/#/g, '\x01\x01')
+            .replace(/\$/g, '\x01\x02')
+            .replace(/@/g, '\x01\x03')
+            .replace(/\/\*/g, '\x01\x05')
+            .replace(/\/\//g, '\x01\x06')
+            .replace(/\'/g, '\x01\x07')
+            .replace(/\"/g, '\x01\x08')
+            // and also whiteout any other macros we're about to expand in there:
+            .replace(/\bYYABORT\b/g, '\x01\x14')
+            .replace(/\bYYACCEPT\b/g, '\x01\x15')
+            .replace(/\byyvstack\b/g, '\x01\x16')
+            .replace(/\byylstack\b/g, '\x01\x17')
+            .replace(/\byyerror\b/g, '\x01\x18')
+            .replace(/\byyerrok\b/g, '\x01\x19')
+            .replace(/\byyclearin\b/g, '\x01\x1A');
+
             return cmt;
         }
 
@@ -540,7 +553,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         .replace(/\s+$/, '')
         // unify CR/LF combo's:
         .replace(/\r\n|\r/g, '\n')
-        // replace any '$' and '#' in any C++-style comment line:
+        // replace any '$', '@' and '#' in any C++-style comment line to prevent them from being expanded as if they were part of the action code proper:
         .replace(/^\s*\/\/.+$/mg, function (_) {
             return replace_markers(_);
         })
@@ -554,27 +567,99 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         // WARNING: without that `\n` inside the regex `[...]` set, the set *will*
         // match a NEWLINE and thus *possibly* gobble TWO lines for the price of ONE,
         // when the first line is an *empty* comment line, i.e. nothing trailing
-        // the `//` in there and thus the `[^'"]` matching the terminating NL *before*
+        // the `//` in there and thus the `[^'"]` regex matching the terminating NL *before*
         // the `$` in the regex can get at it. Cave canem therefor!       |8-(
         .replace(/\/\/[^'"\n]+$/mg, function (_) {
             return replace_markers(_);
         })
-        // now MARK all the /*...*/ comment blocks and process those!
+        // now MARK all the not-too-tricky-to-recognize /*...*/ comment blocks and process those!
         // (Here again we accept that we don't actually *parse* the action code and
         // permit to let some of these slip, i.e. comment blocks which trail
         // a line of code and contain string delimiter(s). :-( )
-        .replace(/^(\s*)\/\*/mg, '$1\x04')
-        .replace(/\/\*([^'"\n]*)$/mg, '\x04$1')
+        .replace(/^[^'"\n]*?\/\*/mg, '$1\x01\x04')				// comment starts the line, guaranteed not to be inside a string
+        .replace(/\/\*([^'"\n]*)$/mg, '\x01\x04$1')                             // comment does not contain any string sentinel in its first line
+        .replace(/\/\*([^\/]*?\*\/[^'"\n]*)$/mg, '\x01\x04$1')			// comment end marker near end of line and since the end is definitely not inside a string, there's bound to be comment start as well
         // and find their END marker: first '*/' found wins!
-        // (The `[^\0]` regex expression is a hack to ensure NEWLINES are matched
+        // (The `[\s\S]` regex expression is a hack to ensure NEWLINES are matched
         // by that set as well, i.e. this way we can easily cross line boundaries
         // while searching for he end of the multiline comment we're trying to
         // dig out by regex matching. Also note that we employ non-aggressive
         // matching to ensure the regex matcher will find the FIRST occurrence of
         // `*/` and mark that as the end of the regex match!)
-        .replace(/\x04[^\0]*?\*\//g, function (_) {
+        .replace(/\x01\x04[\s\S]*?\*\//g, function (_) {
+            return replace_markers(_);
+        })
+        // Now that we have processed all comments in the code, it's time 
+        // to tackle the strings in the code: any strings must be kept intact
+        // as well. Regrettably, there's regexes which may carry quotes, 
+        // e.g. `/'/`, and escapes of quotes inside strings, e.g. `'\''`,
+        // which this a non-trivial task. This is when we reconsider whether
+        // we should run this stuff through Esprima and deal with that AST
+        // verbosity instead...? For now, we accept that regexes can screw
+        // us up, but we can handle strings of any kind, by first taking
+        // out all explicit `\\` non-escaping characters:
+        .replace(/\\\\/g, '\x01\x10')
+        // and then we take out all escaped quotes:
+        .replace(/\\\'/g, '\x01\x11')
+        .replace(/\\\"/g, '\x01\x12')
+        // and to top it off, we also take out any more-or-less basic regexes:
+        .replace(/\\\//g, '\x01\x13')
+
+        // WARNING: Without that prefix check this would also catch 
+        // `6/7 + $$ + 8/9` as if `/7 + $$ + 8/` would be a regex   :-(    
+        // but we need this one to ensure any quotes hiding inside 
+        // any regex in there is caught and marked, e.g. `/'/g`.
+        // Besides, this regex prefix is constructed to it preventing 
+        // the regex matching a `//....` comment line either!
+        .replace(/[^_a-zA-Z0-9\$\)\/][\s\n\r]*\/[^\n\/\*][^\n\/]*\//g, function (_) {
             return replace_markers(_);
         });
+
+        // ... which leaves us with plain strings of both persuasions to cover 
+        // next: we MUST do both at the same time, though or we'll be caught
+        // with our pants down in constructs like 
+        // `'"' + $$ + '"'` vs. `"'" + $$ + "'"`
+
+        var dqpos, sqpos, ccmtpos, cppcmtpos, first = -1;
+        for (var c = 0;; c++) {
+            first++;
+            dqpos = s.indexOf('"', first);
+            sqpos = s.indexOf("'", first);
+            // also look for remaining comments which contain quotes of any kind,
+            // as those will not have been caught by the previous global regexes:
+            ccmtpos = s.indexOf('/*', first);
+            cppcmtpos = s.indexOf('//', first);
+            first = s.length;
+            first = Math.min((dqpos >= 0 ? dqpos : first), (sqpos >= 0 ? sqpos : first), (ccmtpos >= 0 ? ccmtpos : first), (cppcmtpos >= 0 ? cppcmtpos : first));
+	    if (c % 10000 === 9999) {
+	    	console.log(dqpos, sqpos, ccmtpos, cppcmtpos, first, s.substr(first-100, 200));
+	    }
+            // now it matters which one came up first:
+            if (dqpos === first) {
+                s = s
+                .replace(/"[^"\n]*"/, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (sqpos === first) {
+                s = s
+                .replace(/'[^'\n]*'/, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (ccmtpos === first) {
+                s = s
+                .replace(/\/\*[\s\S]*?\*\//, function (_) {
+                    return replace_markers(_);
+                });
+            } else if (cppcmtpos === first) {
+                s = s
+                .replace(/\/\/[^\n]*$/m, function (_) {
+                    return replace_markers(_);
+                });
+            } else {
+                break;
+            }
+        }
+        // Presto!
         return s;
     }
 
@@ -583,13 +668,27 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     function postprocessActionCode(s) {
         s = s
         // multiline comment start markers:
-        .replace(/\x04/g, '/*')
-        .replace(/\x05/g, '/*')
-        .replace(/\x06/g, '//')
+        .replace(/\x01\x04/g, '/*')
+        .replace(/\x01\x05/g, '/*')
+        .replace(/\x01\x06/g, '//')
         // revert markers:
-        .replace(/\x01/g, '#')
-        .replace(/\x02/g, '$')
-        .replace(/\x03/g, '@');
+        .replace(/\x01\x01/g, '#')
+        .replace(/\x01\x02/g, '$')
+        .replace(/\x01\x03/g, '@')
+        // and revert the string and regex markers:
+        .replace(/\x01\x07/g, '\'')
+        .replace(/\x01\x08/g, '\"')
+        .replace(/\x01\x10/g, '\\\\')
+        .replace(/\x01\x11/g, '\\\'')
+        .replace(/\x01\x12/g, '\\\"')
+        .replace(/\x01\x13/g, '\\\/')
+        .replace(/\x01\x14/g, 'YYABORT')
+        .replace(/\x01\x15/g, 'YYACCEPT')
+        .replace(/\x01\x16/g, 'yyvstack')
+        .replace(/\x01\x17/g, 'yylstack')
+        .replace(/\x01\x18/g, 'yyerror')
+        .replace(/\x01\x19/g, 'yyerrok')
+        .replace(/\x01\x1A/g, 'yyclearin');
         return s;
     }
 
@@ -684,15 +783,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
     this.performAction = [].concat(
-        'function anonymous(' + parameters + ') {',
+        'function parser__PerformAction(' + parameters + ') {',
         actions, 
         '}'
     ).join('\n')
-    .replace(/YYABORT/g, 'return false')
-    .replace(/YYACCEPT/g, 'return true');
+    .replace(/\bYYABORT\b/g, 'return false')
+    .replace(/\bYYACCEPT\b/g, 'return true');
+
+    this.performAction = this.performAction
+    // this is needed to have it replaced with TWO(2) `$` dollars: 
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/ replace#Specifying_a_string_as_a_parameter
+    // --> you have to spec two $$ for the price of one $ when you want more than a single $ to appear in there.
+    .replace(/\byyvstack\b/g, '$$$$')
+    .replace(/\byylstack\b/g, '_$');
 
     var actionsBaseline = [
-        'function anonymous(' + parameters + ') {',
+        'function parser__PerformAction(' + parameters + ') {',
         '/* this == yyval */',
         '',
         'var $0 = $$.length - 1;',
@@ -753,6 +859,10 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     .replace(/\byyerror\b/g, 'yy.parser.parseError')
     .replace(/\byyerrok\b(?:\s*\(\s*\))?/g, 'yy.parser.yyErrOk()')
     .replace(/\byyclearin\b(?:\s*\(\s*\))?/g, 'yy.parser.yyClearIn()');
+
+    // Now that we've completed all macro expansions, it's time to execute
+    // the recovery code, i.e. the postprocess:
+    this.performAction = postprocessActionCode(this.performAction);
 
     function analyzeFeatureUsage(sourcecode, feature, threshold) {
         var found = sourcecode.match(feature);
@@ -829,17 +939,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     // make sure a comment does not contain any embedded '*/' end-of-comment marker
     // as that would break the generated code
-    function postprocessComment(str, check_for_epsilon) {
+    function postprocessComment(str) {
         if (Array.isArray(str)) {
             str = str.map(function (_) {
-                return (check_for_epsilon && (_ === '' || _ == null)) ? 'ε' : _;
+                return (_ === '' || _ == null) ? 'ε' : _;
             }).join(' ');
         }
-        if (check_for_epsilon && str === '') {
+        if (str === '') {
             str = 'ε';
         }
         str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
+    }
+
+    function provideSymbolAsSourcecode(sym) {
+        var ss = String(sym);
+        return ' /* ' + postprocessComment(ss) + ' */ ' + addSymbol(sym);
     }
 
     // helper: convert index string/number to proper JS add/subtract expression
@@ -857,7 +972,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             // do not generate code for superfluous `- 0` JS expression:
             return '';
         }
-        // the VERY UNusual situation: `$-1`: refencing *parent* rules' values
+        // the VERY UNusual situation: `$-1`: referencing *parent* rules' values
         if (v < 0) {
             return ' - ' + (len - v);
         }
@@ -910,7 +1025,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 var label = [
                     'case', productions.length + 1, ':',
                     '\n/*! Production::    ', postprocessComment(symbol), ':'
-                ].concat(postprocessComment(handle[0], true), '*/\n');
+                ].concat(postprocessComment(handle[0]), '*/\n');
                 var action = preprocessActionCode(handle[1]);
                 var actionHash;
                 var rule4msg = symbol + ': ' + rhs.join(' ');
@@ -923,7 +1038,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 // Here we expand those direct token/symbol references: #TOKEN#
                 action = action
                     .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
-                        return ' /* ' + postprocessComment(sym) + ' */ ' + addSymbol(sym);
+                        return provideSymbolAsSourcecode(sym);
                     });
 
                 // replace named semantic values ($nonterminal)
@@ -976,9 +1091,12 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                         });
                 }
                 action = action
-                    // replace references to $$ with this.$, and @$ with this._$
-                    .replace(/([^'"])\$\$|^\$\$/g, '$1this.$').replace(/@[0$]/g, 'this._$')
-
+                    // replace references to `$$` with `this.$`, `@$` with `this._$` and `#$` with the token ID of the current rule
+                    .replace(/\$\$/g, 'this.$')
+                    .replace(/@\$/g, 'this._$')
+                    .replace(/#\$/g, function (_) {
+                        return provideSymbolAsSourcecode(symbol);
+                    })
                     // replace semantic value references ($n) with stack value (stack[n])
                     .replace(/\$(-?\d+)\b/g, function (_, n) {
                         return '$$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
@@ -993,13 +1111,14 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                         if (!rhs[i]) {
                             throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
                         }
-                        var sym = String(rhs[i]);
-                        return ' /* ' + postprocessComment(sym, true) + ' */ ' + addSymbol(rhs[i]);
+                        return provideSymbolAsSourcecode(rhs[i]);
                     });
                 
                 actionHash = mkHashIndex(action);
 
-                action = postprocessActionCode(action);
+                // Delay running the postprocess (restore) process until we've done ALL macro expansions:
+                //action = postprocessActionCode(action);
+                
                 if (actionHash in actionGroups) {
                     actionGroups[actionHash].push(label);
                 } else {
@@ -1070,8 +1189,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
 
             if (prec_symbols.length > 1) {
-                if (self.DEBUG) {
-                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precendences: {' + prec_symbols.join(', ') + '}');
+                if (self.DEBUG || 1) {
+                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precedences: {' + prec_symbols.join(', ') + '}');
                 }
             }
         }
@@ -1778,7 +1897,10 @@ function generateGenericHeaderComment() {
         + ' * Returns a Parser object of the following structure:\n'
         + ' *\n'
         + ' *  Parser: {\n'
-        + ' *    yy: {}\n'
+        + ' *    yy: {}     The so-called "shared state" or rather the *source* of it;\n'
+        + ' *               the real "shared state" `yy` passed around to\n'
+        + ' *               the rule actions, etc. is a derivative/copy of this one,\n'
+        + ' *               not a direct reference!\n'
         + ' *  }\n'
         + ' *\n'
         + ' *  Parser.prototype: {\n'
@@ -1807,7 +1929,7 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
         + ' *               `parser.parse(str, ...)`\n'
         + ' *\n'
@@ -1836,27 +1958,29 @@ function generateGenericHeaderComment() {
         + ' *    parse: function(input),\n'
         + ' *\n'
         + ' *    lexer: {\n'
+        + ' *        yy: {...},           A reference to the so-called "shared state" `yy` once\n'
+        + ' *                             received via a call to the `.setInput(input, yy)` lexer API.\n'
         + ' *        EOF: 1,\n'
         + ' *        ERROR: 2,\n'
         + ' *        JisonLexerError: function(msg, hash),\n'
         + ' *        parseError: function(str, hash),\n'
-        + ' *        setInput: function(input),\n'
+        + ' *        setInput: function(input, [yy]),\n'
         + ' *        input: function(),\n'
         + ' *        unput: function(str),\n'
         + ' *        more: function(),\n'
         + ' *        reject: function(),\n'
         + ' *        less: function(n),\n'
-        + ' *        pastInput: function(),\n'
-        + ' *        upcomingInput: function(),\n'
+        + ' *        pastInput: function(n),\n'
+        + ' *        upcomingInput: function(n),\n'
         + ' *        showPosition: function(),\n'
         + ' *        test_match: function(regex_match_array, rule_index),\n'
         + ' *        next: function(),\n'
         + ' *        lex: function(),\n'
         + ' *        begin: function(condition),\n'
-        + ' *        popState: function(),\n'
-        + ' *        _currentRules: function(),\n'
-        + ' *        topState: function(),\n'
         + ' *        pushState: function(condition),\n'
+        + ' *        popState: function(),\n'
+        + ' *        topState: function(),\n'
+        + ' *        _currentRules: function(),\n'
         + ' *        stateStackSize: function(),\n'
         + ' *\n'
         + ' *        options: { ... lexer %options ... },\n'
@@ -1902,6 +2026,9 @@ function generateGenericHeaderComment() {
         + ' *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
         + ' *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,\n'
+        + ' *                  for instance, for advanced error analysis and reporting)\n'
+        + ' *    yy:          (object: the current parser internal "shared state" `yy`\n'
+        + ' *                  as is also available in the rule actions; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
         + ' *    lexer:       (reference to the current lexer instance used by the parser)\n'
         + ' *  }\n'
@@ -1994,7 +2121,7 @@ function generateGenericHeaderComment() {
 }
 
 /*
- * Mixin for common LR/LL/*an* parser behavior
+ * Mixin for common LR/LL/*any* parser behavior
  */
 var generatorMixin = {};
 
@@ -3553,6 +3680,20 @@ parser.describeSymbol = function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 };
@@ -3860,6 +4001,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     if (yydebug) yydebug('error detected: ', { error_rule_depth: error_rule_depth });
@@ -3888,6 +4030,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                             state_stack: stack,
                             value_stack: vstack,
                             location_stack: lstack,
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -3917,6 +4060,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -3963,6 +4107,7 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                     state_stack: stack,
                     value_stack: vstack,
                     location_stack: lstack,
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -3988,6 +4133,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                         state_stack: stack,
                         value_stack: vstack,
                         location_stack: lstack,
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -4006,6 +4152,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                     state_stack: stack,
                     value_stack: vstack,
                     location_stack: lstack,
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -4130,6 +4277,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
             state_stack: stack,
             value_stack: vstack,
             location_stack: lstack,
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -4494,7 +4642,7 @@ var LR1Generator = exports.LR1Generator = lr1.construct();
 /*
  * LL Parser
  */
-var ll = generator.beget(lookaheadMixin, generatorMixin, {
+var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: 'LL(1)',
 
     afterconstructor: function ll_aftercontructor() {
@@ -4511,11 +4659,16 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
             Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
             this.displayFollowSets();
         }
+
+        this.defaultActions = {}; // findDefaults(this.table);
+        //cleanupTable(this.table);
     },
 
-    parseTable: function llParseTable(productions) {
+    parseTable: function ll_ParseTable(productions) {
         var table = {},
+            symbols_ = this.symbols_,
             self = this;
+
         productions.forEach(function (production, i) {
             var row = table[production.symbol] || {};
             var tokens = production.first;
@@ -4535,44 +4688,6 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, {
         });
 
         return table;
-    },
-
-    // Generates the code of the parser module, which consists of two parts:
-    // - module.commonCode: initialization code that should be placed before the module
-    // - module.moduleCode: code that creates the module object
-    generateModule_: function ll_GenerateModule_() {
-        // var parseFn = String(parser.parse);
-        // parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
-
-        // parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
-
-        // // always remove the feature markers in the template code.
-        // parseFn = removeFeatureMarkers(parseFn);
-
-        // parseFn = removeUnusedKernelFeatures(parseFn, this);
-
-        // Generate code with fresh variable names
-        nextVariableId = 0;
-        // var tableCode = this.generateTableCode(this.table);
-
-        // // Generate the initialization code
-        // var commonCode = tableCode.commonCode;
-
-
-        // Generate the module creation code
-        var moduleCode = '{\n';
-        moduleCode += [
-            'trace: ' + String(this.trace),
-            'JisonParserError: JisonParserError',
-            'yy: {}',
-            'self: ' + JSON.stringify(this, null, 2)
-            ].join(',\n');
-        moduleCode += '\n};';
-
-        return { 
-            commonCode: (new Array(100)).join('commonCode\n'), 
-            moduleCode: moduleCode 
-        };
     }
 });
 
@@ -5007,7 +5122,10 @@ exports.transform = EBNF.transform;
  * Returns a Parser object of the following structure:
  *
  *  Parser: {
- *    yy: {}
+ *    yy: {}     The so-called "shared state" or rather the *source* of it;
+ *               the real "shared state" `yy` passed around to
+ *               the rule actions, etc. is a derivative/copy of this one,
+ *               not a direct reference!
  *  }
  *
  *  Parser.prototype: {
@@ -5036,7 +5154,7 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -5065,27 +5183,29 @@ exports.transform = EBNF.transform;
  *    parse: function(input),
  *
  *    lexer: {
+ *        yy: {...},           A reference to the so-called "shared state" `yy` once
+ *                             received via a call to the `.setInput(input, yy)` lexer API.
  *        EOF: 1,
  *        ERROR: 2,
  *        JisonLexerError: function(msg, hash),
  *        parseError: function(str, hash),
- *        setInput: function(input),
+ *        setInput: function(input, [yy]),
  *        input: function(),
  *        unput: function(str),
  *        more: function(),
  *        reject: function(),
  *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
+ *        pastInput: function(n),
+ *        upcomingInput: function(n),
  *        showPosition: function(),
  *        test_match: function(regex_match_array, rule_index),
  *        next: function(),
  *        lex: function(),
  *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
  *        pushState: function(condition),
+ *        popState: function(),
+ *        topState: function(),
+ *        _currentRules: function(),
  *        stateStackSize: function(),
  *
  *        options: { ... lexer %options ... },
@@ -5131,6 +5251,9 @@ exports.transform = EBNF.transform;
  *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    yy:          (object: the current parser internal "shared state" `yy`
+ *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
@@ -5618,7 +5741,7 @@ productions_: bp({
   0
 ])
 }),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -6968,6 +7091,20 @@ describeSymbol: function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 },
@@ -7182,6 +7319,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
 
@@ -7210,6 +7348,7 @@ parse: function parse(input) {
                             state_stack: stack,
                             value_stack: vstack,
 
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -7239,6 +7378,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -7273,6 +7413,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -7291,6 +7432,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -7415,6 +7557,7 @@ parse: function parse(input) {
             state_stack: stack,
             value_stack: vstack,
 
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -7645,7 +7788,7 @@ reject:function lexer_reject() {
 
 // retain first n characters of the match
 less:function lexer_less(n) {
-        this.unput(this.match.slice(n));
+        return this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
@@ -7853,7 +7996,7 @@ lex:function lexer_lex() {
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
 begin:function lexer_begin(condition) {
-        this.conditionStack.push(condition);
+        return this.pushState(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
@@ -7887,7 +8030,8 @@ topState:function lexer_topState(n) {
 
 // alias for begin(condition)
 pushState:function lexer_pushState(condition) {
-        this.begin(condition);
+        this.conditionStack.push(condition);
+        return this;
     },
 
 // return the number of states currently on the stack
@@ -8802,7 +8946,10 @@ module.exports={
  * Returns a Parser object of the following structure:
  *
  *  Parser: {
- *    yy: {}
+ *    yy: {}     The so-called "shared state" or rather the *source* of it;
+ *               the real "shared state" `yy` passed around to
+ *               the rule actions, etc. is a derivative/copy of this one,
+ *               not a direct reference!
  *  }
  *
  *  Parser.prototype: {
@@ -8831,7 +8978,7 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -8860,27 +9007,29 @@ module.exports={
  *    parse: function(input),
  *
  *    lexer: {
+ *        yy: {...},           A reference to the so-called "shared state" `yy` once
+ *                             received via a call to the `.setInput(input, yy)` lexer API.
  *        EOF: 1,
  *        ERROR: 2,
  *        JisonLexerError: function(msg, hash),
  *        parseError: function(str, hash),
- *        setInput: function(input),
+ *        setInput: function(input, [yy]),
  *        input: function(),
  *        unput: function(str),
  *        more: function(),
  *        reject: function(),
  *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
+ *        pastInput: function(n),
+ *        upcomingInput: function(n),
  *        showPosition: function(),
  *        test_match: function(regex_match_array, rule_index),
  *        next: function(),
  *        lex: function(),
  *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
  *        pushState: function(condition),
+ *        popState: function(),
+ *        topState: function(),
+ *        _currentRules: function(),
  *        stateStackSize: function(),
  *
  *        options: { ... lexer %options ... },
@@ -8926,6 +9075,9 @@ module.exports={
  *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    yy:          (object: the current parser internal "shared state" `yy`
+ *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
@@ -9458,7 +9610,7 @@ productions_: bp({
   0
 ])
 }),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */, options) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */, options) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -10873,6 +11025,20 @@ describeSymbol: function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 },
@@ -11087,6 +11253,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
 
@@ -11115,6 +11282,7 @@ parse: function parse(input) {
                             state_stack: stack,
                             value_stack: vstack,
 
+                            yy: sharedState.yy,
                             lexer: lexer
                         });
                         break;
@@ -11144,6 +11312,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -11178,6 +11347,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -11196,6 +11366,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -11320,6 +11491,7 @@ parse: function parse(input) {
             state_stack: stack,
             value_stack: vstack,
 
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -11551,7 +11723,7 @@ reject:function lexer_reject() {
 
 // retain first n characters of the match
 less:function lexer_less(n) {
-        this.unput(this.match.slice(n));
+        return this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
@@ -11759,7 +11931,7 @@ lex:function lexer_lex() {
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
 begin:function lexer_begin(condition) {
-        this.conditionStack.push(condition);
+        return this.pushState(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
@@ -11793,7 +11965,8 @@ topState:function lexer_topState(n) {
 
 // alias for begin(condition)
 pushState:function lexer_pushState(condition) {
-        this.begin(condition);
+        this.conditionStack.push(condition);
+        return this;
     },
 
 // return the number of states currently on the stack
@@ -12528,7 +12701,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         return 'return ' + (tokens[token] || '\'' + token.replace(/'/g, '\\\'') + '\'');
     }
 
-    // make sure a comment does not contain any embedded '*/' end-of-comment marker
+    // Make sure a comment does not contain any embedded '*/' end-of-comment marker
     // as that would break the generated code
     function postprocessComment(str) {
         if (Array.isArray(str)) {
@@ -14142,7 +14315,7 @@ RegExpLexer.prototype = {
 
     // retain first n characters of the match
     less: function lexer_less(n) {
-        this.unput(this.match.slice(n));
+        return this.unput(this.match.slice(n));
     },
 
     // return (part of the) already matched input, i.e. for error messages
@@ -14348,9 +14521,11 @@ RegExpLexer.prototype = {
         return r;
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    // backwards compatible alias for `pushState()`; 
+    // the latter is symmetrical with `popState()` and we advise to use 
+    // those APIs in any modern lexer code, rather than `begin()`.
     begin: function lexer_begin(condition) {
-        this.conditionStack.push(condition);
+        return this.pushState(condition);
     },
 
     // pop the previously active lexer condition state off the condition stack
@@ -14382,9 +14557,10 @@ RegExpLexer.prototype = {
         }
     },
 
-    // alias for begin(condition)
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     pushState: function lexer_pushState(condition) {
-        this.begin(condition);
+        this.conditionStack.push(condition);
+        return this;
     },
 
     // return the number of states currently on the stack

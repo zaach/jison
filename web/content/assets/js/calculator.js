@@ -3,7 +3,10 @@
  * Returns a Parser object of the following structure:
  *
  *  Parser: {
- *    yy: {}
+ *    yy: {}     The so-called "shared state" or rather the *source* of it;
+ *               the real "shared state" `yy` passed around to
+ *               the rule actions, etc. is a derivative/copy of this one,
+ *               not a direct reference!
  *  }
  *
  *  Parser.prototype: {
@@ -32,7 +35,7 @@
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -61,27 +64,29 @@
  *    parse: function(input),
  *
  *    lexer: {
+ *        yy: {...},           A reference to the so-called "shared state" `yy` once
+ *                             received via a call to the `.setInput(input, yy)` lexer API.
  *        EOF: 1,
  *        ERROR: 2,
  *        JisonLexerError: function(msg, hash),
  *        parseError: function(str, hash),
- *        setInput: function(input),
+ *        setInput: function(input, [yy]),
  *        input: function(),
  *        unput: function(str),
  *        more: function(),
  *        reject: function(),
  *        less: function(n),
- *        pastInput: function(),
- *        upcomingInput: function(),
+ *        pastInput: function(n),
+ *        upcomingInput: function(n),
  *        showPosition: function(),
  *        test_match: function(regex_match_array, rule_index),
  *        next: function(),
  *        lex: function(),
  *        begin: function(condition),
- *        popState: function(),
- *        _currentRules: function(),
- *        topState: function(),
  *        pushState: function(condition),
+ *        popState: function(),
+ *        topState: function(),
+ *        _currentRules: function(),
  *        stateStackSize: function(),
  *
  *        options: { ... lexer %options ... },
@@ -127,6 +132,9 @@
  *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
+ *                  for instance, for advanced error analysis and reporting)
+ *    yy:          (object: the current parser internal "shared state" `yy`
+ *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
  *  }
@@ -420,7 +428,7 @@ productions_: bp({
   [1, 3]
 ])
 }),
-performAction: function anonymous(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
 /* this == yyval */
 
 var $0 = $$.length - 1;
@@ -452,7 +460,9 @@ case 6 :
 break;
 case 7 : 
 /*! Production::     e : e '!' */
- this.$ = (function fact(n) { return n == 0 ? 1 : fact(n - 1) * n; })($$[$0 - 1]); 
+ this.$ = (function fact(n) { 
+	    return n == 0 ? 1 : fact(n - 1) * n; 
+	  })($$[$0 - 1]); 
 break;
 case 8 : 
 /*! Production::     e : e '%' */
@@ -694,6 +704,20 @@ describeSymbol: function describeSymbol(symbol) {
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
+    } 
+    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // 
+    // An example of this may be where a rule's action code contains a call like this:
+    // 
+    //      parser.describeSymbol(#$)
+    // 
+    // to obtain a human-readable description or name of the current grammar rule. This comes handy in
+    // error handling action code blocks, for example.
+    var s = this.symbols_;
+    for (var key in s) {
+        if (s[key] === symbol) {
+            return key;
+        }
     }
     return null;
 },
@@ -882,6 +906,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -906,6 +931,7 @@ parse: function parse(input) {
                         state_stack: stack,
                         value_stack: vstack,
 
+                        yy: sharedState.yy,
                         lexer: lexer
                     });
                     break;
@@ -924,6 +950,7 @@ parse: function parse(input) {
                     state_stack: stack,
                     value_stack: vstack,
 
+                    yy: sharedState.yy,
                     lexer: lexer
                 });
                 break;
@@ -1047,6 +1074,7 @@ parse: function parse(input) {
             state_stack: stack,
             value_stack: vstack,
 
+            yy: sharedState.yy,
             lexer: lexer
         });
     } finally {
@@ -1263,7 +1291,7 @@ reject:function lexer_reject() {
 
 // retain first n characters of the match
 less:function lexer_less(n) {
-        this.unput(this.match.slice(n));
+        return this.unput(this.match.slice(n));
     },
 
 // return (part of the) already matched input, i.e. for error messages
@@ -1471,7 +1499,7 @@ lex:function lexer_lex() {
 
 // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
 begin:function lexer_begin(condition) {
-        this.conditionStack.push(condition);
+        return this.pushState(condition);
     },
 
 // pop the previously active lexer condition state off the condition stack
@@ -1505,7 +1533,8 @@ topState:function lexer_topState(n) {
 
 // alias for begin(condition)
 pushState:function lexer_pushState(condition) {
-        this.begin(condition);
+        this.conditionStack.push(condition);
+        return this;
     },
 
 // return the number of states currently on the stack
