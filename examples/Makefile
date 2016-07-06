@@ -60,6 +60,7 @@ MISC_TARGETS =                                                   \
 			lex                                                 \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
+			no-prec-hack-needed									\
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -127,6 +128,7 @@ ALL_TARGETS =                                                   \
 			lr-but-not-lalr                                     \
 			mermaid                                             \
 			mfcalc                                              \
+			no-prec-hack-needed									\
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -342,6 +344,10 @@ lojban-300:
 
 mfcalc:
 	$(JISON) ./$@.jison
+
+no-prec-hack-needed:
+	$(JISON) ./$@.jison
+	node ./output/$@/$@.js
 
 olmenu-proto2:
 	$(JISON) ./$@.jison
