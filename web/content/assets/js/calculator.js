@@ -1149,27 +1149,34 @@ function JisonLexerError(msg, hash) {
 
 
 var lexer = {
+    EOF: 1,
+    ERROR: 2,
 
-EOF:1,
+    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
 
-ERROR:2,
+    // options: {},                             // <-- injected by the code generator
 
-parseError:function lexer_parseError(str, hash) {
+    // yy: ...,                                 // <-- injected by setInput()
+     
+    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+
+    parseError: function lexer_parseError(str, hash) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash) || this.ERROR;
         } else {
             throw new this.JisonLexerError(str);
         }
     },
-
-// resets the lexer, sets new input
-setInput:function lexer_setInput(input, yy) {
+    
+    // resets the lexer, sets new input
+    setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
         this._input = input;
         this._more = this._backtrack = this._signaled_error_token = this.done = false;
         this.yylineno = this.yyleng = 0;
         this.yytext = this.matched = this.match = '';
         this.conditionStack = ['INITIAL'];
+        this.__currentRuleSet__ = null;
         this.yylloc = {
             first_line: 1,
             first_column: 0,
@@ -1183,8 +1190,8 @@ setInput:function lexer_setInput(input, yy) {
         return this;
     },
 
-// consumes and returns one char from the input
-input:function lexer_input() {
+    // consumes and returns one char from the input
+    input: function lexer_input() {
         if (!this._input) {
             this.done = true;
             return null;
@@ -1233,8 +1240,8 @@ input:function lexer_input() {
         return ch;
     },
 
-// unshifts one char (or a string) into the input
-unput:function lexer_unput(ch) {
+    // unshifts one char (or a string) into the input
+    unput: function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
 
@@ -1264,14 +1271,14 @@ unput:function lexer_unput(ch) {
         return this;
     },
 
-// When called from action, caches matched text and appends it on next action
-more:function lexer_more() {
+    // When called from action, caches matched text and appends it on next action
+    more: function lexer_more() {
         this._more = true;
         return this;
     },
 
-// When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-reject:function lexer_reject() {
+    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+    reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -1289,13 +1296,13 @@ reject:function lexer_reject() {
         return this;
     },
 
-// retain first n characters of the match
-less:function lexer_less(n) {
+    // retain first n characters of the match
+    less: function lexer_less(n) {
         return this.unput(this.match.slice(n));
     },
 
-// return (part of the) already matched input, i.e. for error messages
-pastInput:function lexer_pastInput(maxSize) {
+    // return (part of the) already matched input, i.e. for error messages
+    pastInput: function lexer_pastInput(maxSize) {
         var past = this.matched.substr(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = past.length;
@@ -1304,8 +1311,8 @@ pastInput:function lexer_pastInput(maxSize) {
         return (past.length > maxSize ? '...' + past.substr(-maxSize) : past);
     },
 
-// return (part of the) upcoming input, i.e. for error messages
-upcomingInput:function lexer_upcomingInput(maxSize) {
+    // return (part of the) upcoming input, i.e. for error messages
+    upcomingInput: function lexer_upcomingInput(maxSize) {
         var next = this.match;
         if (maxSize < 0)
             maxSize = next.length + this._input.length;
@@ -1317,18 +1324,30 @@ upcomingInput:function lexer_upcomingInput(maxSize) {
         return (next.length > maxSize ? next.substr(0, maxSize) + '...' : next);
     },
 
-// return a string which displays the character position where the lexing error occurred, i.e. for error messages
-showPosition:function lexer_showPosition() {
+    // return a string which displays the character position where the lexing error occurred, i.e. for error messages
+    showPosition: function lexer_showPosition() {
         var pre = this.pastInput().replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput().replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
-// test the lexed token: return FALSE when not a match, otherwise return token
-test_match:function lexer_test_match(match, indexed_rule) {
+    // test the lexed token: return FALSE when not a match, otherwise return token.
+    //
+    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]` 
+    // contains the actually matched text string.
+    //  
+    // Also move the input cursor forward and update the match collectors:
+    // - yytext
+    // - yyleng
+    // - match
+    // - matches
+    // - yylloc
+    // - offset 
+    test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
-            backup;
+            backup,
+            match_str;
 
         if (this.options.backtrack_lexer) {
             // save context
@@ -1357,7 +1376,8 @@ test_match:function lexer_test_match(match, indexed_rule) {
             }
         }
 
-        lines = match[0].match(/(?:\r\n?|\n).*/g);
+        match_str = match[0];
+        lines = match_str.match(/(?:\r\n?|\n).*/g);
         if (lines) {
             this.yylineno += lines.length;
         }
@@ -1367,20 +1387,23 @@ test_match:function lexer_test_match(match, indexed_rule) {
             first_column: this.yylloc.last_column,
             last_column: lines ?
                          lines[lines.length - 1].length - lines[lines.length - 1].match(/\r?\n?/)[0].length :
-                         this.yylloc.last_column + match[0].length
+                         this.yylloc.last_column + match_str.length
         };
-        this.yytext += match[0];
-        this.match += match[0];
+        this.yytext += match_str;
+        this.match += match_str;
         this.matches = match;
         this.yyleng = this.yytext.length;
         if (this.options.ranges) {
             this.yylloc.range = [this.offset, this.offset + this.yyleng];
         }
-        this.offset += this.yyleng;
+	// previous lex rules MAY have invoked the `more()` API rather than producing a token:
+	// those rules will already have moved this `offset` forward matching their match lengths,
+	// hence we must only add our own match length now:
+        this.offset += match_str.length;
         this._more = false;
         this._backtrack = false;
-        this._input = this._input.slice(match[0].length);
-        this.matched += match[0];
+        this._input = this._input.slice(match_str.length);
+        this.matched += match_str;
         token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
         if (this.done && this._input) {
             this.done = false;
@@ -1392,6 +1415,7 @@ test_match:function lexer_test_match(match, indexed_rule) {
             for (var k in backup) {
                 this[k] = backup[k];
             }
+            this.__currentRuleSet__ = null;
             return false; // rule action called reject() implying the next rule should be tested instead.
         } else if (this._signaled_error_token) {
             // produce one 'error' token as .parseError() in reject() did not guarantee a failure signal by throwing an exception!
@@ -1402,8 +1426,8 @@ test_match:function lexer_test_match(match, indexed_rule) {
         return false;
     },
 
-// return next match in input
-next:function lexer_next() {
+    // return next match in input
+    next: function lexer_next() {
         function clear() {
             this.yytext = '';
             this.yyleng = 0;
@@ -1428,8 +1452,15 @@ next:function lexer_next() {
         if (!this._more) {
             clear.call(this);
         }
-        var rules = this._currentRules();
-        for (var i = 0; i < rules.length; i++) {
+        var rules = this.__currentRuleSet__;
+        if (!rules) {
+            // Update the ruleset cache as we apparently encountered a state change or just started lexing.
+            // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
+            // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
+            // speed up those activities a tiny bit.
+            rules = this.__currentRuleSet__ = this._currentRules();
+        }
+        for (var i = 0, len = rules.length; i < len; i++) {
             tempMatch = this._input.match(this.rules[rules[i]]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
@@ -1439,7 +1470,7 @@ next:function lexer_next() {
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
-                        match = false;
+                        match = undefined;
                         continue; // rule action called reject() implying a rule MISmatch.
                     } else {
                         // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
@@ -1480,8 +1511,8 @@ next:function lexer_next() {
         }
     },
 
-// return next match that has a token
-lex:function lexer_lex() {
+    // return next match that has a token
+    lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
@@ -1497,32 +1528,33 @@ lex:function lexer_lex() {
         return r;
     },
 
-// activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-begin:function lexer_begin(condition) {
+    // backwards compatible alias for `pushState()`; 
+    // the latter is symmetrical with `popState()` and we advise to use 
+    // those APIs in any modern lexer code, rather than `begin()`.
+    begin: function lexer_begin(condition) {
         return this.pushState(condition);
     },
 
-// pop the previously active lexer condition state off the condition stack
-popState:function lexer_popState() {
+    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    pushState: function lexer_pushState(condition) {
+        this.conditionStack.push(condition);
+        this.__currentRuleSet__ = null;
+        return this;
+    },
+
+    // pop the previously active lexer condition state off the condition stack
+    popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
+            this.__currentRuleSet__ = null;
             return this.conditionStack.pop();
         } else {
             return this.conditionStack[0];
         }
     },
 
-// produce the lexer rule set which is active for the currently active lexer condition state
-_currentRules:function lexer__currentRules() {
-        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
-        } else {
-            return this.conditions['INITIAL'].rules;
-        }
-    },
-
-// return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-topState:function lexer_topState(n) {
+    // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+    topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -1531,14 +1563,17 @@ topState:function lexer_topState(n) {
         }
     },
 
-// alias for begin(condition)
-pushState:function lexer_pushState(condition) {
-        this.conditionStack.push(condition);
-        return this;
+    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
+    _currentRules: function lexer__currentRules() {
+        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+        } else {
+            return this.conditions['INITIAL'].rules;
+        }
     },
 
-// return the number of states currently on the stack
-stateStackSize:function lexer_stateStackSize() {
+    // return the number of states currently on the stack
+    stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
 options: {},
