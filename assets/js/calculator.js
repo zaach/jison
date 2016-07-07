@@ -433,61 +433,74 @@ performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] *
 
 var $0 = $$.length - 1;
 switch (yystate) {
-case 1 : 
-/*! Production::     expressions : e EOF */
- typeof console !== 'undefined' ? console.log($$[$0 - 1]) : print($$[$0 - 1]);
-          return $$[$0 - 1]; 
-break;
-case 2 : 
-/*! Production::     e : e '+' e */
- this.$ = $$[$0 - 2] + $$[$0]; 
-break;
-case 3 : 
-/*! Production::     e : e '-' e */
- this.$ = $$[$0 - 2] - $$[$0]; 
-break;
-case 4 : 
-/*! Production::     e : e '*' e */
- this.$ = $$[$0 - 2] * $$[$0]; 
-break;
-case 5 : 
-/*! Production::     e : e '/' e */
- this.$ = $$[$0 - 2] / $$[$0]; 
-break;
-case 6 : 
-/*! Production::     e : e '^' e */
- this.$ = Math.pow($$[$0 - 2], $$[$0]); 
-break;
-case 7 : 
-/*! Production::     e : e '!' */
- this.$ = (function fact(n) { 
-	    return n == 0 ? 1 : fact(n - 1) * n; 
-	  })($$[$0 - 1]); 
-break;
-case 8 : 
-/*! Production::     e : e '%' */
- this.$ = $$[$0 - 1] / 100; 
-break;
-case 9 : 
-/*! Production::     e : '-' e */
- this.$ = -$$[$0]; 
-break;
-case 10 : 
-/*! Production::     e : '(' e ')' */
- this.$ = $$[$0 - 1]; 
-break;
-case 11 : 
-/*! Production::     e : NUMBER */
- this.$ = Number(yytext); 
-break;
-case 12 : 
-/*! Production::     e : E */
- this.$ = Math.E; 
-break;
-case 13 : 
-/*! Production::     e : PI */
- this.$ = Math.PI; 
-break;
+case 1:
+    /*! Production::    expressions : e EOF */
+    typeof console !== 'undefined' ? console.log($$[$0 - 1]) : print($$[$0 - 1]);
+    return $$[$0 - 1];
+    break;
+
+case 2:
+    /*! Production::    e : e '+' e */
+    this.$ = $$[$0 - 2] + $$[$0];
+    break;
+
+case 3:
+    /*! Production::    e : e '-' e */
+    this.$ = $$[$0 - 2] - $$[$0];
+    break;
+
+case 4:
+    /*! Production::    e : e '*' e */
+    this.$ = $$[$0 - 2] * $$[$0];
+    break;
+
+case 5:
+    /*! Production::    e : e '/' e */
+    this.$ = $$[$0 - 2] / $$[$0];
+    break;
+
+case 6:
+    /*! Production::    e : e '^' e */
+    this.$ = Math.pow($$[$0 - 2], $$[$0]);
+    break;
+
+case 7:
+    /*! Production::    e : e '!' */
+    this.$ = (function fact(n) { 
+      return n == 0 ? 1 : fact(n - 1) * n; 
+    })($$[$0 - 1]);
+    break;
+
+case 8:
+    /*! Production::    e : e '%' */
+    this.$ = $$[$0 - 1] / 100;
+    break;
+
+case 9:
+    /*! Production::    e : '-' e */
+    this.$ = -$$[$0];
+    break;
+
+case 10:
+    /*! Production::    e : '(' e ')' */
+    this.$ = $$[$0 - 1];
+    break;
+
+case 11:
+    /*! Production::    e : NUMBER */
+    this.$ = Number(yytext);
+    break;
+
+case 12:
+    /*! Production::    e : E */
+    this.$ = Math.E;
+    break;
+
+case 13:
+    /*! Production::    e : PI */
+    this.$ = Math.PI;
+    break;
+
 }
 },
 table: bt({
