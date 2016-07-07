@@ -42,14 +42,14 @@
 // parser engine: that way we have a guaranteed good set of token #IDs which we
 // can use at both ends of the AST stream interface: this allows us to use 
 // the other JISON feature which is `#<name>` in the action blocks everywhere:
-// this will be exapanded into the numeric ID of the given token by jison,
+// this will be expanded into the numeric ID of the given token by jison,
 // saving us from having to generate and maintain a separate table of IDs
 // for our AST objects!
 //
 // ---
 //
 // This example alo uses the new JISON `%include` feature which allows us
-// to include any given source file *verbatim* in our enerated jison output.
+// to include any given source file *verbatim* in our generated jison output.
 // Thus we will produce a complete, working, app in a single file here.
 // (See near bottom of this jison file.)
 
