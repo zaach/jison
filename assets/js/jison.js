@@ -65,14 +65,24 @@ function each(obj, func) {
 function union(a, b) {
     assert(Array.isArray(a));
     assert(Array.isArray(b));
-    var ar = {};
-    for (var k = a.length - 1; k >= 0; --k) {
-        ar[a[k]] = true;
-    }
-    for (var i = b.length - 1; i >= 0; --i) {
-        if (!ar[b[i]]) {
-            a.push(b[i]);
-        }
+    if (a.length > 52) {
+	    var ar = {};
+	    for (var k = 0, len = a.length; k < len; k++) {
+	        ar[a[k]] = true;
+	    }
+	    for (var k = 0, len = b.length; k < len; k++) {
+	        if (!ar[b[k]]) {
+	            a.push(b[k]);
+	        }
+	    }
+    } else {
+    	var bn = [];
+	    for (var k = 0, len = b.length; k < len; k++) {
+	        if (a.indexOf(b[k]) < 0) {
+	            bn.push(b[k]);
+	        }
+	    }
+	a = a.concat(bn);
     }
     return a;
 }
@@ -2425,7 +2435,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //     if (yydebug) yydebug(...);
 
         parseFn = parseFn
-        .replace(/\s+var yydebug = [^\0]+?self\.trace[^\0]+?}\n/g, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
+        .replace(/\s+var yydebug = [\s\S]+?self\.trace[\s\S]+?};[^}]+}/g, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
         .replace(/^.*?\byydebug\b.*?$/gm, '');
     }
 
@@ -3915,6 +3925,8 @@ _handle_error_with_recovery:                    // run this code when the gramma
 
 _handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
 _handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
+
+    ;
 
     // Produce a (more or less) human-readable list of expected tokens at the point of failure.
     // 
