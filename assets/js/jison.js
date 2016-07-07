@@ -65,6 +65,23 @@ function each(obj, func) {
 function union(a, b) {
     assert(Array.isArray(a));
     assert(Array.isArray(b));
+    // Naive indexOf()-based scanning delivers a faster union() 
+    // (which takes the brunt of the load for large grammars): 
+    // for examples/jscore this drops 13.2 seconds down to 
+    // 8.9 seconds total time spent in the generator! 
+    //
+    // The idea there was that the FIRST/FOLLOW sets are generally 
+    // quite small; bad cases could run this up to > 128 entries 
+    // to scan through, but overall the FIRST and FOLLOW sets will 
+    // be a few tens of entries at best, and thus it was expected 
+    // that a naive scan would be faster than hash-object creation 
+    // and O(1) checking that hash... Turns I was right.
+    // 
+    // The 'arbitrary' threshold of 52 entries in the array to check 
+    // against is probably at or near the worst-case FIRST/FOLLOW set 
+    // site for this jscore grammar as the naive scan consistently 
+    // outperformed the old smarter hash-object code for smaller 
+    // thresholds (10, 20, 32, 42!)
     if (a.length > 52) {
 	    var ar = {};
 	    for (var k = 0, len = a.length; k < len; k++) {
@@ -3926,6 +3943,8 @@ _handle_error_with_recovery:                    // run this code when the gramma
 _handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
 _handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
 
+    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
+    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
     ;
 
     // Produce a (more or less) human-readable list of expected tokens at the point of failure.
@@ -7246,6 +7265,10 @@ parse: function parse(input) {
         }
     }
 
+
+    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
+    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
+    ;
 
     // Produce a (more or less) human-readable list of expected tokens at the point of failure.
     // 
@@ -11215,6 +11238,10 @@ parse: function parse(input) {
         }
     }
 
+
+    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
+    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
+    ;
 
     // Produce a (more or less) human-readable list of expected tokens at the point of failure.
     // 
