@@ -826,6 +826,10 @@ parse: function parse(input) {
 
 
 
+    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
+    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
+    ;
+
     // Produce a (more or less) human-readable list of expected tokens at the point of failure.
     // 
     // The produced list may contain token or token set descriptions instead of the tokens
