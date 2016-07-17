@@ -56,7 +56,28 @@
 "+"                   return '+';
 "^"                   return '^';
 "!"                   return '!';
-"%"                   return '%';
+// `%`: the grammar is not LALR(1) unless we make the lexer smarter and have it disambiguate the `%` between `percent` and `modulo` functionality by additional look-ahead:
+// we introduce a lexical predicate here to disambiguate the `%` and thus keep the grammar LALR(1)!
+//      https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions
+"%"(?=\s*(?:[^0-9!]|E\b|PI\b|$))
+                      // followed by another operator, i.e. anything that's not a number, or The End: then this is a unary `percent` operator.
+                      // `1%-2` would be ambiguous but isn't: the `-` is considered as a unary minus and thus `%` is a `modulo` operator.
+                      // `1%*5` thus is treated the same: any operator following the `%` is assumed to be a *binary* operator. Hence `1% times 5`
+                      // which brings us to operators which only exist in unary form: `!`, and values which are not numbers, e.g. `PI` and `E`:
+                      // how about 
+                      // - `1%E` -> modulo E, 
+                      // - `1%!0` -> modulo 1 (as !0 -> 1) 
+                      //
+                      // Of course, the easier way to handle this would be to keep the lexer itself dumb and put this additional logic inside
+                      // a post_lex handler which should then be able to obtain additional look-ahead tokens and queue them for later, while
+                      // using those to inspect and adjust the lexer output now -- a trick which is used in the cockroachDB SQL parser code, for example.
+                      //
+                      // The above regex solution however is a more local extra-lookahead solution and thus should cost us less overhead than
+                      // the suggested post_lex alternative, but it comes at a cost itself: complex regex and duplication of language knowledge
+                      // in the lexer itself, plus inclusion of *grammar* (syntactic) knowledge in the lexer too, where it doesn't belong in an ideal world...
+                      console.log('percent: ', yytext);
+                      return '%';
+"%"                   return 'MOD';
 "("                   return '(';
 ")"                   return ')';
 "PI"                  return 'PI';
@@ -69,7 +90,7 @@
 /* operator associations and precedence */
 
 %left '+' '-'
-%left '*' '/'
+%left MOD '*' '/'
 %right '^'                  // it really doesn't matter, but we ASSUME most expressions with chained power expressions, e.g. `10^3^2`, have the nearer-to-one(1) integer? values, which makes us guess it's slightly better, given the restrictions of floating point accuracy, to calculate the uppermost power part first, i.e. `3^2` instead of `10^3` in the given example.
 %right '!'
 %right '%'
@@ -92,7 +113,7 @@ expressions
           // to be a recognizer, but that is not the case here!)
           $$ = $1;
         }
-    | error EOF
+    | error ERROR EOF
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
             print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$)}, yy.lastErrorMessage);
@@ -117,14 +138,19 @@ e
     ;
 
 m
-    : m '*' m
+    : m MOD m
         {
-            $$ = $1 * $3;
+            $$ = $1 % $3;
             print($1, $2, $3, '==>', $$);
         }
     | m '/' m
         {
             $$ = $1 / $3;
+            print($1, $2, $3, '==>', $$);
+        }
+    | m '*' m
+        {
+            $$ = $1 * $3;
             print($1, $2, $3, '==>', $$);
         }
     | p
@@ -140,14 +166,19 @@ p
     ;
 
 u
-    :  u '!'
+    :  u '!'                                    // 'factorial'
         {{
             $$ = (function fact(n) {
                 return n == 0 ? 1 : fact(n - 1) * n;
             })($u);
             print($1, $2, '==>', $$);
         }}
-    | u '%'
+    | '!' u                                     // 'not'
+        {
+            $$ = ($u ? 0 : 1);
+            print($1, $2, '==>', $$);
+        }
+    | u '%'                                     // 'percent'
         {
             $$ = $u / 100;
             print($1, $2, '==>', $$);
@@ -166,14 +197,6 @@ u
         {
             $$ = $2;
             print($1, $2, $3, '==>', $$);
-        }
-    | '(' error ')'
-        {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$)}, yy.lastErrorMessage);
-            yyerrok;
-            yyclearin;
-            $$ = 1;
         }
     | v
     ;
@@ -422,119 +445,10 @@ parser.yy.parseError = function parseError(str, hash) {
 
 
 
+%include benchmark.js
 
 
-// round to the number of decimal digits:
-function r(v, n) {
-    var m = Math.pow(10, n | 0);
-    v *= m;
-    v = Math.round(v);
-    return v / m;
-}
 
-function bench(f, n) {
-    var factor = 50;
-    const run = 1;         // factor of 50 !  
-    n = n | 0;
-    n /= run;
-    n = n | 0;
-    n = Math.max(n, 10); // --> minimum number of tests: 10*run*factor
-    perf.mark('monitor');
-
-    // get the number of tests internal to the test function: 1 or more
-    factor *= f();
-
-    var ts = [];
-    for (var i = 0; i < n; i++) {
-        perf.mark('bench');
-        for (var j = 0; j < run; j++) {
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-            f();
-        }
-        ts.push(perf.mark('bench'));
-        var consumed = perf.mark_sample_and_hold('monitor');
-        //console.log('consumed', consumed, ts[ts.length - 1], i);
-        if (consumed < 5000) {
-            // stay in the loop until 5 seconds have expired!:
-            i = Math.min(i, n - 2);
-        }
-    }
-
-    var sum = 0;
-    for (var i = 0, cnt = ts.length; i < cnt; i++) {
-        sum += ts[i];
-    }
-    var avg = sum / cnt;
-
-    var dev = 0;
-    var peak = 0;
-    for (var i = 0; i < cnt; i++) {
-        var delta = Math.abs(ts[i] - avg);
-        dev += delta;
-        peak = Math.max(peak, delta);
-    }
-    dev /= cnt;
-    var sample_size = run * factor;
-    console.log("Time: total: ", r(sum, 0) + 'ms',
-        ", sample_count:", cnt,
-        ", # runs:", cnt * sample_size,
-        ", average:", r(avg / sample_size, 4) + 'ms',
-        ", deviation:", r(100 * dev / avg, 2) + '%',
-        ", peak_deviation:", r(100 * peak / avg, 2) + '%'
-    );
-}
 
 parser.main = function () {
     print("Running benchmark...");
@@ -563,9 +477,15 @@ parser.main = function () {
         return formulas_and_expectations.length / 2;
     }
 
-    print = function dummy() {};
-    bench(test);
-
+    if (0) {
+        print = function dummy() {};
+    }
+    if (01) {
+        test();
+    } else {
+        bench(test);
+    }
+    
     // if you get past the assert(), you're good.
     print("tested OK @", r(perf.mark(), 2), " ms");
 };
