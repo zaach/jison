@@ -2,7 +2,8 @@
 # You can build each example to its own directory in ./output/<example>
 #
 
-JISON = node ../lib/cli.js -o ./output/$@/ --main
+JISON = node ../lib/cli.js -o ./output/$@/
+
 
 ERROR_HANDLING_TARGETS =                                        \
 			error-handling-and-yyclearin                        \
@@ -169,85 +170,85 @@ error-handling: $(ERROR_HANDLING_TARGETS)
 misc: $(MISC_TARGETS)
 
 ansic:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 basic:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 basic_w_error_rule:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 basic2:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 basic2_lex:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 basic_lex:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 bloop:
-	$(JISON) ./$@.y ./floop.l
+	$(JISON) --main ./$@.y ./floop.l
 
 # cannot compile a lexer on its own, so we provide a bogus grammar to go with that.
 floop:
-	$(JISON) $@-standalone.y ./$@.l
+	$(JISON) --main $@-standalone.y ./$@.l
 
 calculator:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 calc_LA_on_demand:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 calculator_json:
-	$(JISON) ./calculator.json
+	$(JISON) --main ./calculator.json
 
 classy:
-	$(JISON) ./$@.jison ./classy.jisonlex
+	$(JISON) --main ./$@.jison ./classy.jisonlex
 
 # test input file: classy_test.src
 classy_ast:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 comments:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 dism:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 dism_lr0:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 # ./documentation--custom-lexer-NIL.js
 # ./documentation--custom-lexer-ULcase.js
 # ./documentation--mygenerator.js
 
 formula:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 handlebars:
-	$(JISON) ./handlebars.jison.y ./handlebars.jison.l
+	$(JISON) --main ./handlebars.jison.y ./handlebars.jison.l
 
 inherited_y:
-	$(JISON) ./inherited.y
+	$(JISON) --main ./inherited.y
 
 # build *AND* run the test:
 issue-254:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-293:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-289:
-	$(JISON) -t -p lalr ./$@.jison
+	$(JISON) --main -t -p lalr ./$@.jison
 	node ./output/$@/$@.js
 
 jscore:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 json_js:
 	-mkdir -p ./output/$@
@@ -258,182 +259,189 @@ json_ast_js:
 	node ./json_ast.js > ./output/$@/$@.js
 
 lambdacalc:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 nv_classy_ast:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 phraser:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 precedence:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 reduce_conflict:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 regex:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 # input test file:  ./semwhitespace_ex.src
 semwhitespace:
-	$(JISON) ./$@.jison semwhitespace_lex.jison
+	$(JISON) --main ./$@.jison semwhitespace_lex.jison
 
 tikiwikiparser:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 mermaid:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 dot:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyclearin:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-loopfix:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-looping1:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-looping2:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-macro:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part1:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part2:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part3:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part4a:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part4b:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-handling-and-yyerrok-part5:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 error-recognition-actions:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 flow:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 fsyacc-cgrammar:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 gantt:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 happyhappy:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 unicode:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 lojban-300:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 mfcalc:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 no-prec-hack-needed:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
 olmenu-proto2:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 unicode2:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 yacc-error-recovery:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 with-includes:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 with_custom_lexer:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 grammar:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 klammergebirge:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 lex:
-	$(JISON) ./$@.jison lex_grammar.jisonlex
+	$(JISON) --main ./$@.jison lex_grammar.jisonlex
 
 ccalc:
-	$(JISON) ./$@-parse.y ./$@-lex.l
+	$(JISON) --main ./$@-parse.y ./$@-lex.l
 
 c99:
-	$(JISON) ./$@.y ./$@.l
+	$(JISON) --main ./$@.y ./$@.l
 
 btyacc-ansiC:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 btyacc-ansiC2:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 btyacc-ftp:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 btyacc-t1:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 btyacc-t2:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 error-only:
-	$(JISON) ./$@.y
+	$(JISON) --main ./$@.y
 
 parser-to-lexer-communication-test:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 faking-multiple-start-rules:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 faking-multiple-start-rules-alt:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 
 pascal:
-	$(JISON) ./$@.y ./$@.l
+	$(JISON) --main ./$@.y ./$@.l
 
 # couple of examples which test theoretical grammars published in various papers about LR et al:
 
 # build *AND* run the test:
 lalr-but-not-slr:
-	$(JISON) -p lalr ./$@.jison
+	$(JISON) --main -p lalr ./$@.jison
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
 lr-but-not-lalr:
-	$(JISON) -p lr ./$@.jison
+	$(JISON) --main -p lr ./$@.jison
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
 theory-left-recurs-01:
-	$(JISON) ./$@.jison
+	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
-	$(JISON) -t ./$@_parse.jison
-	$(JISON) -t ./$@_exec.jison
-	$(JISON) -t ./$@_codegen.jison
-	$(JISON) -t ./$@_print.jison
-	node output/compiled_calc/compiled_calc_exec.js compiled_calc_input.txt
+	$(JISON) ./$@_parse.jison
+	$(JISON) ./$@_codegen.jison
+	$(JISON) ./$@_print.jison
+	$(JISON) ./$@_sorcerer.jison
+	$(JISON) ./$@_BURG.jison
+	$(JISON) ./$@_parse_for_fast_engine.jison
+	#$(JISON) --main -t ./$@_exec.jison
+	$(JISON) --main ./$@_exec.jison
+	# postprocess generated source code:
+	node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
+	# and run it!
+	node output/$@/$@_exec.js $@_input.txt
 
 
 handlebars-BAD:
