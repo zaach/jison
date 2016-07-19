@@ -400,6 +400,7 @@ error-only:
 
 parser-to-lexer-communication-test:
 	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
 
 faking-multiple-start-rules:
 	$(JISON) --main ./$@.jison
