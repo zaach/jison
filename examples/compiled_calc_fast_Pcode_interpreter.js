@@ -42,18 +42,6 @@
 
 // critical condition: the P-code stream input is to be treated as **immutable**
 // so it can be re-used time and again!
-//
-// Do note that the way we treat this stream is NOT EXACTLY what 'immutable'
-// means in the world outside! We perform some actions which might be termed
-// 'self-modifying code', but DO NOTE that we always 'self-modify' the stream
-// in slots which have been reserved for this by the 'sorcerer', i.e. the
-// P-code **generator** has intimate knowledge about our behaviour in here
-// in has gone the extra mile and given us 'scratch space' in a way that 
-// might actually be faster (optimal?) for us to *execute* in here, at the cost
-// of:
-// - a slightly longer P-code stream
-// - the IMPLICIT condition that two P-code runners MUST NOT execute the same
-//   P-code stream in parallel, *ever*!
 function exec_Pcode(stream, context) {
   // our accumulator and register bank:
   //      https://www.scirra.com/blog/76/how-to-write-low-garbage-real-time-javascript
@@ -213,6 +201,18 @@ function exec_Pcode(stream, context) {
       r2 = rx.unshift();
       continue;
 
+    case PUSH:                 // move all registers up by one: push accumulator onto the stack. Only our 'stack' consists of a few registers and then the overflow stack `rx[]`:
+      rx.push(r2);
+      r2 = r1;
+      r1 = a;
+      continue;
+
+    case POP:                 // move all registers down by one: pop accumulator from the stack. Only our 'stack' consists of a few registers and then the overflow stack `rx[]`:
+      a = r1;
+      r1 = r2;
+      r2 = rx.pop();
+      continue;
+
     case SHIFT_EX:              // shift the active error to make room for a new incoming error: multiple sources each can track their own own error status into an error filter/select function.
       ex.unshift(false);
       continue;
@@ -225,7 +225,7 @@ function exec_Pcode(stream, context) {
 
     case ASSIGN:                // rhs '=' lhs       -- '=' VAR exp 
       av = stream[i++];
-      vt[av] = r1;
+      vt[av] = a;
       continue;
 
     case FUNCTION_0:             // function() call; can produce an error  
@@ -409,15 +409,15 @@ function exec_Pcode(stream, context) {
       a /= 100;
       continue;
 
-    case CONDITIONAL:           // cond '?' true ':' false -- check the conditional and self-modify stream to exec the correct branch
+    case CONDITION:             // cond '?' true ':' false -- check the conditional and self-modify stream to exec the correct branch
       if (a) {
-        stream[i] = EXEC;
-        n = stream[i + 1];
-        stream[i + n1] = SKIP; 
+        // take the branch and skip the ELSE:
+        // skip the jump offset slot.
+        i++;
       } else {
-        stream[i] = SKIP;
-        n = stream[i + 1];
-        stream[i + n] = SKIP; 
+        // take the alternative branch and skip the IF:
+        // use the jump offset (which is already corrected for this offset slot and the SKIP instruction at the end of the IF branch; see `compiled_calc_for_fast_engine.jison`.
+        i += stream[i];
       }
       // NOTE: error propagation of the 'active branch only' is implicitly happening thanks to this flow: the inactive
       //       branch is simply skipped, hence no errors in there will ever be seen as we simply do not perform any of

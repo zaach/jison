@@ -75,11 +75,20 @@
 %nonassoc  UPLUS      /* unary plus */
 %nonassoc  PERCENT    /* unary plus */
 
+
+
 /* Grammar follows */
 
 %start input
 
+
+
+%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
+
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
+
+
 
 %%
 

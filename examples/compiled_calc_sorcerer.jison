@@ -109,6 +109,9 @@
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
+%token      FUNCTION_1      // optimization: function with one input parameter
+%token      FUNCTION_2      // optimization: function with two input parameters
+%token      FUNCTION_3      // optimization: function with three input parameters
 
 %nonassoc   IF_ELSE         // IF ... THEN ... ELSE ...
 %nonassoc   IF              // IF ... THEN ... (ELSE nil) -- the 'dangling else' issue has already been resolved by the *parser* hence this AST input stream doesn't suffer from that issue any more!
@@ -225,12 +228,26 @@ exp:
                                      it is *implicit* to #assign!
                                    */
                                   $$ = [#ASSIGN#, $ASSIGN].concat($exp);
-        }
+                                }
 | FUNCTION_0
                                 { $$ = [#FUNCTION_0#, $FUNCTION_0]; }
 | FUNCTION arglist END
                                 {
                                   /*
+                                     See the comment in the statement EOL rule above: to disambiguate a sequence
+                                     of exp subtrees, we MUST add a terminator to either or both statement and
+                                     function, otherwise the sequence `FUNCTION exp exp` is ambiguous: it could
+                                     be:
+
+                                     - a no-args functions and two more statements,
+                                     - a single-arg function and one more statement,
+                                     - a two-arg function.
+
+                                     Of course, you may argue that adding 'number of arguments' knowledge to the
+                                     FUNCTION token would also resolve this issue, and it would, but that would
+                                     be a bit harder to encode in an LALR(1) grammar used as the treewalker core.
+                                     It is easier to use a sentinel token in one or both spots.
+
                                      A lot of functions have only a few arguments, which we later optimize in our AST
                                      by including that knowledge in the FUNCTION token by using derivative tokens
                                      FUNCTION_0, FUNCTION_1, etc.: this can help a smart optimizer to include
@@ -240,12 +257,44 @@ exp:
                                      situation by having encoded arglist length in the FUNCTION token, these
                                      tokens never require a sentinel token in the AST stream: small AST stream size.
 
+                                     Now we let the optimizer deal with this when the time comes...
+
+                                     Meanwhile, keep it as simple as possible in here!
+
                                      Also don't forget to FLATTEN the arglist! ==> `concat.apply(a, arglist)`
+
+                                     NOTE: the #FUNCTION# rule in Polish Notation is ambiguous unless we terminate it
+                                     (which is easy to parse in an LALR(1) grammar while adding a argument count is not!)
+                                     as we would otherwise get confused over this scenario:
+
+                                          ... PLUS FUNCTION exp exp exp ...
+
+                                     - is this a function with one argument and that last `exp` in there the second term
+                                       of a binary(?) opcode waiting in the leading `...`?
+                                     - is this a function with two arguments and that last `exp` the second
+                                       term of the PLUS?
+                                     - is this a function with three arguments and is the second term of the PLUS
+                                       waiting in the trailing `...`?
+
+                                     This is the trouble with opcodes which accept a variable number of arguments:
+                                     such opcodes always have to be terminated by a sentinel to make the AST grammar
+                                     unambiguous.
                                   */
-                                  $$ = [].concat.apply([#FUNCTION#, $FUNCTION], $arglist, #END#);
-                                  if (0) {
-                                    $$ = $$.concat(#END#);
-                                  }
+                                  $$ = [].concat.apply([#FUNCTION#, $FUNCTION], $arglist);
+                                  $$.push(#END#);
+
+                                }
+| FUNCTION_1 exp
+                                {
+                                  $$ = [#FUNCTION_1#, $FUNCTION_1].concat($exp);
+                                }
+| FUNCTION_2 exp exp
+                                {
+                                  $$ = [#FUNCTION_2#, $FUNCTION_2].concat($exp1, $exp2);
+                                }
+| FUNCTION_3 exp exp exp
+                                {
+                                  $$ = [#FUNCTION_3#, $FUNCTION_3].concat($exp1, $exp2, $exp3);
                                 }
 
 | EQ exp exp
@@ -303,12 +352,12 @@ exp:
 
 | IF_ELSE exp exp exp
                                 {
-          $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
-        }
+                                  $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
+                                }
 | IF exp exp
                                 {
-          $$ = [#IF#].concat($exp1, $exp2);
-        }
+                                  $$ = [#IF#].concat($exp1, $exp2);
+                                }
 ;
 
 arglist:

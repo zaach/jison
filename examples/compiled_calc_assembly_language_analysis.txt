@@ -1,0 +1,38 @@
+// 
+// optimizer reduction rules / assembly language analysis
+// 
+
+1+2+3
+-> 1 PUSH 2 ADD PUSH 3 ADD
+|  3 PUSH 2 ADD PUSH 1 ADD
+	PUSH		1	
+	PUSH		2
+	ADD_3 		3
+
+1-2-3
+-> 3 PUSH 2 PUSH 1 SUB SUB
+	PUSH		3
+	PUSH		2
+	SUB_3   	1
+|
+	PUSH 		2	
+	ADD     	3
+	PUSH		.
+	SUB     	1
+
+F1(F2(1), 2)
+-> 2 PUSH 1 CALL_1(F2) CALL_2(F1)
+	CALL_1		F2	1
+	MOVE		R1	2
+	CALL_2		F1	.	R1	
+|
+    PUSH		2						-> S1
+    CALL_1		F2	1
+    CALL_2		F1	.	S1
+
+F1(2, F2(1), 3)
+-> 3 PUSH 1 CALL_1(F2) PUSH 2 CALL_3(F1)
+	PUSH		3 						-> S1
+	CALL_1_R1	F2	1 					-> call result stored in R1, not A
+	CALL_3 		F1	2	R1 	S1
+
