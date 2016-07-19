@@ -10,6 +10,8 @@
  */
 
 %debug
+%options output-debug-tables
+
 
 %lex
 
