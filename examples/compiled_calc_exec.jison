@@ -65,6 +65,9 @@
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
+%token      FUNCTION_1      // optimization: function with one input parameter
+%token      FUNCTION_2      // optimization: function with two input parameters
+%token      FUNCTION_3      // optimization: function with three input parameters
 
 %nonassoc   IF_ELSE         // IF ... THEN ... ELSE ...
 %nonassoc   IF              // IF ... THEN ... (ELSE nil) -- the 'dangling else' issue has already been resolved by the *parser* hence this AST input stream doesn't suffer from that issue any more!
@@ -110,6 +113,8 @@
 
 
 
+/* camelCased: option.onDemandLookahead */
+%options on-demand-lookahead
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
@@ -181,6 +186,23 @@ exp:
                                      tokens never require a sentinel token in the AST stream: small AST stream size.
 
                                      Also don't forget to FLATTEN the arglist! ==> `concat.apply(a, arglist)`
+
+                                     NOTE: the #FUNCTION# rule in Polish Notation is ambiguous unless we terminate it
+                                     (which is easy to parse in an LALR(1) grammar while adding a argument count is not!)
+                                     as we would otherwise get confused over this scenario:
+
+                                          ... PLUS FUNCTION exp exp exp ...
+
+                                     - is this a function with one argument and that last `exp` in there the second term
+                                       of a binary(?) opcode waiting in the leading `...`?
+                                     - is this a function with two arguments and that last `exp` the second
+                                       term of the PLUS?
+                                     - is this a function with three arguments and is the second term of the PLUS
+                                       waiting in the trailing `...`?
+
+                                     This is the trouble with opcodes which accept a variable number of arguments:
+                                     such opcodes always have to be terminated by a sentinel to make the AST grammar
+                                     unambiguous.
                                   */
                                   $$ = $FUNCTION.apply(globalSpace, $arglist);
                                 }

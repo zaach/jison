@@ -39,14 +39,14 @@
     "cjson": ">=0.4.0",
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
-    "json5": "^0.5.0",
+    "json5": "0.5.0",
     "lex-parser": "GerHobbelt/lex-parser#master",
     "nomnom": "GerHobbelt/nomnom#master",
     "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "browserify": ">=13.0.1",
-    "recast": "^0.11.10",
+    "recast": "0.11.10",
     "test": ">=0.6.0",
     "uglify-js": ">=2.6.2"
   },
