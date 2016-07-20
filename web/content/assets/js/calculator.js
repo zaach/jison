@@ -135,7 +135,14 @@
  *
  *  {
  *    expected:    (array describing the set of expected tokens;
- *                  may be empty when we cannot easily produce such a set)
+ *                  may be UNDEFINED when we cannot easily produce such a set)
+ *    state:       (integer (or array when the table includes grammar collisions);
+ *                  represents the current internal state of the parser kernel.
+ *                  can, for example, be used to pass to the `collect_expected_token_set()`
+ *                  API to obtain the expected token set)
+ *    action:      (integer; represents the current internal action which will be executed)
+ *    new_state:   (integer; represents the next/planned internal state, once the current
+ *                  action has executed)
  *    recoverable: (boolean: TRUE when the parser MAY have an error recovery rule
  *                  available for this particular error)
  *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,
@@ -919,7 +926,6 @@ parse: function parse(input) {
     var p, len, this_production;
 
     var newState;
-    var expected = [];
     var retval = false;
 
     if (this.pre_parse) {
@@ -957,29 +963,33 @@ parse: function parse(input) {
                 // handle parse error
                 if (!action) {
                     var errStr;
+                    var errSymbolDescr = (this.describeSymbol(symbol) || symbol); 
+                    var expected = this.collect_expected_token_set(state);
 
                     // Report error
-                    expected = this.collect_expected_token_set(state);
                     if (lexer.showPosition) {
                         errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
                     } else {
                         errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
                     }
                     if (expected.length) {
-                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + (this.describeSymbol(symbol) || symbol);
+                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
                     } else {
-                        errStr += 'Unexpected ' + (this.describeSymbol(symbol) || symbol);
+                        errStr += 'Unexpected ' + errSymbolDescr;
                     }
                     // we cannot recover from the error!
                     retval = this.parseError(errStr, {
                         text: lexer.match,
                         value: lexer.yytext,
-                        token: this.describeSymbol(symbol) || symbol,
+                        token: errSymbolDescr,
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
                         expected: expected,
                         recoverable: false,
+                        state: state,
+                        action: action,
+                        new_state: newState,
                         state_stack: stack,
                         value_stack: vstack,
 
@@ -1003,8 +1013,11 @@ parse: function parse(input) {
                         token_id: symbol,
                         line: lexer.yylineno,
                         loc: lexer.yylloc,
-                        expected: expected,
+                        //expected: this.collect_expected_token_set(state),
                         recoverable: false,
+                        state: state,
+                        action: action,
+                        new_state: newState,
                         state_stack: stack,
                         value_stack: vstack,
 
@@ -1022,8 +1035,11 @@ parse: function parse(input) {
                     token_id: symbol,
                     line: lexer.yylineno,
                     loc: lexer.yylloc,
-                    expected: expected,
+                    //expected: this.collect_expected_token_set(state),
                     recoverable: false,
+                    state: state,
+                    action: action,
+                    new_state: newState,
                     state_stack: stack,
                     value_stack: vstack,
 
@@ -1146,6 +1162,9 @@ parse: function parse(input) {
             loc: lexer.yylloc,
             // expected: expected,
             recoverable: false,
+            state: state,
+            action: action,
+            new_state: newState,
             state_stack: stack,
             value_stack: vstack,
 
