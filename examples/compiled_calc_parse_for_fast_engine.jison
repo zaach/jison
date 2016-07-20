@@ -5,114 +5,24 @@
 // converting input text stream to AST (Abstract Syntax Tree) / tokens,
 // a.k.a. IR (Intermediate Representation).
 //
-// We create an AST as an *array* rather than a tree (less objects to
-// create and update).
+// This parser is very similar to the other parser in compiled_calc_parser.jison:
+// This one however is geared towards outputting an AST stream optimal for the
+// hand-written bottom-up AST tree walkers in compiled_calc_fast_*.js, hence
+// we output a *Reverse Polish Notation* stream rather than a *Polish Notation*
+// stream; we keep the stream optimizer (sorcerer2) separate from this parser
+// to ensure that we can execute that subprocess independently from this
+// parsing process.
 //
-// We can use an array to carry a full-fledged AST as this is the
-// 'pre-order traversal' (https://en.wikipedia.org/wiki/Tree_traversal)
-// representation of said (theoretic) AST.
+// --------------------------------------------------------------------------
 //
-// Ergo we get an array which looks suspiciously like it's carrying
-// tokenized math expressions in Polish Notation (https://en.wikipedia.org/wiki/Polish_notation)
-// which has the known benefit of not requiring storing info about
-// any priority reversal (https://en.wikipedia.org/wiki/Order_of_operations)
-// as you would with 'infix notation': the `(...)` braces around
-// sub-expressions.
-//
-// Of course, nothing is as trivial as it seems, because there still is
-// a problem which doesn't show up in theory but does in practice: when you
-// perform calculations, the order of execution of theoretically fully
-// associative operator sequences IS important.
-// (https://www.mathsisfun.com/associative-commutative-distributive.html)
-// Here's an example:
-//
-// ```
-// A=1
-// B=1e17 + 1e9
-// C=1e17 - 1e9
-//
-// A+(B-C)   --> (B-C) => 2e9,    A+. => 2000000001
-// A+B-C     --> A+B => 1e17+1e9, .-C => 2000000000
-// ```
-//
-// What you observe here is floating point accuracy loss due to the limited
-// size of the mantissa. Consequently, we must realize that any seemingly
-// 'superfluous braces' used in the formula MUST be preserved and recreated
-// when we wish to re-print/format/display the given AST (formula) via the
-// `compiled_calc_print.jison` tree-walking backend grammar: associative
-// operators do have a preferred (default) order of execution and any AST
-// we create carrying a non-default order of execution must be recognized
-// as such by the backend grammars ('code generators'): compile_calc_exec and
-// compile_calc_print.
-//
-// ASTs for the above example:
-//
-// ```
-// A+(B-C)   --> +A-BC
-// A+B-C     --> -+ABC
-// ```
-//
-// And here's another example, using only a single operator (`+` addition):
-//
-// ```
-// A=1
-// B=+1e17 + 1e9
-// C=-1e17 + 1e9
-//
-// A+(B+C)   --> (B+C) => 2e9,    A+. => 2000000001
-// A+B+C     --> A+B => 1e17+1e9, .+C => 2000000000
-// ```
-//
-// ASTs for the above example:
-//
-// ```
-// A +1 (B +2 C)   --> +1A+2BC
-// A +1 B +2 C     --> +2+1ABC
-// ```
-//
-// The default vs. non-default order of execution effect on AST tree inbalance
-// is maybe easier to observe when we start with a symmetric tree:
-//
-// ```
-// (A +1 B) +2 (C +3 D)  -->                  [[ +2 ]]
-//                                            /      \
-//                                          [+1]    [+3]
-//                                          /  \    /  \
-//                                         A    B  C    D
-// --> +2 +1 A B +3 C D
-//
-// A +1 B +2 C +3 D -->
-//  (using a left-recursive grammar, representing left-associativity)
-// --> +3 +2 +1 A B C D
-//                                            [[+3]]
-//                                            /    \
-//                                          [+2]    D
-//                                          /  \
-//                                        [+1]  C
-//                                        /  \
-//                                       A    B
-//
-// ...ditto... -->
-//  (using a right-recursive grammar, representing right-associativity,
-//   which is the only associativity type easily constructed in top-down parsers,
-//   either hand-coded or LL(k)-generator based. LR/LALR doesn't suffer from this problem!)
-// --> +1 +2 +3 A B C D
-//                                            [[+1]]
-//                                            /    \
-//                                          [+2]    D
-//                                          /  \
-//                                        [+3]  C
-//                                        /  \
-//                                       A    B
-//
-//
-// Hence when we encounter a left child of an AST node which carries a
-// mutually associative operator (`+` or `-`, etc.), then we are looking at
-// a probably enforced order of execution due to extra `(..)` braces.
-// THAT of course assumes you've got your grammar set up properly and set
-// up your `%left`/`%right` token associativity to help JISON cope with rules
-// which specify *both* associativities via left-and-right recursion in
-// the grammar -- like the grammar should below!
+// As we have intimate knowledge of the 'no-shift-ever, reduce-only' AST structure
+// used by our hand-optimized subprocesses, we have this parser produce the
+// suitable AST for that: we *push* function arguments on the stack so that
+// those do not need to be *shifted* any more but are *reduced* in a stack-action
+// instead, etc.; this also means the AST 'grammar' employed by this system
+// does not suffer from the ambiguity between FUNCTION arglist termination
+// and statement ('line') termination, which did exist in the original AST
+// grammar and was resolved there with the #END# sentinel token.
 //
 
 
@@ -122,115 +32,9 @@
 
 
 
-%lex
-
-%options flex 
-%options case-insensitive
-%options xregexp
-%options backtrack_lexer
-%options ranges
-%options easy_keyword_rules
-
-%%
-
-// 1.0e7
-[0-9]+\.[0-9]*(?:[eE][-+]*[0-9]+)?\b
-                      %{
-                        yytext = parseFloat(yytext);
-                        return 'NUM';
-                      %}
-
-// .5e7
-[0-9]*\.[0-9]+(?:[eE][-+]*[0-9]+)?\b
-                      %{
-                        yytext = parseFloat(yytext);
-                        return 'NUM';
-                      %}
-
-// 5 / 3e4
-[0-9]+(?:[eE][-+]*[0-9]+)?\b
-                      %{
-                        yytext = parseFloat(yytext);
-                        return 'NUM';
-                      %}
-
-// reserved keywords:
-'and'                 return 'AND';
-'or'                  return 'OR';
-'xor'                 return 'XOR';
-'not'                 return 'NOT';
-'if'                  return 'IF';
-'then'                return 'THEN';
-'else'                return 'ELSE';
-
-
-// accept variable names with dots in them, e.g. `store.item`:
-[a-zA-Z_$]+[a-zA-Z_0-9.$]*\b
-                      %{
-                        var rv = lookup_constant(yytext);
-                        if (rv) {
-                          yytext = rv;
-                          return 'CONSTANT';
-                        }
-                        rv = lookup_function(yytext);
-                        if (rv) {
-                          yytext = rv;
-                          return 'FUNCTION';
-                        }
-                        rv = lookup_or_register_variable(yytext);
-                        yytext = rv;
-                        return 'VAR';
-                      %}
-
-'==='                   return 'EQ';
-'=='                    return 'EQ';
-'!='                    return 'NEQ';
-'<='                    return 'LEQ';
-'>='                    return 'GEQ';
-
-'||'                    return 'OR';
-'^^'                    return 'XOR';
-'&&'                    return 'AND';
-
-'**'                     return 'POWER';    /* Exponentiation        */
-
-'<'                     return 'LT';
-'>'                     return 'GT';
-
-'='                     return '=';
-'-'                     return '-';
-'+'                     return '+';
-'*'                     return '*';
-'/'                     return '/';
-'('                     return '(';
-')'                     return ')';
-','                     return ',';
-'!'                     return '!';
-'%'                     return '%';
-'~'                     return '~';
-
-'?'                     return '?';                         // IF
-':'                     return ':';                         // ELSE
-
-'|'                     return '|';
-'^'                     return '^';
-'&'                     return '&';
-
-
-\\[\r\n]                // accept C-style line continuation: ignore this bit.
-
-[\r\n]+                 return 'EOL';
-
-[^\S\r\n]+              // ignore whitespace
-
-\/\/.*                  // skip C++-style comments
-\/\*[\s\S]*?\*\/        // skip C-style multi-line comments
-
-<<EOF>>                 return 'EOF';
-.                       return 'INVALID';
-
-
-/lex
+// %lex
+//
+// Inject the lexer from the other parser as they're the same...
 
 
 
@@ -244,6 +48,7 @@
 %token      FUNCTION_1      // optimization: function with one input parameter
 %token      FUNCTION_2      // optimization: function with two input parameters
 %token      FUNCTION_3      // optimization: function with three input parameters
+%token      PUSH            // push result of expression on stack: this is another argument being fed to a FUNCTION or binary/ternary math operator
 
 %token      THEN
 %token      IF_ELSE         // token signals this is an IF with an ELSE in the resulting AST stream
@@ -288,48 +93,12 @@
 
 
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-%options token-stack
-%options on-demand-lookahead    // camelCased: option.onDemandLookahead 
-
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
 
 
 %%
-
-
-/*
- * When you go and look at the grammar below, do note that the token stream is
- * produced as a 'Polish Notation' simile: `<operator> <arg> <arg> ...`: this
- * has several benefits, not the least of which is that we can do away with
- * 'precedence overrides' in math expressions: no more `()` brackets!
- *
- * Also do note that we're outputting **Polish Notation**, rather than
- * **Reverse Polish Notation**: Polish Notation has the characteristic
- * that the **operator**, i.e. the 'opcode/command' comes before anything
- * else that's related, which is just perfect when you wish to produce
- * the fastest possible bottom-up tree walker: since we use jison to
- * generate our tree walkers for us via the simplest and fastest possible
- * LALR(1) grammar to do so, we only get to be *fast* **because** we have
- * chosen to use a *Polish Notation* structure for our AST token stream.
- *
- * [EDIT: scratch the above: Polish Notation is geared towards writing
- * recursive descent walkers, i.e. Polish Notation is good for LL(1)
- * recursive descent based walkers! Reverse Polish Notation is the stuff you want
- * when doing a bottom-up grammar-based walker: you have every `arg`
- * ready and calculated by the time you hit the `opcode`, resulting
- * in a walker which can be shift+reduce based.
- *
- * Now in another set of files we'll show how you take this stuff to
- * the cleaners and do these boys in, using hand-optimized custom-tailored
- * walkers, which only perform *reduce* operations. Of course *those* are
- * only possible when you 'process' the AST token stream into something
- * that doesn't do 'shift' implicitly, like happens in these grammar-based
- * walkers, but instead turns each of those necessary 'shift' operations
- * into a 'reduce' of its own... in a way, at last. ;-)
- * ]
- */
 
 
 input:
@@ -405,7 +174,7 @@ exp:
                                      would only be cluttering the AST stream to have a #VAR# token in there:
                                      it is *implicit* to #assign!
                                    */
-                                  $exp.unshift(#ASSIGN#, $VAR);
+                                  $exp.push(#ASSIGN#, $VAR);
                                   $$ = $exp;
                                 }
 | FUNCTION '(' ')'
@@ -436,24 +205,30 @@ exp:
                                      situation by having encoded arglist length in the FUNCTION token, these
                                      tokens never require a sentinel token in the AST stream: small AST stream size.
 
+                                     NOTE:
+                                     As every arg in the arglist comes with a #PUSH# token, we *might* have opted
+                                     to push an extra #POP# token into the stream before the #FUNCTION# token,
+                                     but we don't have to as that #POP# is *implicit# in the #FUNCTION# token
+                                     (assuming the arglist is non-empty, of course).
+
                                      Now we let the optimizer deal with this when the time comes...
 
                                      Meanwhile, keep it as simple as possible in here!
 
                                      Also don't forget to FLATTEN the arglist! ==> `concat.apply(a, arglist)`
 
-                                     NOTE: the #FUNCTION# rule in Polish Notation is ambiguous unless we terminate it
+                                     NOTE: the #FUNCTION# rule in Reverse Polish Notation is ambiguous unless we 'terminate' it
                                      (which is easy to parse in an LALR(1) grammar while adding a argument count is not!)
                                      as we would otherwise get confused over this scenario:
 
-                                          ... PLUS FUNCTION exp exp exp ...
+                                          ... exp exp exp FUNCTION PLUS ...
 
-                                     - is this a function with one argument and that last `exp` in there the second term
-                                       of a binary(?) opcode waiting in the leading `...`?
-                                     - is this a function with two arguments and that last `exp` the second
+                                     - is this a function with one argument and that first `exp` in there the second term
+                                       of a binary(?) opcode waiting in the trailing `...`?
+                                     - is this a function with two arguments and that first `exp` the second
                                        term of the PLUS?
                                      - is this a function with three arguments and is the second term of the PLUS
-                                       waiting in the trailing `...`?
+                                       hiding in the leading `...`?
 
                                      This is the trouble with opcodes which accept a variable number of arguments:
                                      such opcodes always have to be terminated by a sentinel to make the AST grammar
@@ -461,206 +236,255 @@ exp:
 
                                      ... On second thought, we can easily apply the FUNCTION_<N> AST optimization
                                      now, and it doesn't impact the AST rule set much, while it opens up other
-                                     possibilities...
+                                     possibilities... (Also don't forget to POP the last PUSH in the $arglist:
+                                     again that is another optimization that simplifies the interpreter and does not
+                                     demand the full power of an AST optimizer!)
                                   */
+                                  var opcode;
                                   switch ($arglist.length) {
                                   default:
-                                    $$ = flatten([#FUNCTION#, $FUNCTION], $arglist);
-				    $$.push(#END#);
+                                    $$ = flatten([#END#], $arglist);
+                                    opcode = #FUNCTION#;
                                     break;
 
                                   case 1:
-                                    $$ = flatten([#FUNCTION_1#, $FUNCTION], $arglist);
+                                    $$ = flatten([], $arglist);
+                                    opcode = #FUNCTION_1#;
                                     break;
 
                                   case 2:
-                                    $$ = flatten([#FUNCTION_2#, $FUNCTION], $arglist);
+                                    $$ = flatten([], $arglist);
+                                    opcode = #FUNCTION_2#;
                                     break;
 
                                   case 3:
-                                    $$ = flatten([#FUNCTION_3#, $FUNCTION], $arglist);
+                                    $$ = flatten([], $arglist);
+                                    opcode = #FUNCTION_3#;
                                     break;
                                   }
+                                  // remove/pop last PUSH:
+                                  $$.pop();
+
+                                  $$.push(opcode);
+                                  $$.push($FUNCTION);
                                 }
 
 | exp EQ exp
                                 { 
-                                  $exp1.unshift(#EQ#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#EQ);
                                   $$ = $exp1; 
                                 }
 | exp NEQ exp
                                 { 
-                                  $exp1.unshift(#NEQ#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#NEQ);
                                   $$ = $exp1; 
                                 }
 | exp LEQ exp
                                 { 
-                                  $exp1.unshift(#LEQ#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#LEQ);
                                   $$ = $exp1; 
                                 }
 | exp GEQ exp
                                 { 
-                                  $exp1.unshift(#GEQ#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#GEQ);
                                   $$ = $exp1; 
                                 }
 | exp LT exp
                                 { 
-                                  $exp1.unshift(#LT#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#LT);
                                   $$ = $exp1; 
                                 }
 | exp GT exp
                                 { 
-                                  $exp1.unshift(#GT#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#GT);
                                   $$ = $exp1; 
                                 }
 | exp OR exp
                                 { 
-                                  $exp1.unshift(#OR#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#OR);
                                   $$ = $exp1; 
                                 }
 | exp XOR exp
                                 { 
-                                  $exp1.unshift(#XOR#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#XOR);
                                   $$ = $exp1; 
                                 }
 | exp AND exp
                                 { 
-                                  $exp1.unshift(#AND#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#AND);
                                   $$ = $exp1; 
                                 }
 
 | exp '|'[bitwise_or] exp
                                 { 
-                                  $exp1.unshift(#BITWISE_OR#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#BITWISE_OR#);
                                   $$ = $exp1; 
                                 }
 | exp '^'[bitwise_xor] exp
                                 { 
-                                  $exp1.unshift(#BITWISE_XOR#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#BITWISE_XOR#);
                                   $$ = $exp1; 
                                 }
 | exp '&'[bitwise_and] exp
                                 { 
-                                  $exp1.unshift(#BITWISE_AND#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#BITWISE_AND#);
                                   $$ = $exp1; 
                                 }
 
 | exp '+'[add] exp
                                 { 
-                                  $exp1.unshift(#ADD#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#ADD#);
                                   $$ = $exp1; 
                                 }
 | exp '-'[subtract] exp
                                 { 
-                                  $exp1.unshift(#SUBTRACT#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#SUBTRACT#);
                                   $$ = $exp1; 
                                 }
 | exp '*'[multiply] exp
                                 { 
-                                  $exp1.unshift(#MULTIPLY#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#MULTIPLY#);
                                   $$ = $exp1; 
                                 }
 | exp '/'[divide] exp
                                 { 
-                                  $exp1.unshift(#DIVIDE#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#DIVIDE#);
                                   $$ = $exp1; 
                                 }
 | exp '%'[modulo] exp
                                 { 
-                                  $exp1.unshift(#MODULO#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#MODULO#);
                                   $$ = $exp1; 
                                 }
 | '-' exp             %prec UMINUS
                                 { 
-                                  $exp1.unshift(#UMINUS#);
+                                  $exp1.push(#UMINUS#);
                                   $$ = $exp1; 
                                 }
 | '+' exp             %prec UPLUS
                                 { 
-                                  $exp1.unshift(#UPLUS#);
+                                  $exp1.push(#UPLUS#);
                                   $$ = $exp1; 
                                 }
 | exp POWER exp
                                 { 
-                                  $exp1.unshift(#POWER#);
+                                  $exp1.push(#PUSH#);
                                   append($exp1, $exp2);
+                                  $exp1.push(#POWER#);
                                   $$ = $exp1; 
                                 }
 | exp '%'[percent]
                                 { 
-                                  $exp1.unshift(#PERCENT#);
+                                  $exp1.push(#PERCENT#);
                                   $$ = $exp1; 
                                 }
 | exp '!'[facult]
                                 { 
-                                  $exp1.unshift(#FACTORIAL#);
+                                  $exp1.push(#FACTORIAL#);
                                   $$ = $exp1; 
                                 }
 
 | '~'[bitwise_not] exp
                                 { 
-                                  $exp1.unshift(#BITWISE_NOT#);
+                                  $exp1.push(#BITWISE_NOT#);
                                   $$ = $exp1; 
                                 }
 | '!'[not] exp
                                 { 
-                                  $exp1.unshift(#NOT#);
+                                  $exp1.push(#NOT#);
                                   $$ = $exp1; 
                                 }
 | NOT exp
                                 { 
-                                  $exp1.unshift(#NOT#);
+                                  $exp1.push(#NOT#);
                                   $$ = $exp1; 
                                 }
 
 | '(' exp ')'
                                 { $$ = $exp; }
 
+// NOTE: the jump offsets must be corrected for the offset slot itself and optionally the SKIP instruction at the end of the IF branch:
+// this explains the `+1` and `+1+2` corrections in the jump offsets in the AST items below.
+
 | exp '?' exp ':' exp
                                 { 
-                                  // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
-                                  $exp1.unshift(#IF_ELSE#);
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3); 
+                                  $exp1.push(#CONDITION#, $exp2.length + 1 + 2);
                                   append($exp1, $exp2);
+                                  $exp1.push(#SKIP#, $exp3.length + 1);
                                   append($exp1, $exp3);
                                   $$ = $exp1; 
                                 }
 | IF exp THEN exp ELSE exp
                                 { 
-                                  // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
-                                  $exp1.unshift(#IF_ELSE#);
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3); 
+                                  $exp1.push(#CONDITION#, $exp2.length + 1 + 2);
                                   append($exp1, $exp2);
+                                  $exp1.push(#SKIP#, $exp3.length + 1);
                                   append($exp1, $exp3);
                                   $$ = $exp1; 
                                 }
 | IF exp THEN exp
                                 { 
-                                  // $$ = [#IF#].concat($exp1, $exp2);
-                                  $exp1.unshift(#IF#);
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, 2 + 1, #NUM#, 0); 
+                                  $exp1.push(#CONDITION#);
+                                  $exp1.push($exp2.length + 1 + 2);
                                   append($exp1, $exp2);
+                                  $exp1.push(#SKIP#, 2 + 1, #NUM#, 0);
                                   $$ = $exp1; 
                                 }
 ;
 
 arglist:
   exp
-                                { $$ = [$exp]; }
+                                {
+                                  /*
+                                     We do not *want* to be smart about the arglist here: we leave that to the FUNCTION rule
+                                     as we can then have smarter optimizations of the AST streams than we can hope to
+                                     accomplish here *and* we produce a simpler AST stream input for the optimizer, thus
+                                     simplifying this code!
+
+                                     Thus we *always* add a basic PUSH token to every function argument:
+                                     the FUNCTION rule or optimizer can go and sort them out, optimizing them into customized pushes
+                                     or register moves, depending on the context.
+                                   */
+                                  $exp.push(#PUSH#);
+                                  $$ = [$exp];
+                                }
 | arglist ','[comma] exp
                                 {
                                   $$ = $arglist;

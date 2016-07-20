@@ -239,6 +239,9 @@ examples/mermaid: build
 examples/mfcalc: build
 	cd examples/ && make mfcalc
 
+examples/no-prec-hack-needed: build
+	cd examples/ && make no-prec-hack-needed
+
 examples/nv_classy_ast: build
 	cd examples/ && make nv_classy_ast
 

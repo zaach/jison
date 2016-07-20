@@ -31,9 +31,9 @@
 %token       TITLE
 %token       WINMENU
 %token       WMEXIT
-%token   LABEL
-%token   EXEC
-%token   INT
+%token       LABEL
+%token       EXEC
+%token       INT
 
  
 %start menufile
