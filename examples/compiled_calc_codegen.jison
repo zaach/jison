@@ -38,7 +38,7 @@
 // parser engine: that way we have a guaranteed good set of token #IDs which we
 // can use at both ends of the AST stream interface: this allows us to use 
 // the other JISON feature which is `#<name>` in the action blocks everywhere:
-// this will be exapanded into the numeric ID of the given token by jison,
+// this will be expanded into the numeric ID of the given token by jison,
 // saving us from having to generate and maintain a separate table of IDs
 // for our AST objects!
 //
@@ -53,40 +53,52 @@
 
 
 
-%token      NUM             // Simple double precision number  
-%token      VAR FUNCTION    // Variable and Function            
-%token      CONSTANT        // Predefined Constant Value, e.g. PI or E
+%token      NUM                         // Simple double precision number  
+%token      VAR FUNCTION PROCEDURE      // Variable and Function            
+%token      CONSTANT                    // Predefined Constant Value, e.g. PI or E
+%token      ERROR                       // Mark error in statement
 
-%token      END             // token to mark the end of a function argument list in the output token stream
+%token      END                         // token to mark the end of a function argument list in the output token stream
 
 
 %nonassoc  '='
-%nonassoc   '-' '+'
-%nonassoc   '*' '/'
+%nonassoc  '-' '+'
+%nonassoc  '*' '/' '%'
 %nonassoc  POWER  
-%nonassoc '!'
-%nonassoc '%'
+%nonassoc  '!'
 %nonassoc  UMINUS     /* Negation--unary minus */
 %nonassoc  UPLUS      /* unary plus */
-%nonassoc  ','
+%nonassoc  PERCENT    /* unary plus */
 
 /* Grammar follows */
 
 %start input
 
 
+%parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
+
+
+
 %%
 
 
 input:   
-  /* empty */                   { $$ = []; }
-| input line                    { $$ = $input.concat($line); }
+  ε                             /* empty */
+                                {
+                                  $$ = [];
+                                }
+| input line
+                                {
+                                  $input.push($line);
+				  $$ = $input;
+                                }
 ;
 
 line:
-  exp NL  
+  exp  
                                 { 
-                                    console.log('expression result value: ', $exp); 
+                                  console.log('expression result value: ', $exp); 
+                                  $$ = $exp;
                                 }
 ;
 
@@ -99,10 +111,17 @@ exp:
                                 { $$ = yy.variables[$VAR]; }
 | '=' VAR exp 
                                 { $$ = yy.variables[$VAR] = $exp; }
-| FUNCTION END 
-                                { $$ = $FUNCTION(); }
-| FUNCTION arglist END   
-                                { $$ = $FUNCTION.apply(null, $arglist); }
+| PROCEDURE 
+                                { $$ = $PROCEDURE(globalSpace); }
+| FUNCTION arglist END  
+                                /* we MUST have that END token in the AST token stream as otherwise we get confused 
+                                   (= *ambiguous grammar!*) whether one of those `exp` expressions in there maybe
+                                   shouldn't have been the expression that's on **the next line** (i.e. *not part of
+                                   this particular calculus expression*): this is because we don't store an 
+                                   'end of expression' token between expression lines up there in the `input = (line)*`
+                                   rule in the parser=AST token stream producer.
+                                */
+                                { $$ = $FUNCTION.apply(globalSpace, $arglist); }
 | '+' exp exp         
                                 { $$ = $exp1 + $exp2; }
 | '-' exp exp         
@@ -111,6 +130,8 @@ exp:
                                 { $$ = $exp1 * $exp2; }
 | '/' exp exp         
                                 { $$ = $exp1 / $exp2; }
+| '%' exp exp         
+                                { $$ = $exp1 % $exp2; }
 | UMINUS exp 
                                 { $$ = -$exp; }
 | UPLUS exp
@@ -119,15 +140,15 @@ exp:
                                 { $$ = Math.pow($exp1, $exp2); }
 | '!' exp 
                                 { $$ = yy.functions['factorial']($exp); }
-| '%' exp 
+| PERCENT exp 
                                 { $$ = $exp / 100; }
 ;
 
 arglist:
   exp
                                 { $$ = [$exp]; }
-| ',' exp arglist
-                                { $$ = [$exp].concat($arglist); }
+| arglist exp
+                                { $$ = $arglist.push($exp); }
 ;
 
 /* End of grammar */

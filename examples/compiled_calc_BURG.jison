@@ -1,16 +1,55 @@
 //
-// Stage 2(C) parser: 'The Back End = The Pretty Printer'
+// Stage 2(META) parser: Code Generator Generator
 //
-// TODO!
+// 
+// Text file defines the action per 'opcode'.
+// 
+// This parser parses that text file and generates a FAST AST walker around it.
+// 
+// Benefit: ONE place where the AST structure is known in detail: the text files
+// have no code duplication, while they serve different purposes, yet walk
+// the same AST.
+// 
+// Benefit 2: when the AST format changes, all we need to adjust accordingly is
+// the tree walker generator here.
+// 
+// 
+// 1. P-code interpreter: performs calculus straight off the AST.
+// 2. human-readable printer: produces a human-legible representation of the AST.
+//    Variants which include color-coding and other embellishments are an option.
+// 3. Compiler: generates native code from the AST.
+// 
+// 
+// What about constant folding?
+// What about superformulas for the simulations? Where ASTs reference one another
+// and thus could construct a 'superformula': combine formulas into one.
+// What about static type analysis and using those results in the code generator?
+// 
+// 
+// This code generator takes the symbol list from the parse grammar and replaces all token IDs
+// in the input with the number instead: no variable/constant lookup in the AST walker.
+// 
+// 
+// Constant folding in AST is done by injecting JUMP token, which carries result value
+// and number of tokens to skip: those skipped tokens are necessary for the pretty-printer,
+// while P-code interpreter and P-code compiler benefit from the constant-folding -->
+// only outer-most constant-fold should be stored in the AST.
+// 
+// 
+// Constant-folding should be separate from parse phase as superformulas also require
+// folding and when we feed/import pre-parsed input, e.g. own project reload
+// after save, then const-fold may need to be re-executed on incoming ASTs, which
+// have not gone through the regular parser then!
+// 
+// 
+// 
+// ------------------------------------------------------------------------- 
 //
 // This one represents the classic textbook 'parser/tokenizer' backend: 
 // using a 'tree walker' to generate 'object code output': in this case 
-// the 'backend' is tasked to 'pretty print' the given formula
-// so that the human user can be fed back her input, including possible
-// color coding, error markup, tagging and what-not.
-//
-// This is yet another back-end to un alongside the others: 
-// compile_calc_exec and compile_calc_codegen.
+// the 'backend' is tasked to calculate the value for the given formula,
+// acting as an Interpreter (of the P-code a.k.a. IR a.k.a. AST Stream),
+// rather than as Compiler (see compile_calc_codegen example for that alternative).
 //
 // The AST is stored in an array and since the AST acts as the INTERFACE
 // between front-end and backend of the compiler/engine, its precise format
@@ -18,7 +57,7 @@
 // back-end, plus additional back-ends which feed off the same AST for
 // different purposes.
 //
-// This 'Pretty Printer' is designed to be FAST, hence the AST stream has been
+// This 'Interpreter' is designed to be FAST, hence the AST stream has been
 // constructed the way it is, using a Polish Notation simile: this takes
 // the fewest AST nodes and the fewest number of grammar rules to express 
 // the entire formula calculation power.
@@ -75,16 +114,10 @@
 %nonassoc  UPLUS      /* unary plus */
 %nonassoc  PERCENT    /* unary plus */
 
-
-
 /* Grammar follows */
 
 %start input
 
-
-
-%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -107,10 +140,6 @@ input:
 
 line:
   exp  
-                                { 
-                                  console.log('expression result value: ', $exp); 
-                                  $$ = $exp;
-                                }
 ;
 
 exp:
@@ -166,4 +195,11 @@ arglist:
 
 
 %%
+
+
+
+
+
+
+
 
