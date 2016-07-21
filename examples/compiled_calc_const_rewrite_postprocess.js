@@ -103,9 +103,9 @@ function main(args) {
   if (!constants['EOF']) {
     constants['EOF'] = 1;
   }
-  if (!constants['ERROR']) {
-    constants['ERROR'] = 2;
-  }
+  // if (!constants['ERROR']) {
+  //   constants['ERROR'] = 2;
+  // }
 
 
   var source = fs.readFileSync(path.normalize(args[args.length - 1]), 'utf8');
@@ -300,8 +300,16 @@ function rewrite(src, defs) {
               }
 
               if (n.Property.check(path.parent.value)) {
+                // now see if this is LHS or RHS of an ObjectExpression:
+                if (n.ObjectExpression.check(path.parent.parent.value)) {
+                  if (path.parent.value.kind === 'init' && path.parent.value.key.name !== node.name) {
+                    // id: CONST, ...
+                    return rewriteDefinedConstant(node, defs);
+                  }
+                  // else: CONST: blah,                 -- do NOT replace!
+                  break;
+                }
                 break;
-                // return rewriteDefinedConstant(node, defs);
               }
 
               // case CONST1:
@@ -324,7 +332,6 @@ function rewrite(src, defs) {
                 //parent: path.parent
                 parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
                 parent_type: path.parent.value.type,
-                match: path.parent.value.type === 'SwitchCase',
               });
 
               return rewriteDefinedConstant(node, defs);
@@ -342,7 +349,6 @@ function rewrite(src, defs) {
               //parent: path.parent
               parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
               parent_type: path.parent.value.type,
-              match: path.parent.value.type === 'SwitchCase',
             });
           }
         }
