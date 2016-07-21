@@ -280,17 +280,20 @@ function rewrite(src, defs) {
 
         // this.visitor.names[node.name] = node;
 
+        var known_skip = false;
         for (;;) {
           if (defs.hasOwnProperty(node.name)) {
             if (typeof defs[node.name] === 'number') {
               // this.NAME = bla;
               // x = { NAME: bluh };
               if (n.MemberExpression.check(path.parent.value)) {
+                known_skip = true;
                 break;
               }
 
               // var NAME = duh;
               if (n.VariableDeclarator.check(path.parent.value)) {
+                known_skip = true;
                 break;
               }
 
@@ -307,6 +310,7 @@ function rewrite(src, defs) {
                     return rewriteDefinedConstant(node, defs);
                   }
                   // else: CONST: blah,                 -- do NOT replace!
+                  known_skip = true;
                   break;
                 }
                 break;
@@ -325,14 +329,16 @@ function rewrite(src, defs) {
                 return rewriteDefinedConstant(node, defs);
               }
 
-              console.log('Identifier: ', {
-                node_name: node.name,
-                //node_type: node.type,
-                definition: defs[node.name],
-                //parent: path.parent
-                parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
-                parent_type: path.parent.value.type,
-              });
+              if (!known_skip) {
+                console.log('Identifier: ', {
+                  node_name: node.name,
+                  //node_type: node.type,
+                  definition: defs[node.name],
+                  //parent: path.parent
+                  parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
+                  parent_type: path.parent.value.type,
+                });
+              }
 
               return rewriteDefinedConstant(node, defs);
             }
@@ -342,14 +348,16 @@ function rewrite(src, defs) {
 
         if (defs.hasOwnProperty(node.name)) {
           if (typeof defs[node.name] === 'number') {
-            console.log('UNIDENTIFIED: ', {
-              node_name: node.name,
-              node_type: node.type,
-              definition: defs[node.name],
-              //parent: path.parent
-              parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
-              parent_type: path.parent.value.type,
-            });
+            if (!known_skip) {
+              console.log('UNIDENTIFIED: ', {
+                node_name: node.name,
+                node_type: node.type,
+                definition: defs[node.name],
+                //parent: path.parent
+                parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
+                parent_type: path.parent.value.type,
+              });
+            }
           }
         }
 
