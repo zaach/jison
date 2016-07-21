@@ -124,12 +124,13 @@
 
 %lex
 
-%options flex 
+%options flex
 %options case-insensitive
 %options xregexp
 %options backtrack_lexer
 %options ranges
 %options easy_keyword_rules
+
 
 %%
 
@@ -192,7 +193,7 @@
 '^^'                    return 'XOR';
 '&&'                    return 'AND';
 
-'**'                     return 'POWER';    /* Exponentiation        */
+'**'                    return 'POWER';    /* Exponentiation        */
 
 '<'                     return 'LT';
 '>'                     return 'GT';
@@ -286,11 +287,12 @@
 %start input
 
 
+%ebnf
 
+
+%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-%options token-stack
-%options on-demand-lookahead    // camelCased: option.onDemandLookahead 
-
+// %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -333,13 +335,36 @@
 
 
 input:
-  ε                             /* empty */
+  ( line EOL )*[s] line EOF
                                 {
-                                  $$ = [];
-                                }
-| input line
-                                {
-                                  if ($line.length) {
+                                  var rv = null;
+                                  for (var i = 0, len = $s.length; i < len; i++) {
+                                    var line = $s[i][0];
+                                    if (!rv) {
+                                      rv = line;
+                                    } else if (line.length) {
+                                      // We MUST signal the end of an expression as otherwise our AST grammar
+                                      // will be ambiguous (and thus our tree walkers confused and unable to
+                                      // work) as we must be able to differentiate between 'end of function arglist'
+                                      // and 'end of statement': since we expect more functions (and thus
+                                      // arglist terminations) than statements, we choose to give the FUNCTION
+                                      // arglist an implicit termination while the statement gets to have an
+                                      // *explicit* termination (#EOL# token) so that we end up with a shorter
+                                      // AST stream -- iff our assumption holds in actual use!
+                                      //
+                                      // NOTE: We only need to add a sentinel when multiple statements (lines)
+                                      // are input: when there's only a single statement (line) it'll unambiguously
+                                      // terminated by EOF!
+                                      if (rv.length) {
+                                        rv.push(#EOL#);
+                                      }
+                                      append.apply(rv, line);
+                                    }
+                                  }
+
+                                  if (!rv) {
+                                    rv = $line;
+                                  } else if ($line.length) {
                                     // We MUST signal the end of an expression as otherwise our AST grammar
                                     // will be ambiguous (and thus our tree walkers confused and unable to
                                     // work) as we must be able to differentiate between 'end of function arglist'
@@ -352,38 +377,40 @@ input:
                                     // NOTE: We only need to add a sentinel when multiple statements (lines)
                                     // are input: when there's only a single statement (line) it'll unambiguously
                                     // terminated by EOF!
-                                    if ($input.length) {
-                                      $input.push(#EOL#);
+                                    if (rv.length) {
+                                      rv.push(#EOL#);
                                     }
-                                    append.apply($input, $line);
+                                    append.apply(rv, $line);
                                   }
-                                  $$ = $input;
+
+                                  // always make sure the AST stream is terminated by an EOL: 
+                                  // this makes the treewalker grammars a little easier as then a line is always 
+                                  // followed by an EOL!
+                                  if (rv.length) {
+                                    rv.push(#EOL#);
+                                  }
+
+                                  $$ = rv;
                                 }
 ;
 
 line:
-  EOL
+  ε                             /* empty */
                                 { $$ = []; }
-| exp EOL
+| exp
                                 {
                                   console.log('line: ', JSON.stringify($exp, null, 2));
                                   $$ = $exp;
                                 }
-| error EOL
+| error
                                 {
                                   yyerrok;
                                   yyclearin;
-                                  console.log('skipped erroneous input line');
-                                  $$ = [#ERROR#, #EOL#];
-                                }
-| error EOF                     // This rule kicks in when there's an error in the very last input line when it wasn't terminated by EOL
-                                {
-                                  yyerrok;
-                                  yyclearin;
-                                  console.log('skipped erroneous input line');
-                                  $$ = [#ERROR#, #EOL#];
+                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo);
+                                  $$ = [#ERROR#, yy.lastErrorInfo];
                                 }
 ;
+
 
 exp:
   NUM
@@ -466,7 +493,7 @@ exp:
                                   switch ($arglist.length) {
                                   default:
                                     $$ = flatten.apply([#FUNCTION#, $FUNCTION], $arglist);
-				    $$.push(#END#);
+                                    $$.push(#END#);
                                     break;
 
                                   case 1:
@@ -484,177 +511,177 @@ exp:
                                 }
 
 | exp EQ exp
-                                { 
+                                {
                                   $exp1.unshift(#EQ#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp NEQ exp
-                                { 
+                                {
                                   $exp1.unshift(#NEQ#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp LEQ exp
-                                { 
+                                {
                                   $exp1.unshift(#LEQ#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp GEQ exp
-                                { 
+                                {
                                   $exp1.unshift(#GEQ#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp LT exp
-                                { 
+                                {
                                   $exp1.unshift(#LT#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp GT exp
-                                { 
+                                {
                                   $exp1.unshift(#GT#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp OR exp
-                                { 
+                                {
                                   $exp1.unshift(#OR#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp XOR exp
-                                { 
+                                {
                                   $exp1.unshift(#XOR#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp AND exp
-                                { 
+                                {
                                   $exp1.unshift(#AND#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | exp '|'[bitwise_or] exp
-                                { 
+                                {
                                   $exp1.unshift(#BITWISE_OR#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '^'[bitwise_xor] exp
-                                { 
+                                {
                                   $exp1.unshift(#BITWISE_XOR#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '&'[bitwise_and] exp
-                                { 
+                                {
                                   $exp1.unshift(#BITWISE_AND#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | exp '+'[add] exp
-                                { 
+                                {
                                   $exp1.unshift(#ADD#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '-'[subtract] exp
-                                { 
+                                {
                                   $exp1.unshift(#SUBTRACT#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '*'[multiply] exp
-                                { 
+                                {
                                   $exp1.unshift(#MULTIPLY#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '/'[divide] exp
-                                { 
+                                {
                                   $exp1.unshift(#DIVIDE#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '%'[modulo] exp
-                                { 
+                                {
                                   $exp1.unshift(#MODULO#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '-' exp             %prec UMINUS
-                                { 
+                                {
                                   $exp1.unshift(#UMINUS#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '+' exp             %prec UPLUS
-                                { 
+                                {
                                   $exp1.unshift(#UPLUS#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp POWER exp
-                                { 
+                                {
                                   $exp1.unshift(#POWER#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '%'[percent]
-                                { 
+                                {
                                   $exp1.unshift(#PERCENT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '!'[facult]
-                                { 
+                                {
                                   $exp1.unshift(#FACTORIAL#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | '~'[bitwise_not] exp
-                                { 
+                                {
                                   $exp1.unshift(#BITWISE_NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '!'[not] exp
-                                { 
+                                {
                                   $exp1.unshift(#NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | NOT exp
-                                { 
+                                {
                                   $exp1.unshift(#NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | '(' exp ')'
                                 { $$ = $exp; }
 
 | exp '?' exp ':' exp
-                                { 
+                                {
                                   // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
                                   $exp1.unshift(#IF_ELSE#);
                                   append.apply($exp1, $exp2);
                                   append.apply($exp1, $exp3);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | IF exp THEN exp ELSE exp
-                                { 
+                                {
                                   // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
                                   $exp1.unshift(#IF_ELSE#);
                                   append.apply($exp1, $exp2);
                                   append.apply($exp1, $exp3);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | IF exp THEN exp
-                                { 
+                                {
                                   // $$ = [#IF#].concat($exp1, $exp2);
                                   $exp1.unshift(#IF#);
                                   append.apply($exp1, $exp2);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 ;
 

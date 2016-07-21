@@ -241,25 +241,29 @@ exp:
                                      demand the full power of an AST optimizer!)
                                   */
                                   var opcode;
-                                  switch ($arglist.length) {
+                                  var n = $arglist.length;
+                                  switch (n) {
                                   default:
                                     $$ = flatten.apply([#END#], $arglist);
-                                    opcode = #FUNCTION#;
+                                    opcode = #FUNCTION_N#;
                                     break;
 
                                   case 1:
                                     $$ = flatten.apply([], $arglist);
                                     opcode = #FUNCTION_1#;
+                                    n = 0;
                                     break;
 
                                   case 2:
                                     $$ = flatten.apply([], $arglist);
                                     opcode = #FUNCTION_2#;
+                                    n = 0;
                                     break;
 
                                   case 3:
                                     $$ = flatten.apply([], $arglist);
                                     opcode = #FUNCTION_3#;
+                                    n = 0;
                                     break;
                                   }
                                   // remove/pop last PUSH:
@@ -267,171 +271,174 @@ exp:
 
                                   $$.push(opcode);
                                   $$.push($FUNCTION);
+                                  if (n) {
+                                    $$.push(n);
+                                  }
                                 }
 
 | exp EQ exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#EQ);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp NEQ exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#NEQ);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp LEQ exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#LEQ);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp GEQ exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#GEQ);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp LT exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#LT);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp GT exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#GT);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp OR exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#OR);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp XOR exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#XOR);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp AND exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#AND);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | exp '|'[bitwise_or] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#BITWISE_OR#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '^'[bitwise_xor] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#BITWISE_XOR#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '&'[bitwise_and] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#BITWISE_AND#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | exp '+'[add] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#ADD#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '-'[subtract] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#SUBTRACT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '*'[multiply] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#MULTIPLY#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '/'[divide] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#DIVIDE#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '%'[modulo] exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#MODULO#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '-' exp             %prec UMINUS
-                                { 
+                                {
                                   $exp1.push(#UMINUS#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '+' exp             %prec UPLUS
-                                { 
+                                {
                                   $exp1.push(#UPLUS#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp POWER exp
-                                { 
+                                {
                                   $exp1.push(#PUSH#);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#POWER#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '%'[percent]
-                                { 
+                                {
                                   $exp1.push(#PERCENT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | exp '!'[facult]
-                                { 
+                                {
                                   $exp1.push(#FACTORIAL#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | '~'[bitwise_not] exp
-                                { 
+                                {
                                   $exp1.push(#BITWISE_NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | '!'[not] exp
-                                { 
+                                {
                                   $exp1.push(#NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | NOT exp
-                                { 
+                                {
                                   $exp1.push(#NOT#);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 
 | '(' exp ')'
@@ -441,31 +448,31 @@ exp:
 // this explains the `+1` and `+1+2` corrections in the jump offsets in the AST items below.
 
 | exp '?' exp ':' exp
-                                { 
-                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3); 
+                                {
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3);
                                   $exp1.push(#CONDITION#, $exp2.length + 1 + 2);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#SKIP#, $exp3.length + 1);
                                   append.apply($exp1, $exp3);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | IF exp THEN exp ELSE exp
-                                { 
-                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3); 
+                                {
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, $exp3.length + 1, $exp3);
                                   $exp1.push(#CONDITION#, $exp2.length + 1 + 2);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#SKIP#, $exp3.length + 1);
                                   append.apply($exp1, $exp3);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 | IF exp THEN exp
-                                { 
-                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, 2 + 1, #NUM#, 0); 
+                                {
+                                  // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, 2 + 1, #NUM#, 0);
                                   $exp1.push(#CONDITION#);
                                   $exp1.push($exp2.length + 1 + 2);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#SKIP#, 2 + 1, #NUM#, 0);
-                                  $$ = $exp1; 
+                                  $$ = $exp1;
                                 }
 ;
 

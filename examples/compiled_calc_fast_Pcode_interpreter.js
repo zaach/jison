@@ -264,6 +264,7 @@ function exec_Pcode(stream, context) {
 
     case FUNCTION_N:             // function(arg, arg, arg, ...) call 
       f = stream[i++];
+      n = stream[i++];
       a = f.apply(context, rx);   // all values are assumed to be waiting in the rx[] array already
       continue;
 
