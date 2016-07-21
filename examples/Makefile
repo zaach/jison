@@ -448,9 +448,12 @@ compiled_calc:
 	#$(JISON) --main -t ./$@_exec.jison
 	$(JISON) --main ./$@_exec.jison
 	# postprocess generated source code:
-	node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
+	node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
 	# and run it!
-	#node output/$@/$@_exec.js $@_input.txt
+	node output/$@/$@_exec.js $@_input.txt
 
 
 handlebars-BAD:
