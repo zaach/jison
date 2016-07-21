@@ -355,7 +355,7 @@ input:
                                     if ($input.length) {
                                       $input.push(#EOL#);
                                     }
-                                    append($input, $line);
+                                    append.apply($input, $line);
                                   }
                                   $$ = $input;
                                 }
@@ -465,20 +465,20 @@ exp:
                                   */
                                   switch ($arglist.length) {
                                   default:
-                                    $$ = flatten([#FUNCTION#, $FUNCTION], $arglist);
+                                    $$ = flatten.apply([#FUNCTION#, $FUNCTION], $arglist);
 				    $$.push(#END#);
                                     break;
 
                                   case 1:
-                                    $$ = flatten([#FUNCTION_1#, $FUNCTION], $arglist);
+                                    $$ = flatten.apply([#FUNCTION_1#, $FUNCTION], $arglist);
                                     break;
 
                                   case 2:
-                                    $$ = flatten([#FUNCTION_2#, $FUNCTION], $arglist);
+                                    $$ = flatten.apply([#FUNCTION_2#, $FUNCTION], $arglist);
                                     break;
 
                                   case 3:
-                                    $$ = flatten([#FUNCTION_3#, $FUNCTION], $arglist);
+                                    $$ = flatten.apply([#FUNCTION_3#, $FUNCTION], $arglist);
                                     break;
                                   }
                                 }
@@ -486,105 +486,105 @@ exp:
 | exp EQ exp
                                 { 
                                   $exp1.unshift(#EQ#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp NEQ exp
                                 { 
                                   $exp1.unshift(#NEQ#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp LEQ exp
                                 { 
                                   $exp1.unshift(#LEQ#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp GEQ exp
                                 { 
                                   $exp1.unshift(#GEQ#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp LT exp
                                 { 
                                   $exp1.unshift(#LT#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp GT exp
                                 { 
                                   $exp1.unshift(#GT#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp OR exp
                                 { 
                                   $exp1.unshift(#OR#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp XOR exp
                                 { 
                                   $exp1.unshift(#XOR#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp AND exp
                                 { 
                                   $exp1.unshift(#AND#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 
 | exp '|'[bitwise_or] exp
                                 { 
                                   $exp1.unshift(#BITWISE_OR#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '^'[bitwise_xor] exp
                                 { 
                                   $exp1.unshift(#BITWISE_XOR#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '&'[bitwise_and] exp
                                 { 
                                   $exp1.unshift(#BITWISE_AND#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 
 | exp '+'[add] exp
                                 { 
                                   $exp1.unshift(#ADD#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '-'[subtract] exp
                                 { 
                                   $exp1.unshift(#SUBTRACT#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '*'[multiply] exp
                                 { 
                                   $exp1.unshift(#MULTIPLY#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '/'[divide] exp
                                 { 
                                   $exp1.unshift(#DIVIDE#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '%'[modulo] exp
                                 { 
                                   $exp1.unshift(#MODULO#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | '-' exp             %prec UMINUS
@@ -600,7 +600,7 @@ exp:
 | exp POWER exp
                                 { 
                                   $exp1.unshift(#POWER#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 | exp '%'[percent]
@@ -637,23 +637,23 @@ exp:
                                 { 
                                   // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
                                   $exp1.unshift(#IF_ELSE#);
-                                  append($exp1, $exp2);
-                                  append($exp1, $exp3);
+                                  append.apply($exp1, $exp2);
+                                  append.apply($exp1, $exp3);
                                   $$ = $exp1; 
                                 }
 | IF exp THEN exp ELSE exp
                                 { 
                                   // $$ = [#IF_ELSE#].concat($exp1, $exp2, $exp3);
                                   $exp1.unshift(#IF_ELSE#);
-                                  append($exp1, $exp2);
-                                  append($exp1, $exp3);
+                                  append.apply($exp1, $exp2);
+                                  append.apply($exp1, $exp3);
                                   $$ = $exp1; 
                                 }
 | IF exp THEN exp
                                 { 
                                   // $$ = [#IF#].concat($exp1, $exp2);
                                   $exp1.unshift(#IF#);
-                                  append($exp1, $exp2);
+                                  append.apply($exp1, $exp2);
                                   $$ = $exp1; 
                                 }
 ;
@@ -683,8 +683,8 @@ arglist:
 // helper functions which will help us reduce garbage production cf. https://www.scirra.com/blog/76/how-to-write-low-garbage-real-time-javascript
 
 // flatten arrays into one:
-var flatten = [].concat.apply;
+var flatten = [].concat;
 
 // append array of items:
-var append = [].push.apply;
+var append = [].push;
 
