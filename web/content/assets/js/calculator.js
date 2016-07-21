@@ -14,13 +14,19 @@
  *    EOF: 1,
  *    TERROR: 2,
  *
- *    trace: function(errorMessage, errorHash),
+ *    trace: function(errorMessage, ...),
  *
  *    JisonParserError: function(msg, hash),
  *
  *    quoteName: function(name),
  *               Helper function which can be overridden by user code later on: put suitable
  *               quotes around literal IDs in a description string.
+ *
+ *    originalQuoteName: function(name),
+ *               Helper function **which will be set up during the first invocation of the `parse()` method**.
+ *               References the original quoteName handler as it was just before the invocation of `parse()`;
+ *               `cleanupAfterParse()` will clean up and reset `parseError()` to reference this function
+ *               at the end of the `parse()`.
  *
  *    describeSymbol: function(symbol),
  *               Return a more-or-less human-readable description of the given symbol, when
@@ -35,7 +41,7 @@
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $$, _$, yystack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yy, yystate, $0, $$, _$, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -58,6 +64,21 @@
  *    parseError: function(str, hash),
  *    yyErrOk: function(),
  *    yyClearIn: function(),
+ *
+ *    constructParseErrorInfo: function(error_message, exception_object, expected_token_set, is_recoverable),
+ *               Helper function **which will be set up during the first invocation of the `parse()` method**.
+ *               Produces a new errorInfo 'hash object' which can be passed into `parseError()`.
+ *               See it's use in this parser kernel in many places; example usage:
+ *
+ *                   var infoObj = parser.constructParseErrorInfo('fail!', null,
+ *                                     parser.collect_expected_token_set(state), true);
+ *                   var retVal = parser.parseError(infoObj.errStr, infoObj);
+ *
+ *    originalParseError: function(str, hash),
+ *               Helper function **which will be set up during the first invocation of the `parse()` method**.
+ *               References the original parseError handler as it was just before the invocation of `parse()`;
+ *               `cleanupAfterParse()` will clean up and reset `parseError()` to reference this function
+ *               at the end of the `parse()`.
  *
  *    options: { ... parser %options ... },
  *
@@ -435,6 +456,7 @@ EOF: 1,
 originalQuoteName: null,
 originalParseError: null,
 cleanupAfterParse: null,
+constructParseErrorInfo: null,
 
 // APIs which will be set up depending on user action code analysis:
 //yyErrOk: 0,
@@ -451,24 +473,24 @@ quoteName: function parser_quoteName(id_str) {
 
 // Return a more-or-less human-readable description of the given symbol, when available,
 // or the symbol itself, serving as its own 'description' for lack of something better to serve up.
-// 
+//
 // Return NULL when the symbol is unknown to the parser.
 describeSymbol: function parser_describeSymbol(symbol) {
     if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
         return this.terminal_descriptions_[symbol];
-    } 
+    }
     else if (symbol === this.EOF) {
         return 'end of input';
     }
     else if (this.terminals_[symbol]) {
         return this.quoteName(this.terminals_[symbol]);
-    } 
+    }
     // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
-    // 
+    //
     // An example of this may be where a rule's action code contains a call like this:
-    // 
+    //
     //      parser.describeSymbol(#$)
-    // 
+    //
     // to obtain a human-readable description or name of the current grammar rule. This comes handy in
     // error handling action code blocks, for example.
     var s = this.symbols_;
@@ -481,10 +503,10 @@ describeSymbol: function parser_describeSymbol(symbol) {
 },
 
 // Produce a (more or less) human-readable list of expected tokens at the point of failure.
-// 
+//
 // The produced list may contain token or token set descriptions instead of the tokens
 // themselves to help turning this output into something that easier to read by humans.
-// 
+//
 // The returned list (array) will not contain any duplicate entries.
 collect_expected_token_set: function parser_collect_expected_token_set(state) {
     var TERROR = this.TERROR;
@@ -525,10 +547,9 @@ productions_: bp({
   [1, 3]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, $$ /* vstack */) {
 /* this == yyval */
 
-var $0 = $$.length - 1;
 switch (yystate) {
 case 1:
     /*! Production::    expressions : e EOF */
@@ -796,15 +817,17 @@ parseError: function parseError(str, hash) {
 },
 parse: function parse(input) {
     var self = this,
-        stack = [0],        // state stack: stores pairs of state (odd indexes) and token (even indexes)
+        stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
+        sstack = new Array(128),        // state stack: stores states
 
-        vstack = [null],    // semantic value stack
+        vstack = new Array(128),        // semantic value stack
 
-        table = this.table;
+        table = this.table,
+        sp = 0;                         // 'stack pointer': index into the stacks
 
     var TERROR = this.TERROR,
         EOF = this.EOF;
-    var NO_ACTION = [0, table.length /* ensures that anyone using this new state will fail dramatically! */]; 
+    var NO_ACTION = [0, table.length /* ensures that anyone using this new state will fail dramatically! */];
 
     var args = stack.slice.call(arguments, 1);
 
@@ -842,7 +865,11 @@ parse: function parse(input) {
 
 
 
-    
+    vstack[sp] = null;
+    sstack[sp] = 0;
+    stack[sp] = 0;
+    ++sp;
+
     if (typeof lexer.yytext === 'undefined') {
         lexer.yytext = '';
     }
@@ -896,16 +923,39 @@ parse: function parse(input) {
             if (lexer.yy === sharedState.yy) {
                 lexer.yy = undefined;
             }
+            // nuke the vstack[] array at least as that one will still reference obsoleted user values.
+            // To be safe, we nuke the other internal stack columns as well...
+            stack.length = 0;               // fastest way to nuke an array without overly bothering the GC
+            sstack.length = 0;
+
+            vstack.length = 0;
             return resultValue;
         };
     }
 
-    function popStack(n) {
+    if (typeof this.constructParseErrorInfo !== 'function') {
+        this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
+            return {
+                errStr: msg,
+                exception: ex,
+                text: lexer.match,
+                value: lexer.yytext,
+                token: this.describeSymbol(symbol) || symbol,
+                token_id: symbol,
+                line: lexer.yylineno,
+                loc: lexer.yylloc,
+                expected: expected,
+                recoverable: recoverable,
+                state: state,
+                action: action,
+                new_state: newState,
+                state_stack: stack,
+                value_stack: vstack,
 
-        if (!n) return;
-        stack.length = stack.length - 2 * n;
-        vstack.length = vstack.length - n;
-
+                yy: sharedState.yy,
+                lexer: lexer
+            };
+        };
     }
 
 
@@ -919,7 +969,7 @@ parse: function parse(input) {
     }
 
 
-    var symbol = null;
+    var symbol = 0;
 
     var state, action, r, t;
     var yyval = {};
@@ -936,9 +986,10 @@ parse: function parse(input) {
     }
 
     try {
+        newState = sstack[sp - 1];
         for (;;) {
             // retrieve state number from top of stack
-            state = stack[stack.length - 1];
+            state = newState;               // sstack[sp - 1];
 
             // use default actions if available
             if (this.defaultActions[state]) {
@@ -947,9 +998,9 @@ parse: function parse(input) {
             } else {
                 // The single `==` condition below covers both these `===` comparisons in a single
                 // operation:
-                // 
+                //
                 //     if (symbol === null || typeof symbol === 'undefined') ...
-                if (symbol == null) {
+                if (!symbol) {
                     symbol = lex();
                 }
                 // read action for current state and first input
@@ -963,7 +1014,7 @@ parse: function parse(input) {
                 // handle parse error
                 if (!action) {
                     var errStr;
-                    var errSymbolDescr = (this.describeSymbol(symbol) || symbol); 
+                    var errSymbolDescr = (this.describeSymbol(symbol) || symbol);
                     var expected = this.collect_expected_token_set(state);
 
                     // Report error
@@ -978,24 +1029,8 @@ parse: function parse(input) {
                         errStr += 'Unexpected ' + errSymbolDescr;
                     }
                     // we cannot recover from the error!
-                    retval = this.parseError(errStr, {
-                        text: lexer.match,
-                        value: lexer.yytext,
-                        token: errSymbolDescr,
-                        token_id: symbol,
-                        line: lexer.yylineno,
-                        loc: lexer.yylloc,
-                        expected: expected,
-                        recoverable: false,
-                        state: state,
-                        action: action,
-                        new_state: newState,
-                        state_stack: stack,
-                        value_stack: vstack,
-
-                        yy: sharedState.yy,
-                        lexer: lexer
-                    });
+                    p = this.constructParseErrorInfo(errStr, null, expected, false);
+                    retval = this.parseError(p.errStr, p);
                     break;
                 }
             }
@@ -1006,56 +1041,25 @@ parse: function parse(input) {
             default:
                 // this shouldn't happen, unless resolve defaults are off
                 if (action instanceof Array) {
-                    retval = this.parseError('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, {
-                        text: lexer.match,
-                        value: lexer.yytext,
-                        token: this.describeSymbol(symbol) || symbol,
-                        token_id: symbol,
-                        line: lexer.yylineno,
-                        loc: lexer.yylloc,
-                        //expected: this.collect_expected_token_set(state),
-                        recoverable: false,
-                        state: state,
-                        action: action,
-                        new_state: newState,
-                        state_stack: stack,
-                        value_stack: vstack,
-
-                        yy: sharedState.yy,
-                        lexer: lexer
-                    });
+                    p = this.constructParseErrorInfo(('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol), null, null, false);
+                    retval = this.parseError(p.errStr, p);
                     break;
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
-                retval = this.parseError('Parsing halted. No viable error recovery approach available due to internal system failure.', {
-                    text: lexer.match,
-                    value: lexer.yytext,
-                    token: this.describeSymbol(symbol) || symbol,
-                    token_id: symbol,
-                    line: lexer.yylineno,
-                    loc: lexer.yylloc,
-                    //expected: this.collect_expected_token_set(state),
-                    recoverable: false,
-                    state: state,
-                    action: action,
-                    new_state: newState,
-                    state_stack: stack,
-                    value_stack: vstack,
-
-                    yy: sharedState.yy,
-                    lexer: lexer
-                });
+                p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
+                retval = this.parseError(p.errStr, p);
                 break;
 
             // shift:
-            case 1: 
+            case 1:
                 //this.shiftCount++;
-                stack.push(symbol);
-                vstack.push(lexer.yytext);
+                stack[sp] = symbol;
+                vstack[sp] = lexer.yytext;
 
-                stack.push(newState); // push state
-                symbol = null;
+                sstack[sp] = newState; // push state
+                ++sp;
+                symbol = 0;
 
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
@@ -1072,13 +1076,13 @@ parse: function parse(input) {
 
 
 
-    
+
                 continue;
 
             // reduce:
             case 2:
                 //this.reductionCount++;
-                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards... 
+                this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 len = this_production[1];
 
 
@@ -1086,8 +1090,15 @@ parse: function parse(input) {
 
 
 
+                // Make sure subsequent `$$ = $1` default action doesn't fail
+                // for rules where len==0 as then there's no $1 (you're reducing an epsilon rule then!)
+                //
+                // Also do this to prevent nasty action block codes to *read* `$0` or `$$`
+                // and *not* get `undefined` as a result for their efforts!
+                vstack[sp] = undefined;
+
                 // perform semantic action
-                yyval.$ = vstack[vstack.length - len]; // default to $$ = $1
+                yyval.$ = vstack[sp - len]; // default to $$ = $1; result must produce `undefined` when len == 0, as then there's no $1
 
 
 
@@ -1098,7 +1109,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, vstack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack].concat(args));
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -1106,14 +1117,17 @@ parse: function parse(input) {
                 }
 
                 // pop off stack
-                popStack(len);
+                sp -= len;
 
-                stack.push(this_production[0]);    // push nonterminal (reduce)
-                vstack.push(yyval.$);
+                // don't overwrite the `symbol` variable: use a local var to speed things up:
+                var ntsymbol = this_production[0];    // push nonterminal (reduce)
+                stack[sp] = ntsymbol;
+                vstack[sp] = yyval.$;
 
                 // goto new state = table[STATE][NONTERMINAL]
-                newState = table[stack[stack.length - 2]][stack[stack.length - 1]];
-                stack.push(newState);
+                newState = table[sstack[sp - 1]][ntsymbol];
+                sstack[sp] = newState;
+                ++sp;
 
                 continue;
 
@@ -1121,19 +1135,19 @@ parse: function parse(input) {
             case 3:
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
-                // 
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit, 
+                //
+                // Also note that JISON always adds this top-most `$accept` rule (with implicit,
                 // default, action):
-                //   
+                //
                 //     $accept: <startSymbol> $end
                 //                  %{ $$ = $1; @$ = @1; %}
-                //     
-                // which, combined with the parse kernel's `$accept` state behaviour coded below, 
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result, 
+                //
+                // which, combined with the parse kernel's `$accept` state behaviour coded below,
+                // will produce the `$$` value output of the <startSymbol> rule as the parse result,
                 // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                // 
+                //
                 // In code:
-                // 
+                //
                 //                  %{
                 //                      @$ = @1;            // if location tracking support is included
                 //                      if (typeof $1 !== 'undefined')
@@ -1152,25 +1166,8 @@ parse: function parse(input) {
         }
     } catch (ex) {
         // report exceptions through the parseError callback too:
-        retval = this.parseError('Parsing aborted due to exception.', {
-            exception: ex,
-            text: lexer.match,
-            value: lexer.yytext,
-            token: this.describeSymbol(symbol) || symbol,
-            token_id: symbol,
-            line: lexer.yylineno,
-            loc: lexer.yylloc,
-            // expected: expected,
-            recoverable: false,
-            state: state,
-            action: action,
-            new_state: newState,
-            state_stack: stack,
-            value_stack: vstack,
-
-            yy: sharedState.yy,
-            lexer: lexer
-        });
+        p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+        retval = this.parseError(p.errStr, p);
     } finally {
         retval = this.cleanupAfterParse(retval, true);
     }

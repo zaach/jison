@@ -192,6 +192,7 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
     for (var i = 0; i < n; i++) {
         perf.mark('bench');
         for (var j = 0; j < run; j++) {
+            // 50 x f(): that seems a sort of 'sweet spot' for NodeJS v5, at least for some benchmarks...
             f();
             f();
             f();

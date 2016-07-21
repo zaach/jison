@@ -398,13 +398,17 @@ btyacc-t2:
 error-only:
 	$(JISON) --main ./$@.y
 
-parser-to-lexer-communication-test:
+parser-to-lexer-communication-test--profiling:
 	$(JISON) --main -p lr ./$@.jison
 	node --prof ./output/$@/$@.js
 	# and now collect the profile info and dump it to a report file:
 	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > profile.$@.txt
 	# and make sure the profile report is saved in a unique file which can be compared against other profile runs later on:
 	cat profile.$@.txt > profile.$@.$$( date +%s%N ).txt
+
+parser-to-lexer-communication-test:
+	$(JISON) --main -p lr ./$@.jison
+	node ./output/$@/$@.js
 
 faking-multiple-start-rules:
 	$(JISON) --main ./$@.jison
@@ -446,7 +450,7 @@ compiled_calc:
 	# postprocess generated source code:
 	node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
 	# and run it!
-	node output/$@/$@_exec.js $@_input.txt
+	#node output/$@/$@_exec.js $@_input.txt
 
 
 handlebars-BAD:
