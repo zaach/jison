@@ -223,7 +223,7 @@
 
 \\[\r\n]                // accept C-style line continuation: ignore this bit.
 
-[\r\n]+                 return 'EOL';
+[\r\n]                  return 'EOL';
 
 [^\S\r\n]+              // ignore whitespace
 
@@ -294,6 +294,11 @@
 //%options on-demand-lookahead    // camelCased: option.onDemandLookahead -- WARNING: using this has a negative effect on your error reports: a lot of 'expected' symbols are reported which are not in the real FOLLOW set!
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
+
+// allow the parser to eat up to 42 tokens while it's trying to recover from a parse error 
+// (jison/yacc default = 3, but you get much less parseError calls when the sh*t really hits the fan 
+// and you did set up with such a high number...)
+%options error-recovery-token-discard-count=42
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -411,7 +416,7 @@ line:
                                 {
                                   yyerrok;
                                   yyclearin;
-                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo);
+                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo, $error, @error, yytext, yyleng);
                                   $$ = [#ERROR#, yy.lastErrorInfo];
                                 }
 ;
