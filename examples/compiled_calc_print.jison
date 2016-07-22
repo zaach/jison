@@ -67,6 +67,7 @@
 %token      VAR FUNCTION    // Variable and Function
 %token      CONSTANT        // Predefined Constant Value, e.g. PI or E
 %token      ERROR           // Mark error in statement
+%token      COMMENT         // A line (or multiple lines) of comment
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
@@ -118,7 +119,7 @@
 
 
 
-%options on-demand-lookahead    // camelCased: option.onDemandLookahead
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
@@ -139,6 +140,14 @@ input:
                                   $input.push($line);
                                   $$ = $input;
                                 }
+| input COMMENT EOL
+                                {
+                                  var comment = $COMMENT.split('\n');
+                                  comment.forEach(function (cmtline) {
+                                    $input.push('# ', cmtline);
+                                  });
+                                  $$ = $input;
+                                }
 ;
 
 line:
@@ -150,18 +159,24 @@ line:
 | ERROR
                                 {
                                   console.log('expression result value: ERROR - erroneous input line');
-                                  $$ = NaN;
+                                  $$ = 'ERROR: ', $ERROR;
                                 }
 ;
 
 
 exp:
   NUM
-                                { $$ = $NUM; }
+                                { 
+                                  $$ = $(#NUM, $NUM); 
+                                }
 | CONSTANT
-                                { $$ = $CONSTANT; }
+                                { 
+                                  $$ = $(#CONSTANT, yy.constants[$CONSTANT].name); 
+                                }
 | VAR
-                                { $$ = yy.variables[$VAR]; }
+                                { 
+                                  $$ = $(#VAR, yy.variables[$VAR].name); 
+                                }
 | ASSIGN exp
                                 {
                                   /*
@@ -175,125 +190,89 @@ exp:
                                      would only be cluttering the AST stream to have a #VAR# token in there:
                                      it is *implicit* to #assign!
                                    */
-                                  $$ = yy.variables[$ASSIGN] = $exp;
+                                  $$ = $(#ASSIGN, yy.variables[$ASSIGN].name, '=', __($exp, 0, #ASSIGN));
+                                  //$$ = yy.variables[$ASSIGN].name = $exp;
                                 }
 | FUNCTION_0
-                                { $$ = $FUNCTION_0.call(globalSpace); }
+                                { 
+                                  $$ = $(#FUNCTION_0#, yy.functions[$FUNCTION_0].name);
+                                }
 | FUNCTION arglist END
                                 {
-                                  /*
-                                     A lot of functions have only a few arguments, which we later optimize in our AST
-                                     by including that knowledge in the FUNCTION token by using derivative tokens
-                                     FUNCTION_0, FUNCTION_1, etc.: this can help a smart optimizer to include
-                                     special optimizations for these functions without having to re-discover
-                                     the arglist length.
-                                     As that approach already disambiguates the function-versus-statement
-                                     situation by having encoded arglist length in the FUNCTION token, these
-                                     tokens never require a sentinel token in the AST stream: small AST stream size.
-
-                                     Also don't forget to FLATTEN the arglist! ==> `concat.apply(a, arglist)`
-
-                                     NOTE: the #FUNCTION# rule in Polish Notation is ambiguous unless we terminate it
-                                     (which is easy to parse in an LALR(1) grammar while adding a argument count is not!)
-                                     as we would otherwise get confused over this scenario:
-
-                                          ... PLUS FUNCTION exp exp exp ...
-
-                                     - is this a function with one argument and that last `exp` in there the second term
-                                       of a binary(?) opcode waiting in the leading `...`?
-                                     - is this a function with two arguments and that last `exp` the second
-                                       term of the PLUS?
-                                     - is this a function with three arguments and is the second term of the PLUS
-                                       waiting in the trailing `...`?
-
-                                     This is the trouble with opcodes which accept a variable number of arguments:
-                                     such opcodes always have to be terminated by a sentinel to make the AST grammar
-                                     unambiguous.
-                                  */
-                                  $$ = $FUNCTION.apply(globalSpace, $arglist);
+                                  //$$ = $(#FUNCTION#, yy.functions[$FUNCTION_0].name, arglist);
+                                  $arglist.unshift(#FUNCTION#, yy.functions[$FUNCTION_0].name);
+                                  $$ = $.apply(this, arglist);
                                 }
 | FUNCTION_1 exp
                                 {
-                                  $$ = $FUNCTION_1.call(globalSpace, $exp);
+                                  $$ = $(#FUNCTION_1#, yy.functions[$FUNCTION_1].name, $exp);
                                 }
 | FUNCTION_2 exp exp
                                 {
-                                  $$ = $FUNCTION_2.call(globalSpace, $exp1, $exp2);
+                                  $$ = $(#FUNCTION_2#, yy.functions[$FUNCTION_2].name, $exp1, $exp2);
                                 }
 | FUNCTION_3 exp exp exp
                                 {
-                                  $$ = $FUNCTION_3.call(globalSpace, $exp1, $exp2, $exp3);
+                                  $$ = $(#FUNCTION_3#, yy.functions[$FUNCTION_3].name, $exp1, $exp2, $exp3);
                                 }
 
 | EQ exp exp
-                                { $$ = $exp1 == $exp2; }
+                                { $$ = $(#EQ, $exp1, $exp2); }
 | NEQ exp exp
-                                { $$ = $exp1 != $exp2; }
+                                { $$ = $(#NEQ, $exp1, $exp2); }
 | LEQ exp exp
-                                { $$ = $exp1 <= $exp2; }
+                                { $$ = $(#LEQ, $exp1, $exp2); }
 | GEQ exp exp
-                                { $$ = $exp1 >= $exp2; }
+                                { $$ = $(#GEQ, $exp1, $exp2); }
 | LT exp exp
-                                { $$ = $exp1 < $exp2; }
+                                { $$ = $(#LT, $exp1, $exp2); }
 | GT exp exp
-                                { $$ = $exp1 > $exp2; }
+                                { $$ = $(#GT, $exp1, $exp2); }
 | OR exp exp
-                                { $$ = $exp1 || $exp2; }
+                                { $$ = $(#OR, $exp1, $exp2); }
 | XOR exp exp
-                                { $$ = !!(!!$exp1 ^ !!$exp2); }
+                                { $$ = $(#XOR, $exp1, $exp2); }
 | AND exp exp
-                                { $$ = $exp1 && $exp2; }
+                                { $$ = $(#AND, $exp1, $exp2); }
 
 | BITWISE_OR exp exp
-                                { $$ = $exp1 | $exp2; }
+                                { $$ = $(#BITWISE_OR, $exp1, $exp2); }
 | BITWISE_XOR exp exp
-                                { $$ = $exp1 ^ $exp2; }
+                                { $$ = $(#BITWISE_XOR, $exp1, $exp2); }
 | BITWISE_AND exp exp
-                                { $$ = $exp1 & $exp2; }
+                                { $$ = $(#BITWISE_AND, $exp1, $exp2); }
 
 | ADD exp exp
-                                { $$ = $exp1 + $exp2; }
+                                { $$ = $(#ADD, $exp1, $exp2); }
 | SUBTRACT exp exp
-                                { $$ = $exp1 - $exp2; }
+                                { $$ = $(#SUBTRACT, $exp1, $exp2); }
 | MULTIPLY exp exp
-                                { $$ = $exp1 * $exp2; }
+                                { $$ = $(#MULTIPLY, $exp1, $exp2); }
 | DIVIDE exp exp
-                                { $$ = $exp1 / $exp2; }
+                                { $$ = $(#DIVIDE, $exp1, $exp2); }
 | MODULO exp exp
-                                { $$ = $exp1 % $exp2; }
+                                { $$ = $(#MODULO, $exp1, $exp2); }
 | UMINUS exp
-                                { $$ = -$exp; }
+                                { $$ = $(#UMINUS, $exp1); }
 | UPLUS exp
-                                { $$ = +$exp; }
+                                { $$ = $(#UPLUS, $exp1); }
 | POWER exp exp
-                                { $$ = Math.pow($exp1, $exp2); }
+                                { $$ = $(#POWER, $exp1, $exp2); }
 | PERCENT exp
-                                { $$ = $exp / 100; }
+                                { $$ = $(#PERCENT, $exp1); }
 | FACTORIAL exp
-                                { $$ = yy.functions.factorial.call(globalSpace, $exp); }
+                                { $$ = $(#FACTORIAL, $exp1); }
 
 | BITWISE_NOT exp
-                                { $$ = ~$exp; }
+                                { $$ = $(#BITWISE_NOT, $exp1); }
 | NOT exp
-                                { $$ = !$exp; }
+                                { $$ = $(#NOT, $exp1); }
 
 
 | IF_ELSE exp exp exp
-                                {
-                                  if ($exp1) {
-                                    $$ = $exp2;
-                                  } else {
-                                    $$ = $exp3;
-                                  }
-                                }
+                                { $$ = $(#IF_ELSE, $exp1, $exp2, $exp3); }
 | IF exp exp
-                                {
-                                  if ($exp1) {
-                                    $$ = $exp2;
-                                  } else {
-                                    $$ = 0;
-                                  }
-                                }
+                                { $$ = $(#IF, $exp1, $exp2); }
 ;
 
 arglist:
@@ -314,4 +293,58 @@ arglist:
 
 
 %%
+
+/* @const */ var print_def = {
+  
+};
+
+function $(op /* ,... */ ) {
+  // first check how many args we got:
+  var args = arguments.slice(1);
+  var cnt = args.length;
+
+  // - if any arg contains content which carries *lower* precedences, it must be braced.
+  // - if the left/right argument contains content with the *same* precedence and is not supposed to, given this op's *associativity*, then it must be braced.
+  var brace_me = new Array(cnt);
+  var my_prec = precedence_order[op] || 0;    // precedence is higher when number is LOWER!
+  var my_assoc = associativity[op] || 0;
+
+  var s = display[op];
+
+  for (var i = 0; i < cnt; i++) {
+    // is argument an 'augmented item'?
+    var a = args[i];
+    if (!a.augmented) continue;
+    // check precedence:
+    brace_me[i] = (a.precedence > my_prec);
+    // check associativity?
+    if (a.precedence >= my_prec && my_assoc != i) {
+      brace_me[i] = true; 
+    }
+
+    // replace arg [0] via regex `/1/`, etc.:
+    var re = argument_regex[i];
+    if (!re) {
+      re = argument_regex[i] = new RegExp('' + (i + 1));
+    }
+    s = s
+    .replace(re, function () {
+      var s = a.display;
+      if (brace_me[i]) {
+        s = '(' + s + ')';
+      }
+      // #FUNCTION# receives special treatment: arg1..argN are function arguments and must be separated by `,`,
+      // which cannot be easily done by a simple regex replacement template alone:
+      if (op === FUNCTION && i >= 1 && i < cnt - 1) {
+        s += ', ';
+      }
+      return s;
+    });
+  }
+
+  return {
+    display: s,
+    precedence: my_prec,
+  };  
+}
 

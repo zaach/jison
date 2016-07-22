@@ -62,6 +62,7 @@
 %token      VAR FUNCTION    // Variable and Function
 %token      CONSTANT        // Predefined Constant Value, e.g. PI or E
 %token      ERROR           // Mark error in statement
+%token      COMMENT         // A line (or multiple lines) of comment
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
@@ -113,7 +114,7 @@
 
 
 
-%options on-demand-lookahead    // camelCased: option.onDemandLookahead
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
@@ -132,6 +133,11 @@ input:
 | input line EOL
                                 {
                                   $input.push($line);
+                                  $$ = $input;
+                                }
+| input COMMENT EOL
+                                {
+                                  console.log('COMMENT line(s): ', $COMMENT);
                                   $$ = $input;
                                 }
 ;
@@ -154,9 +160,9 @@ exp:
   NUM
                                 { $$ = $NUM; }
 | CONSTANT
-                                { $$ = $CONSTANT; }
+                                { $$ = yy.constants[$CONSTANT].value; }
 | VAR
-                                { $$ = yy.variables[$VAR]; }
+                                { $$ = yy.variables[$VAR].value; }
 | ASSIGN exp
                                 {
                                   /*
@@ -170,10 +176,10 @@ exp:
                                      would only be cluttering the AST stream to have a #VAR# token in there:
                                      it is *implicit* to #assign!
                                    */
-                                  $$ = yy.variables[$ASSIGN] = $exp;
+                                  $$ = yy.variables[$ASSIGN].value = $exp;
                                 }
 | FUNCTION_0
-                                { $$ = $FUNCTION_0.call(globalSpace); }
+                                { $$ = yy.functions[$FUNCTION_0].func.call(globalSpace); }
 | FUNCTION arglist END
                                 {
                                   /*
@@ -205,19 +211,19 @@ exp:
                                      such opcodes always have to be terminated by a sentinel to make the AST grammar
                                      unambiguous.
                                   */
-                                  $$ = $FUNCTION.apply(globalSpace, $arglist);
+                                  $$ = yy.functions[$FUNCTION].func.apply(globalSpace, $arglist);
                                 }
 | FUNCTION_1 exp
                                 {
-                                  $$ = $FUNCTION_1.call(globalSpace, $exp);
+                                  $$ = yy.functions[$FUNCTION_1].func.call(globalSpace, $exp);
                                 }
 | FUNCTION_2 exp exp
                                 {
-                                  $$ = $FUNCTION_2.call(globalSpace, $exp1, $exp2);
+                                  $$ = yy.functions[$FUNCTION_2].func.call(globalSpace, $exp1, $exp2);
                                 }
 | FUNCTION_3 exp exp exp
                                 {
-                                  $$ = $FUNCTION_3.call(globalSpace, $exp1, $exp2, $exp3);
+                                  $$ = yy.functions[$FUNCTION_3].func.call(globalSpace, $exp1, $exp2, $exp3);
                                 }
 
 | EQ exp exp
@@ -265,7 +271,7 @@ exp:
 | PERCENT exp
                                 { $$ = $exp / 100; }
 | FACTORIAL exp
-                                { $$ = yy.functions.factorial.call(globalSpace, $exp); }
+                                { $$ = yy.predefined_functions.factorial.call(globalSpace, $exp); }
 
 | BITWISE_NOT exp
                                 { $$ = ~$exp; }

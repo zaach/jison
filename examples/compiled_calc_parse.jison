@@ -239,6 +239,7 @@
 %token      VAR FUNCTION    // Variable and Function
 %token      CONSTANT        // Predefined Constant Value, e.g. PI or E
 %token      ERROR           // Mark error in statement
+%token      COMMENT         // A line (or multiple lines) of comment
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
@@ -383,8 +384,8 @@ input:
                                     append.apply(rv, $line);
                                   }
 
-                                  // always make sure the AST stream is terminated by an EOL: 
-                                  // this makes the treewalker grammars a little easier as then a line is always 
+                                  // always make sure the AST stream is terminated by an EOL:
+                                  // this makes the treewalker grammars a little easier as then a line is always
                                   // followed by an EOL!
                                   if (rv.length) {
                                     rv.push(#EOL#);
@@ -402,16 +403,16 @@ line:
                                   console.log('line: ', JSON.stringify($exp, null, 2));
                                   $$ = $exp;
                                 }
+| COMMENT
+                                {
+                                  $$ = [#COMMENT#, $COMMENT];
+                                }
 | error
                                 {
                                   yyerrok;
                                   yyclearin;
                                   console.log('skipped erroneous input line', typeof yy.lastErrorInfo);
                                   $$ = [#ERROR#, yy.lastErrorInfo];
-                                }
-| COMMENT
-                                {
-                                  $$ = [#COMMENT#, yytext];
                                 }
 ;
 
@@ -639,7 +640,7 @@ exp:
                                   $exp1.unshift(#PERCENT#);
                                   $$ = $exp1;
                                 }
-| exp '!'[facult]
+| exp '!'[factorial]
                                 {
                                   $exp1.unshift(#FACTORIAL#);
                                   $$ = $exp1;

@@ -42,8 +42,8 @@
 %token      VAR FUNCTION    // Variable and Function
 %token      CONSTANT        // Predefined Constant Value, e.g. PI or E
 %token      ERROR           // Mark error in statement
+%token      COMMENT         // A line (or multiple lines) of comment
 
-%token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
 %token      FUNCTION_1      // optimization: function with one input parameter
 %token      FUNCTION_2      // optimization: function with two input parameters
@@ -91,8 +91,12 @@
 %start input
 
 
+%ebnf
 
+
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead -- WARNING: using this has a negative effect on your error reports: a lot of 'expected' symbols are reported which are not in the real FOLLOW set!
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -101,14 +105,70 @@
 %%
 
 
+/*
+ * When you go and look at the grammar below, do note that the token stream is
+ * produced as a 'Reverse Polish Notation' simile: `<arg> <arg> ... <operator>`: this
+ * has several benefits, not the least of which is that we can do away with
+ * 'precedence overrides' in math expressions: no more `()` brackets!
+ *
+ * Also do note that we're outputting **Reverse Polish Notation**, rather than
+ * **Polish Notation**: Reverse Polish Notation has the characteristic
+ * that the **operator**, i.e. the 'opcode/command' comes after anything
+ * else that's related, which is just perfect when you wish to produce
+ * the fastest possible (hand-coded) bottom-up tree walker.
+ *
+ * Reverse Polish Notation is the stuff you want
+ * when doing a bottom-up grammar-based walker: you have every `arg`
+ * ready and calculated by the time you hit the `opcode`, resulting
+ * in a walker which can be shift+reduce based.
+ *
+ * This is the parser that goes with the hand-optimized custom-tailored
+ * walkers.
+ *
+ * Note: we use *hand-coded/optimized* tree walkers for this parser output,
+ * so we have maximum control over our codebase here.
+ * We can get them faster by doing a little extra legwork right now:
+ * we make every SHIFT *explicit* by writing extra PUSH opcodes
+ * into the stream where necessary (thus, in a sense, making it act
+ * like another kind of REDUCE operation when you hit PUSH a.k.a. 'shift').
+ * (We called this opcode PUSH instead of SHIFT because SHIFT is usually
+ * regarded as a *bit-shift* operation on integers in other languages, e.g. C,
+ * and PUSH is appropriate because a *shift* action really is nothing else
+ * than *pushing* the current value/token onto the stack: hence a 'push'.
+ */
+
+
 input:
-  ε                             /* empty */
+  ( line EOL )*[s] line EOF
                                 {
-                                  $$ = [];
-                                }
-| input line
-                                {
-                                  if ($line.length) {
+                                  var rv = null;
+                                  for (var i = 0, len = $s.length; i < len; i++) {
+                                    var line = $s[i][0];
+                                    if (!rv) {
+                                      rv = line;
+                                    } else if (line.length) {
+                                      // We MUST signal the end of an expression as otherwise our AST grammar
+                                      // will be ambiguous (and thus our tree walkers confused and unable to
+                                      // work) as we must be able to differentiate between 'end of function arglist'
+                                      // and 'end of statement': since we expect more functions (and thus
+                                      // arglist terminations) than statements, we choose to give the FUNCTION
+                                      // arglist an implicit termination while the statement gets to have an
+                                      // *explicit* termination (#EOL# token) so that we end up with a shorter
+                                      // AST stream -- iff our assumption holds in actual use!
+                                      //
+                                      // NOTE: We only need to add a sentinel when multiple statements (lines)
+                                      // are input: when there's only a single statement (line) it'll unambiguously
+                                      // terminated by EOF!
+                                      if (rv.length) {
+                                        rv.push(#EOL#);
+                                      }
+                                      append.apply(rv, line);
+                                    }
+                                  }
+
+                                  if (!rv) {
+                                    rv = $line;
+                                  } else if ($line.length) {
                                     // We MUST signal the end of an expression as otherwise our AST grammar
                                     // will be ambiguous (and thus our tree walkers confused and unable to
                                     // work) as we must be able to differentiate between 'end of function arglist'
@@ -121,38 +181,44 @@ input:
                                     // NOTE: We only need to add a sentinel when multiple statements (lines)
                                     // are input: when there's only a single statement (line) it'll unambiguously
                                     // terminated by EOF!
-                                    if ($input.length) {
-                                      $input.push(#EOL#);
+                                    if (rv.length) {
+                                      rv.push(#EOL#);
                                     }
-                                    append.apply($input, $line);
+                                    append.apply(rv, $line);
                                   }
-                                  $$ = $input;
+
+                                  // always make sure the AST stream is terminated by an EOL:
+                                  // this makes the treewalker grammars a little easier as then a line is always
+                                  // followed by an EOL!
+                                  if (rv.length) {
+                                    rv.push(#EOL#);
+                                  }
+
+                                  $$ = rv;
                                 }
 ;
 
 line:
-  EOL
+  ε                             /* empty */
                                 { $$ = []; }
-| exp EOL
+| exp
                                 {
                                   console.log('line: ', JSON.stringify($exp, null, 2));
                                   $$ = $exp;
                                 }
-| error EOL
+| COMMENT
                                 {
-                                  yyerrok;
-                                  yyclearin;
-                                  console.log('skipped erroneous input line');
-                                  $$ = [#ERROR#, #EOL#];
+                                  $$ = [#COMMENT#, $COMMENT];
                                 }
-| error EOF                     // This rule kicks in when there's an error in the very last input line when it wasn't terminated by EOL
+| error
                                 {
                                   yyerrok;
                                   yyclearin;
-                                  console.log('skipped erroneous input line');
-                                  $$ = [#ERROR#, #EOL#];
+                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo);
+                                  $$ = [#ERROR#, yy.lastErrorInfo];
                                 }
 ;
+
 
 exp:
   NUM
@@ -244,7 +310,9 @@ exp:
                                   var n = $arglist.length;
                                   switch (n) {
                                   default:
-                                    $$ = flatten.apply([#END#], $arglist);
+                                    // no #END# sentinel needed as we store the N = number of arguments
+                                    // with the #FUNCTION# opcode itself (see further below)
+                                    $$ = flatten.apply([], $arglist);
                                     opcode = #FUNCTION_N#;
                                     break;
 
@@ -419,7 +487,7 @@ exp:
                                   $exp1.push(#PERCENT#);
                                   $$ = $exp1;
                                 }
-| exp '!'[facult]
+| exp '!'[factorial]
                                 {
                                   $exp1.push(#FACTORIAL#);
                                   $$ = $exp1;
@@ -468,8 +536,7 @@ exp:
 | IF exp THEN exp
                                 {
                                   // $$ = $exp1.concat(#CONDITION#, $exp2.length + 1 + 2, $exp2, #SKIP#, 2 + 1, #NUM#, 0);
-                                  $exp1.push(#CONDITION#);
-                                  $exp1.push($exp2.length + 1 + 2);
+                                  $exp1.push(#CONDITION#, $exp2.length + 1 + 2);
                                   append.apply($exp1, $exp2);
                                   $exp1.push(#SKIP#, 2 + 1, #NUM#, 0);
                                   $$ = $exp1;
