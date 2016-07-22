@@ -398,6 +398,8 @@ parser.main = function compiledRunner(args) {
 
     var source = require('fs').readFileSync(require('path').normalize(args[1]), 'utf8');
 
+    console.warn("@@@ 1 : FRONT-END PARSE PHASE @@@");
+
     // Front End parse: read human input and produce a token stream i.e. serialized AST:
     compiled_calc_parse.yy.parseError = function (msg, info) {
       //compiled_calc_parse.originalParseError(msg, info);
@@ -421,9 +423,11 @@ parser.main = function compiledRunner(args) {
           state: info.state,
           action: info.action,
           new_state: info.new_state,
+          // and limit the stacks to the valid portion, i.e. index [0..stack_pointer-1]:
           symbol_stack: info.symbol_stack && info.symbol_stack.slice(0, info.stack_pointer),
           state_stack: info.state_stack && info.state_stack.slice(0, info.stack_pointer),
           value_stack: info.value_stack && info.value_stack.slice(0, info.stack_pointer).map(function (v) {
+            // and remove any cyclic self-references from the vstack copy:
             if (v && v === info.yy.lastErrorInfo) {
               return NaN;
             }
@@ -442,6 +446,8 @@ parser.main = function compiledRunner(args) {
 
     console.log('parsed token list: ', JSON.stringify(toklst, null, 2));
 
+    console.warn("@@@ 2 : BACK-END PARSE PHASE @@@");
+    
     const param_count_per_opcode = generate_opcode_param_count_table();
 
     // Now set up the second parser's custom lexer: this bugger should munch the token stream. Fast!

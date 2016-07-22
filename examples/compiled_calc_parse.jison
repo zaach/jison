@@ -124,11 +124,11 @@
 
 %lex
 
-%options flex
+//%options flex
 %options case-insensitive
-%options xregexp
-%options backtrack_lexer
-%options ranges
+//%options xregexp
+//%options backtrack_lexer
+//%options ranges
 %options easy_keyword_rules
 
 
@@ -183,6 +183,9 @@
                         return 'VAR';
                       %}
 
+\/\/.*                  return 'COMMENT'; // skip C++-style comments
+\/\*[\s\S]*?\*\/        return 'COMMENT'; // skip C-style multi-line comments
+
 '==='                   return 'EQ';
 '=='                    return 'EQ';
 '!='                    return 'NEQ';
@@ -223,9 +226,6 @@
 [\r\n]+                 return 'EOL';
 
 [^\S\r\n]+              // ignore whitespace
-
-\/\/.*                  // skip C++-style comments
-\/\*[\s\S]*?\*\/        // skip C-style multi-line comments
 
 <<EOF>>                 return 'EOF';
 .                       return 'INVALID';
@@ -290,9 +290,9 @@
 %ebnf
 
 
-%options on-demand-lookahead    // camelCased: option.onDemandLookahead
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead -- WARNING: using this has a negative effect on your error reports: a lot of 'expected' symbols are reported which are not in the real FOLLOW set!
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-// %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
+%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -408,6 +408,10 @@ line:
                                   yyclearin;
                                   console.log('skipped erroneous input line', typeof yy.lastErrorInfo);
                                   $$ = [#ERROR#, yy.lastErrorInfo];
+                                }
+| COMMENT
+                                {
+                                  $$ = [#COMMENT#, yytext];
                                 }
 ;
 

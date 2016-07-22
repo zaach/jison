@@ -134,7 +134,7 @@ input:
                                 {
                                   $$ = [];
                                 }
-| input line endOfLine
+| input line EOL
                                 {
                                   $input.push($line);
                                   $$ = $input;
@@ -154,7 +154,6 @@ line:
                                 }
 ;
 
-endOfLine: EOL | EOF;
 
 exp:
   NUM
