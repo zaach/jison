@@ -494,3 +494,45 @@ exports["test generated parser must export added user-defined methods"] = functi
     assert.ok(typeof parser.dummy === 'function');
     assert.ok(parser.dummy() === 42);
 };
+
+exports["test consistent behaviour across many invocations of the parse() API"] = function () {
+    var grammar = "%% A : A x | A y | ;"
+
+    // this test should catch the closure error fixed in 
+    // SHA-1: 4067a2e900d1e9c3f62a969d4c9a06ce4e124628 :: fix grave bug in 
+    // new kernel / APIs cleanupAfterParse et al due to closure mistake
+    
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    assert.ok(parser.parse('xyx'), "parse xyx - round 1");
+    assert.ok(parser.parse('xyx'), "parse xyx - round 2");
+    assert.ok(parser.parse('xyx'), "parse xyx - round 3");
+    assert.ok(parser.parse('xyx'), "parse xyx - round 4");
+    assert.ok(parser.parse('xyx'), "parse xyx - round 5");
+    assert.ok(parser.parse('xyx'), "parse xyx - round 6");
+};
+
+exports["test multiple invocations of the cleanupAfterParse API should be survivable"] = function () {
+    var grammar = "%options no-try-catch\n%% A : A x | A y | ;"
+
+    // this test should catch the closure error fixed in 
+    // SHA-1: 4067a2e900d1e9c3f62a969d4c9a06ce4e124628 :: fix grave bug in 
+    // new kernel / APIs cleanupAfterParse et al due to closure mistake
+    
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(typeof parser.cleanupAfterParse !== 'function', 'API will only be present after first call to parse() API');
+    assert.ok(!parser.cleanupAfterParse, 'API will only be present after first call to parse() API (null check)');
+    assert.ok(parser.parse('xyx'), "parse xyx");
+    assert.ok(typeof parser.cleanupAfterParse === 'function', 'API must be present after first call to parse() API');
+    assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 1');
+    assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 2');
+    assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 3');
+
+    // did cleanup reset the API properly?
+    assert.ok(typeof parser.parseError === 'function');
+    assert.ok(parser.parseError === parser.originalParseError);
+    assert.ok(typeof parser.quoteName === 'function');
+    assert.ok(parser.quoteName === parser.originalQuoteName);
+};
