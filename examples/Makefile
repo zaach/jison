@@ -440,11 +440,23 @@ theory-left-recurs-01:
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
 	$(JISON) ./$@_parse.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_parse.js
 	$(JISON) ./$@_codegen.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_codegen.js
 	$(JISON) ./$@_print.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_print.js
 	$(JISON) ./$@_sorcerer.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_sorcerer.js
 	$(JISON) ./$@_BURG.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_BURG.js
 	$(JISON) ./$@_parse_for_fast_engine.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_parse_for_fast_engine.js
 	#$(JISON) --main -t ./$@_exec.jison
 	$(JISON) --main ./$@_exec.jison
 	# postprocess generated source code:

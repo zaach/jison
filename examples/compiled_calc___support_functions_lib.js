@@ -176,6 +176,12 @@ function init_symbol_tables() {
       id: ERROR_AND_SKIP,
       args: [OPA_ERROR_INFO_OBJ],
     },
+    // comment line
+    {
+      name: 'COMMENT',
+      id: COMMENT,
+      args: [OPA_STRING],
+    },
   ];
 }
 

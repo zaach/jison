@@ -405,7 +405,7 @@ parser.main = function compiledRunner(args) {
 
     var source = require('fs').readFileSync(require('path').normalize(args[1]), 'utf8');
 
-    console.warn("@@@ 1 : FRONT-END PARSE PHASE @@@");
+    console.warn("\n\n\n@@@ 1 : FRONT-END PARSE PHASE @@@\n\n\n");
 
     // Front End parse: read human input and produce a token stream i.e. serialized AST:
     compiled_calc_parse.yy.parseError = function (msg, info) {
@@ -453,7 +453,7 @@ parser.main = function compiledRunner(args) {
 
     console.log('parsed token list: ', JSON.stringify(toklst, null, 2));
 
-    console.warn("@@@ 2 : BACK-END PARSE PHASE @@@");
+    console.warn("\n\n\n@@@ 2 : INTERPRETER BACK-END PARSE PHASE @@@\n\n\n");
     
     const param_count_per_opcode = generate_opcode_param_count_table();
 
@@ -471,11 +471,11 @@ parser.main = function compiledRunner(args) {
         this.__input__ = input;
         this.__input_length__ = input.length;
         // reset cursor position:
-        this.__cusor_pos__ = 0;
+        this.__cursor_pos__ = 0;
       },
 
       lex: function lex2() {
-        console.log('LEX: input token list: ', this.__input__.slice(this.__cursor_pos__));
+        console.log('LEX: input token list: ', this.__input__.slice(this.__cursor_pos__), '@cursor:', this.__cursor_pos__);
         if (this.__input_length__ - this.__cursor_pos__ > 0) {
           var l = this.__input__;
           var c = this.__cursor_pos__;
@@ -506,8 +506,12 @@ parser.main = function compiledRunner(args) {
 
     // Execute the second parser: takes a formula/expression token stream as input and
     // spits out the calculated value per line:
-    parser.parse(toklst);
+    var calc_output = parser.parse(toklst);
+    console.log('calculated result from interpreter: ', calc_output);
 
+
+    console.warn("\n\n\n@@@ 3 : COMPILER BACK-END PARSE PHASE @@@\n\n\n");
+    
 
     // Now set up the third parser's custom lexer: this bugger should munch the token stream. Fast!
     compiled_calc_codegen.__lexer__ = parser.__lexer__;
@@ -518,12 +522,17 @@ parser.main = function compiledRunner(args) {
     console.log('generated source code: ', sourcecode);
 
 
+    console.warn("\n\n\n@@@ 4 : PRETTY-PRINTING BACK-END PARSE PHASE @@@\n\n\n");
+    
+
     // Now set up the fourth parser's custom lexer: this bugger should munch the token stream. Fast!
     compiled_calc_print.__lexer__ = parser.__lexer__;
+    compiled_calc_print.options.debug = true;
 
     // Execute the fourth parser: : takes a formula/expression token stream as input and
     // spits out the human-readable formatted formula per line:
-    compiled_calc_print.parse(toklst);
+    var human_output = compiled_calc_print.parse(toklst);
+    console.log('generated human-readable pretty-print output: ', human_output);
 
     return 2;
 };

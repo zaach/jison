@@ -183,8 +183,8 @@
                         return 'VAR';
                       %}
 
-\/\/.*                  return 'COMMENT'; // skip C++-style comments
-\/\*[\s\S]*?\*\/        return 'COMMENT'; // skip C-style multi-line comments
+\/\/.*                yytext = yytext.substr(2).trim(); return 'COMMENT'; // skip C++-style comments
+\/\*[\s\S]*?\*\/      yytext = yytext.substring(2, yytext.length - 2).trim(); return 'COMMENT'; // skip C-style multi-line comments
 
 '==='                   return 'EQ';
 '=='                    return 'EQ';
@@ -417,7 +417,7 @@ line:
                                   yyerrok;
                                   yyclearin;
                                   console.log('skipped erroneous input line', typeof yy.lastErrorInfo, $error, yytext, yyleng);
-                                  $$ = [#ERROR#, yy.lastErrorInfo];
+                                  $$ = [#ERROR#, yy.lastErrorInfo.errStr];
                                 }
 ;
 

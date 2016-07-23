@@ -55,6 +55,7 @@
 
 
 
+// one grammar is MASTER for our common symbol set:
 %import symbols  "./output/compiled_calc/compiled_calc_parse.js"
 
 
@@ -118,9 +119,10 @@
 %start input
 
 
+//%debug
 
 //%options on-demand-lookahead    // camelCased: option.onDemandLookahead
-%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+//%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
@@ -144,7 +146,7 @@ input:
                                 {
                                   var comment = $COMMENT.split('\n');
                                   comment.forEach(function (cmtline) {
-                                    $input.push('# ', cmtline);
+                                    $input.push('# ' + cmtline);
                                   });
                                   $$ = $input;
                                 }
@@ -294,13 +296,137 @@ arglist:
 
 %%
 
-/* @const */ var print_def = {
-  
+/* @const */ var precedence_order = {
+  #NUM#:            1,
+  #ADD#:            100,
+  #AND#:            175,
+  #ASSIGN#:         300,
+  #BITWISE_AND#:    50,
+  #BITWISE_NOT#:    20,
+  #BITWISE_OR#:     50,
+  #BITWISE_XOR#:    50,
+  #CONSTANT#:       1,
+  #DIVIDE#:         80,
+  #EQ#:             150,
+  #FACTORIAL#:      20,
+  #FUNCTION#:       1,
+  #FUNCTION_0#:     1,
+  #FUNCTION_1#:     1,
+  #FUNCTION_2#:     1,
+  #FUNCTION_3#:     1,
+  #GEQ#:            150,
+  #GT#:             150,
+  #IF#:             200,
+  #IF_ELSE#:        200,
+  #LEQ#:            150,
+  #LT#:             150,
+  #MODULO#:         80,
+  #MULTIPLY#:       90,
+  #NEQ#:            150,
+  #NOT#:            20,
+  #OR#:             175,
+  #PERCENT#:        20,
+  #POWER#:          70,
+  #SUBTRACT#:       100,
+  #UMINUS#:         20,
+  #UPLUS#:          20,
+  #VAR#:            1,
+  #XOR#:            175,
 };
+/* @const */ var associativity = {
+  #NUM#:            0,
+  #ADD#:            2,
+  #AND#:            2,
+  #ASSIGN#:         2,
+  #BITWISE_AND#:    2,
+  #BITWISE_NOT#:    1,
+  #BITWISE_OR#:     2,
+  #BITWISE_XOR#:    2,
+  #CONSTANT#:       0,
+  #DIVIDE#:         2,
+  #EQ#:             2,
+  #FACTORIAL#:      2,
+  #FUNCTION#:       0,
+  #FUNCTION_0#:     0,
+  #FUNCTION_1#:     0,
+  #FUNCTION_2#:     0,
+  #FUNCTION_3#:     0,
+  #GEQ#:            2,
+  #GT#:             2,
+  #IF#:             2,
+  #IF_ELSE#:        2,
+  #LEQ#:            2,
+  #LT#:             2,
+  #MODULO#:         2,
+  #MULTIPLY#:       2,
+  #NEQ#:            2,
+  #NOT#:            1,
+  #OR#:             2,
+  #PERCENT#:        1,
+  #POWER#:          2,
+  #SUBTRACT#:       2,
+  #UMINUS#:         1,
+  #UPLUS#:          1,
+  #VAR#:            0,
+  #XOR#:            2,
+};
+/* @const */ var display = {
+  #NUM#:                    '1',
+  #ADD#:                    '(1) + (2)',
+  #AND#:                    '(1) && (2)',
+  #ASSIGN#:                 '1 = (2)',
+  #BITWISE_AND#:            '(1) & (2)',
+  #BITWISE_NOT#:            '~(1)',
+  #BITWISE_OR#:             '(1) | (2)',
+  #BITWISE_XOR#:            '(1) ^ (2)',
+  #CONSTANT#:               '1',
+  #DIVIDE#:                 '(1) / (2)',
+  #EQ#:                     '(1) == (2)',
+  #FACTORIAL#:              '(1)!',
+  // #FUNCTION# receives special treatment:
+  #FUNCTION#:               '1((2)...3...X..., (3)...)',
+  #FUNCTION_0#:             '1()', 
+  #FUNCTION_1#:             '1((2))',
+  #FUNCTION_2#:             '1((2), (3))',
+  #FUNCTION_3#:             '1((2), (3), (4))',
+  #GEQ#:                    '(1) >= (2)',
+  #GT#:                     '(1) > (2)',
+  #IF#:                     'IF (:1:) THEN (2)',
+  #IF_ELSE#:                '(1) ? (2) : (3)',
+  #LEQ#:                    '(1) <= (2)',
+  #LT#:                     '(1) < (2)',
+  #MODULO#:                 '(1) % (2)',
+  #MULTIPLY#:               '(1) * (2)',
+  #NEQ#:                    '(1) != (2)',
+  #NOT#:                    '!(1)',
+  #OR#:                     '(1) || (2)',
+  #PERCENT#:                '(1)%',
+  #POWER#:                  '(1) ** (2)',
+  #SUBTRACT#:               '(1) - (2)',
+  #UMINUS#:                 '-(1)',
+  #UPLUS#:                  '+(1)',
+  #VAR#:                    '1',
+  #XOR#:                    '(1) XOR (2)',
+};
+
+var argument_regex = [
+  /[\[\{\(:'"]?\b1\b[\]\}\):'"]?/,
+];
+
+
+function escape_quotes(s, q) {
+  s = s
+  // escapes escape characters before we add any of our own
+  .replace(/\\/g, '\\\\')
+  // escape the quote `q`:
+  .replace(new RegExp(q, 'g'), '\\' + q);
+
+  return s;  
+}
 
 function $(op /* ,... */ ) {
   // first check how many args we got:
-  var args = arguments.slice(1);
+  var args = Array.prototype.slice.call(arguments, 1);
   var cnt = args.length;
 
   // - if any arg contains content which carries *lower* precedences, it must be braced.
@@ -311,40 +437,146 @@ function $(op /* ,... */ ) {
 
   var s = display[op];
 
+  // before we go and replace all the arguments, we have one prep job to do first:
+  // when we're printing a function which accepts an arbitrary number of arguments,
+  // e.g. `average(...)`, then we must facilitate the argument templating process 
+  // below for *any* number of arguments!
+  //
+  // We accomplish this by preprocessing the display template to fit the number
+  // of available arguments:
+  // we inject the selected format for each of the arguments available in a given
+  // argument index range, which can be
+  // - from N to infinity, i.e. the entire remainder of the argument set
+  // - from N to -M, i.e. the arguments from index N up to the argument at 
+  //   index LENGTH+M, for example with argument set of 10 arguments and M = -2,
+  //   N = 5 we would have to print the arguments 5, 6, 7, 8 (=10-2). This allows
+  //   for printing functions which have reserved special treatment for their
+  //   last few input parameters.
+  // - from N to M, i.e. the arguments from index N up to and including index M.
+  //   When M is specified with an explicit '+' it is a count rather than an offset,
+  //   M = +2 means the range spans 2 arguments exactly.
+  //
+  // The template format also includes the ability to specify exactly what format
+  // you wish to apply to each of the arguments: that's the third parameter of
+  // a range set spec: `...N...M...fmt...`, where `fmt` can use any number to
+  // represent the argument at hand.
+  //
+  // Note that 'infinity' is represented by 'X' in the spec:
+  function adjust_one_rangespec(s, n1, m2, f3) {
+    var n = parseInt(n1);
+    var m = (m2 === 'X' ? cnt - 1 : parseInt(m2));
+    if (m2[0] === '-') {
+      m = cnt - Math.max(-m, 1);
+    } else if (mm[0] === '+') {
+      m = Math.min(cnt - 1, m + n);
+    }
+    // and replace the entire thing, using format f3 for every arg and 'joining'
+    // the whole party: 
+    var out = [];
+    for (var i = n; i <= m; i++) {
+      out.push(f3
+        .replace(/[0-9]+/, i)
+      );
+    }
+    return out.join('');
+  }
+
+  s = s.replace(/\.\.\.([0-9]+)\.\.\.(X|[-+][0-9]+)\.\.\.(.*?)\.\.\./g, adjust_one_rangespec);
+console.log('$() display:', s, op, arguments);
+
+  // now print every arg using the template:
   for (var i = 0; i < cnt; i++) {
     // is argument an 'augmented item'?
     var a = args[i];
-    if (!a.augmented) continue;
-    // check precedence:
-    brace_me[i] = (a.precedence > my_prec);
-    // check associativity?
-    if (a.precedence >= my_prec && my_assoc != i) {
-      brace_me[i] = true; 
+    if (a.augmented) {
+      // check precedence:
+      brace_me[i] = (a.precedence > my_prec);
+      // check associativity?
+      if (a.precedence >= my_prec && my_assoc != i) {
+        brace_me[i] = true; 
+      }
     }
 
     // replace arg [0] via regex `/1/`, etc.:
     var re = argument_regex[i];
     if (!re) {
-      re = argument_regex[i] = new RegExp('' + (i + 1));
+      // and when we have run out of arg specs, we just re-use the one for the previous argument
+      re = argument_regex[i - 1];
+      var re_s = '' + re;
+      re_s = re_s.replace(/[0-9]+/, function (m) {
+        var j = parseInt(m);
+        j++;
+        return '' + j;
+      })
+      .replace(/^\/(.*)\/$/, '$1');
+      re = new RegExp(re_s);
+      // and cache this one, if it is sane to do (not sane is when you cache the regex for the 100th argument, for example)
+      if (i < 42) {
+console.warn('cache regex for index ', i, re);
+        argument_regex[i] = re;
+      }
     }
+console.log('$() replace argument at index:', i, a, brace_me[i], s, re, ' ::: ', arguments);
+
     s = s
-    .replace(re, function () {
-      var s = a.display;
-      if (brace_me[i]) {
-        s = '(' + s + ')';
+    .replace(re, function (m) {
+      var s = (a.augmented ? a.display : '' + a);
+
+      // detect formatting requirements:
+      switch (m[0]) {
+      // :1: --> plain 1, no braces, even when we might previously have detected that they would be needed
+      case ':':
+        // s = s;
+        break;
+      
+      // (1) --> optional braces around 1
+      // {1} --> optional curly braces around 1
+      // [1] --> optional square brackets around 1
+      // 
+      // Note: if we'd wanted *mandatory* braces around 1, we would have specced it as `(:1:)` instead!
+      case '(':
+      case '{':
+      case '[':
+        if (brace_me[i]) {
+          s = m[0] + s + m[m.length - 1];
+        }
+        break;
+
+      // '1' --> mandatory quotes around 1
+      case "'":
+      case '"':
+        s = m[0] + escape_quotes(s, m[0]) + m[m.length - 1];
+        break;
+
+      // 1 --> just plain 1, no braces:
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+        // s = s;
+        break;
+
+      // ?1? --> anything else surrounding 1 is a spec error.
+      default:
+        throw new Error('arg fmt spec error at index ' + i + ': illegal spec = ' + re);
       }
-      // #FUNCTION# receives special treatment: arg1..argN are function arguments and must be separated by `,`,
-      // which cannot be easily done by a simple regex replacement template alone:
-      if (op === FUNCTION && i >= 1 && i < cnt - 1) {
-        s += ', ';
-      }
+
       return s;
     });
   }
 
-  return {
+  var rv = {
+    augmented: true,
     display: s,
     precedence: my_prec,
   };  
+  console.warn('$() output: ', rv, arguments);
+  return rv;
 }
 
