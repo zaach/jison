@@ -416,7 +416,7 @@ line:
                                 {
                                   yyerrok;
                                   yyclearin;
-                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo, $error, @error, yytext, yyleng);
+                                  console.log('skipped erroneous input line', typeof yy.lastErrorInfo, $error, yytext, yyleng);
                                   $$ = [#ERROR#, yy.lastErrorInfo];
                                 }
 ;
