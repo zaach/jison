@@ -11,22 +11,113 @@ var recast = require('recast');
 var fs = require('fs');
 var path = require('path');
 var json5 = require('json5');
+var assert = require("assert");
+
+var types = recast.types;
+var n = types.namedTypes;
+var b = types.builders;
+
+var devDebug = false;
+
+function addCommentHelper(node, comment) {
+    var comments = node.comments || (node.comments = []);
+    comments.push(comment);
+}
+
+function addLeadingComment(node, comment) {
+    comment.leading = true;
+    comment.trailing = false;
+    addCommentHelper(node, comment);
+}
+
+function addDanglingComment(node, comment) {
+    comment.leading = false;
+    comment.trailing = false;
+    addCommentHelper(node, comment);
+}
+
+function addTrailingComment(node, comment) {
+    comment.leading = false;
+    comment.trailing = true;
+    addCommentHelper(node, comment);
+}
+
+function addComment(type, value, start, end, loc) {
+    var comment;
+
+    // assert(typeof start === 'number', 'Comment must have valid position');
+
+    // state.lastCommentStart = start;
+
+    comment = {
+        type: type,
+        value: value,
+        loc: { 
+          start: { 
+            line: 1, 
+            column: 32 
+          },
+          end: { 
+            line: 1, 
+            column: 234 
+          },
+          //lines: Lines {},
+          indent: 32 
+        },
+    };
+    // if (extra.range) {
+    //     comment.range = [start, end];
+    // }
+    // if (extra.loc) {
+    //     comment.loc = loc;
+    // }
+    // extra.comments.push(comment);
+    // if (extra.attachComment) {
+    //     extra.leadingComments.push(comment);
+    //     extra.trailingComments.push(comment);
+    // }
+    // if (extra.tokenize) {
+    //     comment.type = comment.type + 'Comment';
+    //     if (extra.delegate) {
+    //         comment = extra.delegate(comment);
+    //     }
+    //     extra.tokens.push(comment);
+    // }
+    // 
+    return comment;
+}
+
+
 
 function main(args) {
-  if (!args[1] || !args[2]) {
-      console.log('Usage: ' + args[0] + ' CONSTANTS_JSON5_FILE JS_SRC_FILE');
+  if (args.length < 2) {
+      console.log('Usage: ' + args[0] + ' CONSTANTS_JSON5_FILE [CONSTANTS_JSON5_FILE ...] JS_SRC_FILE');
       process.exit(1);
   }
-  var constants = loadConstants(path.normalize(args[1]));
-  var source = fs.readFileSync(path.normalize(args[2]), 'utf8');
+
+
+  var constants = {};
+  for (var i = 1, len = args.length - 1; i < len; i++) {
+    constants = loadConstants(path.normalize(args[i]), constants);
+  }
+  if (!constants['EOF']) {
+    constants['EOF'] = 1;
+  }
+  // if (!constants['ERROR']) {
+  //   constants['ERROR'] = 2;
+  // }
+
+
+  var source = fs.readFileSync(path.normalize(args[args.length - 1]), 'utf8');
   source = rewrite(source, constants);
-  fs.writeFileSync(path.normalize(args[2]), source, 'utf8');
+  fs.writeFileSync(path.normalize(args[args.length - 1]), source, 'utf8');
 }
+
 main(process.argv.slice(1));
 
 
 
-function loadConstants(filepath) {
+function loadConstants(filepath, previously_defined_constants) {
   var predefined_symbols;
 
   var source = fs.readFileSync(filepath, 'utf8');
@@ -66,10 +157,17 @@ function loadConstants(filepath) {
   delete predefined_symbols['$eof'];
   delete predefined_symbols['EOF'];
 
+  // also nuke all 'constants' which are **not** **all-caps**: those can only screw us up!
+  Object.keys(predefined_symbols).forEach(function cvt_symbol_id_to_numeric(sym) {
+    if (!/^[A-Z_][A-Z_0-9]+$/.test(sym)) {
+      delete predefined_symbols[sym];
+    }
+  });  
+
   var symdef_uniq_check = {};
-  // Only these symbols are allowed to have the values 1 or 2:
-  symdef_uniq_check[1] = 'EOF';
-  symdef_uniq_check[2] = 'error';
+  // // Only these symbols are allowed to have the values 1 or 2:
+  // symdef_uniq_check[1] = 'EOF';
+  // symdef_uniq_check[2] = 'error';
   Object.keys(predefined_symbols).forEach(function cvt_symbol_id_to_numeric(sym) {
     var v = predefined_symbols[sym];
     
@@ -96,16 +194,60 @@ function loadConstants(filepath) {
     predefined_symbols[sym] = v;
   });
 
-  if (!predefined_symbols['EOF']) {
-    predefined_symbols['EOF'] = 1;
+  // if (!predefined_symbols['EOF']) {
+  //   predefined_symbols['EOF'] = 1;
+  // }
+  // if (!predefined_symbols['ERROR']) {
+  //   predefined_symbols['ERROR'] = 2;
+  // }
+
+  // and add the previously defined constants: when there's any collisions, report these and fail!
+  for (var key in previously_defined_constants) {
+    if (previously_defined_constants.hasOwnProperty(key)) {
+      if (key in predefined_symbols) {
+        throw new Error('Constant "' + key + '" is defined in at least two input files! This is illegal; code rewrite operation ABORTED!');
+      }
+      predefined_symbols[key] = previously_defined_constants[key];
+    }
   }
-  if (!predefined_symbols['ERROR']) {
-    predefined_symbols['ERROR'] = 2;
-  }
+
+  // console.log('end of const load for file: ', predefined_symbols);
   return predefined_symbols;
 }
 
 
+
+
+function rewriteDefinedConstant(node, defs) {
+  var newnode = b.literal(defs[node.name]);
+  // console.log("node comments: ", {
+  //   node_name: node.name,
+  //   definition: defs[node.name],
+  //   comments: node.comments
+  // });
+  
+  var comment_added = false;
+
+  if (node.comments) {
+    node.comments.forEach(function (comment) {
+      if (!comment_added) {
+        comment_added = true;
+        comment.value = ' [' + node.name.replace(/\*\//g, '*\\/') + ']: ' + comment.value.replace(/^ /, '');
+        // console.log('extra indent: ', node.name.length - ('' + defs[node.name]).length);
+        // comment.indent += Math.max(0, node.name.length - ('' + defs[node.name]).length);
+      }
+      // console.log("comment: ", comment);
+      addTrailingComment(newnode, comment);
+    });
+  }
+
+  if (!comment_added) {
+    var cmt = addComment('Block', ' ' + node.name + ' ' /*, start, end, loc */ );
+    addTrailingComment(newnode, cmt);
+  }
+
+  return newnode;
+}
 
 
 function rewrite(src, defs) {
@@ -113,10 +255,296 @@ function rewrite(src, defs) {
   var output = src;
   var ast = recast.parse(src);
 
+
+
+
+
+  recast.visit(ast, {
+      /**
+       * Traverse and potentially modify an abstract syntax tree using a
+       * convenient visitor syntax:
+       *
+       *   recast.visit(ast, {
+       *     names: [],
+       *     visitIdentifier: function(path) {
+       *       var node = path.value;
+       *       this.visitor.names.push(node.name);
+       *       this.traverse(path);
+       *     }
+       *   });
+       */
+      names: {},
+
+      visitIdentifier: function(path) {
+        var node = path.value;
+
+        // this.visitor.names[node.name] = node;
+
+        var known_skip = false;
+        for (;;) {
+          if (defs.hasOwnProperty(node.name)) {
+            if (typeof defs[node.name] === 'number') {
+              // this.NAME = bla;
+              // x = { NAME: bluh };
+              if (n.MemberExpression.check(path.parent.value)) {
+                known_skip = true;
+                break;
+              }
+
+              // var NAME = duh;
+              if (n.VariableDeclarator.check(path.parent.value)) {
+                known_skip = true;
+                break;
+              }
+
+              // bla: [CONST1, CONST2, ...]
+              if (n.ArrayExpression.check(path.parent.value)) {
+                return rewriteDefinedConstant(node, defs);
+              }
+
+              if (n.Property.check(path.parent.value)) {
+                // now see if this is LHS or RHS of an ObjectExpression:
+                if (n.ObjectExpression.check(path.parent.parent.value)) {
+                  if (path.parent.value.kind === 'init' && path.parent.value.key.name !== node.name) {
+                    // id: CONST, ...
+                    return rewriteDefinedConstant(node, defs);
+                  }
+                  // else: CONST: blah,                 -- do NOT replace!
+                  known_skip = true;
+                  break;
+                }
+                break;
+              }
+
+              // case CONST1:
+              if (n.SwitchCase.check(path.parent.value)) {
+                return rewriteDefinedConstant(node, defs);
+              }
+              // if(... === CONST1) ...
+              if (n.LogicalExpression.check(path.parent.value)) {
+                return rewriteDefinedConstant(node, defs);
+              }
+              // x = CONST1 + ...
+              if (n.BinaryExpression.check(path.parent.value)) {
+                return rewriteDefinedConstant(node, defs);
+              }
+
+              if (!known_skip) {
+                console.log('Identifier: ', {
+                  node_name: node.name,
+                  //node_type: node.type,
+                  definition: defs[node.name],
+                  //parent: path.parent
+                  parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
+                  parent_type: path.parent.value.type,
+                });
+              }
+
+              return rewriteDefinedConstant(node, defs);
+            }
+          }
+          break;
+        }
+
+        if (defs.hasOwnProperty(node.name)) {
+          if (typeof defs[node.name] === 'number') {
+            if (!known_skip) {
+              console.log('UNIDENTIFIED: ', {
+                node_name: node.name,
+                node_type: node.type,
+                definition: defs[node.name],
+                //parent: path.parent
+                parent_chain: path.parent.value.type + ' | ' + path.parent.parent.value.type,
+                parent_type: path.parent.value.type,
+              });
+            }
+          }
+        }
+
+        this.traverse(path);
+      }
+  });
+
+
+
+  // // This script converts for and do-while loops into equivalent while loops.
+  // // Note that for-in statements are left unmodified, as they do not have a
+  // // simple analogy to while loops. Also note that labeled continue statements
+  // // are not correctly handled at this point, and will trigger an assertion
+  // // failure if encountered.
+
+  // recast.visit(ast, {
+  //     visitForStatement: function(path) {
+  //         var fst = path.node;
+
+  //         // path.replace(
+  //         //     fst.init,
+  //         //     b.whileStatement(
+  //         //         fst.test,
+  //         //         insertBeforeLoopback(fst, fst.update)
+  //         //     )
+  //         // );
+
+  //         this.traverse(path);
+  //     },
+
+  //     visitDoWhileStatement: function(path) {
+  //         var dwst = path.node;
+  //         return b.whileStatement(
+  //             b.literal(true),
+  //             insertBeforeLoopback(
+  //                 dwst,
+  //                 b.ifStatement(
+  //                     dwst.test,
+  //                     b.breakStatement()
+  //                 )
+  //             )
+  //         );
+  //     }
+  // });
+
+
+  // function insertBeforeLoopback(loop, toInsert) {
+  //     var body = loop.body;
+
+  //     if (!n.Statement.check(toInsert)) {
+  //         toInsert = b.expressionStatement(toInsert);
+  //     }
+
+  //     if (n.BlockStatement.check(body)) {
+  //         body.body.push(toInsert);
+  //     } else {
+  //         body = b.blockStatement([body, toInsert]);
+  //         loop.body = body;
+  //     }
+
+  //     recast.visit(body, {
+  //         visitContinueStatement: function(path) {
+  //             var cst = path.node;
+
+  //             assert.equal(
+  //                 cst.label, null,
+  //                 "Labeled continue statements are not yet supported."
+  //             );
+
+  //             path.replace(toInsert, path.node);
+  //             return false;
+  //         },
+
+  //         // Do not descend into nested loops.
+  //         visitWhileStatement: function() {
+  //           return false;
+  //         },
+  //         visitForStatement: function() {
+  //           return false;
+  //         },
+  //         visitForInStatement: function() {
+  //           return false;
+  //         },
+  //         visitDoWhileStatement: function() {
+  //           return false;
+  //         }
+  //     });
+
+  //     return body;
+  // }
+
+
+
+
+
+
+
+
+  // This script should reprint the contents of the given file without
+  // reusing the original source, but with identical AST structure.
+
+  // recast.visit(ast, {
+  //     visitNode: function(path) {
+  //         this.traverse(path);
+  //         path.node.original = null;
+  //     }
+  // });
+
+
+
+
+
+
+if (0) {
+  recast.visit(ast, {
+      visitIfStatement: function(path) {
+          var stmt = path.node;
+          stmt.consequent = fix(stmt.consequent);
+
+          var alt = stmt.alternate;
+          if (!n.IfStatement.check(alt)) {
+              stmt.alternate = fix(alt);
+          }
+
+          this.traverse(path);
+      },
+
+      visitWhileStatement: visitLoop,
+      visitDoWhileStatement: visitLoop,
+      visitForStatement: visitLoop,
+      visitForInStatement: visitLoop
+  });
+}
+
+  function visitLoop(path) {
+      var loop = path.node;
+      loop.body = fix(loop.body);
+      this.traverse(path);
+  }
+
+  function fix(clause) {
+      if (clause) {
+          if (!n.BlockStatement.check(clause)) {
+              clause = b.blockStatement([clause]);
+          }
+      }
+
+      return clause;
+  }
+
+
+
+
+
+
+
   output = recast.print(ast).code;
+
+  // // Whenever Recast cannot reprint a modified node using the original source code, 
+  // // it falls back to using a generic pretty printer. 
+  // // So the worst that can happen is that your changes trigger some harmless 
+  // // reformatting of your code.
+  // //
+  // // If you really don't care about preserving the original formatting, 
+  // // you can access the pretty printer directly:
+  // output = recast.prettyPrint(ast, { 
+  //   tabWidth: 2,
+  //   quote: 'single' 
+  // }).code;
 
   return output;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -440,17 +440,32 @@ theory-left-recurs-01:
 # example of the use of the `%import symbols ...` statement: multi-phase engines
 compiled_calc:
 	$(JISON) ./$@_parse.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_parse.js
 	$(JISON) ./$@_codegen.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_codegen.js
 	$(JISON) ./$@_print.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_print.js
 	$(JISON) ./$@_sorcerer.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_sorcerer.js
 	$(JISON) ./$@_BURG.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_BURG.js
 	$(JISON) ./$@_parse_for_fast_engine.jison
+	# test if the generated JavaScript is viable at all:
+	node output/$@/$@_parse_for_fast_engine.js
 	#$(JISON) --main -t ./$@_exec.jison
 	$(JISON) --main ./$@_exec.jison
 	# postprocess generated source code:
-	node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
+	node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
 	# and run it!
-	#node output/$@/$@_exec.js $@_input.txt
+	node output/$@/$@_exec.js $@_input.txt
 
 
 handlebars-BAD:
