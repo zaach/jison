@@ -94,7 +94,9 @@
 
 
 
-%import symbols  "compiled_calc_AST_symbols.json5"
+
+// one grammar is MASTER for our common symbol set:
+%import symbols  "./output/compiled_calc/compiled_calc_parse.js"
 
 
 
