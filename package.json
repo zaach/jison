@@ -6,7 +6,7 @@
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.17-137",
+  "version": "0.4.17-138",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -45,10 +45,10 @@
     "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": ">=13.0.1",
-    "recast": "0.11.10",
+    "browserify": ">=13.1.0",
+    "recast": "0.11.12",
     "test": ">=0.6.0",
-    "uglify-js": ">=2.6.2"
+    "uglify-js": ">=2.7.1"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
