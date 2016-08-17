@@ -36,7 +36,6 @@
     "node": ">=0.9"
   },
   "dependencies": {
-    "cjson": ">=0.4.0",
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
     "json5": "0.5.0",
