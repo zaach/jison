@@ -2376,22 +2376,38 @@ function generateGenericHeaderComment() {
  */
 var generatorMixin = {};
 
-generatorMixin.generate = function parser_generate(opt) {
+// internal helper function:
+generatorMixin.__prepareOptions = function parser___prepare_Options(opt) {
     opt = typal.camelMix.call({}, this.options, opt);
     this.options = opt;
     this.DEBUG = opt.debug || false;
     if (this.DEBUG && devDebug) {
         Jison.print('GENERATE::OPTIONS:\n', this.options);
     }
-    var code = '';
 
     // check for illegal identifier
     if (!opt.moduleName || !opt.moduleName.match(/^[a-zA-Z_$][a-zA-Z0-9_$\.]*$/)) {
         if (opt.moduleName) {
-            console.warn('WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.');
+            var msg = 'WARNING: The specified moduleName "' + opt.moduleName + '" is illegal (only characters [a-zA-Z0-9_$] and "." dot are accepted); using the default moduleName "parser" instead.';
+            if (typeof opt.warn_cb === 'function') {
+                opt.warn_cb(msg);
+            } else if (opt.warn_cb) {
+                Jison.print(msg);
+            } else {
+                // do not treat as warning; barf hairball instead so that this oddity gets noticed right away!
+                throw new Error(msg);
+            }
         }
         opt.moduleName = 'parser';
     }
+    return opt;
+};
+
+generatorMixin.generate = function parser_generate(opt) {
+    opt = this.__prepareOptions(opt);
+
+    var code = '';
+
     switch (opt.moduleType) {
     case 'js':
         code = this.generateModule(opt);
@@ -2412,12 +2428,8 @@ generatorMixin.generate = function parser_generate(opt) {
 
 
 generatorMixin.generateAMDModule = function generateAMDModule(opt) {
-    opt = typal.camelMix.call({}, this.options, opt);
-    this.options = opt;
-    this.DEBUG = opt.debug || false;
-    if (this.DEBUG && devDebug) {
-        Jison.print('GENERATE-AMD::OPTIONS:\n', this.options);
-    }
+    opt = this.__prepareOptions(opt);
+
     var module = this.generateModule_();
     var out = [
         generateGenericHeaderComment(),
@@ -2443,12 +2455,8 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
 };
 
 lrGeneratorMixin.generateESModule = function generateESModule(opt){
-    opt = typal.camelMix.call({}, this.options, opt);
-    this.options = opt;
-    this.DEBUG = opt.debug || false;
-    if (this.DEBUG && devDebug) {
-        Jison.print('GENERATE-ES2015::OPTIONS:\n', this.options);
-    }
+    opt = this.__prepareOptions(opt);
+
     var module = this.generateModule_();
     var out = [
         generateGenericHeaderComment(),
@@ -2476,13 +2484,9 @@ lrGeneratorMixin.generateESModule = function generateESModule(opt){
 
 
 generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
-    opt = typal.camelMix.call({}, this.options, opt);
-    this.options = opt;
-    this.DEBUG = opt.debug || false;
-    if (this.DEBUG && devDebug) {
-        Jison.print('GENERATE-CommonJS::OPTIONS:\n', this.options);
-    }
-    var moduleName = opt.moduleName || 'parser';
+    opt = this.__prepareOptions(opt);
+
+    var moduleName = opt.moduleName;
     var main = [];
     if (!opt.noMain) {
         main = main.concat([
@@ -2509,13 +2513,9 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
 };
 
 generatorMixin.generateModule = function generateModule(opt) {
-    opt = typal.camelMix.call({}, this.options, opt);
-    this.options = opt;
-    this.DEBUG = opt.debug || false;
-    if (this.DEBUG && devDebug) {
-        Jison.print('GENERATE-Module::OPTIONS:\n', this.options);
-    }
-    var moduleName = opt.moduleName || 'parser';
+    opt = this.__prepareOptions(opt);
+
+    var moduleName = opt.moduleName;
     var out = generateGenericHeaderComment();
 
     var self = this;
@@ -2896,6 +2896,22 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
     var errorClassCode = this.generateErrorClass();
 
+    // set up the 'option' `exportAllTables` as a hash object for returning
+    // all generated tables to the caller
+    var exportDest = this.options.exportAllTables;
+    if (!exportDest || typeof exportDest !== 'object') {
+        exportDest = {
+            enabled: !!exportDest
+        };
+    } else {
+        exportDest.enabled = true;
+    }
+
+    // store the parse tables:
+    exportDest.parseTable = this.table;
+    exportDest.defaultParseActions = this.defaultActions;
+    exportDest.parseProductions = this.productions_;
+
     var tableCode;
     switch (this.options.compressTables | 0) {
     case 0: // no compression
@@ -2957,12 +2973,25 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         return nt;
     }
 
+    // swap key and value and then sort hash table by key to produce a nicer output:
+    function produceTerminalTable(tbl) {
+        var a = Object.keys(tbl);
+        var nt = {};
+        var k, v;
+        for (var i = 0, len = a.length; i < len; i++) {
+            k = a[i];
+            v = tbl[k];
+            nt[v] = +k;  // convert numeric key back to number type; all terminals have numeric keys 
+        }
+        return produceSymbolTable(nt);
+    }
+
     function produceProductionsForDebugging() {
         var tbl = this.nonterminals;
         var sym = this.symbols_;
         var options = this.options;
 
-        if (!options.outputDebugTables) {
+        if (!options.outputDebugTables && !options.exportAllTables) {
             return undefined;
         }
 
@@ -3138,6 +3167,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           lexfile: 1,
           moduleName: 1,
           moduleType: 1,
+          exportAllTables: 1,
         };
         for (var k in opts) {
             if (!do_not_pass[k]) {
@@ -3169,13 +3199,28 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
 
     // Generate the module creation code
-    var descrLst = JSON.stringify(produceTerminalDescriptions(this.descriptions_, this.symbols_), null, 2);
+    var termDescrs = produceTerminalDescriptions(this.descriptions_, this.symbols_);
+    exportDest.terminalDescriptions = termDescrs;
+    var descrLst = JSON.stringify(termDescrs, null, 2);
     if (descrLst) {
         descrLst = descrLst.replace(/"([0-9]+)":/g, '$1:');
     }
-    var rulesLst = JSON.stringify(produceProductionsForDebugging.call(this), null, 2);
+
+    var rules4Dbg = produceProductionsForDebugging.call(this);
+    exportDest.parseRules = rules4Dbg;
+    var rulesLst = (this.options.outputDebugTables ? JSON.stringify(rules4Dbg, null, 2) : undefined);
     if (rulesLst) {
         rulesLst = rulesLst.replace(/"([0-9]+)":/g, '$1:').replace(/^(\s+)"([a-z_][a-z_0-9]*)":/gmi, '$1$2:');
+    }
+
+    var symbolTable = produceSymbolTable(this.symbols_);
+    exportDest.symbolTable = symbolTable;
+
+    // produce a hash lookup table from the terminal set
+    exportDest.terminalTable = produceTerminalTable(this.terminals_);
+
+    if (this.options.exportAllTables) {
+        this.options.exportAllTables = exportDest;
     }
 
     var moduleCode = '{\n';
@@ -3184,7 +3229,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'JisonParserError: JisonParserError',
         'yy: {}',
         'options: ' + produceOptions(this.options),
-        'symbols_: ' + JSON.stringify(produceSymbolTable(this.symbols_), null, 2),
+        'symbols_: ' + JSON.stringify(symbolTable, null, 2),
         'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:'),
     ].concat(
         rulesLst ?
@@ -5659,7 +5704,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.17-138 */
+/* parser generated by jison 0.4.17-139 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -8285,7 +8330,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-138 */
+/* generated by jison-lex 0.3.4-139 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -9629,7 +9674,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-138",
+  "version": "0.3.4-139",
   "keywords": [
     "jison",
     "parser",
@@ -9670,7 +9715,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.17-138 */
+/* parser generated by jison 0.4.17-139 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -12397,7 +12442,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-138 */
+/* generated by jison-lex 0.3.4-139 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -34501,7 +34546,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.17-138",
+  "version": "0.4.17-139",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -34531,7 +34576,6 @@ module.exports={
     "node": ">=0.9"
   },
   "dependencies": {
-    "cjson": ">=0.4.0",
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
     "json5": "0.5.0",
