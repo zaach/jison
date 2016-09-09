@@ -33,7 +33,7 @@
     "jison": "lib/cli.js"
   },
   "engines": {
-    "node": ">=0.9"
+    "node": ">=4.0"
   },
   "dependencies": {
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
