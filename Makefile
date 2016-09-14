@@ -5,7 +5,7 @@ prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: build web-examples web/content/assets/js/jison.js compile-site 
+site: build test web-examples web/content/assets/js/jison.js compile-site 
 
 clean-site:
 	-@rm -rf web/tmp/
@@ -15,13 +15,13 @@ clean-site:
 	-rm web/content/assets/js/calculator.js
 
 # `make compile-site` will perform a quick (re)build of the web pages
-compile-site: 
+compile-site: web-examples web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
 	cd web/ && nanoc compile
 
-web/content/assets/js/jison.js: build test web-examples examples
+web/content/assets/js/jison.js: build
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 
