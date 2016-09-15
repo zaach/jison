@@ -167,13 +167,13 @@ exp:
 | ASSIGN exp
                                 {
                                   /*
-                                     Note: #assign is always to a simple variable, hence we don't need the `#VAR`
+                                     Note: #ASSIGN is always to a simple variable, hence we don't need the `#VAR`
                                      token here: it is implicit as there's nothing else we can do.
 
                                      Technically, this is an AST optimization, but it's such a fundamental one
                                      we do it here instead of later.
 
-                                     NOTE: #assign implies the presence of a VAR as lhs (left hand side) so it
+                                     NOTE: #ASSIGN implies the presence of a VAR as lhs (left hand side) so it
                                      would only be cluttering the AST stream to have a #VAR# token in there:
                                      it is *implicit* to #assign!
                                    */
