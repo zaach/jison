@@ -4596,11 +4596,11 @@ parser.parse = function parse(input, parseParams) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue, parseParams]);
+                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue, parseParams]);
+                rv = this.post_parse.call(this, sharedState.yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -4753,10 +4753,10 @@ _handle_error_end_of_section:                   // this concludes the error reco
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy, parseParams]);
+            this.pre_parse.call(this, sharedState.yy, parseParams);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy, parseParams]);
+            sharedState.yy.pre_parse.call(this, sharedState.yy, parseParams);
         }
 
         newState = sstack[sp - 1];
@@ -4980,7 +4980,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.apply(yyval, [yytext, yyleng, yylineno, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, stack, sstack, parseParams]);
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -8117,11 +8117,11 @@ parse: function parse(input) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue]);
+                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue]);
+                rv = this.post_parse.call(this, sharedState.yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -8244,10 +8244,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy]);
+            this.pre_parse.call(this, sharedState.yy);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy]);
+            sharedState.yy.pre_parse.call(this, sharedState.yy);
         }
 
         newState = sstack[sp - 1];
@@ -8437,7 +8437,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack]);
+                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -12320,11 +12320,11 @@ parse: function parse(input, options) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue, options]);
+                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue, options]);
+                rv = this.post_parse.call(this, sharedState.yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -12447,10 +12447,10 @@ parse: function parse(input, options) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy, options]);
+            this.pre_parse.call(this, sharedState.yy, options);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy, options]);
+            sharedState.yy.pre_parse.call(this, sharedState.yy, options);
         }
 
         newState = sstack[sp - 1];
@@ -12642,7 +12642,7 @@ parse: function parse(input, options) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.apply(yyval, [yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, options]);
+                r = this.performAction.call(yyval, yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, options);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
