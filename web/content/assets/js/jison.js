@@ -17295,11 +17295,11 @@ parse: function parse(input) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue]);
+                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue]);
+                rv = this.post_parse.call(this, sharedState.yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -17399,10 +17399,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy]);
+            this.pre_parse.call(this, sharedState.yy);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy]);
+            sharedState.yy.pre_parse.call(this, sharedState.yy);
         }
 
         newState = sstack[sp - 1];
@@ -17528,7 +17528,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack]);
+                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -21143,7 +21143,7 @@ parseError: function parseError(str, hash) {
         throw new this.JisonParserError(str, hash);
     }
 },
-parse: function parse(input) {
+parse: function parse(input, options) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
         sstack = new Array(128),        // state stack: stores states
@@ -21158,8 +21158,6 @@ parse: function parse(input) {
         EOF = this.EOF,
         ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
     var NO_ACTION = [0, table.length /* ensures that anyone using this new state will fail dramatically! */];
-
-    var args = stack.slice.call(arguments, 1);
 
     //this.reductionCount = this.shiftCount = 0;
 
@@ -21247,11 +21245,11 @@ parse: function parse(input) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue, options]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = this.post_parse.apply(this, [sharedState.yy, resultValue, options]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -21374,10 +21372,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy].concat(args));
+            this.pre_parse.apply(this, [sharedState.yy, options]);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
+            sharedState.yy.pre_parse.apply(this, [sharedState.yy, options]);
         }
 
         newState = sstack[sp - 1];
@@ -21569,7 +21567,7 @@ parse: function parse(input) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.apply(yyval, [yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, options]);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -23766,8 +23764,6 @@ parse: function parse(input) {
         ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
     var NO_ACTION = [0, table.length /* ensures that anyone using this new state will fail dramatically! */];
 
-    var args = stack.slice.call(arguments, 1);
-
     //this.reductionCount = this.shiftCount = 0;
 
     var lexer;
@@ -23850,11 +23846,11 @@ parse: function parse(input) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = this.post_parse.apply(this, [sharedState.yy, resultValue]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -23954,10 +23950,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy].concat(args));
+            this.pre_parse.apply(this, [sharedState.yy]);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
+            sharedState.yy.pre_parse.apply(this, [sharedState.yy]);
         }
 
         newState = sstack[sp - 1];
@@ -24083,7 +24079,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack]);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -27788,8 +27784,6 @@ parse: function parse(input) {
         ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
     var NO_ACTION = [0, table.length /* ensures that anyone using this new state will fail dramatically! */];
 
-    var args = stack.slice.call(arguments, 1);
-
     //this.reductionCount = this.shiftCount = 0;
 
     var lexer;
@@ -27872,11 +27866,11 @@ parse: function parse(input) {
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = sharedState.yy.post_parse.apply(this, [sharedState.yy, resultValue]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.apply(this, [sharedState.yy, resultValue].concat(args));
+                rv = this.post_parse.apply(this, [sharedState.yy, resultValue]);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -27999,10 +27993,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.apply(this, [sharedState.yy].concat(args));
+            this.pre_parse.apply(this, [sharedState.yy]);
         }
         if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.apply(this, [sharedState.yy].concat(args));
+            sharedState.yy.pre_parse.apply(this, [sharedState.yy]);
         }
 
         newState = sstack[sp - 1];
@@ -28192,7 +28186,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack].concat(args));
+                r = this.performAction.apply(yyval, [yytext, sharedState.yy, newState, sp - 1, vstack]);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
