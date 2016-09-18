@@ -40,7 +40,7 @@
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, $$, _$, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -551,61 +551,61 @@ productions_: bp({
   [1, 3]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
 
 switch (yystate) {
 case 1:
     /*! Production::    expressions : e EOF */
-    typeof console !== 'undefined' ? console.log($$[$0 - 1]) : print($$[$0 - 1]);
-    return $$[$0 - 1];
+    typeof console !== 'undefined' ? console.log(yyvstack[$0 - 1]) : print(yyvstack[$0 - 1]);
+    return yyvstack[$0 - 1];
     break;
 
 case 2:
     /*! Production::    e : e '+' e */
-    this.$ = $$[$0 - 2] + $$[$0];
+    this.$ = yyvstack[$0 - 2] + yyvstack[$0];
     break;
 
 case 3:
     /*! Production::    e : e '-' e */
-    this.$ = $$[$0 - 2] - $$[$0];
+    this.$ = yyvstack[$0 - 2] - yyvstack[$0];
     break;
 
 case 4:
     /*! Production::    e : e '*' e */
-    this.$ = $$[$0 - 2] * $$[$0];
+    this.$ = yyvstack[$0 - 2] * yyvstack[$0];
     break;
 
 case 5:
     /*! Production::    e : e '/' e */
-    this.$ = $$[$0 - 2] / $$[$0];
+    this.$ = yyvstack[$0 - 2] / yyvstack[$0];
     break;
 
 case 6:
     /*! Production::    e : e '^' e */
-    this.$ = Math.pow($$[$0 - 2], $$[$0]);
+    this.$ = Math.pow(yyvstack[$0 - 2], yyvstack[$0]);
     break;
 
 case 7:
     /*! Production::    e : e '!' */
     this.$ = (function fact(n) { 
       return n == 0 ? 1 : fact(n - 1) * n; 
-    })($$[$0 - 1]);
+    })(yyvstack[$0 - 1]);
     break;
 
 case 8:
     /*! Production::    e : e '%' */
-    this.$ = $$[$0 - 1] / 100;
+    this.$ = yyvstack[$0 - 1] / 100;
     break;
 
 case 9:
     /*! Production::    e : '-' e */
-    this.$ = -$$[$0];
+    this.$ = -yyvstack[$0];
     break;
 
 case 10:
     /*! Production::    e : '(' e ')' */
-    this.$ = $$[$0 - 1];
+    this.$ = yyvstack[$0 - 1];
     break;
 
 case 11:

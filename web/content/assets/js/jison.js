@@ -1096,7 +1096,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     actions.push('}');
 
-    var parameters = 'yytext, yyleng, yylineno, yyloc, yy, yystate /* action[1] */, $0, $$ /* vstack */, _$ /* lstack */, yystack, yysstack';
+    var parameters = 'yytext, yyleng, yylineno, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, yystack, yysstack';
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
     this.performAction = [].concat(
@@ -1111,13 +1111,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     // We allow these tokens to be referenced anywhere in your code as #TOKEN#.
     .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
         return provideSymbolAsSourcecode(sym);
-    })
-
-    // this is needed to have it replaced with TWO(2) `$` dollars:
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/ replace#Specifying_a_string_as_a_parameter
-    // --> you have to spec two $$ for the price of one $ when you want more than a single $ to appear in there.
-    .replace(/\byyvstack\b/g, '$$$$')
-    .replace(/\byylstack\b/g, '_$');
+    });
 
     var actionsBaseline = [
         'function parser__PerformAction(' + parameters + ') {',
@@ -1146,11 +1140,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     // hence the *boundary check* `\b` won't deliver as expected. Hence we'll have to wing it but we can, assured
     // in the knowledge that the 'sourcecode' we have here is a complete generated *function* which will include
     // the `function ` prelude and `}` postlude at least! Hence we can replace `\b` with `[^\w]` and we'll be good.
-    this.actionsUseValueTracking = analyzeFeatureUsage(this.performAction, /[^\w]\$\$[^\w]/g, 1);
+    this.actionsUseValueTracking = analyzeFeatureUsage(this.performAction, /\byyvstack\b/g, 1);
     // Ditto for the specific case where we are assigning a value to `$$`:
     this.actionsUseValueAssignment = analyzeFeatureUsage(this.performAction, /\bthis\.\$[^\w]/g, 0);
-    // Ditto for the expansion of `@name`, `@$` and `@n` to its `_$[n]` index expression:
-    this.actionsUseLocationTracking = analyzeFeatureUsage(this.performAction, /\b_\$[^\w]/g, 1);
+    // Ditto for the expansion of `@name`, `@$` and `@n` to its `yylstack[n]` index expression:
+    this.actionsUseLocationTracking = analyzeFeatureUsage(this.performAction, /\byylstack\b/g, 1);
     // Ditto for the specific case where we are assigning a value to `@$`:
     this.actionsUseLocationAssignment = analyzeFeatureUsage(this.performAction, /\bthis\._\$[^\w]/g, 0);
     // Note that the `#name`, `#$` and `#n` constructs are expanded directly to their symbol number without
@@ -1451,11 +1445,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     })
                     // replace semantic value references ($n) with stack value (stack[n])
                     .replace(/\$(-?\d+)\b/g, function (_, n) {
-                        return '$$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
+                        return 'yyvstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
                     })
                     // same as above for location references (@n)
                     .replace(/@(-?\d+)\b/g, function (_, n) {
-                        return '_$[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
+                        return 'yylstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
                     })
                     // same as above for token ID references (#n)
                     .replace(/#(-?\d+)\b/g, function (_, n) {
@@ -2292,7 +2286,7 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, $$, _$, yystack, yysstack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
         + ' *               `parser.parse(str, ...)`\n'
         + ' *\n'
@@ -2775,7 +2769,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
     if (!info.actionsUseYYLOC && !info.actionsUseLocationTracking && !info.actionsUseLocationAssignment) {
         actionFn = actionFn
-        .replace(/\byyloc, (.*?), _\$\s*\/\*\s*lstack\s*\*\//g, '$1');
+        .replace(/\byyloc, (.*?), yylstack\b/g, '$1');
 
         // remove:
         //
@@ -2815,7 +2809,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
     if (!info.actionsUseValueTracking && !info.actionsUseValueAssignment) {
         actionFn = actionFn
-        .replace(/, \$\$\s*\/\*\s*vstack\s*\*\//g, '');
+        .replace(/, yyvstack\b/g, '');
 
         // remove:
         //
@@ -6069,7 +6063,7 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, $$, _$, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -6771,16 +6765,16 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
 
 switch (yystate) {
 case 1:
     /*! Production::    lex : init definitions '%%' rules_and_epilogue */
-    this.$ = $$[$0];
-    if ($$[$0 - 2][0]) this.$.macros = $$[$0 - 2][0];
-    if ($$[$0 - 2][1]) this.$.startConditions = $$[$0 - 2][1];
-    if ($$[$0 - 2][2]) this.$.unknownDecls = $$[$0 - 2][2];
+    this.$ = yyvstack[$0];
+    if (yyvstack[$0 - 2][0]) this.$.macros = yyvstack[$0 - 2][0];
+    if (yyvstack[$0 - 2][1]) this.$.startConditions = yyvstack[$0 - 2][1];
+    if (yyvstack[$0 - 2][2]) this.$.unknownDecls = yyvstack[$0 - 2][2];
     // if there are any options, add them all, otherwise set options to NULL:
     // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
     for (var k in yy.options) {
@@ -6806,8 +6800,8 @@ case 2:
 
 case 3:
     /*! Production::    rules_and_epilogue : '%%' extra_lexer_module_code EOF */
-    if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
-      this.$ = { rules: [], moduleInclude: $$[$0 - 1] };
+    if (yyvstack[$0 - 1] && yyvstack[$0 - 1].trim() !== '') {
+      this.$ = { rules: [], moduleInclude: yyvstack[$0 - 1] };
     } else {
       this.$ = { rules: [] };
     }
@@ -6815,16 +6809,16 @@ case 3:
 
 case 4:
     /*! Production::    rules_and_epilogue : rules '%%' extra_lexer_module_code EOF */
-    if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
-      this.$ = { rules: $$[$0 - 3], moduleInclude: $$[$0 - 1] };
+    if (yyvstack[$0 - 1] && yyvstack[$0 - 1].trim() !== '') {
+      this.$ = { rules: yyvstack[$0 - 3], moduleInclude: yyvstack[$0 - 1] };
     } else {
-      this.$ = { rules: $$[$0 - 3] };
+      this.$ = { rules: yyvstack[$0 - 3] };
     }
     break;
 
 case 5:
     /*! Production::    rules_and_epilogue : rules EOF */
-    this.$ = { rules: $$[$0 - 1] };
+    this.$ = { rules: yyvstack[$0 - 1] };
     break;
 
 case 6:
@@ -6835,19 +6829,19 @@ case 6:
 
 case 7:
     /*! Production::    definitions : definition definitions */
-    this.$ = $$[$0];
-    if ($$[$0 - 1] != null) {
-      if ('length' in $$[$0 - 1]) {
+    this.$ = yyvstack[$0];
+    if (yyvstack[$0 - 1] != null) {
+      if ('length' in yyvstack[$0 - 1]) {
         this.$[0] = this.$[0] || {};
-        this.$[0][$$[$0 - 1][0]] = $$[$0 - 1][1];
-      } else if ($$[$0 - 1].type === 'names') {
+        this.$[0][yyvstack[$0 - 1][0]] = yyvstack[$0 - 1][1];
+      } else if (yyvstack[$0 - 1].type === 'names') {
         this.$[1] = this.$[1] || {};
-        for (var name in $$[$0 - 1].names) {
-          this.$[1][name] = $$[$0 - 1].names[name];
+        for (var name in yyvstack[$0 - 1].names) {
+          this.$[1][name] = yyvstack[$0 - 1].names[name];
         }
-      } else if ($$[$0 - 1].type === 'unknown') {
+      } else if (yyvstack[$0 - 1].type === 'unknown') {
         this.$[2] = this.$[2] || [];
-        this.$[2].push($$[$0 - 1].body);
+        this.$[2].push(yyvstack[$0 - 1].body);
       }
     }
     break;
@@ -6859,7 +6853,7 @@ case 8:
 
 case 9:
     /*! Production::    definition : NAME regex */
-    this.$ = [$$[$0 - 1], $$[$0]];
+    this.$ = [yyvstack[$0 - 1], yyvstack[$0]];
     break;
 
 case 10:
@@ -6882,19 +6876,19 @@ case 81:
     /*! Production::    module_code_chunk : CODE */
 case 83:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
-    this.$ = $$[$0];
+    this.$ = yyvstack[$0];
     break;
 
 case 12:
     /*! Production::    definition : '{' action_body '}' */
-    yy.actionInclude.push($$[$0 - 1]); this.$ = null;
+    yy.actionInclude.push(yyvstack[$0 - 1]); this.$ = null;
     break;
 
 case 13:
     /*! Production::    definition : ACTION */
 case 14:
     /*! Production::    definition : include_macro_code */
-    yy.actionInclude.push($$[$0]); this.$ = null;
+    yy.actionInclude.push(yyvstack[$0]); this.$ = null;
     break;
 
 case 15:
@@ -6904,61 +6898,61 @@ case 15:
 
 case 16:
     /*! Production::    definition : UNKNOWN_DECL */
-    this.$ = {type: 'unknown', body: $$[$0]};
+    this.$ = {type: 'unknown', body: yyvstack[$0]};
     break;
 
 case 17:
     /*! Production::    names_inclusive : START_COND */
-    this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 0;
+    this.$ = {type: 'names', names: {}}; this.$.names[yyvstack[$0]] = 0;
     break;
 
 case 18:
     /*! Production::    names_inclusive : names_inclusive START_COND */
-    this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 0;
+    this.$ = yyvstack[$0 - 1]; this.$.names[yyvstack[$0]] = 0;
     break;
 
 case 19:
     /*! Production::    names_exclusive : START_COND */
-    this.$ = {type: 'names', names: {}}; this.$.names[$$[$0]] = 1;
+    this.$ = {type: 'names', names: {}}; this.$.names[yyvstack[$0]] = 1;
     break;
 
 case 20:
     /*! Production::    names_exclusive : names_exclusive START_COND */
-    this.$ = $$[$0 - 1]; this.$.names[$$[$0]] = 1;
+    this.$ = yyvstack[$0 - 1]; this.$.names[yyvstack[$0]] = 1;
     break;
 
 case 21:
     /*! Production::    rules : rules rule */
-    this.$ = $$[$0 - 1]; this.$.push($$[$0]);
+    this.$ = yyvstack[$0 - 1]; this.$.push(yyvstack[$0]);
     break;
 
 case 22:
     /*! Production::    rules : rule */
 case 36:
     /*! Production::    name_list : NAME */
-    this.$ = [$$[$0]];
+    this.$ = [yyvstack[$0]];
     break;
 
 case 23:
     /*! Production::    rule : start_conditions regex action */
-    this.$ = $$[$0 - 2] ? [$$[$0 - 2], $$[$0 - 1], $$[$0]] : [$$[$0 - 1], $$[$0]];
+    this.$ = yyvstack[$0 - 2] ? [yyvstack[$0 - 2], yyvstack[$0 - 1], yyvstack[$0]] : [yyvstack[$0 - 1], yyvstack[$0]];
     break;
 
 case 24:
     /*! Production::    action : '{' action_body '}' */
 case 33:
     /*! Production::    start_conditions : '<' name_list '>' */
-    this.$ = $$[$0 - 1];
+    this.$ = yyvstack[$0 - 1];
     break;
 
 case 28:
     /*! Production::    unbracketed_action_body : unbracketed_action_body ACTION */
-    this.$ = $$[$0 - 1] + '\n' + $$[$0];
+    this.$ = yyvstack[$0 - 1] + '\n' + yyvstack[$0];
     break;
 
 case 30:
     /*! Production::    action_body : action_body '{' action_body '}' action_comments_body */
-    this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 4] + yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 31:
@@ -6980,7 +6974,7 @@ case 63:
     /*! Production::    regex_set : regex_set_atom regex_set */
 case 82:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
-    this.$ = $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 34:
@@ -6990,7 +6984,7 @@ case 34:
 
 case 37:
     /*! Production::    name_list : name_list ',' NAME */
-    this.$ = $$[$0 - 2]; this.$.push($$[$0]);
+    this.$ = yyvstack[$0 - 2]; this.$.push(yyvstack[$0]);
     break;
 
 case 38:
@@ -7017,7 +7011,7 @@ case 38:
     // `bar` to be the keyword, which is fine with us as we're only
     // interested in the trailing boundary and patching that one for
     // the `easy_keyword_rules` option.
-    this.$ = $$[$0];
+    this.$ = yyvstack[$0];
     if (yy.options.easy_keyword_rules) {
       // We need to 'protect' `eval` here as keywords are allowed
       // to contain double-quotes and other leading cruft.
@@ -7048,56 +7042,56 @@ case 38:
       // followed by zero or more alphanumerics or digits:
       var re = XRegExp('\\w[\\w\\d]*$', 'u');
       if (XRegExp.match(this.$, re)) {
-        this.$ = $$[$0] + "\\b";
+        this.$ = yyvstack[$0] + "\\b";
       } else {
-        this.$ = $$[$0];
+        this.$ = yyvstack[$0];
       }
     }
     break;
 
 case 41:
     /*! Production::    nonempty_regex_list : regex_concat '|' regex_list */
-    this.$ = $$[$0 - 2] + '|' + $$[$0];
+    this.$ = yyvstack[$0 - 2] + '|' + yyvstack[$0];
     break;
 
 case 42:
     /*! Production::    nonempty_regex_list : '|' regex_list */
-    this.$ = '|' + $$[$0];
+    this.$ = '|' + yyvstack[$0];
     break;
 
 case 46:
     /*! Production::    regex_base : '(' regex_list ')' */
-    this.$ = '(' + $$[$0 - 1] + ')';
+    this.$ = '(' + yyvstack[$0 - 1] + ')';
     break;
 
 case 47:
     /*! Production::    regex_base : SPECIAL_GROUP regex_list ')' */
-    this.$ = $$[$0 - 2] + $$[$0 - 1] + ')';
+    this.$ = yyvstack[$0 - 2] + yyvstack[$0 - 1] + ')';
     break;
 
 case 48:
     /*! Production::    regex_base : regex_base '+' */
-    this.$ = $$[$0 - 1] + '+';
+    this.$ = yyvstack[$0 - 1] + '+';
     break;
 
 case 49:
     /*! Production::    regex_base : regex_base '*' */
-    this.$ = $$[$0 - 1] + '*';
+    this.$ = yyvstack[$0 - 1] + '*';
     break;
 
 case 50:
     /*! Production::    regex_base : regex_base '?' */
-    this.$ = $$[$0 - 1] + '?';
+    this.$ = yyvstack[$0 - 1] + '?';
     break;
 
 case 51:
     /*! Production::    regex_base : '/' regex_base */
-    this.$ = '(?=' + $$[$0] + ')';
+    this.$ = '(?=' + yyvstack[$0] + ')';
     break;
 
 case 52:
     /*! Production::    regex_base : '/!' regex_base */
-    this.$ = '(?!' + $$[$0] + ')';
+    this.$ = '(?!' + yyvstack[$0] + ')';
     break;
 
 case 56:
@@ -7119,45 +7113,45 @@ case 62:
     /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
 case 78:
     /*! Production::    extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
-    this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 66:
     /*! Production::    regex_set_atom : name_expansion */
-    if (XRegExp._getUnicodeProperty($$[$0].replace(/[{}]/g, ''))
-        && $$[$0].toUpperCase() !== $$[$0]
+    if (XRegExp._getUnicodeProperty(yyvstack[$0].replace(/[{}]/g, ''))
+        && yyvstack[$0].toUpperCase() !== yyvstack[$0]
     ) {
         // treat this as part of an XRegExp `\p{...}` Unicode 'General Category' Property cf. http://unicode.org/reports/tr18/#Categories
-        this.$ = $$[$0];
+        this.$ = yyvstack[$0];
     } else {
-        this.$ = $$[$0];
+        this.$ = yyvstack[$0];
     }
     //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ });
     break;
 
 case 69:
     /*! Production::    string : STRING_LIT */
-    this.$ = prepareString($$[$0].substr(1, $$[$0].length - 2));
+    this.$ = prepareString(yyvstack[$0].substr(1, yyvstack[$0].length - 2));
     break;
 
 case 74:
     /*! Production::    option : NAME[option] */
-    yy.options[$$[$0]] = true;
+    yy.options[yyvstack[$0]] = true;
     break;
 
 case 75:
     /*! Production::    option : NAME[option] '=' OPTION_VALUE[value] */
 case 76:
     /*! Production::    option : NAME[option] '=' NAME[value] */
-    yy.options[$$[$0 - 2]] = $$[$0];
+    yy.options[yyvstack[$0 - 2]] = yyvstack[$0];
     break;
 
 case 79:
     /*! Production::    include_macro_code : INCLUDE PATH */
     var fs = require('fs');
-    var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+    var fileContent = fs.readFileSync(yyvstack[$0], { encoding: 'utf-8' });
     // And no, we don't support nested '%include':
-    this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
+    this.$ = '\n// Included by Jison: ' + yyvstack[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[$0] + '\n\n';
     break;
 
 case 80:
@@ -10172,7 +10166,7 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, $$, _$, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -10908,17 +10902,17 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yyloc, yy, yystate /* action[1] */, $0, $$ /* vstack */, _$ /* lstack */, options) {
+performAction: function parser__PerformAction(yytext, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
 /* this == yyval */
 
 switch (yystate) {
 case 1:
     /*! Production::    spec : declaration_list '%%' grammar optional_end_block EOF */
-    this.$ = $$[$0 - 4];
-    if ($$[$0 - 1] && $$[$0 - 1].trim() !== '') {
-        yy.addDeclaration(this.$, { include: $$[$0 - 1] });
+    this.$ = yyvstack[$0 - 4];
+    if (yyvstack[$0 - 1] && yyvstack[$0 - 1].trim() !== '') {
+        yy.addDeclaration(this.$, { include: yyvstack[$0 - 1] });
     }
-    return extend(this.$, $$[$0 - 2]);
+    return extend(this.$, yyvstack[$0 - 2]);
     break;
 
 case 3:
@@ -10951,7 +10945,7 @@ case 93:
     /*! Production::    module_code_chunk : CODE */
 case 95:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
-    this.$ = $$[$0];
+    this.$ = yyvstack[$0];
     break;
 
 case 4:
@@ -10965,55 +10959,55 @@ case 5:
     /*! Production::    optional_action_header_block : optional_action_header_block ACTION */
 case 6:
     /*! Production::    optional_action_header_block : optional_action_header_block include_macro_code */
-    this.$ = $$[$0 - 1];
-    yy.addDeclaration(this.$, { actionInclude: $$[$0] });
+    this.$ = yyvstack[$0 - 1];
+    yy.addDeclaration(this.$, { actionInclude: yyvstack[$0] });
     break;
 
 case 7:
     /*! Production::    declaration_list : declaration_list declaration */
-    this.$ = $$[$0 - 1]; yy.addDeclaration(this.$, $$[$0]);
+    this.$ = yyvstack[$0 - 1]; yy.addDeclaration(this.$, yyvstack[$0]);
     break;
 
 case 9:
     /*! Production::    declaration : START id */
-    this.$ = {start: $$[$0]};
+    this.$ = {start: yyvstack[$0]};
     break;
 
 case 10:
     /*! Production::    declaration : LEX_BLOCK */
-    this.$ = {lex: {text: $$[$0], position: _$[$0]}};
+    this.$ = {lex: {text: yyvstack[$0], position: yylstack[$0]}};
     break;
 
 case 11:
     /*! Production::    declaration : operator */
-    this.$ = {operator: $$[$0]};
+    this.$ = {operator: yyvstack[$0]};
     break;
 
 case 12:
     /*! Production::    declaration : TOKEN full_token_definitions */
-    this.$ = {token_list: $$[$0]};
+    this.$ = {token_list: yyvstack[$0]};
     break;
 
 case 13:
     /*! Production::    declaration : ACTION */
 case 14:
     /*! Production::    declaration : include_macro_code */
-    this.$ = {include: $$[$0]};
+    this.$ = {include: yyvstack[$0]};
     break;
 
 case 15:
     /*! Production::    declaration : parse_params */
-    this.$ = {parseParams: $$[$0]};
+    this.$ = {parseParams: yyvstack[$0]};
     break;
 
 case 16:
     /*! Production::    declaration : parser_type */
-    this.$ = {parserType: $$[$0]};
+    this.$ = {parserType: yyvstack[$0]};
     break;
 
 case 17:
     /*! Production::    declaration : options */
-    this.$ = {options: $$[$0]};
+    this.$ = {options: yyvstack[$0]};
     break;
 
 case 18:
@@ -11023,24 +11017,24 @@ case 18:
 
 case 19:
     /*! Production::    declaration : UNKNOWN_DECL */
-    this.$ = {unknownDecl: $$[$0]};
+    this.$ = {unknownDecl: yyvstack[$0]};
     break;
 
 case 20:
     /*! Production::    declaration : IMPORT import_name import_path */
-    this.$ = {imports: {name: $$[$0 - 1], path: $$[$0]}};
+    this.$ = {imports: {name: yyvstack[$0 - 1], path: yyvstack[$0]}};
     break;
 
 case 21:
     /*! Production::    declaration : INIT_CODE import_name action_ne */
-    this.$ = {initCode: {qualifier: $$[$0 - 1], include: $$[$0]}};
+    this.$ = {initCode: {qualifier: yyvstack[$0 - 1], include: yyvstack[$0]}};
     break;
 
 case 26:
     /*! Production::    options : OPTIONS option_list OPTIONS_END */
 case 77:
     /*! Production::    action_ne : '{' action_body '}' */
-    this.$ = $$[$0 - 1];
+    this.$ = yyvstack[$0 - 1];
     break;
 
 case 27:
@@ -11049,7 +11043,7 @@ case 38:
     /*! Production::    token_list : token_list symbol */
 case 49:
     /*! Production::    id_list : id_list id */
-    this.$ = $$[$0 - 1]; this.$.push($$[$0]);
+    this.$ = yyvstack[$0 - 1]; this.$.push(yyvstack[$0]);
     break;
 
 case 28:
@@ -11060,24 +11054,24 @@ case 50:
     /*! Production::    id_list : id */
 case 56:
     /*! Production::    handle_list : handle_action */
-    this.$ = [$$[$0]];
+    this.$ = [yyvstack[$0]];
     break;
 
 case 29:
     /*! Production::    option : NAME[option] */
-    this.$ = [$$[$0], true];
+    this.$ = [yyvstack[$0], true];
     break;
 
 case 30:
     /*! Production::    option : NAME[option] '=' OPTION_VALUE[value] */
 case 31:
     /*! Production::    option : NAME[option] '=' NAME[value] */
-    this.$ = [$$[$0 - 2], $$[$0]];
+    this.$ = [yyvstack[$0 - 2], yyvstack[$0]];
     break;
 
 case 34:
     /*! Production::    operator : associativity token_list */
-    this.$ = [$$[$0 - 1]]; this.$.push.apply(this.$, $$[$0]);
+    this.$ = [yyvstack[$0 - 1]]; this.$.push.apply(this.$, yyvstack[$0]);
     break;
 
 case 35:
@@ -11098,12 +11092,12 @@ case 37:
 case 40:
     /*! Production::    full_token_definitions : optional_token_type id_list */
     var rv = [];
-    var lst = $$[$0];
+    var lst = yyvstack[$0];
     for (var i = 0, len = lst.length; i < len; i++) {
         var id = lst[i];
         var m = {id: id};
-        if ($$[$0 - 1]) {
-            m.type = $$[$0 - 1];
+        if (yyvstack[$0 - 1]) {
+            m.type = yyvstack[$0 - 1];
         }
         rv.push(m);
     }
@@ -11112,9 +11106,9 @@ case 40:
 
 case 41:
     /*! Production::    full_token_definitions : optional_token_type one_full_token */
-    var m = $$[$0];
-    if ($$[$0 - 1]) {
-        m.type = $$[$0 - 1];
+    var m = yyvstack[$0];
+    if (yyvstack[$0 - 1]) {
+        m.type = yyvstack[$0 - 1];
     }
     this.$ = [m];
     break;
@@ -11122,24 +11116,24 @@ case 41:
 case 42:
     /*! Production::    one_full_token : id token_value token_description */
     this.$ = {
-        id: $$[$0 - 2],
-        value: $$[$0 - 1]
+        id: yyvstack[$0 - 2],
+        value: yyvstack[$0 - 1]
     };
     break;
 
 case 43:
     /*! Production::    one_full_token : id token_description */
     this.$ = {
-        id: $$[$0 - 1],
-        description: $$[$0]
+        id: yyvstack[$0 - 1],
+        description: yyvstack[$0]
     };
     break;
 
 case 44:
     /*! Production::    one_full_token : id token_value */
     this.$ = {
-        id: $$[$0 - 1],
-        value: $$[$0],
+        id: yyvstack[$0 - 1],
+        value: yyvstack[$0],
         description: $token_description
     };
     break;
@@ -11151,44 +11145,44 @@ case 45:
 
 case 51:
     /*! Production::    grammar : optional_action_header_block production_list */
-    this.$ = $$[$0 - 1];
-    this.$.grammar = $$[$0];
+    this.$ = yyvstack[$0 - 1];
+    this.$.grammar = yyvstack[$0];
     break;
 
 case 52:
     /*! Production::    production_list : production_list production */
-    this.$ = $$[$0 - 1];
-    if ($$[$0][0] in this.$) {
-        this.$[$$[$0][0]] = this.$[$$[$0][0]].concat($$[$0][1]);
+    this.$ = yyvstack[$0 - 1];
+    if (yyvstack[$0][0] in this.$) {
+        this.$[yyvstack[$0][0]] = this.$[yyvstack[$0][0]].concat(yyvstack[$0][1]);
     } else {
-        this.$[$$[$0][0]] = $$[$0][1];
+        this.$[yyvstack[$0][0]] = yyvstack[$0][1];
     }
     break;
 
 case 53:
     /*! Production::    production_list : production */
-    this.$ = {}; this.$[$$[$0][0]] = $$[$0][1];
+    this.$ = {}; this.$[yyvstack[$0][0]] = yyvstack[$0][1];
     break;
 
 case 54:
     /*! Production::    production : id ':' handle_list ';' */
-    this.$ = [$$[$0 - 3], $$[$0 - 1]];
+    this.$ = [yyvstack[$0 - 3], yyvstack[$0 - 1]];
     break;
 
 case 55:
     /*! Production::    handle_list : handle_list '|' handle_action */
-    this.$ = $$[$0 - 2];
-    this.$.push($$[$0]);
+    this.$ = yyvstack[$0 - 2];
+    this.$.push(yyvstack[$0]);
     break;
 
 case 57:
     /*! Production::    handle_action : handle prec action */
-    this.$ = [($$[$0 - 2].length ? $$[$0 - 2].join(' ') : '')];
-    if ($$[$0]) {
-        this.$.push($$[$0]);
+    this.$ = [(yyvstack[$0 - 2].length ? yyvstack[$0 - 2].join(' ') : '')];
+    if (yyvstack[$0]) {
+        this.$.push(yyvstack[$0]);
     }
-    if ($$[$0 - 1]) {
-        this.$.push($$[$0 - 1]);
+    if (yyvstack[$0 - 1]) {
+        this.$.push(yyvstack[$0 - 1]);
     }
     if (this.$.length === 1) {
         this.$ = this.$[0];
@@ -11198,8 +11192,8 @@ case 57:
 case 58:
     /*! Production::    handle_action : EPSILON action */
     this.$ = [''];
-    if ($$[$0]) {
-        this.$.push($$[$0]);
+    if (yyvstack[$0]) {
+        this.$.push(yyvstack[$0]);
     }
     if (this.$.length === 1) {
         this.$ = this.$[0];
@@ -11208,8 +11202,8 @@ case 58:
 
 case 59:
     /*! Production::    handle : handle expression_suffix */
-    this.$ = $$[$0 - 1];
-    this.$.push($$[$0]);
+    this.$ = yyvstack[$0 - 1];
+    this.$.push(yyvstack[$0]);
     break;
 
 case 60:
@@ -11219,18 +11213,18 @@ case 60:
 
 case 61:
     /*! Production::    handle_sublist : handle_sublist '|' handle */
-    this.$ = $$[$0 - 2];
-    this.$.push($$[$0].join(' '));
+    this.$ = yyvstack[$0 - 2];
+    this.$.push(yyvstack[$0].join(' '));
     break;
 
 case 62:
     /*! Production::    handle_sublist : handle */
-    this.$ = [$$[$0].join(' ')];
+    this.$ = [yyvstack[$0].join(' ')];
     break;
 
 case 63:
     /*! Production::    expression_suffix : expression suffix ALIAS */
-    this.$ = $$[$0 - 2] + $$[$0 - 1] + "[" + $$[$0] + "]";
+    this.$ = yyvstack[$0 - 2] + yyvstack[$0 - 1] + "[" + yyvstack[$0] + "]";
     break;
 
 case 64:
@@ -11239,7 +11233,7 @@ case 88:
     /*! Production::    action_comments_body : action_comments_body ACTION_BODY */
 case 94:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
-    this.$ = $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 66:
@@ -11248,16 +11242,16 @@ case 66:
     // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
     // to be able to handle all tokens, including *significant space*
     // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
-    if ($$[$0].indexOf("'") >= 0) {
-        this.$ = '"' + $$[$0] + '"';
+    if (yyvstack[$0].indexOf("'") >= 0) {
+        this.$ = '"' + yyvstack[$0] + '"';
     } else {
-        this.$ = "'" + $$[$0] + "'";
+        this.$ = "'" + yyvstack[$0] + "'";
     }
     break;
 
 case 67:
     /*! Production::    expression : '(' handle_sublist ')' */
-    this.$ = '(' + $$[$0 - 1].join(' | ') + ')';
+    this.$ = '(' + yyvstack[$0 - 1].join(' | ') + ')';
     break;
 
 case 68:
@@ -11273,7 +11267,7 @@ case 96:
 
 case 72:
     /*! Production::    prec : PREC symbol */
-    this.$ = { prec: $$[$0] };
+    this.$ = { prec: yyvstack[$0] };
     break;
 
 case 73:
@@ -11283,29 +11277,29 @@ case 73:
 
 case 80:
     /*! Production::    action_ne : ARROW_ACTION */
-    this.$ = '$$ =' + $$[$0] + ';';
+    this.$ = '$$ =' + yyvstack[$0] + ';';
     break;
 
 case 85:
     /*! Production::    action_body : action_body '{' action_body '}' action_comments_body */
-    this.$ = $$[$0 - 4] + $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 4] + yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 86:
     /*! Production::    action_body : action_body '{' action_body '}' */
-    this.$ = $$[$0 - 3] + $$[$0 - 2] + $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 90:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
-    this.$ = $$[$0 - 2] + $$[$0 - 1] + $$[$0];
+    this.$ = yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 91:
     /*! Production::    include_macro_code : INCLUDE PATH */
-    var fileContent = fs.readFileSync($$[$0], { encoding: 'utf-8' });
+    var fileContent = fs.readFileSync(yyvstack[$0], { encoding: 'utf-8' });
     // And no, we don't support nested '%include':
-    this.$ = '\n// Included by Jison: ' + $$[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $$[$0] + '\n\n';
+    this.$ = '\n// Included by Jison: ' + yyvstack[$0] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[$0] + '\n\n';
     break;
 
 case 92:
@@ -16493,7 +16487,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.18-150 */
+/* parser generated by jison 0.4.18-151 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -17731,7 +17725,7 @@ parse: function parse(input) {
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
-/* generated by jison-lex 0.3.4-150 */
+/* generated by jison-lex 0.3.4-151 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
