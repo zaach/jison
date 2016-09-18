@@ -1236,7 +1236,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         while (pos1 >= 0 || pos2 >= 0) {
             var pos = pos1;
             var marker = "'";
-            if (pos >= 0 && pos2 >= 0 && pos2 < pos) {
+            if (pos < 0) {
+                assert(pos2 >= 0);
+                pos = pos2;
+                marker = '"';
+            } else if (pos >= 0 && pos2 >= 0 && pos2 < pos) {
                 pos = pos2;
                 marker = '"';
             }
@@ -2897,7 +2901,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
          *     ... __reentrant_call_depth ...
          */
         parseFn = parseFn
-        .replace(/\s+try \{([\s\r\n]+for \(;;\) \{[\s\S]+?)\} catch \(ex\) \{[\s\S]+?\} finally \{([^\}]+)\}/, function replace_noTryCatch(m, p1, p2) {
+        .replace(/\s+try \{([\s\S]+?)\} catch \(ex\) \{[\s\S]+?\} finally \{([^\}]+)\}/, function replace_noTryCatch(m, p1, p2) {
             p1 = p1.replace(/^        /mg, '    ');
             p2 = p2.replace(/^        /mg, '    ');
             return '\n' + p1 + '\n    // ... AND FINALLY ...\n' + p2;
@@ -4701,8 +4705,6 @@ parser.parse = function parse(input, parseParams) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    //
-    //       The function resets itself to the previous set up one to support reentrant parsers.
     this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
         var rv;
 
@@ -8247,8 +8249,6 @@ parse: function parse(input) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    //
-    //       The function resets itself to the previous set up one to support reentrant parsers.
     this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
         var rv;
 
@@ -12450,8 +12450,6 @@ parse: function parse(input, options) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    //
-    //       The function resets itself to the previous set up one to support reentrant parsers.
     this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
         var rv;
 
