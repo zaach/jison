@@ -476,6 +476,46 @@ exports["test 'semantic whitespace' edge case which could break the parser gener
     assert.equal(rv, 42);
 };
 
+// same as previous test, only now all single quotes are swapped for double quotes:
+exports["test quotes around 'semantic whitespace'"] = function() {
+    var lexData = {
+        rules: [
+           ["\\ ", "return ' ';"],
+           ['" "', "return ' ';"],
+           ["x", "yytext = 7; return 'x';"],
+        ]
+    };
+    var grammar = {
+        startSymbol: "G",
+        ebnf: {
+            "G" :[ ['A', 'return $A;'] ],
+            "A" :[ ['A ( " " )+ x', '$$ = $1 + $x + $2.join(" ").length;'],
+                   ['', '$$ = 0;'] ]
+        }
+    };
+
+    var input = " x  x x x x";
+    var gen = new Jison.Generator(grammar);
+    gen.lexer = new Lexer(lexData);
+
+    var parserSource = gen.generateAMDModule();
+    var parser = null,
+        define = function(deps, callback) {
+            // temporary AMD-style define function, for testing.
+            if (!callback) {
+                // no deps array:
+                parser = deps();
+            } else {
+                parser = callback();
+            }
+        };
+    //console.log('source: ', parserSource);
+    eval(parserSource);
+
+    var rv = parser.parse(input);
+    assert.equal(rv, 42);
+};
+
 // test `%import symbols` functionality
 exports["test %import statement"] = function () {
     var grammar =
