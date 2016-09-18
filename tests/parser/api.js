@@ -183,7 +183,7 @@ exports["test yy shared scope"] = function () {
 };
 
 
-exports["test optional token declaration"] = function () {
+exports["test parser generator selection"] = function () {
 
     var grammar = {
         options: {type: "slr"},
@@ -301,7 +301,7 @@ exports["test whether default parser error handling throws an exception"] = func
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
-    parser.lexer.showPosition = null; // needed for "Unexpected" message
+//    parser.lexer.showPosition = null; // needed for "Unexpected" message
 
     assert.throws(function () { parser.parse("xx"); });
 };
@@ -536,3 +536,347 @@ exports["test multiple invocations of the cleanupAfterParse API should be surviv
     assert.ok(typeof parser.quoteName === 'function');
     assert.ok(parser.quoteName === parser.originalQuoteName);
 };
+
+// See if `$$` is properly returned by the grammar when there's no explicit `return` statement in the actions:
+exports["test default parse value return of $$"] = function () {
+    var grammar = "\n" +
+        "%%\n" +
+        "A :\n" +
+        "  A x %{ $$ = $A + $x; %}\n" +
+        "| A y %{ $$ = $A + $y; %}\n" +
+        "|     %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    var rv = parser.parse('xyx');
+    assert.ok(rv === 'exyx', "parse xyx");
+};
+
+exports["test YY shared state usage"] = function () {
+    var grammar = "\n" +
+        "%%\n" +
+        "A :\n" +
+        "  A x %{ $$ = $A + $x; yy.step1++; %}\n" +
+        "| A y %{ $$ = $A + $y; yy.step2++; %}\n" +
+        "|     %{ $$ = 'e';     yy.step3++; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+
+    // this shared state object won't be changed by the parser: 
+    // it only serves as the init values set.
+    var shared_state_base = {
+        step1: 0,
+        step2: 0,
+        step3: 0,
+
+        pre_parse: function(yy) {
+            // obtain and store reference to the shared state object that's actually used!
+            work_state = yy; 
+        }
+    };
+    var work_state;
+    parser.yy = shared_state_base;
+
+    var rv = parser.parse('xyx');
+    //console.log('shared state = ', parser.yy, shared_state_base, work_state);
+    assert.ok(rv === 'exyx', "parse xyx");
+    assert.ok(shared_state_base.step1 === 0, "object to initialize shared state should not be modified");
+    assert.ok(shared_state_base.step2 === 0, "object to initialize shared state should not be modified");
+    assert.ok(shared_state_base.step3 === 0, "object to initialize shared state should not be modified");
+
+    assert.ok(parser.yy === shared_state_base, "yy reference of parser object points to object used to initialize shared state");
+
+    assert.ok(work_state !== shared_state_base, "yy reference passed to parser callbacks must be the active shared state object");
+    assert.ok(work_state.step1 === 2, "yy reference available in parser rule actions must be the active shared state object");
+    assert.ok(work_state.step2 === 1, "yy reference available in parser rule actions must be the active shared state object");
+    assert.ok(work_state.step3 === 1, "yy reference available in parser rule actions must be the active shared state object");
+};
+
+exports["test default parse exception hash object contents"] = function () {
+    var grammar = "\n" +
+        "%%\n" +
+        "A :\n" +
+        "  A x   %{ $$ = $A + $x; %}\n" +
+        "| A y x %{ $$ = $A + $y + ':' + $x; %}\n" +
+        "|       %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var pre_count = 0;
+    var post_count = 0;
+    var shared_state = {
+        pre_parse: function () { 
+            pre_count++;
+        },
+        post_parse: function () { 
+            post_count++;
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    parser.yy = shared_state;
+
+    // a good run: no errors:
+    var rv = parser.parse('xyx');
+
+    assert.ok(rv === 'exy:x', "parse xyx");
+    assert.ok(pre_count === 1);
+    assert.ok(post_count === 1);
+
+    // a bad run: a LEXER exception will be thrown:
+    // Thanks to the parser kernel catching it and transforming it to 
+    // a PARSER error, we will receive it here as a PARSER exception
+    // (with a nested LEXER exception)
+    rv = false;
+    try {
+        rv = parser.parse('xyx?');
+        assert.ok(false, "parser run is expected to FAIL");
+    } catch (ex) {
+        rv = ex;
+        assert.ok(rv.hash, "exception is supposed to be a parser/lexer exception, hence it should have a hash member");
+        var kl = Object.keys(rv.hash).sort();
+        // the `hash` object is supposed to carry all these members:
+        const kl_sollwert = [ 
+          'action',
+          'destroy',
+          'errStr',
+          'exception',
+          'expected',
+          'lexer',
+          'line',
+          //'loc',
+          'new_state',
+          'recoverable',
+          'stack_pointer',
+          'state',
+          'state_stack',
+          'symbol_stack',
+          'text',
+          'token',
+          'token_id',
+          'value',
+          'value_stack',
+          'yy' 
+        ];
+        assert.ok(kl.length === kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
+        for (var i = 0, l = kl.length; i < l; i++) {
+            assert.ok(kl[i] === kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members");
+        }
+
+        // exception is supposed to contain a LEXER exception:
+        rv = rv.hash.exception;
+        assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
+        var kl = Object.keys(rv.hash).sort();
+        // the `hash` object is supposed to carry all these members:
+        const kl_sollwert2 = [ 
+          // 'action',
+          // 'destroy',
+          // 'errStr',
+          // 'exception',
+          // 'expected',
+          'lexer',
+          'line',
+          'loc',
+          // 'new_state',
+          // 'recoverable',
+          // 'stack_pointer',
+          // 'state',
+          // 'state_stack',
+          // 'symbol_stack',
+          'text',
+          'token',
+          // 'token_id',
+          // 'value',
+          // 'value_stack',
+          // 'yy' 
+        ];
+        assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
+        for (var i = 0, l = kl.length; i < l; i++) {
+            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members");
+        }
+    }
+    assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
+    assert.ok(post_count === 2, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
+
+    // a bad run: a PARSER exception will be thrown:
+    rv = false;
+    try {
+        rv = parser.parse('xyyx');
+        assert.ok(false, "parser run is expected to FAIL");
+    } catch (ex) {
+        rv = ex;
+        assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
+        var kl = Object.keys(rv.hash).sort();
+        // the `hash` object is supposed to carry all these members:
+        const kl_sollwert = [ 
+          'action',
+          'destroy',
+          'errStr',
+          'exception',
+          'expected',
+          'lexer',
+          'line',
+          //'loc',
+          'new_state',
+          'recoverable',
+          'stack_pointer',
+          'state',
+          'state_stack',
+          'symbol_stack',
+          'text',
+          'token',
+          'token_id',
+          'value',
+          'value_stack',
+          'yy' 
+        ];
+        assert.ok(kl.length === kl_sollwert.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
+        for (var i = 0, l = kl.length; i < l; i++) {
+            assert.ok(kl[i] === kl_sollwert[i], "the PARSER `hash` object is supposed to carry specific members");
+        }
+    }
+    assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
+    assert.ok(post_count === 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
+};
+
+// a side-effect of a crash/exception thrown in a no-try-catch grammar is that the cleanup is NOT executed then,
+// hence no post_parse callback invocation will occur!
+//
+// For the rest, this test is the same as the previous one...
+exports["test %options no-try-catch"] = function () {
+    var grammar = "%options no-try-catch\n" +
+        "%%\n" +
+        "A :\n" +
+        "  A x   %{ $$ = $A + $x; %}\n" +
+        "| A y x %{ $$ = $A + $y + ':' + $x; %}\n" +
+        "|       %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var pre_count = 0;
+    var post_count = 0;
+    var shared_state = {
+        pre_parse: function () { 
+            pre_count++;
+        },
+        post_parse: function () { 
+            post_count++;
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+    parser.yy = shared_state;
+
+    // a good run: no errors:
+    var rv = parser.parse('xyx');
+
+    assert.ok(rv === 'exy:x', "parse xyx");
+    assert.ok(pre_count === 1);
+    assert.ok(post_count === 1);
+
+    // a bad run: a LEXER exception will be thrown:
+    //
+    // The *parser* no longer has a try/catch block in its kernel, hence
+    // lexer errors/exceptions will arrive here unadorned!
+    //
+    // I.e. the lexer exception won't be wrapped in a parser exception!
+    rv = false;
+    try {
+        rv = parser.parse('xyx?');
+        assert.ok(false, "parser run is expected to FAIL");
+    } catch (ex) {
+        rv = ex;
+        assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
+
+        assert(rv.hash.exception === undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
+
+        var kl = Object.keys(rv.hash).sort();
+        // the `hash` object is supposed to carry all these members:
+        const kl_sollwert2 = [ 
+          //'action',
+          //'destroy',
+          //'errStr',
+          //'exception',
+          //'expected',
+          'lexer',
+          'line',
+          'loc',
+          //'new_state',
+          //'recoverable',
+          //'stack_pointer',
+          //'state',
+          //'state_stack',
+          //'symbol_stack',
+          'text',
+          'token',
+          //'token_id',
+          //'value',
+          //'value_stack',
+          //'yy' 
+        ];
+        assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
+        for (var i = 0, l = kl.length; i < l; i++) {
+            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members");
+        }
+    }
+    assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
+    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+
+    // a bad run: a PARSER exception will be thrown:
+    rv = false;
+    try {
+        rv = parser.parse('xyyx');
+        assert.ok(false, "parser run is expected to FAIL");
+    } catch (ex) {
+        rv = ex;
+        assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
+        var kl = Object.keys(rv.hash).sort();
+        // the `hash` object is supposed to carry all these members:
+        const kl_sollwert = [ 
+          'action',
+          'destroy',
+          'errStr',
+          'exception',
+          'expected',
+          'lexer',
+          'line',
+          //'loc',
+          'new_state',
+          'recoverable',
+          'stack_pointer',
+          'state',
+          'state_stack',
+          'symbol_stack',
+          'text',
+          'token',
+          'token_id',
+          'value',
+          'value_stack',
+          'yy' 
+        ];
+        assert.ok(kl.length === kl_sollwert.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
+        for (var i = 0, l = kl.length; i < l; i++) {
+            assert.ok(kl[i] === kl_sollwert[i], "the PARSER `hash` object is supposed to carry specific members");
+        }
+    }
+    assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
+    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+};
+
+
+
+
+// %options on-demand-lookahead    // camelCased: option.onDemandLookahead
+// %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+// %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
+
+// %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
+
+
