@@ -4820,7 +4820,10 @@ _lexer_with_token_stack_end:
     var symbol = 0;
     var preErrorSymbol = 0;
     var state, action, r, t;
-    var yyval = {};
+    var yyval = {
+        $: true,
+        _$: undefined
+    };
     var p, len, this_production;
     var lstack_begin, lstack_end;
     var newState;
@@ -8342,7 +8345,10 @@ parse: function parse(input) {
     var symbol = 0;
     var preErrorSymbol = 0;
     var state, action, r, t;
-    var yyval = {};
+    var yyval = {
+        $: true,
+        _$: undefined
+    };
     var p, len, this_production;
 
     var newState;
@@ -12543,7 +12549,10 @@ parse: function parse(input, options) {
     var symbol = 0;
     var preErrorSymbol = 0;
     var state, action, r, t;
-    var yyval = {};
+    var yyval = {
+        $: true,
+        _$: undefined
+    };
     var p, len, this_production;
     var lstack_begin, lstack_end;
     var newState;
@@ -16529,7 +16538,7 @@ if (typeof exports !== 'undefined') {
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, $$, _$, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -17051,25 +17060,25 @@ productions_: bp({
   [9, 7]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, $$ /* vstack */) {
+performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
 
 switch (yystate) {
 case 1:
     /*! Production::    production : handle EOF */
-    return $$[$0 - 1];
+    return yyvstack[$0 - 1];
     break;
 
 case 2:
     /*! Production::    handle_list : handle */
 case 7:
     /*! Production::    rule : expression_suffixed */
-    this.$ = [$$[$0]];
+    this.$ = [yyvstack[$0]];
     break;
 
 case 3:
     /*! Production::    handle_list : handle_list '|' handle */
-    $$[$0 - 2].push($$[$0]);
+    yyvstack[$0 - 2].push(yyvstack[$0]);
     break;
 
 case 4:
@@ -17081,36 +17090,36 @@ case 5:
 
 case 6:
     /*! Production::    handle : rule */
-    this.$ = $$[$0];
+    this.$ = yyvstack[$0];
     break;
 
 case 8:
     /*! Production::    rule : rule expression_suffixed */
-    $$[$0 - 1].push($$[$0]);
+    yyvstack[$0 - 1].push(yyvstack[$0]);
     break;
 
 case 9:
     /*! Production::    expression_suffixed : expression suffix ALIAS */
-    this.$ = ['xalias', $$[$0 - 1], $$[$0 - 2], $$[$0]];
+    this.$ = ['xalias', yyvstack[$0 - 1], yyvstack[$0 - 2], yyvstack[$0]];
     break;
 
 case 10:
     /*! Production::    expression_suffixed : expression suffix */
-    if ($$[$0]) {
-      this.$ = [$$[$0], $$[$0 - 1]];
+    if (yyvstack[$0]) {
+      this.$ = [yyvstack[$0], yyvstack[$0 - 1]];
     } else {
-      this.$ = $$[$0 - 1];
+      this.$ = yyvstack[$0 - 1];
     }
     break;
 
 case 11:
     /*! Production::    expression : SYMBOL */
-    this.$ = ['symbol', $$[$0]];
+    this.$ = ['symbol', yyvstack[$0]];
     break;
 
 case 12:
     /*! Production::    expression : '(' handle_list ')' */
-    this.$ = ['()', $$[$0 - 1]];
+    this.$ = ['()', yyvstack[$0 - 1]];
     break;
 
 }

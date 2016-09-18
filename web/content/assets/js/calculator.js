@@ -985,7 +985,10 @@ parse: function parse(input) {
     var symbol = 0;
 
     var state, action, r, t;
-    var yyval = {};
+    var yyval = {
+        $: true,
+        _$: undefined
+    };
     var p, len, this_production;
 
     var newState;
