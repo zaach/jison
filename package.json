@@ -38,16 +38,17 @@
   "dependencies": {
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
-    "json5": "0.5.0",
     "lex-parser": "GerHobbelt/lex-parser#master",
+    "recast": "0.11.14",
+    "jscodeshift": "0.3.28",
+    "json5": "0.5.0",
     "nomnom": "GerHobbelt/nomnom#master",
     "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": ">=13.1.0",
-    "recast": "0.11.13",
-    "test": ">=0.6.0",
-    "uglify-js": ">=2.7.3"
+    "browserify": "13.1.0",
+    "test": "0.6.0",
+    "uglify-js": "2.7.3"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
