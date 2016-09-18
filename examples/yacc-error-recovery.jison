@@ -106,7 +106,7 @@ menu_command :    label  default  EXEC          '\n'
              |    label  default  olvwm_cmd_arg '\n'
              |    label  error                  '\n'
           { printf("Invalid menu item (%s) at line %d is invalid\n",
-                    $1,@1.first_line);
+                    $1, @1.first_line);
           }
              ;
 
@@ -243,6 +243,8 @@ olvwm_cmd_arg : DIRMENU EXEC
 %%
 
 
-
+function printf(str /* , ... */) {
+  console.log.apply(null, arguments);
+}
 
 

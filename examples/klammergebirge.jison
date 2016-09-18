@@ -52,7 +52,7 @@ var assert = require("assert");
 parser.main = function () {
     var rv = parser.parse('<<<><><>><>><>');
     console.log("<<<><><>><>><> ==> ", rv);
-    assert.equal(rv, '++S..._._.');
+    assert.equal(rv, '++..._._.');
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

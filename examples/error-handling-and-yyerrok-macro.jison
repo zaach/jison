@@ -42,9 +42,6 @@ line : error '\n'
     | A '\n'
     ;
 
-prompt : /* null token */
-        { console.log("Please reenter line.\n"); }
-    ;
 
 /*
  * In some situations, you may want yyerror() to be called
