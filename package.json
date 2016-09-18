@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "browserify": "13.1.0",
+    "glob": "^7.0.6",
     "test": "0.6.0",
     "uglify-js": "2.7.3"
   },
