@@ -85,7 +85,9 @@ When you are happy with the result, you can apply the new (previously bumped) ve
 
 ---
 
-TL;DR: run these commands to bump our version, nuke all installed NPM packages and thus erase any and all dependencies on some older bit of jison; then fetch the latest of the repositories and build all:
+## TL;DR
+
+Run these commands to bump your version, nuke all installed NPM packages and thus erase any and all dependencies on some older bit of jison; then fetch the latest of the repositories and build all:
 
 	make bump
 

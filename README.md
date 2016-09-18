@@ -1,5 +1,6 @@
 Jison
 =====
+
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](mailto:jison@librelist.com)
 
@@ -14,6 +15,7 @@ Briefly, Jison takes a JSON encoded grammar or Bison style grammar and outputs a
 
 Installation
 ------------
+
 Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github.com/isaacs/npm/)
 
 Using npm:
@@ -58,7 +60,7 @@ Full cli option list:
 Usage from a CommonJS module
 ----------------------------
 
-You can generate parsers programatically from JavaScript as well. Assuming Jison is in your CommonJS environment's load path:
+You can generate parsers programmatically from JavaScript as well. Assuming Jison is in your CommonJS environment's load path:
 
 ```javascript
 // mygenerator.js
@@ -96,6 +98,7 @@ parser.parse("adfe34bc zxg");
 
 More Documentation
 ------------------
+
 For more information on creating grammars and using the generated parsers, read the [documentation](http://jison.org/docs).
 
 How to contribute
@@ -111,6 +114,7 @@ View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison),
 
 Contributors
 ------------
+
 [Githubbers](http://github.com/zaach/jison/contributors)
 
 Special thanks to Jarred Ligatti, Manuel E. Bermúdez
@@ -118,7 +122,7 @@ Special thanks to Jarred Ligatti, Manuel E. Bermúdez
 License
 -------
 
-> Copyright (c) 2009-2014 Zachary Carter
+> Copyright (c) 2009-2016 Zachary Carter
 >
 >  Permission is hereby granted, free of
 > charge, to any person  obtaining a
