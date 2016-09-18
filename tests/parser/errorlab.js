@@ -145,7 +145,7 @@ exports["test throws error despite recovery rule"] = function() {
 
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
-    assert.doesNotThrow(function () { parser.parse("0+0+0>"); });     // here we except behaviour different from vanilla jison as our error recovery handling is a bit more sophisticated and this error is coped with
+    assert.doesNotThrow(function () { parser.parse("0+0+0>"); });     // here we expect behaviour different from vanilla jison as our error recovery handling is a bit more sophisticated and this error is coped with
 };
 
 exports["test error recovery rule on replacement error"] = function() {
