@@ -714,7 +714,7 @@ exports["test default parse exception hash object contents"] = function () {
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
-        const kl_sollwert = [ 
+        const kl_sollwert3 = [ 
           'action',
           'destroy',
           'errStr',
@@ -736,9 +736,9 @@ exports["test default parse exception hash object contents"] = function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
+        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
@@ -839,7 +839,7 @@ exports["test %options no-try-catch"] = function () {
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
-        const kl_sollwert = [ 
+        const kl_sollwert3 = [ 
           'action',
           'destroy',
           'errStr',
@@ -861,9 +861,9 @@ exports["test %options no-try-catch"] = function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
+        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
@@ -961,7 +961,7 @@ exports["test %options on-demand-lookahead"] = function () {
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
-        const kl_sollwert = [ 
+        const kl_sollwert3 = [ 
           'action',
           'destroy',
           'errStr',
@@ -983,9 +983,9 @@ exports["test %options on-demand-lookahead"] = function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
+        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
