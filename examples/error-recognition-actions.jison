@@ -40,17 +40,13 @@ lines : lines line
  * The easiest way to generate an error message is to associate a
  * recognition action with the grammar rule that recognizes the error.
  * You can do something simple:
- */
-
-statement : error
-        {
-            console.log("You made an error!\n");
-        }
-    ;
-
-
-
-/* 
+ * 
+ *     statement : error
+ *         {
+ *             console.log("You made an error!\n");
+ *         }
+ *     ;
+ * 
  * or you can be fancier:
  */
 
