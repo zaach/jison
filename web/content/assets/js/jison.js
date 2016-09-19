@@ -4519,7 +4519,7 @@ for (var api in api_set) {
 parser.parse = function parse(input, parseParams) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
-        sstack = new Array(128),        // state stack: stores states
+        sstack = new Array(128),        // state stack: stores states (column storage)
         tstack = [],                    // token stack (only used when `%options token_stack` support has been enabled)
         vstack = new Array(128),        // semantic value stack
         lstack = new Array(128),        // location stack
@@ -8158,7 +8158,7 @@ parseError: function parseError(str, hash) {
 parse: function parse(input) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
-        sstack = new Array(128),        // state stack: stores states
+        sstack = new Array(128),        // state stack: stores states (column storage)
 
         vstack = new Array(128),        // semantic value stack
 
@@ -12358,7 +12358,7 @@ parseError: function parseError(str, hash) {
 parse: function parse(input, options) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
-        sstack = new Array(128),        // state stack: stores states
+        sstack = new Array(128),        // state stack: stores states (column storage)
 
         vstack = new Array(128),        // semantic value stack
         lstack = new Array(128),        // location stack
