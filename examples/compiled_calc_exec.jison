@@ -50,7 +50,8 @@
 
 
 
-%import symbols  "compiled_calc_AST_symbols.json5"
+// one grammar is MASTER for our common symbol set:
+%import symbols  "./output/compiled_calc/compiled_calc_parse.js"
 
 
 
@@ -62,6 +63,7 @@
 %token      VAR FUNCTION    // Variable and Function
 %token      CONSTANT        // Predefined Constant Value, e.g. PI or E
 %token      ERROR           // Mark error in statement
+%token      COMMENT         // A line (or multiple lines) of comment
 
 %token      END             // token to mark the end of a function argument list in the output token stream
 %token      FUNCTION_0      // optimization: function without any input parameters
@@ -113,9 +115,9 @@
 
 
 
-/* camelCased: option.onDemandLookahead */
-%options on-demand-lookahead
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
@@ -129,50 +131,56 @@ input:
                                 {
                                   $$ = [];
                                 }
-| input line
+| input line EOL
                                 {
                                   $input.push($line);
+                                  $$ = $input;
+                                }
+| input COMMENT EOL
+                                {
+                                  console.log('COMMENT line(s): ', $COMMENT);
                                   $$ = $input;
                                 }
 ;
 
 line:
-  exp EOL
+  exp
                                 {
                                   console.log('expression result value: ', $exp);
                                   $$ = $exp;
                                 }
-| ERROR EOL
+| ERROR
                                 {
                                   console.log('expression result value: ERROR - erroneous input line');
                                   $$ = NaN;
                                 }
 ;
 
+
 exp:
   NUM
                                 { $$ = $NUM; }
 | CONSTANT
-                                { $$ = $CONSTANT; }
+                                { $$ = yy.constants[$CONSTANT].value; }
 | VAR
-                                { $$ = yy.variables[$VAR]; }
+                                { $$ = yy.variables[$VAR].value; }
 | ASSIGN exp
                                 {
                                   /*
-                                     Note: #assign is always to a simple variable, hence we don't need the `#VAR`
+                                     Note: #ASSIGN is always to a simple variable, hence we don't need the `#VAR`
                                      token here: it is implicit as there's nothing else we can do.
 
                                      Technically, this is an AST optimization, but it's such a fundamental one
                                      we do it here instead of later.
 
-                                     NOTE: #assign implies the presence of a VAR as lhs (left hand side) so it
+                                     NOTE: #ASSIGN implies the presence of a VAR as lhs (left hand side) so it
                                      would only be cluttering the AST stream to have a #VAR# token in there:
                                      it is *implicit* to #assign!
                                    */
-                                  $$ = yy.variables[$ASSIGN] = $exp;
+                                  $$ = yy.variables[$ASSIGN].value = $exp;
                                 }
 | FUNCTION_0
-                                { $$ = $FUNCTION_0.call(globalSpace); }
+                                { $$ = yy.functions[$FUNCTION_0].func.call(globalSpace); }
 | FUNCTION arglist END
                                 {
                                   /*
@@ -204,19 +212,19 @@ exp:
                                      such opcodes always have to be terminated by a sentinel to make the AST grammar
                                      unambiguous.
                                   */
-                                  $$ = $FUNCTION.apply(globalSpace, $arglist);
+                                  $$ = yy.functions[$FUNCTION].func.apply(globalSpace, $arglist);
                                 }
 | FUNCTION_1 exp
                                 {
-                                  $$ = $FUNCTION_1.call(globalSpace, $exp);
+                                  $$ = yy.functions[$FUNCTION_1].func.call(globalSpace, $exp);
                                 }
 | FUNCTION_2 exp exp
                                 {
-                                  $$ = $FUNCTION_2.call(globalSpace, $exp1, $exp2);
+                                  $$ = yy.functions[$FUNCTION_2].func.call(globalSpace, $exp1, $exp2);
                                 }
 | FUNCTION_3 exp exp exp
                                 {
-                                  $$ = $FUNCTION_3.call(globalSpace, $exp1, $exp2, $exp3);
+                                  $$ = yy.functions[$FUNCTION_3].func.call(globalSpace, $exp1, $exp2, $exp3);
                                 }
 
 | EQ exp exp
@@ -264,7 +272,7 @@ exp:
 | PERCENT exp
                                 { $$ = $exp / 100; }
 | FACTORIAL exp
-                                { $$ = yy.functions.factorial.call(globalSpace, $exp); }
+                                { $$ = yy.predefined_functions.factorial.call(globalSpace, $exp); }
 
 | BITWISE_NOT exp
                                 { $$ = ~$exp; }
@@ -397,11 +405,56 @@ parser.main = function compiledRunner(args) {
 
     var source = require('fs').readFileSync(require('path').normalize(args[1]), 'utf8');
 
+    console.warn("\n\n\n@@@ 1 : FRONT-END PARSE PHASE @@@\n\n\n");
+
     // Front End parse: read human input and produce a token stream i.e. serialized AST:
+    compiled_calc_parse.yy.parseError = function (msg, info) {
+      //compiled_calc_parse.originalParseError(msg, info);
+      console.log('### parse Error: ', msg, {
+        text: info.text,
+        matched_already: info.lexer && info.lexer.matched
+      });
+      if (info.yy) {
+        // prevent reference cycle (memory leak opportunity!): create a new object instead of just referencing `info`:
+        info.yy.lastErrorInfo = {
+          errStr: msg,
+          exception: info.exception,
+          text: info.text,
+          value: info.value,
+          token: info.token,
+          token_id: info.token_id,
+          line: info.line,
+          loc: info.loc,
+          expected: info.expected,
+          recoverable: info.recoverable,
+          state: info.state,
+          action: info.action,
+          new_state: info.new_state,
+          // and limit the stacks to the valid portion, i.e. index [0..stack_pointer-1]:
+          symbol_stack: info.symbol_stack && info.symbol_stack.slice(0, info.stack_pointer),
+          state_stack: info.state_stack && info.state_stack.slice(0, info.stack_pointer),
+          value_stack: info.value_stack && info.value_stack.slice(0, info.stack_pointer).map(function (v) {
+            // and remove any cyclic self-references from the vstack copy:
+            if (v && v === info.yy.lastErrorInfo) {
+              return NaN;
+            }
+          }),
+          location_stack: info.location_stack && info.location_stack.slice(0, info.stack_pointer),
+          stack_pointer: info.stack_pointer,
+          //yy: info.yy,
+          //lexer: info.lexer,
+        };
+      }
+
+      // and prevent memory leaks via ref cycles:
+      info.destroy();
+    };
     var toklst = compiled_calc_parse.parse(source);
 
     console.log('parsed token list: ', JSON.stringify(toklst, null, 2));
 
+    console.warn("\n\n\n@@@ 2 : INTERPRETER BACK-END PARSE PHASE @@@\n\n\n");
+    
     const param_count_per_opcode = generate_opcode_param_count_table();
 
     // Now set up the second parser's custom lexer: this bugger should munch the token stream. Fast!
@@ -418,11 +471,11 @@ parser.main = function compiledRunner(args) {
         this.__input__ = input;
         this.__input_length__ = input.length;
         // reset cursor position:
-        this.__cusor_pos__ = 0;
+        this.__cursor_pos__ = 0;
       },
 
       lex: function lex2() {
-        console.log('LEX: input token list: ', this.__input__.slice(this.__cursor_pos__));
+        console.log('LEX: input token list: ', this.__input__.slice(this.__cursor_pos__), '@cursor:', this.__cursor_pos__);
         if (this.__input_length__ - this.__cursor_pos__ > 0) {
           var l = this.__input__;
           var c = this.__cursor_pos__;
@@ -432,9 +485,8 @@ parser.main = function compiledRunner(args) {
           console.log('shift TOKEN from token list: ', t, parser.describeSymbol(Math.abs(t)));
 
           // marked token ID indicates that a VALUE is following on its heels...
-          if (t < 0) {
-            t = -t;
-
+          var n = param_count_per_opcode[t];
+          if (n) {
             // also pop value:
             var v = l[c];
             c++;
@@ -454,8 +506,12 @@ parser.main = function compiledRunner(args) {
 
     // Execute the second parser: takes a formula/expression token stream as input and
     // spits out the calculated value per line:
-    parser.parse(toklst);
+    var calc_output = parser.parse(toklst);
+    console.log('calculated result from interpreter: ', calc_output);
 
+
+    console.warn("\n\n\n@@@ 3 : COMPILER BACK-END PARSE PHASE @@@\n\n\n");
+    
 
     // Now set up the third parser's custom lexer: this bugger should munch the token stream. Fast!
     compiled_calc_codegen.__lexer__ = parser.__lexer__;
@@ -466,12 +522,17 @@ parser.main = function compiledRunner(args) {
     console.log('generated source code: ', sourcecode);
 
 
+    console.warn("\n\n\n@@@ 4 : PRETTY-PRINTING BACK-END PARSE PHASE @@@\n\n\n");
+    
+
     // Now set up the fourth parser's custom lexer: this bugger should munch the token stream. Fast!
     compiled_calc_print.__lexer__ = parser.__lexer__;
+    compiled_calc_print.options.debug = true;
 
     // Execute the fourth parser: : takes a formula/expression token stream as input and
     // spits out the human-readable formatted formula per line:
-    compiled_calc_print.parse(toklst);
+    var human_output = compiled_calc_print.parse(toklst);
+    console.log('generated human-readable pretty-print output: ', human_output);
 
     return 2;
 };

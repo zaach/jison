@@ -17,7 +17,7 @@ zz          return 'ZZ';
 ")"         return ')';
 \n          return '\n';
 \s+         // ignore
-<<EOF>>     return EOF;
+<<EOF>>     return 'EOF';
 
 /lex
 

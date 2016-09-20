@@ -8,6 +8,8 @@ exports.testTables = require("./tables");
 exports.testPrecedence = require("./precedence");
 exports.testGenerator = require("./generator");
 exports.testErrorLab = require("./errorlab");
+exports.testExampleGrammars = require("./example-grammars");
 
-if (require.main === module)
-    require("test").run(exports);
+if (require.main === module) {
+  require("test").run(exports);
+}

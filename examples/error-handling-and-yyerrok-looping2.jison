@@ -18,7 +18,7 @@ zz          return 'ZZ';
 ")"         return ')';
 \n          return '\n';
 \s+         // ignore
-<<EOF>>     return EOF;
+<<EOF>>     return 'EOF';
 
 /lex
 
@@ -29,43 +29,47 @@ zz          return 'ZZ';
 /*
  * Infinite Loop Example
  * ---------------------
- * 
- * In this case we have an infinite look because yyerrok will cause the Bison error 
+ *
+ * In this case we have an infinite loop because yyerrok will cause the Bison error
  * scanning to prematurely leave the error processing loop.
- * 
- * The code
- * 
+ *
  */
 
 
-%token YY ZZ 
+%token YY ZZ
 
 %%
 
 slist : slist stmt ';' { console.log("** stmt\n"); }
-      | stmt ';'       { console.log("** stmt\n"); }
-; 
+      | stmt ';'       {
+                         console.log("** stmt\n");
+                       }
+;
 
 stmt  : ZZ
-      | error          
+      | error          {
+                         if (!yy.error_count) { yy.error_count = 1; } else { yy.error_count++; }
+
+                         console.log("** error #" + yy.error_count + "\n");
+                       }
 ;
 
 %%
 
 /*
- * 
- * The input is simply 
+ *
+ * The input is simply
  *
  *      yy
  *
- * On the left with the call to yyerrok we find an infinite loop! On the right without 
- * yyerrok we find the input token is discarded and the parser moves on to the next 
- * statement. However, the error count is set and an error immediately following will be 
- * missed as in 
+ * On the left with the call to yyerrok we find an infinite loop! On the right without
+ * yyerrok we find the input token is discarded and the parser moves on to the next
+ * statement. However, the error count is set and an error immediately following will be
+ * missed as in
  *
- *      yy ; yy ; 
+ *      yy ; yy ;
  *
- * I find the response on the left to look very much like a bug to me. It should never 
+ * I find the response on the left to look very much like a bug to me. It should never
  * let me build an infinite loop in the parser.
  *
  *
@@ -77,7 +81,7 @@ stmt  : ZZ
  * Shifting error token, Entering state 1                                  Shifting error token, Entering state 1
  * Reducing via rule 4 (line 33), error  -> stmt                           Reducing via rule 4 (line 33), error  -> stmt
  * state stack now 0                                                       state stack now 0
- * Entering state 4                                                        Entering state 4 
+ * Entering state 4                                                        Entering state 4
  * Next token is 257 (YY)                                                  Next token is 257 (YY)
  * ERROR lineno(1):parse error, expecting `';''.  I got: yy             |  Discarding token 257 (YY).
  * Error: state stack now 0                                                Error: state stack now 0
@@ -98,8 +102,8 @@ stmt  : ZZ
  * Shifting error token, Entering state 1                               <
  * Reducing via rule 4 (line 33), error  -> stmt                        <
  * state stack now 0                                                    <
- * Entering state 4                                                     < 
- * Next token is 257 (YY)                                               < 
+ * Entering state 4                                                     <
+ * Next token is 257 (YY)                                               <
  * ERROR lineno(1):parse error, expecting `';''.  I got: yy             <
  * Error: state stack now 0                                             <
  * Shifting error token, Entering state 1                               <
@@ -107,7 +111,7 @@ stmt  : ZZ
  * state stack now 0                                                    <
  *      .                                                               <
  *      .                                                               <
- *      .                                                               < 
+ *      .                                                               <
  *                                                                      <
  *   forever!                                                           <
  *
@@ -118,6 +122,6 @@ stmt  : ZZ
 
 
 /*
- * Continued in error-handling-and-yyerrok-loopfix.jison ... 
+ * Continued in error-handling-and-yyerrok-loopfix.jison ...
  */
 

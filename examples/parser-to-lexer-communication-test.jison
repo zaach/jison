@@ -9,8 +9,10 @@
  * delay there too?
  */
 
-%debug
+//%debug                                           // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 %options output-debug-tables
+%options no-default-action                         // cost is within noise band. Seems ~0.5-1%
+%options no-try-catch                              // cost is within noise band. Seems ~1-2%
 
 
 %lex
@@ -42,60 +44,95 @@
 
 
 S
-    : init e                    -> console.log('S:complete = ', $e);
+    : init x x e                -> parser.trace('S:complete = ', $e);
     ;
 
 init
-    : %epsilon                  -> console.log('init:epsilon');
+    : %epsilon                  -> parser.trace('init:epsilon');
     ;
 
 x
-    : %epsilon                  -> console.log('X:epsilon');                    $$ = '<epsilon>';
+    : %epsilon                  -> parser.trace('X:epsilon');                    $$ = '<X-epsilon>';
     ;
 
 e
-    : cmd e                     -> console.log('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e;
-    | %epsilon                  -> console.log('e:epsilon');                    $$ = '<epsilon>';
+    : cmd e                     -> parser.trace('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e;
+    | %epsilon                  -> parser.trace('e:epsilon');                    $$ = '<E-epsilon>';
     ;
 
 cmd
-    : a                         -> console.log('cmd:a');                        $$ = $a;
-    | f_a                       -> console.log('cmd:function a()');             $$ = $f_a;
-    | b                         -> console.log('cmd:b');                        $$ = $b;
-    | f_b                       -> console.log('cmd:function b()');             $$ = $f_b;
-    | error                     -> console.log('cmd:error', $error);            yyerrok; yyclearin; $$ = 'ERROR';
+    : a                         -> parser.trace('cmd:a');                        $$ = $a;
+    | f_a                       -> parser.trace('cmd:function a()');             $$ = $f_a;
+    | b                         -> parser.trace('cmd:b');                        $$ = $b;
+    | f_b                       -> parser.trace('cmd:function b()');             $$ = $f_b;
+    | error                     -> parser.trace('cmd:error', get_reduced_error_info_obj($error) || $error);            yyerrok; yyclearin; $$ = 'ERROR';
     ;
 
 a
-    : A                         -> console.log('a:A');                          $$ = 'A[' + $A + ']';
+    : A                         -> parser.trace('a:A');                          $$ = 'A[' + $A + ']';
     ;
 
 f_a
-    : A lb e rb                 -> console.log('function a:', $e);              $$ = 'A' + $lb + $e + $rb;
+    : A lb e rb                 -> parser.trace('function a:', $e);              $$ = 'A' + $lb + $e + $rb;
     ;
 
 b
-    : B                         -> console.log('b:B');                          $$ = 'B[' + $B + ']';
+    : B                         -> parser.trace('b:B');                          $$ = 'B[' + $B + ']';
     ;
 
 f_b
-    : B lb e rb                 -> console.log('function b:', $e);              $$ = 'B' + $lb + $e + $rb;
+    : B lb e rb                 -> parser.trace('function b:', $e);              $$ = 'B' + $lb + $e + $rb;
     ;
 
 lb
-    : '('                       -> console.log('lb+PUSH:[(] '); yy.lexer.pushState('alt'); $$ = '(';
-    | BEGIN                     -> console.log('lb:[alt-(] '); $$ = '{';
+    : '('                       -> parser.trace('lb+PUSH:[(] '); yy.lexer.pushState('alt'); $$ = '(';
+    | BEGIN                     -> parser.trace('lb:[alt-(] '); $$ = '{';
     ;
 
 rb
-    : ')'                       -> console.log('lb:[)] ');                      $$ = ')';
-    | END                       -> console.log('lb+POP:[alt-)] '); yy.lexer.popState(); $$ = '}';
+    : ')'                       -> parser.trace('lb:[)] ');                      $$ = ')';
+    | END                       -> parser.trace('lb+POP:[alt-)] '); yy.lexer.popState(); $$ = '}';
     ;
 
 %%
 
+
+%include 'benchmark.js'
+
+
+// rephrase for display: error info objects which have been pushed onto the vstack:
+function get_filtered_value_stack(vstack) {
+    var rv = [];
+    for (var i = 0, len = vstack.length; i < len; i++) {
+        var o = vstack[i];
+        if (o && o.errStr) {
+            o = '#ERRORINFO#: ' + o.errStr;
+        }
+        rv.push(o);
+    }
+    return rv;
+}
+
+function get_reduced_error_info_obj(hash) {
+    if (!hash || !hash.errStr) {
+        return null;
+    }
+    return {
+        text: hash.text,
+        token: hash.token,
+        token_id: hash.token_id,
+        expected: hash.expected,
+        matched: (hash.lexer && hash.lexer.matched) || '(-nada-)',
+        lexerConditionStack: (hash.lexer && hash.lexer.conditionStack) || '(???)',
+        remaining_input: (hash.lexer && hash.lexer._input) || '(-nada-)',
+        recoverable: hash.recoverable,
+        state_stack: hash.state_stack,
+        value_stack: get_filtered_value_stack(hash.value_stack)
+    };    
+}
+
 parser.main = function compiledRunner(args) {
-    var inp = 'xxx((x)x)xxx';
+    var inp = 'xxx(x(x)x)xxx';
     console.log('input = ', inp);
 
 
@@ -108,18 +145,43 @@ parser.main = function compiledRunner(args) {
             msg = hash.exception.message;
             //console.log('ex:', hash.exception, hash.exception.stack);
         }
-        console.log("### ERROR: " + msg, hash);
+        console.log("### ERROR: " + msg, get_reduced_error_info_obj(hash));
         if (hash && hash.lexer) {
             hash.lexer.yytext = hash;
         };
     };
 
     parser.lexer.options.post_lex = function (tok) {
-        console.log('lexer produces one token: ', tok, parser.describeSymbol(tok));
+        parser.trace('lexer produces one token: ', tok, parser.describeSymbol(tok));
     };
-     
 
-    parser.parse(inp);
+    parser.options.debug = false;     
+
+    function execute() {
+        parser.parse(inp);
+    }
+
+    if (0) {
+        execute();
+    } else {
+        // nuke the console output via trace() and output minimal progress while we run the benchmark:
+        parser.trace = function nada_trace() {};
+        // make sure to disable debug output at all, so we only get the conditional check as cost when `%debug` is enabled for this grammar
+        parser.options.debug = false;     
+
+        // track number of calls for minimal/FAST status update while benchmarking... 
+        var logcount = 0;
+        parser.post_parse = function (tok) {
+            logcount++;
+            if (logcount % 5000 === 0) {
+                console.log('run #', logcount);
+            }
+        };
+
+        bench(execute, 0, 10e3, null, function () {
+            console.log('run #', logcount);
+        });
+    }
 
     return 0;
 };

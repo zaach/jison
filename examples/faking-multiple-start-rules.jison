@@ -529,7 +529,7 @@ parser.main = function () {
     //
     // Note that this one has an extra feature: it returns a special (truthy) 'parse value'
     // which will be returned by the parse() call when this handler was invoked: this is 
-    // very useful to quicklly make the parse process a known result even when errors have
+    // very useful to quickly make the parse process a known result even when errors have
     // occurred: 
     parser.parseError = function altParseError(msg, hash) {
         if (hash && hash.exception) {

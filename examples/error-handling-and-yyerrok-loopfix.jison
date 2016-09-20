@@ -18,7 +18,7 @@ zz          return 'ZZ';
 ")"         return ')';
 \n          return '\n';
 \s+         // ignore
-<<EOF>>     return EOF;
+<<EOF>>     return 'EOF';
 
 /lex
 
@@ -40,25 +40,28 @@ zz          return 'ZZ';
 %%
 
 slist : slist stmt ';' { console.log("** stmt\n"); }
-      | stmt ';'       { yyerrok; console.log("** stmt\n"); }
-; 
+      | stmt ';'       {
+                         yyerrok;
+                         console.log("** stmt\n");
+                       }
+;
 
 stmt  : ZZ
-      | error 
-; 
+      | error
+;
 
 %%
 
 /*
- * 
+ *
  * References
  * ----------
  *
- * A good brief description of Bison error token usage can be found in the bison manual: 
+ * A good brief description of Bison error token usage can be found in the bison manual:
  * The Bison Manual (2002 version of the book) for version 1.35.
- * 
- * Also information can be found our book: 
- * Compiler Construction: Principles and Practice by Kenneth Louden, ISBN: 0534939724, 
+ *
+ * Also information can be found our book:
+ * Compiler Construction: Principles and Practice by Kenneth Louden, ISBN: 0534939724,
  * Published by Brooks and Cole. Pages 247-250.
  *
  *
