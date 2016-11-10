@@ -48,13 +48,56 @@ Full cli option list:
     file        file containing a grammar
     lexfile     file containing a lexical grammar
 
-    Options:
-       -j, --json                    force jison to expect a grammar in JSON format
-       -o FILE, --outfile FILE       Filename and base module name of the generated parser
-       -t, --debug                   Debug mode
-       -m TYPE, --module-type TYPE   The type of module to generate (commonjs, amd, js)
-       -p TYPE, --parser-type TYPE   The type of algorithm to use for the parser (lr0, slr, lalr, lr)
-       -V, --version                 print version and exit
+Where the available `options` are:
+
+:   -j, --json
+force jison to expect a grammar in JSON format  [false]
+
+:   -o FILE, --outfile FILE                    
+Filepath and base module name of the generated parser; when terminated with a / (dir separator) it is treated as the destination directory where the generated output will be stored
+
+:   -t, --debug                                
+Debug mode  [false]
+
+:   -m TYPE, --module-type TYPE                
+The type of module to generate (commonjs, amd, es, js)  [commonjs]
+
+:   -n NAME, --module-name NAME                
+The name of the generated parser object, namespace supported
+
+:   -p TYPE, --parser-type TYPE                
+The type of algorithm to use for the parser (lr0, slr, lalr, lr, ll)  [lalr]
+
+:   -c, --compress-tables                      
+Output compressed parser tables in generated modules (0 = no compression, 1 = default compression, 2 = deep compression)  [2]
+
+:   -T, --output-debug-tables                  
+Output extra parser tables (rules list + look-ahead analysis) in generated modules to assist debugging / diagnostics purposes  [false]
+
+:   -X, --no-default-resolve                   
+Act another way when a conflict is found in the grammar  [false]
+
+:   --no-default-action                        
+Generate a parser which does NOT include the default "$$ = $1" action for every rule. This produces a slightly faster parser but now you are solely reponsible for propagating rule action "$$" results.  [false]
+
+:   --no-try-catch                             
+Generate a parser which does NOT try/catch exceptions (from the grammar action code or parseError error reporting calls. This produces a slightly faster parser at the cost of enhanced code safety.  [false]
+
+:   -Q, --error-recovery-token-discard-count   
+Set the number of lexed tokens that may be gobbled by an error recovery process before we cry wolf (default: 3)  [3]
+
+:   -E, --export-all-tables                    
+Next to producing a grammar source file, also export the symbols, terminals, grammar and parse tables to separate JSON files for further use by other tools. The files' names will be derived from the outputFile name by appending a suffix.  [false]
+
+:   -x, --main                                 
+Include .main() entry point in generated commonjs module  [false]
+
+:   -y NAME, --module-main NAME                
+The main module function definition
+
+:   -V, --version                              
+print version and exit
+
 
 
 Usage from a CommonJS module
