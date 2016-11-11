@@ -14435,13 +14435,18 @@ function init_EscCode_lookup_table() {
     updatePcodesBitarrayCacheTestOrder();
 } 
 
-function updatePcodesBitarrayCacheTestOrder() {
+function updatePcodesBitarrayCacheTestOrder(opts) {
     var t = new Array(65536);
     var l = {};
+    var user_has_xregexp = opts && opts.options && opts.options.xregexp;
 
     // mark every character with which regex pcodes they are part of:
     for (var k in Pcodes_bitarray_cache) {
         var ba = Pcodes_bitarray_cache[k];
+
+        if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
+            continue;
+        }
 
         var cnt = 0;
         for (var i = 0; i < 65536; i++) {
@@ -14485,6 +14490,11 @@ function updatePcodesBitarrayCacheTestOrder() {
 
     for (var j = 0; keys[j]; j++) {
         var k = keys[j];
+
+        if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
+            continue;
+        }
+        
         if (!done[k]) {
             assert(l[k] > 0);
             // find a minimum span character to mark this one:
@@ -14532,7 +14542,7 @@ function updatePcodesBitarrayCacheTestOrder() {
 
 
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
-function set2bitarray(bitarr, s) {
+function set2bitarray(bitarr, s, opts) {
     var orig = s;
     var set_is_inverted = false;
     var bitarr_orig;
@@ -14653,10 +14663,10 @@ function set2bitarray(bitarr, s) {
                             // remove the wrapping `/.../` to get at the (possibly *combined* series of) `[...]` sets inside:
                             xs = xs.substr(1, xs.length - 2);
 
-                            ba4p = reduceRegexToSetBitArray(xs, pex);
+                            ba4p = reduceRegexToSetBitArray(xs, pex, opts);
 
                             Pcodes_bitarray_cache[pex] = ba4p;
-                            updatePcodesBitarrayCacheTestOrder();
+                            updatePcodesBitarrayCacheTestOrder(opts);
                         }
                         // merge bitarrays:
                         add2bitarray(bitarr, ba4p);
@@ -14950,7 +14960,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
 
 // Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
 // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-function reduceRegexToSetBitArray(s, name) {
+function reduceRegexToSetBitArray(s, name, opts) {
     var orig = s;
 
     // propagate deferred exceptions = error reports.
@@ -15008,7 +15018,7 @@ function reduceRegexToSetBitArray(s, name) {
 
             var se = set_content.join('');
             if (!internal_state) {
-                set2bitarray(l, se);
+                set2bitarray(l, se, opts);
 
                 // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`:
                 internal_state = 1;
@@ -15062,7 +15072,7 @@ function reduceRegexToSetBitArray(s, name) {
             // literal character or word: take the first character only and ignore the rest, so that
             // the constructed set for `word|noun` would be `[wb]`:
             if (!internal_state) {
-                set2bitarray(l, c1);
+                set2bitarray(l, c1, opts);
 
                 internal_state = 2;
             }
@@ -15222,7 +15232,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
                 }
             }
 
-            set2bitarray(l, se);
+            set2bitarray(l, se, opts);
 
             // find out which set expression is optimal in size:
             var s1 = produceOptimizedRegex4Set(l);
@@ -15382,7 +15392,7 @@ function prepareMacros(dict_macros, opts) {
                 }
             }
 
-            var mba = reduceRegexToSetBitArray(m, i);
+            var mba = reduceRegexToSetBitArray(m, i, opts);
 
             var s1;
 
