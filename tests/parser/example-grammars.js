@@ -126,6 +126,18 @@ const test_list = [
   {
     name: 'theory-left-recurs-01',
   },
+  {
+    name: 'test-epsilon-rules-early-reduce',
+  },
+  {
+    name: 'test-nonassociative-operator-0',
+  },
+  {
+    name: 'test-nonassociative-operator-1',
+  },
+  {
+    name: 'test-nonassociative-operator-2',
+  },
 ];
 
 console.log('exec glob....', __dirname);
@@ -173,12 +185,12 @@ testset.forEach(function (filespec) {
     } else if (filespec.inputs) {
       for (var i = 0, l = filespec.inputs.length; i < l; i++) {
         var rv = parser.parse(filespec.inputs[i]);
-        console.log('parse: ', filespec.inputs[i], rv);
+        // console.log('parse: ', filespec.inputs[i], rv);
         assert.ok(rv === true, "parser.parse() is supposed to produce TRUE");
       }
     } else {
       var rv = parser.parse('zz; yy; zz;zz ;');
-      console.log('parse: ', filespec, rv);
+      // console.log('parse: ', filespec, rv);
       assert.ok(rv === true, "parser.parse() is supposed to produce TRUE");
     }
   };
