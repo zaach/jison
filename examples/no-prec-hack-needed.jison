@@ -113,13 +113,13 @@ expressions
           // to be a recognizer, but that is not the case here!)
           $$ = $1;
         }
-    | error ERROR EOF
+    | e error EOF
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$)}, yy.lastErrorMessage);
+            print('~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': $2, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error)}, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
-            $$ = 1;
+            $$ = $e + 1;
         }
     ;
 
@@ -220,9 +220,9 @@ v
     | error
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash);
+            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
-            yyclearin;
+            //yyclearin;
             $$ = 1;
         }
     ;
@@ -310,7 +310,7 @@ parser.main = function () {
         const formulas_and_expectations =  [
             basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
             basenum + '+2*E%^PI^2+4+5',                              9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
-            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     32 + basenum, // with error recovery and all it gives you a value...
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     41 + basenum, // with error recovery and all it gives you a value...
             basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
         ];
 
