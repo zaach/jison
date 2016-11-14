@@ -100,7 +100,7 @@ function union(a, b) {
     // to scan through, but overall the FIRST and FOLLOW sets will
     // be a few tens of entries at best, and thus it was expected
     // that a naive scan would be faster than hash-object creation
-    // and O(1) checking that hash... Turns I was right.
+    // and O(1) checking that hash... Turns out I was right.
     //
     // The 'arbitrary' threshold of 52 entries in the array to check
     // against is probably at or near the worst-case FIRST/FOLLOW set
@@ -219,75 +219,75 @@ var Production = typal.construct({
 var generator = typal.beget();
 
 // `lexGrammarStr` is an optional {String} argument, specifying the lexer rules.
-// May only be specified when the specified `grammar` also is a yet-unparsed 
+// May only be specified when the specified `grammar` also is a yet-unparsed
 // {String} defining the grammar.
-// 
+//
 // Hence these invocations are legal:
-// 
-// - `Generator("String")`     
-//   --> `String` contains entire grammar, including 
+//
+// - `Generator("String")`
+//   --> `String` contains entire grammar, including
 //   optional `%lex` lexer rules section
-//   
-// 
-// - `Generator("String-1", "String-2")`     
+//
+//
+// - `Generator("String-1", "String-2")`
 //   --> The `String-1` string contains grammar, *excluding* `%lex` lexer rules section,
 //   while the `String-2` string contains the `%lex` lexer rules section
-//   
-//   
-// - `Generator("String", {Options})`     
-//   --> `String` contains entire grammar, including 
+//
+//
+// - `Generator("String", {Options})`
+//   --> `String` contains entire grammar, including
 //   optional `%lex` lexer rules section
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-//   
-// - `Generator("String", NULL, {Options})`     
-//   --> `String` contains entire grammar, including 
+//
+//
+// - `Generator("String", NULL, {Options})`
+//   --> `String` contains entire grammar, including
 //   optional `%lex` lexer rules section
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-// 
-// - `Generator("String-1", "String-2", {Options})`     
+//
+//
+// - `Generator("String-1", "String-2", {Options})`
 //   --> The `String-1` string contains grammar, *excluding* `%lex` lexer rules section,
 //   while the `String-2` string contains the `%lex` lexer rules section
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-//   
-// - `Generator({Grammar})`     
-//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*, 
+//
+//
+// - `Generator({Grammar})`
+//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*,
 //   including optional `%lex` lexer rules section in its `.lex` member.
-//   
-//   
-// - `Generator({Grammar}, {Options})`     
-//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*, 
+//
+//
+// - `Generator({Grammar}, {Options})`
+//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*,
 //   including optional `%lex` lexer rules section in its `.lex` member.
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-//   
-// - `Generator({Grammar}, NULL, {Options})`     
-//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*, 
+//
+//
+// - `Generator({Grammar}, NULL, {Options})`
+//   --> The `Grammar` object contains the entire grammar as an already parsed *structure*,
 //   including optional `%lex` lexer rules section in its `.lex` member.
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-// 
-// - `Generator({Grammar}, "String-2")`     
+//
+//
+// - `Generator({Grammar}, "String-2")`
 //   --> The `Grammar` object contains grammar, *excluding* `%lex` lexer rules section,
 //   while the `String-2` string contains the `%lex` lexer rules section
-//   
-// 
-// - `Generator({Grammar}, "String-2", {Options})`     
+//
+//
+// - `Generator({Grammar}, "String-2", {Options})`
 //   --> The `Grammar` object contains grammar, *excluding* `%lex` lexer rules section,
 //   while the `String-2` string contains the `%lex` lexer rules section
-//   
+//
 //   The `Options` object specifies the desired jison options' settings.
-//   
-// 
+//
+//
 // Any other arguments / arguments' types sequence is illegal.
-//   
+//
 generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     // pick the correct argument for the `options` for this call:
     var options = typal.camelMix.call({}, (opt || (typeof grammar === 'string' && typeof lexGrammarStr === 'string')) ? opt : lexGrammarStr);
@@ -1390,7 +1390,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                 // replace named semantic values ($nonterminal)
                 if (action.match(new XRegExp("[$@#`][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*"))) {
                     var count = {},
-                        names = {};
+                        names = {},
+                        donotalias = {};
 
                     // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
                     // we therefor allow access to both the original (non)terminal and the alias.
@@ -1410,7 +1411,21 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     // where each line above is equivalent to the top-most line. Note the numbers postfixed to
                     // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
                     // the postfix numbering is independent.
+                    //
+                    // WARNING: this feature is disabled for a term when there already exists an
+                    //          (human-defined) *alias* for this term *or* when the numbered auto-alias already
+                    //          exists because the user has used it as an alias for another term, e.g.
+                    //
+                    //             e: WORD[e1] '=' e '+' e;
+                    //
+                    //          would *not* produce the `e1` and `e2` aliases, as `e1` is already defined
+                    //          as an explicit alias: adding auto-alias `e1` would then break the system,
+                    //          while `e2` would be ambiguous from the human perspective as he *might* then
+                    //          expect `e2` and `e3`.
                     var addName = function addName(s) {
+                        if (donotalias[s])
+                            return;
+
                         if (names[s]) {
                             names[s + (++count[s])] = i + 1;
                         } else {
@@ -1419,6 +1434,25 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                             count[s] = 1;
                         }
                     };
+
+                    // register the alias/rule name when the real one ends with a number, e.g. `rule5` as
+                    // *blocking* the auto-aliasing process for the term of the same base, e.g. `rule`.
+                    // This will catch the `WORD[e1]` example above too, via `e1` --> `donotalias['e']`
+                    var markBasename = function markBasename(s) {
+                        if (/[0-9]$/.test(s)) {
+                            s = s.replace(/[0-9]+$/, '');
+                            donotalias[s] = true;
+                        }
+                    };
+
+                    for (i = 0; i < rhs.length; i++) {
+                        // mark both regular and aliased names, e.g., `id[alias1]` and `id1`
+                        rhs_i = aliased[i];
+                        markBasename(rhs_i);
+                        if (rhs_i !== rhs[i]) {
+                            markBasename(rhs[i]);
+                        }
+                    }
 
                     for (i = 0; i < rhs.length; i++) {
                         // check for aliased names, e.g., id[alias]
@@ -2038,11 +2072,11 @@ lrGeneratorMixin.canonicalCollectionInsert = function canonicalCollectionInsert(
             i = states.has[gv];
         if (i === -1 || typeof i === 'undefined') {
             states.has[gv] = states.size();
-            itemSet.edges[symbol] = states.size(); // store goto transition for table
+            itemSet.edges[symbol] = states.size();  // store goto transition for table
             states.push(g);
             g.predecessors[symbol] = [stateNum];
         } else {
-            itemSet.edges[symbol] = i; // store goto transition for table
+            itemSet.edges[symbol] = i;              // store goto transition for table
             states.item(i).predecessors[symbol].push(stateNum);
         }
     }
@@ -2160,21 +2194,65 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
     return states;
 };
 
-// find states with only one action, a reduction
+// find states with only one action: a reduction.
+//
+// Note: only the state columns for EOF/ERROR/terminals are relevant here as those
+// columns are the only ones ever visited by the table lookup code at the top
+// of the loop in the parse kernel as the `symbol` index used there cannot ever
+// contain a *nonterminal* value!
+//
+// The nonterminals are recognizable in the table by having numeric entries, rather
+// than 1-or-2-element array values, as they only store a GOTO state.
+// 
+// ---
+// 
+// Another 'default' is when all listed terminals all point to the exact same reduce state;
+// only this time we are careful about the TERROR symbol as a state carrying that one
+// is an explicitly encoded error recovery rule and should remain as-is.
 function findDefaults(states) {
     var defaults = {};
     states.forEach(function (state, k) {
-        var act;
+        var act, sym, st, def;
         var i = 0;
+        var gotos = {};
 
-        for (act in state) {
-             assert({}.hasOwnProperty.call(state, act));    // it this isn't true, the last part of this function won't work!
-             i++;
+        for (sym in state) {
+            assert({}.hasOwnProperty.call(state, sym));    // it this isn't true, the last part of this function won't work!
+            // keep state rows where there's an error recovery state:
+            if (sym === 2 /* TERROR */) {
+                return;
+            }
+            st = state[sym];
+            if (typeof st !== 'number') {
+                if (st[0] !== 2) {
+                    // not a reduce action: forget about this row!
+                    return;
+                }
+                var go = st[1];
+                if (!gotos[go]) {
+                    gotos[go] = true;
+                    i++;
+                    act = sym;
+                }
+            } else if (st === NONASSOC) {
+                // forget about this row: it's a state where we should kick up an error
+                // because you're trying to get associativity going where there is none!
+                return;
+            }
         }
 
-        if (i === 1 && state[act][0] === 2) {
-            // only one action in state and it's a reduction; hence we only need to store the new (goto) state:
+        if (i === 1) {
+            // only one action in state and it's a reduction; hence we only need to store the new (goto production) state:
             defaults[k] = state[act][1];
+
+            // ... and nuke the entry/entries in the parse table to save space in the generated output: we won't be needing
+            // it any more! But make sure we keep the slots for the nonterminal symbols, so only nuke the *terminal* entries!
+            for (sym in state) {
+                st = state[sym];
+                if (typeof st !== 'number') {
+                    delete state[sym];
+                }
+            }
         }
     });
 
@@ -2578,6 +2656,7 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
         '',
         'var parser = ' + module.moduleCode,
         module.modulePostlude,
+        '',
         this.moduleInclude
     ];
     if (this.lexer && this.lexer.generateModule) {
@@ -2593,7 +2672,7 @@ generatorMixin.generateAMDModule = function generateAMDModule(opt) {
     return out.join('\n') + '\n';
 };
 
-lrGeneratorMixin.generateESModule = function generateESModule(opt){
+lrGeneratorMixin.generateESModule = function generateESModule(opt) {
     opt = this.__prepareOptions(opt);
 
     var module = this.generateModule_();
@@ -2604,6 +2683,7 @@ lrGeneratorMixin.generateESModule = function generateESModule(opt){
         '',
         'var parser = ' + module.moduleCode,
         module.modulePostlude,
+        '',
         this.moduleInclude
     ];
     if (this.lexer && this.lexer.generateModule) {
@@ -2692,6 +2772,7 @@ generatorMixin.generateModuleExpr = function generateModuleExpr() {
         '',
         'var parser = ' + module.moduleCode,
         module.modulePostlude,
+        '',
         this.moduleInclude
     ];
     if (this.lexer && this.lexer.generateModule) {
@@ -2919,6 +3000,24 @@ function removeFeatureMarkers(fn) {
     return parseFn;
 }
 
+// Fill in the optional, extra parse parameters (`%parse-param ...`)
+// in the generated parser.
+//
+// See for important context:
+//
+//     https://github.com/zaach/jison/pull/332
+function expandParseArguments(parseFn, self) {
+    var arglist = self.parseParams;
+
+    if (!arglist) {
+        parseFn = parseFn.replace(/, parseParams/g, '');
+    } else {
+        parseFn = parseFn.replace(/, parseParams/g, ', ' + arglist.join(', '));
+    }
+    return parseFn;
+}
+
+
 function pickOneOfTwoCodeAlternatives(parseFn, pick_A_not_B, A_start_marker, B_start_marker, end_marker) {
     // Notes:
     // 1) we use the special /[^\0]*/ regex set as that one will also munch newlines, etc.
@@ -3033,13 +3132,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
     parseFn = removeUnusedKernelFeatures(parseFn, this);
 
-    // fill in the optional, extra parse parameters (`%parse-param ...`)
-    // in the generated parser:
-    if (!this.parseParams) {
-        parseFn = parseFn.replace(/, parseParams/g, '');
-    } else {
-        parseFn = parseFn.replace(/, parseParams/g, ', ' + this.parseParams.join(', '));
-    }
+    parseFn = expandParseArguments(parseFn, this);
 
     var errorClassCode = this.generateErrorClass();
 
@@ -3371,7 +3464,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         }
 
         var nt = tbl;
-        for (var sbn in nt) {
+        var sbn;
+        for (sbn in nt) {
             var orig_symbol = get_orig_symbol(sbn);
             var item = nt[sbn];
             var firsts = item.first;
@@ -3390,10 +3484,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                 prods.follows[orig_symbol.symbol] = prods.follows[orig_symbol.symbol].concat(follows);
             }
         }
-        for (var sbn in prods.first) {
+        for (sbn in prods.first) {
             prods.first[sbn] = get_orig_symbol_set(prods.first[sbn]);
         }
-        for (var sbn in prods.follows) {
+        for (sbn in prods.follows) {
             prods.follows[sbn] = get_orig_symbol_set(prods.follows[sbn]);
         }
 
@@ -4621,7 +4715,7 @@ parser.parse = function parse(input, parseParams) {
                     if (typeof XRegExp === 'undefined') {
                         re1 = /  \"([a-z_][a-z_0-9. ]*)\": /ig;
                     } else {
-                        re1 = new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g");
+                        re1 = new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_. ]*)\": ", "g");
                     }
                     js = JSON.stringify(obj, null, 2).replace(re1, '  $1: ').replace(/[\n\s]+/g, ' ');
                 } catch (ex) {
@@ -4892,7 +4986,7 @@ _handle_error_end_of_section:                   // this concludes the error reco
                 newState = t[1];
                 action = t[0];
 
-                if (yydebug) yydebug('after FETCH/LEX: ', { symbol: symbol });
+                if (yydebug) yydebug('after FETCH/LEX: ', { symbol: symbol, newState: newState, recovering: recovering, action: action });
 
 _handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
 
@@ -5049,7 +5143,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
                     if (!t[0]) {
-                        // forget about that symbol and move forward: this wasn't an 'forgot to insert' error type where
+                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
                         if (yydebug) yydebug('... SHIFT:error recovery: re-application of old symbol doesn\'t work: instead, we\'re moving forward now. ', { recovering: recovering, symbol: symbol });
@@ -5576,7 +5670,7 @@ Jison.Generator = function Jison_Generator(g, optionalLexerSection, options) {
         } catch (e) {
             try {
                 chk_g = ebnfParser.parse(g);
-    
+
                 opt.json = false;
             } catch (e) {
                 chk_g = null;
@@ -6024,7 +6118,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-153 */
+/* parser generated by jison 0.4.18-154 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -6354,7 +6448,17 @@ function bp(s) {
     return rv;
 }
 
-
+// helper: reconstruct the defaultActions[] table
+function bda(s) {
+    var rv = {};
+    var d = s.idx;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = g[i];
+    }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
@@ -7166,131 +7270,107 @@ case 80:
 },
 table: bt({
   len: u([
-  11,
+  2,
   1,
   13,
   1,
   13,
   21,
-  2,
-  2,
-  5,
-  s,
-  [9, 4],
-  2,
-  3,
-  20,
-  1,
-  9,
-  9,
-  28,
-  31,
-  28,
-  22,
-  22,
-  17,
-  17,
-  s,
-  [27, 7],
-  29,
-  5,
-  s,
-  [27, 3],
-  s,
-  [10, 4],
-  2,
-  3,
-  25,
-  25,
-  1,
-  4,
-  3,
-  1,
-  1,
-  6,
-  18,
-  16,
-  21,
-  3,
-  31,
-  28,
-  10,
-  10,
-  s,
-  [27, 5],
-  1,
-  1,
-  28,
-  28,
-  1,
-  6,
-  3,
-  3,
-  10,
-  10,
-  9,
-  5,
-  3,
-  9,
-  1,
-  2,
-  1,
-  s,
-  [3, 3],
-  6,
-  1,
-  16,
-  6,
-  2,
-  1,
-  2,
-  c,
-  [33, 4],
-  1,
   s,
   [2, 3],
-  c,
-  [31, 3],
-  1,
-  16,
-  5,
-  17,
-  16,
-  17,
-  c,
-  [107, 3],
-  4,
-  1,
-  1,
-  2,
-  17,
+  s,
+  [0, 4],
   2,
   3,
-  16
+  20,
+  s,
+  [0, 3],
+  28,
+  31,
+  28,
+  22,
+  22,
+  17,
+  17,
+  s,
+  [0, 8],
+  5,
+  s,
+  [0, 3],
+  10,
+  0,
+  10,
+  c,
+  [29, 3],
+  0,
+  0,
+  1,
+  4,
+  c,
+  [5, 3],
+  6,
+  18,
+  0,
+  21,
+  3,
+  31,
+  28,
+  s,
+  [0, 7],
+  1,
+  1,
+  28,
+  28,
+  1,
+  6,
+  s,
+  [0, 5],
+  c,
+  [68, 4],
+  2,
+  1,
+  3,
+  3,
+  0,
+  c,
+  [15, 3],
+  6,
+  2,
+  1,
+  s,
+  [0, 6],
+  c,
+  [21, 4],
+  6,
+  0,
+  1,
+  0,
+  2,
+  c,
+  [81, 4],
+  1,
+  c,
+  [9, 3],
+  c,
+  [18, 4],
+  3,
+  0
 ]),
   symbol: u([
-  3,
   19,
   20,
-  22,
-  27,
-  29,
-  31,
-  34,
-  37,
-  67,
-  73,
   1,
   3,
   21,
   22,
   26,
-  c,
-  [12, 4],
-  35,
-  36,
-  c,
-  [14, 3],
+  27,
+  29,
+  31,
+  s,
+  [34, 4, 1],
+  67,
+  73,
   22,
   c,
   [14, 13],
@@ -7311,16 +7391,8 @@ table: bt({
   38,
   32,
   38,
-  3,
-  4,
   33,
   43,
-  44,
-  3,
-  c,
-  [67, 8],
-  c,
-  [9, 27],
   2,
   74,
   27,
@@ -7329,7 +7401,7 @@ table: bt({
   1,
   5,
   c,
-  [73, 6],
+  [34, 6],
   22,
   23,
   25,
@@ -7338,21 +7410,22 @@ table: bt({
   50,
   51,
   c,
-  [70, 5],
-  22,
-  c,
-  [53, 19],
+  [31, 5],
+  3,
   9,
   10,
   11,
   c,
-  [39, 5],
+  [20, 5],
   c,
-  [16, 5],
+  [70, 4],
+  37,
   c,
-  [115, 12],
+  [57, 12],
+  67,
+  73,
   c,
-  [28, 16],
+  [28, 14],
   s,
   [46, 7, 1],
   c,
@@ -7370,7 +7443,7 @@ table: bt({
   s,
   [64, 4, 1],
   c,
-  [197, 3],
+  [139, 3],
   c,
   [58, 5],
   c,
@@ -7378,46 +7451,26 @@ table: bt({
   c,
   [22, 22],
   c,
-  [167, 5],
+  [148, 5],
   c,
   [17, 29],
-  c,
-  [106, 19],
-  c,
-  [105, 8],
-  c,
-  [27, 183],
-  60,
-  s,
-  [62, 6, 1],
-  73,
   52,
   57,
   59,
   61,
   62,
+  3,
   c,
-  [115, 82],
-  c,
-  [17, 6],
+  [101, 6],
   38,
   c,
-  [10, 33],
+  [121, 3],
+  c,
+  [10, 10],
   4,
   3,
   4,
   44,
-  1,
-  3,
-  c,
-  [554, 8],
-  c,
-  [70, 10],
-  c,
-  [69, 4],
-  76,
-  c,
-  [25, 25],
   69,
   27,
   68,
@@ -7426,62 +7479,37 @@ table: bt({
   18,
   27,
   69,
-  s,
-  [1, 3],
+  1,
   24,
   72,
   73,
   75,
   76,
   c,
-  [619, 9],
+  [229, 9],
   c,
-  [617, 9],
+  [227, 9],
   c,
-  [18, 9],
-  c,
-  [16, 7],
-  c,
-  [724, 21],
+  [279, 21],
   7,
   27,
   45,
   c,
-  [610, 59],
-  3,
-  11,
-  c,
-  [707, 9],
-  c,
-  [10, 10],
-  c,
-  [498, 134],
+  [223, 59],
   11,
   11,
   c,
-  [185, 29],
+  [30, 28],
   c,
-  [28, 27],
+  [28, 28],
   60,
   c,
-  [528, 3],
+  [204, 3],
   60,
   61,
   62,
-  57,
-  60,
-  c,
-  [3, 4],
-  c,
-  [444, 27],
-  c,
-  [443, 4],
-  c,
-  [1037, 4],
-  4,
-  c,
-  [1040, 10],
-  69,
+  33,
+  43,
   27,
   71,
   1,
@@ -7489,14 +7517,10 @@ table: bt({
   35,
   73,
   1,
+  73,
+  76,
   c,
-  [440, 3],
-  c,
-  [3, 3],
-  c,
-  [408, 6],
-  c,
-  [391, 16],
+  [183, 6],
   3,
   34,
   35,
@@ -7506,71 +7530,37 @@ table: bt({
   6,
   8,
   6,
-  6,
-  8,
-  c,
-  [309, 91],
-  60,
   3,
   4,
-  27,
-  69,
   c,
-  [542, 4],
+  [200, 7],
+  33,
+  43,
   c,
-  [133, 6],
-  c,
-  [142, 3],
-  c,
-  [136, 17],
-  c,
-  [189, 4],
-  c,
-  [21, 9],
+  [203, 9],
   34,
   c,
-  [565, 23],
-  c,
-  [33, 17],
-  c,
-  [15, 6],
-  c,
-  [13, 7],
+  [202, 7],
   27,
+  43,
   c,
-  [14, 13],
-  3,
-  4,
-  c,
-  [81, 3],
-  1,
-  3,
-  4,
-  c,
-  [52, 17],
-  c,
-  [234, 3],
-  c,
-  [739, 3],
-  c,
-  [90, 15]
+  [241, 5]
 ]),
   type: u([
-  2,
   0,
   0,
-  s,
-  [2, 8],
   1,
   2,
   0,
   2,
+  0,
+  s,
+  [2, 4],
+  0,
   c,
-  [13, 5],
+  [6, 5],
   c,
-  [19, 7],
-  c,
-  [14, 14],
+  [14, 15],
   c,
   [11, 6],
   c,
@@ -7578,19 +7568,19 @@ table: bt({
   c,
   [6, 6],
   c,
-  [33, 9],
+  [33, 7],
   c,
-  [32, 11],
+  [11, 5],
+  c,
+  [35, 17],
   s,
-  [2, 31],
+  [2, 19],
   c,
-  [74, 17],
+  [57, 12],
   c,
-  [55, 39],
+  [28, 17],
   c,
-  [47, 27],
-  c,
-  [146, 15],
+  [88, 14],
   c,
   [64, 24],
   c,
@@ -7598,51 +7588,41 @@ table: bt({
   c,
   [22, 20],
   c,
-  [17, 34],
-  s,
-  [2, 213],
+  [17, 29],
   c,
-  [472, 3],
+  [194, 7],
   c,
-  [227, 180],
+  [119, 27],
   c,
-  [688, 7],
+  [261, 8],
   c,
-  [616, 5],
+  [65, 12],
   c,
-  [436, 12],
+  [51, 14],
   c,
-  [204, 30],
+  [117, 17],
   c,
-  [504, 17],
+  [82, 15],
   c,
-  [47, 15],
+  [223, 52],
   c,
-  [610, 52],
+  [30, 42],
   c,
-  [307, 171],
+  [380, 11],
   c,
-  [28, 36],
+  [402, 10],
   c,
-  [335, 4],
+  [22, 7],
   c,
-  [227, 39],
+  [183, 7],
   c,
-  [294, 20],
+  [154, 11],
   c,
-  [19, 9],
+  [17, 5],
   c,
-  [408, 14],
+  [137, 20],
   c,
-  [355, 13],
-  c,
-  [243, 107],
-  c,
-  [204, 26],
-  c,
-  [135, 82],
-  c,
-  [81, 44]
+  [19, 6]
 ]),
   state: u([
   s,
@@ -7732,8 +7712,6 @@ table: bt({
   118
 ]),
   mode: u([
-  s,
-  [2, 9],
   1,
   2,
   s,
@@ -7741,83 +7719,65 @@ table: bt({
   c,
   [10, 10],
   s,
-  [1, 13],
+  [1, 18],
   s,
-  [2, 39],
+  [2, 6],
   c,
-  [44, 11],
+  [7, 7],
   c,
-  [51, 28],
+  [9, 3],
   c,
-  [103, 7],
+  [45, 6],
   c,
-  [52, 11],
+  [13, 8],
   c,
-  [13, 5],
+  [35, 8],
   c,
   [23, 24],
   c,
   [27, 6],
-  c,
-  [67, 15],
-  c,
-  [72, 11],
-  c,
-  [189, 32],
-  c,
-  [202, 52],
   s,
-  [2, 179],
+  [2, 14],
   c,
-  [220, 90],
+  [16, 5],
   c,
-  [89, 20],
+  [117, 16],
   c,
-  [20, 13],
+  [131, 28],
   c,
-  [123, 4],
+  [141, 16],
   c,
-  [126, 51],
+  [142, 10],
   c,
-  [434, 4],
+  [10, 4],
   c,
-  [494, 9],
+  [22, 4],
   c,
-  [567, 30],
+  [65, 5],
   c,
-  [454, 16],
+  [123, 7],
   c,
-  [556, 49],
+  [35, 14],
   c,
-  [441, 158],
+  [65, 16],
   c,
-  [184, 27],
+  [169, 53],
   c,
-  [767, 30],
+  [29, 25],
   c,
-  [111, 53],
+  [225, 34],
   c,
-  [56, 5],
+  [162, 5],
   c,
-  [94, 10],
+  [135, 11],
   c,
-  [362, 20],
+  [47, 13],
   c,
-  [683, 103],
+  [165, 11],
   c,
-  [436, 8],
-  c,
-  [635, 45],
-  c,
-  [689, 53],
-  c,
-  [211, 23],
-  c,
-  [22, 17]
+  [5, 3]
 ]),
   goto: u([
-  s,
-  [6, 9],
   8,
   8,
   5,
@@ -7845,16 +7805,6 @@ table: bt({
   36,
   39,
   41,
-  s,
-  [31, 3],
-  s,
-  [13, 9],
-  s,
-  [14, 9],
-  s,
-  [15, 9],
-  s,
-  [16, 9],
   45,
   44,
   48,
@@ -7865,21 +7815,16 @@ table: bt({
   51,
   s,
   [35, 7],
-  7,
-  s,
-  [9, 9],
-  s,
-  [38, 9],
   43,
   56,
   22,
   43,
   c,
-  [94, 4],
+  [36, 4],
   s,
   [43, 6],
   c,
-  [100, 7],
+  [42, 7],
   43,
   43,
   40,
@@ -7912,80 +7857,46 @@ table: bt({
   c,
   [14, 14],
   c,
-  [192, 12],
+  [134, 12],
   c,
   [12, 12],
-  s,
-  [53, 27],
-  s,
-  [55, 27],
-  s,
-  [56, 27],
-  s,
-  [57, 27],
-  s,
-  [58, 27],
-  s,
-  [59, 27],
-  s,
-  [60, 27],
-  s,
-  [61, 29],
   33,
   71,
-  s,
-  [69, 27],
-  s,
-  [70, 27],
-  s,
-  [67, 27],
   s,
   [10, 7],
   73,
   10,
   10,
   s,
-  [17, 10],
-  s,
   [11, 7],
   74,
   11,
   11,
-  s,
-  [19, 10],
   76,
   75,
   29,
   29,
   77,
-  s,
-  [79, 25],
-  s,
-  [80, 25],
   78,
   48,
   73,
   80,
   74,
   74,
-  1,
-  2,
   s,
   [84, 3],
   86,
   c,
-  [567, 7],
+  [177, 7],
   85,
   s,
   [35, 7],
-  s,
-  [22, 16],
   c,
-  [656, 13],
+  [211, 13],
   90,
   91,
   c,
-  [556, 23],
+  [169, 23],
   44,
   61,
   s,
@@ -7997,20 +7908,6 @@ table: bt({
   64,
   s,
   [44, 4],
-  s,
-  [42, 10],
-  s,
-  [39, 10],
-  s,
-  [48, 27],
-  s,
-  [49, 27],
-  s,
-  [50, 27],
-  s,
-  [54, 27],
-  s,
-  [68, 27],
   93,
   94,
   51,
@@ -8039,23 +7936,6 @@ table: bt({
   33,
   64,
   71,
-  s,
-  [65, 3],
-  s,
-  [66, 3],
-  s,
-  [18, 10],
-  s,
-  [20, 10],
-  s,
-  [12, 9],
-  s,
-  [31, 3],
-  s,
-  [32, 3],
-  s,
-  [71, 9],
-  72,
   99,
   98,
   100,
@@ -8065,87 +7945,139 @@ table: bt({
   83,
   102,
   s,
-  [81, 3],
-  s,
   [84, 3],
-  5,
-  s,
-  [21, 16],
   105,
   108,
   13,
   109,
   110,
   111,
-  36,
-  36,
-  s,
-  [41, 10],
-  s,
-  [46, 27],
-  s,
-  [47, 27],
-  s,
-  [62, 27],
-  63,
   76,
   112,
-  75,
-  75,
-  76,
-  76,
-  3,
   s,
   [84, 3],
-  s,
-  [82, 3],
   114,
-  s,
-  [23, 16],
-  s,
-  [31, 3],
   s,
   [25, 9],
   116,
   s,
   [25, 7],
-  s,
-  [26, 16],
-  s,
-  [27, 17],
-  s,
-  [33, 13],
   117,
-  s,
-  [34, 13],
-  s,
-  [31, 3],
-  78,
-  4,
   76,
   119,
-  s,
-  [28, 17],
-  37,
-  37,
   30,
   30,
-  77,
-  s,
-  [24, 16]
+  77
 ])
 }),
-defaultActions: {
-  16: 7,
-  49: 1,
-  50: 2,
-  79: 72,
-  86: 5,
-  96: 63,
-  100: 3,
-  113: 78,
-  114: 4
-},
+defaultActions: bda({
+  idx: u([
+  0,
+  s,
+  [8, 5, 1],
+  16,
+  17,
+  18,
+  s,
+  [26, 8, 1],
+  35,
+  36,
+  37,
+  39,
+  41,
+  44,
+  45,
+  49,
+  50,
+  53,
+  s,
+  [58, 7, 1],
+  s,
+  [71, 9, 1],
+  84,
+  86,
+  87,
+  s,
+  [91, 6, 1],
+  98,
+  99,
+  100,
+  102,
+  104,
+  105,
+  107,
+  108,
+  109,
+  s,
+  [111, 4, 1],
+  116,
+  117,
+  119
+]),
+  goto: u([
+  6,
+  31,
+  s,
+  [13, 4, 1],
+  7,
+  9,
+  38,
+  53,
+  s,
+  [55, 7, 1],
+  69,
+  70,
+  67,
+  17,
+  19,
+  79,
+  80,
+  1,
+  2,
+  22,
+  42,
+  39,
+  48,
+  49,
+  50,
+  54,
+  68,
+  65,
+  66,
+  18,
+  20,
+  12,
+  31,
+  32,
+  71,
+  72,
+  81,
+  5,
+  21,
+  36,
+  41,
+  46,
+  47,
+  62,
+  63,
+  75,
+  76,
+  3,
+  82,
+  23,
+  31,
+  26,
+  27,
+  33,
+  34,
+  31,
+  78,
+  4,
+  28,
+  37,
+  24
+])
+}),
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -8534,7 +8466,7 @@ parse: function parse(input) {
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
                     if (!t[0]) {
-                        // forget about that symbol and move forward: this wasn't an 'forgot to insert' error type where
+                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
 
@@ -8643,7 +8575,8 @@ parse: function parse(input) {
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
-var XRegExp = require('xregexp');
+
+var XRegExp = require('xregexp');       // for helping out the `%options xregexp` in the lexer
 
 function encodeRE (s) {
     return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
@@ -8655,7 +8588,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-153 */
+/* generated by jison-lex 0.3.4-154 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -9217,7 +9150,8 @@ var lexer = {
     },
 options: {
   easy_keyword_rules: true,
-  ranges: true
+  ranges: true,
+  xregexp: true
 },
 JisonLexerError: JisonLexerError,
 performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
@@ -9647,26 +9581,26 @@ rules: [
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?))", ""),
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
+/^(?:([^\S\n\r])+(\r\n|\n|\r)+)/,
+/^(?:([^\S\n\r])+)/,
 /^(?:%%)/,
-/^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]+)/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
+/^(?:[^\s!"$%'-,.\/:-?\[-\^{-}]+)/,
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?))", ""),
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
-/^(?:[^\s\r\n]+)/,
+/^(?:\S+)/,
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
+/^(?:([^\S\n\r])+)/,
+new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
-/^(?:([^\S\r\n])*(\r\n|\n|\r)+)/,
+/^(?:([^\S\n\r])+)/,
+/^(?:([^\S\n\r])*(\r\n|\n|\r)+)/,
 /^(?:\{)/,
 /^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
 /^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
@@ -9674,9 +9608,9 @@ rules: [
 /^(?:.*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
+new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:[^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,'""]+)/,
+/^(?:[^\s!"$%'-,.\/:<-?\[-\^{-}]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\s+)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
@@ -9697,7 +9631,7 @@ rules: [
 /^(?:<)/,
 /^(?:\/!)/,
 /^(?:\/)/,
-/^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[0-9A-F]{2}|u[0-9A-Fa-f]{4}))/,
+/^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
 /^(?:\\.)/,
 /^(?:\$)/,
 /^(?:\.)/,
@@ -9705,11 +9639,11 @@ rules: [
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]+)/,
+new XRegExp("^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?)[^\\n\\r]+)", ""),
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
-/^(?:\{([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\})/,
+new XRegExp("^(?:\\{([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*)\\})", ""),
+new XRegExp("^(?:\\{([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*)\\})", ""),
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:.)/,
@@ -9722,8 +9656,8 @@ rules: [
 /^(?:(\r\n|\n|\r))/,
 /^(?:'[^\r\n]+')/,
 /^(?:"[^\r\n]+")/,
-/^(?:([^\S\r\n])+)/,
-/^(?:[^\s\r\n]+)/,
+/^(?:([^\S\n\r])+)/,
+/^(?:\S+)/,
 /^(?:.)/
 ],
 conditions: {
@@ -10089,7 +10023,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-153",
+  "version": "0.3.4-154",
   "keywords": [
     "jison",
     "parser",
@@ -10130,7 +10064,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-153 */
+/* parser generated by jison 0.4.18-154 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -10460,7 +10394,17 @@ function bp(s) {
     return rv;
 }
 
-
+// helper: reconstruct the defaultActions[] table
+function bda(s) {
+    var rv = {};
+    var d = s.idx;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = g[i];
+    }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
@@ -11317,129 +11261,97 @@ case 92:
 },
 table: bt({
   len: u([
-  18,
+  2,
   1,
   23,
-  5,
-  16,
   2,
-  16,
-  16,
+  0,
+  2,
+  0,
+  0,
   4,
   s,
-  [16, 7],
+  [0, 7],
   3,
   3,
   5,
   2,
-  s,
-  [5, 4, -1],
-  2,
-  2,
-  3,
-  7,
-  16,
-  24,
-  16,
+  5,
   4,
-  1,
-  3,
-  s,
-  [6, 3],
-  20,
-  18,
-  22,
-  22,
-  21,
-  21,
-  20,
-  16,
-  3,
-  2,
-  3,
-  1,
-  6,
-  5,
-  s,
-  [3, 3],
-  1,
-  18,
-  16,
-  21,
-  s,
-  [16, 4],
-  5,
-  s,
-  [18, 4],
-  16,
-  2,
-  2,
-  1,
-  1,
-  s,
-  [3, 4],
-  14,
-  17,
-  18,
-  16,
-  17,
-  16,
-  2,
   3,
   c,
-  [62, 3],
-  6,
-  c,
-  [4, 3],
-  13,
-  9,
-  16,
-  18,
-  5,
-  3,
-  1,
-  3,
-  13,
-  9,
-  11,
-  4,
-  16,
-  15,
-  15,
+  [10, 4],
   7,
   s,
-  [2, 5],
+  [0, 3],
+  4,
+  0,
+  c,
+  [11, 3],
   6,
+  20,
   s,
+  [0, 5],
+  20,
+  c,
+  [12, 3],
+  3,
+  1,
+  6,
+  5,
+  s,
+  [0, 3],
+  1,
+  18,
+  0,
+  21,
+  s,
+  [0, 4],
+  c,
   [12, 4],
-  2,
-  7,
-  4,
-  11,
-  15,
+  s,
+  [0, 3],
+  c,
+  [64, 3],
+  3,
+  c,
+  [40, 3],
+  14,
+  0,
+  18,
+  c,
+  [13, 4],
+  c,
+  [61, 4],
   6,
+  c,
+  [20, 3],
+  13,
+  9,
+  c,
+  [33, 6],
+  c,
+  [8, 3],
+  4,
+  16,
+  c,
+  [37, 5],
+  c,
+  [3, 3],
+  0,
+  12,
+  c,
+  [35, 4],
+  7,
+  c,
+  [111, 3],
+  1,
   3,
   7
 ]),
   symbol: u([
   14,
   15,
-  16,
-  21,
-  24,
-  26,
-  28,
-  33,
-  34,
-  35,
-  38,
-  42,
-  48,
-  50,
-  53,
-  54,
-  55,
-  82,
   1,
   16,
   s,
@@ -11449,32 +11361,21 @@ table: bt({
   28,
   s,
   [30, 6, 1],
-  c,
-  [23, 4],
+  38,
+  42,
+  48,
+  50,
   s,
   [52, 4, 1],
   82,
   17,
   20,
-  21,
-  40,
-  82,
-  c,
-  [45, 16],
   25,
   40,
-  c,
-  [18, 16],
-  c,
-  [16, 16],
   29,
   40,
   56,
   61,
-  c,
-  [36, 32],
-  c,
-  [16, 80],
   36,
   40,
   41,
@@ -11495,12 +11396,6 @@ table: bt({
   43,
   45,
   46,
-  40,
-  41,
-  40,
-  41,
-  40,
-  41,
   1,
   16,
   18,
@@ -11510,72 +11405,39 @@ table: bt({
   40,
   63,
   64,
-  c,
-  [57, 17],
-  4,
-  5,
-  6,
-  12,
-  c,
-  [20, 9],
+  82,
+  25,
   40,
-  41,
-  c,
-  [22, 6],
-  62,
-  78,
-  c,
-  [247, 19],
   57,
   58,
-  40,
   37,
   40,
   41,
   12,
   21,
-  40,
-  41,
-  78,
-  82,
-  c,
-  [6, 8],
   22,
   39,
-  c,
-  [42, 5],
+  78,
+  82,
+  16,
+  21,
+  24,
   25,
+  26,
+  28,
   c,
-  [63, 11],
+  [74, 4],
+  40,
+  41,
+  c,
+  [76, 3],
   51,
   c,
-  [159, 13],
+  [76, 4],
   c,
-  [82, 8],
-  82,
-  c,
-  [103, 20],
-  78,
-  c,
-  [22, 23],
-  1,
-  5,
-  6,
-  c,
-  [22, 10],
-  c,
-  [64, 7],
-  85,
-  c,
-  [21, 21],
-  c,
-  [124, 29],
-  c,
-  [37, 7],
+  [20, 20],
   44,
   45,
-  46,
-  44,
   46,
   3,
   44,
@@ -11592,276 +11454,203 @@ table: bt({
   25,
   40,
   64,
-  c,
-  [472, 3],
-  c,
-  [3, 3],
-  1,
-  16,
-  40,
   4,
   c,
-  [66, 11],
+  [39, 11],
   c,
-  [363, 32],
+  [38, 3],
   c,
-  [161, 8],
+  [57, 7],
+  c,
+  [56, 11],
+  c,
+  [18, 3],
   59,
   60,
   62,
-  c,
-  [432, 65],
+  82,
   12,
   13,
   77,
   79,
   80,
-  c,
-  [210, 11],
-  c,
-  [294, 9],
-  c,
-  [18, 34],
-  c,
-  [348, 18],
-  c,
-  [242, 17],
-  46,
   46,
   47,
-  s,
-  [1, 3],
+  1,
   22,
   82,
   1,
-  c,
-  [311, 3],
-  c,
-  [3, 3],
-  16,
-  40,
+  82,
+  85,
   5,
   6,
   7,
-  c,
-  [435, 4],
+  12,
+  21,
+  40,
+  41,
   65,
   66,
   67,
   70,
   76,
   c,
-  [476, 11],
+  [125, 5],
   c,
-  [243, 17],
+  [48, 6],
   c,
-  [82, 7],
+  [47, 7],
   60,
   c,
-  [192, 26],
-  c,
-  [116, 24],
-  12,
-  13,
+  [45, 3],
   12,
   13,
   80,
   c,
-  [3, 3],
-  44,
-  c,
-  [365, 3],
-  c,
-  [361, 7],
-  82,
-  85,
-  5,
-  6,
+  [101, 6],
   5,
   6,
   c,
-  [123, 7],
+  [45, 7],
   68,
   71,
   73,
   c,
-  [122, 3],
+  [44, 3],
+  5,
+  6,
   c,
-  [496, 3],
-  c,
-  [564, 3],
+  [177, 4],
   69,
+  78,
   c,
-  [607, 18],
+  [80, 6],
   c,
-  [231, 18],
+  [27, 7],
   c,
-  [290, 5],
+  [71, 6],
   c,
-  [81, 3],
-  1,
+  [27, 9],
   c,
-  [191, 10],
-  c,
-  [190, 6],
-  c,
-  [68, 9],
-  s,
-  [5, 4, 1],
-  c,
-  [23, 4],
-  c,
-  [20, 3],
-  c,
-  [749, 4],
+  [235, 4],
   s,
   [5, 8, 1],
   c,
-  [18, 3],
+  [30, 3],
   74,
   75,
   c,
-  [40, 5],
-  c,
-  [16, 9],
-  c,
-  [15, 19],
-  c,
-  [14, 3],
-  40,
-  41,
+  [29, 3],
   67,
   72,
-  c,
-  [160, 4],
   12,
   13,
   c,
-  [168, 6],
-  12,
-  21,
+  [20, 4],
   c,
-  [84, 10],
+  [17, 4],
   c,
-  [50, 8],
-  c,
-  [12, 32],
+  [16, 4],
   6,
   8,
   c,
-  [73, 5],
+  [13, 3],
+  40,
+  41,
   71,
   73,
   12,
   13,
+  79,
+  80,
+  67,
   c,
-  [464, 4],
+  [110, 3],
   c,
-  [145, 9],
-  c,
-  [110, 21],
-  c,
-  [206, 3],
-  c,
-  [46, 7]
+  [15, 7]
 ]),
   type: u([
   0,
   0,
-  s,
-  [2, 16],
   1,
   2,
   2,
-  c,
-  [21, 4],
   0,
+  0,
+  c,
+  [4, 3],
   c,
   [6, 3],
   c,
-  [28, 8],
+  [7, 3],
+  s,
+  [2, 5],
   c,
   [8, 5],
   c,
-  [42, 18],
+  [15, 4],
   c,
-  [26, 8],
-  s,
-  [2, 29],
+  [21, 3],
   c,
-  [72, 3],
-  s,
-  [2, 113],
+  [13, 4],
   c,
-  [191, 5],
-  c,
-  [3, 5],
+  [3, 7],
   c,
   [7, 8],
   c,
   [5, 8],
   c,
-  [149, 10],
+  [52, 5],
   c,
   [3, 5],
   c,
-  [97, 58],
+  [60, 8],
   c,
-  [64, 4],
+  [66, 7],
   c,
-  [22, 17],
+  [72, 8],
   c,
-  [18, 6],
+  [12, 12],
   c,
-  [24, 12],
+  [20, 18],
   c,
-  [252, 112],
+  [18, 7],
   c,
-  [124, 34],
+  [64, 5],
   c,
-  [22, 9],
+  [76, 5],
   c,
-  [194, 7],
+  [39, 16],
+  s,
+  [2, 20],
   c,
-  [200, 16],
+  [104, 12],
   c,
-  [178, 48],
+  [83, 13],
   c,
-  [326, 59],
+  [189, 9],
   c,
-  [70, 81],
+  [47, 14],
   c,
-  [282, 40],
+  [55, 10],
   c,
-  [116, 8],
+  [32, 11],
   c,
-  [117, 38],
+  [234, 11],
   c,
-  [155, 64],
+  [184, 13],
   c,
-  [555, 19],
+  [10, 15],
   c,
-  [859, 11],
+  [250, 9],
   c,
-  [250, 40],
+  [79, 14],
   c,
-  [40, 17],
+  [106, 22],
   c,
-  [17, 10],
+  [325, 8],
   c,
-  [68, 16],
-  c,
-  [757, 6],
-  c,
-  [192, 49],
-  c,
-  [388, 73],
-  c,
-  [886, 7],
-  c,
-  [342, 39],
-  0,
-  0
+  [15, 10]
 ]),
   state: u([
   1,
@@ -11951,87 +11740,60 @@ table: bt({
 ]),
   mode: u([
   s,
-  [2, 16],
+  [1, 17],
+  2,
+  c,
+  [15, 26],
   s,
-  [1, 16],
+  [2, 9],
+  c,
+  [11, 11],
+  c,
+  [18, 16],
+  c,
+  [39, 5],
+  c,
+  [3, 7],
+  c,
+  [49, 11],
   s,
-  [2, 19],
+  [2, 17],
   c,
-  [20, 20],
+  [18, 7],
   c,
-  [34, 48],
-  s,
-  [2, 79],
+  [7, 4],
   c,
-  [179, 20],
+  [102, 5],
   c,
-  [190, 23],
+  [36, 10],
   c,
-  [80, 38],
+  [44, 13],
   c,
-  [62, 3],
+  [87, 10],
   c,
-  [96, 16],
+  [83, 7],
   c,
-  [13, 11],
-  s,
-  [2, 120],
+  [8, 11],
   c,
-  [122, 25],
+  [7, 5],
   c,
-  [25, 4],
+  [57, 17],
   c,
-  [3, 12],
+  [171, 10],
   c,
-  [392, 17],
+  [178, 11],
   c,
-  [436, 41],
+  [10, 11],
   c,
-  [220, 68],
+  [14, 6],
   c,
-  [288, 91],
+  [216, 4],
   c,
-  [258, 5],
+  [168, 7],
   c,
-  [228, 13],
-  c,
-  [113, 34],
-  c,
-  [518, 58],
-  c,
-  [333, 17],
-  c,
-  [385, 6],
-  c,
-  [23, 4],
-  c,
-  [10, 7],
-  c,
-  [612, 39],
-  c,
-  [37, 15],
-  c,
-  [15, 6],
-  c,
-  [61, 15],
-  c,
-  [82, 9],
-  c,
-  [533, 67],
-  c,
-  [68, 40],
-  c,
-  [60, 3],
-  c,
-  [747, 6],
-  c,
-  [544, 36],
-  c,
-  [42, 4]
+  [11, 4]
 ]),
   goto: u([
-  s,
-  [8, 16],
   3,
   9,
   5,
@@ -12046,31 +11808,9 @@ table: bt({
   24,
   25,
   19,
-  s,
-  [4, 3],
-  s,
-  [7, 16],
   29,
-  s,
-  [10, 16],
-  s,
-  [11, 16],
   45,
   32,
-  s,
-  [13, 16],
-  s,
-  [14, 16],
-  s,
-  [15, 16],
-  s,
-  [16, 16],
-  s,
-  [17, 16],
-  s,
-  [18, 16],
-  s,
-  [19, 16],
   34,
   35,
   34,
@@ -12084,31 +11824,14 @@ table: bt({
   29,
   40,
   47,
-  35,
-  35,
-  36,
-  36,
-  37,
-  37,
   2,
   49,
   51,
   29,
   19,
-  s,
-  [9, 16],
-  s,
-  [76, 24],
-  s,
-  [12, 16],
   29,
-  46,
   59,
   60,
-  s,
-  [22, 6],
-  s,
-  [23, 6],
   62,
   63,
   65,
@@ -12120,27 +11843,13 @@ table: bt({
   s,
   [34, 7],
   s,
-  [39, 18],
-  s,
-  [74, 22],
-  s,
-  [75, 22],
-  s,
-  [91, 21],
-  s,
-  [92, 21],
-  s,
   [32, 9],
   29,
   40,
   s,
   [32, 7],
-  s,
-  [33, 16],
   67,
   47,
-  28,
-  28,
   69,
   29,
   29,
@@ -12151,12 +11860,6 @@ table: bt({
   51,
   51,
   29,
-  s,
-  [5, 3],
-  s,
-  [6, 3],
-  s,
-  [53, 3],
   76,
   s,
   [40, 9],
@@ -12164,87 +11867,41 @@ table: bt({
   s,
   [40, 7],
   s,
-  [41, 16],
-  s,
   [50, 10],
   81,
   s,
   [50, 6],
   80,
   50,
-  s,
-  [20, 16],
-  s,
-  [24, 16],
-  s,
-  [25, 16],
-  s,
-  [21, 16],
   83,
   83,
   84,
-  s,
-  [78, 18],
-  s,
-  [79, 18],
-  s,
-  [80, 18],
-  s,
-  [38, 18],
-  s,
-  [26, 16],
-  27,
-  27,
   86,
   85,
-  1,
-  3,
   89,
   19,
   95,
   95,
   88,
   s,
-  [93, 3],
-  s,
-  [52, 3],
-  s,
   [60, 7],
   92,
   s,
   [60, 3],
   s,
-  [49, 17],
-  s,
   [44, 9],
   81,
   s,
   [44, 7],
-  s,
-  [43, 16],
-  s,
-  [47, 17],
-  s,
-  [48, 16],
   95,
   94,
   84,
   84,
-  96,
   s,
-  [87, 3],
-  30,
-  30,
-  31,
-  31,
-  c,
-  [346, 3],
-  s,
-  [94, 3],
+  [96, 3],
+  74,
   98,
   99,
-  56,
-  56,
   73,
   73,
   106,
@@ -12258,24 +11915,13 @@ table: bt({
   82,
   82,
   c,
-  [536, 4],
-  s,
-  [42, 16],
-  s,
-  [77, 18],
+  [149, 4],
   c,
-  [274, 3],
-  s,
-  [88, 3],
-  90,
-  s,
-  [54, 3],
+  [64, 3],
   c,
-  [176, 11],
+  [57, 11],
   c,
-  [61, 6],
-  s,
-  [59, 11],
+  [20, 6],
   29,
   40,
   s,
@@ -12285,35 +11931,13 @@ table: bt({
   116,
   s,
   [68, 8],
-  s,
-  [65, 15],
-  s,
-  [66, 15],
-  s,
-  [60, 5],
-  58,
-  58,
-  81,
-  81,
   95,
   119,
-  55,
-  55,
-  57,
-  57,
-  s,
-  [72, 6],
   s,
   [64, 8],
   120,
   s,
   [64, 3],
-  s,
-  [69, 12],
-  s,
-  [70, 12],
-  s,
-  [71, 12],
   122,
   121,
   62,
@@ -12324,12 +11948,6 @@ table: bt({
   86,
   86,
   84,
-  s,
-  [63, 11],
-  s,
-  [67, 15],
-  s,
-  [60, 5],
   85,
   85,
   96,
@@ -12340,12 +11958,140 @@ table: bt({
   105
 ])
 }),
-defaultActions: {
-  32: 46,
-  70: 1,
-  71: 3,
-  97: 90
-},
+defaultActions: bda({
+  idx: u([
+  0,
+  3,
+  4,
+  6,
+  7,
+  s,
+  [9, 7, 1],
+  23,
+  24,
+  25,
+  28,
+  29,
+  30,
+  32,
+  34,
+  35,
+  s,
+  [38, 5, 1],
+  44,
+  46,
+  51,
+  52,
+  53,
+  56,
+  s,
+  [58, 4, 1],
+  s,
+  [63, 6, 1],
+  70,
+  71,
+  74,
+  75,
+  77,
+  79,
+  80,
+  81,
+  84,
+  85,
+  86,
+  88,
+  90,
+  93,
+  94,
+  96,
+  97,
+  98,
+  101,
+  s,
+  [104, 5, 1],
+  110,
+  111,
+  112,
+  114,
+  115,
+  116,
+  120,
+  121,
+  122
+]),
+  goto: u([
+  8,
+  4,
+  7,
+  10,
+  11,
+  s,
+  [13, 7, 1],
+  35,
+  36,
+  37,
+  9,
+  76,
+  12,
+  46,
+  22,
+  23,
+  39,
+  74,
+  75,
+  91,
+  92,
+  33,
+  28,
+  5,
+  6,
+  53,
+  41,
+  20,
+  24,
+  25,
+  21,
+  78,
+  79,
+  80,
+  38,
+  26,
+  27,
+  1,
+  3,
+  93,
+  52,
+  49,
+  43,
+  47,
+  48,
+  87,
+  30,
+  31,
+  94,
+  56,
+  42,
+  77,
+  88,
+  90,
+  54,
+  59,
+  65,
+  66,
+  60,
+  58,
+  81,
+  55,
+  57,
+  72,
+  69,
+  70,
+  71,
+  63,
+  67,
+  60
+])
+}),
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -12738,7 +12484,7 @@ parse: function parse(input, options) {
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
                     if (!t[0]) {
-                        // forget about that symbol and move forward: this wasn't an 'forgot to insert' error type where
+                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
 
@@ -12849,9 +12595,11 @@ parse: function parse(input, options) {
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
+
 var fs = require('fs');
 var transform = require('./ebnf-transform').transform;
 var ebnf = false;
+var XRegExp = require('xregexp');       // for helping out the `%options xregexp` in the lexer
 
 
 // transform ebnf to bnf if necessary
@@ -12862,7 +12610,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-153 */
+/* generated by jison-lex 0.3.4-154 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -13424,7 +13172,8 @@ var lexer = {
     },
 options: {
   easy_keyword_rules: true,
-  ranges: true
+  ranges: true,
+  xregexp: true
 },
 JisonLexerError: JisonLexerError,
 performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
@@ -13778,24 +13527,24 @@ rules: [
 /^(?:\*)/,
 /^(?:\?)/,
 /^(?:\+)/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?))/,
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))", ""),
 /^(?:=)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:[^\s\r\n]+)/,
+/^(?:\S+)/,
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:([^\S\r\n])+)/,
-/^(?:([^\S\r\n])+)/,
+/^(?:([^\S\n\r])+)/,
+/^(?:([^\S\n\r])+)/,
 /^(?:(\r\n|\n|\r)+)/,
-/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
+new XRegExp("^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])", ""),
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
 /^(?:"[^"]+")/,
 /^(?:'[^']+')/,
-/^(?:[^\s\r\n]+)/,
+/^(?:\S+)/,
 /^(?::)/,
 /^(?:;)/,
 /^(?:\|)/,
@@ -13811,18 +13560,18 @@ rules: [
 /^(?:%token\b)/,
 /^(?:%parse-param\b)/,
 /^(?:%options\b)/,
-/^(?:%lex((?:[^\S\r\n])*(?:(?:\r\n|\n|\r)[\w\W]*?)?(?:\r\n|\n|\r)(?:[^\S\r\n])*)\/lex\b)/,
+/^(?:%lex((?:[^\S\n\r])*(?:(?:\r\n|\n|\r)[\S\s]*?)?(?:\r\n|\n|\r)(?:[^\S\n\r])*)\/lex\b)/,
 /^(?:%code\b)/,
 /^(?:%import\b)/,
 /^(?:%include\b)/,
-/^(?:%([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-,.\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])?)[^\n\r]*)/,
-/^(?:<([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)>)/,
+new XRegExp("^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)[^\\n\\r]*)", ""),
+new XRegExp("^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)", ""),
 /^(?:\{\{[\w\W]*?\}\})/,
 /^(?:%\{(.|\r|\n)*?%\})/,
 /^(?:\{)/,
 /^(?:->.*)/,
-/^(?:(0[Xx][0-9A-Fa-f]+))/,
-/^(?:([1-9][0-9]*)(?![0-9A-FXa-fx]))/,
+/^(?:(0[Xx][\dA-Fa-f]+))/,
+/^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
 /^(?:.)/,
 /^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -13839,8 +13588,8 @@ rules: [
 /^(?:(\r\n|\n|\r))/,
 /^(?:'[^\r\n]+')/,
 /^(?:"[^\r\n]+")/,
-/^(?:([^\S\r\n])+)/,
-/^(?:[^\s\r\n]+)/
+/^(?:([^\S\n\r])+)/,
+/^(?:\S+)/
 ],
 conditions: {
   "bnf": {
@@ -14121,7 +13870,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 
 }
 
-},{"./ebnf-transform":4,"fs":13}],8:[function(require,module,exports){
+},{"./ebnf-transform":4,"fs":13,"xregexp":20}],8:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // MIT Licensed
 
@@ -14131,6 +13880,23 @@ var XRegExp = require('xregexp');
 var lexParser = require('./lex-parser');
 var version = require('./package.json').version;
 var assert = require('assert');
+
+const XREGEXP_UNICODE_ESCAPE_RE = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
+const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
+const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+const SET_IS_SINGLE_PCODE_RE = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
+
+// The expanded regex sets which are equivalent to the given `\\{c}` escapes:
+//
+// `/\s/`:
+const WHITESPACE_SETSTR = ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';     
+// `/\d/`:
+const DIGIT_SETSTR = '0-9';
+// `/\w/`:
+const WORDCHAR_SETSTR = 'A-Za-z0-9_';
+
+
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
@@ -14254,11 +14020,262 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     };
 }
 
+
+// Helper for `bitarray2set()`: convert character code to a representation string suitable for use in a regex
+function i2c(i) {
+    var c;
+
+    switch (i) {
+    case 10:
+        return '\\n';
+
+    case 13:
+        return '\\r';
+
+    case 9:
+        return '\\t';
+
+    case 8:
+        return '\\b';
+
+    case 12:
+        return '\\f';
+
+    case 11:
+        return '\\v';
+
+    case 45:        // ASCII/Unicode for '-' dash
+        return '\\-';
+
+    case 91:        // '['
+        return '\\[';
+
+    case 92:        // '\\'
+        return '\\\\';
+
+    case 93:        // ']'
+        return '\\]';
+
+    case 94:        // ']'
+        return '\\^';
+    }
+    // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
+    if (i >= 0xD800 && i < 0xDFFF) {
+        throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
+    }
+    if (i < 32
+            || i > 0xFFF0 /* Unicode Specials, also in UTF16 */
+            || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
+            || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */
+        ) {
+        // Detail about a detail:
+        // U+2028 and U+2029 are part of the `\s` regex escape code (`\s` and `[\s]` match either of these) and when placed in a JavaScript
+        // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
+        // a b0rked generated parser, as the generated code would include this regex right here.
+        // Hence we MUST escape these buggers everywhere we go...
+        c = '0000' + i.toString(16);
+        return '\\u' + c.substr(c.length - 4);
+    }
+    return String.fromCharCode(i);
+}
+
+
+// Helper collection for `bitarray2set()`: we have expanded all these cached `\\p{NAME}` regex sets when creating
+// this bitarray and now we should look at these expansions again to see if `bitarray2set()` can produce a
+// `\\p{NAME}` shorthand to represent [part of] the bitarray:
+var Pcodes_bitarray_cache = {};
+var Pcodes_bitarray_cache_test_order = [];
+
+// Helper collection for `bitarray2set()` for minifying special cases of result sets which can be represented by 
+// a single regex 'escape', e.g. `\d` for digits 0-9.
+var EscCode_bitarray_output_refs;
+
+// now initialize the EscCodes_... table above:
+init_EscCode_lookup_table();
+
+function init_EscCode_lookup_table() {
+    var s, bitarr, set2esc = {}, esc2bitarr = {};
+
+    // patch global lookup tables for the time being, while we calculate their *real* content in this function:
+    EscCode_bitarray_output_refs = {
+        esc2bitarr: {},
+        set2esc: {}
+    };
+    Pcodes_bitarray_cache_test_order = [];
+
+    // `/\S':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + WHITESPACE_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['S'] = bitarr;
+    set2esc[s] = 'S';
+    // set2esc['^' + s] = 's';
+    Pcodes_bitarray_cache['\\S'] = bitarr;
+
+    // `/\s':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, WHITESPACE_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['s'] = bitarr;
+    set2esc[s] = 's';
+    // set2esc['^' + s] = 'S';
+    Pcodes_bitarray_cache['\\s'] = bitarr;
+
+    // `/\D':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + DIGIT_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['D'] = bitarr;
+    set2esc[s] = 'D';
+    // set2esc['^' + s] = 'd';
+    Pcodes_bitarray_cache['\\D'] = bitarr;
+
+    // `/\d':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, DIGIT_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['d'] = bitarr;
+    set2esc[s] = 'd';
+    // set2esc['^' + s] = 'D';
+    Pcodes_bitarray_cache['\\d'] = bitarr;
+
+    // `/\W':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, '^' + WORDCHAR_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['W'] = bitarr;
+    set2esc[s] = 'W';
+    // set2esc['^' + s] = 'w';
+    Pcodes_bitarray_cache['\\W'] = bitarr;
+
+    // `/\w':
+    bitarr = new Array(65536 + 3);
+    set2bitarray(bitarr, WORDCHAR_SETSTR);
+    s = bitarray2set(bitarr);
+    esc2bitarr['w'] = bitarr;
+    set2esc[s] = 'w';
+    // set2esc['^' + s] = 'W';
+    Pcodes_bitarray_cache['\\w'] = bitarr;
+
+    EscCode_bitarray_output_refs = {
+        esc2bitarr: esc2bitarr,
+        set2esc: set2esc
+    };
+
+    updatePcodesBitarrayCacheTestOrder();
+} 
+
+function updatePcodesBitarrayCacheTestOrder(opts) {
+    var t = new Array(65536);
+    var l = {};
+    var user_has_xregexp = opts && opts.options && opts.options.xregexp;
+
+    // mark every character with which regex pcodes they are part of:
+    for (var k in Pcodes_bitarray_cache) {
+        var ba = Pcodes_bitarray_cache[k];
+
+        if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
+            continue;
+        }
+
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (ba[i]) {
+                cnt++;
+                if (!t[i]) {
+                    t[i] = [k];
+                } else {
+                    t[i].push(k);
+                }
+            }
+        }
+        l[k] = cnt;
+    }
+
+    // now dig out the unique ones: only need one per pcode.
+    // 
+    // We ASSUME every \\p{NAME} 'pcode' has at least ONE character
+    // in it that is ONLY matched by that particular pcode. 
+    // If this assumption fails, nothing is lost, but our 'regex set
+    // optimized representation' will be sub-optimal as than this pcode
+    // won't be tested during optimization. 
+    // 
+    // Now that would be a pity, so the assumption better holds...
+    // Turns out the assumption doesn't hold already for /\S/ + /\D/
+    // as the second one (\D) is a pure subset of \S. So we have to
+    // look for markers which match multiple escapes/pcodes for those
+    // ones where a unique item isn't available...
+    var lut = [];
+    var done = {};
+    var keys = Object.keys(Pcodes_bitarray_cache);
+
+    for (var i = 0; i < 65536; i++) {
+        var k = t[i][0];
+        if (t[i].length === 1 && !done[k]) {
+            assert(l[k] > 0);
+            lut.push([i, k]);
+            done[k] = true;
+        }
+    }
+
+    for (var j = 0; keys[j]; j++) {
+        var k = keys[j];
+
+        if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
+            continue;
+        }
+        
+        if (!done[k]) {
+            assert(l[k] > 0);
+            // find a minimum span character to mark this one:
+            var w = Infinity;
+            var rv;
+            var ba = Pcodes_bitarray_cache[k];
+            for (var i = 0; i < 65536; i++) {
+                if (ba[i]) {
+                    var tl = t[i].length;
+                    if (tl > 1 && tl < w) {
+                        assert(l[k] > 0);
+                        rv = [i, k];
+                        w = tl;
+                    }
+                }
+            }
+            if (rv) {
+                done[k] = true;
+                lut.push(rv);
+            }
+        }
+    }
+
+    // order from large set to small set so that small sets don't gobble
+    // characters also represented by overlapping larger set pcodes.
+    // 
+    // Again we assume something: that finding the large regex pcode sets
+    // before the smaller, more specialized ones, will produce a more
+    // optimal minification of the regex set expression. 
+    // 
+    // This is a guestimate/heuristic only!
+    lut.sort(function (a, b) {
+        var k1 = a[1];
+        var k2 = b[1];
+        var ld = l[k2] - l[k1];
+        if (ld) {
+            return ld;
+        }
+        // and for same-size sets, order from high to low unique identifier.
+        return b[0] - a[0];
+    });
+
+    Pcodes_bitarray_cache_test_order = lut;
+}
+
+
 // 'Join' a regex set `[...]` into a Unicode range spanning logic array, flagging every character in the given set.
-function set2bitarray(bitarr, s) {
+function set2bitarray(bitarr, s, opts) {
     var orig = s;
     var set_is_inverted = false;
-    var apply = [];
+    var bitarr_orig;
 
     function mark(d1, d2) {
         if (d2 == null) d2 = d1;
@@ -14267,16 +14284,10 @@ function set2bitarray(bitarr, s) {
         }
     }
 
-    function exec() {
-        // array gets sorted on entry [0] of each sub-array
-        apply.sort(function (a, b) {
-            return a[0] - b[0];
-        });
-
-        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots:
-        if (set_is_inverted) {
-            for (var i = 0; i < 65536; i++) {
-                bitarr[i] = !bitarr[i];
+    function add2bitarray(dst, src) {
+        for (var i = 0; i < 65536; i++) {
+            if (src[i]) {
+                dst[i] = true;
             }
         }
     }
@@ -14334,7 +14345,7 @@ function set2bitarray(bitarr, s) {
                 return '\r';
 
             default:
-                // just the chracter itself:
+                // just the character itself:
                 return s.substr(1);
             }
         } else {
@@ -14345,18 +14356,17 @@ function set2bitarray(bitarr, s) {
     if (s && s.length) {
         // inverted set?
         if (s[0] === '^') {
-            set_is_inverted = !set_is_inverted;
+            set_is_inverted = true;
             s = s.substr(1);
+            bitarr_orig = bitarr;
+            bitarr = new Array(65536);
         }
 
         // BITARR collects flags for characters set. Inversion means the complement set of character is st instead.
         // This results in an OR operations when sets are joined/chained.
 
-        var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-        var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
-
         while (s.length) {
-            var c1 = s.match(chr_re);
+            var c1 = s.match(CHR_RE);
             if (!c1) {
                 // hit an illegal escape sequence? cope anyway!
                 c1 = s[0];
@@ -14368,17 +14378,28 @@ function set2bitarray(bitarr, s) {
                 switch (c1) {
                 case '\\p':
                     s = s.substr(c1.length);
-                    var c2 = s.match(xregexp_unicode_escape_re);
+                    var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
                     if (c2) {
                         c2 = c2[0];
                         s = s.substr(c2.length);
-                        // expand escape:
-                        var xr = new XRegExp('[' + c1 + c2 + ']');           // TODO: case-insensitive grammar???
-                        var xs = '' + xr;
-                        // remove the wrapping `/[...]/`:
-                        xs = xs.substr(2, xs.length - 4);
-                        // inject back into source string:
-                        s = xs + s;
+                        // do we have this one cached already?
+                        var pex = c1 + c2;
+                        var ba4p = Pcodes_bitarray_cache[pex];
+                        if (!ba4p) {
+                            // expand escape:
+                            var xr = new XRegExp('[' + pex + ']');           // TODO: case-insensitive grammar???
+                            // rewrite to a standard `[...]` regex set: XRegExp will do this for us via `XRegExp.toString()`:
+                            var xs = '' + xr;
+                            // remove the wrapping `/.../` to get at the (possibly *combined* series of) `[...]` sets inside:
+                            xs = xs.substr(1, xs.length - 2);
+
+                            ba4p = reduceRegexToSetBitArray(xs, pex, opts);
+
+                            Pcodes_bitarray_cache[pex] = ba4p;
+                            updatePcodesBitarrayCacheTestOrder(opts);
+                        }
+                        // merge bitarrays:
+                        add2bitarray(bitarr, ba4p);
                         continue;
                     }
                     break;
@@ -14391,37 +14412,10 @@ function set2bitarray(bitarr, s) {
                 case '\\D':
                     // these can't participate in a range, but need to be treated special:
                     s = s.substr(c1.length);
-                    switch (c1[1]) {
-                    case 'S':
-                        // [^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, '^ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
-                        continue;
-
-                    case 's':
-                        // [ \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]
-                        set2bitarray(bitarr, ' \f\n\r\t\v\u00a0\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff');
-                        continue;
-
-                    case 'D':
-                        // [^0-9]
-                        set2bitarray(bitarr, '^0-9');
-                        continue;
-
-                    case 'd':
-                        // [0-9]
-                        set2bitarray(bitarr, '0-9');
-                        continue;
-
-                    case 'W':
-                        // [^A-Za-z0-9_]
-                        set2bitarray(bitarr, '^A-Za-z0-9_');
-                        continue;
-
-                    case 'w':
-                        // [A-Za-z0-9_]
-                        set2bitarray(bitarr, 'A-Za-z0-9_');
-                        continue;
-                    }
+                    // check for \S, \s, \D, \d, \W, \w and expand them:
+                    var ba4e = EscCode_bitarray_output_refs.esc2bitarr[c1[1]];
+                    assert(ba4e);
+                    add2bitarray(bitarr, ba4e);
                     continue;
 
                 case '\\b':
@@ -14437,7 +14431,7 @@ function set2bitarray(bitarr, s) {
             if (s[0] === '-' && s.length >= 2) {
                 // we can expect a range like 'a-z':
                 s = s.substr(1);
-                var c2 = s.match(chr_re);
+                var c2 = s.match(CHR_RE);
                 if (!c2) {
                     // hit an illegal escape sequence? cope anyway!
                     c2 = s[0];
@@ -14462,72 +14456,24 @@ function set2bitarray(bitarr, s) {
             mark(v1);
         }
 
+        // When we have marked all slots, '^' NEGATES the set, hence we flip all slots.
+        // 
         // Since a regex like `[^]` should match everything(?really?), we don't need to check if the MARK
-        // phase actually marked anything at all (apply.length > 0):
-        exec();
+        // phase actually marked anything at all: the `^` negation will correctly flip=mark the entire
+        // range then.
+        if (set_is_inverted) {
+            for (var i = 0; i < 65536; i++) {
+                if (!bitarr[i]) {
+                    bitarr_orig[i] = true;
+                }
+            }
+        }
     }
 }
 
 
 // convert a simple bitarray back into a regex set `[...]` content:
-function bitarray2set(l, output_inverted_variant) {
-    function i2c(i) {
-        var c;
-
-        switch (i) {
-        case 10:
-            return '\\n';
-
-        case 13:
-            return '\\r';
-
-        case 9:
-            return '\\t';
-
-        case 8:
-            return '\\b';
-
-        case 12:
-            return '\\f';
-
-        case 11:
-            return '\\v';
-
-        case 45:        // ASCII/Unicode for '-' dash
-            return '\\-';
-
-        case 91:        // '['
-            return '\\[';
-
-        case 92:        // '\\'
-            return '\\\\';
-
-        case 93:        // ']'
-            return '\\]';
-
-        case 94:        // ']'
-            return '\\^';
-        }
-        // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
-        if (i >= 0xD800 && i < 0xDFFF) {
-            throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
-        }
-        if (i < 32
-                || i > 0xFFF0 /* Unicode Specials, also in UTF16 */
-                || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
-                || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */
-            ) {
-            // Detail about a detail:
-            // U+2028 and U+2029 are part of the `\s` regex escape code (`\s` and `[\s]` match either of these) and when placed in a JavaScript
-            // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
-            // a b0rked generated parser, as the generated code would include this regex right here.
-            // Hence we MUST escape these buggers everywhere we go...
-            c = '0000' + i.toString(16);
-            return '\\u' + c.substr(c.length - 4);
-        }
-        return String.fromCharCode(i);
-    }
-
+function bitarray2set(l, output_inverted_variant, output_minimized) {
     // construct the inverse(?) set from the mark-set:
     //
     // Before we do that, we inject a sentinel so that our inner loops
@@ -14536,9 +14482,84 @@ function bitarray2set(l, output_inverted_variant) {
     // now reconstruct the regex set:
     var rv = [];
     var i, j;
-    var entire_range_is_marked = false;
+    var bitarr_is_cloned = false;
+    var l_orig = l;
+
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (!l[i]) {
+                cnt++;
+            }
+        }
+        if (cnt === 65536) {
+            // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+            // BUT... since we output the INVERTED set, we output the match-all set instead:
+            return '\\S\\s';
+        }
+        else if (cnt === 0) {
+            // When we find the entire Unicode range is in the output match set, we replace this with
+            // a shorthand regex: `[\S\s]`
+            // BUT... since we output the INVERTED set, we output the match-nothing set instead:
+            return '^\\S\\s';
+        }
+
+        // Now see if we can replace several bits by an escape / pcode:
+        if (output_minimized) {
+            var lut = Pcodes_bitarray_cache_test_order;
+            for (var tn = 0; lut[tn]; tn++) {
+                var tspec = lut[tn];
+                // check if the uniquely identifying char is in the inverted set:
+                if (!l[tspec[0]]) {
+                    // check if the pcode is covered by the inverted set:
+                    var pcode = tspec[1];
+                    var ba4pcode = Pcodes_bitarray_cache[pcode];
+                    var match = 0;
+                    for (var j = 0; j < 65536; j++) {
+                        if (ba4pcode[j]) {
+                            if (!l[j]) {
+                                // match in current inverted bitset, i.e. there's at
+                                // least one 'new' bit covered by this pcode/escape:
+                                match++;
+                            } else if (l_orig[j]) {
+                                // mismatch!
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    // We're only interested in matches which actually cover some 
+                    // yet uncovered bits: `match !== 0 && match !== false`.
+                    // 
+                    // Apply the heuristic that the pcode/escape is only going to be used
+                    // when it covers *more* characters than its own identifier's length:
+                    if (match && match > pcode.length) {
+                        rv.push(pcode);
+
+                        // and nuke the bits in the array which match the given pcode:
+                        // make sure these edits are visible outside this function as
+                        // `l` is an INPUT parameter (~ not modified)!
+                        if (!bitarr_is_cloned) {
+                            var l2 = new Array(65536 + 3);
+                            for (var j = 0; j < 65536; j++) {
+                                l2[j] = l[j] || ba4pcode[j];    // `!(!l[j] && !ba4pcode[j])`
+                            }
+                            // recreate sentinel
+                            l2[65536] = 1;
+                            l = l2;
+                            bitarr_is_cloned = true;
+                        } else {
+                            for (var j = 0; j < 65536; j++) {
+                                l[j] = l[j] || ba4pcode[j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -14553,13 +14574,83 @@ function bitarray2set(l, output_inverted_variant) {
             // generate subset:
             rv.push(i2c(i));
             if (j - 1 > i) {
-                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
         }
     } else {
         // generate the non-inverted set, hence all logic checks are inverted here...
+        var cnt = 0;
+        for (var i = 0; i < 65536; i++) {
+            if (l[i]) {
+                cnt++;
+            }
+        }
+        if (cnt === 65536) {
+            // When we find the entire Unicode range is in the output match set, we replace this with
+            // a shorthand regex: `[\S\s]`
+            return '\\S\\s';
+        }
+        else if (cnt === 0) {
+            // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
+            return '^\\S\\s';
+        }
+
+        // Now see if we can replace several bits by an escape / pcode:
+        if (output_minimized) {
+            var lut = Pcodes_bitarray_cache_test_order;
+            for (var tn = 0; lut[tn]; tn++) {
+                var tspec = lut[tn];
+                // check if the uniquely identifying char is in the set:
+                if (l[tspec[0]]) {
+                    // check if the pcode is covered by the set:
+                    var pcode = tspec[1];
+                    var ba4pcode = Pcodes_bitarray_cache[pcode];
+                    var match = 0;
+                    for (var j = 0; j < 65536; j++) {
+                        if (ba4pcode[j]) {
+                            if (l[j]) {
+                                // match in current bitset, i.e. there's at
+                                // least one 'new' bit covered by this pcode/escape:
+                                match++;
+                            } else if (!l_orig[j]) {
+                                // mismatch!
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    // We're only interested in matches which actually cover some 
+                    // yet uncovered bits: `match !== 0 && match !== false`.
+                    // 
+                    // Apply the heuristic that the pcode/escape is only going to be used
+                    // when it covers *more* characters than its own identifier's length:
+                    if (match && match > pcode.length) {
+                        rv.push(pcode);
+
+                        // and nuke the bits in the array which match the given pcode:
+                        // make sure these edits are visible outside this function as
+                        // `l` is an INPUT parameter (~ not modified)!
+                        if (!bitarr_is_cloned) {
+                            var l2 = new Array(65536 + 3);
+                            for (var j = 0; j < 65536; j++) {
+                                l2[j] = l[j] && !ba4pcode[j];
+                            }
+                            // recreate sentinel
+                            l2[65536] = 1;
+                            l = l2;
+                            bitarr_is_cloned = true;
+                        } else {
+                            for (var j = 0; j < 65536; j++) {
+                                l[j] = l[j] && !ba4pcode[j];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         i = 0;
         while (i <= 65535) {
             // find first character not in original set:
@@ -14577,34 +14668,29 @@ function bitarray2set(l, output_inverted_variant) {
             // generate subset:
             rv.push(i2c(i));
             if (j - 1 > i) {
-                entire_range_is_marked = (i === 0 && j === 65536);
                 rv.push((j - 2 > i ? '-' : '') + i2c(j - 1));
             }
             i = j;
         }
     }
 
-    // When there's nothing in the output we output a special 'match-nothing' regex: `[^\S\s]`.
-    // When we find the entire Unicode range is in the output match set, we also replace this with
-    // a shorthand regex: `[\S\s]` (thus replacing the `[\u0000-\uffff]` regex we generated here).
-    var s;
-    if (!rv.length) {
-        // entire range turnes out to be EXCLUDED:
-        s = '^\\S\\s';
-    } else if (entire_range_is_marked) {
-        // entire range turnes out to be INCLUDED:
-        s = '\\S\\s';
-    } else {
-        s = rv.join('');
-    }
+    assert(rv.length);
+    var s = rv.join('');
+    assert(s);
 
+    // Check if the set is better represented by one of the regex escapes:
+    var esc4s = EscCode_bitarray_output_refs.set2esc[s];
+    if (esc4s) {
+        // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+        return '\\' + esc4s;
+    }
     return s;
 }
 
 
 // Pretty brutal conversion of 'regex' `s` back to raw regex set content: strip outer [...] when they're there;
 // ditto for inner combos of sets, i.e. `]|[` as in `[0-9]|[a-z]`.
-function reduceRegexToSet(s, name) {
+function reduceRegexToSetBitArray(s, name, opts) {
     var orig = s;
 
     // propagate deferred exceptions = error reports.
@@ -14612,15 +14698,11 @@ function reduceRegexToSet(s, name) {
         return s;
     }
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-
     var l = new Array(65536 + 3);
     var internal_state = 0;
 
     while (s.length) {
-        var c1 = s.match(chr_re);
+        var c1 = s.match(CHR_RE);
         if (!c1) {
             // cope with illegal escape sequences too!
             return new Error('illegal escape sequence at start of regex part: "' + s + '" of regex "' + orig + '"');
@@ -14634,9 +14716,9 @@ function reduceRegexToSet(s, name) {
             // this is starting a set within the regex: scan until end of set!
             var set_content = [];
             while (s.length) {
-                var inner = s.match(set_part_re);
+                var inner = s.match(SET_PART_RE);
                 if (!inner) {
-                    inner = s.match(chr_re);
+                    inner = s.match(CHR_RE);
                     if (!inner) {
                         // cope with illegal escape sequences too!
                         return new Error('illegal escape sequence at start of regex part: ' + s + '" of regex "' + orig + '"');
@@ -14652,7 +14734,7 @@ function reduceRegexToSet(s, name) {
             }
 
             // ensure that we hit the terminating ']':
-            var c2 = s.match(chr_re);
+            var c2 = s.match(CHR_RE);
             if (!c2) {
                 // cope with illegal escape sequences too!
                 return new Error('regex set expression is broken in regex: "' + orig + '" --> "' + s + '"');
@@ -14666,7 +14748,7 @@ function reduceRegexToSet(s, name) {
 
             var se = set_content.join('');
             if (!internal_state) {
-                set2bitarray(l, se);
+                set2bitarray(l, se, opts);
 
                 // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`:
                 internal_state = 1;
@@ -14720,7 +14802,7 @@ function reduceRegexToSet(s, name) {
             // literal character or word: take the first character only and ignore the rest, so that
             // the constructed set for `word|noun` would be `[wb]`:
             if (!internal_state) {
-                set2bitarray(l, c1);
+                set2bitarray(l, c1, opts);
 
                 internal_state = 2;
             }
@@ -14751,9 +14833,89 @@ function reduceRegexToSet(s, name) {
         s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message);
     }
 
-    return s;
+    assert(s);
+    // propagate deferred exceptions = error reports.
+    if (s instanceof Error) {
+        return s;
+    }
+    return l;
 }
 
+
+// Convert bitarray representing, for example, `'0-9'` to regex string `[0-9]` 
+// -- or in this example it can be further optimized to only `\d`!
+function produceOptimizedRegex4Set(bitarr) {
+    // First try to produce a minimum regex from the bitarray directly:
+    var s1 = bitarray2set(bitarr, false, true);
+
+    // and when the regex set turns out to match a single pcode/escape, then
+    // use that one as-is:
+    if (s1.match(SET_IS_SINGLE_PCODE_RE)) {
+        // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+        return s1;
+    } else {
+        s1 = '[' + s1 + ']';
+    }
+
+    // Now try to produce a minimum regex from the *inverted* bitarray via negation:
+    // Because we look at a negated bitset, there's no use looking for matches with
+    // special cases here.
+    var s2 = bitarray2set(bitarr, true, true);
+
+    if (s2[0] === '^') {
+        s2 = s2.substr(1);
+        if (s2.match(SET_IS_SINGLE_PCODE_RE)) {
+            // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+            return s2;
+        }
+    } else {
+        s2 = '^' + s2;
+    }
+    s2 = '[' + s2 + ']';
+
+    // Then, as some pcode/escapes still happen to deliver a LARGER regex string in the end,
+    // we also check against the plain, unadulterated regex set expressions:
+    // 
+    // First try to produce a minimum regex from the bitarray directly:
+    var s3 = bitarray2set(bitarr, false, false);
+
+    // and when the regex set turns out to match a single pcode/escape, then
+    // use that one as-is:
+    if (s3.match(SET_IS_SINGLE_PCODE_RE)) {
+        // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+        return s3;
+    } else {
+        s3 = '[' + s3 + ']';
+    }
+
+    // Now try to produce a minimum regex from the *inverted* bitarray via negation:
+    // Because we look at a negated bitset, there's no use looking for matches with
+    // special cases here.
+    var s4 = bitarray2set(bitarr, true, false);
+
+    if (s4[0] === '^') {
+        s4 = s4.substr(1);
+        if (s4.match(SET_IS_SINGLE_PCODE_RE)) {
+            // When we hit a special case like this, it is always the shortest notation, hence wins on the spot!
+            return s4;
+        }
+    } else {
+        s4 = '^' + s4;
+    }
+    s4 = '[' + s4 + ']';
+
+    if (s2.length < s1.length) {
+        s1 = s2;
+    }
+    if (s3.length < s1.length) {
+        s1 = s3;
+    }
+    if (s4.length < s1.length) {
+        s1 = s4;
+    }
+
+    return s1;
+}
 
 // expand all macros (with maybe one exception) in the given regex: the macros may exist inside `[...]` regex sets or
 // elsewhere, which requires two different treatments to expand these macros.
@@ -14775,15 +14937,10 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return s;
     }
 
-    var chr_re = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-    var set_part_re = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var nothing_special_re = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-    var xregexp_unicode_escape_re = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
-
     var rv = [];
 
     while (s.length) {
-        var c1 = s.match(chr_re);
+        var c1 = s.match(CHR_RE);
         if (!c1) {
             // cope with illegal escape sequences too!
             return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
@@ -14799,9 +14956,9 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             var l = new Array(65536 + 3);
 
             while (s.length) {
-                var inner = s.match(set_part_re);
+                var inner = s.match(SET_PART_RE);
                 if (!inner) {
-                    inner = s.match(chr_re);
+                    inner = s.match(CHR_RE);
                     if (!inner) {
                         // cope with illegal escape sequences too!
                         return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
@@ -14817,7 +14974,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             }
 
             // ensure that we hit the terminating ']':
-            var c2 = s.match(chr_re);
+            var c2 = s.match(CHR_RE);
             if (!c2) {
                 // cope with illegal escape sequences too!
                 return new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
@@ -14840,32 +14997,27 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
                 }
             }
 
-            set2bitarray(l, se);
+            set2bitarray(l, se, opts);
 
             // find out which set expression is optimal in size:
-            var s1 = bitarray2set(l);
-            var s2 = /* '^' + */ bitarray2set(l, true);
-            if (s2[0] === '^') {
-                s2 = s2.substr(1);
-            } else {
-                s2 = '^' + s2;
-            }
+            var s1 = produceOptimizedRegex4Set(l);
+
             // check if the source regex set potentially has any expansions (guestimate!)
             //
             // The indexOf('{') picks both XRegExp Unicode escapes and JISON lexer macros, which is perfect for us here.
             var has_expansions = (se.indexOf('{') >= 0);
-            if (s2.length < s1.length) {
-                s1 = s2;
-            }
+
+            se = '[' + se + ']';
+            
             if (!has_expansions && se.length < s1.length) {
                 s1 = se;
             }
-            rv.push('[' + s1 + ']');
+            rv.push(s1);
             break;
 
         // XRegExp Unicode escape, e.g. `\\p{Number}`:
         case '\\p':
-            var c2 = s.match(xregexp_unicode_escape_re);
+            var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -14881,7 +15033,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
         // Treat it as a macro reference and see if it will expand to anything:
         case '{':
-            var c2 = s.match(nothing_special_re);
+            var c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -14918,7 +15070,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         default:
             // non-set character or word: see how much of this there is for us and then see if there
             // are any macros still lurking inside there:
-            var c2 = s.match(nothing_special_re);
+            var c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -14948,36 +15100,9 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return new Error(errinfo() + ': expands to an invalid regex: /' + s + '/');
     }
 
+    assert(s);
     return s;
 }
-
-
-// 'normalize' a `[...]` set by inverting an inverted `[^...]` set:
-function normalizeSet(s, output_inverted_variant) {
-    var orig = s;
-
-    // propagate deferred exceptions = error reports.
-    if (s instanceof Error) {
-        return s;
-    }
-
-    if (s && s.length) {
-        // // inverted set?
-        // if (s[0] === '^') {
-        //     output_inverted_variant = !output_inverted_variant;
-        //     s = s.substr(1);
-        // }
-
-        var l = new Array(65536 + 3);
-        set2bitarray(l, s);
-
-        s = bitarray2set(l, output_inverted_variant);
-    }
-
-    return s;
-}
-
-
 
 
 // expand macros within macros and cache the result
@@ -14994,7 +15119,6 @@ function prepareMacros(dict_macros, opts) {
                 // set up our own record so we can detect definition loops:
                 macros[i] = {
                     in_set: false,
-                    in_inv_set: false,
                     elsewhere: null,
                     raw: dict_macros[i]
                 };
@@ -15033,11 +15157,21 @@ function prepareMacros(dict_macros, opts) {
                 }
             }
 
-            m = reduceRegexToSet(m, i);
+            var mba = reduceRegexToSetBitArray(m, i, opts);
+
+            var s1;
+
+            // propagate deferred exceptions = error reports.
+            if (mba instanceof Error) {
+                s1 = mba;
+            } else {
+                s1 = bitarray2set(mba, false);
+		
+                m = s1;
+            }
 
             macros[i] = {
-                in_set: normalizeSet(m, false),
-                in_inv_set: normalizeSet(m, true),
+                in_set: s1,
                 elsewhere: null,
                 raw: dict_macros[i]
             };
@@ -15070,7 +15204,6 @@ function prepareMacros(dict_macros, opts) {
             // the macro MAY contain other macros which MAY be inside a `[...]` set in this
             // macro or elsewhere, hence we must parse the regex:
             m = reduceRegex(m, i, opts, expandAllMacrosInSet, expandAllMacrosElsewhere);
-            assert(m);
             // propagate deferred exceptions = error reports.
             if (m instanceof Error) {
                 return m;
@@ -15207,7 +15340,7 @@ function expandMacros(src, macros, opts) {
 
                     var a = s.split('{' + i + '}');
                     if (a.length > 1) {
-                        var x = m.in_set;
+                        x = m.in_set;
 
                         assert(x);
                         if (x instanceof Error) {
@@ -16496,7 +16629,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.18-152 */
+/* parser generated by jison 0.4.18-154 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -16826,7 +16959,17 @@ function bp(s) {
     return rv;
 }
 
-
+// helper: reconstruct the defaultActions[] table
+function bda(s) {
+    var rv = {};
+    var d = s.idx;
+    var g = s.goto;
+    for (var i = 0, l = d.length; i < l; i++) {
+        var j = d[i];
+        rv[j] = g[i];
+    }
+    return rv;
+}
 
 // helper: reconstruct the 'goto' table
 function bt(s) {
@@ -17129,22 +17272,22 @@ table: bt({
   9,
   1,
   1,
-  3,
+  0,
   7,
-  5,
+  0,
   10,
-  9,
+  0,
   10,
-  1,
-  5,
+  0,
+  0,
+  6,
   s,
-  [6, 4],
+  [0, 3],
   2,
-  2,
-  5,
+  s,
+  [0, 3],
   9,
-  9,
-  2
+  0
 ]),
   symbol: u([
   1,
@@ -17157,48 +17300,28 @@ table: bt({
   s,
   [1, 3],
   3,
-  5,
-  1,
-  3,
   4,
   5,
   c,
-  [12, 4],
-  c,
-  [7, 3],
-  c,
-  [5, 5],
-  6,
-  7,
-  8,
+  [9, 4],
+  s,
+  [3, 6, 1],
   16,
-  17,
-  c,
-  [10, 8],
   17,
   18,
   c,
-  [8, 3],
+  [9, 3],
   s,
   [10, 6, 1],
   c,
-  [46, 3],
+  [20, 5],
   c,
-  [35, 8],
-  c,
-  [31, 6],
-  c,
-  [6, 14],
-  3,
+  [16, 3],
   5,
   c,
-  [75, 6],
+  [18, 4],
   c,
-  [58, 14],
-  c,
-  [57, 5],
-  3,
-  5
+  [17, 5]
 ]),
   type: u([
   2,
@@ -17211,19 +17334,19 @@ table: bt({
   2,
   1,
   s,
-  [2, 8],
+  [2, 5],
   c,
-  [12, 3],
+  [9, 3],
   s,
-  [2, 12],
+  [2, 7],
   c,
-  [14, 14],
+  [9, 6],
   c,
-  [46, 8],
+  [29, 7],
   s,
-  [2, 51],
+  [2, 11],
   c,
-  [57, 8]
+  [17, 6]
 ]),
   state: u([
   1,
@@ -17246,28 +17369,24 @@ table: bt({
   2,
   s,
   [1, 4],
-  s,
-  [2, 5],
+  2,
+  2,
   1,
   2,
   c,
-  [8, 6],
+  [5, 3],
   c,
-  [12, 5],
+  [7, 3],
   c,
-  [20, 7],
+  [12, 4],
   c,
-  [15, 8],
+  [13, 4],
   c,
-  [17, 3],
+  [14, 6],
   c,
-  [14, 12],
-  s,
-  [2, 18],
+  [8, 4],
   c,
-  [48, 14],
-  c,
-  [53, 11]
+  [5, 4]
 ]),
   goto: u([
   4,
@@ -17275,14 +17394,11 @@ table: bt({
   3,
   7,
   9,
-  s,
-  [5, 3],
   6,
   6,
   8,
   6,
-  s,
-  [7, 6],
+  7,
   s,
   [13, 4],
   12,
@@ -17290,43 +17406,49 @@ table: bt({
   14,
   13,
   13,
-  s,
-  [11, 9],
   4,
   8,
   4,
   3,
   7,
-  1,
-  s,
-  [8, 5],
   s,
   [10, 4],
   17,
   10,
-  s,
-  [14, 6],
-  s,
-  [15, 6],
-  s,
-  [16, 6],
   19,
   18,
-  2,
-  2,
-  s,
-  [9, 5],
-  s,
-  [12, 9],
   c,
-  [53, 5],
-  3,
+  [13, 5]
+])
+}),
+defaultActions: bda({
+  idx: u([
+  s,
+  [3, 4, 2],
+  10,
+  12,
+  13,
+  14,
+  16,
+  17,
+  18,
+  20
+]),
+  goto: u([
+  5,
+  7,
+  11,
+  1,
+  8,
+  14,
+  15,
+  16,
+  2,
+  9,
+  12,
   3
 ])
 }),
-defaultActions: {
-  9: 1
-},
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -17339,7 +17461,7 @@ parseError: function parseError(str, hash) {
 parse: function parse(input) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
-        sstack = new Array(128),        // state stack: stores states
+        sstack = new Array(128),        // state stack: stores states (column storage)
 
         vstack = new Array(128),        // semantic value stack
 
@@ -17737,7 +17859,8 @@ parse: function parse(input) {
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
-/* generated by jison-lex 0.3.4-152 */
+
+/* generated by jison-lex 0.3.4-154 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -22235,7 +22358,7 @@ XRegExp.union = function(patterns, flags) {
  * bugs in the native `RegExp.prototype.exec`. Calling `XRegExp.install('natives')` uses this to
  * override the native method. Use via `XRegExp.exec` without overriding natives.
  *
- * @private
+ * @memberOf RegExp
  * @param {String} str String to search.
  * @returns {Array} Match array with named backreference properties, or `null`.
  */
@@ -22299,7 +22422,7 @@ fixed.exec = function(str) {
  * Fixes browser bugs in the native `RegExp.prototype.test`. Calling `XRegExp.install('natives')`
  * uses this to override the native method.
  *
- * @private
+ * @memberOf RegExp
  * @param {String} str String to search.
  * @returns {Boolean} Whether the regex matched the provided value.
  */
@@ -22313,7 +22436,7 @@ fixed.test = function(str) {
  * bugs in the native `String.prototype.match`. Calling `XRegExp.install('natives')` uses this to
  * override the native method.
  *
- * @private
+ * @memberOf String
  * @param {RegExp|*} regex Regex to search with. If not a regex object, it is passed to `RegExp`.
  * @returns {Array} If `regex` uses flag g, an array of match strings or `null`. Without flag g,
  *   the result of calling `regex.exec(this)`.
@@ -22344,7 +22467,7 @@ fixed.match = function(regex) {
  * that this doesn't support SpiderMonkey's proprietary third (`flags`) argument. Use via
  * `XRegExp.replace` without overriding natives.
  *
- * @private
+ * @memberOf String
  * @param {RegExp|String} search Search pattern to be replaced.
  * @param {String|Function} replacement Replacement string or a function invoked to create it.
  * @returns {String} New string with one or all matches replaced.
@@ -22476,7 +22599,7 @@ fixed.replace = function(search, replacement) {
  * Fixes browser bugs in the native `String.prototype.split`. Calling `XRegExp.install('natives')`
  * uses this to override the native method. Use via `XRegExp.split` without overriding natives.
  *
- * @private
+ * @memberOf String
  * @param {RegExp|String} separator Regex or string to use for separating the string.
  * @param {Number} [limit] Maximum number of items to include in the result array.
  * @returns {Array} Array of substrings.
@@ -25396,7 +25519,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.18-153",
+  "version": "0.4.18-154",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -25429,17 +25552,17 @@ module.exports={
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
     "lex-parser": "GerHobbelt/lex-parser#master",
-    "recast": "0.11.14",
-    "jscodeshift": "0.3.28",
+    "recast": "0.11.17",
+    "jscodeshift": "0.3.30",
     "json5": "0.5.0",
     "nomnom": "GerHobbelt/nomnom#master",
     "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": "13.1.0",
-    "glob": "^7.0.6",
+    "browserify": "13.1.1",
+    "glob": "7.1.1",
     "test": "0.6.0",
-    "uglify-js": "2.7.3"
+    "uglify-js": "2.7.4"
   },
   "scripts": {
     "test": "node tests/all-tests.js"

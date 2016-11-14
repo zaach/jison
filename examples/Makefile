@@ -70,6 +70,10 @@ MISC_TARGETS =                                                   \
 			reduce_conflict                                     \
 			regex                                               \
 			semwhitespace                                       \
+			test-epsilon-rules-early-reduce                     \
+			test-nonassociative-operator-0                      \
+			test-nonassociative-operator-1                      \
+			test-nonassociative-operator-2                      \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -139,6 +143,10 @@ ALL_TARGETS =                                                   \
 			reduce_conflict                                     \
 			regex                                               \
 			semwhitespace                                       \
+			test-epsilon-rules-early-reduce                     \
+			test-nonassociative-operator-0                      \
+			test-nonassociative-operator-1                      \
+			test-nonassociative-operator-2                      \
 			theory-left-recurs-01                               \
 			tikiwikiparser                                      \
 			unicode                                             \
@@ -435,6 +443,27 @@ lr-but-not-lalr:
 theory-left-recurs-01:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-epsilon-rules-early-reduce:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-nonassociative-operator-0:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-nonassociative-operator-1:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-nonassociative-operator-2:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
 
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
