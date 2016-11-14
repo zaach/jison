@@ -133,7 +133,7 @@ ALL_TARGETS =                                                   \
 			lr-but-not-lalr                                     \
 			mermaid                                             \
 			mfcalc                                              \
-			no-prec-hack-needed									\
+			no-prec-hack-needed																	\
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
