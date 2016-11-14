@@ -40,7 +40,7 @@
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -86,7 +86,7 @@
  *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:
  *               these extra `args...` are passed verbatim to the grammar rules' action code.
  *
- *    cleanupAfterParse: function(resultValue, invoke_post_methods),
+ *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),
  *               Helper function **which will be set up during the first invocation of the `parse()` method**.
  *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown
  *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY
@@ -174,6 +174,7 @@
  *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
+ *    parser:      (reference to the current parser instance)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -467,7 +468,8 @@ originalParseError: null,
 cleanupAfterParse: null,
 constructParseErrorInfo: null,
 
-__reentrant_call_depth: 0,       // INTERNAL USE ONLY
+__reentrant_call_depth: 0,      // INTERNAL USE ONLY
+__error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
 //yyErrOk: 0,
@@ -643,15 +645,15 @@ table: bt({
   6,
   6,
   s,
-  [0, 4],
+  [9, 3],
+  1,
   s,
   [6, 5],
   s,
-  [0, 3],
+  [9, 3],
   8,
   s,
-  [9, 5],
-  0
+  [9, 6]
 ]),
   symbol: u([
   4,
@@ -667,14 +669,22 @@ table: bt({
   c,
   [15, 3],
   c,
-  [6, 36],
+  [6, 6],
   c,
-  [49, 7],
+  [20, 8],
   11,
   c,
-  [58, 8],
+  [9, 19],
   c,
-  [9, 37]
+  [40, 12],
+  c,
+  [6, 18],
+  c,
+  [58, 27],
+  c,
+  [84, 27],
+  c,
+  [9, 35]
 ]),
   type: u([
   s,
@@ -689,9 +699,15 @@ table: bt({
   c,
   [15, 3],
   c,
-  [6, 39],
+  [6, 9],
   s,
-  [2, 50]
+  [2, 28],
+  c,
+  [40, 12],
+  c,
+  [6, 18],
+  s,
+  [2, 86]
 ]),
   state: u([
   1,
@@ -701,20 +717,25 @@ table: bt({
 ]),
   mode: u([
   s,
-  [1, 56],
+  [1, 23],
   s,
-  [2, 3],
+  [2, 28],
+  s,
+  [1, 25],
   c,
-  [8, 8],
+  [52, 35],
   c,
-  [9, 10],
+  [11, 8],
   c,
-  [11, 5],
+  [20, 9],
+  c,
+  [31, 9],
   c,
   [9, 15],
   c,
   [10, 3],
-  2
+  s,
+  [2, 10]
 ]),
   goto: u([
   3,
@@ -726,9 +747,26 @@ table: bt({
   c,
   [13, 5],
   c,
-  [5, 30],
+  [5, 5],
+  s,
+  [11, 9],
+  s,
+  [12, 9],
+  s,
+  [13, 9],
+  1,
   c,
-  [42, 7],
+  [38, 10],
+  c,
+  [5, 15],
+  s,
+  [7, 9],
+  s,
+  [8, 9],
+  s,
+  [9, 10],
+  c,
+  [97, 6],
   23,
   s,
   [2, 3],
@@ -738,7 +776,7 @@ table: bt({
   s,
   [3, 3],
   c,
-  [60, 7],
+  [115, 7],
   s,
   [4, 4],
   c,
@@ -753,7 +791,9 @@ table: bt({
   [6, 6],
   14,
   15,
-  6
+  6,
+  s,
+  [10, 9]
 ])
 }),
 defaultActions: bda({
@@ -778,7 +818,6 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
-        // assert('recoverable' in hash);
     } else {
         throw new this.JisonParserError(str, hash);
     }
@@ -832,6 +871,45 @@ parse: function parse(input) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount 
+    // to have *their* closure match ours -- if we only set them up once, 
+    // any subsequent `parse()` runs will fail in very obscure ways when 
+    // these functions are invoked in the user action code block(s) as 
+    // their closure will still refer to the `parse()` instance which set 
+    // them up. Hence we MUST set them up at the start of every `parse()` run! 
+    if (this.yyErrOk) {
+        this.yyErrOk = function yyErrOk() {
+
+            recovering = 0;
+        };
+    }
+
+    if (this.yyClearIn) {
+        this.yyClearIn = function yyClearIn() {
+
+            if (symbol === TERROR) {
+                symbol = 0;
+                yytext = null;
+                yyleng = 0;
+
+            }
+
+        };
+    }
+
     lexer.setInput(input, sharedState.yy);
 
 
@@ -873,8 +951,8 @@ parse: function parse(input) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
-        var rv;
+    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
+        var rv, i;
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
@@ -911,13 +989,26 @@ parse: function parse(input) {
         vstack.length = 0;
         stack_pointer = 0;
 
+        // nuke the error hash info instances created during this run. 
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
         return resultValue;
     };
 
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `lexer`, `sharedState`, etc. references will be *wrong*!
     this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
-        return {
+        var pei = {
             errStr: msg,
             exception: ex,
             text: lexer.match,
@@ -938,8 +1029,15 @@ parse: function parse(input) {
             stack_pointer: sp,
             yy: sharedState.yy,
             lexer: lexer,
+            parser: this,
 
-            // and make sure the error info doesn't stay due to potential ref cycle via userland code manipulations (memory leak opportunity!):
+            // and make sure the error info doesn't stay due to potential 
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            // 
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
             destroy: function destructParseErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -949,13 +1047,16 @@ parse: function parse(input) {
                 // ...
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key !== 'function') {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
                         this[key] = undefined;
                     }
                 }
                 this.recoverable = rec;
             }
         };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
     };
 
 
@@ -971,6 +1072,7 @@ parse: function parse(input) {
 
     var symbol = 0;
 
+    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
@@ -1174,7 +1276,7 @@ parse: function parse(input) {
         p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
         retval = this.parseError(p.errStr, p);
     } finally {
-        retval = this.cleanupAfterParse(retval, true);
+        retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
     }
 
