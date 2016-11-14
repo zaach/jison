@@ -220,7 +220,7 @@ v
     | error
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$)}, yy.lastErrorMessage);
+            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash);
             yyerrok;
             yyclearin;
             $$ = 1;
@@ -286,6 +286,7 @@ parser.yy.parseError = function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.yy.lastErrorMessage = str;
+        hash.yy.lastErrorHash = hash;
     } else {
         console.error(str, hash && hash.exception);
         throw new this.JisonParserError(str, hash);
