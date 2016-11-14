@@ -626,8 +626,8 @@ exports["test default parse exception hash object contents"] = function () {
     var rv = parser.parse('xyx');
 
     assert.ok(rv === 'exy:x', "parse xyx");
-    assert.ok(pre_count === 1);
-    assert.ok(post_count === 1);
+    assert.ok(pre_count === 1, "# invocations of pre_parse");
+    assert.ok(post_count === 1, "# invocations of post_parse");
 
     // a bad run: a LEXER exception will be thrown:
     // Thanks to the parser kernel catching it and transforming it to 
@@ -652,6 +652,7 @@ exports["test default parse exception hash object contents"] = function () {
           'line',
           //'loc',
           'new_state',
+          'parser',
           'recoverable',
           'stack_pointer',
           'state',
@@ -666,7 +667,7 @@ exports["test default parse exception hash object contents"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
 
         // exception is supposed to contain a LEXER exception:
@@ -698,7 +699,7 @@ exports["test default parse exception hash object contents"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
@@ -724,6 +725,7 @@ exports["test default parse exception hash object contents"] = function () {
           'line',
           //'loc',
           'new_state',
+          'parser',
           'recoverable',
           'stack_pointer',
           'state',
@@ -738,7 +740,7 @@ exports["test default parse exception hash object contents"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
@@ -778,8 +780,8 @@ exports["test %options no-try-catch"] = function () {
     var rv = parser.parse('xyx');
 
     assert.ok(rv === 'exy:x', "parse xyx");
-    assert.ok(pre_count === 1);
-    assert.ok(post_count === 1);
+    assert.ok(pre_count === 1, "# invocations of pre_parse");
+    assert.ok(post_count === 1, "# invocations of post_parse");
 
     // a bad run: a LEXER exception will be thrown:
     //
@@ -823,7 +825,7 @@ exports["test %options no-try-catch"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
@@ -849,6 +851,7 @@ exports["test %options no-try-catch"] = function () {
           'line',
           //'loc',
           'new_state',
+          'parser',
           'recoverable',
           'stack_pointer',
           'state',
@@ -863,7 +866,7 @@ exports["test %options no-try-catch"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
@@ -945,7 +948,7 @@ exports["test %options on-demand-lookahead"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
@@ -971,6 +974,7 @@ exports["test %options on-demand-lookahead"] = function () {
           'line',
           //'loc',
           'new_state',
+          'parser',
           'recoverable',
           'stack_pointer',
           'state',
@@ -985,7 +989,7 @@ exports["test %options on-demand-lookahead"] = function () {
         ];
         assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members");
+            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
