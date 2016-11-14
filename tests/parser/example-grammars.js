@@ -126,6 +126,18 @@ const test_list = [
   {
     name: 'theory-left-recurs-01',
   },
+  {
+    name: 'test-epsilon-rules-early-reduce',
+  },
+  {
+    name: 'test-nonassociative-operator-0',
+  },
+  {
+    name: 'test-nonassociative-operator-1',
+  },
+  {
+    name: 'test-nonassociative-operator-2',
+  },
 ];
 
 console.log('exec glob....', __dirname);
