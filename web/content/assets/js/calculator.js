@@ -871,45 +871,6 @@ parse: function parse(input) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount 
-    // to have *their* closure match ours -- if we only set them up once, 
-    // any subsequent `parse()` runs will fail in very obscure ways when 
-    // these functions are invoked in the user action code block(s) as 
-    // their closure will still refer to the `parse()` instance which set 
-    // them up. Hence we MUST set them up at the start of every `parse()` run! 
-    if (this.yyErrOk) {
-        this.yyErrOk = function yyErrOk() {
-
-            recovering = 0;
-        };
-    }
-
-    if (this.yyClearIn) {
-        this.yyClearIn = function yyClearIn() {
-
-            if (symbol === TERROR) {
-                symbol = 0;
-                yytext = null;
-                yyleng = 0;
-
-            }
-
-        };
-    }
-
     lexer.setInput(input, sharedState.yy);
 
 
@@ -952,7 +913,7 @@ parse: function parse(input) {
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
     this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
-        var rv, i;
+        var rv;
 
         if (invoke_post_methods) {
             if (sharedState.yy.post_parse) {
@@ -1076,7 +1037,7 @@ parse: function parse(input) {
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+
     };
     var p, len, this_production;
 

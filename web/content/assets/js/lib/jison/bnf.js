@@ -1,7 +1,10 @@
 if (typeof require !== 'undefined') {
     var bnf = require("./util/bnf-parser").parser;
     var jisonlex = require("./jisonlex");
-    exports.parse = function parse () { return bnf.parse.apply(bnf, arguments) };
+
+    exports.parse = function parse () { 
+        return bnf.parse.apply(bnf, arguments);
+    };
 }
 
 // adds a declaration to the grammar
