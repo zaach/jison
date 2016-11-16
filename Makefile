@@ -51,13 +51,6 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 examples_directory: build
 	cd examples/ && make all
 
-examples/error-handling: build
-	cd examples/ && make error-handling
-
-examples/misc: build
-	cd examples/ && make misc
-
-
 
 examples/ansic: build
 	cd examples/ && make ansic
@@ -224,6 +217,9 @@ examples/json_js: build
 examples/klammergebirge: build
 	cd examples/ && make klammergebirge
 
+examples/lalr-but-not-slr: build
+	cd examples/ && make lalr-but-not-slr
+
 examples/lambdacalc: build
 	cd examples/ && make lambdacalc
 
@@ -232,6 +228,9 @@ examples/lex: build
 
 examples/lojban-300: build
 	cd examples/ && make lojban-300
+
+examples/lr-but-not-lalr: build
+	cd examples/ && make lr-but-not-lalr
 
 examples/mermaid: build
 	cd examples/ && make mermaid
@@ -248,14 +247,14 @@ examples/nv_classy_ast: build
 examples/olmenu-proto2: build
 	cd examples/ && make olmenu-proto2
 
-examples/phraser: build
-	cd examples/ && make phraser
+examples/parser-to-lexer-communication-test: build
+	cd examples/ && make parser-to-lexer-communication-test
 
 examples/pascal: build
 	cd examples/ && make pascal
 
-examples/parser-to-lexer-communication-test: build
-	cd examples/ && make parser-to-lexer-communication-test
+examples/phraser: build
+	cd examples/ && make phraser
 
 examples/precedence: build
 	cd examples/ && make precedence
@@ -268,6 +267,21 @@ examples/regex: build
 
 examples/semwhitespace: build
 	cd examples/ && make semwhitespace
+
+examples/test-epsilon-rules-early-reduce: build
+	cd examples/ && make test-epsilon-rules-early-reduce
+
+examples/test-nonassociative-operator-0: build
+	cd examples/ && make test-nonassociative-operator-0
+
+examples/test-nonassociative-operator-1: build
+	cd examples/ && make test-nonassociative-operator-1
+
+examples/test-nonassociative-operator-2: build
+	cd examples/ && make test-nonassociative-operator-2
+
+examples/theory-left-recurs-01: build
+	cd examples/ && make theory-left-recurs-01
 
 examples/tikiwikiparser: build
 	cd examples/ && make tikiwikiparser
@@ -287,14 +301,12 @@ examples/with_custom_lexer: build
 examples/yacc-error-recovery: build
 	cd examples/ && make yacc-error-recovery
 
-examples/lalr-but-not-slr: build
-	cd examples/ && make lalr-but-not-slr
 
-examples/lr-but-not-lalr: build
-	cd examples/ && make lr-but-not-lalr
 
-examples/theory-left-recurs-01: build
-	cd examples/ && make theory-left-recurs-01
+
+
+
+
 
 
 
