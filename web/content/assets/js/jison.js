@@ -2455,9 +2455,80 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
-        + ' *               `parser.parse(str, ...)`\n'
+        + ' *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file\n'
+        + ' *\n'
+        + ' *               The function parameters and `this` have the following value/meaning:\n'
+        + ' *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)\n'
+        + ' *                             to store/reference the rule value `$$` and location info `@$`.\n'
+        + ' *\n'
+        + ' *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets\n'
+        + ' *                 to see the same object via the `this` reference, i.e. if you wish to carry custom\n'
+        + ' *                 data from one reduce action through to the next within a single parse run, then you\n'
+        + ' *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.\n'
+        + ' *\n'
+        + ' *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used\n'
+        + ' *                             to match this rule. This is *not* the look-ahead token, but the last token\n'
+        + ' *                             that\'s actually part of this rule.\n'
+        + ' *\n'
+        + ' *                 Formulated another way, `yytext` is the value of the token immediately preceeding\n'
+        + ' *                 the current look-ahead token.\n'
+        + ' *                 Caveats apply for rules which don\'t require look-ahead, such as epsilon rules.\n'
+        + ' *\n'
+        + ' *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.\n'
+        + ' *\n'
+        + ' *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.\n'
+        + ' *\n'
+        + ' *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.\n'
+        + ' *\n'
+        + ' *               - `yystate` : the current parser state number, used internally for dispatching and\n'
+        + ' *                             executing the action code chunk matching the rule currently being reduced.\n'
+        + ' *\n'
+        + ' *               - `yysp`    : the current state stack position (a.k.a. \'stack pointer\')\n'
+        + ' *\n'
+        + ' *                 This one comes in handy when you are going to do advanced things to the parser\n'
+        + ' *                 stacks, all of which are accessible from your action code (see the next entries below).\n'
+        + ' *\n'
+        + ' *                 Also note that you can access this and other stack index values using the new back-quote\n'
+        + ' *                 syntax, i.e. `\`$ === \`0 === yysp`, while `\`1` is the stack index for all things\n'
+        + ' *                 related to the first rule term, just like you have `$1` and `@1`.\n'
+        + ' *                 This is made available to write very advanced grammar action rules, e.g. when you want\n'
+        + ' *                 to investigate the parse state stack in your action code, which would, for example,\n'
+        + ' *                 be relevant when you wish to implement error diagnostics and reporting schemes similar\n'
+        + ' *                 to the work described here:\n'
+        + ' *\n'
+        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.\n'
+        + ' *                   In Journées Francophones des Languages Applicatifs.\n'
+        + ' *\n'
+        + ' *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.\n'
+        + ' *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.\n'
+        + ' *\n'
+        + ' *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.\n'
+        + ' *                             constructs.\n'
+        + ' *\n'
+        + ' *               - `yylstack`: reference to the parser token location stack. Also accessed via\n'
+        + ' *                             the `@1` etc. constructs.\n'
+        + ' *\n'
+        + ' *               - `yystack` : reference to the parser token id stack. Also accessed via the\n'
+        + ' *                             `#1` etc. constructs.\n'
+        + ' *\n'
+        + ' *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to\n'
+        + ' *                 its numeric token id value, hence that code wouldn\'t need the `yystack` but *you* might\n'
+        + ' *                 want access for your own purposes, such as error analysis as mentioned above!\n'
+        + ' *\n'
+        + ' *                 Note that this stack stores the current stack of *tokens*, that is the sequence of\n'
+        + ' *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*\n'
+        + ' *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and\n'
+        + ' *                 *reduced*.\n'
+        + ' *\n'
+        + ' *               - `yysstack`: reference to the parser state stack. This one carries the internal parser\n'
+        + ' *                             *states* such as the one in `yystate`, which are used to represent\n'
+        + ' *                             the parser state machine in the *parse table*. *Very* *internal* stuff,\n'
+        + ' *                             what can I say? If you access this one, you\'re clearly doing wicked things\n'
+        + ' *\n'
+        + ' *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your\n'
+        + ' *                             grammar definition file.\n'
         + ' *\n'
         + ' *    table: [...],\n'
         + ' *               State transition table\n'
@@ -3217,7 +3288,10 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
         //            ... KILL this chunk ...
         //        }
         .replace(/\s+if[^a-z]+preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}\n\s+\}\n/g, '\n$1\n\n\n\n')
-        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '');
+        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '')
+        // And nuke the support declaration statement:
+        //         var lastEofErrorStateDepth = 0;
+        .replace(/^\s*var lastEofErrorStateDepth.*$/gm, '');
     }
     return parseFn;
 }
@@ -6331,9 +6405,80 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
+ *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file
+ *
+ *               The function parameters and `this` have the following value/meaning:
+ *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
+ *                             to store/reference the rule value `$$` and location info `@$`.
+ *
+ *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
+ *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
+ *                 data from one reduce action through to the next within a single parse run, then you
+ *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
+ *
+ *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
+ *                             to match this rule. This is *not* the look-ahead token, but the last token
+ *                             that's actually part of this rule.
+ *
+ *                 Formulated another way, `yytext` is the value of the token immediately preceeding
+ *                 the current look-ahead token.
+ *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
+ *
+ *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
+ *
+ *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
+ *
+ *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
+ *
+ *               - `yystate` : the current parser state number, used internally for dispatching and
+ *                             executing the action code chunk matching the rule currently being reduced.
+ *
+ *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
+ *
+ *                 This one comes in handy when you are going to do advanced things to the parser
+ *                 stacks, all of which are accessible from your action code (see the next entries below).
+ *
+ *                 Also note that you can access this and other stack index values using the new back-quote
+ *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 This is made available to write very advanced grammar action rules, e.g. when you want
+ *                 to investigate the parse state stack in your action code, which would, for example,
+ *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
+ *                 to the work described here:
+ *
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                   In Journées Francophones des Languages Applicatifs.
+ *
+ *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
+ *
+ *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
+ *                             constructs.
+ *
+ *               - `yylstack`: reference to the parser token location stack. Also accessed via
+ *                             the `@1` etc. constructs.
+ *
+ *               - `yystack` : reference to the parser token id stack. Also accessed via the
+ *                             `#1` etc. constructs.
+ *
+ *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
+ *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
+ *                 want access for your own purposes, such as error analysis as mentioned above!
+ *
+ *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
+ *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
+ *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
+ *                 *reduced*.
+ *
+ *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
+ *                             *states* such as the one in `yystate`, which are used to represent
+ *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
+ *                             what can I say? If you access this one, you're clearly doing wicked things
+ *
+ *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
+ *                             grammar definition file.
  *
  *    table: [...],
  *               State transition table
@@ -10603,9 +10748,80 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
+ *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file
+ *
+ *               The function parameters and `this` have the following value/meaning:
+ *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
+ *                             to store/reference the rule value `$$` and location info `@$`.
+ *
+ *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
+ *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
+ *                 data from one reduce action through to the next within a single parse run, then you
+ *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
+ *
+ *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
+ *                             to match this rule. This is *not* the look-ahead token, but the last token
+ *                             that's actually part of this rule.
+ *
+ *                 Formulated another way, `yytext` is the value of the token immediately preceeding
+ *                 the current look-ahead token.
+ *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
+ *
+ *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
+ *
+ *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
+ *
+ *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
+ *
+ *               - `yystate` : the current parser state number, used internally for dispatching and
+ *                             executing the action code chunk matching the rule currently being reduced.
+ *
+ *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
+ *
+ *                 This one comes in handy when you are going to do advanced things to the parser
+ *                 stacks, all of which are accessible from your action code (see the next entries below).
+ *
+ *                 Also note that you can access this and other stack index values using the new back-quote
+ *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 This is made available to write very advanced grammar action rules, e.g. when you want
+ *                 to investigate the parse state stack in your action code, which would, for example,
+ *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
+ *                 to the work described here:
+ *
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                   In Journées Francophones des Languages Applicatifs.
+ *
+ *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
+ *
+ *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
+ *                             constructs.
+ *
+ *               - `yylstack`: reference to the parser token location stack. Also accessed via
+ *                             the `@1` etc. constructs.
+ *
+ *               - `yystack` : reference to the parser token id stack. Also accessed via the
+ *                             `#1` etc. constructs.
+ *
+ *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
+ *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
+ *                 want access for your own purposes, such as error analysis as mentioned above!
+ *
+ *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
+ *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
+ *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
+ *                 *reduced*.
+ *
+ *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
+ *                             *states* such as the one in `yystate`, which are used to represent
+ *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
+ *                             what can I say? If you access this one, you're clearly doing wicked things
+ *
+ *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
+ *                             grammar definition file.
  *
  *    table: [...],
  *               State transition table
@@ -17551,7 +17767,7 @@ if (typeof exports !== 'undefined') {
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -18085,8 +18301,9 @@ productions_: bp({
   [9, 7]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
+performAction: function parser__PerformAction(yytext, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -18409,71 +18626,30 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount 
-    // to have *their* closure match ours -- if we only set them up once, 
-    // any subsequent `parse()` runs will fail in very obscure ways when 
-    // these functions are invoked in the user action code block(s) as 
-    // their closure will still refer to the `parse()` instance which set 
-    // them up. Hence we MUST set them up at the start of every `parse()` run! 
-    if (this.yyErrOk) {
-        this.yyErrOk = function yyErrOk() {
-
-            recovering = 0;
-        };
-    }
-
-    if (this.yyClearIn) {
-        this.yyClearIn = function yyClearIn() {
-
-            if (symbol === TERROR) {
-                symbol = 0;
-                yytext = null;
-                yyleng = 0;
-
-            }
-
-        };
-    }
-
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
 
 
@@ -18495,15 +18671,15 @@ parse: function parse(input) {
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -18515,15 +18691,15 @@ parse: function parse(input) {
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
     this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
-        var rv, i;
+        var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -18531,16 +18707,16 @@ parse: function parse(input) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -18590,7 +18766,7 @@ parse: function parse(input) {
             value_stack: vstack,
 
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
             parser: this,
 
@@ -18635,11 +18811,11 @@ parse: function parse(input) {
 
     var symbol = 0;
 
-    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
 
@@ -18650,10 +18826,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy);
+            this.pre_parse.call(this, sharedState_yy);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -18779,7 +18955,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
