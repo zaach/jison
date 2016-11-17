@@ -339,6 +339,7 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.operators = {};
     this.productions = [];
     this.conflicts = 0;
+    this.conflicting_states = [];
     this.resolutions = [];
     this.options = options;
     this.parseParams = grammar.parseParams;
@@ -364,6 +365,7 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.DEBUG = !!this.options.debug;
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
+
         Jison.print('Grammar::OPTIONS:\n', this.options);
     }
 
@@ -508,7 +510,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
     // augment the grammar
     this.augmentGrammar(grammar);
 
-    // detect unused productions and flag/report them
+    // detect unused productions and flag them
     this.signalUnusedProductions();
 };
 
@@ -564,7 +566,7 @@ generator.augmentGrammar = function augmentGrammar(grammar) {
     this.grammar = grammar;
 };
 
-// Mark & report unused productions
+// Mark unused productions
 generator.signalUnusedProductions = function () {
     var mark = {};
 
@@ -607,7 +609,6 @@ generator.signalUnusedProductions = function () {
     traverseGrammar(nonterminals['$accept' /* this.startSymbol */ ]);
 
     // now any production which is not yet marked is *unused*:
-    var unused_prods = [];
     for (var sym in mark) {
         nt = nonterminals[sym];
         assert(nt);
@@ -620,7 +621,6 @@ generator.signalUnusedProductions = function () {
                 p.reachable = true;
             } else {
                 p.reachable = false;
-                unused_prods.push(p.toString());
             }
         });
 
@@ -629,13 +629,13 @@ generator.signalUnusedProductions = function () {
             delete this.nonterminals[sym];
         }
     }
-    if (unused_prods.length) {
-        console.warn('\nUnused productions in your grammar:\n  ' + unused_prods.join('\n  ') + '\n\n');
-    }
+
+    this.unused_productions = productions.filter(function (p) {
+        return !p.reachable;
+    });
 
     // and kill the unused productions:
     this.productions = productions.filter(function (p) {
-        if (!p.reachable) console.warn('KILL UNUSED PRODUCTION: ' + p);
         return p.reachable;
     });
 };
@@ -703,6 +703,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var self = this;
     var actions = [
       '/* this == yyval */',
+      'var yy = this.yy;',              // the JS engine itself can go and remove this statement when `yy` turns out to be unused in any action code!
       preprocessActionCode(this.actionInclude || ''),
       'switch (yystate) {'
     ];
@@ -803,7 +804,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             .replace(/\byylstack\b/g, '\x01\x17')
             .replace(/\byyerror\b/g, '\x01\x18')
             .replace(/\byyerrok\b/g, '\x01\x19')
-            .replace(/\byyclearin\b/g, '\x01\x1A');
+            .replace(/\byyclearin\b/g, '\x01\x1A')
+            .replace(/\byysp\b/g, '\x01\x1B');
 
             return cmt;
         }
@@ -947,7 +949,8 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         .replace(/\x01\x17/g, 'yylstack')
         .replace(/\x01\x18/g, 'yyerror')
         .replace(/\x01\x19/g, 'yyerrok')
-        .replace(/\x01\x1A/g, 'yyclearin');
+        .replace(/\x01\x1A/g, 'yyclearin')
+        .replace(/\x01\x1B/g, 'yysp');
         return s;
     }
 
@@ -1096,7 +1099,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     actions.push('}');
 
-    var parameters = 'yytext, yyleng, yylineno, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, yystack, yysstack';
+    var parameters = 'yytext, yyleng, yylineno, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, yystack, yysstack';
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
     this.performAction = [].concat(
@@ -1116,6 +1119,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var actionsBaseline = [
         'function parser__PerformAction(' + parameters + ') {',
         '/* this == yyval */',
+        'var yy = this.yy;',
         '',
         'switch (yystate) {',
         '}',
@@ -1152,6 +1156,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     this.actionsUseYYSTACK = analyzeFeatureUsage(this.performAction, /\byystack\b/g, 1);
     // Ditto for yysstack...
     this.actionsUseYYSSTACK = analyzeFeatureUsage(this.performAction, /\byysstack\b/g, 1);
+    this.actionsUseYYSTACKPOINTER = analyzeFeatureUsage(this.performAction, /\byysp\b/g, 1);
 
     if (devDebug) {
         Jison.print('Optimization analysis: ', {
@@ -1170,6 +1175,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             actionsUseLocationAssignment: this.actionsUseLocationAssignment,
             actionsUseYYSTACK: this.actionsUseYYSTACK,
             actionsUseYYSSTACK: this.actionsUseYYSSTACK,
+            actionsUseYYSTACKPOINTER: this.actionsUseYYSTACKPOINTER,
             hasErrorRecovery: this.hasErrorRecovery
         });
     }
@@ -1474,9 +1480,6 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     .replace(/#\$/g, function (_) {
                         return provideSymbolAsSourcecode(symbol);
                     })
-                    .replace(/`\$/g, function (_) {
-                        return '$0';
-                    })
                     // replace semantic value references ($n) with stack value (stack[n])
                     .replace(/\$(-?\d+)\b/g, function (_, n) {
                         return 'yyvstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
@@ -1496,6 +1499,12 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     // replace positional value references (\`n) with stack index
                     .replace(/`(-?\d+)\b/g, function (_, n) {
                         return '($0' + indexToJsExpr(n, rhs.length, rule4msg) + ')';
+                    })
+                    .replace(/`\$/g, function (_) {
+                        return '$0';
+                    })
+                    .replace(/\byysp\b/g, function (_) {
+                        return '$0';
                     });
 
                 action = reindentCodeBlock(action, 4);
@@ -1604,6 +1613,80 @@ generator.warn = function warn() {
 generator.error = function error(msg) {
     throw new Error(msg);
 };
+
+// Report a few things about the grammar:
+// 
+// - unused rules
+// - stats:
+//   + production count     (-> parser table size indicator)
+//   + state count          (-> parser table size indicator)
+//
+generator.reportGrammarInformation = function reportGrammarInformation() {
+    if (this.unused_productions.length) {
+        this.warn('\nUnused productions in your grammar:\n  ' + this.unused_productions.join('\n  ') + '\n\n');
+    }
+
+    if (!this.options.reportStats) {
+        return;
+    }
+
+    // nonterminals = this.nonterminals,
+    // operators = this.operators,
+    // this.table
+    // this.states
+    // this.defaultActions
+    // this.productions,
+    // this.terms = {};
+    // this.operators = {};
+    // this.productions = [];
+    // this.conflicts = 0;
+    // this.conflicting_states = [];
+    // this.resolutions = [];
+    // this.options = options;
+    // this.parseParams = grammar.parseParams;
+    // exportDest.parseTable = this.table;
+    // exportDest.defaultParseActions = this.defaultActions;
+    // exportDest.parseProductions = this.productions_;
+
+    // TODO: the next bit of code is LR type specific: refactor into a
+    //       LR specific mixin class later on, so that we can have another
+    //       implementation/report for LL and PEG type grammars.
+    
+    var rows = 0, cols = 0;
+    var colmarks = {};
+    var i, j, len;
+
+    for (i = 0, len = this.table.length; i < len; i++) {
+        rows++;
+        for (j in this.table[i]) {
+            if (!colmarks[j]) {
+                colmarks[j] = true;
+                cols++;
+            }
+        }
+    }
+    var defcols = 0;
+    for (j in this.defaultActions) {
+        if (!colmarks[j]) {
+            colmarks[j] = true;
+            defcols++;
+        }
+    }
+
+    var ntc = 0;
+    for (var nt in this.nonterminals) {
+        ntc++;
+    }
+    this.warn('Number of productions in parser:........ ' + this.productions_.length);
+    this.warn('Number of non-terminals in grammar:..... ' + ntc);
+    this.warn('Number of states:....................... ' + this.states.size());
+    this.warn('Number of rows (states) in table:....... ' + this.table.length);
+    this.warn('Number of rows in table:................ ' + rows);
+    this.warn('Number of columns in table:............. ' + cols);
+    this.warn('Number of defaulted columns in table:... ' + defcols);
+    this.warn('\n');
+};
+
 
 // Generator debug mixin
 
@@ -2088,7 +2171,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
     var states = [],
         nonterminals = this.nonterminals,
         operators = this.operators,
-        conflictedStates = {}, // array of [state, token] tuples
+        conflictedStates = {}, // set of [state, token] tuples
         self = this,
         s = 1, // shift
         r = 2, // reduce
@@ -2182,6 +2265,8 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
         });
     });
 
+    self.conflicting_states = conflictedStates;
+
     if (self.conflicts > 0) {
         self.warn('\nStates with conflicts:');
         each(conflictedStates, function report_conflict_state(val, state) {
@@ -2247,12 +2332,18 @@ function findDefaults(states) {
 
             // ... and nuke the entry/entries in the parse table to save space in the generated output: we won't be needing
             // it any more! But make sure we keep the slots for the nonterminal symbols, so only nuke the *terminal* entries!
-            for (sym in state) {
-                st = state[sym];
-                if (typeof st !== 'number') {
-                    delete state[sym];
-                }
-            }
+            //
+            // Aber Oh-ho! The table[] entries themselves *are* used: they are needed by
+            // the error recovery code to decide, when SHIFTING, if the ERROR token would
+            // improve (fix) matters when it is treated as an *inserted* token.  This code
+            // is therefor commented out!
+            //
+            //     for (sym in state) {
+            //         st = state[sym];
+            //         if (typeof st !== 'number') {
+            //             delete state[sym];
+            //         }
+            //     }
         }
     });
 
@@ -2364,9 +2455,80 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
-        + ' *               `parser.parse(str, ...)`\n'
+        + ' *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file\n'
+        + ' *\n'
+        + ' *               The function parameters and `this` have the following value/meaning:\n'
+        + ' *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)\n'
+        + ' *                             to store/reference the rule value `$$` and location info `@$`.\n'
+        + ' *\n'
+        + ' *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets\n'
+        + ' *                 to see the same object via the `this` reference, i.e. if you wish to carry custom\n'
+        + ' *                 data from one reduce action through to the next within a single parse run, then you\n'
+        + ' *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.\n'
+        + ' *\n'
+        + ' *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used\n'
+        + ' *                             to match this rule. This is *not* the look-ahead token, but the last token\n'
+        + ' *                             that\'s actually part of this rule.\n'
+        + ' *\n'
+        + ' *                 Formulated another way, `yytext` is the value of the token immediately preceeding\n'
+        + ' *                 the current look-ahead token.\n'
+        + ' *                 Caveats apply for rules which don\'t require look-ahead, such as epsilon rules.\n'
+        + ' *\n'
+        + ' *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.\n'
+        + ' *\n'
+        + ' *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.\n'
+        + ' *\n'
+        + ' *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.\n'
+        + ' *\n'
+        + ' *               - `yystate` : the current parser state number, used internally for dispatching and\n'
+        + ' *                             executing the action code chunk matching the rule currently being reduced.\n'
+        + ' *\n'
+        + ' *               - `yysp`    : the current state stack position (a.k.a. \'stack pointer\')\n'
+        + ' *\n'
+        + ' *                 This one comes in handy when you are going to do advanced things to the parser\n'
+        + ' *                 stacks, all of which are accessible from your action code (see the next entries below).\n'
+        + ' *\n'
+        + ' *                 Also note that you can access this and other stack index values using the new back-quote\n'
+        + ' *                 syntax, i.e. `\`$ === \`0 === yysp`, while `\`1` is the stack index for all things\n'
+        + ' *                 related to the first rule term, just like you have `$1` and `@1`.\n'
+        + ' *                 This is made available to write very advanced grammar action rules, e.g. when you want\n'
+        + ' *                 to investigate the parse state stack in your action code, which would, for example,\n'
+        + ' *                 be relevant when you wish to implement error diagnostics and reporting schemes similar\n'
+        + ' *                 to the work described here:\n'
+        + ' *\n'
+        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.\n'
+        + ' *                   In Journées Francophones des Languages Applicatifs.\n'
+        + ' *\n'
+        + ' *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.\n'
+        + ' *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.\n'
+        + ' *\n'
+        + ' *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.\n'
+        + ' *                             constructs.\n'
+        + ' *\n'
+        + ' *               - `yylstack`: reference to the parser token location stack. Also accessed via\n'
+        + ' *                             the `@1` etc. constructs.\n'
+        + ' *\n'
+        + ' *               - `yystack` : reference to the parser token id stack. Also accessed via the\n'
+        + ' *                             `#1` etc. constructs.\n'
+        + ' *\n'
+        + ' *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to\n'
+        + ' *                 its numeric token id value, hence that code wouldn\'t need the `yystack` but *you* might\n'
+        + ' *                 want access for your own purposes, such as error analysis as mentioned above!\n'
+        + ' *\n'
+        + ' *                 Note that this stack stores the current stack of *tokens*, that is the sequence of\n'
+        + ' *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*\n'
+        + ' *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and\n'
+        + ' *                 *reduced*.\n'
+        + ' *\n'
+        + ' *               - `yysstack`: reference to the parser state stack. This one carries the internal parser\n'
+        + ' *                             *states* such as the one in `yystate`, which are used to represent\n'
+        + ' *                             the parser state machine in the *parse table*. *Very* *internal* stuff,\n'
+        + ' *                             what can I say? If you access this one, you\'re clearly doing wicked things\n'
+        + ' *\n'
+        + ' *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your\n'
+        + ' *                             grammar definition file.\n'
         + ' *\n'
         + ' *    table: [...],\n'
         + ' *               State transition table\n'
@@ -2410,7 +2572,7 @@ function generateGenericHeaderComment() {
         + ' *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:\n'
         + ' *               these extra `args...` are passed verbatim to the grammar rules\' action code.\n'
         + ' *\n'
-        + ' *    cleanupAfterParse: function(resultValue, invoke_post_methods),\n'
+        + ' *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),\n'
         + ' *               Helper function **which will be set up during the first invocation of the `parse()` method**.\n'
         + ' *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown\n'
         + ' *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY\n'
@@ -2498,6 +2660,7 @@ function generateGenericHeaderComment() {
         + ' *                  as is also available in the rule actions; this can be used,\n'
         + ' *                  for instance, for advanced error analysis and reporting)\n'
         + ' *    lexer:       (reference to the current lexer instance used by the parser)\n'
+        + ' *    parser:      (reference to the current parser instance)\n'
         + ' *  }\n'
         + ' *\n'
         + ' * while `this` will reference the current parser instance.\n'
@@ -2885,7 +3048,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/^.*?\blstack\b.*$/gm, '')
         .replace(/^.*?\blstack_[a-z]+.*$/gm, '')
         .replace(/^.*?\byyloc\b.*?$/gm, '')
-        .replace(/^.*?\byylloc\b.*?$/gm, '');
+        .replace(/^.*?\byylloc\b.*?$/gm, '')
+        .replace(/^\s*_\$:\s+undefined\s*$/gm, '');
     }
 
     if (!info.actionsUseValueTracking && !info.actionsUseValueAssignment) {
@@ -2928,23 +3092,34 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/^.*?\byydebug\b.*?$/gm, '');
     }
 
+    if (!info.actionsUseYYERROK && !info.actionsUseYYCLEARIN) {
+        /*
+         * Kill long multi-line comment about yyerrok + yyclearin before this code:
+         *
+         *       if (this.yyErrOk) {
+         *           ...
+         */
+        parseFn = parseFn
+        .replace(/\s+\/\/.*setup these `yyErrOk` and `yyClearIn` functions[^\0]+?\n\s+if \(/g, '\n\n\n\n\n  if (');
+    }
+
     if (!info.actionsUseYYERROK) {
         /*
          * Kill this code:
          *
-         *       if (this.yyErrOk === 1) {
+         *       if (this.yyErrOk) {
          *           this.yyErrOk = function yyErrOk() {
          *               recovering = 0;
          *           };
          *       }
          */
         parseFn = parseFn
-        .replace(/\s+if \(this\.yyErrOk === 1\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n');
+        .replace(/\s+if \(this\.yyErrOk\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n');
     }
 
     if (!info.actionsUseYYCLEARIN) {
         parseFn = parseFn
-        .replace(/\s+if \(this\.yyClearIn === 1\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n\n');
+        .replace(/\s+if \(this\.yyClearIn\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n\n');
     }
 
     if (info.options.noDefaultAction) {
@@ -2968,7 +3143,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
          *     } catch (ex) {
          *         ... remove this stuff ...
          *     } finally {
-         *         retval = this.cleanupAfterParse(retval, true);       // <-- keep this line
+         *         retval = this.cleanupAfterParse(retval, true, true);       // <-- keep this line
          *     }
          *
          * and also remove any re-entrant parse() call support:
@@ -3113,7 +3288,10 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
         //            ... KILL this chunk ...
         //        }
         .replace(/\s+if[^a-z]+preErrorSymbol.*?\{\s*\/\/[^\n]+([\s\S]+?)\} else \{[\s\S]+?\}\n\s+\}\n/g, '\n$1\n\n\n\n')
-        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '');
+        .replace(/^\s+(?:var )?preErrorSymbol = .*$/gm, '')
+        // And nuke the support declaration statement:
+        //         var lastEofErrorStateDepth = 0;
+        .replace(/^\s*var lastEofErrorStateDepth.*$/gm, '');
     }
     return parseFn;
 }
@@ -3524,6 +3702,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           noTryCatch: 1,
           compressTables: 1,
           outputDebugTables: 1,
+          reportStats: 1,
           file: 1,
           outfile: 1,
           inputPath: 1,
@@ -4475,6 +4654,7 @@ generatorMixin.createParser = function createParser() {
 
     // for debugging
     p.productions = this.productions;
+    p.unused_productions = this.unused_productions;
 
     var self = this;
     function bind(method) {
@@ -4491,6 +4671,8 @@ generatorMixin.createParser = function createParser() {
     p.generateModule = bind('generateModule');
     p.generateCommonJSModule = bind('generateCommonJSModule');
 
+    this.reportGrammarInformation();
+
     return p;
 };
 
@@ -4502,7 +4684,6 @@ function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
-        // assert('recoverable' in hash);
     } else {
         throw new this.JisonParserError(str, hash);
     }
@@ -4524,7 +4705,8 @@ function define_parser_APIs_1() {
         cleanupAfterParse: null,
         constructParseErrorInfo: null,
 
-        __reentrant_call_depth: 0,       // INTERNAL USE ONLY
+        __reentrant_call_depth: 0,      // INTERNAL USE ONLY
+        __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
         // APIs which will be set up depending on user action code analysis:
         //yyErrOk: 0,
@@ -4635,25 +4817,23 @@ parser.parse = function parse(input, parseParams) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
     var yydebug = false;
     if (this.options.debug) {
@@ -4698,7 +4878,7 @@ parser.parse = function parse(input, parseParams) {
             }
 
             // warning: here we fetch from closure (stack et al)
-            obj.token_stack = stack;
+            obj.symbol_stack = stack;
             obj.state_stack = sstack;
             obj.value_stack = vstack;
             obj.location_stack = lstack;
@@ -4728,14 +4908,22 @@ parser.parse = function parse(input, parseParams) {
         };
     }
 
-    if (this.yyErrOk === 1) {
+    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount 
+    // to have *their* closure match ours -- if we only set them up once, 
+    // any subsequent `parse()` runs will fail in very obscure ways when 
+    // these functions are invoked in the user action code block(s) as 
+    // their closure will still refer to the `parse()` instance which set 
+    // them up. Hence we MUST set them up at the start of every `parse()` run! 
+    if (this.yyErrOk) {
         this.yyErrOk = function yyErrOk() {
+            if (yydebug) yydebug('yyerrok: ', { symbol: symbol, state: state, newState: newState, recovering: recovering, action: action });
             recovering = 0;
         };
     }
 
-    if (this.yyClearIn === 1) {
+    if (this.yyClearIn) {
         this.yyClearIn = function yyClearIn() {
+            if (yydebug) yydebug('yyclearin: ', { symbol: symbol, newState: newState, recovering: recovering, action: action, preErrorSymbol: preErrorSymbol });
             if (symbol === TERROR) {
                 symbol = 0;
                 yytext = null;
@@ -4746,7 +4934,7 @@ parser.parse = function parse(input, parseParams) {
         };
     }
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
@@ -4774,15 +4962,15 @@ parser.parse = function parse(input, parseParams) {
     var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -4793,16 +4981,16 @@ parser.parse = function parse(input, parseParams) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
+    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, parseParams);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue, parseParams);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -4810,16 +4998,16 @@ parser.parse = function parse(input, parseParams) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -4831,13 +5019,26 @@ parser.parse = function parse(input, parseParams) {
         vstack.length = 0;
         stack_pointer = 0;
 
+        // nuke the error hash info instances created during this run. 
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
         return resultValue;
     };
 
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `lexer`, `sharedState`, etc. references will be *wrong*!
     this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
-        return {
+        var pei = {
             errStr: msg,
             exception: ex,
             text: lexer.match,
@@ -4856,10 +5057,17 @@ parser.parse = function parse(input, parseParams) {
             value_stack: vstack,
             location_stack: lstack,
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
+            parser: this,
 
-            // and make sure the error info doesn't stay due to potential ref cycle via userland code manipulations (memory leak opportunity!):
+            // and make sure the error info doesn't stay due to potential 
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            // 
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
             destroy: function destructParseErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -4869,13 +5077,16 @@ parser.parse = function parse(input, parseParams) {
                 // ...
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key !== 'function') {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
                         this[key] = undefined;
                     }
                 }
                 this.recoverable = rec;
             }
         };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
     };
 
 _lexer_without_token_stack:
@@ -4913,10 +5124,12 @@ _lexer_with_token_stack_end:
 
     var symbol = 0;
     var preErrorSymbol = 0;
+    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
     var lstack_begin, lstack_end;
@@ -4934,11 +5147,38 @@ _handle_error_with_recovery:                    // run this code when the gramma
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
+            if (yydebug) yydebug('locateNearestErrorRecoveryRule #test#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
+                // We need to make sure we're not cycling forever: 
+                // once we hit EOF, even when we `yyerrok()` an error, we must
+                // prevent the core from running forever, 
+                // e.g. when parent rules are still expecting certain input to 
+                // follow after this, for example when you handle an error inside a set
+                // of braces which are matched by a parent rule in your grammar.
+                // 
+                // Hence we require that every error handling/recovery attempt
+                // *after we've hit EOF* has a diminishing state stack: this means
+                // we will ultimately have unwound the state stack entirely and thus
+                // terminate the parse in a controlled fashion even when we have
+                // very complex error/recovery code interplay in the core + user
+                // action code blocks:
+                if (yydebug) yydebug('locateNearestErrorRecoveryRule #found#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
+                if (symbol === EOF) {
+                    if (!lastEofErrorStateDepth) {
+                        lastEofErrorStateDepth = sp - 1 - depth;
+                    } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
+                        if (yydebug) yydebug('locateNearestErrorRecoveryRule #skip#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
+                        --stack_probe; // popStack(1): [symbol, action]
+                        state = sstack[stack_probe];
+                        ++depth;
+                        continue;
+                    }
+                }
                 return depth;
             }
             if (state === 0 /* $accept rule */ || stack_probe < 1) {
+                if (yydebug) yydebug('locateNearestErrorRecoveryRule #end=NIL#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
                 return -1; // No suitable error recovery rule available.
             }
             --stack_probe; // popStack(1): [symbol, action]
@@ -4958,10 +5198,10 @@ _handle_error_end_of_section:                   // this concludes the error reco
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy, parseParams);
+            this.pre_parse.call(this, sharedState_yy, parseParams);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy, parseParams);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy, parseParams);
         }
 
         newState = sstack[sp - 1];
@@ -5018,7 +5258,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                             retval = r;
                             break;
                         } else {
-                            // TODO: allow parseError callback to edit symbol and or state tat the start of the error recovery process...
+                            // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
                         }
                     }
 
@@ -5142,10 +5382,15 @@ _handle_error_end_of_section:                  // this concludes the error recov
                     if (yydebug) yydebug('... SHIFT:error recovery: ', { recovering: recovering, symbol: symbol });
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
-                    if (!t[0]) {
+                    if (!t[0] || symbol === TERROR) {
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
+                        // 
+                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
+                        // recovery, for then this we would we idling (cycling) on the error forever.
+                        // Yes, this does not take into account the possibility that the *lexer* may have
+                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
                         if (yydebug) yydebug('... SHIFT:error recovery: re-application of old symbol doesn\'t work: instead, we\'re moving forward now. ', { recovering: recovering, symbol: symbol });
                         symbol = 0;
                     }
@@ -5162,7 +5407,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
 
-                if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: len });
+                if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: len, newState: newState, symbol: symbol });
 
                 // Make sure subsequent `$$ = $1` default action doesn't fail
                 // for rules where len==0 as then there's no $1 (you're reducing an epsilon rule then!)
@@ -5185,7 +5430,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -5245,7 +5490,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
         p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
         retval = this.parseError(p.errStr, p);
     } finally {
-        retval = this.cleanupAfterParse(retval, true);
+        retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
     }
 
@@ -6118,7 +6363,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-154 */
+/* parser generated by jison 0.4.18-155 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -6160,9 +6405,80 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
+ *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file
+ *
+ *               The function parameters and `this` have the following value/meaning:
+ *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
+ *                             to store/reference the rule value `$$` and location info `@$`.
+ *
+ *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
+ *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
+ *                 data from one reduce action through to the next within a single parse run, then you
+ *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
+ *
+ *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
+ *                             to match this rule. This is *not* the look-ahead token, but the last token
+ *                             that's actually part of this rule.
+ *
+ *                 Formulated another way, `yytext` is the value of the token immediately preceeding
+ *                 the current look-ahead token.
+ *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
+ *
+ *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
+ *
+ *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
+ *
+ *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
+ *
+ *               - `yystate` : the current parser state number, used internally for dispatching and
+ *                             executing the action code chunk matching the rule currently being reduced.
+ *
+ *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
+ *
+ *                 This one comes in handy when you are going to do advanced things to the parser
+ *                 stacks, all of which are accessible from your action code (see the next entries below).
+ *
+ *                 Also note that you can access this and other stack index values using the new back-quote
+ *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 This is made available to write very advanced grammar action rules, e.g. when you want
+ *                 to investigate the parse state stack in your action code, which would, for example,
+ *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
+ *                 to the work described here:
+ *
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                   In Journées Francophones des Languages Applicatifs.
+ *
+ *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
+ *
+ *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
+ *                             constructs.
+ *
+ *               - `yylstack`: reference to the parser token location stack. Also accessed via
+ *                             the `@1` etc. constructs.
+ *
+ *               - `yystack` : reference to the parser token id stack. Also accessed via the
+ *                             `#1` etc. constructs.
+ *
+ *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
+ *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
+ *                 want access for your own purposes, such as error analysis as mentioned above!
+ *
+ *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
+ *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
+ *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
+ *                 *reduced*.
+ *
+ *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
+ *                             *states* such as the one in `yystate`, which are used to represent
+ *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
+ *                             what can I say? If you access this one, you're clearly doing wicked things
+ *
+ *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
+ *                             grammar definition file.
  *
  *    table: [...],
  *               State transition table
@@ -6206,7 +6522,7 @@ exports.transform = EBNF.transform;
  *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:
  *               these extra `args...` are passed verbatim to the grammar rules' action code.
  *
- *    cleanupAfterParse: function(resultValue, invoke_post_methods),
+ *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),
  *               Helper function **which will be set up during the first invocation of the `parse()` method**.
  *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown
  *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY
@@ -6294,6 +6610,7 @@ exports.transform = EBNF.transform;
  *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
+ *    parser:      (reference to the current parser instance)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -6675,7 +6992,8 @@ originalParseError: null,
 cleanupAfterParse: null,
 constructParseErrorInfo: null,
 
-__reentrant_call_depth: 0,       // INTERNAL USE ONLY
+__reentrant_call_depth: 0,      // INTERNAL USE ONLY
+__error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
 //yyErrOk: 0,
@@ -6872,8 +7190,9 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
+performAction: function parser__PerformAction(yytext, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -7270,107 +7589,131 @@ case 80:
 },
 table: bt({
   len: u([
-  2,
+  11,
   1,
   13,
   1,
   13,
   21,
-  s,
-  [2, 3],
-  s,
-  [0, 4],
   2,
-  3,
-  20,
-  s,
-  [0, 3],
-  28,
-  31,
-  28,
-  22,
-  22,
-  17,
-  17,
-  s,
-  [0, 8],
+  2,
   5,
   s,
-  [0, 3],
-  10,
-  0,
-  10,
-  c,
-  [29, 3],
-  0,
-  0,
+  [9, 4],
+  2,
+  3,
+  20,
+  1,
+  9,
+  9,
+  28,
+  31,
+  28,
+  22,
+  22,
+  17,
+  17,
+  s,
+  [27, 7],
+  29,
+  5,
+  s,
+  [27, 3],
+  s,
+  [10, 4],
+  2,
+  3,
+  25,
+  25,
   1,
   4,
-  c,
-  [5, 3],
+  3,
+  1,
+  1,
   6,
   18,
-  0,
+  16,
   21,
   3,
   31,
   28,
+  10,
+  10,
   s,
-  [0, 7],
+  [27, 5],
   1,
   1,
   28,
   28,
   1,
   6,
-  s,
-  [0, 5],
-  c,
-  [68, 4],
-  2,
+  3,
+  3,
+  10,
+  10,
+  9,
+  5,
+  3,
+  9,
   1,
-  3,
-  3,
-  0,
-  c,
-  [15, 3],
-  6,
   2,
   1,
   s,
-  [0, 6],
-  c,
-  [21, 4],
+  [3, 3],
   6,
-  0,
   1,
-  0,
+  16,
+  6,
+  2,
+  1,
   2,
   c,
-  [81, 4],
+  [33, 4],
   1,
+  s,
+  [2, 3],
   c,
-  [9, 3],
+  [31, 3],
+  1,
+  16,
+  5,
+  17,
+  16,
+  17,
   c,
-  [18, 4],
+  [107, 3],
+  4,
+  1,
+  1,
+  2,
+  17,
+  2,
   3,
-  0
+  16
 ]),
   symbol: u([
+  3,
   19,
   20,
+  22,
+  27,
+  29,
+  31,
+  34,
+  37,
+  67,
+  73,
   1,
   3,
   21,
   22,
   26,
-  27,
-  29,
-  31,
-  s,
-  [34, 4, 1],
-  67,
-  73,
+  c,
+  [12, 4],
+  35,
+  36,
+  c,
+  [14, 3],
   22,
   c,
   [14, 13],
@@ -7391,8 +7734,16 @@ table: bt({
   38,
   32,
   38,
+  3,
+  4,
   33,
   43,
+  44,
+  3,
+  c,
+  [67, 8],
+  c,
+  [9, 27],
   2,
   74,
   27,
@@ -7401,7 +7752,7 @@ table: bt({
   1,
   5,
   c,
-  [34, 6],
+  [73, 6],
   22,
   23,
   25,
@@ -7410,22 +7761,21 @@ table: bt({
   50,
   51,
   c,
-  [31, 5],
-  3,
+  [70, 5],
+  22,
+  c,
+  [53, 19],
   9,
   10,
   11,
   c,
-  [20, 5],
+  [39, 5],
   c,
-  [70, 4],
-  37,
+  [16, 5],
   c,
-  [57, 12],
-  67,
-  73,
+  [115, 12],
   c,
-  [28, 14],
+  [28, 16],
   s,
   [46, 7, 1],
   c,
@@ -7443,7 +7793,7 @@ table: bt({
   s,
   [64, 4, 1],
   c,
-  [139, 3],
+  [197, 3],
   c,
   [58, 5],
   c,
@@ -7451,26 +7801,46 @@ table: bt({
   c,
   [22, 22],
   c,
-  [148, 5],
+  [167, 5],
   c,
   [17, 29],
+  c,
+  [106, 19],
+  c,
+  [105, 8],
+  c,
+  [27, 183],
+  60,
+  s,
+  [62, 6, 1],
+  73,
   52,
   57,
   59,
   61,
   62,
-  3,
   c,
-  [101, 6],
+  [115, 82],
+  c,
+  [17, 6],
   38,
   c,
-  [121, 3],
-  c,
-  [10, 10],
+  [10, 33],
   4,
   3,
   4,
   44,
+  1,
+  3,
+  c,
+  [554, 8],
+  c,
+  [70, 10],
+  c,
+  [69, 4],
+  76,
+  c,
+  [25, 25],
   69,
   27,
   68,
@@ -7479,37 +7849,62 @@ table: bt({
   18,
   27,
   69,
-  1,
+  s,
+  [1, 3],
   24,
   72,
   73,
   75,
   76,
   c,
-  [229, 9],
+  [619, 9],
   c,
-  [227, 9],
+  [617, 9],
   c,
-  [279, 21],
+  [18, 9],
+  c,
+  [16, 7],
+  c,
+  [724, 21],
   7,
   27,
   45,
   c,
-  [223, 59],
+  [610, 59],
+  3,
+  11,
+  c,
+  [707, 9],
+  c,
+  [10, 10],
+  c,
+  [498, 134],
   11,
   11,
   c,
-  [30, 28],
+  [185, 29],
   c,
-  [28, 28],
+  [28, 27],
   60,
   c,
-  [204, 3],
+  [528, 3],
   60,
   61,
   62,
-  33,
-  43,
+  57,
+  60,
+  c,
+  [3, 4],
+  c,
+  [444, 27],
+  c,
+  [443, 4],
+  c,
+  [1037, 4],
+  4,
+  c,
+  [1040, 10],
+  69,
   27,
   71,
   1,
@@ -7517,10 +7912,14 @@ table: bt({
   35,
   73,
   1,
-  73,
-  76,
   c,
-  [183, 6],
+  [440, 3],
+  c,
+  [3, 3],
+  c,
+  [408, 6],
+  c,
+  [391, 16],
   3,
   34,
   35,
@@ -7530,37 +7929,71 @@ table: bt({
   6,
   8,
   6,
+  6,
+  8,
+  c,
+  [309, 91],
+  60,
+  3,
+  4,
+  27,
+  69,
+  c,
+  [542, 4],
+  c,
+  [133, 6],
+  c,
+  [142, 3],
+  c,
+  [136, 17],
+  c,
+  [189, 4],
+  c,
+  [21, 9],
+  34,
+  c,
+  [565, 23],
+  c,
+  [33, 17],
+  c,
+  [15, 6],
+  c,
+  [13, 7],
+  27,
+  c,
+  [14, 13],
   3,
   4,
   c,
-  [200, 7],
-  33,
-  43,
+  [81, 3],
+  1,
+  3,
+  4,
   c,
-  [203, 9],
-  34,
+  [52, 17],
   c,
-  [202, 7],
-  27,
-  43,
+  [234, 3],
   c,
-  [241, 5]
+  [739, 3],
+  c,
+  [90, 15]
 ]),
   type: u([
+  2,
   0,
   0,
+  s,
+  [2, 8],
   1,
   2,
   0,
   2,
-  0,
-  s,
-  [2, 4],
-  0,
   c,
-  [6, 5],
+  [13, 5],
   c,
-  [14, 15],
+  [19, 7],
+  c,
+  [14, 14],
   c,
   [11, 6],
   c,
@@ -7568,19 +8001,19 @@ table: bt({
   c,
   [6, 6],
   c,
-  [33, 7],
+  [33, 9],
   c,
-  [11, 5],
-  c,
-  [35, 17],
+  [32, 11],
   s,
-  [2, 19],
+  [2, 31],
   c,
-  [57, 12],
+  [74, 17],
   c,
-  [28, 17],
+  [55, 39],
   c,
-  [88, 14],
+  [47, 27],
+  c,
+  [146, 15],
   c,
   [64, 24],
   c,
@@ -7588,41 +8021,51 @@ table: bt({
   c,
   [22, 20],
   c,
-  [17, 29],
+  [17, 34],
+  s,
+  [2, 213],
   c,
-  [194, 7],
+  [472, 3],
   c,
-  [119, 27],
+  [227, 180],
   c,
-  [261, 8],
+  [688, 7],
   c,
-  [65, 12],
+  [616, 5],
   c,
-  [51, 14],
+  [436, 12],
   c,
-  [117, 17],
+  [204, 30],
   c,
-  [82, 15],
+  [504, 17],
   c,
-  [223, 52],
+  [47, 15],
   c,
-  [30, 42],
+  [610, 52],
   c,
-  [380, 11],
+  [307, 171],
   c,
-  [402, 10],
+  [28, 36],
   c,
-  [22, 7],
+  [335, 4],
   c,
-  [183, 7],
+  [227, 39],
   c,
-  [154, 11],
+  [294, 20],
   c,
-  [17, 5],
+  [19, 9],
   c,
-  [137, 20],
+  [408, 14],
   c,
-  [19, 6]
+  [355, 13],
+  c,
+  [243, 107],
+  c,
+  [204, 26],
+  c,
+  [135, 82],
+  c,
+  [81, 44]
 ]),
   state: u([
   s,
@@ -7712,6 +8155,8 @@ table: bt({
   118
 ]),
   mode: u([
+  s,
+  [2, 9],
   1,
   2,
   s,
@@ -7719,65 +8164,83 @@ table: bt({
   c,
   [10, 10],
   s,
-  [1, 18],
+  [1, 13],
   s,
-  [2, 6],
+  [2, 39],
   c,
-  [7, 7],
+  [44, 11],
   c,
-  [9, 3],
+  [51, 28],
   c,
-  [45, 6],
+  [103, 7],
   c,
-  [13, 8],
+  [52, 11],
   c,
-  [35, 8],
+  [13, 5],
   c,
   [23, 24],
   c,
   [27, 6],
+  c,
+  [67, 15],
+  c,
+  [72, 11],
+  c,
+  [189, 32],
+  c,
+  [202, 52],
   s,
-  [2, 14],
+  [2, 179],
   c,
-  [16, 5],
+  [220, 90],
   c,
-  [117, 16],
+  [89, 20],
   c,
-  [131, 28],
+  [20, 13],
   c,
-  [141, 16],
+  [123, 4],
   c,
-  [142, 10],
+  [126, 51],
   c,
-  [10, 4],
+  [434, 4],
   c,
-  [22, 4],
+  [494, 9],
   c,
-  [65, 5],
+  [567, 30],
   c,
-  [123, 7],
+  [454, 16],
   c,
-  [35, 14],
+  [556, 49],
   c,
-  [65, 16],
+  [441, 158],
   c,
-  [169, 53],
+  [184, 27],
   c,
-  [29, 25],
+  [767, 30],
   c,
-  [225, 34],
+  [111, 53],
   c,
-  [162, 5],
+  [56, 5],
   c,
-  [135, 11],
+  [94, 10],
   c,
-  [47, 13],
+  [362, 20],
   c,
-  [165, 11],
+  [683, 103],
   c,
-  [5, 3]
+  [436, 8],
+  c,
+  [635, 45],
+  c,
+  [689, 53],
+  c,
+  [211, 23],
+  c,
+  [22, 17]
 ]),
   goto: u([
+  s,
+  [6, 9],
   8,
   8,
   5,
@@ -7805,6 +8268,16 @@ table: bt({
   36,
   39,
   41,
+  s,
+  [31, 3],
+  s,
+  [13, 9],
+  s,
+  [14, 9],
+  s,
+  [15, 9],
+  s,
+  [16, 9],
   45,
   44,
   48,
@@ -7815,16 +8288,21 @@ table: bt({
   51,
   s,
   [35, 7],
+  7,
+  s,
+  [9, 9],
+  s,
+  [38, 9],
   43,
   56,
   22,
   43,
   c,
-  [36, 4],
+  [94, 4],
   s,
   [43, 6],
   c,
-  [42, 7],
+  [100, 7],
   43,
   43,
   40,
@@ -7857,46 +8335,80 @@ table: bt({
   c,
   [14, 14],
   c,
-  [134, 12],
+  [192, 12],
   c,
   [12, 12],
+  s,
+  [53, 27],
+  s,
+  [55, 27],
+  s,
+  [56, 27],
+  s,
+  [57, 27],
+  s,
+  [58, 27],
+  s,
+  [59, 27],
+  s,
+  [60, 27],
+  s,
+  [61, 29],
   33,
   71,
+  s,
+  [69, 27],
+  s,
+  [70, 27],
+  s,
+  [67, 27],
   s,
   [10, 7],
   73,
   10,
   10,
   s,
+  [17, 10],
+  s,
   [11, 7],
   74,
   11,
   11,
+  s,
+  [19, 10],
   76,
   75,
   29,
   29,
   77,
+  s,
+  [79, 25],
+  s,
+  [80, 25],
   78,
   48,
   73,
   80,
   74,
   74,
+  1,
+  2,
   s,
   [84, 3],
   86,
   c,
-  [177, 7],
+  [567, 7],
   85,
   s,
   [35, 7],
+  s,
+  [22, 16],
   c,
-  [211, 13],
+  [656, 13],
   90,
   91,
   c,
-  [169, 23],
+  [556, 23],
   44,
   61,
   s,
@@ -7908,6 +8420,20 @@ table: bt({
   64,
   s,
   [44, 4],
+  s,
+  [42, 10],
+  s,
+  [39, 10],
+  s,
+  [48, 27],
+  s,
+  [49, 27],
+  s,
+  [50, 27],
+  s,
+  [54, 27],
+  s,
+  [68, 27],
   93,
   94,
   51,
@@ -7936,6 +8462,23 @@ table: bt({
   33,
   64,
   71,
+  s,
+  [65, 3],
+  s,
+  [66, 3],
+  s,
+  [18, 10],
+  s,
+  [20, 10],
+  s,
+  [12, 9],
+  s,
+  [31, 3],
+  s,
+  [32, 3],
+  s,
+  [71, 9],
+  72,
   99,
   98,
   100,
@@ -7945,29 +8488,74 @@ table: bt({
   83,
   102,
   s,
+  [81, 3],
+  s,
   [84, 3],
+  5,
+  s,
+  [21, 16],
   105,
   108,
   13,
   109,
   110,
   111,
+  36,
+  36,
+  s,
+  [41, 10],
+  s,
+  [46, 27],
+  s,
+  [47, 27],
+  s,
+  [62, 27],
+  63,
   76,
   112,
+  75,
+  75,
+  76,
+  76,
+  3,
   s,
   [84, 3],
+  s,
+  [82, 3],
   114,
+  s,
+  [23, 16],
+  s,
+  [31, 3],
   s,
   [25, 9],
   116,
   s,
   [25, 7],
+  s,
+  [26, 16],
+  s,
+  [27, 17],
+  s,
+  [33, 13],
   117,
+  s,
+  [34, 13],
+  s,
+  [31, 3],
+  78,
+  4,
   76,
   119,
+  s,
+  [28, 17],
+  37,
+  37,
   30,
   30,
-  77
+  77,
+  s,
+  [24, 16]
 ])
 }),
 defaultActions: bda({
@@ -8082,7 +8670,6 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
-        // assert('recoverable' in hash);
     } else {
         throw new this.JisonParserError(str, hash);
     }
@@ -8112,32 +8699,30 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
 
 
@@ -8159,15 +8744,15 @@ parse: function parse(input) {
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -8178,16 +8763,16 @@ parse: function parse(input) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
+    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -8195,16 +8780,16 @@ parse: function parse(input) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -8216,13 +8801,26 @@ parse: function parse(input) {
         vstack.length = 0;
         stack_pointer = 0;
 
+        // nuke the error hash info instances created during this run. 
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
         return resultValue;
     };
 
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `lexer`, `sharedState`, etc. references will be *wrong*!
     this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
-        return {
+        var pei = {
             errStr: msg,
             exception: ex,
             text: lexer.match,
@@ -8241,10 +8839,17 @@ parse: function parse(input) {
             value_stack: vstack,
 
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
+            parser: this,
 
-            // and make sure the error info doesn't stay due to potential ref cycle via userland code manipulations (memory leak opportunity!):
+            // and make sure the error info doesn't stay due to potential 
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            // 
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
             destroy: function destructParseErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -8254,13 +8859,16 @@ parse: function parse(input) {
                 // ...
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key !== 'function') {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
                         this[key] = undefined;
                     }
                 }
                 this.recoverable = rec;
             }
         };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
     };
 
 
@@ -8276,10 +8884,12 @@ parse: function parse(input) {
 
     var symbol = 0;
     var preErrorSymbol = 0;
+    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
 
@@ -8296,11 +8906,38 @@ parse: function parse(input) {
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
+
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
+                // We need to make sure we're not cycling forever: 
+                // once we hit EOF, even when we `yyerrok()` an error, we must
+                // prevent the core from running forever, 
+                // e.g. when parent rules are still expecting certain input to 
+                // follow after this, for example when you handle an error inside a set
+                // of braces which are matched by a parent rule in your grammar.
+                // 
+                // Hence we require that every error handling/recovery attempt
+                // *after we've hit EOF* has a diminishing state stack: this means
+                // we will ultimately have unwound the state stack entirely and thus
+                // terminate the parse in a controlled fashion even when we have
+                // very complex error/recovery code interplay in the core + user
+                // action code blocks:
+
+                if (symbol === EOF) {
+                    if (!lastEofErrorStateDepth) {
+                        lastEofErrorStateDepth = sp - 1 - depth;
+                    } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
+
+                        --stack_probe; // popStack(1): [symbol, action]
+                        state = sstack[stack_probe];
+                        ++depth;
+                        continue;
+                    }
+                }
                 return depth;
             }
             if (state === 0 /* $accept rule */ || stack_probe < 1) {
+
                 return -1; // No suitable error recovery rule available.
             }
             --stack_probe; // popStack(1): [symbol, action]
@@ -8313,10 +8950,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy);
+            this.pre_parse.call(this, sharedState_yy);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -8372,7 +9009,7 @@ parse: function parse(input) {
                             retval = r;
                             break;
                         } else {
-                            // TODO: allow parseError callback to edit symbol and or state tat the start of the error recovery process...
+                            // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
                         }
                     }
 
@@ -8465,10 +9102,15 @@ parse: function parse(input) {
 
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
-                    if (!t[0]) {
+                    if (!t[0] || symbol === TERROR) {
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
+                        // 
+                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
+                        // recovery, for then this we would we idling (cycling) on the error forever.
+                        // Yes, this does not take into account the possibility that the *lexer* may have
+                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
 
                         symbol = 0;
                     }
@@ -8506,7 +9148,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -8566,7 +9208,7 @@ parse: function parse(input) {
         p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
         retval = this.parseError(p.errStr, p);
     } finally {
-        retval = this.cleanupAfterParse(retval, true);
+        retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
     }
 
@@ -8588,7 +9230,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-154 */
+/* generated by jison-lex 0.3.4-155 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -10023,7 +10665,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-154",
+  "version": "0.3.4-155",
   "keywords": [
     "jison",
     "parser",
@@ -10064,7 +10706,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-154 */
+/* parser generated by jison 0.4.18-155 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -10106,9 +10748,80 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
+ *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file
+ *
+ *               The function parameters and `this` have the following value/meaning:
+ *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
+ *                             to store/reference the rule value `$$` and location info `@$`.
+ *
+ *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
+ *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
+ *                 data from one reduce action through to the next within a single parse run, then you
+ *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
+ *
+ *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
+ *                             to match this rule. This is *not* the look-ahead token, but the last token
+ *                             that's actually part of this rule.
+ *
+ *                 Formulated another way, `yytext` is the value of the token immediately preceeding
+ *                 the current look-ahead token.
+ *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
+ *
+ *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
+ *
+ *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
+ *
+ *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
+ *
+ *               - `yystate` : the current parser state number, used internally for dispatching and
+ *                             executing the action code chunk matching the rule currently being reduced.
+ *
+ *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
+ *
+ *                 This one comes in handy when you are going to do advanced things to the parser
+ *                 stacks, all of which are accessible from your action code (see the next entries below).
+ *
+ *                 Also note that you can access this and other stack index values using the new back-quote
+ *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 This is made available to write very advanced grammar action rules, e.g. when you want
+ *                 to investigate the parse state stack in your action code, which would, for example,
+ *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
+ *                 to the work described here:
+ *
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                   In Journées Francophones des Languages Applicatifs.
+ *
+ *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
+ *
+ *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
+ *                             constructs.
+ *
+ *               - `yylstack`: reference to the parser token location stack. Also accessed via
+ *                             the `@1` etc. constructs.
+ *
+ *               - `yystack` : reference to the parser token id stack. Also accessed via the
+ *                             `#1` etc. constructs.
+ *
+ *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
+ *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
+ *                 want access for your own purposes, such as error analysis as mentioned above!
+ *
+ *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
+ *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
+ *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
+ *                 *reduced*.
+ *
+ *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
+ *                             *states* such as the one in `yystate`, which are used to represent
+ *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
+ *                             what can I say? If you access this one, you're clearly doing wicked things
+ *
+ *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
+ *                             grammar definition file.
  *
  *    table: [...],
  *               State transition table
@@ -10152,7 +10865,7 @@ module.exports={
  *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:
  *               these extra `args...` are passed verbatim to the grammar rules' action code.
  *
- *    cleanupAfterParse: function(resultValue, invoke_post_methods),
+ *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),
  *               Helper function **which will be set up during the first invocation of the `parse()` method**.
  *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown
  *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY
@@ -10240,6 +10953,7 @@ module.exports={
  *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
+ *    parser:      (reference to the current parser instance)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -10631,7 +11345,8 @@ originalParseError: null,
 cleanupAfterParse: null,
 constructParseErrorInfo: null,
 
-__reentrant_call_depth: 0,       // INTERNAL USE ONLY
+__reentrant_call_depth: 0,      // INTERNAL USE ONLY
+__error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
 //yyErrOk: 0,
@@ -10852,8 +11567,9 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
+performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -11261,97 +11977,129 @@ case 92:
 },
 table: bt({
   len: u([
-  2,
+  18,
   1,
   23,
+  5,
+  16,
   2,
-  0,
-  2,
-  0,
-  0,
+  16,
+  16,
   4,
   s,
-  [0, 7],
+  [16, 7],
   3,
   3,
   5,
   2,
-  5,
-  4,
+  s,
+  [5, 4, -1],
+  2,
+  2,
   3,
-  c,
-  [10, 4],
   7,
-  s,
-  [0, 3],
+  16,
+  24,
+  16,
   4,
-  0,
-  c,
-  [11, 3],
-  6,
-  20,
+  1,
+  3,
   s,
-  [0, 5],
+  [6, 3],
   20,
-  c,
-  [12, 3],
+  18,
+  22,
+  22,
+  21,
+  21,
+  20,
+  16,
+  3,
+  2,
   3,
   1,
   6,
   5,
   s,
-  [0, 3],
+  [3, 3],
   1,
   18,
-  0,
+  16,
   21,
   s,
-  [0, 4],
-  c,
-  [12, 4],
+  [16, 4],
+  5,
   s,
-  [0, 3],
-  c,
-  [64, 3],
+  [18, 4],
+  16,
+  2,
+  2,
+  1,
+  1,
+  s,
+  [3, 4],
+  14,
+  17,
+  18,
+  16,
+  17,
+  16,
+  2,
   3,
   c,
-  [40, 3],
-  14,
-  0,
-  18,
-  c,
-  [13, 4],
-  c,
-  [61, 4],
+  [62, 3],
   6,
   c,
-  [20, 3],
+  [4, 3],
   13,
   9,
-  c,
-  [33, 6],
-  c,
-  [8, 3],
+  16,
+  18,
+  5,
+  3,
+  1,
+  3,
+  13,
+  9,
+  11,
   4,
   16,
-  c,
-  [37, 5],
-  c,
-  [3, 3],
-  0,
-  12,
-  c,
-  [35, 4],
+  15,
+  15,
   7,
-  c,
-  [111, 3],
-  1,
+  s,
+  [2, 5],
+  6,
+  s,
+  [12, 4],
+  2,
+  7,
+  4,
+  11,
+  15,
+  6,
   3,
   7
 ]),
   symbol: u([
   14,
   15,
+  16,
+  21,
+  24,
+  26,
+  28,
+  33,
+  34,
+  35,
+  38,
+  42,
+  48,
+  50,
+  53,
+  54,
+  55,
+  82,
   1,
   16,
   s,
@@ -11361,21 +12109,32 @@ table: bt({
   28,
   s,
   [30, 6, 1],
-  38,
-  42,
-  48,
-  50,
+  c,
+  [23, 4],
   s,
   [52, 4, 1],
   82,
   17,
   20,
+  21,
+  40,
+  82,
+  c,
+  [45, 16],
   25,
   40,
+  c,
+  [18, 16],
+  c,
+  [16, 16],
   29,
   40,
   56,
   61,
+  c,
+  [36, 32],
+  c,
+  [16, 80],
   36,
   40,
   41,
@@ -11396,6 +12155,12 @@ table: bt({
   43,
   45,
   46,
+  40,
+  41,
+  40,
+  41,
+  40,
+  41,
   1,
   16,
   18,
@@ -11405,39 +12170,72 @@ table: bt({
   40,
   63,
   64,
-  82,
-  25,
+  c,
+  [57, 17],
+  4,
+  5,
+  6,
+  12,
+  c,
+  [20, 9],
   40,
+  41,
+  c,
+  [22, 6],
+  62,
+  78,
+  c,
+  [247, 19],
   57,
   58,
+  40,
   37,
   40,
   41,
   12,
   21,
-  22,
-  39,
-  78,
-  82,
-  16,
-  21,
-  24,
-  25,
-  26,
-  28,
-  c,
-  [74, 4],
   40,
   41,
+  78,
+  82,
   c,
-  [76, 3],
+  [6, 8],
+  22,
+  39,
+  c,
+  [42, 5],
+  25,
+  c,
+  [63, 11],
   51,
   c,
-  [76, 4],
+  [159, 13],
   c,
-  [20, 20],
+  [82, 8],
+  82,
+  c,
+  [103, 20],
+  78,
+  c,
+  [22, 23],
+  1,
+  5,
+  6,
+  c,
+  [22, 10],
+  c,
+  [64, 7],
+  85,
+  c,
+  [21, 21],
+  c,
+  [124, 29],
+  c,
+  [37, 7],
   44,
   45,
+  46,
+  44,
   46,
   3,
   44,
@@ -11454,203 +12252,276 @@ table: bt({
   25,
   40,
   64,
+  c,
+  [472, 3],
+  c,
+  [3, 3],
+  1,
+  16,
+  40,
   4,
   c,
-  [39, 11],
+  [66, 11],
   c,
-  [38, 3],
+  [363, 32],
   c,
-  [57, 7],
-  c,
-  [56, 11],
-  c,
-  [18, 3],
+  [161, 8],
   59,
   60,
   62,
-  82,
+  c,
+  [432, 65],
   12,
   13,
   77,
   79,
   80,
+  c,
+  [210, 11],
+  c,
+  [294, 9],
+  c,
+  [18, 34],
+  c,
+  [348, 18],
+  c,
+  [242, 17],
+  46,
   46,
   47,
-  1,
+  s,
+  [1, 3],
   22,
   82,
   1,
-  82,
-  85,
+  c,
+  [311, 3],
+  c,
+  [3, 3],
+  16,
+  40,
   5,
   6,
   7,
-  12,
-  21,
-  40,
-  41,
+  c,
+  [435, 4],
   65,
   66,
   67,
   70,
   76,
   c,
-  [125, 5],
+  [476, 11],
   c,
-  [48, 6],
+  [243, 17],
   c,
-  [47, 7],
+  [82, 7],
   60,
   c,
-  [45, 3],
+  [192, 26],
+  c,
+  [116, 24],
+  12,
+  13,
   12,
   13,
   80,
   c,
-  [101, 6],
+  [3, 3],
+  44,
+  c,
+  [365, 3],
+  c,
+  [361, 7],
+  82,
+  85,
+  5,
+  6,
   5,
   6,
   c,
-  [45, 7],
+  [123, 7],
   68,
   71,
   73,
   c,
-  [44, 3],
-  5,
-  6,
+  [122, 3],
   c,
-  [177, 4],
+  [496, 3],
+  c,
+  [564, 3],
   69,
-  78,
   c,
-  [80, 6],
+  [607, 18],
   c,
-  [27, 7],
+  [231, 18],
   c,
-  [71, 6],
+  [290, 5],
   c,
-  [27, 9],
+  [81, 3],
+  1,
   c,
-  [235, 4],
+  [191, 10],
+  c,
+  [190, 6],
+  c,
+  [68, 9],
+  s,
+  [5, 4, 1],
+  c,
+  [23, 4],
+  c,
+  [20, 3],
+  c,
+  [749, 4],
   s,
   [5, 8, 1],
   c,
-  [30, 3],
+  [18, 3],
   74,
   75,
   c,
-  [29, 3],
+  [40, 5],
+  c,
+  [16, 9],
+  c,
+  [15, 19],
+  c,
+  [14, 3],
+  40,
+  41,
   67,
   72,
+  c,
+  [160, 4],
   12,
   13,
   c,
-  [20, 4],
+  [168, 6],
+  12,
+  21,
   c,
-  [17, 4],
+  [84, 10],
   c,
-  [16, 4],
+  [50, 8],
+  c,
+  [12, 32],
   6,
   8,
   c,
-  [13, 3],
-  40,
-  41,
+  [73, 5],
   71,
   73,
   12,
   13,
-  79,
-  80,
-  67,
   c,
-  [110, 3],
+  [464, 4],
   c,
-  [15, 7]
+  [145, 9],
+  c,
+  [110, 21],
+  c,
+  [206, 3],
+  c,
+  [46, 7]
 ]),
   type: u([
   0,
   0,
+  s,
+  [2, 16],
   1,
   2,
   2,
-  0,
-  0,
   c,
-  [4, 3],
+  [21, 4],
+  0,
   c,
   [6, 3],
   c,
-  [7, 3],
-  s,
-  [2, 5],
+  [28, 8],
   c,
   [8, 5],
   c,
-  [15, 4],
+  [42, 18],
   c,
-  [21, 3],
+  [26, 8],
+  s,
+  [2, 29],
   c,
-  [13, 4],
+  [72, 3],
+  s,
+  [2, 113],
   c,
-  [3, 7],
+  [191, 5],
+  c,
+  [3, 5],
   c,
   [7, 8],
   c,
   [5, 8],
   c,
-  [52, 5],
+  [149, 10],
   c,
   [3, 5],
   c,
-  [60, 8],
+  [97, 58],
   c,
-  [66, 7],
+  [64, 4],
   c,
-  [72, 8],
+  [22, 17],
   c,
-  [12, 12],
+  [18, 6],
   c,
-  [20, 18],
+  [24, 12],
   c,
-  [18, 7],
+  [252, 112],
   c,
-  [64, 5],
+  [124, 34],
   c,
-  [76, 5],
+  [22, 9],
   c,
-  [39, 16],
-  s,
-  [2, 20],
+  [194, 7],
   c,
-  [104, 12],
+  [200, 16],
   c,
-  [83, 13],
+  [178, 48],
   c,
-  [189, 9],
+  [326, 59],
   c,
-  [47, 14],
+  [70, 81],
   c,
-  [55, 10],
+  [282, 40],
   c,
-  [32, 11],
+  [116, 8],
   c,
-  [234, 11],
+  [117, 38],
   c,
-  [184, 13],
+  [155, 64],
   c,
-  [10, 15],
+  [555, 19],
   c,
-  [250, 9],
+  [859, 11],
   c,
-  [79, 14],
+  [250, 40],
   c,
-  [106, 22],
+  [40, 17],
   c,
-  [325, 8],
+  [17, 10],
   c,
-  [15, 10]
+  [68, 16],
+  c,
+  [757, 6],
+  c,
+  [192, 49],
+  c,
+  [388, 73],
+  c,
+  [886, 7],
+  c,
+  [342, 39],
+  0,
+  0
 ]),
   state: u([
   1,
@@ -11740,60 +12611,87 @@ table: bt({
 ]),
   mode: u([
   s,
-  [1, 17],
-  2,
-  c,
-  [15, 26],
+  [2, 16],
   s,
-  [2, 9],
-  c,
-  [11, 11],
-  c,
-  [18, 16],
-  c,
-  [39, 5],
-  c,
-  [3, 7],
-  c,
-  [49, 11],
+  [1, 16],
   s,
-  [2, 17],
+  [2, 19],
   c,
-  [18, 7],
+  [20, 20],
   c,
-  [7, 4],
+  [34, 48],
+  s,
+  [2, 79],
   c,
-  [102, 5],
+  [179, 20],
   c,
-  [36, 10],
+  [190, 23],
   c,
-  [44, 13],
+  [80, 38],
   c,
-  [87, 10],
+  [62, 3],
   c,
-  [83, 7],
+  [96, 16],
   c,
-  [8, 11],
+  [13, 11],
+  s,
+  [2, 120],
   c,
-  [7, 5],
+  [122, 25],
   c,
-  [57, 17],
+  [25, 4],
   c,
-  [171, 10],
+  [3, 12],
   c,
-  [178, 11],
+  [392, 17],
   c,
-  [10, 11],
+  [436, 41],
   c,
-  [14, 6],
+  [220, 68],
   c,
-  [216, 4],
+  [288, 91],
   c,
-  [168, 7],
+  [258, 5],
   c,
-  [11, 4]
+  [228, 13],
+  c,
+  [113, 34],
+  c,
+  [518, 58],
+  c,
+  [333, 17],
+  c,
+  [385, 6],
+  c,
+  [23, 4],
+  c,
+  [10, 7],
+  c,
+  [612, 39],
+  c,
+  [37, 15],
+  c,
+  [15, 6],
+  c,
+  [61, 15],
+  c,
+  [82, 9],
+  c,
+  [533, 67],
+  c,
+  [68, 40],
+  c,
+  [60, 3],
+  c,
+  [747, 6],
+  c,
+  [544, 36],
+  c,
+  [42, 4]
 ]),
   goto: u([
+  s,
+  [8, 16],
   3,
   9,
   5,
@@ -11808,9 +12706,31 @@ table: bt({
   24,
   25,
   19,
+  s,
+  [4, 3],
+  s,
+  [7, 16],
   29,
+  s,
+  [10, 16],
+  s,
+  [11, 16],
   45,
   32,
+  s,
+  [13, 16],
+  s,
+  [14, 16],
+  s,
+  [15, 16],
+  s,
+  [16, 16],
+  s,
+  [17, 16],
+  s,
+  [18, 16],
+  s,
+  [19, 16],
   34,
   35,
   34,
@@ -11824,14 +12744,31 @@ table: bt({
   29,
   40,
   47,
+  35,
+  35,
+  36,
+  36,
+  37,
+  37,
   2,
   49,
   51,
   29,
   19,
+  s,
+  [9, 16],
+  s,
+  [76, 24],
+  s,
+  [12, 16],
   29,
+  46,
   59,
   60,
+  s,
+  [22, 6],
+  s,
+  [23, 6],
   62,
   63,
   65,
@@ -11843,13 +12780,27 @@ table: bt({
   s,
   [34, 7],
   s,
+  [39, 18],
+  s,
+  [74, 22],
+  s,
+  [75, 22],
+  s,
+  [91, 21],
+  s,
+  [92, 21],
+  s,
   [32, 9],
   29,
   40,
   s,
   [32, 7],
+  s,
+  [33, 16],
   67,
   47,
+  28,
+  28,
   69,
   29,
   29,
@@ -11860,6 +12811,12 @@ table: bt({
   51,
   51,
   29,
+  s,
+  [5, 3],
+  s,
+  [6, 3],
+  s,
+  [53, 3],
   76,
   s,
   [40, 9],
@@ -11867,41 +12824,87 @@ table: bt({
   s,
   [40, 7],
   s,
+  [41, 16],
+  s,
   [50, 10],
   81,
   s,
   [50, 6],
   80,
   50,
+  s,
+  [20, 16],
+  s,
+  [24, 16],
+  s,
+  [25, 16],
+  s,
+  [21, 16],
   83,
   83,
   84,
+  s,
+  [78, 18],
+  s,
+  [79, 18],
+  s,
+  [80, 18],
+  s,
+  [38, 18],
+  s,
+  [26, 16],
+  27,
+  27,
   86,
   85,
+  1,
+  3,
   89,
   19,
   95,
   95,
   88,
   s,
+  [93, 3],
+  s,
+  [52, 3],
+  s,
   [60, 7],
   92,
   s,
   [60, 3],
   s,
+  [49, 17],
+  s,
   [44, 9],
   81,
   s,
   [44, 7],
+  s,
+  [43, 16],
+  s,
+  [47, 17],
+  s,
+  [48, 16],
   95,
   94,
   84,
   84,
+  96,
   s,
-  [96, 3],
-  74,
+  [87, 3],
+  30,
+  30,
+  31,
+  31,
+  c,
+  [346, 3],
+  s,
+  [94, 3],
   98,
   99,
+  56,
+  56,
   73,
   73,
   106,
@@ -11915,13 +12918,24 @@ table: bt({
   82,
   82,
   c,
-  [149, 4],
+  [536, 4],
+  s,
+  [42, 16],
+  s,
+  [77, 18],
   c,
-  [64, 3],
+  [274, 3],
+  s,
+  [88, 3],
+  90,
+  s,
+  [54, 3],
   c,
-  [57, 11],
+  [176, 11],
   c,
-  [20, 6],
+  [61, 6],
+  s,
+  [59, 11],
   29,
   40,
   s,
@@ -11931,13 +12945,35 @@ table: bt({
   116,
   s,
   [68, 8],
+  s,
+  [65, 15],
+  s,
+  [66, 15],
+  s,
+  [60, 5],
+  58,
+  58,
+  81,
+  81,
   95,
   119,
+  55,
+  55,
+  57,
+  57,
+  s,
+  [72, 6],
   s,
   [64, 8],
   120,
   s,
   [64, 3],
+  s,
+  [69, 12],
+  s,
+  [70, 12],
+  s,
+  [71, 12],
   122,
   121,
   62,
@@ -11948,6 +12984,12 @@ table: bt({
   86,
   86,
   84,
+  s,
+  [63, 11],
+  s,
+  [67, 15],
+  s,
+  [60, 5],
   85,
   85,
   96,
@@ -12096,7 +13138,6 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
-        // assert('recoverable' in hash);
     } else {
         throw new this.JisonParserError(str, hash);
     }
@@ -12126,32 +13167,30 @@ parse: function parse(input, options) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
@@ -12177,15 +13216,15 @@ parse: function parse(input, options) {
     var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -12196,16 +13235,16 @@ parse: function parse(input, options) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
+    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, options);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue, options);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -12213,16 +13252,16 @@ parse: function parse(input, options) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -12234,13 +13273,26 @@ parse: function parse(input, options) {
         vstack.length = 0;
         stack_pointer = 0;
 
+        // nuke the error hash info instances created during this run. 
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
         return resultValue;
     };
 
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `lexer`, `sharedState`, etc. references will be *wrong*!
     this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
-        return {
+        var pei = {
             errStr: msg,
             exception: ex,
             text: lexer.match,
@@ -12259,10 +13311,17 @@ parse: function parse(input, options) {
             value_stack: vstack,
             location_stack: lstack,
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
+            parser: this,
 
-            // and make sure the error info doesn't stay due to potential ref cycle via userland code manipulations (memory leak opportunity!):
+            // and make sure the error info doesn't stay due to potential 
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            // 
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
             destroy: function destructParseErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -12272,13 +13331,16 @@ parse: function parse(input, options) {
                 // ...
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key !== 'function') {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
                         this[key] = undefined;
                     }
                 }
                 this.recoverable = rec;
             }
         };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
     };
 
 
@@ -12294,10 +13356,12 @@ parse: function parse(input, options) {
 
     var symbol = 0;
     var preErrorSymbol = 0;
+    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
     var lstack_begin, lstack_end;
@@ -12314,11 +13378,38 @@ parse: function parse(input, options) {
         // try to recover from error
         for (;;) {
             // check for error recovery rule in this state
+
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
+                // We need to make sure we're not cycling forever: 
+                // once we hit EOF, even when we `yyerrok()` an error, we must
+                // prevent the core from running forever, 
+                // e.g. when parent rules are still expecting certain input to 
+                // follow after this, for example when you handle an error inside a set
+                // of braces which are matched by a parent rule in your grammar.
+                // 
+                // Hence we require that every error handling/recovery attempt
+                // *after we've hit EOF* has a diminishing state stack: this means
+                // we will ultimately have unwound the state stack entirely and thus
+                // terminate the parse in a controlled fashion even when we have
+                // very complex error/recovery code interplay in the core + user
+                // action code blocks:
+
+                if (symbol === EOF) {
+                    if (!lastEofErrorStateDepth) {
+                        lastEofErrorStateDepth = sp - 1 - depth;
+                    } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
+
+                        --stack_probe; // popStack(1): [symbol, action]
+                        state = sstack[stack_probe];
+                        ++depth;
+                        continue;
+                    }
+                }
                 return depth;
             }
             if (state === 0 /* $accept rule */ || stack_probe < 1) {
+
                 return -1; // No suitable error recovery rule available.
             }
             --stack_probe; // popStack(1): [symbol, action]
@@ -12331,10 +13422,10 @@ parse: function parse(input, options) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy, options);
+            this.pre_parse.call(this, sharedState_yy, options);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy, options);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy, options);
         }
 
         newState = sstack[sp - 1];
@@ -12390,7 +13481,7 @@ parse: function parse(input, options) {
                             retval = r;
                             break;
                         } else {
-                            // TODO: allow parseError callback to edit symbol and or state tat the start of the error recovery process...
+                            // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
                         }
                     }
 
@@ -12483,10 +13574,15 @@ parse: function parse(input, options) {
 
                     // read action for current state and first input
                     t = (table[newState] && table[newState][symbol]) || NO_ACTION;
-                    if (!t[0]) {
+                    if (!t[0] || symbol === TERROR) {
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
+                        // 
+                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
+                        // recovery, for then this we would we idling (cycling) on the error forever.
+                        // Yes, this does not take into account the possibility that the *lexer* may have
+                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
 
                         symbol = 0;
                     }
@@ -12526,7 +13622,7 @@ parse: function parse(input, options) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, options);
+                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack, options);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -12586,7 +13682,7 @@ parse: function parse(input, options) {
         p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
         retval = this.parseError(p.errStr, p);
     } finally {
-        retval = this.cleanupAfterParse(retval, true);
+        retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
     }
 
@@ -12610,7 +13706,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-154 */
+/* generated by jison-lex 0.3.4-155 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -16629,7 +17725,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.18-154 */
+/* parser generated by jison 0.4.18-155 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -16671,9 +17767,80 @@ if (typeof exports !== 'undefined') {
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0, yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
- *               `parser.parse(str, ...)`
+ *               `parser.parse(str, ...)` and specified by way of `%parse-param ...` in the grammar file
+ *
+ *               The function parameters and `this` have the following value/meaning:
+ *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
+ *                             to store/reference the rule value `$$` and location info `@$`.
+ *
+ *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
+ *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
+ *                 data from one reduce action through to the next within a single parse run, then you
+ *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
+ *
+ *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
+ *                             to match this rule. This is *not* the look-ahead token, but the last token
+ *                             that's actually part of this rule.
+ *
+ *                 Formulated another way, `yytext` is the value of the token immediately preceeding
+ *                 the current look-ahead token.
+ *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
+ *
+ *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
+ *
+ *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
+ *
+ *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
+ *
+ *               - `yystate` : the current parser state number, used internally for dispatching and
+ *                             executing the action code chunk matching the rule currently being reduced.
+ *
+ *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
+ *
+ *                 This one comes in handy when you are going to do advanced things to the parser
+ *                 stacks, all of which are accessible from your action code (see the next entries below).
+ *
+ *                 Also note that you can access this and other stack index values using the new back-quote
+ *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 This is made available to write very advanced grammar action rules, e.g. when you want
+ *                 to investigate the parse state stack in your action code, which would, for example,
+ *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
+ *                 to the work described here:
+ *
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                   In Journées Francophones des Languages Applicatifs.
+ *
+ *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
+ *
+ *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
+ *                             constructs.
+ *
+ *               - `yylstack`: reference to the parser token location stack. Also accessed via
+ *                             the `@1` etc. constructs.
+ *
+ *               - `yystack` : reference to the parser token id stack. Also accessed via the
+ *                             `#1` etc. constructs.
+ *
+ *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
+ *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
+ *                 want access for your own purposes, such as error analysis as mentioned above!
+ *
+ *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
+ *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
+ *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
+ *                 *reduced*.
+ *
+ *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
+ *                             *states* such as the one in `yystate`, which are used to represent
+ *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
+ *                             what can I say? If you access this one, you're clearly doing wicked things
+ *
+ *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
+ *                             grammar definition file.
  *
  *    table: [...],
  *               State transition table
@@ -16717,7 +17884,7 @@ if (typeof exports !== 'undefined') {
  *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:
  *               these extra `args...` are passed verbatim to the grammar rules' action code.
  *
- *    cleanupAfterParse: function(resultValue, invoke_post_methods),
+ *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),
  *               Helper function **which will be set up during the first invocation of the `parse()` method**.
  *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown
  *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY
@@ -16805,6 +17972,7 @@ if (typeof exports !== 'undefined') {
  *                  as is also available in the rule actions; this can be used,
  *                  for instance, for advanced error analysis and reporting)
  *    lexer:       (reference to the current lexer instance used by the parser)
+ *    parser:      (reference to the current parser instance)
  *  }
  *
  * while `this` will reference the current parser instance.
@@ -17097,7 +18265,8 @@ originalParseError: null,
 cleanupAfterParse: null,
 constructParseErrorInfo: null,
 
-__reentrant_call_depth: 0,       // INTERNAL USE ONLY
+__reentrant_call_depth: 0,      // INTERNAL USE ONLY
+__error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
 //yyErrOk: 0,
@@ -17203,8 +18372,9 @@ productions_: bp({
   [9, 7]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
+performAction: function parser__PerformAction(yytext, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -17272,22 +18442,22 @@ table: bt({
   9,
   1,
   1,
-  0,
+  3,
   7,
-  0,
+  5,
   10,
-  0,
-  10,
-  0,
-  0,
-  6,
-  s,
-  [0, 3],
-  2,
-  s,
-  [0, 3],
   9,
-  0
+  10,
+  1,
+  5,
+  s,
+  [6, 4],
+  2,
+  2,
+  5,
+  9,
+  9,
+  2
 ]),
   symbol: u([
   1,
@@ -17300,28 +18470,48 @@ table: bt({
   s,
   [1, 3],
   3,
+  5,
+  1,
+  3,
   4,
   5,
   c,
-  [9, 4],
-  s,
-  [3, 6, 1],
+  [12, 4],
+  c,
+  [7, 3],
+  c,
+  [5, 5],
+  6,
+  7,
+  8,
   16,
+  17,
+  c,
+  [10, 8],
   17,
   18,
   c,
-  [9, 3],
+  [8, 3],
   s,
   [10, 6, 1],
   c,
-  [20, 5],
+  [46, 3],
   c,
-  [16, 3],
+  [35, 8],
+  c,
+  [31, 6],
+  c,
+  [6, 14],
+  3,
   5,
   c,
-  [18, 4],
+  [75, 6],
   c,
-  [17, 5]
+  [58, 14],
+  c,
+  [57, 5],
+  3,
+  5
 ]),
   type: u([
   2,
@@ -17334,19 +18524,19 @@ table: bt({
   2,
   1,
   s,
-  [2, 5],
+  [2, 8],
   c,
-  [9, 3],
+  [12, 3],
   s,
-  [2, 7],
+  [2, 12],
   c,
-  [9, 6],
+  [14, 14],
   c,
-  [29, 7],
+  [46, 8],
   s,
-  [2, 11],
+  [2, 51],
   c,
-  [17, 6]
+  [57, 8]
 ]),
   state: u([
   1,
@@ -17369,24 +18559,28 @@ table: bt({
   2,
   s,
   [1, 4],
-  2,
-  2,
+  s,
+  [2, 5],
   1,
   2,
   c,
-  [5, 3],
+  [8, 6],
   c,
-  [7, 3],
+  [12, 5],
   c,
-  [12, 4],
+  [20, 7],
   c,
-  [13, 4],
+  [15, 8],
   c,
-  [14, 6],
+  [17, 3],
   c,
-  [8, 4],
+  [14, 12],
+  s,
+  [2, 18],
   c,
-  [5, 4]
+  [48, 14],
+  c,
+  [53, 11]
 ]),
   goto: u([
   4,
@@ -17394,11 +18588,14 @@ table: bt({
   3,
   7,
   9,
+  s,
+  [5, 3],
   6,
   6,
   8,
   6,
-  7,
+  s,
+  [7, 6],
   s,
   [13, 4],
   12,
@@ -17406,19 +18603,38 @@ table: bt({
   14,
   13,
   13,
+  s,
+  [11, 9],
   4,
   8,
   4,
   3,
   7,
+  1,
+  s,
+  [8, 5],
   s,
   [10, 4],
   17,
   10,
+  s,
+  [14, 6],
+  s,
+  [15, 6],
+  s,
+  [16, 6],
   19,
   18,
+  2,
+  2,
+  s,
+  [9, 5],
+  s,
+  [12, 9],
   c,
-  [13, 5]
+  [53, 5],
+  3,
+  3
 ])
 }),
 defaultActions: bda({
@@ -17453,7 +18669,6 @@ parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
-        // assert('recoverable' in hash);
     } else {
         throw new this.JisonParserError(str, hash);
     }
@@ -17482,32 +18697,30 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
 
 
@@ -17529,15 +18742,15 @@ parse: function parse(input) {
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -17548,16 +18761,16 @@ parse: function parse(input) {
     //
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `sharedState`, etc. references will be *wrong*!
-    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods) {
+    this.cleanupAfterParse = function parser_cleanupAfterParse(resultValue, invoke_post_methods, do_not_nuke_errorinfos) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -17565,16 +18778,16 @@ parse: function parse(input) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -17586,13 +18799,26 @@ parse: function parse(input) {
         vstack.length = 0;
         stack_pointer = 0;
 
+        // nuke the error hash info instances created during this run. 
+        // Userland code must COPY any data/references
+        // in the error hash instance(s) it is more permanently interested in.
+        if (!do_not_nuke_errorinfos) {
+            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                var el = this.__error_infos[i];
+                if (el && typeof el.destroy === 'function') {
+                    el.destroy();
+                }
+            }
+            this.__error_infos.length = 0;
+        }
+
         return resultValue;
     };
 
     // NOTE: as this API uses parse() as a closure, it MUST be set again on every parse() invocation,
     //       or else your `lexer`, `sharedState`, etc. references will be *wrong*!
     this.constructParseErrorInfo = function parser_constructParseErrorInfo(msg, ex, expected, recoverable) {
-        return {
+        var pei = {
             errStr: msg,
             exception: ex,
             text: lexer.match,
@@ -17611,10 +18837,17 @@ parse: function parse(input) {
             value_stack: vstack,
 
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
+            parser: this,
 
-            // and make sure the error info doesn't stay due to potential ref cycle via userland code manipulations (memory leak opportunity!):
+            // and make sure the error info doesn't stay due to potential 
+            // ref cycle via userland code manipulations.
+            // These would otherwise all be memory leak opportunities!
+            // 
+            // Note that only array and object references are nuked as those
+            // constitute the set of elements which can produce a cyclic ref.
+            // The rest of the members is kept intact as they are harmless.
             destroy: function destructParseErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -17624,13 +18857,16 @@ parse: function parse(input) {
                 // ...
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key !== 'function') {
+                    if (this.hasOwnProperty(key) && typeof key === 'object') {
                         this[key] = undefined;
                     }
                 }
                 this.recoverable = rec;
             }
         };
+        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+        this.__error_infos.push(pei);
+        return pei;
     };
 
 
@@ -17649,7 +18885,8 @@ parse: function parse(input) {
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
 
@@ -17660,10 +18897,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy);
+            this.pre_parse.call(this, sharedState_yy);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -17789,7 +19026,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -17849,7 +19086,7 @@ parse: function parse(input) {
         p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
         retval = this.parseError(p.errStr, p);
     } finally {
-        retval = this.cleanupAfterParse(retval, true);
+        retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
     }
 
@@ -17860,7 +19097,7 @@ parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
 
-/* generated by jison-lex 0.3.4-154 */
+/* generated by jison-lex 0.3.4-155 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -25519,7 +26756,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.18-154",
+  "version": "0.4.18-155",
   "license": "MIT",
   "keywords": [
     "jison",
