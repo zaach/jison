@@ -59,6 +59,9 @@ Filepath and base module name of the generated parser; when terminated with a / 
 :   -t, --debug                                
 Debug mode  [false]
 
+:   -I, --info                                
+Report some statistics about the generated parser  [false]
+
 :   -m TYPE, --module-type TYPE                
 The type of module to generate (commonjs, amd, es, js)  [commonjs]
 

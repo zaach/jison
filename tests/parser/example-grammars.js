@@ -138,6 +138,13 @@ const test_list = [
   {
     name: 'test-nonassociative-operator-2',
   },
+  {
+    name: 'test-unused-rules-reporting.jison',
+    reportStats: true,
+    __check__: function (p, spec) {
+      assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
+    }
+  },
 ];
 
 console.log('exec glob....', __dirname);
@@ -148,14 +155,15 @@ testset = testset.sort().map(function (filepath) {
     var pos = filepath.indexOf(fstr);
     // console.log('pos: ', pos, filepath, fstr);
     if (pos > 0) {
-      return {
+      var to = {
         path: filepath,
-        type: test_list[j].type,
-
-        inputs: test_list[j].inputs,
-
-        __ignore__: test_list[j].__ignore__,
       };
+      for (var k in test_list[j]) {
+        if (k !== 'name') {
+          to[k] = test_list[j][k];
+        }
+      }
+      return to;
     }
   }
   return false;
@@ -175,8 +183,10 @@ testset.forEach(function (filespec) {
     }
 
     var options = {};
-    if (filespec.type) {
-      options.type = filespec.type;
+    for (var k in filespec) {
+      if (k !== 'path' && k !== 'inputs' && k !== '__check__') {
+        options[k] = filespec[k];
+      }
     }
     var parser = new Jison.Parser(grammar, options);
 
@@ -192,6 +202,10 @@ testset.forEach(function (filespec) {
       var rv = parser.parse('zz; yy; zz;zz ;');
       // console.log('parse: ', filespec, rv);
       assert.ok(rv === true, "parser.parse() is supposed to produce TRUE");
+    }
+
+    if (filespec.__check__) {
+      filespec.__check__(parser, filespec);
     }
   };
 });
