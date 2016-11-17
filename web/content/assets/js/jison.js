@@ -1615,7 +1615,7 @@ generator.error = function error(msg) {
 };
 
 // Report a few things about the grammar:
-// 
+//
 // - unused rules
 // - stats:
 //   + production count     (-> parser table size indicator)
@@ -1651,7 +1651,7 @@ generator.reportGrammarInformation = function reportGrammarInformation() {
     // TODO: the next bit of code is LR type specific: refactor into a
     //       LR specific mixin class later on, so that we can have another
     //       implementation/report for LL and PEG type grammars.
-    
+
     var rows = 0, cols = 0;
     var colmarks = {};
     var i, j, len;
@@ -2288,9 +2288,9 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
 //
 // The nonterminals are recognizable in the table by having numeric entries, rather
 // than 1-or-2-element array values, as they only store a GOTO state.
-// 
+//
 // ---
-// 
+//
 // Another 'default' is when all listed terminals all point to the exact same reduce state;
 // only this time we are careful about the TERROR symbol as a state carrying that one
 // is an explicitly encoded error recovery rule and should remain as-is.
@@ -2337,7 +2337,7 @@ function findDefaults(states, hasErrorRecovery) {
             // the error recovery code to decide, when SHIFTING, if the ERROR token would
             // improve (fix) matters when it is treated as an *inserted* token.  This code
             // is therefor commented out!
-            // 
+            //
             // ... hence we only nuke these table entries (as that makes for a smaller table --> smaller parser file)
             // when there's no error recovery code included in the generated parser.
             if (!hasErrorRecovery) {
@@ -2347,7 +2347,7 @@ function findDefaults(states, hasErrorRecovery) {
                         delete state[sym];
                     }
                 }
-            }     
+            }
         }
     });
 
@@ -4912,12 +4912,12 @@ parser.parse = function parse(input, parseParams) {
         };
     }
 
-    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount 
-    // to have *their* closure match ours -- if we only set them up once, 
-    // any subsequent `parse()` runs will fail in very obscure ways when 
-    // these functions are invoked in the user action code block(s) as 
-    // their closure will still refer to the `parse()` instance which set 
-    // them up. Hence we MUST set them up at the start of every `parse()` run! 
+    // *Always* setup these `yyErrOk` and `yyClearIn` functions as it is paramount
+    // to have *their* closure match ours -- if we only set them up once,
+    // any subsequent `parse()` runs will fail in very obscure ways when
+    // these functions are invoked in the user action code block(s) as
+    // their closure will still refer to the `parse()` instance which set
+    // them up. Hence we MUST set them up at the start of every `parse()` run!
     if (this.yyErrOk) {
         this.yyErrOk = function yyErrOk() {
             if (yydebug) yydebug('yyerrok: ', { symbol: symbol, state: state, newState: newState, recovering: recovering, action: action });
@@ -5023,7 +5023,7 @@ parser.parse = function parse(input, parseParams) {
         vstack.length = 0;
         stack_pointer = 0;
 
-        // nuke the error hash info instances created during this run. 
+        // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
         // in the error hash instance(s) it is more permanently interested in.
         if (!do_not_nuke_errorinfos) {
@@ -5065,10 +5065,10 @@ parser.parse = function parse(input, parseParams) {
             lexer: lexer,
             parser: this,
 
-            // and make sure the error info doesn't stay due to potential 
+            // and make sure the error info doesn't stay due to potential
             // ref cycle via userland code manipulations.
             // These would otherwise all be memory leak opportunities!
-            // 
+            //
             // Note that only array and object references are nuked as those
             // constitute the set of elements which can produce a cyclic ref.
             // The rest of the members is kept intact as they are harmless.
@@ -5154,13 +5154,13 @@ _handle_error_with_recovery:                    // run this code when the gramma
             if (yydebug) yydebug('locateNearestErrorRecoveryRule #test#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
-                // We need to make sure we're not cycling forever: 
+                // We need to make sure we're not cycling forever:
                 // once we hit EOF, even when we `yyerrok()` an error, we must
-                // prevent the core from running forever, 
-                // e.g. when parent rules are still expecting certain input to 
+                // prevent the core from running forever,
+                // e.g. when parent rules are still expecting certain input to
                 // follow after this, for example when you handle an error inside a set
                 // of braces which are matched by a parent rule in your grammar.
-                // 
+                //
                 // Hence we require that every error handling/recovery attempt
                 // *after we've hit EOF* has a diminishing state stack: this means
                 // we will ultimately have unwound the state stack entirely and thus
@@ -5390,7 +5390,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
-                        // 
+                        //
                         // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
                         // recovery, for then this we would we idling (cycling) on the error forever.
                         // Yes, this does not take into account the possibility that the *lexer* may have
@@ -6367,7 +6367,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-155 */
+/* parser generated by jison 0.4.18-156 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -8805,7 +8805,7 @@ parse: function parse(input) {
         vstack.length = 0;
         stack_pointer = 0;
 
-        // nuke the error hash info instances created during this run. 
+        // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
         // in the error hash instance(s) it is more permanently interested in.
         if (!do_not_nuke_errorinfos) {
@@ -8847,10 +8847,10 @@ parse: function parse(input) {
             lexer: lexer,
             parser: this,
 
-            // and make sure the error info doesn't stay due to potential 
+            // and make sure the error info doesn't stay due to potential
             // ref cycle via userland code manipulations.
             // These would otherwise all be memory leak opportunities!
-            // 
+            //
             // Note that only array and object references are nuked as those
             // constitute the set of elements which can produce a cyclic ref.
             // The rest of the members is kept intact as they are harmless.
@@ -8913,13 +8913,13 @@ parse: function parse(input) {
 
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
-                // We need to make sure we're not cycling forever: 
+                // We need to make sure we're not cycling forever:
                 // once we hit EOF, even when we `yyerrok()` an error, we must
-                // prevent the core from running forever, 
-                // e.g. when parent rules are still expecting certain input to 
+                // prevent the core from running forever,
+                // e.g. when parent rules are still expecting certain input to
                 // follow after this, for example when you handle an error inside a set
                 // of braces which are matched by a parent rule in your grammar.
-                // 
+                //
                 // Hence we require that every error handling/recovery attempt
                 // *after we've hit EOF* has a diminishing state stack: this means
                 // we will ultimately have unwound the state stack entirely and thus
@@ -9110,7 +9110,7 @@ parse: function parse(input) {
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
-                        // 
+                        //
                         // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
                         // recovery, for then this we would we idling (cycling) on the error forever.
                         // Yes, this does not take into account the possibility that the *lexer* may have
@@ -9234,7 +9234,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-155 */
+/* generated by jison-lex 0.3.4-156 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -10669,7 +10669,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-155",
+  "version": "0.3.4-156",
   "keywords": [
     "jison",
     "parser",
@@ -10710,7 +10710,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-155 */
+/* parser generated by jison 0.4.18-156 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -13277,7 +13277,7 @@ parse: function parse(input, options) {
         vstack.length = 0;
         stack_pointer = 0;
 
-        // nuke the error hash info instances created during this run. 
+        // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
         // in the error hash instance(s) it is more permanently interested in.
         if (!do_not_nuke_errorinfos) {
@@ -13319,10 +13319,10 @@ parse: function parse(input, options) {
             lexer: lexer,
             parser: this,
 
-            // and make sure the error info doesn't stay due to potential 
+            // and make sure the error info doesn't stay due to potential
             // ref cycle via userland code manipulations.
             // These would otherwise all be memory leak opportunities!
-            // 
+            //
             // Note that only array and object references are nuked as those
             // constitute the set of elements which can produce a cyclic ref.
             // The rest of the members is kept intact as they are harmless.
@@ -13385,13 +13385,13 @@ parse: function parse(input, options) {
 
             var t = table[state][TERROR] || NO_ACTION;
             if (t[0]) {
-                // We need to make sure we're not cycling forever: 
+                // We need to make sure we're not cycling forever:
                 // once we hit EOF, even when we `yyerrok()` an error, we must
-                // prevent the core from running forever, 
-                // e.g. when parent rules are still expecting certain input to 
+                // prevent the core from running forever,
+                // e.g. when parent rules are still expecting certain input to
                 // follow after this, for example when you handle an error inside a set
                 // of braces which are matched by a parent rule in your grammar.
-                // 
+                //
                 // Hence we require that every error handling/recovery attempt
                 // *after we've hit EOF* has a diminishing state stack: this means
                 // we will ultimately have unwound the state stack entirely and thus
@@ -13582,7 +13582,7 @@ parse: function parse(input, options) {
                         // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
                         // (simple) stuff might have been missing before the token which caused the error we're
                         // recovering from now...
-                        // 
+                        //
                         // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
                         // recovery, for then this we would we idling (cycling) on the error forever.
                         // Yes, this does not take into account the possibility that the *lexer* may have
@@ -13710,7 +13710,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-155 */
+/* generated by jison-lex 0.3.4-156 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -26714,7 +26714,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.18-155",
+  "version": "0.4.18-156",
   "license": "MIT",
   "keywords": [
     "jison",
