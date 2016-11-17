@@ -703,6 +703,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var self = this;
     var actions = [
       '/* this == yyval */',
+      'var yy = this.yy;',              // the JS engine itself can go and remove this statement when `yy` turns out to be unused in any action code!
       preprocessActionCode(this.actionInclude || ''),
       'switch (yystate) {'
     ];
@@ -1098,7 +1099,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     actions.push('}');
 
-    var parameters = 'yytext, yyleng, yylineno, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, yystack, yysstack';
+    var parameters = 'yytext, yyleng, yylineno, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, yystack, yysstack';
     if (this.parseParams) parameters += ', ' + this.parseParams.join(', ');
 
     this.performAction = [].concat(
@@ -1118,6 +1119,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     var actionsBaseline = [
         'function parser__PerformAction(' + parameters + ') {',
         '/* this == yyval */',
+        'var yy = this.yy;',
         '',
         'switch (yystate) {',
         '}',
@@ -2453,7 +2455,7 @@ function generateGenericHeaderComment() {
         + ' *    terminal_descriptions_: (if there are any) {associative list: number ==> description},\n'
         + ' *    productions_: [...],\n'
         + ' *\n'
-        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),\n'
+        + ' *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),\n'
         + ' *               where `...` denotes the (optional) additional arguments the user passed to\n'
         + ' *               `parser.parse(str, ...)`\n'
         + ' *\n'
@@ -4741,25 +4743,23 @@ parser.parse = function parse(input, parseParams) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
     var yydebug = false;
     if (this.options.debug) {
@@ -4860,7 +4860,7 @@ parser.parse = function parse(input, parseParams) {
         };
     }
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
@@ -4888,15 +4888,15 @@ parser.parse = function parse(input, parseParams) {
     var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -4911,12 +4911,12 @@ parser.parse = function parse(input, parseParams) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, parseParams);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue, parseParams);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue, parseParams);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -4924,16 +4924,16 @@ parser.parse = function parse(input, parseParams) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -4983,7 +4983,7 @@ parser.parse = function parse(input, parseParams) {
             value_stack: vstack,
             location_stack: lstack,
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
             parser: this,
 
@@ -5054,7 +5054,8 @@ _lexer_with_token_stack_end:
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
     var lstack_begin, lstack_end;
@@ -5123,10 +5124,10 @@ _handle_error_end_of_section:                   // this concludes the error reco
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy, parseParams);
+            this.pre_parse.call(this, sharedState_yy, parseParams);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy, parseParams);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy, parseParams);
         }
 
         newState = sstack[sp - 1];
@@ -5355,7 +5356,7 @@ _handle_error_end_of_section:                  // this concludes the error recov
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
+                r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -6330,7 +6331,7 @@ exports.transform = EBNF.transform;
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -7044,8 +7045,9 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
+performAction: function parser__PerformAction(yytext, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -8552,32 +8554,30 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
 
 
@@ -8599,15 +8599,15 @@ parse: function parse(input) {
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -8622,12 +8622,12 @@ parse: function parse(input) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -8635,16 +8635,16 @@ parse: function parse(input) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -8694,7 +8694,7 @@ parse: function parse(input) {
             value_stack: vstack,
 
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
             parser: this,
 
@@ -8743,7 +8743,8 @@ parse: function parse(input) {
     var state, action, r, t;
     var yyval = {
         $: true,
-
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
 
@@ -8804,10 +8805,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy);
+            this.pre_parse.call(this, sharedState_yy);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -9002,7 +9003,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -10602,7 +10603,7 @@ module.exports={
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -11350,8 +11351,9 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yyloc, yy, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
+performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -12949,32 +12951,30 @@ parse: function parse(input, options) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
     if (typeof lexer.yylloc === 'undefined') {
         lexer.yylloc = {};
@@ -13000,15 +13000,15 @@ parse: function parse(input, options) {
     var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -13023,12 +13023,12 @@ parse: function parse(input, options) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue, options);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue, options);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue, options);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -13036,16 +13036,16 @@ parse: function parse(input, options) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -13095,7 +13095,7 @@ parse: function parse(input, options) {
             value_stack: vstack,
             location_stack: lstack,
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
             parser: this,
 
@@ -13144,7 +13144,8 @@ parse: function parse(input, options) {
     var state, action, r, t;
     var yyval = {
         $: true,
-        _$: undefined
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
     var lstack_begin, lstack_end;
@@ -13205,10 +13206,10 @@ parse: function parse(input, options) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy, options);
+            this.pre_parse.call(this, sharedState_yy, options);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy, options);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy, options);
         }
 
         newState = sstack[sp - 1];
@@ -13405,7 +13406,7 @@ parse: function parse(input, options) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyloc, sharedState.yy, newState, sp - 1, vstack, lstack, options);
+                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack, options);
 
                 if (typeof r !== 'undefined') {
                     retval = r;

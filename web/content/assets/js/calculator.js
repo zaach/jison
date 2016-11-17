@@ -40,7 +40,7 @@
  *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
  *    productions_: [...],
  *
- *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yy, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
+ *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, $0 (yysp), yyvstack, yylstack, yystack, yysstack, ...),
  *               where `...` denotes the (optional) additional arguments the user passed to
  *               `parser.parse(str, ...)`
  *
@@ -563,8 +563,9 @@ productions_: bp({
   [1, 3]
 ])
 }),
-performAction: function parser__PerformAction(yytext, yy, yystate /* action[1] */, $0, yyvstack) {
+performAction: function parser__PerformAction(yytext, yystate /* action[1] */, $0, yyvstack) {
 /* this == yyval */
+var yy = this.yy;
 
 switch (yystate) {
 case 1:
@@ -846,32 +847,30 @@ parse: function parse(input) {
         lexer = this.__lexer__ = Object.create(this.lexer);
     }
 
-    var sharedState = {
-      yy: {
+    var sharedState_yy = {
         parseError: null,
         quoteName: null,
         lexer: null,
         parser: null,
         pre_parse: null,
         post_parse: null
-      }
     };
     // copy state
     for (var k in this.yy) {
       if (Object.prototype.hasOwnProperty.call(this.yy, k)) {
-        sharedState.yy[k] = this.yy[k];
+        sharedState_yy[k] = this.yy[k];
       }
     }
 
-    sharedState.yy.lexer = lexer;
-    sharedState.yy.parser = this;
+    sharedState_yy.lexer = lexer;
+    sharedState_yy.parser = this;
 
 
 
 
 
 
-    lexer.setInput(input, sharedState.yy);
+    lexer.setInput(input, sharedState_yy);
 
 
 
@@ -893,15 +892,15 @@ parse: function parse(input) {
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
-    if (typeof sharedState.yy.parseError === 'function') {
-        this.parseError = sharedState.yy.parseError;
+    if (typeof sharedState_yy.parseError === 'function') {
+        this.parseError = sharedState_yy.parseError;
     } else {
         this.parseError = this.originalParseError;
     }
 
     // Does the shared state override the default `quoteName` that already comes with this instance?
-    if (typeof sharedState.yy.quoteName === 'function') {
-        this.quoteName = sharedState.yy.quoteName;
+    if (typeof sharedState_yy.quoteName === 'function') {
+        this.quoteName = sharedState_yy.quoteName;
     } else {
         this.quoteName = this.originalQuoteName;
     }
@@ -916,12 +915,12 @@ parse: function parse(input) {
         var rv;
 
         if (invoke_post_methods) {
-            if (sharedState.yy.post_parse) {
-                rv = sharedState.yy.post_parse.call(this, sharedState.yy, resultValue);
+            if (sharedState_yy.post_parse) {
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState.yy, resultValue);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -929,16 +928,16 @@ parse: function parse(input) {
         if (this.__reentrant_call_depth > 1) return resultValue;        // do not (yet) kill the sharedState when this is a reentrant run.
 
         // prevent lingering circular references from causing memory leaks:
-        if (sharedState.yy) {
-            sharedState.yy.parseError = undefined;
-            sharedState.yy.quoteName = undefined;
-            sharedState.yy.lexer = undefined;
-            sharedState.yy.parser = undefined;
-            if (lexer.yy === sharedState.yy) {
+        if (sharedState_yy) {
+            sharedState_yy.parseError = undefined;
+            sharedState_yy.quoteName = undefined;
+            sharedState_yy.lexer = undefined;
+            sharedState_yy.parser = undefined;
+            if (lexer.yy === sharedState_yy) {
                 lexer.yy = undefined;
             }
         }
-        sharedState.yy = undefined;
+        sharedState_yy = undefined;
         this.parseError = this.originalParseError;
         this.quoteName = this.originalQuoteName;
 
@@ -988,7 +987,7 @@ parse: function parse(input) {
             value_stack: vstack,
 
             stack_pointer: sp,
-            yy: sharedState.yy,
+            yy: sharedState_yy,
             lexer: lexer,
             parser: this,
 
@@ -1037,7 +1036,8 @@ parse: function parse(input) {
     var state, action, r, t;
     var yyval = {
         $: true,
-
+        _$: undefined,
+        yy: sharedState_yy
     };
     var p, len, this_production;
 
@@ -1048,10 +1048,10 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState.yy);
+            this.pre_parse.call(this, sharedState_yy);
         }
-        if (sharedState.yy.pre_parse) {
-            sharedState.yy.pre_parse.call(this, sharedState.yy);
+        if (sharedState_yy.pre_parse) {
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -1177,7 +1177,7 @@ parse: function parse(input) {
 
 
 
-                r = this.performAction.call(yyval, yytext, sharedState.yy, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
