@@ -2341,10 +2341,10 @@ function findDefaults(states, hasErrorRecovery) {
             // Aber Oh-ho! The table[] entries themselves *are* used: they are needed by
             // the error recovery code to decide, when SHIFTING, if the ERROR token would
             // improve (fix) matters when it is treated as an *inserted* token.  This code
-            // is therefor commented out!
+            // is therefor not executed then!
             //
             // ... hence we only nuke these table entries (as that makes for a smaller table --> smaller parser file)
-            // when there's no error recovery code included in the generated parser.
+            // when there's no error recovery code included in the generated parser:
             if (!hasErrorRecovery) {
                 for (sym in state) {
                     st = state[sym];
