@@ -107,19 +107,21 @@ function union(a, b) {
     // site for this jscore grammar as the naive scan consistently
     // outperformed the old smarter hash-object code for smaller
     // thresholds (10, 20, 32, 42!)
+    var k, len;
+
     if (a.length > 52) {
         var ar = {};
-        for (var k = 0, len = a.length; k < len; k++) {
+        for (k = 0, len = a.length; k < len; k++) {
             ar[a[k]] = true;
         }
-        for (var k = 0, len = b.length; k < len; k++) {
+        for (k = 0, len = b.length; k < len; k++) {
             if (!ar[b[k]]) {
                 a.push(b[k]);
             }
         }
     } else {
         var bn = [];
-        for (var k = 0, len = b.length; k < len; k++) {
+        for (k = 0, len = b.length; k < len; k++) {
             if (a.indexOf(b[k]) < 0) {
                 bn.push(b[k]);
             }
@@ -1269,7 +1271,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             ls = rhs.substr(0, pos);
             // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
             rhs = rhs.substr(pos + 1);
-            var alias = rhs.match(new XRegExp("^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]"));
+            var alias = rhs.match(new XRegExp('^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]'));
             if (alias) {
                 ls += alias[0];
                 rhs = rhs.substr(alias[0].length);
@@ -1394,7 +1396,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     });
 
                 // replace named semantic values ($nonterminal)
-                if (action.match(new XRegExp("[$@#`][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*"))) {
+                if (action.match(new XRegExp('[$@#`][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*'))) {
                     var count = {},
                         names = {},
                         donotalias = {};
@@ -1469,7 +1471,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                         }
                     }
                     action = action.replace(
-                        new XRegExp("([$@#`])([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)", "g"), function (str, mrkr, pl) {
+                        new XRegExp('([$@#`])([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)', 'g'), function (str, mrkr, pl) {
                             return names[pl] ? mrkr + names[pl] : str;
                         });
                 }
@@ -1539,7 +1541,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } else {
             // no action -> don't care about aliases; strip them.
-            handle = handle.replace(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]", "g"), '');
+            handle = handle.replace(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]', 'g'), '');
             rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 if (rhs[i] === 'error') {
@@ -1968,17 +1970,17 @@ lrGeneratorMixin.buildTable = function buildTable() {
     this.states = this.canonicalCollection();
 
     if (this.DEBUG) {
-        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
+        Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
         this.displayFollowSets();
-        Jison.print("\n");
+        Jison.print('\n');
     }
 
     this.table = this.parseTable(this.states);
 
     if (this.DEBUG) {
-        Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
+        Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
         this.displayFollowSets();
-        Jison.print("\n");
+        Jison.print('\n');
     }
 
     this.defaultActions = findDefaults(this.table, this.hasErrorRecovery);
@@ -3560,9 +3562,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
             };
 
             // Determine state for given production, if it's not a production that's listed as part of a state:
+            var chk, idx;
             var lst = prods.rules[nonterm];
-            var chk = rv.symbol + ' : ' + rv.handle;
-            for (var idx in lst) {
+            chk = rv.symbol + ' : ' + rv.handle;
+            for (idx in lst) {
                 idx = +idx;
                 var p = lst[idx];
                 if (p) {
@@ -3575,10 +3578,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
             }
 
             // Try to reference base productions from newg child productions and vice versa:
-            var chk = rv.base_symbol + ' : ' + rv.base_handle;
+            chk = rv.base_symbol + ' : ' + rv.base_handle;
             if (base && base.rules) {
                 var pr = base.rules[rv.base_symbol];
-                for (var idx in pr) {
+                for (idx in pr) {
                     var bprod = pr[idx];
                     if (bprod.symbol + ' : ' + bprod.handle === chk) {
                         assert(rv.base_state === -1);
