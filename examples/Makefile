@@ -61,7 +61,7 @@ MISC_TARGETS =                                                   \
 			lex                                                 \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
-			no-prec-hack-needed									\
+			no-prec-hack-needed									                \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -83,76 +83,23 @@ MISC_TARGETS =                                                   \
 
 
 ALL_TARGETS =                                                   \
+			$(MISC_TARGETS)                                     \
+			$(ERROR_HANDLING_TARGETS)                           \
 			ansic                                               \
-			basic                                               \
-			basic2                                              \
-			basic2_lex                                          \
-			basic_lex                                           \
-			basic_w_error_rule                                  \
-			bloop                                               \
 			btyacc-ansiC                                        \
 			btyacc-ansiC2                                       \
 			btyacc-ftp                                          \
 			btyacc-t1                                           \
 			btyacc-t2                                           \
 			c99                                                 \
-			calc_LA_on_demand                                   \
-			calculator                                          \
-			calculator_json                                     \
-			ccalc                                               \
-			classy                                              \
-			classy_ast                                          \
-			comments                                            \
-			compiled_calc                                       \
-			dism                                                \
-			dism_lr0                                            \
-			dot                                                 \
-			$(ERROR_HANDLING_TARGETS)                           \
-			error-only                                          \
-			faking-multiple-start-rules                         \
-			faking-multiple-start-rules-alt                     \
-			flow                                                \
-			formula                                             \
 			fsyacc-cgrammar                                     \
 			gantt                                               \
-			grammar                                             \
 			handlebars-BAD                                          \
-			happyhappy                                          \
-			inherited_y                                         \
-			issue-254                                           \
-			issue-289-BAD                                           \
-			issue-293                                           \
 			jscore                                              \
-			json_ast_js                                         \
-			json_js                                             \
-			klammergebirge                                      \
-			lalr-but-not-slr                                    \
-			lambdacalc                                          \
-			lex                                                 \
 			lojban-300                                          \
-			lr-but-not-lalr                                     \
 			mermaid                                             \
-			mfcalc                                              \
-			no-prec-hack-needed																	\
-			nv_classy_ast                                       \
-			olmenu-proto2                                       \
-			parser-to-lexer-communication-test                  \
 			pascal-BAD                                              \
-			phraser                                             \
-			precedence                                          \
-			reduce_conflict                                     \
-			regex                                               \
-			semwhitespace                                       \
-			test-epsilon-rules-early-reduce                     \
-			test-nonassociative-operator-0                      \
-			test-nonassociative-operator-1                      \
-			test-nonassociative-operator-2                      \
-			theory-left-recurs-01                               \
-			tikiwikiparser                                      \
-			unicode                                             \
-			unicode2                                            \
-			with-includes                                       \
-			with_custom_lexer
+			tikiwikiparser                                      
 
 
 
@@ -165,7 +112,8 @@ ALL_TARGETS =                                                   \
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean error-handling $(ALL_TARGETS)
+.PHONY: all clean superclean error-handling $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
+
 
 clean:
 	-rm -rf output/
