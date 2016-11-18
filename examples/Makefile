@@ -355,12 +355,12 @@ error-only:
 	$(JISON) --main ./$@.y
 
 parser-to-lexer-communication-test--profiling:
-	$(JISON) --main -p lr ./$@.jison
-	node --prof ./output/$@/$@.js
+	$(JISON) --main -p lalr ./parser-to-lexer-communication-test.jison
+	node --prof ./output/$@/parser-to-lexer-communication-test.js
 	# and now collect the profile info and dump it to a report file:
-	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > profile.$@.txt
+	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > ./output/$@/profile.$@.txt
 	# and make sure the profile report is saved in a unique file which can be compared against other profile runs later on:
-	cat profile.$@.txt > profile.$@.$$( date +%s%N ).txt
+	cat ./output/$@/profile.$@.txt > ./output/$@/profile.$@.$$( date +%s%N ).txt
 
 parser-to-lexer-communication-test:
 	$(JISON) --main -p lr ./$@.jison
