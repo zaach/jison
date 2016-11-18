@@ -957,6 +957,14 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         .replace(/\x01\x19/g, 'yyerrok')
         .replace(/\x01\x1A/g, 'yyclearin')
         .replace(/\x01\x1B/g, 'yysp');
+
+        // And a final, minimal, fixup for the semicolon-lovers -- like me! ;-)
+        // 
+        // Make sure the last statement is properly semicolon-terminated 99.9% of the time:
+        s = s
+        .replace(/[\s\r\n]+$/, '')          // trim trailing whitespace and empty lines
+        .replace(/([^\;}])$/, '$1;');       // append a semicolon to the last statement if it doesn't end with one (or a closing brace, e.g. a function definition)
+
         return s;
     }
 
@@ -1017,7 +1025,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             for (i = 0; i < rhs.length; i++) {
                 sym = rhs[i];
                 // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = sym.match(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$"));
+                rhs_i = sym.match(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$'));
                 if (rhs_i) {
                     sym = sym.substr(0, sym.length - rhs_i[0].length);
                 }
@@ -1029,7 +1037,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
         } else {
             // no action -> don't care about aliases; strip them.
-            handle = handle.replace(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]", "g"), '');
+            handle = handle.replace(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]', 'g'), '');
             rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 sym = rhs[i];
@@ -10137,7 +10145,7 @@ simpleCaseActionClusters: {
   /*! Rule::       \/\/.* */ 
    1 : 44,
   /*! Conditions:: action */ 
-  /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
+  /*! Rule::       \/[^ /]*?['"{}][^ ]*?\/ */ 
    2 : 44,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
@@ -10248,7 +10256,7 @@ simpleCaseActionClusters: {
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
-/^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
+/^(?:\/[^ \/]*?['"{}][^ ]*?\/)/,
 /^(?:"(\\\\|\\"|[^"])*")/,
 /^(?:'(\\\\|\\'|[^'])*')/,
 /^(?:[\/"'][^{}\/"']+)/,
@@ -11977,7 +11985,7 @@ case 73:
 
 case 80:
     /*! Production::    action_ne : ARROW_ACTION */
-    this.$ = '$$ =' + yyvstack[$0] + ';';
+    this.$ = '$$ = ' + yyvstack[$0];
     break;
 
 case 85:
@@ -14523,7 +14531,7 @@ break;
 case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2); return 78; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 78; 
 break;
 case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -15106,7 +15114,7 @@ function printFunctionSourceCodeContainer(f) {
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
-    var m, i, k, action, conditions,
+    var m, i, k, rule, action, conditions,
         active_conditions,
         rules = dict.rules,
         newRules = [],
@@ -15114,6 +15122,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
     // Assure all options are camelCased:
     assert(typeof opts.options['case-insensitive'] === 'undefined');
+
+    if (!tokens) {
+        tokens = [];
+    }
 
     // Depending on the location within the regex we need different expansions of the macros:
     // one expansion for when a macro is *inside* a `[...]` and another expansion when a macro
@@ -15139,8 +15151,11 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     actions.push('switch($avoiding_name_collisions) {');
 
     for (i = 0; i < rules.length; i++) {
+        rule = rules[i];
+        m = rule[0];
+
         active_conditions = [];
-        if (Object.prototype.toString.apply(rules[i][0]) !== '[object Array]') {
+        if (Object.prototype.toString.apply(m) !== '[object Array]') {
             // implicit add to all inclusive start conditions
             for (k in startConditions) {
                 if (startConditions[k].inclusive) {
@@ -15148,16 +15163,18 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
                     startConditions[k].rules.push(i);
                 }
             }
-        } else if (rules[i][0][0] === '*') {
+        } else if (m[0] === '*') {
             // Add to ALL start conditions
             active_conditions.push('*');
             for (k in startConditions) {
                 startConditions[k].rules.push(i);
             }
-            rules[i].shift();
+            rule.shift();
+            m = rule[0];
         } else {
             // Add to explicit start conditions
-            conditions = rules[i].shift();
+            conditions = rule.shift();
+            m = rule[0];
             for (k = 0; k < conditions.length; k++) {
                 if (!startConditions.hasOwnProperty(conditions[k])) {
                     startConditions[conditions[k]] = {
@@ -15171,22 +15188,17 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
             }
         }
 
-        m = rules[i][0];
         if (typeof m === 'string') {
             m = expandMacros(m, macros, opts);
             m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
-        if (typeof rules[i][1] === 'function') {
-            rules[i][1] = String(rules[i][1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
+        if (typeof rule[1] === 'function') {
+            rule[1] = String(rule[1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
         }
-        action = rules[i][1];
-        if (tokens && action.match(/return '(?:\\'|[^']+)+'/)) {
-            action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        }
-        if (tokens && action.match(/return "(?:\\"|[^"]+)+"/)) {
-            action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
-        }
+        action = rule[1];
+        action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
+        action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
@@ -15375,17 +15387,18 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
     var t = new Array(65536);
     var l = {};
     var user_has_xregexp = opts && opts.options && opts.options.xregexp;
+    var i, j, k, ba;
 
     // mark every character with which regex pcodes they are part of:
-    for (var k in Pcodes_bitarray_cache) {
-        var ba = Pcodes_bitarray_cache[k];
+    for (k in Pcodes_bitarray_cache) {
+        ba = Pcodes_bitarray_cache[k];
 
         if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
             continue;
         }
 
         var cnt = 0;
-        for (var i = 0; i < 65536; i++) {
+        for (i = 0; i < 65536; i++) {
             if (ba[i]) {
                 cnt++;
                 if (!t[i]) {
@@ -15415,8 +15428,8 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
     var done = {};
     var keys = Object.keys(Pcodes_bitarray_cache);
 
-    for (var i = 0; i < 65536; i++) {
-        var k = t[i][0];
+    for (i = 0; i < 65536; i++) {
+        k = t[i][0];
         if (t[i].length === 1 && !done[k]) {
             assert(l[k] > 0);
             lut.push([i, k]);
@@ -15424,8 +15437,8 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
         }
     }
 
-    for (var j = 0; keys[j]; j++) {
-        var k = keys[j];
+    for (j = 0; keys[j]; j++) {
+        k = keys[j];
 
         if (!user_has_xregexp && k.indexOf('\\p{') >= 0) {
             continue;
@@ -15436,8 +15449,8 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
             // find a minimum span character to mark this one:
             var w = Infinity;
             var rv;
-            var ba = Pcodes_bitarray_cache[k];
-            for (var i = 0; i < 65536; i++) {
+            ba = Pcodes_bitarray_cache[k];
+            for (i = 0; i < 65536; i++) {
                 if (ba[i]) {
                     var tl = t[i].length;
                     if (tl > 1 && tl < w) {
@@ -15499,17 +15512,18 @@ function set2bitarray(bitarr, s, opts) {
     }
 
     function eval_escaped_code(s) {
+        var c;
         // decode escaped code? If none, just take the character as-is
         if (s.indexOf('\\') === 0) {
             var l = s.substr(0, 2);
             switch (l) {
             case '\\c':
-                var c = s.charCodeAt(2) - 'A'.charCodeAt(0) + 1;
+                c = s.charCodeAt(2) - 'A'.charCodeAt(0) + 1;
                 return String.fromCharCode(c);
 
             case '\\x':
                 s = s.substr(2);
-                var c = parseInt(s, 16);
+                c = parseInt(s, 16);
                 return String.fromCharCode(c);
 
             case '\\u':
@@ -15517,7 +15531,7 @@ function set2bitarray(bitarr, s, opts) {
                 if (s[0] === '{') {
                     s = s.substr(1, s.length - 2);
                 }
-                var c = parseInt(s, 16);
+                c = parseInt(s, 16);
                 return String.fromCharCode(c);
 
             case '\\0':
@@ -15529,7 +15543,7 @@ function set2bitarray(bitarr, s, opts) {
             case '\\6':
             case '\\7':
                 s = s.substr(1);
-                var c = parseInt(s, 8);
+                c = parseInt(s, 8);
                 return String.fromCharCode(c);
 
             case '\\r':
@@ -15560,6 +15574,8 @@ function set2bitarray(bitarr, s, opts) {
     }
 
     if (s && s.length) {
+        var c1, c2;
+
         // inverted set?
         if (s[0] === '^') {
             set_is_inverted = true;
@@ -15572,7 +15588,7 @@ function set2bitarray(bitarr, s, opts) {
         // This results in an OR operations when sets are joined/chained.
 
         while (s.length) {
-            var c1 = s.match(CHR_RE);
+            c1 = s.match(CHR_RE);
             if (!c1) {
                 // hit an illegal escape sequence? cope anyway!
                 c1 = s[0];
@@ -15584,7 +15600,7 @@ function set2bitarray(bitarr, s, opts) {
                 switch (c1) {
                 case '\\p':
                     s = s.substr(c1.length);
-                    var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
+                    c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
                     if (c2) {
                         c2 = c2[0];
                         s = s.substr(c2.length);
@@ -15637,7 +15653,7 @@ function set2bitarray(bitarr, s, opts) {
             if (s[0] === '-' && s.length >= 2) {
                 // we can expect a range like 'a-z':
                 s = s.substr(1);
-                var c2 = s.match(CHR_RE);
+                c2 = s.match(CHR_RE);
                 if (!c2) {
                     // hit an illegal escape sequence? cope anyway!
                     c2 = s[0];
@@ -15652,7 +15668,7 @@ function set2bitarray(bitarr, s, opts) {
                 if (v1 <= v2) {
                     mark(v1, v2);
                 } else {
-                    console.warn("INVALID CHARACTER RANGE found in regex: ", { re: orig, start: c1, start_n: v1, end: c2, end_n: v2 });
+                    console.warn('INVALID CHARACTER RANGE found in regex: ', { re: orig, start: c1, start_n: v1, end: c2, end_n: v2 });
                     mark(v1);
                     mark('-'.charCodeAt(0));
                     mark(v2);
@@ -15687,14 +15703,14 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
     l[65536] = 1;
     // now reconstruct the regex set:
     var rv = [];
-    var i, j;
+    var i, j, cnt, lut, tn, tspec, match, pcode, ba4pcode, l2;
     var bitarr_is_cloned = false;
     var l_orig = l;
 
     if (output_inverted_variant) {
         // generate the inverted set, hence all unmarked slots are part of the output range:
-        var cnt = 0;
-        for (var i = 0; i < 65536; i++) {
+        cnt = 0;
+        for (i = 0; i < 65536; i++) {
             if (!l[i]) {
                 cnt++;
             }
@@ -15713,16 +15729,16 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
 
         // Now see if we can replace several bits by an escape / pcode:
         if (output_minimized) {
-            var lut = Pcodes_bitarray_cache_test_order;
-            for (var tn = 0; lut[tn]; tn++) {
-                var tspec = lut[tn];
+            lut = Pcodes_bitarray_cache_test_order;
+            for (tn = 0; lut[tn]; tn++) {
+                tspec = lut[tn];
                 // check if the uniquely identifying char is in the inverted set:
                 if (!l[tspec[0]]) {
                     // check if the pcode is covered by the inverted set:
-                    var pcode = tspec[1];
-                    var ba4pcode = Pcodes_bitarray_cache[pcode];
-                    var match = 0;
-                    for (var j = 0; j < 65536; j++) {
+                    pcode = tspec[1];
+                    ba4pcode = Pcodes_bitarray_cache[pcode];
+                    match = 0;
+                    for (j = 0; j < 65536; j++) {
                         if (ba4pcode[j]) {
                             if (!l[j]) {
                                 // match in current inverted bitset, i.e. there's at
@@ -15748,8 +15764,8 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                         // make sure these edits are visible outside this function as
                         // `l` is an INPUT parameter (~ not modified)!
                         if (!bitarr_is_cloned) {
-                            var l2 = new Array(65536 + 3);
-                            for (var j = 0; j < 65536; j++) {
+                            l2 = new Array(65536 + 3);
+                            for (j = 0; j < 65536; j++) {
                                 l2[j] = l[j] || ba4pcode[j];    // `!(!l[j] && !ba4pcode[j])`
                             }
                             // recreate sentinel
@@ -15757,7 +15773,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                             l = l2;
                             bitarr_is_cloned = true;
                         } else {
-                            for (var j = 0; j < 65536; j++) {
+                            for (j = 0; j < 65536; j++) {
                                 l[j] = l[j] || ba4pcode[j];
                             }
                         }
@@ -15786,8 +15802,8 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
         }
     } else {
         // generate the non-inverted set, hence all logic checks are inverted here...
-        var cnt = 0;
-        for (var i = 0; i < 65536; i++) {
+        cnt = 0;
+        for (i = 0; i < 65536; i++) {
             if (l[i]) {
                 cnt++;
             }
@@ -15804,16 +15820,16 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
 
         // Now see if we can replace several bits by an escape / pcode:
         if (output_minimized) {
-            var lut = Pcodes_bitarray_cache_test_order;
-            for (var tn = 0; lut[tn]; tn++) {
-                var tspec = lut[tn];
+            lut = Pcodes_bitarray_cache_test_order;
+            for (tn = 0; lut[tn]; tn++) {
+                tspec = lut[tn];
                 // check if the uniquely identifying char is in the set:
                 if (l[tspec[0]]) {
                     // check if the pcode is covered by the set:
-                    var pcode = tspec[1];
-                    var ba4pcode = Pcodes_bitarray_cache[pcode];
-                    var match = 0;
-                    for (var j = 0; j < 65536; j++) {
+                    pcode = tspec[1];
+                    ba4pcode = Pcodes_bitarray_cache[pcode];
+                    match = 0;
+                    for (j = 0; j < 65536; j++) {
                         if (ba4pcode[j]) {
                             if (l[j]) {
                                 // match in current bitset, i.e. there's at
@@ -15839,8 +15855,8 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                         // make sure these edits are visible outside this function as
                         // `l` is an INPUT parameter (~ not modified)!
                         if (!bitarr_is_cloned) {
-                            var l2 = new Array(65536 + 3);
-                            for (var j = 0; j < 65536; j++) {
+                            l2 = new Array(65536 + 3);
+                            for (j = 0; j < 65536; j++) {
                                 l2[j] = l[j] && !ba4pcode[j];
                             }
                             // recreate sentinel
@@ -15848,7 +15864,7 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
                             l = l2;
                             bitarr_is_cloned = true;
                         } else {
-                            for (var j = 0; j < 65536; j++) {
+                            for (j = 0; j < 65536; j++) {
                                 l[j] = l[j] && !ba4pcode[j];
                             }
                         }
@@ -16143,10 +16159,11 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return s;
     }
 
+    var c1, c2;
     var rv = [];
 
     while (s.length) {
-        var c1 = s.match(CHR_RE);
+        c1 = s.match(CHR_RE);
         if (!c1) {
             // cope with illegal escape sequences too!
             return new Error(errinfo() + ': illegal escape sequence at start of regex part: ' + s);
@@ -16180,7 +16197,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             }
 
             // ensure that we hit the terminating ']':
-            var c2 = s.match(CHR_RE);
+            c2 = s.match(CHR_RE);
             if (!c2) {
                 // cope with illegal escape sequences too!
                 return new Error(errinfo() + ': regex set expression is broken: "' + s + '"');
@@ -16223,7 +16240,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
 
         // XRegExp Unicode escape, e.g. `\\p{Number}`:
         case '\\p':
-            var c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
+            c2 = s.match(XREGEXP_UNICODE_ESCAPE_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -16239,7 +16256,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         // Either a range expression or the start of a macro reference: `.{1,3}` or `{NAME}`.
         // Treat it as a macro reference and see if it will expand to anything:
         case '{':
-            var c2 = s.match(NOTHING_SPECIAL_RE);
+            c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
@@ -16276,7 +16293,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         default:
             // non-set character or word: see how much of this there is for us and then see if there
             // are any macros still lurking inside there:
-            var c2 = s.match(NOTHING_SPECIAL_RE);
+            c2 = s.match(NOTHING_SPECIAL_RE);
             if (c2) {
                 c2 = c2[0];
                 s = s.substr(c2.length);
