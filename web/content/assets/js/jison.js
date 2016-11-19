@@ -9283,7 +9283,26 @@ var lexer = {
 
     __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],              // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+
+    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+
+    done: false,                                // INTERNAL USE ONLY
+    _backtrack: false,                          // INTERNAL USE ONLY
+    _input: '',                                 // INTERNAL USE ONLY
+    _more: false,                               // INTERNAL USE ONLY
+    _signaled_error_token: false,               // INTERNAL USE ONLY
+
+    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+
+    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
     // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
@@ -9375,6 +9394,100 @@ var lexer = {
     // resets the lexer, sets new input
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
+
+        // also check if we've fully initialized the lexer instance,
+        // including expansion work to be done to go from a loaded
+        // lexer to a usable lexer:
+        if (!this.__decompressed) {
+          // step 1: decompress the regex list:
+          var rules = this.rules;
+          for (var i = 0, len = rules.length; i < len; i++) {
+            var rule_re = rules[i];
+
+            // compression: is the RE an xref to another RE slot in the rules[] table?
+            if (typeof rule_re === 'number') {
+              rules[i] = rules[rule_re];
+            }
+          }
+
+          // step 2: unfold the conditions[] set to make these ready for use:
+          var conditions = this.conditions;
+          for (var k in conditions) {
+            var spec = conditions[k];
+
+            var rule_ids = spec.rules;
+
+            var len = rule_ids.length;
+            var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
+            var rule_new_ids = new Array(len + 1);
+
+            if (this.rules_prefix1) {
+                var rule_prefixes = new Array(65536);
+                var first_catch_all_index = 0;
+
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+
+                  var prefix = this.rules_prefix1[idx];
+                  // compression: is the PREFIX-STRING an xref to another PREFIX-STRING slot in the rules_prefix1[] table?
+                  if (typeof prefix === 'number') {
+                    prefix = this.rules_prefix1[prefix];
+                  }
+                  // init the prefix lookup table: first come, first serve...
+                  if (!prefix) {
+                    if (!first_catch_all_index) {
+                      first_catch_all_index = i + 1;
+                    }
+                  } else {
+                    for (var j = 0, pfxlen = prefix.length; j < pfxlen; j++) {
+                      var pfxch = prefix.charCodeAt(j);
+                      // first come, first serve:
+                      if (!rule_prefixes[pfxch]) {
+                        rule_prefixes[pfxch] = i + 1;
+                      }  
+                    }
+                  }
+                }
+
+                // if no catch-all prefix has been encountered yet, it means all
+                // rules have limited prefix sets and it MAY be that particular
+                // input characters won't be recognized by any rule in this 
+                // condition state.
+                // 
+                // To speed up their discovery at run-time while keeping the
+                // remainder of the lexer kernel code very simple (and fast),
+                // we point these to an 'illegal' rule set index *beyond*
+                // the end of the rule set.
+                if (!first_catch_all_index) {
+                  first_catch_all_index = len + 1;
+                }
+
+                for (var i = 0; i < 65536; i++) {
+                  if (!rule_prefixes[i]) {
+                    rule_prefixes[i] = first_catch_all_index; 
+                  }
+                }
+
+                spec.__dispatch_lut = rule_prefixes;
+            } else {
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+                }
+            }
+
+            spec.rules = rule_new_ids;
+            spec.__rule_regexes = rule_regexes;
+            spec.__rule_count = len;
+          }
+
+          this.__decompressed = true;
+        }
 
         this._input = input || '';
         this.clear();
@@ -9682,7 +9795,14 @@ var lexer = {
         this._backtrack = false;
         this._input = this._input.slice(match_str.length);
         this.matched += match_str;
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+
+        // calling this method: 
+        //
+        //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
+        // otherwise, when the action codes are all simple return token statements:
+        //token = this.simpleCaseActionClusters[indexed_rule];
+
         if (this.done && this._input) {
             this.done = false;
         }
@@ -9721,21 +9841,41 @@ var lexer = {
         if (!this._more) {
             this.clear();
         }
-        var rules = this.__currentRuleSet__;
-        if (!rules) {
+        var spec = this.__currentRuleSet__;
+        if (!spec) {
             // Update the ruleset cache as we apparently encountered a state change or just started lexing.
             // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
             // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
             // speed up those activities a tiny bit.
-            rules = this.__currentRuleSet__ = this._currentRules();
+            spec = this.__currentRuleSet__ = this._currentRules();
         }
-        for (var i = 0, len = rules.length; i < len; i++) {
-            tempMatch = this._input.match(this.rules[rules[i]]);
+
+        var rule_ids = spec.rules;
+//        var dispatch = spec.__dispatch_lut;
+        var regexes = spec.__rule_regexes;
+        var len = spec.__rule_count;
+
+//        var c0 = this._input[0];
+
+        // Note: the arrays are 1-based, while `len` itself is a valid index, 
+        // hence the non-standard less-or-equal check in the next loop condition!
+        // 
+        // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
+        // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
+        // O(n) ideally, where:
+        // 
+        // - N is the number of input particles -- which is not precisely characters 
+        //   as we progress on a per-regex-match basis rather than on a per-character basis
+        //   
+        // - M is the number of rules (regexes) to test in the active condition state.
+        //  
+        for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+            tempMatch = this._input.match(regexes[i]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rules[i]);
+                    token = this.test_match(tempMatch, rule_ids[i]);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -9751,7 +9891,7 @@ var lexer = {
             }
         }
         if (match) {
-            token = this.test_match(match, rules[index]);
+            token = this.test_match(match, rule_ids[index]);
             if (token !== false) {
                 return token;
             }
@@ -9829,9 +9969,9 @@ var lexer = {
     // (internal) determine the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
         } else {
-            return this.conditions['INITIAL'].rules;
+            return this.conditions['INITIAL'];
         }
     },
 
@@ -13819,7 +13959,26 @@ var lexer = {
 
     __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],              // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+
+    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+
+    done: false,                                // INTERNAL USE ONLY
+    _backtrack: false,                          // INTERNAL USE ONLY
+    _input: '',                                 // INTERNAL USE ONLY
+    _more: false,                               // INTERNAL USE ONLY
+    _signaled_error_token: false,               // INTERNAL USE ONLY
+
+    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+
+    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
     // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
@@ -13911,6 +14070,100 @@ var lexer = {
     // resets the lexer, sets new input
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
+
+        // also check if we've fully initialized the lexer instance,
+        // including expansion work to be done to go from a loaded
+        // lexer to a usable lexer:
+        if (!this.__decompressed) {
+          // step 1: decompress the regex list:
+          var rules = this.rules;
+          for (var i = 0, len = rules.length; i < len; i++) {
+            var rule_re = rules[i];
+
+            // compression: is the RE an xref to another RE slot in the rules[] table?
+            if (typeof rule_re === 'number') {
+              rules[i] = rules[rule_re];
+            }
+          }
+
+          // step 2: unfold the conditions[] set to make these ready for use:
+          var conditions = this.conditions;
+          for (var k in conditions) {
+            var spec = conditions[k];
+
+            var rule_ids = spec.rules;
+
+            var len = rule_ids.length;
+            var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
+            var rule_new_ids = new Array(len + 1);
+
+            if (this.rules_prefix1) {
+                var rule_prefixes = new Array(65536);
+                var first_catch_all_index = 0;
+
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+
+                  var prefix = this.rules_prefix1[idx];
+                  // compression: is the PREFIX-STRING an xref to another PREFIX-STRING slot in the rules_prefix1[] table?
+                  if (typeof prefix === 'number') {
+                    prefix = this.rules_prefix1[prefix];
+                  }
+                  // init the prefix lookup table: first come, first serve...
+                  if (!prefix) {
+                    if (!first_catch_all_index) {
+                      first_catch_all_index = i + 1;
+                    }
+                  } else {
+                    for (var j = 0, pfxlen = prefix.length; j < pfxlen; j++) {
+                      var pfxch = prefix.charCodeAt(j);
+                      // first come, first serve:
+                      if (!rule_prefixes[pfxch]) {
+                        rule_prefixes[pfxch] = i + 1;
+                      }  
+                    }
+                  }
+                }
+
+                // if no catch-all prefix has been encountered yet, it means all
+                // rules have limited prefix sets and it MAY be that particular
+                // input characters won't be recognized by any rule in this 
+                // condition state.
+                // 
+                // To speed up their discovery at run-time while keeping the
+                // remainder of the lexer kernel code very simple (and fast),
+                // we point these to an 'illegal' rule set index *beyond*
+                // the end of the rule set.
+                if (!first_catch_all_index) {
+                  first_catch_all_index = len + 1;
+                }
+
+                for (var i = 0; i < 65536; i++) {
+                  if (!rule_prefixes[i]) {
+                    rule_prefixes[i] = first_catch_all_index; 
+                  }
+                }
+
+                spec.__dispatch_lut = rule_prefixes;
+            } else {
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+                }
+            }
+
+            spec.rules = rule_new_ids;
+            spec.__rule_regexes = rule_regexes;
+            spec.__rule_count = len;
+          }
+
+          this.__decompressed = true;
+        }
 
         this._input = input || '';
         this.clear();
@@ -14218,7 +14471,14 @@ var lexer = {
         this._backtrack = false;
         this._input = this._input.slice(match_str.length);
         this.matched += match_str;
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+
+        // calling this method: 
+        //
+        //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
+        // otherwise, when the action codes are all simple return token statements:
+        //token = this.simpleCaseActionClusters[indexed_rule];
+
         if (this.done && this._input) {
             this.done = false;
         }
@@ -14257,21 +14517,41 @@ var lexer = {
         if (!this._more) {
             this.clear();
         }
-        var rules = this.__currentRuleSet__;
-        if (!rules) {
+        var spec = this.__currentRuleSet__;
+        if (!spec) {
             // Update the ruleset cache as we apparently encountered a state change or just started lexing.
             // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
             // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
             // speed up those activities a tiny bit.
-            rules = this.__currentRuleSet__ = this._currentRules();
+            spec = this.__currentRuleSet__ = this._currentRules();
         }
-        for (var i = 0, len = rules.length; i < len; i++) {
-            tempMatch = this._input.match(this.rules[rules[i]]);
+
+        var rule_ids = spec.rules;
+//        var dispatch = spec.__dispatch_lut;
+        var regexes = spec.__rule_regexes;
+        var len = spec.__rule_count;
+
+//        var c0 = this._input[0];
+
+        // Note: the arrays are 1-based, while `len` itself is a valid index, 
+        // hence the non-standard less-or-equal check in the next loop condition!
+        // 
+        // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
+        // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
+        // O(n) ideally, where:
+        // 
+        // - N is the number of input particles -- which is not precisely characters 
+        //   as we progress on a per-regex-match basis rather than on a per-character basis
+        //   
+        // - M is the number of rules (regexes) to test in the active condition state.
+        //  
+        for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+            tempMatch = this._input.match(regexes[i]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rules[i]);
+                    token = this.test_match(tempMatch, rule_ids[i]);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -14287,7 +14567,7 @@ var lexer = {
             }
         }
         if (match) {
-            token = this.test_match(match, rules[index]);
+            token = this.test_match(match, rule_ids[index]);
             if (token !== false) {
                 return token;
             }
@@ -14365,9 +14645,9 @@ var lexer = {
     // (internal) determine the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
         } else {
-            return this.conditions['INITIAL'].rules;
+            return this.conditions['INITIAL'];
         }
     },
 
@@ -16389,7 +16669,7 @@ function prepareMacros(dict_macros, opts) {
                 s1 = mba;
             } else {
                 s1 = bitarray2set(mba, false);
-		
+        
                 m = s1;
             }
 
@@ -16815,7 +17095,7 @@ function RegExpLexer(dict, input, tokens) {
 
     function test_me(tweak_cb, description, src_exception, ex_callback) {
         opts = processGrammar(dict, tokens);
-        opts.in_rules_failure_analysis_mode = false;
+        opts.__in_rules_failure_analysis_mode__ = false;
         if (tweak_cb) {
             tweak_cb();
         }
@@ -16923,7 +17203,7 @@ function RegExpLexer(dict, input, tokens) {
                 // opts.conditions = [];
                 opts.rules = [];
                 opts.showSource = false;
-                opts.in_rules_failure_analysis_mode = true;
+                opts.__in_rules_failure_analysis_mode__ = true;
             }, 'One or more of your lexer rules are possibly botched?', ex)) {
                 // kill each rule action block, one at a time and test again after each 'edit':
                 var rv = false;
@@ -16932,7 +17212,7 @@ function RegExpLexer(dict, input, tokens) {
                     rv = test_me(function () {
                         // opts.conditions = [];
                         // opts.rules = [];
-                        // opts.in_rules_failure_analysis_mode = true;
+                        // opts.__in_rules_failure_analysis_mode__ = true;
                     }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex);
                     if (rv) {
                         break;
@@ -16946,7 +17226,7 @@ function RegExpLexer(dict, input, tokens) {
                         // opts.options = {};
                         // opts.caseHelperInclude = '{}';
                         opts.showSource = false;
-                        opts.in_rules_failure_analysis_mode = true;
+                        opts.__in_rules_failure_analysis_mode__ = true;
 
                         dump = false;
                     }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex);
@@ -16979,6 +17259,24 @@ function RegExpLexer(dict, input, tokens) {
     return lexer;
 }
 
+// code stripping performance test for very simple grammar:
+// 
+// - removing backtracking parser code branches:                    730K -> 750K rounds
+// - removing all location info tracking: yylineno, yylloc, etc.:   750K -> 900K rounds
+// - no `yyleng`:                                                   900K -> 905K rounds
+// - no `this.done` as we cannot have a NULL `_input` anymore:      905K -> 930K rounds
+// - `simpleCaseActionClusters` as array instead of hash object:    930K -> 940K rounds
+// - lexers which have only return stmts, i.e. only a 
+//   `simpleCaseActionClusters` lookup table to produce 
+//   lexer tokens: *inline* the `performAction` call:               940K -> 950K rounds
+// - given all the above, you can *inline* what's left of 
+//   `lexer_next()`:                                                950K -> 955K rounds (? this stuff becomes hard to measure; inaccuracy abounds!)
+//   
+// Total gain when we forget about very minor (and tough to nail) *inlining* `lexer_next()` gains:
+// 
+//     730 -> 950  ~ 30% performance gain.
+// 
+
 // As a function can be reproduced in source-code form by any JavaScript engine, we're going to wrap this chunk
 // of code in a function so that we can easily get it including it comments, etc.:
 function getRegExpLexerPrototype() {
@@ -16994,7 +17292,26 @@ var __objdef__ = {
 
     __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],              // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+
+    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+
+    done: false,                                // INTERNAL USE ONLY
+    _backtrack: false,                          // INTERNAL USE ONLY
+    _input: '',                                 // INTERNAL USE ONLY
+    _more: false,                               // INTERNAL USE ONLY
+    _signaled_error_token: false,               // INTERNAL USE ONLY
+
+    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+
+    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
     // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
@@ -17086,6 +17403,100 @@ var __objdef__ = {
     // resets the lexer, sets new input
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
+
+        // also check if we've fully initialized the lexer instance,
+        // including expansion work to be done to go from a loaded
+        // lexer to a usable lexer:
+        if (!this.__decompressed) {
+          // step 1: decompress the regex list:
+          var rules = this.rules;
+          for (var i = 0, len = rules.length; i < len; i++) {
+            var rule_re = rules[i];
+
+            // compression: is the RE an xref to another RE slot in the rules[] table?
+            if (typeof rule_re === 'number') {
+              rules[i] = rules[rule_re];
+            }
+          }
+
+          // step 2: unfold the conditions[] set to make these ready for use:
+          var conditions = this.conditions;
+          for (var k in conditions) {
+            var spec = conditions[k];
+
+            var rule_ids = spec.rules;
+
+            var len = rule_ids.length;
+            var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
+            var rule_new_ids = new Array(len + 1);
+
+            if (this.rules_prefix1) {
+                var rule_prefixes = new Array(65536);
+                var first_catch_all_index = 0;
+
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+
+                  var prefix = this.rules_prefix1[idx];
+                  // compression: is the PREFIX-STRING an xref to another PREFIX-STRING slot in the rules_prefix1[] table?
+                  if (typeof prefix === 'number') {
+                    prefix = this.rules_prefix1[prefix];
+                  }
+                  // init the prefix lookup table: first come, first serve...
+                  if (!prefix) {
+                    if (!first_catch_all_index) {
+                      first_catch_all_index = i + 1;
+                    }
+                  } else {
+                    for (var j = 0, pfxlen = prefix.length; j < pfxlen; j++) {
+                      var pfxch = prefix.charCodeAt(j);
+                      // first come, first serve:
+                      if (!rule_prefixes[pfxch]) {
+                        rule_prefixes[pfxch] = i + 1;
+                      }  
+                    }
+                  }
+                }
+
+                // if no catch-all prefix has been encountered yet, it means all
+                // rules have limited prefix sets and it MAY be that particular
+                // input characters won't be recognized by any rule in this 
+                // condition state.
+                // 
+                // To speed up their discovery at run-time while keeping the
+                // remainder of the lexer kernel code very simple (and fast),
+                // we point these to an 'illegal' rule set index *beyond*
+                // the end of the rule set.
+                if (!first_catch_all_index) {
+                  first_catch_all_index = len + 1;
+                }
+
+                for (var i = 0; i < 65536; i++) {
+                  if (!rule_prefixes[i]) {
+                    rule_prefixes[i] = first_catch_all_index; 
+                  }
+                }
+
+                spec.__dispatch_lut = rule_prefixes;
+            } else {
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
+                }
+            }
+
+            spec.rules = rule_new_ids;
+            spec.__rule_regexes = rule_regexes;
+            spec.__rule_count = len;
+          }
+
+          this.__decompressed = true;
+        }
 
         this._input = input || '';
         this.clear();
@@ -17393,7 +17804,14 @@ var __objdef__ = {
         this._backtrack = false;
         this._input = this._input.slice(match_str.length);
         this.matched += match_str;
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1]);
+
+        // calling this method: 
+        //
+        //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
+        // otherwise, when the action codes are all simple return token statements:
+        //token = this.simpleCaseActionClusters[indexed_rule];
+
         if (this.done && this._input) {
             this.done = false;
         }
@@ -17432,21 +17850,41 @@ var __objdef__ = {
         if (!this._more) {
             this.clear();
         }
-        var rules = this.__currentRuleSet__;
-        if (!rules) {
+        var spec = this.__currentRuleSet__;
+        if (!spec) {
             // Update the ruleset cache as we apparently encountered a state change or just started lexing.
             // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
             // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
             // speed up those activities a tiny bit.
-            rules = this.__currentRuleSet__ = this._currentRules();
+            spec = this.__currentRuleSet__ = this._currentRules();
         }
-        for (var i = 0, len = rules.length; i < len; i++) {
-            tempMatch = this._input.match(this.rules[rules[i]]);
+
+        var rule_ids = spec.rules;
+//        var dispatch = spec.__dispatch_lut;
+        var regexes = spec.__rule_regexes;
+        var len = spec.__rule_count;
+
+//        var c0 = this._input[0];
+
+        // Note: the arrays are 1-based, while `len` itself is a valid index, 
+        // hence the non-standard less-or-equal check in the next loop condition!
+        // 
+        // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
+        // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
+        // O(n) ideally, where:
+        // 
+        // - N is the number of input particles -- which is not precisely characters 
+        //   as we progress on a per-regex-match basis rather than on a per-character basis
+        //   
+        // - M is the number of rules (regexes) to test in the active condition state.
+        //  
+        for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+            tempMatch = this._input.match(regexes[i]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
                 index = i;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rules[i]);
+                    token = this.test_match(tempMatch, rule_ids[i]);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -17462,7 +17900,7 @@ var __objdef__ = {
             }
         }
         if (match) {
-            token = this.test_match(match, rules[index]);
+            token = this.test_match(match, rule_ids[index]);
             if (token !== false) {
                 return token;
             }
@@ -17540,9 +17978,9 @@ var __objdef__ = {
     // (internal) determine the lexer rule set which is active for the currently active lexer condition state
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]].rules;
+            return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
         } else {
-            return this.conditions['INITIAL'].rules;
+            return this.conditions['INITIAL'];
         }
     },
 
@@ -17699,7 +18137,7 @@ function generateModuleBody(opt) {
 
 
     var out;
-    if (opt.rules.length > 0 || opt.in_rules_failure_analysis_mode) {
+    if (opt.rules.length > 0 || opt.__in_rules_failure_analysis_mode__) {
         var descr;
 
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
@@ -17932,7 +18370,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.18-158 */
+/* parser generated by jison 0.4.18-159 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -19271,7 +19709,7 @@ parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
 
-/* generated by jison-lex 0.3.4-158 */
+/* generated by jison-lex 0.3.4-159 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
