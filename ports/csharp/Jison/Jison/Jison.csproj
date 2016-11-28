@@ -71,18 +71,19 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <None Include="Template.cs" />
+    <Compile Include="Template.cs" />
     <Compile Include="Test\Formula.cs" />
+    <None Include="build.bat" />
     <None Include="Test\formula.jison" />
+    <Compile Include="Test\FormulaBase.cs" />
+    <Compile Include="Test\Row.cs" />
     <Compile Include="Test\Spreadsheet.cs" />
     <Compile Include="Test\Cell.cs" />
     <Compile Include="Test\Expression.cs" />
     <Compile Include="Test\Location.cs" />
     <Compile Include="Test\Functions.cs" />
     <Compile Include="Test.cs" />
-    <Compile Include="Test\RowDictionary.cs" />
-    <Compile Include="Test\SpreadsheetDictionary.cs" />
-    <Compile Include="Test\SpreadsheetsDictionary.cs" />
+    <Compile Include="Test\Spreadsheets.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
@@ -122,7 +123,5 @@
     <PreBuildEvent>
     </PreBuildEvent>
   </PropertyGroup>
-  <ItemGroup>
-    <Folder Include="Test\" />
-  </ItemGroup>
+  <ItemGroup />
 </Project>

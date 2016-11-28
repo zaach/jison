@@ -24,9 +24,10 @@ exec("jison " + process.argv[2], function (error) {
     
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    var fileName = process.argv[2].replace(/(.jison|.json)/, '')
+    var jisonFileName = process.argv[2],
+		fileName = jisonFileName.replace('.jison', ''),
         comments = require(path.resolve(__dirname, '../../../comments.js')),
-        requirePath = fileName + '.js';
+        requirePath = path.resolve(jisonFileName).replace('.jison', '') + '.js';
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
@@ -85,27 +86,31 @@ exec("jison " + process.argv[2], function (error) {
 		}
 		str = comments.parse(str);
 
-        str = str.replace(/(\d)\n/g, function () {
+        str = str.replace(/(\d)(\n|\r\n)/g, function () {
             return arguments[1] + ';\n';
         });
 
         return str;
     }
 
-    var FileName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-    var ClassName = FileName.replace(/^.*[\\\/]/, '').charAt(0).toUpperCase() + FileName.replace(/^.*[\\\/]/, '').slice(1);
+    function capitaliseFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    var FileName = capitaliseFirstLetter(fileName);
     var option = {
     	'using': '',
         'namespace': 'Jison',
-        'class': ClassName,
+        'class': capitaliseFirstLetter(FileName.split(/[/\\]/g).pop()),
         'fileName': FileName + '.cs',
+		'extends': '',
         'parserValue': ''
     };
 
-
-    if (fileName.search(/jison/) !== -1) {
+    if (jisonFileName.match(/jison$/i)) {
         var parserDefinition = fs.readFileSync(fileName + '.jison', "utf8");
         parserDefinition = parserDefinition.split(/\n/g);
+
         for (var i = 0; i < parserDefinition.length; i++) {
             if (parserDefinition[i].match('//option')) {
                 parserDefinition[i] = parserDefinition[i].replace('//option ', '').trim();
@@ -115,7 +120,11 @@ exec("jison " + process.argv[2], function (error) {
         }
     }
 
-    console.log(option);
+	console.log("\nUsing options:");
+	for (i in option) {
+		console.log(i + ' = ' + option[i]);
+	}
+	console.log("\n");
 
     var parserRaw = fs.readFileSync(__dirname + "/Template.cs", "utf8");
 
@@ -147,19 +156,19 @@ exec("jison " + process.argv[2], function (error) {
 
         for (var i in this.symbolsByIndex) {
             var symbol = this.symbolsByIndex[i];
-            result += '\t\t\tvar symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
-            this.symbols.push('\t\t\tSymbols.Add(symbol' + symbol.index + ')');
+            result += '            var symbol' + symbol.index + ' = new ParserSymbol("' + symbol.name + '", ' + symbol.index + ');\n';
+            this.symbols.push('            Symbols.Add(symbol' + symbol.index + ')');
             
         }
 
-        result += '\n\n\t\t\tSymbols = new ParserSymbols();\n';
+        result += '\n\n            Symbols = new ParserSymbols();\n';
 		result += this.symbols.join(';\n') + ';\n\n';
 
         for (var i in terminals) {
-            this.terminals.push('\t\t\t\t\t{' + i + ', symbol' + i + '}');
+            this.terminals.push('                    {' + i + ', symbol' + i + '}');
         }
 
-        result += '\t\t\tTerminals = new Dictionary<int, ParserSymbol>\n\t\t\t\t{\n' + this.terminals.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '            Terminals = new Dictionary<int, ParserSymbol>\n                {\n' + this.terminals.join(',\n') + '\n                };\n\n';
         
         for (var i in table) {
             var items = [];
@@ -170,50 +179,50 @@ exec("jison " + process.argv[2], function (error) {
                 if (item.join) { //is array
                     if (item.length == 1) {
                         action = item[0];
-                        items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ')}');
+                        items.push('                    {' + j + ', new ParserAction(' + actions[action] + ')}');
                     } else {
                         action = item[0];
                         state = item[1];
-                        items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', ref table' + state + ')}');
+                        items.push('                    {' + j + ', new ParserAction(' + actions[action] + ', ref table' + state + ')}');
                     }
                 } else {
                     state = item;
-                    items.push('\t\t\t\t\t{' + j + ', new ParserAction(' + actions[action] + ', ref table' + state + ')}');
+                    items.push('                    {' + j + ', new ParserAction(' + actions[action] + ', ref table' + state + ')}');
                 }
             }
             
-            this.tableInstantiation.push('\t\t\tvar table' + i + ' = new ParserState(' + i + ')');
-            this.tableDefinition.push('\t\t\tvar tableDefinition' + i + ' = new Dictionary<int, ParserAction>\n\t\t\t\t{\n' + items.join(',\n') + '\n\t\t\t\t}');
-			this.tableSetActions.push('\t\t\ttable' + i + '.SetActions(ref tableDefinition' + i + ')');
-            this.table.push('\t\t\t\t\t{' + i + ', table' + i + '}');
+            this.tableInstantiation.push('            var table' + i + ' = new ParserState(' + i + ')');
+            this.tableDefinition.push('            var tableDefinition' + i + ' = new Dictionary<int, ParserAction>\n                {\n' + items.join(',\n') + '\n                }');
+			this.tableSetActions.push('            table' + i + '.SetActions(ref tableDefinition' + i + ')');
+            this.table.push('                    {' + i + ', table' + i + '}');
         }
 
         result += this.tableInstantiation.join(';\n') + ';\n\n';
         result += this.tableDefinition.join(';\n\n') + ';\n\n';
         result += this.tableSetActions.join(';\n') + ';\n\n';
-        result += '\t\t\tTable = new Dictionary<int, ParserState>\n\t\t\t\t{\n' + this.table.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '            Table = new Dictionary<int, ParserState>\n                {\n' + this.table.join(',\n') + '\n                };\n\n';
 
         for (var i in defaultActions) {
             var action = defaultActions[i][0];
             var state = defaultActions[i][1];
-           this.defaultActions.push('\t\t\t\t\t{' + i + ', new ParserAction(' + actions[action] +', ref table' +  state + ')}');
+           this.defaultActions.push('                    {' + i + ', new ParserAction(' + actions[action] +', ref table' +  state + ')}');
         }
 
-        result += '\t\t\tDefaultActions = new Dictionary<int, ParserAction>\n\t\t\t\t{\n' + this.defaultActions.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '            DefaultActions = new Dictionary<int, ParserAction>\n                {\n' + this.defaultActions.join(',\n') + '\n                };\n\n';
         
         for (var i in productions) {
             var production = productions[i];
             if (production.join) {
                 var symbol = production[0],
                     len = production[1];
-                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ',' + len + ')}');
+                this.productions.push('                    {' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ',' + len + ')}');
             } else {
                 var symbol = production;
-                this.productions.push('\t\t\t\t\t{' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ')}');
+                this.productions.push('                    {' + i + ', new ParserProduction(symbol' + this.symbolsByIndex[symbol].index + ')}');
             }
         }
 
-        result += '\t\t\tProductions = new Dictionary<int, ParserProduction>\n\t\t\t\t{\t\t\t\t\n' + this.productions.join(',\n') + '\n\t\t\t\t};\n\n\n';
+        result += '            Productions = new Dictionary<int, ParserProduction>\n                {                \n' + this.productions.join(',\n') + '\n                };\n\n\n';
 
         return result;
     }
@@ -224,16 +233,16 @@ exec("jison " + process.argv[2], function (error) {
         this.conditions = [];
         
         for (var i in rules) {
-            this.rules.push('\t\t\t\t\t{' + i + ', new Regex(@"' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '""') + '")}');
+            this.rules.push('                    {' + i + ', new Regex(@"\\G' + rules[i].substring(2, rules[i].length - 1).replace(/"/g, '""') + '")}');
         }
 
-        result += '\t\t\tRules = new Dictionary<int, Regex>\n\t\t\t\t{\n' + this.rules.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '            Rules = new Dictionary<int, Regex>\n                {\n' + this.rules.join(',\n') + '\n                };\n\n';
 
         for (var i in conditions) {
-            this.conditions.push('\t\t\t\t\t{"' + i + '", new LexerConditions(new List<int> { ' + conditions[i].rules.join(',') + ' }, ' + conditions[i].inclusive + ')}');
+            this.conditions.push('                    {"' + i + '", new LexerConditions(new List<int> { ' + conditions[i].rules.join(',') + ' }, ' + conditions[i].inclusive + ')}');
         }
 
-        result += '\t\t\tConditions = new Dictionary<string, LexerConditions>\n\t\t\t\t{\n' + this.conditions.join(',\n') + '\n\t\t\t\t};\n\n';
+        result += '            Conditions = new Dictionary<string, LexerConditions>\n                {\n' + this.conditions.join(',\n') + '\n                };\n\n';
 
         return result;
     }
@@ -242,6 +251,7 @@ exec("jison " + process.argv[2], function (error) {
     	.replace(new RegExp('//@@USING_INJECT@@', 'g'),(option.using ? 'using ' + option.using.split(',').join(';\nusing ') + ';' : ''))
         .replace(new RegExp('[/][*][*][/]namespace Jison[/][*][*][/]', 'g'), 'namespace ' + option.namespace)
         .replace(new RegExp('[/][*][*][/]class Parser[/][*][*][/]', 'g'), 'class ' + option.class)
+        .replace(new RegExp('[/][*][*]extends[*][*][/]', 'g'), (option.extends ? ' : ' + option.extends : ''))
         .replace(new RegExp('[/][*][*][/]public Parser[/][*][*][/]', 'g'), 'public ' + option.class)
         .replace(new RegExp('[/][*][*][/]ParserValue[/][*][*][/]', 'g'), (option.parserValue || 'ParserValue'))
         .replace('new Parser(', 'new ' + option.class + '(')

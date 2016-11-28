@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Jison;
 
-namespace jQuerySheet
+namespace Sheet
 {
 	public static class Functions
 	{
@@ -39,7 +39,7 @@ namespace jQuerySheet
 				return firstChild;
 		    }
 
-			value.ToDouble ();
+			value.ToDouble();
 			return value;
 		}
 	}

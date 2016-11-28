@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
 
-namespace jQuerySheet
+namespace Sheet
 {
 	public class Cell
 	{
-		public Cell ()
-		{
-		}
-
 		public int Row;
 		public int Col;
 		public int Spreadsheet;
@@ -16,12 +12,15 @@ namespace jQuerySheet
 		public Boolean HasFormula;
 		public string Formula;
 		public Expression Exp;
-		
 		public DateTime CalcLast = new DateTime();
 		public int CalcCount = 0;
-		
 		public Stack<string> State = new Stack<string>();
-		
+	    public Row Parent;
+
+        public Cell()
+        {
+        }
+
 		public Cell(int spreadsheet, int row, int col)
 		{
 			Spreadsheet = spreadsheet;
@@ -41,23 +40,25 @@ namespace jQuerySheet
 			if (HasFormula && State.Count < 1) {
 				State.Push ("Parsing");
 				CalcCount++;
-				var formula = new Formula ();
+				var formula = new Formula();
+                formula.Setup(this);
 				var value = formula.Parse (Formula);
 				State.Pop ();
 				return value;
-			} else {
-				var exp = new Expression();
-			    double num;
-                if (double.TryParse(Value, out num))
-                {
-                    exp.Set(num);
-                }
-                else
-                {
-                    exp.Set(Value);
-                }
-			    return exp;
 			}
+
+			var exp = new Expression();
+			double num;
+            if (double.TryParse(Value, out num))
+            {
+                exp.Set(num);
+            }
+            else
+            {
+                exp.Set(Value);
+            }
+			return exp;
+			
 		}
 	}
 }
