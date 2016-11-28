@@ -142,7 +142,7 @@ exports["test module generator with namespaced module name"] = function () {
     var gen = new Jison.Generator(grammar);
     gen.lexer = new Lexer(lexData);
 
-    var parserSource = gen.generateModule({moduleName: "compiler.parser"});
+    var parserSource = gen.generate({moduleName: "compiler.parser"});
     eval(parserSource);
 
     assert.ok(compiler.parser.parse(input));
