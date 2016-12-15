@@ -71,6 +71,7 @@ MISC_TARGETS =                                                   \
 			regex                                               \
 			semwhitespace                                       \
 			test-epsilon-rules-early-reduce                     \
+			test-literal-quote-tokens-in-grammar                \
 			test-nonassociative-operator-0                      \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
@@ -394,6 +395,11 @@ theory-left-recurs-01:
 
 # build *AND* run the test:
 test-epsilon-rules-early-reduce:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-literal-quote-tokens-in-grammar:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 

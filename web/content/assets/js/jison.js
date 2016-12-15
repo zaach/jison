@@ -1264,23 +1264,22 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             }
             rhs = rhs.substr(pos + 1);
             // now find the matching end marker.
-            //
-            // As mentioned elsewhere in the code comments, we DO NOT cope with 'weird'
-            // literal tokens which are designed to break this scheme, i.e. literals
-            // containing *both* quote types, e.g. `rule: A '"\'' B;`
-            //
-            // Besides, those won't make it through the lexer unscathed either, given the
-            // current STRING rules there: see `bnf.l`:
-            //
-            //      '"'[^"]+'"'             ... return 'STRING';
-            //      "'"[^']+"'"             ... return 'STRING';
-            //
-            // so it's like Chamberlain said: we can all go back to sleep now. ;-)
+            // 
+            // Edge case: token MAY include the ESCAPED MARKER... or other escapes!
+            // Hence we need to skip over ALL escapes inside the token!
+            var pos3 = rhs.indexOf('\\');
             pos = rhs.indexOf(marker);
+            ls = '';
+            while (pos3 >= 0 && pos3 < pos) {
+                ls += rhs.substr(0, pos3 + 2);  // chop off entire escape (2 chars) and keep as part of next token
+                rhs = rhs.substr(pos3 + 2);
+                pos3 = rhs.indexOf('\\');
+                pos = rhs.indexOf(marker);
+            }
             if (pos < 0) {
                 throw new Error('internal error parsing literal token(s) in grammar rule');
             }
-            ls = rhs.substr(0, pos);
+            ls += rhs.substr(0, pos);
             // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
             rhs = rhs.substr(pos + 1);
             var alias = rhs.match(new XRegExp('^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]'));
@@ -6275,7 +6274,7 @@ var EBNF = (function(){
             }
             var expressions = parser.parse(handle);
 
-            if (devDebug > 1) console.log("\n================\nEBNF transform expressions:\n ", handle, opts, JSON.stringify(expressions, null, 2));
+            if (devDebug > 1) console.log('\n================\nEBNF transform expressions:\n ', handle, opts, JSON.stringify(expressions, null, 2));
 
             var list = transformExpressionList(expressions, transform_opts);
 
@@ -6288,7 +6287,7 @@ var EBNF = (function(){
                     var alist = list.terms; // rhs.replace(/'[^']+'/g, '~').replace(/"[^"]+"/g, '~').split(' ');
                     // we also know at which index the first transformation occurred:
                     var first_index = list.first_transformed_term_index - 1;
-                    if (devDebug > 2) console.log("alist ~ rhs rule terms: ", alist, rhs);
+                    if (devDebug > 2) console.log('alist ~ rhs rule terms: ', alist, rhs);
 
                     var alias_re = /\[[a-zA-Z_][a-zA-Z0-9_]*\]/;
                     var term_re = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -6318,39 +6317,39 @@ var EBNF = (function(){
                             addName(term, i);
                         }
                     }
-                    if (devDebug > 2) console.log("good_aliases: ", good_aliases);
+                    if (devDebug > 2) console.log('good_aliases: ', good_aliases);
 
                     // now scan the action for all named and numeric semantic values ($nonterminal / $1)
                     var named_spots = action.match(/[$@][a-zA-Z_][a-zA-Z0-9_]*\b/g);
                     var numbered_spots = action.match(/[$@][0-9]+\b/g);
                     var max_term_index = list.terms.length;
-                    if (devDebug > 2) console.log("ACTION named_spots: ", named_spots);
-                    if (devDebug > 2) console.log("ACTION numbered_spots: ", numbered_spots);
+                    if (devDebug > 2) console.log('ACTION named_spots: ', named_spots);
+                    if (devDebug > 2) console.log('ACTION numbered_spots: ', numbered_spots);
 
                     if (named_spots) {
                         for (i = 0, len = named_spots.length; i < len; i++) {
                             n = named_spots[i].substr(1);
                             if (!good_aliases[n]) {
-                                throw new Error("The action block references the named alias '" + n + "' " +
-                                                "which is not available in production '" + handle + "'; " +
-                                                "it probably got removed by the EBNF rule rewrite process.\n" +
-                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
-                                                "only the outer-most EBNF group alias will remain available at all times " +
-                                                "due to the EBNF-to-BNF rewrite process.");
+                                throw new Error('The action block references the named alias "' + n + '" ' +
+                                                'which is not available in production "' + handle + '"; ' +
+                                                'it probably got removed by the EBNF rule rewrite process.\n' +
+                                                'Be reminded that you cannot reference sub-elements within EBNF */+/? groups, ' +
+                                                'only the outer-most EBNF group alias will remain available at all times ' +
+                                                'due to the EBNF-to-BNF rewrite process.');
                             }
-                            //assert(good_aliases[n] <= max_term_index, "max term index");
+                            //assert(good_aliases[n] <= max_term_index, 'max term index');
                         }
                     }
                     if (numbered_spots) {
                         for (i = 0, len = numbered_spots.length; i < len; i++) {
                             n = parseInt(numbered_spots[i].substr(1));
                             if (n > max_term_index) {
-                                /* @const */ var n_suffixes = [ "st", "nd", "rd", "th" ];
-                                throw new Error("The action block references the " + n + n_suffixes[Math.max(0, Math.min(3, n - 1))] + " term, " +
-                                                "which is not available in production '" + handle + "'; " +
-                                                "Be reminded that you cannot reference sub-elements within EBNF */+/? groups, " +
-                                                "only the outer-most EBNF group alias will remain available at all times " +
-                                                "due to the EBNF-to-BNF rewrite process.");
+                                /* @const */ var n_suffixes = [ 'st', 'nd', 'rd', 'th' ];
+                                throw new Error('The action block references the ' + n + n_suffixes[Math.max(0, Math.min(3, n - 1))] + ' term, ' +
+                                                'which is not available in production "' + handle + '"; ' +
+                                                'Be reminded that you cannot reference sub-elements within EBNF */+/? groups, ' +
+                                                'only the outer-most EBNF group alias will remain available at all times ' +
+                                                'due to the EBNF-to-BNF rewrite process.');
                             }
                         }
                     }
@@ -6360,7 +6359,7 @@ var EBNF = (function(){
             if (opts) {
                 ret.push(opts);
             }
-            if (devDebug > 1) console.log("\n\nEBNF tx result:\n ", JSON.stringify(list, null, 2), JSON.stringify(ret, null, 2));
+            if (devDebug > 1) console.log('\n\nEBNF tx result:\n ', JSON.stringify(list, null, 2), JSON.stringify(ret, null, 2));
 
             if (ret.length === 1) {
                 return ret[0];
@@ -6378,9 +6377,9 @@ var EBNF = (function(){
 
     return {
         transform: function (ebnf) {
-            if (devDebug > 0) console.log("EBNF:\n ", JSON.stringify(ebnf, null, 2));
+            if (devDebug > 0) console.log('EBNF:\n ', JSON.stringify(ebnf, null, 2));
             transformGrammar(ebnf);
-            if (devDebug > 0) console.log("\n\nEBNF after transformation:\n ", JSON.stringify(ebnf, null, 2));
+            if (devDebug > 0) console.log('\n\nEBNF after transformation:\n ', JSON.stringify(ebnf, null, 2));
             return ebnf;
         }
     };
@@ -10042,12 +10041,12 @@ case 17 :
 break;
 case 20 : 
 /*! Conditions:: options */ 
-/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
-/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
 break;
 case 23 : 
@@ -10159,12 +10158,12 @@ case 40 :
 break;
 case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 65; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 65; 
 break;
 case 43 : 
@@ -10243,12 +10242,12 @@ case 79 :
 break;
 case 80 : 
 /*! Conditions:: path */ 
-/*! Rule::       '[^\r\n]+' */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 74; 
 break;
 case 81 : 
 /*! Conditions:: path */ 
-/*! Rule::       "[^\r\n]+" */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 74; 
 break;
 case 82 : 
@@ -10403,7 +10402,7 @@ rules: [
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
 /^(?:\})/,
-new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?))", ""),
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))", ""),
 /^(?:>)/,
 /^(?:,)/,
 /^(?:\*)/,
@@ -10412,14 +10411,14 @@ new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alp
 /^(?:([^\S\n\r])+)/,
 /^(?:%%)/,
 /^(?:[^\s!"$%'-,.\/:-?\[-\^{-}]+)/,
-new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?))", ""),
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))", ""),
 /^(?:=)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:\S+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\n\r])+)/,
-new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\S\n\r])+)/,
 /^(?:([^\S\n\r])*(\r\n|\n|\r)+)/,
@@ -10430,13 +10429,13 @@ new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
 /^(?:.*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
-new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
+new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:[^\s!"$%'-,.\/:<-?\[-\^{-}]+)/,
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:\s+)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:\[)/,
 /^(?:\|)/,
 /^(?:\(\?:)/,
@@ -10461,11 +10460,11 @@ new XRegExp("^(?:([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*))", ""),
 /^(?:%s\b)/,
 /^(?:%x\b)/,
 /^(?:%include\b)/,
-new XRegExp("^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*[\\p{Alphabetic}\\p{Number}_])?)[^\\n\\r]+)", ""),
+new XRegExp("^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)[^\\n\\r]+)", ""),
 /^(?:%%)/,
 /^(?:\{\d+(,\s?\d+|,)?\})/,
-new XRegExp("^(?:\\{([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*)\\})", ""),
-new XRegExp("^(?:\\{([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*)\\})", ""),
+new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})", ""),
+new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})", ""),
 /^(?:\{)/,
 /^(?:\})/,
 /^(?:(?:\\\\|\\\]|[^\]{])+)/,
@@ -10474,8 +10473,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_]*)\\})", "")
 /^(?:[^\r\n]*(\r|\n)+)/,
 /^(?:[^\r\n]+)/,
 /^(?:(\r\n|\n|\r))/,
-/^(?:'[^\r\n]+')/,
-/^(?:"[^\r\n]+")/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:([^\S\n\r])+)/,
 /^(?:\S+)/,
 /^(?:.)/,
@@ -10863,11 +10862,11 @@ module.exports={
   },
   "dependencies": {
     "lex-parser": "GerHobbelt/lex-parser#master",
-    "nomnom": ">=1.8.1",
+    "nomnom": "GerHobbelt/nomnom#master",
     "xregexp": "GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "test": ">=0.6.0"
+    "test": "0.6.0"
   },
   "scripts": {
     "test": "node tests/all-tests.js"
@@ -14687,12 +14686,12 @@ case 3 :
 break;
 case 17 : 
 /*! Conditions:: options */ 
-/*! Rule::       "(\\\\|\\"|[^"])*" */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
 break;
 case 18 : 
 /*! Conditions:: options */ 
-/*! Rule::       '(\\\\|\\'|[^'])*' */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
 break;
 case 19 : 
@@ -14732,12 +14731,12 @@ case 26 :
 break;
 case 30 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       "[^"]+" */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
 break;
 case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       '[^']+' */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
 break;
 case 36 : 
@@ -14823,57 +14822,61 @@ case 59 :
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
  yy_.yytext = parseInt(yy_.yytext, 10); return 62; 
 break;
-case 60 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       . */ 
- 
-                                            throw new Error("unsupported input character: " + yy_.yytext + " @ " + JSON.stringify(yy_.yylloc)); /* b0rk on bad characters */
-                                         
-break;
-case 64 : 
+case 62 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
  return 80; // regexp with braces or quotes (and no spaces) 
 break;
-case 69 : 
+case 67 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 12; 
 break;
-case 70 : 
+case 68 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 13; 
 break;
-case 72 : 
+case 70 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
  return 85;      // the bit of CODE just before EOF... 
 break;
-case 73 : 
+case 71 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
+case 72 : 
+/*! Conditions:: path */ 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
+break;
+case 73 : 
+/*! Conditions:: path */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
+break;
 case 74 : 
-/*! Conditions:: path */ 
-/*! Rule::       '[^\r\n]+' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
-break;
-case 75 : 
-/*! Conditions:: path */ 
-/*! Rule::       "[^\r\n]+" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
-break;
-case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 77 : 
+case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
  this.popState(); return 83; 
+break;
+case 76 : 
+/*! Conditions:: * */ 
+/*! Rule::       . */ 
+ 
+                                            /* b0rk on bad characters */
+                                            var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
+                                            var l2 = 3;
+                                            var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
+                                            throw new Error('unsupported parser input: ', yy_.yytext, ' @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + this.topState() + ' state:\n', indent(this.showPosition(l1, l2), 4));
+                                         
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -14971,30 +14974,30 @@ simpleCaseActionClusters: {
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
    50 : 35,
-  /*! Conditions:: * */ 
-  /*! Rule::       $ */ 
-   61 : 1,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   62 : 80,
+   60 : 80,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
+   61 : 80,
+  /*! Conditions:: action */ 
+  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
    63 : 80,
   /*! Conditions:: action */ 
-  /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   65 : 80,
-  /*! Conditions:: action */ 
-  /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   66 : 80,
+  /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
+   64 : 80,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   67 : 80,
+   65 : 80,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   68 : 80,
+   66 : 80,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   71 : 85
+   69 : 85,
+  /*! Conditions:: * */ 
+  /*! Rule::       $ */ 
+   77 : 1
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -15014,8 +15017,8 @@ rules: [
 /^(?:\+)/,
 new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))", ""),
 /^(?:=)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\S+)/,
@@ -15027,8 +15030,8 @@ new XRegExp("^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])",
 new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
-/^(?:"[^"]+")/,
-/^(?:'[^']+')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:\S+)/,
 /^(?::)/,
 /^(?:;)/,
@@ -15057,13 +15060,11 @@ new XRegExp("^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)", "")
 /^(?:->.*)/,
 /^(?:(0[Xx][\dA-Fa-f]+))/,
 /^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
-/^(?:.)/,
-/^(?:$)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/[^ \/]*?["'{}][^ ]*?\/)/,
-/^(?:"(\\\\|\\"|[^"])*")/,
-/^(?:'(\\\\|\\'|[^'])*')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:[\/"'][^{}\/"']+)/,
 /^(?:[^{}\/"']+)/,
 /^(?:\{)/,
@@ -15071,10 +15072,12 @@ new XRegExp("^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)", "")
 /^(?:[^\r\n]*(\r|\n)+)/,
 /^(?:[^\r\n]+)/,
 /^(?:(\r\n|\n|\r))/,
-/^(?:'[^\r\n]+')/,
-/^(?:"[^\r\n]+")/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
 /^(?:([^\S\n\r])+)/,
-/^(?:\S+)/
+/^(?:\S+)/,
+/^(?:.)/,
+/^(?:$)/
 ],
 conditions: {
   "bnf": {
@@ -15123,8 +15126,8 @@ conditions: {
       57,
       58,
       59,
-      60,
-      61
+      76,
+      77
     ],
     inclusive: true
   },
@@ -15179,8 +15182,8 @@ conditions: {
       57,
       58,
       59,
-      60,
-      61
+      76,
+      77
     ],
     inclusive: true
   },
@@ -15226,13 +15229,14 @@ conditions: {
       57,
       58,
       59,
-      60,
-      61
+      76,
+      77
     ],
     inclusive: true
   },
   "action": {
     rules: [
+      60,
       61,
       62,
       63,
@@ -15241,17 +15245,18 @@ conditions: {
       66,
       67,
       68,
-      69,
-      70
+      76,
+      77
     ],
     inclusive: false
   },
   "code": {
     rules: [
       51,
-      61,
-      71,
-      72
+      69,
+      70,
+      76,
+      77
     ],
     inclusive: false
   },
@@ -15259,7 +15264,8 @@ conditions: {
     rules: [
       19,
       20,
-      61,
+      71,
+      72,
       73,
       74,
       75,
@@ -15279,7 +15285,8 @@ conditions: {
       21,
       22,
       23,
-      61
+      76,
+      77
     ],
     inclusive: false
   },
@@ -15322,14 +15329,19 @@ conditions: {
       57,
       58,
       59,
-      60,
-      61
+      76,
+      77
     ],
     inclusive: true
   }
 }
 };
 
+function indent(s, i) {
+    var a = s.split('\n');
+    var pf = (new Array(i + 1)).join(' ');
+    return pf + a.join('\n' + pf);
+};
 return lexer;
 })();
 parser.lexer = lexer;
@@ -20553,18 +20565,18 @@ simpleCaseActionClusters: {
 },
 rules: [
 /^(?:\s+)/,
-/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*))/,
+/^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])*))/,
 /^(?:\$end)/,
 /^(?:\$eof)/,
-/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff][^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff]*)\])/,
+/^(?:\[([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])*)\])/,
 /^(?:%empty)/,
 /^(?:%epsilon)/,
 /^(?:\u0190)/,
 /^(?:\u025B)/,
 /^(?:\u03B5)/,
 /^(?:\u03F5)/,
-/^(?:'((?:\\'|(?!').)*)')/,
-/^(?:"((?:\\"|(?!").)*)")/,
+/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
+/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
 /^(?:\.)/,
 /^(?:\()/,
 /^(?:\))/,

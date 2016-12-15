@@ -274,6 +274,9 @@ examples/semwhitespace: build
 examples/test-epsilon-rules-early-reduce: build
 	cd examples/ && make test-epsilon-rules-early-reduce
 
+examples/test-literal-quote-tokens-in-grammar: build
+	cd examples/ && make test-literal-quote-tokens-in-grammar
+
 examples/test-nonassociative-operator-0: build
 	cd examples/ && make test-nonassociative-operator-0
 
