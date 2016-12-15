@@ -10043,12 +10043,12 @@ break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
@@ -10083,12 +10083,12 @@ break;
 case 30 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 34; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 34; 
 break;
 case 31 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 34; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 34; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -14688,12 +14688,12 @@ break;
 case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "(\\\\|\\"|[^"])*" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 47; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
 break;
 case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '(\\\\|\\'|[^'])*' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yytext.length - 2); return 47; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
 break;
 case 19 : 
 /*! Conditions:: INITIAL ebnf bnf token path options */ 
@@ -14801,7 +14801,7 @@ break;
 case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4); return 21; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 21; 
 break;
 case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 

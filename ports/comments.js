@@ -409,7 +409,7 @@ case 3:
 break;
 case 4:
         this.begin('area');
-        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yytext.length));
+        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yyleng));
         return 19;
 
 break;
@@ -424,7 +424,7 @@ case 6:
 break;
 case 7:
         this.begin('commentBody');
-        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yytext.length));
+        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yyleng));
         return 11;
 
 break;
@@ -444,7 +444,7 @@ case 10:
 break;
 case 11:
         this.begin('inlineCommentBody');
-        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yytext.length));
+        yy_.yytext = getTypes(yy_.yytext.substring(2, yy_.yyleng));
         return 15;
 
 break;
