@@ -239,6 +239,8 @@ Here's a comprehensive list of features and fixes compared to the [original](htt
 
   + (are we faster even when we run with the same feature set as 'vanilla' zaach jison? Probably a little bit, but haven't measured this thoroughly.)
 
+  + JSON (rather than *JISON*) grammar files support all [JSON5](https://github.com/json5/json5) features, i.e. you can include comments, etc. in your JSON-file based grammar specs!
+
 
 
 License
