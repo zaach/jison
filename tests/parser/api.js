@@ -677,15 +677,15 @@ exports["test default parse exception hash object contents"] = function () {
         // the `hash` object is supposed to carry all these members:
         const kl_sollwert2 = [ 
           // 'action',
-          // 'destroy',
-          // 'errStr',
+          'destroy',
+          'errStr',
           // 'exception',
           // 'expected',
           'lexer',
           'line',
           'loc',
           // 'new_state',
-          // 'recoverable',
+          'recoverable',
           // 'stack_pointer',
           // 'state',
           // 'state_stack',
@@ -695,7 +695,7 @@ exports["test default parse exception hash object contents"] = function () {
           // 'token_id',
           // 'value',
           // 'value_stack',
-          // 'yy' 
+          'yy' 
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
@@ -803,15 +803,15 @@ exports["test %options no-try-catch"] = function () {
         // the `hash` object is supposed to carry all these members:
         const kl_sollwert2 = [ 
           //'action',
-          //'destroy',
-          //'errStr',
+          'destroy',
+          'errStr',
           //'exception',
           //'expected',
           'lexer',
           'line',
           'loc',
           //'new_state',
-          //'recoverable',
+          'recoverable',
           //'stack_pointer',
           //'state',
           //'state_stack',
@@ -821,7 +821,7 @@ exports["test %options no-try-catch"] = function () {
           //'token_id',
           //'value',
           //'value_stack',
-          //'yy' 
+          'yy' 
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
@@ -926,15 +926,15 @@ exports["test %options on-demand-lookahead"] = function () {
         // the `hash` object is supposed to carry all these members:
         const kl_sollwert2 = [ 
           //'action',
-          //'destroy',
-          //'errStr',
+          'destroy',
+          'errStr',
           //'exception',
           //'expected',
           'lexer',
           'line',
           'loc',
           //'new_state',
-          //'recoverable',
+          'recoverable',
           //'stack_pointer',
           //'state',
           //'state_stack',
@@ -944,7 +944,7 @@ exports["test %options on-demand-lookahead"] = function () {
           //'token_id',
           //'value',
           //'value_stack',
-          //'yy' 
+          'yy' 
         ];
         assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {

@@ -4,7 +4,23 @@ Jison
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](mailto:jison@librelist.com)
 
-[![build status](https://secure.travis-ci.org/zaach/jison.png)](http://travis-ci.org/zaach/jison)
+[![build status](https://secure.travis-ci.org/GerHobbelt/jison.png)](http://travis-ci.org/GerHobbelt/jison)
+
+
+<blockquote style="
+    background: #ffe0e0;
+    border:  red solid 3px;
+    color:  black;
+    padding: 1em;
+">
+  # Notice
+  
+  This repository contains a fork maintained by GerHobbelt. The original JISON work has been done by Zachary Carter and is available in zaach/jison.
+
+  For an overview of all all changes (fixes and features), see the section What's New or Different? further below.
+</blockquote>
+
+
 
 An API for creating parsers in JavaScript
 -----------------------------------------
@@ -12,6 +28,8 @@ An API for creating parsers in JavaScript
 Jison generates bottom-up parsers in JavaScript. Its API is similar to Bison's, hence the name. It supports many of Bison's major features, plus some of its own. If you are new to parser generators such as Bison, and Context-free Grammars in general, a [good introduction][1] is found in the Bison manual. If you already know Bison, Jison should be easy to pickup.
 
 Briefly, Jison takes a JSON encoded grammar or Bison style grammar and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input.
+
+
 
 Installation
 ------------
@@ -27,7 +45,7 @@ Usage from the command line
 
 Clone the github repository for examples:
 
-    git clone git://github.com/zaach/jison.git
+    git clone git://github.com/GerHobbelt/jison.git
     cd jison/examples
 
 Now you're ready to generate some parsers:
@@ -147,10 +165,14 @@ More Documentation
 
 For more information on creating grammars and using the generated parsers, read the [documentation](http://jison.org/docs).
 
+
+
 How to contribute
 -----------------
 
-See [CONTRIBUTING.md](https://github.com/zaach/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
+See [CONTRIBUTING.md](https://github.com/GerHobbelt/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
+
+
 
 Projects using Jison
 --------------------
@@ -161,9 +183,63 @@ View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison),
 Contributors
 ------------
 
-[Githubbers](http://github.com/zaach/jison/contributors)
+[Githubbers](http://github.com/GerHobbelt/jison/contributors)
 
 Special thanks to Jarred Ligatti, Manuel E. Bermúdez
+
+
+What's New or Different?
+------------------------
+
+Here's a comprehensive list of features and fixes compared to the [original](https://github.com/zaach/jison):
+
+- Full Unicode support: the lexer can handle all Unicode regexes which are supported by the [XRegExp library](https://github.com/slevithan/xregexp), with a few notes:
+
+  + your own software **does not need to include the XRegExp library**: jison will produce standard JavaScript regex expressions for every lexer rule so that you can enjoy most Unicode features without the added burden of another library (XRegExp)
+
+  + [astral Unicode codepoints](http://xregexp.com/flags/#astral) are not fully supported within regex character set expressions, unless you yourself include XRegExp and instruct the lexer to produce XRegExp regex expressions via the lexer option `%options xregexp`  
+
+- EBNF LR/LALR/SLR/LR0 grammars are correctly rewritten to BNF grammars, allowing your action code blocks to access all elements of the grammar rule at hand. See also [the wiki section about EBNF](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-extended-bnf).
+
+- **Parser engine optimization**: jison analyzes not just your grammar, but also your action code and will strip any feature you don't use (such as [location tracking](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-accessing-values-and-location-information) via
+  `@element` references and `yylloc`) from the parser kernel, which will benefit your parser run-time performance. The fastest parsers are obtained when you do not include error recovery (`error` tokens in your grammar), nor any lexer location tracking: this can potentially result in run-time execution cost reductions of over 70% (hence your parser executes more than 3 times as fast)!
+
+- generated grammar / lexer source files carry a full API and internals documentation in the code comments to help you to read and debug a grammar. For example, every grammar rule is printed above its action code so that stepping through the parser when debugging hard-to-find problems makes it quite obvious which rule the engine is currently 'reducing'.
+
+- Generated parsers and lexers are JavaScript `strict mode` compliant.
+
+- you can specify a totally *custom lexer* in the `%lex ... /lex` section of your grammar definition file if you like, i.e. you can define and use a lexer which is not regex ruleset based / generated by jison lex! This is particularly handy when you want to achieve maximum performance / absolute minimum parse and lexing overhead for your high-performance demand grammars.
+
+- `lexer.reject()` et al: the lexer comes with extra APIs to help you write more sophisticated lexers based on the lex/jison mechanism. The `this.reject()` call in your lexer rule action code will reject the current match and continue down the lexer rule set to find another match. Very handy when you do not `flex mode` matching all the time, but want specific, local, control over when a lexer regex (a.k.a. lexer rule) actually is a *correct* match.
+
+- You can now enter *epsilon* as a token in your grammar rules, so no more hacks like `/* epsilon */` comments for empty rules: you can type any of these:
+  + `%epsilon`,
+  + `\u0190`
+  + `\u025B`
+  + `\u03B5`
+  + `\u03F5`
+
+  (See also https://en.wikipedia.org/wiki/Epsilon#Glyph_variants)
+
+- `%options easy_keyword_rules`: see also https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-literal-tokens
+
+- ... more lexer features ...
+
+  + %options ...
+
+  + kernel ...
+
+- ... more parser features ...
+
+  + configurable error recovery search depth (default: 3 tokens)
+
+  + augmented error reporting callbacks
+
+  + dedicated parser and lexer `Error`-derived exception classes so you can use `instanceof` to help your generic error code discern what type of error has occurred and what info is available next to the text message itself.
+
+  + (are we faster even when we run with the same feature set as 'vanilla' zaach jison? Probably a little bit, but haven't measured this thoroughly.)
+
+
 
 License
 -------

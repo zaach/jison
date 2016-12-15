@@ -250,6 +250,9 @@ examples/olmenu-proto2: build
 examples/parser-to-lexer-communication-test: build
 	cd examples/ && make parser-to-lexer-communication-test
 
+examples/parser-to-lexer-communication-test--profiling: build
+	cd examples/ && make parser-to-lexer-communication-test--profiling
+
 examples/pascal: build
 	cd examples/ && make pascal
 
@@ -270,6 +273,9 @@ examples/semwhitespace: build
 
 examples/test-epsilon-rules-early-reduce: build
 	cd examples/ && make test-epsilon-rules-early-reduce
+
+examples/test-literal-quote-tokens-in-grammar: build
+	cd examples/ && make test-literal-quote-tokens-in-grammar
 
 examples/test-nonassociative-operator-0: build
 	cd examples/ && make test-nonassociative-operator-0
@@ -439,3 +445,4 @@ superclean: clean clean-site
 
 
 .PHONY: all prep site preview deploy test web-examples examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+

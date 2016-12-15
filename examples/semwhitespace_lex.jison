@@ -32,7 +32,7 @@ spc			[\t \u00a0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u20
 				%}
 [\n\r]+{spc}*/![^\n\r]		/* eat blank lines */
 <INITIAL>[\n\r]{spc}*		%{
-					var indentation = yytext.length - yytext.search(/\s/) - 1;
+					var indentation = yyleng - yytext.search(/\s/) - 1;
 					if (indentation > _iemitstack[0]) {
 						_iemitstack.unshift(indentation);
 						return 'INDENT';

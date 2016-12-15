@@ -1,14 +1,14 @@
-var Jison = require("../setup").Jison;
-var Lexer = require("../setup").Lexer;
-var glob = require("glob");
+var Jison = require('../setup').Jison;
+var Lexer = require('../setup').Lexer;
+var glob = require('glob');
 var fs = require('fs');
-var assert = require("assert");
+var assert = require('assert');
 
 
 var lexData = {
     rules: [
-       ["x", "return 'x';"],
-       ["y", "return 'y';"]
+       ['x', 'return "x";'],
+       ['y', 'return "y";']
     ]
 };
 
@@ -145,10 +145,13 @@ const test_list = [
       assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
     }
   },
+  {
+    name: 'test-literal-quote-tokens-in-grammar',
+  },
 ];
 
 console.log('exec glob....', __dirname);
-var testset = glob.sync(__dirname + "/../../examples/*.jison");
+var testset = glob.sync(__dirname + '/../../examples/*.jison');
 testset = testset.sort().map(function (filepath) {
   for (var j = 0, lj = test_list.length; j < lj; j++) {
     var fstr = test_list[j].name;
@@ -175,7 +178,7 @@ testset = testset.sort().map(function (filepath) {
 
 testset.forEach(function (filespec) {
   // process this file:
-  exports["test example: " + filespec.path.replace(/^.*?\/examples\//, '')] = function () {
+  exports['test example: ' + filespec.path.replace(/^.*?\/examples\//, '')] = function () {
     var grammar = fs.readFileSync(filespec.path, 'utf8');
 
     if (filespec.__ignore__) {
@@ -189,19 +192,20 @@ testset.forEach(function (filespec) {
       }
     }
     var parser = new Jison.Parser(grammar, options);
+    var rv;
 
     if (typeof parser.main === 'function') {
-      assert.ok(!parser.main(), "main() is supposed to produce zero ~ success");
+      assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
     } else if (filespec.inputs) {
       for (var i = 0, l = filespec.inputs.length; i < l; i++) {
-        var rv = parser.parse(filespec.inputs[i]);
+        rv = parser.parse(filespec.inputs[i]);
         // console.log('parse: ', filespec.inputs[i], rv);
-        assert.ok(rv === true, "parser.parse() is supposed to produce TRUE");
+        assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
       }
     } else {
-      var rv = parser.parse('zz; yy; zz;zz ;');
+      rv = parser.parse('zz; yy; zz;zz ;');
       // console.log('parse: ', filespec, rv);
-      assert.ok(rv === true, "parser.parse() is supposed to produce TRUE");
+      assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
     }
 
     if (filespec.__check__) {
