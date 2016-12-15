@@ -141,5 +141,5 @@ range_regex
 
 string
     : STRING_LIT
-        { $$ = yy.prepareString(yytext.substr(1, yytext.length-2)); }
+        { $$ = yy.prepareString(yytext.substr(1, yyleng-2)); }
     ;
