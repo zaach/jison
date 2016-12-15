@@ -5760,15 +5760,6 @@ var LALRGenerator = exports.LALRGenerator = lalr.construct();
 // LALR generator debug mixin
 
 var lalrGeneratorDebug = {
-    trace: function lalrDebugTrace() {
-        if (typeof Jison !== 'undefined' && Jison.print) {
-            Jison.print.apply(null, arguments);
-        } else if (typeof print !== 'undefined') {
-            print.apply(null, arguments);
-        } else if (typeof console !== 'undefined' && console.log) {
-            console.log.apply(null, arguments);
-        }
-    },
     beforebuildNewGrammar: function () {
         this.trace(this.states.size() + ' states.');
         this.trace('Building lookahead grammar.');
