@@ -61,7 +61,7 @@ MISC_TARGETS =                                                   \
 			lex                                                 \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
-			no-prec-hack-needed									\
+			no-prec-hack-needed									                \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -71,6 +71,7 @@ MISC_TARGETS =                                                   \
 			regex                                               \
 			semwhitespace                                       \
 			test-epsilon-rules-early-reduce                     \
+			test-literal-quote-tokens-in-grammar                \
 			test-nonassociative-operator-0                      \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
@@ -83,76 +84,23 @@ MISC_TARGETS =                                                   \
 
 
 ALL_TARGETS =                                                   \
+			$(MISC_TARGETS)                                     \
+			$(ERROR_HANDLING_TARGETS)                           \
 			ansic                                               \
-			basic                                               \
-			basic2                                              \
-			basic2_lex                                          \
-			basic_lex                                           \
-			basic_w_error_rule                                  \
-			bloop                                               \
 			btyacc-ansiC                                        \
 			btyacc-ansiC2                                       \
 			btyacc-ftp                                          \
 			btyacc-t1                                           \
 			btyacc-t2                                           \
 			c99                                                 \
-			calc_LA_on_demand                                   \
-			calculator                                          \
-			calculator_json                                     \
-			ccalc                                               \
-			classy                                              \
-			classy_ast                                          \
-			comments                                            \
-			compiled_calc                                       \
-			dism                                                \
-			dism_lr0                                            \
-			dot                                                 \
-			$(ERROR_HANDLING_TARGETS)                           \
-			error-only                                          \
-			faking-multiple-start-rules                         \
-			faking-multiple-start-rules-alt                     \
-			flow                                                \
-			formula                                             \
 			fsyacc-cgrammar                                     \
 			gantt                                               \
-			grammar                                             \
 			handlebars-BAD                                          \
-			happyhappy                                          \
-			inherited_y                                         \
-			issue-254                                           \
-			issue-289-BAD                                           \
-			issue-293                                           \
 			jscore                                              \
-			json_ast_js                                         \
-			json_js                                             \
-			klammergebirge                                      \
-			lalr-but-not-slr                                    \
-			lambdacalc                                          \
-			lex                                                 \
 			lojban-300                                          \
-			lr-but-not-lalr                                     \
 			mermaid                                             \
-			mfcalc                                              \
-			no-prec-hack-needed																	\
-			nv_classy_ast                                       \
-			olmenu-proto2                                       \
-			parser-to-lexer-communication-test                  \
 			pascal-BAD                                              \
-			phraser                                             \
-			precedence                                          \
-			reduce_conflict                                     \
-			regex                                               \
-			semwhitespace                                       \
-			test-epsilon-rules-early-reduce                     \
-			test-nonassociative-operator-0                      \
-			test-nonassociative-operator-1                      \
-			test-nonassociative-operator-2                      \
-			theory-left-recurs-01                               \
-			tikiwikiparser                                      \
-			unicode                                             \
-			unicode2                                            \
-			with-includes                                       \
-			with_custom_lexer
+			tikiwikiparser                                      
 
 
 
@@ -165,7 +113,8 @@ ALL_TARGETS =                                                   \
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean error-handling $(ALL_TARGETS)
+.PHONY: all clean superclean error-handling $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
+
 
 clean:
 	-rm -rf output/
@@ -407,12 +356,12 @@ error-only:
 	$(JISON) --main ./$@.y
 
 parser-to-lexer-communication-test--profiling:
-	$(JISON) --main -p lr ./$@.jison
-	node --prof ./output/$@/$@.js
+	$(JISON) --main -p lalr ./parser-to-lexer-communication-test.jison
+	node --prof ./output/$@/parser-to-lexer-communication-test.js
 	# and now collect the profile info and dump it to a report file:
-	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > profile.$@.txt
+	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > ./output/$@/profile.$@.txt
 	# and make sure the profile report is saved in a unique file which can be compared against other profile runs later on:
-	cat profile.$@.txt > profile.$@.$$( date +%s%N ).txt
+	cat ./output/$@/profile.$@.txt > ./output/$@/profile.$@.$$( date +%s%N ).txt
 
 parser-to-lexer-communication-test:
 	$(JISON) --main -p lr ./$@.jison
@@ -446,6 +395,11 @@ theory-left-recurs-01:
 
 # build *AND* run the test:
 test-epsilon-rules-early-reduce:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-literal-quote-tokens-in-grammar:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 

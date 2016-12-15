@@ -410,7 +410,7 @@ lexer.performAction = function anonymous(yy, yy_) {
         return 32;
         break;
       case 20:
-        yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4);
+        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4);
         return 32;
         break;
       case 21:

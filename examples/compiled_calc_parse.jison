@@ -184,7 +184,7 @@
                       %}
 
 \/\/.*                yytext = yytext.substr(2).trim(); return 'COMMENT'; // skip C++-style comments
-\/\*[\s\S]*?\*\/      yytext = yytext.substring(2, yytext.length - 2).trim(); return 'COMMENT'; // skip C-style multi-line comments
+\/\*[\s\S]*?\*\/      yytext = yytext.substring(2, yyleng - 2).trim(); return 'COMMENT'; // skip C-style multi-line comments
 
 '==='                   return 'EQ';
 '=='                    return 'EQ';

@@ -31,7 +31,7 @@ commentName ([a-zA-Z]+("|"|[a-zA-Z]+)*(?=[\s]*))
 ("//"){commentName}(?={lineEnd})
     %{
         this.begin('area');
-        yytext = getTypes(yytext.substring(2, yytext.length));
+        yytext = getTypes(yytext.substring(2, yyleng));
         return 'areaType';
     %}
 
@@ -48,7 +48,7 @@ commentName ([a-zA-Z]+("|"|[a-zA-Z]+)*(?=[\s]*))
 ("/*"){commentName}
     %{
         this.begin('commentBody');
-        yytext = getTypes(yytext.substring(2, yytext.length));
+        yytext = getTypes(yytext.substring(2, yyleng));
         return 'commentType';
     %}
 
@@ -70,7 +70,7 @@ commentName ([a-zA-Z]+("|"|[a-zA-Z]+)*(?=[\s]*))
 "//"{commentName}
     %{
         this.begin('inlineCommentBody');
-        yytext = getTypes(yytext.substring(2, yytext.length));
+        yytext = getTypes(yytext.substring(2, yyleng));
         return 'inlineCommentType';
     %}
 

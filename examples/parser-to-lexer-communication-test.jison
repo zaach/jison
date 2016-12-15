@@ -10,7 +10,7 @@
  */
 
 //%debug                                           // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
-%options output-debug-tables
+//%options output-debug-tables
 %options no-default-action                         // cost is within noise band. Seems ~0.5-1%
 %options no-try-catch                              // cost is within noise band. Seems ~1-2%
 
@@ -173,7 +173,7 @@ parser.main = function compiledRunner(args) {
         var logcount = 0;
         parser.post_parse = function (tok) {
             logcount++;
-            if (logcount % 5000 === 0) {
+            if (logcount % 65000 === 0) {
                 console.log('run #', logcount);
             }
         };

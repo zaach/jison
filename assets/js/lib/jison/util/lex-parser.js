@@ -107,7 +107,7 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy) {
         this.$ = yytext;
         break;
       case 35:
-        this.$ = yy.prepareString(yytext.substr(1, yytext.length - 2));
+        this.$ = yy.prepareString(yytext.substr(1, yyleng - 2));
         break;
       default:;
     }
@@ -352,7 +352,7 @@ lexer.performAction = function anonymous(yy, yy_) {
         }
         break;
       case 2:
-        yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 3);
+        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 3);
         return 15;
         break;
       case 3:
@@ -424,7 +424,7 @@ lexer.performAction = function anonymous(yy, yy_) {
         return 35;
         break;
       case 23:
-        yy_.yytext = yy_.yytext.substr(2, yy_.yytext.length - 4);
+        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4);
         return 15;
         break;
       case 24:
