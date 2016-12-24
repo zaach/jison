@@ -88,7 +88,7 @@ prompt : /* null token */
  *      statement : error ';'
  * 
  * effectively tells the parser to discard absolutely everything until 
- * it finds a character. If you have a parser for C, for example, it would
+ * it finds a semicolon character. If you have a parser for C, for example, it would
  * skip over important characters such as ) or } until
  * it found a semicolon. Your parentheses and braces would be out of
  * balance for the rest of the input, and the whole parsing process would

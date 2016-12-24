@@ -3,8 +3,8 @@
 
 // myscanner.js
 function AlphabetScanner() {
-    var text = "";
-    this.yytext = "";
+    var text = '';
+    this.yytext = '';
     this.yylloc = {
         first_column: 0,
         first_line: 1,
@@ -17,8 +17,8 @@ function AlphabetScanner() {
     };
     this.lex = function() {
         // Return the EOF token when we run out of text.
-        if (text === "") {
-            return "EOF";
+        if (text === '') {
+            return 'EOF';
         }
 
         // Consume a single character and increment our column numbers.
@@ -28,7 +28,7 @@ function AlphabetScanner() {
         this.yylloc.first_column++;
         this.yylloc.last_column++;
 
-        if (c === "\n") {
+        if (c === '\n') {
             // Increment our line number when we hit newlines.
             this.yylloc.first_line++;
             this.yylloc.last_line++;
@@ -36,15 +36,15 @@ function AlphabetScanner() {
             // in newlines.
             return this.lex();
         } else if (/[a-z]/.test(c)) {
-            return "LOWER_CASE";
+            return 'LOWER_CASE';
         } else if (/[A-Z]/.test(c)) {
-            return "UPPER_CASE";
+            return 'UPPER_CASE';
         } else if (/\s/.test(c)) {
             // Try to keep lexing because we aren't interested
             // in whitespace.
             return this.lex();
         } else {
-            return "INVALID";
+            return 'INVALID';
         }
     };
 }
