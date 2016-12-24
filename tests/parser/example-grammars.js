@@ -2,6 +2,7 @@ var Jison = require('../setup').Jison;
 var Lexer = require('../setup').Lexer;
 var glob = require('glob');
 var fs = require('fs');
+var path = require('path');
 var assert = require('assert');
 
 
@@ -176,14 +177,17 @@ testset = testset.sort().map(function (filepath) {
 });
 // console.log('testset....', testset);
 
+var original_cwd = process.cwd();
+
 testset.forEach(function (filespec) {
   // process this file:
-  exports['test example: ' + filespec.path.replace(/^.*?\/examples\//, '')] = function () {
+  exports['test example: ' + filespec.path.replace(/^.*?\/examples\//, '')] = function test_one_example_grammar_now() {
     var grammar = fs.readFileSync(filespec.path, 'utf8');
 
-    if (filespec.__ignore__) {
-      return;
-    }
+    // Change CWD to the directory where the source grammar resides: this helps us properly
+    // %include any files mentioned in the grammar with relative paths:
+    var new_cwd = path.dirname(path.normalize(filespec.path));
+    process.chdir(new_cwd);
 
     var options = {};
     for (var k in filespec) {
@@ -193,6 +197,13 @@ testset.forEach(function (filespec) {
     }
     var parser = new Jison.Parser(grammar, options);
     var rv;
+
+    // and change back to the CWD we started out with:
+    process.chdir(original_cwd);
+
+    if (filespec.__ignore__) {
+      return;
+    }
 
     if (typeof parser.main === 'function') {
       assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
