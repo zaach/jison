@@ -615,7 +615,7 @@ generator.signalUnusedProductions = function () {
     traverseGrammar(nonterminals['$accept' /* this.startSymbol */ ]);
 
     // now any production which is not yet marked is *unused*:
-    for (var sym in mark) {
+    for (sym in mark) {
         nt = nonterminals[sym];
         assert(nt);
         var prods = nt.productions;
@@ -903,24 +903,16 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             // now it matters which one came up first:
             if (dqpos === first) {
                 s = s
-                .replace(/"[^"\n]*"/, function (_) {
-                    return replace_markers(_);
-                });
+                .replace(/"[^"\n]*"/, replace_markers);
             } else if (sqpos === first) {
                 s = s
-                .replace(/'[^'\n]*'/, function (_) {
-                    return replace_markers(_);
-                });
+                .replace(/'[^'\n]*'/, replace_markers);
             } else if (ccmtpos === first) {
                 s = s
-                .replace(/\/\*[\s\S]*?\*\//, function (_) {
-                    return replace_markers(_);
-                });
+                .replace(/\/\*[\s\S]*?\*\//, replace_markers);
             } else if (cppcmtpos === first) {
                 s = s
-                .replace(/\/\/[^\n]*$/m, function (_) {
-                    return replace_markers(_);
-                });
+                .replace(/\/\/[^\n]*$/m, replace_markers);
             } else {
                 break;
             }
@@ -1369,7 +1361,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
             for (i = 0; i < rhs.length; i++) {
                 // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = rhs[i].match(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$"));
+                rhs_i = rhs[i].match(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$'));
                 if (rhs_i) {
                     rhs[i] = rhs[i].substr(0, rhs[i].length - rhs_i[0].length);
                     rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
@@ -1748,7 +1740,7 @@ lookaheadMixin.displayFollowSets = function displayFollowSets() {
     var self = this;
     var symfollowdbg = {};
     this.productions.forEach(function Follow_prod_forEach_debugOut(production, k) {
-        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', nonterminals[production.symbol].follows.join(', '));
+        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', self.nonterminals[production.symbol].follows.join(', '));
         var key = ['prod-', k, ':  ', production.symbol, ' := ', production.handle.join(' ')].join('');
         var flw = '[' + self.nonterminals[production.symbol].follows.join(']  [') + ']';
         if (!symfollowdbg[flw]) {
@@ -3756,7 +3748,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ');
+        js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
         js = js.replace(/^( +)pre_parse: true,$/gm, '$1pre_parse: ' + String(pre) + ',');
         js = js.replace(/^( +)post_parse: true,$/gm, '$1post_parse: ' + String(post) + ',');
         return js;
@@ -4916,7 +4908,7 @@ parser.parse = function parse(input, parseParams) {
                     if (typeof XRegExp === 'undefined') {
                         re1 = /  \"([a-z_][a-z_0-9. ]*)\": /ig;
                     } else {
-                        re1 = new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_. ]*)\": ", "g");
+                        re1 = new XRegExp('  \"([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_. ]*)\": ', 'g');
                     }
                     js = JSON.stringify(obj, null, 2).replace(re1, '  $1: ').replace(/[\n\s]+/g, ' ');
                 } catch (ex) {
@@ -5553,9 +5545,9 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.states = this.canonicalCollection();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
             this.displayFollowSets();
-            Jison.print("\n");
+            Jison.print('\n');
         }
 
         this.terms_ = {};
@@ -5592,36 +5584,36 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.buildNewGrammar();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         newg.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         this.unionLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.states);
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
@@ -5779,9 +5771,9 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
         this.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
-            Jison.print("\n");
+            Jison.print('\n');
         }
 
         this.buildTable();
@@ -5830,7 +5822,7 @@ var lr1 = lrLookaheadGenerator.beget({
         do {
             itemQueue = new Set();
             closureSet = closureSet.concat(set);
-            set.forEach(function (item) {
+            set.forEach(function LR_AddItemToClosureSets(item) {
                 var symbol = item.markedSymbol;
                 var b, r;
 
@@ -5872,14 +5864,14 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.productions);
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
             this.displayFollowSets();
         }
 
@@ -6380,7 +6372,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-161 */
+/* parser generated by jison 0.4.18-163 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -9207,7 +9199,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-161 */
+/* generated by jison-lex 0.3.4-163 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -10829,7 +10821,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-161",
+  "version": "0.3.4-163",
   "keywords": [
     "jison",
     "parser",
@@ -10870,7 +10862,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-161 */
+/* parser generated by jison 0.4.18-163 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -13883,7 +13875,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-161 */
+/* generated by jison-lex 0.3.4-163 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -27577,7 +27569,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.18-161",
+  "version": "0.4.18-163",
   "license": "MIT",
   "keywords": [
     "jison",
