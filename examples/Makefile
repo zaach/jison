@@ -75,6 +75,7 @@ MISC_TARGETS =                                                   \
 			test-nonassociative-operator-0                      \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
+			test-propagation-rules-reduction-1                  \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -417,6 +418,13 @@ test-nonassociative-operator-1:
 test-nonassociative-operator-2:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-propagation-rules-reduction-1:
+	$(JISON) --main -c 0 ./$@.jison
+	$(JISON) --main -c 0 ./test-propagation-rules-reduction-2.jison
+	node ./output/$@/$@.js
+	node ./output/$@/test-propagation-rules-reduction-2.js
 
 
 
