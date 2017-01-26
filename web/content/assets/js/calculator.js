@@ -514,12 +514,12 @@ symbols_: {
   "/": 6,
   "E": 12,
   "EOF": 1,
-  "NUMBER": 15,
-  "PI": 16,
+  "NUMBER": 13,
+  "PI": 14,
   "^": 7,
-  "e": 14,
+  "e": 16,
   "error": 2,
-  "expressions": 13
+  "expressions": 15
 },
 terminals_: {
   1: "EOF",
@@ -534,8 +534,8 @@ terminals_: {
   10: "(",
   11: ")",
   12: "E",
-  15: "NUMBER",
-  16: "PI"
+  13: "NUMBER",
+  14: "PI"
 },
 TERROR: 2,
 EOF: 1,
@@ -627,9 +627,9 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  13,
+  15,
   s,
-  [14, 12]
+  [16, 12]
 ]),
   rule: u([
   2,
@@ -654,49 +654,49 @@ case 1:
     break;
 
 case 2:
-    /*! Production::    e : e '+' e */
+    /*! Production::    e : e "+" e */
     this.$ = yyvstack[$0 - 2] + yyvstack[$0];
     break;
 
 case 3:
-    /*! Production::    e : e '-' e */
+    /*! Production::    e : e "-" e */
     this.$ = yyvstack[$0 - 2] - yyvstack[$0];
     break;
 
 case 4:
-    /*! Production::    e : e '*' e */
+    /*! Production::    e : e "*" e */
     this.$ = yyvstack[$0 - 2] * yyvstack[$0];
     break;
 
 case 5:
-    /*! Production::    e : e '/' e */
+    /*! Production::    e : e "/" e */
     this.$ = yyvstack[$0 - 2] / yyvstack[$0];
     break;
 
 case 6:
-    /*! Production::    e : e '^' e */
+    /*! Production::    e : e "^" e */
     this.$ = Math.pow(yyvstack[$0 - 2], yyvstack[$0]);
     break;
 
 case 7:
-    /*! Production::    e : e '!' */
+    /*! Production::    e : e "!" */
     this.$ = (function fact(n) { 
       return n == 0 ? 1 : fact(n - 1) * n; 
     })(yyvstack[$0 - 1]);
     break;
 
 case 8:
-    /*! Production::    e : e '%' */
+    /*! Production::    e : e "%" */
     this.$ = yyvstack[$0 - 1] / 100;
     break;
 
 case 9:
-    /*! Production::    e : '-' e */
+    /*! Production::    e : "-" e */
     this.$ = -yyvstack[$0];
     break;
 
 case 10:
-    /*! Production::    e : '(' e ')' */
+    /*! Production::    e : "(" e ")" */
     this.$ = yyvstack[$0 - 1];
     break;
 
@@ -745,9 +745,8 @@ table: bt({
   s,
   [3, 7, 1],
   c,
-  [16, 3],
-  c,
-  [15, 3],
+  [16, 5],
+  16,
   c,
   [6, 36],
   c,
@@ -760,20 +759,17 @@ table: bt({
 ]),
   type: u([
   s,
-  [2, 3],
+  [2, 5],
   0,
   0,
-  2,
-  2,
   1,
   s,
-  [2, 11],
+  [2, 13],
+  0,
   c,
-  [15, 3],
-  c,
-  [6, 39],
+  [6, 41],
   s,
-  [2, 50]
+  [2, 48]
 ]),
   state: u([
   1,
@@ -2074,7 +2070,7 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
-   1 : 15,
+   1 : 13,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
    2 : 5,
@@ -2104,7 +2100,7 @@ simpleCaseActionClusters: {
    10 : 11,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       PI */ 
-   11 : 16,
+   11 : 14,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       E */ 
    12 : 12,
