@@ -353,6 +353,16 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.parseParams = grammar.parseParams;
     this.yy = {}; // accessed as yy free variable in the parser/lexer actions
 
+    // propagate %parse-params into the lexer!
+    if (grammar.lex) {
+        if (!grammar.lex.options) {
+            grammar.lex.options = {};
+        }
+        if (this.parseParams) {
+            grammar.lex.options.parseParams = this.parseParams;
+        }
+    }
+
     // calculate the input path; if none is specified, it's the present working directory
     var path = require('path');
     var inpath = options.file || options.outfile || './dummy';
@@ -1153,17 +1163,18 @@ generator.buildProductionActions = function buildProductionActions() {
     var actionGroupValue = {};      // stores the unaltered, expanded, user-defined action code for each action group.
     var symbol;
 
-    // Preprocess the action code block before we perform any `$n`, `@n` ,`\`n` or `#n` expansions:
+    // Preprocess the action code block before we perform any `$n`, `@n` ,`##n` or `#n` expansions:
     // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
-    // contain `$`, `@`, `\`` or `#` prefixed bits which might look like references but aren't!)
+    // contain `$`, `@`, `##` or `#` prefixed bits which might look like references but aren't!)
     //
-    // Also do NOT replace any $x, @x, \`x or #x macros inside any strings!
+    // Also do NOT replace any $x, @x, ##x or #x macros inside any strings!
     //
     // Note:
     // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
     function preprocessActionCode(s) {
         function replace_markers(cmt) {
             cmt = cmt
+            .replace(/##/g, '\x01\x09')
             .replace(/#/g, '\x01\x01')
             .replace(/\$/g, '\x01\x02')
             .replace(/@/g, '\x01\x03')
@@ -1171,7 +1182,6 @@ generator.buildProductionActions = function buildProductionActions() {
             .replace(/\/\//g, '\x01\x06')
             .replace(/\'/g, '\x01\x07')
             .replace(/\"/g, '\x01\x08')
-            .replace(/`/g, '\x01\x09')
             // and also whiteout any other macros we're about to expand in there:
             .replace(/\bYYABORT\b/g, '\x01\x14')
             .replace(/\bYYACCEPT\b/g, '\x01\x15')
@@ -1282,7 +1292,7 @@ generator.buildProductionActions = function buildProductionActions() {
         return s;
     }
 
-    // Postprocess the action code block after we perform any `$n`, `@n` or `#n` expansions:
+    // Postprocess the action code block after we perform any `$n`, `@n`, `##n` or `#n` expansions:
     // revert the preprocessing!
     function postprocessActionCode(s) {
         s = s
@@ -1297,7 +1307,7 @@ generator.buildProductionActions = function buildProductionActions() {
         // and revert the string and regex markers:
         .replace(/\x01\x07/g, '\'')
         .replace(/\x01\x08/g, '\"')
-        .replace(/\x01\x09/g, '`')
+        .replace(/\x01\x09/g, '##')
         .replace(/\x01\x10/g, '\\\\')
         .replace(/\x01\x11/g, '\\\'')
         .replace(/\x01\x12/g, '\\\"')
@@ -1554,7 +1564,7 @@ generator.buildProductionActions = function buildProductionActions() {
                 });
 
             // replace named semantic values ($nonterminal)
-            if (action.match(new XRegExp('[$@#`][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*'))) {
+            if (action.match(new XRegExp('(?:[$@#]|##)[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*'))) {
                 var count = {},
                     names = {},
                     donotalias = {};
@@ -1629,7 +1639,7 @@ generator.buildProductionActions = function buildProductionActions() {
                     }
                 }
                 action = action.replace(
-                    new XRegExp('([$@#`])([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)', 'g'), function (str, mrkr, pl) {
+                    new XRegExp('([$@#]|##)([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)', 'g'), function (str, mrkr, pl) {
                         return names[pl] ? mrkr + names[pl] : str;
                     });
             }
@@ -1648,6 +1658,16 @@ generator.buildProductionActions = function buildProductionActions() {
                 .replace(/@(-?\d+)\b/g, function (_, n) {
                     return 'yylstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
                 })
+                // same as above for positional value references (##n): these represent stack indexes
+                .replace(/##(-?\d+)\b/g, function (_, n) {
+                    return '($0' + indexToJsExpr(n, rhs.length, rule4msg) + ')';
+                })
+                .replace(/##\$/g, function (_) {
+                    return '$0';
+                })
+                .replace(/\byysp\b/g, function (_) {
+                    return '$0';
+                })
                 // same as above for token ID references (#n)
                 .replace(/#(-?\d+)\b/g, function (_, n) {
                     var i = parseInt(n, 10) - 1;
@@ -1655,16 +1675,6 @@ generator.buildProductionActions = function buildProductionActions() {
                         throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
                     }
                     return provideSymbolAsSourcecode(rhs[i]);
-                })
-                // replace positional value references (\`n) with stack index
-                .replace(/`(-?\d+)\b/g, function (_, n) {
-                    return '($0' + indexToJsExpr(n, rhs.length, rule4msg) + ')';
-                })
-                .replace(/`\$/g, function (_) {
-                    return '$0';
-                })
-                .replace(/\byysp\b/g, function (_) {
-                    return '$0';
                 });
 
             action = reindentCodeBlock(action, 4);
@@ -2587,15 +2597,15 @@ function generateGenericHeaderComment() {
         + ' *                 This one comes in handy when you are going to do advanced things to the parser\n'
         + ' *                 stacks, all of which are accessible from your action code (see the next entries below).\n'
         + ' *\n'
-        + ' *                 Also note that you can access this and other stack index values using the new back-quote\n'
-        + ' *                 syntax, i.e. `\`$ === \`0 === yysp`, while `\`1` is the stack index for all things\n'
-        + ' *                 related to the first rule term, just like you have `$1` and `@1`.\n'
+        + ' *                 Also note that you can access this and other stack index values using the new double-hash\n'
+        + ' *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things\n'
+        + ' *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.\n'
         + ' *                 This is made available to write very advanced grammar action rules, e.g. when you want\n'
         + ' *                 to investigate the parse state stack in your action code, which would, for example,\n'
         + ' *                 be relevant when you wish to implement error diagnostics and reporting schemes similar\n'
         + ' *                 to the work described here:\n'
         + ' *\n'
-        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.\n'
+        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.\n'
         + ' *                   In Journées Francophones des Languages Applicatifs.\n'
         + ' *\n'
         + ' *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.\n'
@@ -3256,19 +3266,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/^[^\n]+\b__reentrant_call_depth\b[^\n]+$/gm, '\n');
     }
 
-    // and finally strip out the hacks which were only there to stop strict JS engines barfing on us: jison.js itself!
-    parseFn = parseFn
-    .replace(/\s+\/\/ SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56[^;]+;/g, '');
-
     info.performAction = actionFn;
 
-    return parseFn;
-}
-
-function removeFeatureMarkers(fn) {
-    var parseFn = fn;
-    parseFn = parseFn.replace(/^\s*_handle_error_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
-    parseFn = parseFn.replace(/^\s*_lexer_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
     return parseFn;
 }
 
@@ -3282,9 +3281,11 @@ function expandParseArguments(parseFn, self) {
     var arglist = self.parseParams;
 
     if (!arglist) {
-        parseFn = parseFn.replace(/, parseParams/g, '');
+        parseFn = parseFn.replace(/, parseParams\b/g, '');
+        parseFn = parseFn.replace(/\bparseParams\b/g, '');
     } else {
-        parseFn = parseFn.replace(/, parseParams/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/, parseParams\b/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/\bparseParams\b/g, arglist.join(', '));
     }
     return parseFn;
 }
@@ -3294,15 +3295,12 @@ function pickOneOfTwoCodeAlternatives(parseFn, pick_A_not_B, A_start_marker, B_s
     // Notes:
     // 1) we use the special /[^\0]*/ regex set as that one will also munch newlines, etc.
     //    while the obvious /.*/ does not as '.' doesn't eat the newlines.
-    // 2) The end sentinel label is kept intact as we have another function
-    //    removeFeatureMarkers() which nukes that line properly, i.e. including the trailing comment!
-    if (pick_A_not_B) {
-        // kill section B
-        return parseFn.replace(new RegExp(B_start_marker + ':[^\\0]*?(' + end_marker + ':)', 'g'), '$1');
-    } else {
-        // kill section A
-        return parseFn.replace(new RegExp(A_start_marker + ':[^\\0]*?(' + B_start_marker + ':)', 'g'), '$1');
-    }
+    return parseFn.replace(new RegExp('(' + A_start_marker + '[^\\n]*\\n)([^\\0]*?)(' + B_start_marker + '[^\\n]*\\n)([^\\0]*?)(' + end_marker + '[^\\n]*\\n)', 'g'), function pick_code_alt(str, mA, cA, mB, cB, mE) {
+        if (pick_A_not_B) {
+            return cA;
+        }
+        return cB;
+    });
 }
 
 function addOrRemoveTokenStack(fn, wantTokenStack) {
@@ -3330,7 +3328,7 @@ function addOrRemoveTokenStack(fn, wantTokenStack) {
     //     parseFn = parseFn.replace(/tstack = .*$/m, '');
     //     return parseFn;
     // }
-    parseFn = pickOneOfTwoCodeAlternatives(parseFn, !wantTokenStack, '_lexer_without_token_stack', '_lexer_with_token_stack', '_lexer_with_token_stack_end');
+    parseFn = pickOneOfTwoCodeAlternatives(parseFn, !wantTokenStack, '//_lexer_without_token_stack:', '//_lexer_with_token_stack:', '//_lexer_with_token_stack_end:');
     // and some post-coital touch-ups:
     if (wantTokenStack) {
         // And rename the `tokenStackLex` function to become the new `lex`:
@@ -3363,7 +3361,7 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
     // } catch (e) {
     //     return parseFn;
     // }
-    parseFn = pickOneOfTwoCodeAlternatives(parseFn, hasErrorRecovery, '_handle_error_with_recovery', '_handle_error_no_recovery', '_handle_error_end_of_section');
+    parseFn = pickOneOfTwoCodeAlternatives(parseFn, hasErrorRecovery, '//_handle_error_with_recovery:', '//_handle_error_no_recovery:', '//_handle_error_end_of_section:');
     // and some post-coital touch-ups:
     if (!hasErrorRecovery) {
         // Also nuke the support declaration statement:
@@ -3401,9 +3399,6 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
     parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
-
-    // always remove the feature markers in the template code.
-    parseFn = removeFeatureMarkers(parseFn);
 
     parseFn = removeUnusedKernelFeatures(parseFn, this);
 
@@ -5190,10 +5185,10 @@ parser.parse = function parse(input, parseParams) {
         return pei;
     };
 
-_lexer_without_token_stack:
+//_lexer_without_token_stack:
 
-    function lex() {
-        var token = lexer.lex();
+    function lex(parseParams) {
+        var token = lexer.lex(parseParams);
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
@@ -5201,12 +5196,12 @@ _lexer_without_token_stack:
         return token || EOF;
     }
 
-_lexer_with_token_stack:
+//_lexer_with_token_stack:
 
     // lex function that supports token stacks
-    function tokenStackLex() {
+    function tokenStackLex(parseParams) {
         var token;
-        token = tstack.pop() || lexer.lex() || EOF;
+        token = tstack.pop() || lexer.lex(parseParams) || EOF;
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             if (token instanceof Array) {
@@ -5221,7 +5216,7 @@ _lexer_with_token_stack:
         return token || EOF;
     }
 
-_lexer_with_token_stack_end:
+//_lexer_with_token_stack_end:
 
     var symbol = 0;
     var preErrorSymbol = 0;
@@ -5237,7 +5232,7 @@ _lexer_with_token_stack_end:
     var newState;
     var retval = false;
 
-_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
+//_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
 
     // Return the rule stack depth where the nearest error rule can be found.
     // Return -1 when no error recovery rule was found.
@@ -5288,12 +5283,8 @@ _handle_error_with_recovery:                    // run this code when the gramma
         }
     }
 
-_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
-_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
-
-    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
-    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
-    ;
+//_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
+//_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
 
     try {
         this.__reentrant_call_depth++;
@@ -5320,7 +5311,7 @@ _handle_error_end_of_section:                   // this concludes the error reco
                 //
                 //     if (symbol === null || typeof symbol === 'undefined') ...
                 if (!symbol) {
-                    symbol = lex();
+                    symbol = lex(parseParams);
                 }
                 // read action for current state and first input
                 t = (table[state] && table[state][symbol]) || NO_ACTION;
@@ -5329,7 +5320,7 @@ _handle_error_end_of_section:                   // this concludes the error reco
 
                 if (yydebug) yydebug('after FETCH/LEX: ', { symbol: symbol, newState: newState, recovering: recovering, action: action });
 
-_handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
+//_handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
 
                 // handle parse error
                 if (!action) {
@@ -5383,7 +5374,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         yylineno = lexer.yylineno;
                         yyloc = lexer.yylloc;
 
-                        symbol = lex();
+                        symbol = lex(parseParams);
 
                         if (yydebug) yydebug('after ERROR RECOVERY-3: ', { symbol: symbol });
                     }
@@ -5408,7 +5399,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     continue;
                 }
 
-_handle_error_no_recovery:                  // run this code when the grammar does not include any error recovery rules
+//_handle_error_no_recovery:                  // run this code when the grammar does not include any error recovery rules
 
                 // handle parse error
                 if (!action) {
@@ -5433,11 +5424,8 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                     break;
                 }
 
-_handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
+//_handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
 
-                // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
-                // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
-                ;
             }
 
             if (yydebug) yydebug('::: action: ' + (action === 1 ? 'shift token (then go to state ' + newState + ')' : action === 2 ? 'reduce by rule: ' + newState : action === 3 ? 'accept' : '???unexpected???'), { action: action, newState: newState, symbol: symbol });
@@ -6532,15 +6520,15 @@ exports.transform = EBNF.transform;
  *                 This one comes in handy when you are going to do advanced things to the parser
  *                 stacks, all of which are accessible from your action code (see the next entries below).
  *
- *                 Also note that you can access this and other stack index values using the new back-quote
- *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
- *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 Also note that you can access this and other stack index values using the new double-hash
+ *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.
  *                 This is made available to write very advanced grammar action rules, e.g. when you want
  *                 to investigate the parse state stack in your action code, which would, for example,
  *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
  *                 to the work described here:
  *
- *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
  *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
@@ -8962,6 +8950,7 @@ parse: function parse(input) {
         }
     }
 
+
     try {
         this.__reentrant_call_depth++;
 
@@ -9073,6 +9062,8 @@ parse: function parse(input) {
 
                     continue;
                 }
+
+
             }
 
 
@@ -10986,15 +10977,15 @@ module.exports={
  *                 This one comes in handy when you are going to do advanced things to the parser
  *                 stacks, all of which are accessible from your action code (see the next entries below).
  *
- *                 Also note that you can access this and other stack index values using the new back-quote
- *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
- *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 Also note that you can access this and other stack index values using the new double-hash
+ *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.
  *                 This is made available to write very advanced grammar action rules, e.g. when you want
  *                 to investigate the parse state stack in your action code, which would, for example,
  *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
  *                 to the work described here:
  *
- *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
  *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
@@ -11775,7 +11766,7 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
+performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack) {
 /* this == yyval */
 var yy = this.yy;
 
@@ -13311,7 +13302,7 @@ parseError: function parseError(str, hash) {
         throw new this.JisonParserError(str, hash);
     }
 },
-parse: function parse(input, options) {
+parse: function parse(input) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
         sstack = new Array(128),        // state stack: stores states (column storage)
@@ -13409,11 +13400,11 @@ parse: function parse(input, options) {
 
         if (invoke_post_methods) {
             if (sharedState_yy.post_parse) {
-                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, options);
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState_yy, resultValue, options);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -13592,14 +13583,15 @@ parse: function parse(input, options) {
         }
     }
 
+
     try {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState_yy, options);
+            this.pre_parse.call(this, sharedState_yy);
         }
         if (sharedState_yy.pre_parse) {
-            sharedState_yy.pre_parse.call(this, sharedState_yy, options);
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -13703,6 +13695,8 @@ parse: function parse(input, options) {
 
                     continue;
                 }
+
+
             }
 
 
@@ -13796,7 +13790,7 @@ parse: function parse(input, options) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack, options);
+                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -17743,7 +17737,7 @@ var __objdef__ = {
     // - matches
     // - yylloc
     // - offset
-    test_match: function lexer_test_match(match, indexed_rule) {
+    test_match: function lexer_test_match(match, indexed_rule, parseParams) {
         var token,
             lines,
             backup,
@@ -17808,7 +17802,7 @@ var __objdef__ = {
         // calling this method: 
         //
         //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */, parseParams);
         // otherwise, when the action codes are all simple return token statements:
         //token = this.simpleCaseActionClusters[indexed_rule];
 
@@ -17834,7 +17828,7 @@ var __objdef__ = {
     },
 
     // return next match in input
-    next: function lexer_next() {
+    next: function lexer_next(parseParams) {
         if (this.done) {
             this.clear();
             return this.EOF;
@@ -17884,7 +17878,7 @@ var __objdef__ = {
                 match = tempMatch;
                 index = i;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rule_ids[i]);
+                    token = this.test_match(tempMatch, rule_ids[i], parseParams);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -17900,7 +17894,7 @@ var __objdef__ = {
             }
         }
         if (match) {
-            token = this.test_match(match, rule_ids[index]);
+            token = this.test_match(match, rule_ids[index], parseParams);
             if (token !== false) {
                 return token;
             }
@@ -17924,18 +17918,18 @@ var __objdef__ = {
     },
 
     // return next match that has a token
-    lex: function lexer_lex() {
+    lex: function lexer_lex(parseParams) {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.call(this);
+            r = this.options.pre_lex.call(this, parseParams);
         }
         while (!r) {
-            r = this.next();
+            r = this.next(parseParams);
         }
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.call(this, r) || r;
+            r = this.options.post_lex.call(this, r, parseParams) || r;
         }
         return r;
     },
@@ -18013,6 +18007,28 @@ function camelCaseAllOptions(opts) {
 }
 
 
+// Fill in the optional, extra parse parameters (`%parse-param ...`)
+// in the generated *lexer*.
+//
+// See for important context:
+//
+//     https://github.com/zaach/jison/pull/332
+function expandParseArguments(parseFn, options) {
+    var arglist = (options && options.parseParams);
+
+    if (!arglist) {
+        parseFn = parseFn.replace(/, parseParams\b/g, '');
+        parseFn = parseFn.replace(/\bparseParams\b/g, '');
+    } else {
+        parseFn = parseFn.replace(/, parseParams\b/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/\bparseParams\b/g, arglist.join(', '));
+    }
+    return parseFn;
+}
+
+
+
+
 
 // generate lexer source from a grammar
 function generate(dict, tokens) {
@@ -18036,6 +18052,8 @@ function processGrammar(dict, tokens) {
     // Make sure to camelCase all options:
     opts.options = camelCaseAllOptions(dict.options);
 
+    opts.parseParams = opts.options.parseParams;
+
     opts.moduleType = opts.options.moduleType;
     opts.moduleName = opts.options.moduleName;
 
@@ -18055,6 +18073,7 @@ function processGrammar(dict, tokens) {
 
     opts.actionInclude = (dict.actionInclude || '');
     opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
+
     return opts;
 }
 
@@ -18150,6 +18169,7 @@ function generateModuleBody(opt) {
         protosrc = protosrc
         .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
         .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
+        protosrc = expandParseArguments(protosrc, opt.options);
         out += protosrc + ',\n';
 
         if (opt.options) {
