@@ -7,18 +7,12 @@ Jison
 [![build status](https://secure.travis-ci.org/GerHobbelt/jison.png)](http://travis-ci.org/GerHobbelt/jison)
 
 
-<blockquote style="
-    background: #ffe0e0;
-    border:  red solid 3px;
-    color:  black;
-    padding: 1em;
-">
-  # Notice
-  
-  This repository contains a fork maintained by GerHobbelt. The original JISON work has been done by Zachary Carter and is available in zaach/jison.
-
-  For an overview of all all changes (fixes and features), see the section (What's New or Different?)[#user-content-whats-new-or-different] further below. See also (pullreq #338)[https://github.com/zaach/jison/pull/338].
-</blockquote>
+>  # Notice
+>  
+>  This repository contains a fork maintained by GerHobbelt. The original JISON work has been done by Zachary Carter and is available in zaach/jison.
+>
+>  For an overview of all all changes (fixes and features), see the section (What's New or Different?)[#user-content-whats-new-or-different] further below. See also (pullreq #338)[https://github.com/zaach/jison/pull/338].
+>
 
 
 
