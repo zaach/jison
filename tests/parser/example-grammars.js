@@ -143,6 +143,28 @@ const test_list = [
     name: 'test-nonassociative-operator-2',
   },
   {
+    name: 'test-propagation-rules-reduction-1',
+    reportStats: true,
+    exportAllTables: true,
+    __check__: function (p, spec, rv, tables) {
+      assert.equal(p.unused_productions.length, 0, 'grammar must report it found 0 unused rules');
+      assert.equal(tables.parseTable.length, 7, 'grammar must report it has 7 states in the parse table');
+      assert.equal(Object.keys(tables.defaultParseActions).length, 5, 'grammar must report it has 7 default action rows in the parse table');
+      assert.equal(tables.parseProductions.length, 5, 'grammar must report it has 5 productions');
+    }
+  },
+  {
+    name: 'test-propagation-rules-reduction-2',
+    reportStats: true,
+    exportAllTables: true,
+    __check__: function (p, spec, rv, tables) {
+      assert.equal(p.unused_productions.length, 4, 'grammar must report it found 4 unused rules');
+      assert.equal(tables.parseTable.length, 3, 'grammar must report it has 3 states in the parse table');
+      assert.equal(Object.keys(tables.defaultParseActions).length, 1, 'grammar must report it has 1 default action rows in the parse table');
+      assert.equal(tables.parseProductions.length, 5, 'grammar must report it has 5 productions');
+    }
+  },
+  {
     name: 'test-unused-rules-reporting.jison',
     reportStats: true,
     __check__: function (p, spec) {
@@ -194,8 +216,11 @@ testset.forEach(function (filespec) {
 
     var options = {};
     for (var k in filespec) {
-      if (k !== 'path' && k !== 'inputs' && k !== '__check__') {
+      if (k !== 'path' && k !== 'inputs' && k !== '__check__' && k !== 'exportAllTables') {
         options[k] = filespec[k];
+      }
+      if (k === 'exportAllTables') {
+        options.exportAllTables = {};
       }
     }
     var parser = new Jison.Parser(grammar, options);
@@ -223,7 +248,7 @@ testset.forEach(function (filespec) {
     }
 
     if (filespec.__check__) {
-      filespec.__check__(parser, filespec);
+      filespec.__check__(parser, filespec, rv, options.exportAllTables);
     }
   };
 });
