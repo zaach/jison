@@ -9,7 +9,7 @@
  * A simple grammar without yyerrok
  * -----------------------------------------
  * 
- * Same as the grammar in [art1 but without the yyerrok macro.
+ * Same as the grammar in part1 but without the yyerrok macro.
  *
  * Compare the output with the output of the part1 grammar.
  *  

@@ -271,6 +271,9 @@ examples/regex: build
 examples/semwhitespace: build
 	cd examples/ && make semwhitespace
 
+examples/test-EOF-bugfix: build
+	cd examples/ && make test-EOF-bugfix
+
 examples/test-epsilon-rules-early-reduce: build
 	cd examples/ && make test-epsilon-rules-early-reduce
 
@@ -285,6 +288,9 @@ examples/test-nonassociative-operator-1: build
 
 examples/test-nonassociative-operator-2: build
 	cd examples/ && make test-nonassociative-operator-2
+
+examples/test-propagation-rules-reduction-1: build
+	cd examples/ && make test-propagation-rules-reduction-1
 
 examples/theory-left-recurs-01: build
 	cd examples/ && make theory-left-recurs-01
