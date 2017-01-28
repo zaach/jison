@@ -168,11 +168,13 @@ var Nonterminal = typal.construct({
 });
 
 var Production = typal.construct({
-    constructor: function Production(symbol, handle, id) {
+    constructor: function Production(symbol, handle, id, handle_aliases, handle_action) {
         this.symbol = symbol;
         this.handle = handle;
         this.nullable = false;
         this.id = id;
+        this.aliases = handle_aliases;
+        this.action = handle_action;
         this.first = [];
         this.follows = [];
         this.precedence = 0;
@@ -351,6 +353,16 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.parseParams = grammar.parseParams;
     this.yy = {}; // accessed as yy free variable in the parser/lexer actions
 
+    // propagate %parse-params into the lexer!
+    if (grammar.lex) {
+        if (!grammar.lex.options) {
+            grammar.lex.options = {};
+        }
+        if (this.parseParams) {
+            grammar.lex.options.parseParams = this.parseParams;
+        }
+    }
+
     // calculate the input path; if none is specified, it's the present working directory
     var path = require('path');
     var inpath = options.file || options.outfile || './dummy';
@@ -518,6 +530,9 @@ generator.processGrammar = function processGrammarDef(grammar) {
 
     // detect unused productions and flag them
     this.signalUnusedProductions();
+
+    // build production action code chunks (originally done in `buildProductions` as a side-effect)
+    this.buildProductionActions();
 };
 
 generator.augmentGrammar = function augmentGrammar(grammar) {
@@ -615,7 +630,7 @@ generator.signalUnusedProductions = function () {
     traverseGrammar(nonterminals['$accept' /* this.startSymbol */ ]);
 
     // now any production which is not yet marked is *unused*:
-    for (var sym in mark) {
+    for (sym in mark) {
         nt = nonterminals[sym];
         assert(nt);
         var prods = nt.productions;
@@ -707,15 +722,7 @@ function reindentCodeBlock(action, indent_level) {
 
 generator.buildProductions = function buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, descriptions) {
     var self = this;
-    var actions = [
-      '/* this == yyval */',
-      'var yy = this.yy;',              // the JS engine itself can go and remove this statement when `yy` turns out to be unused in any action code!
-      preprocessActionCode(this.actionInclude || ''),
-      'switch (yystate) {'
-    ];
-    var actionGroups = {};          // used to combine identical actions into single instances: no use duplicating action code needlessly
-    var actionGroupValue = {};      // stores the unaltered, expanded, user-defined action code for each action group.
-    var prods, symbol;
+    var prods, symbol, symId;
     var productions_ = [];
     var symbols_ = {};
     var descriptions_ = {};
@@ -740,7 +747,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     if (predefined_symbols) {
         for (symbol in predefined_symbols) {
-            var symId = predefined_symbols[symbol];
+            symId = predefined_symbols[symbol];
             if (symId === true) {
                 // add symbol to queue which must be assigned a value by JISON; after all the other predefined symbols have been processed.
                 continue;
@@ -763,7 +770,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         // but only when maximum table compression isn't demanded:
         usedSymbolIdsLowIndex = ((self.options.compressTables | 0) < 2 ? 32 : 3);
         for (symbol in predefined_symbols) {
-            var symId = predefined_symbols[symbol];
+            symId = predefined_symbols[symbol];
             addSymbol(symbol);
         }
 
@@ -783,198 +790,6 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
 
     var hasErrorRecovery = false; // has error recovery
-
-    // Preprocess the action code block before we perform any `$n`, `@n` ,`\`n` or `#n` expansions:
-    // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
-    // contain `$`, `@`, `\`` or `#` prefixed bits which might look like references but aren't!)
-    //
-    // Also do NOT replace any $x, @x, \`x or #x macros inside any strings!
-    //
-    // Note:
-    // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
-    function preprocessActionCode(s) {
-        function replace_markers(cmt) {
-            cmt = cmt
-            .replace(/#/g, '\x01\x01')
-            .replace(/\$/g, '\x01\x02')
-            .replace(/@/g, '\x01\x03')
-            .replace(/\/\*/g, '\x01\x05')
-            .replace(/\/\//g, '\x01\x06')
-            .replace(/\'/g, '\x01\x07')
-            .replace(/\"/g, '\x01\x08')
-            .replace(/`/g, '\x01\x09')
-            // and also whiteout any other macros we're about to expand in there:
-            .replace(/\bYYABORT\b/g, '\x01\x14')
-            .replace(/\bYYACCEPT\b/g, '\x01\x15')
-            .replace(/\byyvstack\b/g, '\x01\x16')
-            .replace(/\byylstack\b/g, '\x01\x17')
-            .replace(/\byyerror\b/g, '\x01\x18')
-            .replace(/\byyerrok\b/g, '\x01\x19')
-            .replace(/\byyclearin\b/g, '\x01\x1A')
-            .replace(/\byysp\b/g, '\x01\x1B');
-
-            return cmt;
-        }
-
-        s = s
-        // do not trim any NEWLINES in the action block:
-        .replace(/^\s+/, '')
-        .replace(/\s+$/, '')
-        // unify CR/LF combo's:
-        .replace(/\r\n|\r/g, '\n')
-        // replace any '$', '@' and '#' in any C++-style comment line to prevent them from being expanded as if they were part of the action code proper:
-        .replace(/^\s*\/\/.+$/mg, function (_) {
-            return replace_markers(_);
-        })
-        // also process any //-comments trailing a line of code:
-        // (we need to ensure these are real and not a bit of string,
-        // which leaves those comments that are very hard to correctly
-        // recognize with a simple regex, e.g. '// this isn't a #666 location ref!':
-        // we accept that we don't actually *parse* the action block and let these
-        // slip through... :-( )
-        //
-        // WARNING: without that `\n` inside the regex `[...]` set, the set *will*
-        // match a NEWLINE and thus *possibly* gobble TWO lines for the price of ONE,
-        // when the first line is an *empty* comment line, i.e. nothing trailing
-        // the `//` in there and thus the `[^'"]` regex matching the terminating NL *before*
-        // the `$` in the regex can get at it. Cave canem therefor!       |8-(
-        .replace(/\/\/[^'"\n]+$/mg, function (_) {
-            return replace_markers(_);
-        })
-        // now MARK all the not-too-tricky-to-recognize /*...*/ comment blocks and process those!
-        // (Here again we accept that we don't actually *parse* the action code and
-        // permit to let some of these slip, i.e. comment blocks which trail
-        // a line of code and contain string delimiter(s). :-( )
-        .replace(/^([^'"\n]*?)\/\*/mg, '$1\x01\x04')                            // comment starts the line, guaranteed not to be inside a string
-        .replace(/\/\*([^'"\n]*)$/mg, '\x01\x04$1')                             // comment does not contain any string sentinel in its first line
-        .replace(/\/\*([^\/]*?\*\/[^'"\n]*)$/mg, '\x01\x04$1')                  // comment end marker near end of line and since the end is definitely not inside a string, there's bound to be comment start as well
-        // and find their END marker: first '*/' found wins!
-        // (The `[\s\S]` regex expression is a hack to ensure NEWLINES are matched
-        // by that set as well, i.e. this way we can easily cross line boundaries
-        // while searching for he end of the multiline comment we're trying to
-        // dig out by regex matching. Also note that we employ non-aggressive
-        // matching to ensure the regex matcher will find the FIRST occurrence of
-        // `*/` and mark that as the end of the regex match!)
-        .replace(/\x01\x04[\s\S]*?\*\//g, function (_) {
-            return replace_markers(_);
-        })
-        // Now that we have processed all comments in the code, it's time
-        // to tackle the strings in the code: any strings must be kept intact
-        // as well. Regrettably, there's regexes which may carry quotes,
-        // e.g. `/'/`, and escapes of quotes inside strings, e.g. `'\''`,
-        // which this a non-trivial task. This is when we reconsider whether
-        // we should run this stuff through Esprima and deal with that AST
-        // verbosity instead...? For now, we accept that regexes can screw
-        // us up, but we can handle strings of any kind, by first taking
-        // out all explicit `\\` non-escaping characters:
-        .replace(/\\\\/g, '\x01\x10')
-        // and then we take out all escaped quotes:
-        .replace(/\\\'/g, '\x01\x11')
-        .replace(/\\\"/g, '\x01\x12')
-        // and to top it off, we also take out any more-or-less basic regexes:
-        .replace(/\\\//g, '\x01\x13')
-
-        // WARNING: Without that prefix check this would also catch
-        // `6/7 + $$ + 8/9` as if `/7 + $$ + 8/` would be a regex   :-(
-        // but we need this one to ensure any quotes hiding inside
-        // any regex in there are caught and marked, e.g. `/'/g`.
-        // Besides, this regex prefix is constructed to it preventing
-        // the regex matching a `//....` comment line either!
-        .replace(/[^_a-zA-Z0-9\$\)\/][\s\n\r]*\/[^\n\/\*][^\n\/]*\//g, function (_) {
-            return replace_markers(_);
-        });
-
-        // ... which leaves us with plain strings of both persuasions to cover
-        // next: we MUST do both at the same time, though or we'll be caught
-        // with our pants down in constructs like
-        // `'"' + $$ + '"'` vs. `"'" + $$ + "'"`
-
-        var dqpos, sqpos, ccmtpos, cppcmtpos, first = -1;
-        for (var c = 0;; c++) {
-            first++;
-            dqpos = s.indexOf('"', first);
-            sqpos = s.indexOf("'", first);
-            // also look for remaining comments which contain quotes of any kind,
-            // as those will not have been caught by the previous global regexes:
-            ccmtpos = s.indexOf('/*', first);
-            cppcmtpos = s.indexOf('//', first);
-            first = s.length;
-            first = Math.min((dqpos >= 0 ? dqpos : first), (sqpos >= 0 ? sqpos : first), (ccmtpos >= 0 ? ccmtpos : first), (cppcmtpos >= 0 ? cppcmtpos : first));
-            // now it matters which one came up first:
-            if (dqpos === first) {
-                s = s
-                .replace(/"[^"\n]*"/, function (_) {
-                    return replace_markers(_);
-                });
-            } else if (sqpos === first) {
-                s = s
-                .replace(/'[^'\n]*'/, function (_) {
-                    return replace_markers(_);
-                });
-            } else if (ccmtpos === first) {
-                s = s
-                .replace(/\/\*[\s\S]*?\*\//, function (_) {
-                    return replace_markers(_);
-                });
-            } else if (cppcmtpos === first) {
-                s = s
-                .replace(/\/\/[^\n]*$/m, function (_) {
-                    return replace_markers(_);
-                });
-            } else {
-                break;
-            }
-        }
-        // Presto!
-        return s;
-    }
-
-    // Postprocess the action code block after we perform any `$n`, `@n` or `#n` expansions:
-    // revert the preprocessing!
-    function postprocessActionCode(s) {
-        s = s
-        // multiline comment start markers:
-        .replace(/\x01\x04/g, '/*')
-        .replace(/\x01\x05/g, '/*')
-        .replace(/\x01\x06/g, '//')
-        // revert markers:
-        .replace(/\x01\x01/g, '#')
-        .replace(/\x01\x02/g, '$')
-        .replace(/\x01\x03/g, '@')
-        // and revert the string and regex markers:
-        .replace(/\x01\x07/g, '\'')
-        .replace(/\x01\x08/g, '\"')
-        .replace(/\x01\x09/g, '`')
-        .replace(/\x01\x10/g, '\\\\')
-        .replace(/\x01\x11/g, '\\\'')
-        .replace(/\x01\x12/g, '\\\"')
-        .replace(/\x01\x13/g, '\\\/')
-        .replace(/\x01\x14/g, 'YYABORT')
-        .replace(/\x01\x15/g, 'YYACCEPT')
-        .replace(/\x01\x16/g, 'yyvstack')
-        .replace(/\x01\x17/g, 'yylstack')
-        .replace(/\x01\x18/g, 'yyerror')
-        .replace(/\x01\x19/g, 'yyerrok')
-        .replace(/\x01\x1A/g, 'yyclearin')
-        .replace(/\x01\x1B/g, 'yysp');
-
-        // And a final, minimal, fixup for the semicolon-lovers -- like me! ;-)
-        // 
-        // Make sure the last statement is properly semicolon-terminated 99.9% of the time:
-        s = s
-        .replace(/[\s\r\n]+$/, '')          // trim trailing whitespace and empty lines
-        .replace(/([^\;}])$/, '$1;');       // append a semicolon to the last statement if it doesn't end with one (or a closing brace, e.g. a function definition)
-
-        return s;
-    }
-
-    // Strip off any insignificant whitespace from the user code to ensure that
-    // otherwise identical actions are indeed matched up into a single actionGroup:
-    function mkHashIndex(s) {
-        return s.trim()
-        .replace(/\s+$/mg, '')          // strip any trailing whitespace for each line of action code
-        .replace(/^\s+/mg, '');         // ditto for leading whitespace for each line: we don't care about more or less clean indenting practices in the user code
-    }
 
     // Produce the next available unique symbolID:
     function getNextSymbolId() {
@@ -1011,10 +826,13 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return symbols_[s] || false;
     }
 
+    // `this` is options object with `maxTokenLength` option to guide us which literal tokens we want to process:
     function collectLiteralTokensInProduction(handle) {
         var r, rhs, i, sym;
 
-        if (devDebug) Jison.print('\ncollectLiteralTokensInProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\ncollectLiteralTokensInProduction: ', symbol, ':', JSON.stringify(handle, null, 2), ' @ options: ', this);
+
+        var maxlen = this.maxTokenLength || Infinity;
 
         if (handle.constructor === Array) {
             var rhs_i;
@@ -1030,8 +848,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
                     sym = sym.substr(0, sym.length - rhs_i[0].length);
                 }
 
-                // assign the Unicode codepoint index to single-character *terminal* symbols?
-                if (!bnf[sym] && sym.length === 1) {
+                if (!bnf[sym] && sym.length <= maxlen) {
                     addSymbol(sym);
                 }
             }
@@ -1041,8 +858,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             rhs = splitStringIntoSymbols(handle);
             for (i = 0; i < rhs.length; i++) {
                 sym = rhs[i];
-                // assign the Unicode codepoint index to single-character *terminal* symbols?
-                if (!bnf[sym] && sym.length === 1) {
+                if (!bnf[sym] && sym.length <= maxlen) {
                     addSymbol(sym);
                 }
             }
@@ -1053,11 +869,11 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     // before all others: this way these tokens have the maximum chance to get assigned their ASCII value as symbol ID,
     // which helps debugging/diagnosis of generated grammars.
     // (This is why previously we had set `usedSymbolIdsLowIndex` to 127 instead of 3!)
+    
+    var prodsLUT = {};
     for (symbol in bnf) {
         if (!bnf.hasOwnProperty(symbol)) continue;
 
-        // do not add nonterminals to the symbol table yet!
-        //addSymbol(symbol);
         if (typeof bnf[symbol] === 'string') {
             prods = bnf[symbol].split(/\s*\|\s*/g);
         } else {
@@ -1065,26 +881,47 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         }
         if (devDebug) Jison.print('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
 
-        prods.forEach(collectLiteralTokensInProduction);
+        prodsLUT[symbol] = prods;
+    }
+
+    // First we collect all single-character literal tokens:
+    for (symbol in prodsLUT) {
+        if (!prodsLUT.hasOwnProperty(symbol)) continue;
+
+        prods = prodsLUT[symbol];
+        prods.forEach(collectLiteralTokensInProduction, {
+            maxTokenLength: 1
+        });
+    }
+    // Next we collect all other literal tokens:
+    for (symbol in prodsLUT) {
+        if (!prodsLUT.hasOwnProperty(symbol)) continue;
+
+        prods = prodsLUT[symbol];
+        prods.forEach(collectLiteralTokensInProduction, {
+            maxTokenLength: Infinity
+        });
     }
 
     // and now go and process the entire grammar:
+    // first collect all nonterminals in a symbol table, then build the productions
+    // for each of those: nonterminals should all have IDs assigned before they
+    // should be processed as part of a *production* rule, where these MAY be
+    // referenced:
     for (symbol in bnf) {
         if (!bnf.hasOwnProperty(symbol)) continue;
 
         addSymbol(symbol);
         nonterminals[symbol] = new Nonterminal(symbol);
-
-        if (typeof bnf[symbol] === 'string') {
-            prods = bnf[symbol].split(/\s*\|\s*/g);
-        } else {
-            prods = bnf[symbol].slice(0);
-        }
-
-        prods.forEach(buildProduction);
     }
-    for (var hash in actionGroups) {
-        actions.push([].concat.apply([], actionGroups[hash]).join('') + actionGroupValue[hash] + '\n    break;\n');
+
+    // now that we have collected all nonterminals in our symbol table, it's finally
+    // time to process the productions:
+    for (symbol in prodsLUT) {
+        if (!prodsLUT.hasOwnProperty(symbol)) continue;
+
+        prods = prodsLUT[symbol];
+        prods.forEach(buildProduction);
     }
 
     var sym,
@@ -1110,6 +947,404 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
 
     this.productions_ = productions_;
     assert(this.productions === productions);
+
+
+    // Cope with literal symbols in the string, including *significant whitespace* tokens
+    // as used in a rule like this: `rule: A ' ' B;` which should produce 3 tokens for the
+    // rhs: ['A', ' ', 'B']
+    function splitStringIntoSymbols(rhs) {
+        // when there's no literal tokens in there, we can fast-track this baby:
+        rhs = rhs.trim();
+        var pos1 = rhs.indexOf("'");
+        var pos2 = rhs.indexOf('"');
+        if (pos1 < 0 && pos2 < 0) {
+            return rhs.split(' ');
+        }
+        // else:
+        //
+        // rhs has at least one literal: we will need to parse the rhs into tokens
+        // with a little more effort now.
+        var tokens = [];
+        while (pos1 >= 0 || pos2 >= 0) {
+            var pos = pos1;
+            var marker = "'";
+            if (pos < 0) {
+                assert(pos2 >= 0);
+                pos = pos2;
+                marker = '"';
+            } else if (pos >= 0 && pos2 >= 0 && pos2 < pos) {
+                pos = pos2;
+                marker = '"';
+            }
+            var ls = rhs.substr(0, pos).trim();
+            if (ls.length > 0) {
+                tokens.push.apply(tokens, ls.split(' '));
+            }
+            rhs = rhs.substr(pos + 1);
+            // now find the matching end marker.
+            // 
+            // Edge case: token MAY include the ESCAPED MARKER... or other escapes!
+            // Hence we need to skip over ALL escapes inside the token!
+            var pos3 = rhs.indexOf('\\');
+            pos = rhs.indexOf(marker);
+            ls = '';
+            while (pos3 >= 0 && pos3 < pos) {
+                ls += rhs.substr(0, pos3 + 2);  // chop off entire escape (2 chars) and keep as part of next token
+                rhs = rhs.substr(pos3 + 2);
+                pos3 = rhs.indexOf('\\');
+                pos = rhs.indexOf(marker);
+            }
+            if (pos < 0) {
+                throw new Error('internal error parsing literal token(s) in grammar rule');
+            }
+            ls += rhs.substr(0, pos);
+            // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
+            rhs = rhs.substr(pos + 1);
+            var alias = rhs.match(new XRegExp('^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]'));
+            if (alias) {
+                ls += alias[0];
+                rhs = rhs.substr(alias[0].length);
+            }
+            tokens.push(ls);
+
+            rhs = rhs.trim();
+
+            pos1 = rhs.indexOf("'");
+            pos2 = rhs.indexOf('"');
+        }
+        // Now, outside the loop, we're left with the remainder of the rhs, which does NOT
+        // contain any literal tokens.
+        if (rhs.length > 0) {
+            tokens.push.apply(tokens, rhs.split(' '));
+        }
+        return tokens;
+    }
+
+    function buildProduction(handle) {
+        var r, rhs, i,
+            precedence_override;
+            aliased = [],
+            action = null;
+
+        if (devDebug) Jison.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+
+        if (handle.constructor === Array) {
+            var rhs_i;
+
+            rhs = (typeof handle[0] === 'string') ?
+                      splitStringIntoSymbols(handle[0]) :
+                      handle[0].slice(0);
+
+            for (i = 0; i < rhs.length; i++) {
+                // check for aliased names, e.g., id[alias] and strip them
+                rhs_i = rhs[i].match(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$'));
+                if (rhs_i) {
+                    rhs[i] = rhs[i].substr(0, rhs[i].length - rhs_i[0].length);
+                    rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
+                    aliased[i] = rhs_i;
+                } else {
+                    aliased[i] = rhs[i];
+                }
+
+                if (rhs[i] === 'error') {
+                    hasErrorRecovery = true;
+                }
+                assert(bnf[rhs[i]] ? symbols_[rhs[i]] : true, 'all nonterminals must already exist in the symbol table');
+                assert(rhs[i] ? symbols_[rhs[i]] : true, 'all symbols (terminals and nonterminals) must already exist in the symbol table');
+                //addSymbol(rhs[i]);
+            }
+
+            assert(handle.length === 3 ? typeof handle[1] === 'string' : true);
+            if (typeof handle[1] === 'string') {
+                // semantic action specified
+                action = handle[1];
+
+                // precedence specified also
+                if (handle[2] && operators[handle[2].prec]) {
+                    precedence_override = {
+                        symbol: handle[2].prec,
+                        spec: operators[handle[2].prec]
+                    };
+                }
+            } else {
+                // only precedence specified
+                if (operators[handle[1].prec]) {
+                    precedence_override = {
+                        symbol: handle[1].prec,
+                        spec: operators[handle[1].prec]
+                    };
+                }
+            }
+        } else {
+            // no action -> don't care about aliases; strip them.
+            handle = handle.replace(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]', 'g'), '');
+            rhs = splitStringIntoSymbols(handle);
+            for (i = 0; i < rhs.length; i++) {
+                if (rhs[i] === 'error') {
+                    hasErrorRecovery = true;
+                }
+                assert(bnf[rhs[i]] ? symbols_[rhs[i]] : true, 'all nonterminals must already exist in the symbol table');
+                assert(rhs[i] ? symbols_[rhs[i]] : true, 'all symbols (terminals and nonterminals) must already exist in the symbol table');
+                //addSymbol(rhs[i]);
+            }
+        }
+
+        r = new Production(symbol, rhs, productions.length + 1, aliased, action);
+
+        // set precedence
+        assert(r.precedence === 0);
+        if (precedence_override) {
+            r.precedence = precedence_override.spec.precedence;
+        }
+        else {
+            var prec_symbols = [];
+            var winning_symbol;
+
+            for (i = r.handle.length - 1; i >= 0; i--) {
+                if (!(r.handle[i] in nonterminals) && r.handle[i] in operators) {
+                    var old_prec = r.precedence;
+                    var new_prec = operators[r.handle[i]].precedence;
+                    if (old_prec !== 0 && old_prec !== new_prec) {
+                        prec_symbols.push(r.handle[i]);
+                        // Jison.print('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
+                        if (new_prec < old_prec) {
+                            winning_symbol = r.handle[i];
+                        }
+                        else {
+                            // keep previously set precedence:
+                            new_prec = old_prec;
+                        }
+                    } else if (old_prec === 0) {
+                        prec_symbols.push(r.handle[i]);
+                        winning_symbol = r.handle[i];
+                        // Jison.print('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
+                    }
+                    r.precedence = new_prec;
+                }
+            }
+
+            if (prec_symbols.length > 1) {
+                if (self.DEBUG || 1) {
+                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precedences: {' + prec_symbols.join(', ') + '}');
+                }
+            }
+        }
+
+        productions.push(r);
+        productions_.push([symbols_[r.symbol], r.handle[0] === '' ? 0 : r.handle.length]);
+        nonterminals[symbol].productions.push(r);
+    }
+};
+
+
+generator.buildProductionActions = function buildProductionActions() {
+/*
+    this.terminals = terms;
+    this.terminals_ = terms_;
+    this.symbols_ = symbols_;
+    this.descriptions_ = descriptions_;
+
+    this.productions_ = productions_;
+    assert(this.productions === productions);
+*/
+    var productions = this.productions,
+        nonterminals = this.nonterminals,
+        symbols = this.symbols,
+        operators = this.operators,
+        self = this;
+
+    var actions = [
+      '/* this == yyval */',
+      'var yy = this.yy;',              // the JS engine itself can go and remove this statement when `yy` turns out to be unused in any action code!
+      preprocessActionCode(this.actionInclude || ''),
+      'switch (yystate) {'
+    ];
+    var actionGroups = {};          // used to combine identical actions into single instances: no use duplicating action code needlessly
+    var actionGroupValue = {};      // stores the unaltered, expanded, user-defined action code for each action group.
+    var symbol;
+
+    // Preprocess the action code block before we perform any `$n`, `@n` ,`##n` or `#n` expansions:
+    // Any comment blocks in there should be kept intact (and not cause trouble either as those comments MAY
+    // contain `$`, `@`, `##` or `#` prefixed bits which might look like references but aren't!)
+    //
+    // Also do NOT replace any $x, @x, ##x or #x macros inside any strings!
+    //
+    // Note:
+    // We also replace '/*' comment markers which may (or may not) be lurking inside other comments.
+    function preprocessActionCode(s) {
+        function replace_markers(cmt) {
+            cmt = cmt
+            .replace(/##/g, '\x01\x09')
+            .replace(/#/g, '\x01\x01')
+            .replace(/\$/g, '\x01\x02')
+            .replace(/@/g, '\x01\x03')
+            .replace(/\/\*/g, '\x01\x05')
+            .replace(/\/\//g, '\x01\x06')
+            .replace(/\'/g, '\x01\x07')
+            .replace(/\"/g, '\x01\x08')
+            // and also whiteout any other macros we're about to expand in there:
+            .replace(/\bYYABORT\b/g, '\x01\x14')
+            .replace(/\bYYACCEPT\b/g, '\x01\x15')
+            .replace(/\byyvstack\b/g, '\x01\x16')
+            .replace(/\byylstack\b/g, '\x01\x17')
+            .replace(/\byyerror\b/g, '\x01\x18')
+            .replace(/\byyerrok\b/g, '\x01\x19')
+            .replace(/\byyclearin\b/g, '\x01\x1A')
+            .replace(/\byysp\b/g, '\x01\x1B');
+
+            return cmt;
+        }
+
+        s = s
+        // do not trim any NEWLINES in the action block:
+        .replace(/^\s+/, '')
+        .replace(/\s+$/, '')
+        // unify CR/LF combo's:
+        .replace(/\r\n|\r/g, '\n')
+        // replace any '$', '@' and '#' in any C++-style comment line to prevent them from being expanded as if they were part of the action code proper:
+        .replace(/^\s*\/\/.+$/mg, replace_markers)
+        // also process any //-comments trailing a line of code:
+        // (we need to ensure these are real and not a bit of string,
+        // which leaves those comments that are very hard to correctly
+        // recognize with a simple regex, e.g. '// this isn't a #666 location ref!':
+        // we accept that we don't actually *parse* the action block and let these
+        // slip through... :-( )
+        //
+        // WARNING: without that `\n` inside the regex `[...]` set, the set *will*
+        // match a NEWLINE and thus *possibly* gobble TWO lines for the price of ONE,
+        // when the first line is an *empty* comment line, i.e. nothing trailing
+        // the `//` in there and thus the `[^'"]` regex matching the terminating NL *before*
+        // the `$` in the regex can get at it. Cave canem therefor!       |8-(
+        .replace(/\/\/[^'"\n]+$/mg, replace_markers)
+        // now MARK all the not-too-tricky-to-recognize /*...*/ comment blocks and process those!
+        // (Here again we accept that we don't actually *parse* the action code and
+        // permit to let some of these slip, i.e. comment blocks which trail
+        // a line of code and contain string delimiter(s). :-( )
+        .replace(/^([^'"\n]*?)\/\*/mg, '$1\x01\x04')                            // comment starts the line, guaranteed not to be inside a string
+        .replace(/\/\*([^'"\n]*)$/mg, '\x01\x04$1')                             // comment does not contain any string sentinel in its first line
+        .replace(/\/\*([^\/]*?\*\/[^'"\n]*)$/mg, '\x01\x04$1')                  // comment end marker near end of line and since the end is definitely not inside a string, there's bound to be comment start as well
+        // and find their END marker: first '*/' found wins!
+        // (The `[\s\S]` regex expression is a hack to ensure NEWLINES are matched
+        // by that set as well, i.e. this way we can easily cross line boundaries
+        // while searching for he end of the multiline comment we're trying to
+        // dig out by regex matching. Also note that we employ non-aggressive
+        // matching to ensure the regex matcher will find the FIRST occurrence of
+        // `*/` and mark that as the end of the regex match!)
+        .replace(/\x01\x04[\s\S]*?\*\//g, replace_markers)
+        // Now that we have processed all comments in the code, it's time
+        // to tackle the strings in the code: any strings must be kept intact
+        // as well. Regrettably, there's regexes which may carry quotes,
+        // e.g. `/'/`, and escapes of quotes inside strings, e.g. `'\''`,
+        // which this a non-trivial task. This is when we reconsider whether
+        // we should run this stuff through Esprima and deal with that AST
+        // verbosity instead...? For now, we accept that regexes can screw
+        // us up, but we can handle strings of any kind, by first taking
+        // out all explicit `\\` non-escaping characters:
+        .replace(/\\\\/g, '\x01\x10')
+        // and then we take out all escaped quotes:
+        .replace(/\\\'/g, '\x01\x11')
+        .replace(/\\\"/g, '\x01\x12')
+        // and to top it off, we also take out any more-or-less basic regexes:
+        .replace(/\\\//g, '\x01\x13')
+
+        // WARNING: Without that prefix check this would also catch
+        // `6/7 + $$ + 8/9` as if `/7 + $$ + 8/` would be a regex   :-(
+        // but we need this one to ensure any quotes hiding inside
+        // any regex in there are caught and marked, e.g. `/'/g`.
+        // Besides, this regex prefix is constructed to it preventing
+        // the regex matching a `//....` comment line either!
+        .replace(/[^_a-zA-Z0-9\$\)\/][\s\n\r]*\/[^\n\/\*][^\n\/]*\//g, replace_markers);
+
+        // ... which leaves us with plain strings of both persuasions to cover
+        // next: we MUST do both at the same time, though or we'll be caught
+        // with our pants down in constructs like
+        // `'"' + $$ + '"'` vs. `"'" + $$ + "'"`
+
+        var dqpos, sqpos, ccmtpos, cppcmtpos, first = -1;
+        for (var c = 0;; c++) {
+            first++;
+            dqpos = s.indexOf('"', first);
+            sqpos = s.indexOf("'", first);
+            // also look for remaining comments which contain quotes of any kind,
+            // as those will not have been caught by the previous global regexes:
+            ccmtpos = s.indexOf('/*', first);
+            cppcmtpos = s.indexOf('//', first);
+            first = s.length;
+            first = Math.min((dqpos >= 0 ? dqpos : first), (sqpos >= 0 ? sqpos : first), (ccmtpos >= 0 ? ccmtpos : first), (cppcmtpos >= 0 ? cppcmtpos : first));
+            // now it matters which one came up first:
+            if (dqpos === first) {
+                s = s
+                .replace(/"[^"\n]*"/, replace_markers);
+            } else if (sqpos === first) {
+                s = s
+                .replace(/'[^'\n]*'/, replace_markers);
+            } else if (ccmtpos === first) {
+                s = s
+                .replace(/\/\*[\s\S]*?\*\//, replace_markers);
+            } else if (cppcmtpos === first) {
+                s = s
+                .replace(/\/\/[^\n]*$/m, replace_markers);
+            } else {
+                break;
+            }
+        }
+        // Presto!
+        return s;
+    }
+
+    // Postprocess the action code block after we perform any `$n`, `@n`, `##n` or `#n` expansions:
+    // revert the preprocessing!
+    function postprocessActionCode(s) {
+        s = s
+        // multiline comment start markers:
+        .replace(/\x01\x04/g, '/*')
+        .replace(/\x01\x05/g, '/*')
+        .replace(/\x01\x06/g, '//')
+        // revert markers:
+        .replace(/\x01\x01/g, '#')
+        .replace(/\x01\x02/g, '$')
+        .replace(/\x01\x03/g, '@')
+        // and revert the string and regex markers:
+        .replace(/\x01\x07/g, '\'')
+        .replace(/\x01\x08/g, '\"')
+        .replace(/\x01\x09/g, '##')
+        .replace(/\x01\x10/g, '\\\\')
+        .replace(/\x01\x11/g, '\\\'')
+        .replace(/\x01\x12/g, '\\\"')
+        .replace(/\x01\x13/g, '\\\/')
+        .replace(/\x01\x14/g, 'YYABORT')
+        .replace(/\x01\x15/g, 'YYACCEPT')
+        .replace(/\x01\x16/g, 'yyvstack')
+        .replace(/\x01\x17/g, 'yylstack')
+        .replace(/\x01\x18/g, 'yyerror')
+        .replace(/\x01\x19/g, 'yyerrok')
+        .replace(/\x01\x1A/g, 'yyclearin')
+        .replace(/\x01\x1B/g, 'yysp');
+
+        // And a final, minimal, fixup for the semicolon-lovers -- like me! ;-)
+        // 
+        // Make sure the last statement is properly semicolon-terminated 99.9% of the time:
+        s = s
+        .replace(/[\s\r\n]+$/, '')          // trim trailing whitespace and empty lines
+        .replace(/([^\;}])$/, '$1;');       // append a semicolon to the last statement if it doesn't end with one (or a closing brace, e.g. a function definition)
+
+        return s;
+    }
+
+    // Strip off any insignificant whitespace from the user code to ensure that
+    // otherwise identical actions are indeed matched up into a single actionGroup:
+    function mkHashIndex(s) {
+        return s.trim()
+        .replace(/\s+$/mg, '')          // strip any trailing whitespace for each line of action code
+        .replace(/^\s+/mg, '');         // ditto for leading whitespace for each line: we don't care about more or less clean indenting practices in the user code
+    }
+
+    // and now go and process the entire grammar:
+    productions.forEach(buildProductionAction);
+    
+    for (var hash in actionGroups) {
+        actions.push([].concat.apply([], actionGroups[hash]).join('') + actionGroupValue[hash] + '\n    break;\n');
+    }
 
     actions.push('}');
 
@@ -1231,77 +1466,6 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return !!(found && found.length > threshold);
     }
 
-    // Cope with literal symbols in the string, including *significant whitespace* tokens
-    // as used in a rule like this: `rule: A ' ' B;` which should produce 3 tokens for the
-    // rhs: ['A', ' ', 'B']
-    function splitStringIntoSymbols(rhs) {
-        // when there's no literal tokens in there, we can fast-track this baby:
-        rhs = rhs.trim();
-        var pos1 = rhs.indexOf("'");
-        var pos2 = rhs.indexOf('"');
-        if (pos1 < 0 && pos2 < 0) {
-            return rhs.split(' ');
-        }
-        // else:
-        //
-        // rhs has at least one literal: we will need to parse the rhs into tokens
-        // with a little more effort now.
-        var tokens = [];
-        while (pos1 >= 0 || pos2 >= 0) {
-            var pos = pos1;
-            var marker = "'";
-            if (pos < 0) {
-                assert(pos2 >= 0);
-                pos = pos2;
-                marker = '"';
-            } else if (pos >= 0 && pos2 >= 0 && pos2 < pos) {
-                pos = pos2;
-                marker = '"';
-            }
-            var ls = rhs.substr(0, pos).trim();
-            if (ls.length > 0) {
-                tokens.push.apply(tokens, ls.split(' '));
-            }
-            rhs = rhs.substr(pos + 1);
-            // now find the matching end marker.
-            // 
-            // Edge case: token MAY include the ESCAPED MARKER... or other escapes!
-            // Hence we need to skip over ALL escapes inside the token!
-            var pos3 = rhs.indexOf('\\');
-            pos = rhs.indexOf(marker);
-            ls = '';
-            while (pos3 >= 0 && pos3 < pos) {
-                ls += rhs.substr(0, pos3 + 2);  // chop off entire escape (2 chars) and keep as part of next token
-                rhs = rhs.substr(pos3 + 2);
-                pos3 = rhs.indexOf('\\');
-                pos = rhs.indexOf(marker);
-            }
-            if (pos < 0) {
-                throw new Error('internal error parsing literal token(s) in grammar rule');
-            }
-            ls += rhs.substr(0, pos);
-            // check for aliased literals, e.g., `'>'[gt]` and keep it and the alias together
-            rhs = rhs.substr(pos + 1);
-            var alias = rhs.match(new XRegExp('^\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]'));
-            if (alias) {
-                ls += alias[0];
-                rhs = rhs.substr(alias[0].length);
-            }
-            tokens.push(ls);
-
-            rhs = rhs.trim();
-
-            pos1 = rhs.indexOf("'");
-            pos2 = rhs.indexOf('"');
-        }
-        // Now, outside the loop, we're left with the remainder of the rhs, which does NOT
-        // contain any literal tokens.
-        if (rhs.length > 0) {
-            tokens.push.apply(tokens, rhs.split(' '));
-        }
-        return tokens;
-    }
-
     // make sure a comment does not contain any embedded '*/' end-of-comment marker
     // as that would break the generated code
     function postprocessComment(str) {
@@ -1317,9 +1481,16 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return str;
     }
 
+    function getSymbolId(s) {
+        if (s && !self.symbols_[s]) {
+            throw new Error('Your action code is trying to reference non-existing symbol "' + s + '"');
+        }
+        return self.symbols_[s] || false;
+    }
+
     function provideSymbolAsSourcecode(sym) {
         var ss = String(sym);
-        return ' /* ' + postprocessComment(ss) + ' */ ' + addSymbol(sym);
+        return ' /* ' + postprocessComment(ss) + ' */ ' + getSymbolId(sym);
     }
 
     // helper: convert index string/number to proper JS add/subtract expression
@@ -1354,258 +1525,172 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         return '';
     }
 
-    function buildProduction(handle) {
-        var r, rhs, i,
-            precedence_override;
+    function buildProductionAction(handle, index) {
+        var r, i;
 
-        if (devDebug) Jison.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\nbuildProductionAction: ', handle.symbol, ':', JSON.stringify(handle, null, 2));
 
-        if (handle.constructor === Array) {
-            var aliased = [],
+        if (handle.action) {
+            var aliased = handle.aliases,
                 rhs_i;
-            rhs = (typeof handle[0] === 'string') ?
-                      splitStringIntoSymbols(handle[0]) :
-                      handle[0].slice(0);
 
-            for (i = 0; i < rhs.length; i++) {
-                // check for aliased names, e.g., id[alias] and strip them
-                rhs_i = rhs[i].match(new XRegExp("\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]$"));
-                if (rhs_i) {
-                    rhs[i] = rhs[i].substr(0, rhs[i].length - rhs_i[0].length);
-                    rhs_i = rhs_i[0].substr(1, rhs_i[0].length - 2);
-                    aliased[i] = rhs_i;
-                } else {
-                    aliased[i] = rhs[i];
+            var rhs = handle.handle;
+            var named_token_re = new XRegExp('^[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*$');
+
+            // semantic action specified
+            var label = [
+                'case ', handle.id, ':',
+                '\n    /*! Production::    ', postprocessComment(handle.symbol), ' : '
+            ].concat(postprocessComment(rhs.map(function (sym) {
+                // check if the symbol is a literal terminal, and if it is, quote it:
+                if (sym && !self.nonterminals[sym] && !named_token_re.test(sym)) {
+                    return '"' + sym.replace(/["]/g, '\\"') + '"';
                 }
+                return sym;
+            })), ' */\n');
+            var action = preprocessActionCode(handle.action);
+            var actionHash;
+            var rule4msg = symbol + ': ' + rhs.join(' ');
 
-                if (rhs[i] === 'error') {
-                    hasErrorRecovery = true;
-                }
-                addSymbol(rhs[i]);
-            }
+            // before anything else, replace direct symbol references, e.g. #NUMBER# when there's a %token NUMBER for your grammar.
+            // This is done to prevent incorrect expansions where tokens are used in rules as RHS elements: we allow these to
+            // be referenced as both #TOKEN# and #TOKEN where the first is a literal token/symbol reference (unrelated to its use
+            // in the rule) and the latter is a reference to the token/symbol being used in the rule.
+            //
+            // Here we expand those direct token/symbol references: #TOKEN#
+            action = action
+                .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
+                    return provideSymbolAsSourcecode(sym);
+                });
 
-            assert(handle.length === 3 ? typeof handle[1] === 'string' : true);
-            if (typeof handle[1] === 'string') {
-                // semantic action specified
-                var label = [
-                    'case ', productions.length + 1, ':',
-                    '\n    /*! Production::    ', postprocessComment(symbol), ' : '
-                ].concat(postprocessComment(handle[0]), ' */\n');
-                var action = preprocessActionCode(handle[1]);
-                var actionHash;
-                var rule4msg = symbol + ': ' + rhs.join(' ');
+            // replace named semantic values ($nonterminal)
+            if (action.match(new XRegExp('(?:[$@#]|##)[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*'))) {
+                var count = {},
+                    names = {},
+                    donotalias = {};
 
-                // before anything else, replace direct symbol references, e.g. #NUMBER# when there's a %token NUMBER for your grammar.
-                // This is done to prevent incorrect expansions where tokens are used in rules as RHS elements: we allow these to
-                // be referenced as both #TOKEN# and #TOKEN where the first is a literal token/symbol reference (unrelated to its use
-                // in the rule) and the latter is a reference to the token/symbol being used in the rule.
+                // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
+                // we therefor allow access to both the original (non)terminal and the alias.
                 //
-                // Here we expand those direct token/symbol references: #TOKEN#
-                action = action
-                    .replace(/#([^#\s\r\n]+)#/g, function (_, sym) {
-                        return provideSymbolAsSourcecode(sym);
-                    });
+                // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
+                // where N is a number representing the number of this particular occurrence of the given
+                // (non)terminal.
+                //
+                // For example, given this (intentionally contrived) production:
+                //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias]
+                // all the items can be accessed as:
+                //     $1 $2 $3 $4 $5
+                //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
+                //     $elem $elem2 $another_elem $elem3 $another_elem2
+                //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
+                //     $alias $another_alias $alias2 $alias3 $another_alias2
+                // where each line above is equivalent to the top-most line. Note the numbers postfixed to
+                // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
+                // the postfix numbering is independent.
+                //
+                // WARNING: this feature is disabled for a term when there already exists an
+                //          (human-defined) *alias* for this term *or* when the numbered auto-alias already
+                //          exists because the user has used it as an alias for another term, e.g.
+                //
+                //             e: WORD[e1] '=' e '+' e;
+                //
+                //          would *not* produce the `e1` and `e2` aliases, as `e1` is already defined
+                //          as an explicit alias: adding auto-alias `e1` would then break the system,
+                //          while `e2` would be ambiguous from the human perspective as he *might* then
+                //          expect `e2` and `e3`.
+                var addName = function addName(s) {
+                    if (donotalias[s])
+                        return;
 
-                // replace named semantic values ($nonterminal)
-                if (action.match(new XRegExp('[$@#`][\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*'))) {
-                    var count = {},
-                        names = {},
-                        donotalias = {};
-
-                    // When the rule is fitted with aliases it doesn't mean that the action code MUST use those:
-                    // we therefor allow access to both the original (non)terminal and the alias.
-                    //
-                    // Also note that each (non)terminal can also be uniquely addressed by [$@]<nonterminal><N>
-                    // where N is a number representing the number of this particular occurrence of the given
-                    // (non)terminal.
-                    //
-                    // For example, given this (intentionally contrived) production:
-                    //     elem[alias] elem[another_alias] another_elem[alias] elem[alias] another_elem[another_alias]
-                    // all the items can be accessed as:
-                    //     $1 $2 $3 $4 $5
-                    //     $elem1 $elem2 $another_elem1 $elem3 $another_elem2
-                    //     $elem $elem2 $another_elem $elem3 $another_elem2
-                    //     $alias1 $another_alias1 $alias2 $alias3 $another_alias2
-                    //     $alias $another_alias $alias2 $alias3 $another_alias2
-                    // where each line above is equivalent to the top-most line. Note the numbers postfixed to
-                    // both (non)terminal identifiers and aliases alike and also note alias2 === another_elem1:
-                    // the postfix numbering is independent.
-                    //
-                    // WARNING: this feature is disabled for a term when there already exists an
-                    //          (human-defined) *alias* for this term *or* when the numbered auto-alias already
-                    //          exists because the user has used it as an alias for another term, e.g.
-                    //
-                    //             e: WORD[e1] '=' e '+' e;
-                    //
-                    //          would *not* produce the `e1` and `e2` aliases, as `e1` is already defined
-                    //          as an explicit alias: adding auto-alias `e1` would then break the system,
-                    //          while `e2` would be ambiguous from the human perspective as he *might* then
-                    //          expect `e2` and `e3`.
-                    var addName = function addName(s) {
-                        if (donotalias[s])
-                            return;
-
-                        if (names[s]) {
-                            names[s + (++count[s])] = i + 1;
-                        } else {
-                            names[s] = i + 1;
-                            names[s + '1'] = i + 1;
-                            count[s] = 1;
-                        }
-                    };
-
-                    // register the alias/rule name when the real one ends with a number, e.g. `rule5` as
-                    // *blocking* the auto-aliasing process for the term of the same base, e.g. `rule`.
-                    // This will catch the `WORD[e1]` example above too, via `e1` --> `donotalias['e']`
-                    var markBasename = function markBasename(s) {
-                        if (/[0-9]$/.test(s)) {
-                            s = s.replace(/[0-9]+$/, '');
-                            donotalias[s] = true;
-                        }
-                    };
-
-                    for (i = 0; i < rhs.length; i++) {
-                        // mark both regular and aliased names, e.g., `id[alias1]` and `id1`
-                        rhs_i = aliased[i];
-                        markBasename(rhs_i);
-                        if (rhs_i !== rhs[i]) {
-                            markBasename(rhs[i]);
-                        }
+                    if (names[s]) {
+                        names[s + (++count[s])] = i + 1;
+                    } else {
+                        names[s] = i + 1;
+                        names[s + '1'] = i + 1;
+                        count[s] = 1;
                     }
+                };
 
-                    for (i = 0; i < rhs.length; i++) {
-                        // check for aliased names, e.g., id[alias]
-                        rhs_i = aliased[i];
-                        addName(rhs_i);
-                        if (rhs_i !== rhs[i]) {
-                            addName(rhs[i]);
-                        }
+                // register the alias/rule name when the real one ends with a number, e.g. `rule5` as
+                // *blocking* the auto-aliasing process for the term of the same base, e.g. `rule`.
+                // This will catch the `WORD[e1]` example above too, via `e1` --> `donotalias['e']`
+                var markBasename = function markBasename(s) {
+                    if (/[0-9]$/.test(s)) {
+                        s = s.replace(/[0-9]+$/, '');
+                        donotalias[s] = true;
                     }
-                    action = action.replace(
-                        new XRegExp('([$@#`])([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)', 'g'), function (str, mrkr, pl) {
-                            return names[pl] ? mrkr + names[pl] : str;
-                        });
+                };
+
+                for (i = 0; i < rhs.length; i++) {
+                    // mark both regular and aliased names, e.g., `id[alias1]` and `id1`
+                    rhs_i = aliased[i];
+                    markBasename(rhs_i);
+                    if (rhs_i !== rhs[i]) {
+                        markBasename(rhs[i]);
+                    }
                 }
-                action = action
-                    // replace references to `$$` with `this.$`, `@$` with `this._$` and `#$` with the token ID of the current rule
-                    .replace(/\$\$/g, 'this.$')
-                    .replace(/@\$/g, 'this._$')
-                    .replace(/#\$/g, function (_) {
-                        return provideSymbolAsSourcecode(symbol);
-                    })
-                    // replace semantic value references ($n) with stack value (stack[n])
-                    .replace(/\$(-?\d+)\b/g, function (_, n) {
-                        return 'yyvstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
-                    })
-                    // same as above for location references (@n)
-                    .replace(/@(-?\d+)\b/g, function (_, n) {
-                        return 'yylstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
-                    })
-                    // same as above for token ID references (#n)
-                    .replace(/#(-?\d+)\b/g, function (_, n) {
-                        var i = parseInt(n, 10) - 1;
-                        if (!rhs[i]) {
-                            throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
-                        }
-                        return provideSymbolAsSourcecode(rhs[i]);
-                    })
-                    // replace positional value references (\`n) with stack index
-                    .replace(/`(-?\d+)\b/g, function (_, n) {
-                        return '($0' + indexToJsExpr(n, rhs.length, rule4msg) + ')';
-                    })
-                    .replace(/`\$/g, function (_) {
-                        return '$0';
-                    })
-                    .replace(/\byysp\b/g, function (_) {
-                        return '$0';
+
+                for (i = 0; i < rhs.length; i++) {
+                    // check for aliased names, e.g., id[alias]
+                    rhs_i = aliased[i];
+                    addName(rhs_i);
+                    if (rhs_i !== rhs[i]) {
+                        addName(rhs[i]);
+                    }
+                }
+                action = action.replace(
+                    new XRegExp('([$@#]|##)([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)', 'g'), function (str, mrkr, pl) {
+                        return names[pl] ? mrkr + names[pl] : str;
                     });
+            }
+            action = action
+                // replace references to `$$` with `this.$`, `@$` with `this._$` and `#$` with the token ID of the current rule
+                .replace(/\$\$/g, 'this.$')
+                .replace(/@\$/g, 'this._$')
+                .replace(/#\$/g, function (_) {
+                    return provideSymbolAsSourcecode(symbol);
+                })
+                // replace semantic value references ($n) with stack value (stack[n])
+                .replace(/\$(-?\d+)\b/g, function (_, n) {
+                    return 'yyvstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
+                })
+                // same as above for location references (@n)
+                .replace(/@(-?\d+)\b/g, function (_, n) {
+                    return 'yylstack[$0' + indexToJsExpr(n, rhs.length, rule4msg) + ']';
+                })
+                // same as above for positional value references (##n): these represent stack indexes
+                .replace(/##(-?\d+)\b/g, function (_, n) {
+                    return '($0' + indexToJsExpr(n, rhs.length, rule4msg) + ')';
+                })
+                .replace(/##\$/g, function (_) {
+                    return '$0';
+                })
+                .replace(/\byysp\b/g, function (_) {
+                    return '$0';
+                })
+                // same as above for token ID references (#n)
+                .replace(/#(-?\d+)\b/g, function (_, n) {
+                    var i = parseInt(n, 10) - 1;
+                    if (!rhs[i]) {
+                        throw new Error('invalid token location reference in action code for rule: "' + rule4msg + '" - location reference: "' + _ + '"');
+                    }
+                    return provideSymbolAsSourcecode(rhs[i]);
+                });
 
-                action = reindentCodeBlock(action, 4);
+            action = reindentCodeBlock(action, 4);
 
-                actionHash = mkHashIndex(action);
+            actionHash = mkHashIndex(action);
 
-                // Delay running the postprocess (restore) process until we've done ALL macro expansions:
-                //action = postprocessActionCode(action);
+            // Delay running the postprocess (restore) process until we've done ALL macro expansions:
+            //action = postprocessActionCode(action);
 
-                if (actionHash in actionGroups) {
-                    actionGroups[actionHash].push(label);
-                } else {
-                    actionGroups[actionHash] = [label];
-                    actionGroupValue[actionHash] = action;
-                }
-
-                // precedence specified also
-                if (handle[2] && operators[handle[2].prec]) {
-                    precedence_override = {
-                        symbol: handle[2].prec,
-                        spec: operators[handle[2].prec]
-                    };
-                }
+            if (actionHash in actionGroups) {
+                actionGroups[actionHash].push(label);
             } else {
-                // only precedence specified
-                if (operators[handle[1].prec]) {
-                    precedence_override = {
-                        symbol: handle[1].prec,
-                        spec: operators[handle[1].prec]
-                    };
-                }
-            }
-        } else {
-            // no action -> don't care about aliases; strip them.
-            handle = handle.replace(new XRegExp('\\[[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*\\]', 'g'), '');
-            rhs = splitStringIntoSymbols(handle);
-            for (i = 0; i < rhs.length; i++) {
-                if (rhs[i] === 'error') {
-                    hasErrorRecovery = true;
-                }
-                addSymbol(rhs[i]);
+                actionGroups[actionHash] = [label];
+                actionGroupValue[actionHash] = action;
             }
         }
-
-        r = new Production(symbol, rhs, productions.length + 1);
-
-        // set precedence
-        assert(r.precedence === 0);
-        if (precedence_override) {
-            r.precedence = precedence_override.spec.precedence;
-        }
-        else {
-            var prec_symbols = [];
-            var winning_symbol;
-
-            for (i = r.handle.length - 1; i >= 0; i--) {
-                if (!(r.handle[i] in nonterminals) && r.handle[i] in operators) {
-                    var old_prec = r.precedence;
-                    var new_prec = operators[r.handle[i]].precedence;
-                    if (old_prec !== 0 && old_prec !== new_prec) {
-                        prec_symbols.push(r.handle[i]);
-                        // Jison.print('precedence set twice: ', old_prec, new_prec, r.handle[i], symbol, handle[0]);
-                        if (new_prec < old_prec) {
-                            winning_symbol = r.handle[i];
-                        }
-                        else {
-                            // keep previously set precedence:
-                            new_prec = old_prec;
-                        }
-                    } else if (old_prec === 0) {
-                        prec_symbols.push(r.handle[i]);
-                        winning_symbol = r.handle[i];
-                        // Jison.print('precedence set first time: ', old_prec, r.handle[i], symbol, handle[0]);
-                    }
-                    r.precedence = new_prec;
-                }
-            }
-
-            if (prec_symbols.length > 1) {
-                if (self.DEBUG || 1) {
-                    self.warn('Ambiguous rule precedence in grammar: picking the (highest) precedence from operator "' + winning_symbol + '" for rule "' + symbol + ': ' + handle[0] + '" which contains multiple operators with different precedences: {' + prec_symbols.join(', ') + '}');
-                }
-            }
-        }
-
-        productions.push(r);
-        productions_.push([symbols_[r.symbol], r.handle[0] === '' ? 0 : r.handle.length]);
-        nonterminals[symbol].productions.push(r);
     }
 };
 
@@ -1748,7 +1833,7 @@ lookaheadMixin.displayFollowSets = function displayFollowSets() {
     var self = this;
     var symfollowdbg = {};
     this.productions.forEach(function Follow_prod_forEach_debugOut(production, k) {
-        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', nonterminals[production.symbol].follows.join(', '));
+        // self.trace('Symbol/Follows: ', 'prod:' + k, ':', production.symbol, ' :: ', production.handle.join(' '), '  --> ', self.nonterminals[production.symbol].follows.join(', '));
         var key = ['prod-', k, ':  ', production.symbol, ' := ', production.handle.join(' ')].join('');
         var flw = '[' + self.nonterminals[production.symbol].follows.join(']  [') + ']';
         if (!symfollowdbg[flw]) {
@@ -2512,15 +2597,15 @@ function generateGenericHeaderComment() {
         + ' *                 This one comes in handy when you are going to do advanced things to the parser\n'
         + ' *                 stacks, all of which are accessible from your action code (see the next entries below).\n'
         + ' *\n'
-        + ' *                 Also note that you can access this and other stack index values using the new back-quote\n'
-        + ' *                 syntax, i.e. `\`$ === \`0 === yysp`, while `\`1` is the stack index for all things\n'
-        + ' *                 related to the first rule term, just like you have `$1` and `@1`.\n'
+        + ' *                 Also note that you can access this and other stack index values using the new double-hash\n'
+        + ' *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things\n'
+        + ' *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.\n'
         + ' *                 This is made available to write very advanced grammar action rules, e.g. when you want\n'
         + ' *                 to investigate the parse state stack in your action code, which would, for example,\n'
         + ' *                 be relevant when you wish to implement error diagnostics and reporting schemes similar\n'
         + ' *                 to the work described here:\n'
         + ' *\n'
-        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.\n'
+        + ' *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.\n'
         + ' *                   In Journées Francophones des Languages Applicatifs.\n'
         + ' *\n'
         + ' *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.\n'
@@ -3181,19 +3266,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/^[^\n]+\b__reentrant_call_depth\b[^\n]+$/gm, '\n');
     }
 
-    // and finally strip out the hacks which were only there to stop strict JS engines barfing on us: jison.js itself!
-    parseFn = parseFn
-    .replace(/\s+\/\/ SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56[^;]+;/g, '');
-
     info.performAction = actionFn;
 
-    return parseFn;
-}
-
-function removeFeatureMarkers(fn) {
-    var parseFn = fn;
-    parseFn = parseFn.replace(/^\s*_handle_error_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
-    parseFn = parseFn.replace(/^\s*_lexer_[a-z_]+:.*$/gm, '').replace(/\\\\n/g, '\\n');
     return parseFn;
 }
 
@@ -3207,9 +3281,11 @@ function expandParseArguments(parseFn, self) {
     var arglist = self.parseParams;
 
     if (!arglist) {
-        parseFn = parseFn.replace(/, parseParams/g, '');
+        parseFn = parseFn.replace(/, parseParams\b/g, '');
+        parseFn = parseFn.replace(/\bparseParams\b/g, '');
     } else {
-        parseFn = parseFn.replace(/, parseParams/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/, parseParams\b/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/\bparseParams\b/g, arglist.join(', '));
     }
     return parseFn;
 }
@@ -3219,15 +3295,12 @@ function pickOneOfTwoCodeAlternatives(parseFn, pick_A_not_B, A_start_marker, B_s
     // Notes:
     // 1) we use the special /[^\0]*/ regex set as that one will also munch newlines, etc.
     //    while the obvious /.*/ does not as '.' doesn't eat the newlines.
-    // 2) The end sentinel label is kept intact as we have another function
-    //    removeFeatureMarkers() which nukes that line properly, i.e. including the trailing comment!
-    if (pick_A_not_B) {
-        // kill section B
-        return parseFn.replace(new RegExp(B_start_marker + ':[^\\0]*?(' + end_marker + ':)', 'g'), '$1');
-    } else {
-        // kill section A
-        return parseFn.replace(new RegExp(A_start_marker + ':[^\\0]*?(' + B_start_marker + ':)', 'g'), '$1');
-    }
+    return parseFn.replace(new RegExp('(' + A_start_marker + '[^\\n]*\\n)([^\\0]*?)(' + B_start_marker + '[^\\n]*\\n)([^\\0]*?)(' + end_marker + '[^\\n]*\\n)', 'g'), function pick_code_alt(str, mA, cA, mB, cB, mE) {
+        if (pick_A_not_B) {
+            return cA;
+        }
+        return cB;
+    });
 }
 
 function addOrRemoveTokenStack(fn, wantTokenStack) {
@@ -3255,7 +3328,7 @@ function addOrRemoveTokenStack(fn, wantTokenStack) {
     //     parseFn = parseFn.replace(/tstack = .*$/m, '');
     //     return parseFn;
     // }
-    parseFn = pickOneOfTwoCodeAlternatives(parseFn, !wantTokenStack, '_lexer_without_token_stack', '_lexer_with_token_stack', '_lexer_with_token_stack_end');
+    parseFn = pickOneOfTwoCodeAlternatives(parseFn, !wantTokenStack, '//_lexer_without_token_stack:', '//_lexer_with_token_stack:', '//_lexer_with_token_stack_end:');
     // and some post-coital touch-ups:
     if (wantTokenStack) {
         // And rename the `tokenStackLex` function to become the new `lex`:
@@ -3288,7 +3361,7 @@ function pickErrorHandlingChunk(fn, hasErrorRecovery) {
     // } catch (e) {
     //     return parseFn;
     // }
-    parseFn = pickOneOfTwoCodeAlternatives(parseFn, hasErrorRecovery, '_handle_error_with_recovery', '_handle_error_no_recovery', '_handle_error_end_of_section');
+    parseFn = pickOneOfTwoCodeAlternatives(parseFn, hasErrorRecovery, '//_handle_error_with_recovery:', '//_handle_error_no_recovery:', '//_handle_error_end_of_section:');
     // and some post-coital touch-ups:
     if (!hasErrorRecovery) {
         // Also nuke the support declaration statement:
@@ -3326,9 +3399,6 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     parseFn = pickErrorHandlingChunk(parseFn, this.hasErrorRecovery);
 
     parseFn = addOrRemoveTokenStack(parseFn, this.options.tokenStack);
-
-    // always remove the feature markers in the template code.
-    parseFn = removeFeatureMarkers(parseFn);
 
     parseFn = removeUnusedKernelFeatures(parseFn, this);
 
@@ -3756,7 +3826,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
 
         var js = JSON.stringify(obj, null, 2);
 
-        js = js.replace(new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)\": ", "g"), '  $1: ');
+        js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
         js = js.replace(/^( +)pre_parse: true,$/gm, '$1pre_parse: ' + String(pre) + ',');
         js = js.replace(/^( +)post_parse: true,$/gm, '$1post_parse: ' + String(post) + ',');
         return js;
@@ -4916,7 +4986,7 @@ parser.parse = function parse(input, parseParams) {
                     if (typeof XRegExp === 'undefined') {
                         re1 = /  \"([a-z_][a-z_0-9. ]*)\": /ig;
                     } else {
-                        re1 = new XRegExp("  \"([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_. ]*)\": ", "g");
+                        re1 = new XRegExp('  \"([\\p{Alphabetic}_][\\p{Alphabetic}\\p{Number}_. ]*)\": ', 'g');
                     }
                     js = JSON.stringify(obj, null, 2).replace(re1, '  $1: ').replace(/[\n\s]+/g, ' ');
                 } catch (ex) {
@@ -5115,23 +5185,44 @@ parser.parse = function parse(input, parseParams) {
         return pei;
     };
 
-_lexer_without_token_stack:
+//_lexer_without_token_stack:
 
-    function lex() {
-        var token = lexer.lex();
+    function lex(parseParams) {
+        var token = lexer.lex(parseParams);
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
         }
+        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
+            var tokenName = Object.keys(self.symbols_).filter(function (x) {
+                return self.symbols_[x] === token;
+            });
+            Jison.lexDebugger.push({
+                tokenName: tokenName,
+                tokenText: lexer.match,
+                tokenValue: lexer.yytext
+            });
+        }
         return token || EOF;
     }
 
-_lexer_with_token_stack:
+    function getNonTerminalFromCode(targetCode, symbols) {
+        for (var key in symbols) {
+            if (!symbols.hasOwnProperty(key)) {
+                continue;
+            }
+            if (symbols[key] === targetCode) {
+                return key;
+            }
+        }
+    }
+
+//_lexer_with_token_stack:
 
     // lex function that supports token stacks
-    function tokenStackLex() {
+    function tokenStackLex(parseParams) {
         var token;
-        token = tstack.pop() || lexer.lex() || EOF;
+        token = tstack.pop() || lexer.lex(parseParams) || EOF;
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             if (token instanceof Array) {
@@ -5146,7 +5237,7 @@ _lexer_with_token_stack:
         return token || EOF;
     }
 
-_lexer_with_token_stack_end:
+//_lexer_with_token_stack_end:
 
     var symbol = 0;
     var preErrorSymbol = 0;
@@ -5162,7 +5253,7 @@ _lexer_with_token_stack_end:
     var newState;
     var retval = false;
 
-_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
+//_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
 
     // Return the rule stack depth where the nearest error rule can be found.
     // Return -1 when no error recovery rule was found.
@@ -5213,12 +5304,8 @@ _handle_error_with_recovery:                    // run this code when the gramma
         }
     }
 
-_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
-_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
-
-    // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
-    // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
-    ;
+//_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
+//_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
 
     try {
         this.__reentrant_call_depth++;
@@ -5245,7 +5332,7 @@ _handle_error_end_of_section:                   // this concludes the error reco
                 //
                 //     if (symbol === null || typeof symbol === 'undefined') ...
                 if (!symbol) {
-                    symbol = lex();
+                    symbol = lex(parseParams);
                 }
                 // read action for current state and first input
                 t = (table[state] && table[state][symbol]) || NO_ACTION;
@@ -5254,7 +5341,7 @@ _handle_error_end_of_section:                   // this concludes the error reco
 
                 if (yydebug) yydebug('after FETCH/LEX: ', { symbol: symbol, newState: newState, recovering: recovering, action: action });
 
-_handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
+//_handle_error_with_recovery:                // run this code when the grammar includes error recovery rules
 
                 // handle parse error
                 if (!action) {
@@ -5308,7 +5395,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                         yylineno = lexer.yylineno;
                         yyloc = lexer.yylloc;
 
-                        symbol = lex();
+                        symbol = lex(parseParams);
 
                         if (yydebug) yydebug('after ERROR RECOVERY-3: ', { symbol: symbol });
                     }
@@ -5333,7 +5420,7 @@ _handle_error_with_recovery:                // run this code when the grammar in
                     continue;
                 }
 
-_handle_error_no_recovery:                  // run this code when the grammar does not include any error recovery rules
+//_handle_error_no_recovery:                  // run this code when the grammar does not include any error recovery rules
 
                 // handle parse error
                 if (!action) {
@@ -5358,11 +5445,8 @@ _handle_error_no_recovery:                  // run this code when the grammar do
                     break;
                 }
 
-_handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
+//_handle_error_end_of_section:                  // this concludes the error recovery / no error recovery code section choice above
 
-                // SHA-1: c4ea524b22935710d98252a1d9e04ddb82555e56 :: shut up error reports about non-strict mode in Chrome in the demo pages:
-                // (NodeJS doesn't care, so this semicolon is only important for the demo web pages which run the jison *GENERATOR* in a web page...)
-                ;
             }
 
             if (yydebug) yydebug('::: action: ' + (action === 1 ? 'shift token (then go to state ' + newState + ')' : action === 2 ? 'reduce by rule: ' + newState : action === 3 ? 'accept' : '???unexpected???'), { action: action, newState: newState, symbol: symbol });
@@ -5388,6 +5472,14 @@ _handle_error_end_of_section:                  // this concludes the error recov
                 vstack[sp] = lexer.yytext;
                 lstack[sp] = lexer.yylloc;
                 sstack[sp] = newState; // push state
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'shift',
+                        text: lexer.yytext,
+                        terminal: this.describeSymbol(symbol) || symbol,
+                        terminal_id: symbol
+                    });
+                }
                 ++sp;
                 symbol = 0;
                 if (!preErrorSymbol) { // normal execution / no error
@@ -5458,6 +5550,28 @@ _handle_error_end_of_section:                  // this concludes the error recov
 
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
 
+                if (len && typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    var prereduceValue = vstack.slice(vstack.length - len, vstack.length);
+                    var debuggableProductions = [];
+                    for (var debugIdx = len - 1; debugIdx >= 0; debugIdx--) {
+                        var debuggableProduction = getNonTerminalFromCode(stack[stack.length - ((debugIdx + 1) * 2)], this.symbols_);
+                        debuggableProductions.push(debuggableProduction);
+                    }
+                    // find the current nonterminal name (- nolan)
+                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
+                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode, this.symbols_);
+
+                    Jison.parserDebugger.push({
+                        action: 'reduce',
+                        nonterminal: currentNonterminal,
+                        nonterminal_id: currentNonterminalCode,
+                        prereduce: prereduceValue,
+                        result: r,
+                        productions: debuggableProductions,
+                        text: yyval.$
+                    });
+                }
+
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -5480,6 +5594,13 @@ _handle_error_end_of_section:                  // this concludes the error recov
 
             // accept:
             case 3:
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -5553,9 +5674,9 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.states = this.canonicalCollection();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
             this.displayFollowSets();
-            Jison.print("\n");
+            Jison.print('\n');
         }
 
         this.terms_ = {};
@@ -5592,36 +5713,36 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.buildNewGrammar();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         newg.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         this.unionLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.states);
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR');
             newg.displayFollowSets();
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR');
             this.displayFollowSets();
         }
 
@@ -5779,9 +5900,9 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
         this.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
-            Jison.print("\n");
+            Jison.print('\n');
         }
 
         this.buildTable();
@@ -5830,7 +5951,7 @@ var lr1 = lrLookaheadGenerator.beget({
         do {
             itemQueue = new Set();
             closureSet = closureSet.concat(set);
-            set.forEach(function (item) {
+            set.forEach(function LR_AddItemToClosureSets(item) {
                 var symbol = item.markedSymbol;
                 var b, r;
 
@@ -5872,14 +5993,14 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.computeLookaheads();
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.productions);
 
         if (this.DEBUG) {
-            Jison.print("\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:");
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
             this.displayFollowSets();
         }
 
@@ -6380,7 +6501,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":10}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-160 */
+/* parser generated by jison 0.4.18-164 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -6457,15 +6578,15 @@ exports.transform = EBNF.transform;
  *                 This one comes in handy when you are going to do advanced things to the parser
  *                 stacks, all of which are accessible from your action code (see the next entries below).
  *
- *                 Also note that you can access this and other stack index values using the new back-quote
- *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
- *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 Also note that you can access this and other stack index values using the new double-hash
+ *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.
  *                 This is made available to write very advanced grammar action rules, e.g. when you want
  *                 to investigate the parse state stack in your action code, which would, for example,
  *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
  *                 to the work described here:
  *
- *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
  *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
@@ -6887,7 +7008,7 @@ symbols_: {
   "$": 17,
   "$accept": 0,
   "$end": 1,
-  "%%": 22,
+  "%%": 19,
   "(": 10,
   ")": 11,
   "*": 7,
@@ -6895,70 +7016,70 @@ symbols_: {
   ",": 8,
   ".": 15,
   "/": 14,
-  "/!": 51,
+  "/!": 28,
   "<": 5,
   "=": 18,
   ">": 6,
   "?": 13,
-  "ACTION": 34,
-  "ACTION_BODY": 44,
-  "CHARACTER_LIT": 66,
-  "CODE": 76,
+  "ACTION": 23,
+  "ACTION_BODY": 26,
+  "CHARACTER_LIT": 36,
+  "CODE": 42,
   "EOF": 1,
-  "ESCAPE_CHAR": 63,
-  "INCLUDE": 73,
-  "NAME": 27,
-  "NAME_BRACE": 57,
-  "OPTIONS": 67,
-  "OPTIONS_END": 69,
-  "OPTION_VALUE": 71,
-  "PATH": 74,
-  "RANGE_REGEX": 64,
-  "REGEX_SET": 62,
-  "REGEX_SET_END": 60,
-  "REGEX_SET_START": 58,
-  "SPECIAL_GROUP": 50,
-  "START_COND": 38,
-  "START_EXC": 31,
-  "START_INC": 29,
-  "STRING_LIT": 65,
-  "UNKNOWN_DECL": 37,
+  "ESCAPE_CHAR": 33,
+  "INCLUDE": 40,
+  "NAME": 20,
+  "NAME_BRACE": 29,
+  "OPTIONS": 37,
+  "OPTIONS_END": 38,
+  "OPTION_VALUE": 39,
+  "PATH": 41,
+  "RANGE_REGEX": 34,
+  "REGEX_SET": 32,
+  "REGEX_SET_END": 31,
+  "REGEX_SET_START": 30,
+  "SPECIAL_GROUP": 27,
+  "START_COND": 25,
+  "START_EXC": 22,
+  "START_INC": 21,
+  "STRING_LIT": 35,
+  "UNKNOWN_DECL": 24,
   "^": 16,
-  "action": 41,
-  "action_body": 33,
-  "action_comments_body": 43,
-  "any_group_regex": 54,
-  "definition": 26,
-  "definitions": 21,
+  "action": 52,
+  "action_body": 54,
+  "action_comments_body": 55,
+  "any_group_regex": 64,
+  "definition": 47,
+  "definitions": 46,
   "error": 2,
-  "escape_char": 56,
-  "extra_lexer_module_code": 25,
-  "include_macro_code": 35,
-  "init": 20,
-  "lex": 19,
+  "escape_char": 67,
+  "extra_lexer_module_code": 73,
+  "include_macro_code": 74,
+  "init": 45,
+  "lex": 43,
   "module_code_chunk": 75,
-  "name_expansion": 52,
-  "name_list": 45,
-  "names_exclusive": 32,
-  "names_inclusive": 30,
-  "nonempty_regex_list": 46,
-  "option": 70,
-  "option_list": 68,
-  "optional_module_code_chunk": 72,
-  "options": 36,
-  "range_regex": 53,
-  "regex": 28,
-  "regex_base": 49,
-  "regex_concat": 48,
-  "regex_list": 47,
-  "regex_set": 59,
-  "regex_set_atom": 61,
-  "rule": 39,
-  "rules": 24,
-  "rules_and_epilogue": 23,
-  "start_conditions": 40,
-  "string": 55,
-  "unbracketed_action_body": 42,
+  "name_expansion": 63,
+  "name_list": 57,
+  "names_exclusive": 49,
+  "names_inclusive": 48,
+  "nonempty_regex_list": 60,
+  "option": 72,
+  "option_list": 71,
+  "optional_module_code_chunk": 76,
+  "options": 70,
+  "range_regex": 68,
+  "regex": 58,
+  "regex_base": 62,
+  "regex_concat": 61,
+  "regex_list": 59,
+  "regex_set": 65,
+  "regex_set_atom": 66,
+  "rule": 51,
+  "rules": 50,
+  "rules_and_epilogue": 44,
+  "start_conditions": 56,
+  "string": 69,
+  "unbracketed_action_body": 53,
   "{": 3,
   "|": 9,
   "}": 4
@@ -6982,30 +7103,30 @@ terminals_: {
   16: "^",
   17: "$",
   18: "=",
-  22: "%%",
-  27: "NAME",
-  29: "START_INC",
-  31: "START_EXC",
-  34: "ACTION",
-  37: "UNKNOWN_DECL",
-  38: "START_COND",
-  44: "ACTION_BODY",
-  50: "SPECIAL_GROUP",
-  51: "/!",
-  57: "NAME_BRACE",
-  58: "REGEX_SET_START",
-  60: "REGEX_SET_END",
-  62: "REGEX_SET",
-  63: "ESCAPE_CHAR",
-  64: "RANGE_REGEX",
-  65: "STRING_LIT",
-  66: "CHARACTER_LIT",
-  67: "OPTIONS",
-  69: "OPTIONS_END",
-  71: "OPTION_VALUE",
-  73: "INCLUDE",
-  74: "PATH",
-  76: "CODE"
+  19: "%%",
+  20: "NAME",
+  21: "START_INC",
+  22: "START_EXC",
+  23: "ACTION",
+  24: "UNKNOWN_DECL",
+  25: "START_COND",
+  26: "ACTION_BODY",
+  27: "SPECIAL_GROUP",
+  28: "/!",
+  29: "NAME_BRACE",
+  30: "REGEX_SET_START",
+  31: "REGEX_SET_END",
+  32: "REGEX_SET",
+  33: "ESCAPE_CHAR",
+  34: "RANGE_REGEX",
+  35: "STRING_LIT",
+  36: "CHARACTER_LIT",
+  37: "OPTIONS",
+  38: "OPTIONS_END",
+  39: "OPTION_VALUE",
+  40: "INCLUDE",
+  41: "PATH",
+  42: "CODE"
 },
 TERROR: 2,
 EOF: 1,
@@ -7097,65 +7218,63 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  19,
-  23,
-  23,
-  20,
-  21,
-  21,
-  s,
-  [26, 8],
-  30,
-  30,
-  32,
-  32,
-  24,
-  24,
-  39,
-  s,
-  [41, 3],
-  42,
-  42,
-  33,
-  33,
   43,
-  43,
-  s,
-  [40, 3],
+  44,
+  44,
   45,
-  45,
-  28,
-  47,
-  47,
+  46,
+  46,
   s,
-  [46, 3],
+  [47, 8],
   48,
   48,
+  49,
+  49,
+  50,
+  50,
+  51,
   s,
-  [49, 15],
-  52,
-  54,
-  59,
-  59,
-  61,
-  61,
-  56,
+  [52, 3],
   53,
+  53,
+  54,
+  54,
   55,
   55,
-  36,
-  68,
-  68,
   s,
-  [70, 3],
-  25,
-  25,
-  35,
-  35,
+  [56, 3],
+  57,
+  57,
+  58,
+  59,
+  59,
+  s,
+  [60, 3],
+  61,
+  61,
+  s,
+  [62, 15],
+  63,
+  64,
+  65,
+  65,
+  66,
+  s,
+  [66, 4, 1],
+  69,
+  70,
+  71,
+  71,
+  s,
+  [72, 3],
+  73,
+  73,
+  74,
+  74,
   75,
   75,
-  72,
-  72
+  76,
+  76
 ]),
   rule: u([
   5,
@@ -7220,7 +7339,7 @@ var yy = this.yy;
 
 switch (yystate) {
 case 1:
-    /*! Production::    lex : init definitions '%%' rules_and_epilogue EOF */
+    /*! Production::    lex : init definitions "%%" rules_and_epilogue EOF */
     this.$ = yyvstack[$0 - 1];
     if (yyvstack[$0 - 3][0]) this.$.macros = yyvstack[$0 - 3][0];
     if (yyvstack[$0 - 3][1]) this.$.startConditions = yyvstack[$0 - 3][1];
@@ -7244,7 +7363,7 @@ case 1:
     break;
 
 case 2:
-    /*! Production::    rules_and_epilogue : rules '%%' extra_lexer_module_code */
+    /*! Production::    rules_and_epilogue : rules "%%" extra_lexer_module_code */
     if (yyvstack[$0] && yyvstack[$0].trim() !== '') {
       this.$ = { rules: yyvstack[$0 - 2], moduleInclude: yyvstack[$0] };
     } else {
@@ -7316,7 +7435,7 @@ case 81:
     break;
 
 case 10:
-    /*! Production::    definition : '{' action_body '}' */
+    /*! Production::    definition : "{" action_body "}" */
     yy.actionInclude.push(yyvstack[$0 - 1]); this.$ = null;
     break;
 
@@ -7373,9 +7492,9 @@ case 21:
     break;
 
 case 22:
-    /*! Production::    action : '{' action_body '}' */
+    /*! Production::    action : "{" action_body "}" */
 case 31:
-    /*! Production::    start_conditions : '<' name_list '>' */
+    /*! Production::    start_conditions : "<" name_list ">" */
     this.$ = yyvstack[$0 - 1];
     break;
 
@@ -7385,7 +7504,7 @@ case 26:
     break;
 
 case 28:
-    /*! Production::    action_body : action_body '{' action_body '}' action_comments_body */
+    /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
     this.$ = yyvstack[$0 - 4] + yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
@@ -7412,7 +7531,7 @@ case 80:
     break;
 
 case 32:
-    /*! Production::    start_conditions : '<' '*' '>' */
+    /*! Production::    start_conditions : "<" "*" ">" */
     this.$ = ['*'];
     break;
 
@@ -7422,12 +7541,12 @@ case 34:
     break;
 
 case 35:
-    /*! Production::    name_list : name_list ',' NAME */
+    /*! Production::    name_list : name_list "," NAME */
     this.$ = yyvstack[$0 - 2]; this.$.push(yyvstack[$0]);
     break;
 
 case 36:
-    /*! Production::    regex : nonempty_regex_list[re] */
+    /*! Production::    regex : nonempty_regex_list */
     // Detect if the regex ends with a pure (Unicode) word;
     // we *do* consider escaped characters which are 'alphanumeric'
     // to be equivalent to their non-escaped version, hence these are
@@ -7489,62 +7608,62 @@ case 36:
     break;
 
 case 39:
-    /*! Production::    nonempty_regex_list : regex_concat '|' regex_list */
+    /*! Production::    nonempty_regex_list : regex_concat "|" regex_list */
     this.$ = yyvstack[$0 - 2] + '|' + yyvstack[$0];
     break;
 
 case 40:
-    /*! Production::    nonempty_regex_list : '|' regex_list */
+    /*! Production::    nonempty_regex_list : "|" regex_list */
     this.$ = '|' + yyvstack[$0];
     break;
 
 case 44:
-    /*! Production::    regex_base : '(' regex_list ')' */
+    /*! Production::    regex_base : "(" regex_list ")" */
     this.$ = '(' + yyvstack[$0 - 1] + ')';
     break;
 
 case 45:
-    /*! Production::    regex_base : SPECIAL_GROUP regex_list ')' */
+    /*! Production::    regex_base : SPECIAL_GROUP regex_list ")" */
     this.$ = yyvstack[$0 - 2] + yyvstack[$0 - 1] + ')';
     break;
 
 case 46:
-    /*! Production::    regex_base : regex_base '+' */
+    /*! Production::    regex_base : regex_base "+" */
     this.$ = yyvstack[$0 - 1] + '+';
     break;
 
 case 47:
-    /*! Production::    regex_base : regex_base '*' */
+    /*! Production::    regex_base : regex_base "*" */
     this.$ = yyvstack[$0 - 1] + '*';
     break;
 
 case 48:
-    /*! Production::    regex_base : regex_base '?' */
+    /*! Production::    regex_base : regex_base "?" */
     this.$ = yyvstack[$0 - 1] + '?';
     break;
 
 case 49:
-    /*! Production::    regex_base : '/' regex_base */
+    /*! Production::    regex_base : "/" regex_base */
     this.$ = '(?=' + yyvstack[$0] + ')';
     break;
 
 case 50:
-    /*! Production::    regex_base : '/!' regex_base */
+    /*! Production::    regex_base : "/!" regex_base */
     this.$ = '(?!' + yyvstack[$0] + ')';
     break;
 
 case 54:
-    /*! Production::    regex_base : '.' */
+    /*! Production::    regex_base : "." */
     this.$ = '.';
     break;
 
 case 55:
-    /*! Production::    regex_base : '^' */
+    /*! Production::    regex_base : "^" */
     this.$ = '^';
     break;
 
 case 56:
-    /*! Production::    regex_base : '$' */
+    /*! Production::    regex_base : "$" */
     this.$ = '$';
     break;
 
@@ -7574,14 +7693,14 @@ case 67:
     break;
 
 case 72:
-    /*! Production::    option : NAME[option] */
+    /*! Production::    option : NAME */
     yy.options[yyvstack[$0]] = true;
     break;
 
 case 73:
-    /*! Production::    option : NAME[option] '=' OPTION_VALUE[value] */
+    /*! Production::    option : NAME "=" OPTION_VALUE */
 case 74:
-    /*! Production::    option : NAME[option] '=' NAME[value] */
+    /*! Production::    option : NAME "=" NAME */
     yy.options[yyvstack[$0 - 2]] = yyvstack[$0];
     break;
 
@@ -7701,76 +7820,67 @@ table: bt({
 ]),
   symbol: u([
   3,
-  19,
-  20,
-  22,
-  27,
-  29,
-  31,
-  34,
+  s,
+  [19, 6, 1],
   37,
-  67,
-  73,
+  40,
+  43,
+  45,
   1,
-  3,
-  21,
-  22,
-  26,
   c,
-  [12, 4],
-  35,
-  36,
-  c,
-  [14, 3],
-  22,
+  [12, 9],
+  46,
+  47,
+  70,
+  74,
+  19,
   c,
   [14, 13],
   9,
   10,
   s,
   [14, 4, 1],
-  28,
-  46,
   s,
-  [48, 5, 1],
+  [27, 4, 1],
+  33,
+  35,
+  36,
+  58,
   s,
-  [54, 5, 1],
-  63,
-  65,
-  66,
-  30,
-  38,
-  32,
-  38,
+  [60, 5, 1],
+  67,
+  69,
+  25,
+  48,
+  25,
+  49,
   3,
   4,
-  33,
-  43,
-  44,
-  3,
+  26,
+  54,
+  55,
   c,
-  [67, 8],
+  [43, 9],
   c,
   [9, 27],
   2,
-  74,
-  27,
-  68,
-  70,
+  41,
+  20,
+  71,
+  72,
   1,
   5,
   c,
   [73, 6],
-  22,
-  23,
-  24,
+  19,
+  c,
+  [74, 7],
+  44,
   50,
-  51,
   c,
-  [68, 5],
-  22,
+  [103, 10],
   c,
-  [51, 19],
+  [9, 10],
   9,
   10,
   11,
@@ -7779,89 +7889,81 @@ table: bt({
   c,
   [16, 5],
   c,
-  [113, 12],
+  [42, 7],
+  37,
+  40,
   c,
-  [28, 16],
+  [115, 5],
+  c,
+  [28, 23],
   s,
-  [46, 7, 1],
+  [59, 6, 1],
   c,
-  [31, 11],
+  [31, 3],
   7,
   s,
   [9, 9, 1],
   c,
-  [34, 6],
-  50,
-  51,
-  53,
-  c,
-  [27, 3],
+  [34, 11],
   s,
-  [64, 4, 1],
+  [34, 4, 1],
+  40,
+  68,
   c,
-  [195, 3],
+  [58, 7],
   c,
-  [58, 5],
+  [52, 7],
   c,
-  [52, 15],
+  [50, 8],
   c,
   [22, 22],
   c,
-  [165, 5],
+  [238, 12],
   c,
-  [17, 29],
+  [17, 22],
   c,
-  [106, 19],
-  c,
-  [105, 8],
+  [106, 27],
   c,
   [27, 183],
-  60,
   s,
-  [62, 6, 1],
-  73,
-  52,
-  57,
-  59,
-  61,
-  62,
+  [31, 7, 1],
+  40,
+  29,
+  32,
+  63,
+  65,
+  66,
   c,
   [115, 82],
-  c,
-  [17, 6],
-  38,
+  s,
+  [19, 7, 1],
   c,
   [10, 33],
   4,
-  3,
-  4,
-  44,
+  c,
+  [594, 3],
   1,
   3,
   c,
   [552, 8],
   c,
-  [70, 10],
-  c,
-  [69, 4],
-  76,
+  [487, 14],
+  42,
   c,
   [25, 25],
-  69,
-  27,
-  68,
-  69,
-  70,
+  38,
+  20,
+  38,
+  71,
+  72,
   18,
-  27,
-  69,
+  20,
+  38,
   1,
   c,
-  [610, 9],
-  39,
-  40,
-  c,
-  [30, 7],
+  [610, 16],
+  51,
+  56,
   c,
   [563, 59],
   3,
@@ -7878,16 +7980,15 @@ table: bt({
   [185, 29],
   c,
   [28, 27],
-  60,
+  31,
+  29,
+  31,
   c,
-  [481, 3],
-  60,
-  61,
-  62,
-  57,
-  60,
+  [482, 4],
   c,
-  [3, 4],
+  [6, 3],
+  c,
+  [3, 3],
   c,
   [397, 27],
   c,
@@ -7895,58 +7996,55 @@ table: bt({
   c,
   [988, 4],
   4,
+  26,
   c,
-  [991, 10],
-  69,
-  27,
-  71,
+  [17, 9],
+  38,
+  20,
+  39,
   1,
   1,
-  25,
-  72,
+  40,
+  42,
   73,
   75,
   76,
   c,
-  [359, 9],
-  c,
-  [357, 7],
+  [359, 16],
   c,
   [1056, 21],
   7,
-  27,
-  45,
+  20,
+  57,
   c,
   [312, 91],
-  60,
+  31,
   3,
   4,
-  27,
-  69,
+  20,
   c,
-  [498, 4],
-  35,
-  73,
-  1,
+  [503, 3],
   c,
-  [538, 3],
-  73,
-  76,
+  [145, 3],
+  74,
+  c,
+  [148, 3],
+  c,
+  [3, 3],
   3,
-  34,
-  35,
-  41,
-  42,
-  73,
+  23,
+  40,
+  52,
+  53,
+  74,
   6,
   8,
   6,
   6,
   8,
-  3,
-  4,
-  43,
-  44,
+  c,
+  [181, 3],
+  55,
   c,
   [169, 7],
   c,
@@ -7957,7 +8055,7 @@ table: bt({
   [215, 5],
   c,
   [21, 9],
-  34,
+  23,
   c,
   [22, 7],
   c,
@@ -7965,10 +8063,8 @@ table: bt({
   c,
   [33, 17],
   c,
-  [15, 6],
-  c,
-  [13, 7],
-  27,
+  [227, 13],
+  20,
   c,
   [14, 13],
   c,
@@ -7982,95 +8078,87 @@ table: bt({
   [85, 16]
 ]),
   type: u([
-  2,
+  s,
+  [2, 9],
+  0,
+  0,
+  1,
+  c,
+  [12, 11],
   0,
   0,
   s,
-  [2, 8],
-  1,
-  2,
-  0,
-  2,
-  c,
-  [13, 5],
-  c,
-  [19, 7],
+  [2, 10],
   c,
   [14, 14],
   c,
-  [11, 6],
+  [17, 7],
   c,
-  [13, 4],
+  [21, 5],
+  0,
+  2,
   c,
-  [6, 6],
+  [25, 4],
   c,
-  [33, 9],
-  c,
-  [32, 11],
+  [30, 15],
   s,
-  [2, 31],
+  [2, 26],
   c,
-  [74, 13],
+  [41, 18],
   c,
-  [53, 41],
+  [59, 41],
   c,
-  [113, 11],
+  [118, 8],
   c,
-  [81, 18],
+  [28, 28],
   c,
-  [144, 13],
+  [31, 26],
   c,
-  [64, 24],
+  [35, 5],
   c,
-  [52, 35],
+  [50, 36],
   c,
   [22, 20],
   c,
   [17, 34],
   s,
-  [2, 213],
+  [2, 208],
   c,
-  [470, 3],
+  [223, 182],
   c,
-  [227, 180],
+  [181, 22],
   c,
-  [686, 7],
+  [563, 75],
   c,
-  [610, 32],
+  [267, 171],
   c,
-  [563, 52],
+  [28, 32],
   c,
-  [260, 171],
+  [482, 41],
   c,
-  [28, 36],
+  [40, 21],
   c,
-  [298, 4],
+  [62, 32],
   c,
-  [227, 39],
+  [347, 10],
   c,
-  [294, 20],
+  [322, 102],
   c,
-  [20, 3],
+  [102, 10],
   c,
-  [62, 24],
+  [154, 11],
   c,
-  [349, 17],
+  [1178, 6],
   c,
-  [330, 101],
+  [129, 23],
   c,
-  [1184, 13],
-  c,
-  [940, 13],
-  c,
-  [128, 24],
-  c,
-  [737, 121]
+  [737, 120]
 ]),
   state: u([
   s,
   [1, 4, 1],
-  10,
   11,
+  10,
   16,
   c,
   [4, 3],
@@ -8080,8 +8168,8 @@ table: bt({
   21,
   26,
   27,
-  31,
   32,
+  31,
   38,
   40,
   42,
@@ -8093,19 +8181,17 @@ table: bt({
   52,
   c,
   [13, 4],
-  54,
   53,
+  54,
   c,
   [21, 6],
   58,
-  54,
   60,
   c,
-  [9, 6],
-  54,
+  [9, 7],
   61,
   c,
-  [8, 6],
+  [8, 7],
   62,
   c,
   [5, 4],
@@ -8119,10 +8205,9 @@ table: bt({
   47,
   78,
   79,
-  54,
   81,
   c,
-  [42, 7],
+  [42, 8],
   58,
   58,
   67,
@@ -8131,20 +8216,20 @@ table: bt({
   86,
   43,
   89,
-  90,
   91,
+  90,
   93,
   c,
   [82, 7],
   94,
   98,
-  103,
   100,
   102,
+  103,
   108,
   109,
-  90,
   91,
+  90,
   110,
   43
 ]),
@@ -8855,7 +8940,28 @@ parse: function parse(input) {
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
         }
+        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
+            var tokenName = Object.keys(self.symbols_).filter(function (x) {
+                return self.symbols_[x] === token;
+            });
+            Jison.lexDebugger.push({
+                tokenName: tokenName,
+                tokenText: lexer.match,
+                tokenValue: lexer.yytext
+            });
+        }
         return token || EOF;
+    }
+
+    function getNonTerminalFromCode(targetCode, symbols) {
+        for (var key in symbols) {
+            if (!symbols.hasOwnProperty(key)) {
+                continue;
+            }
+            if (symbols[key] === targetCode) {
+                return key;
+            }
+        }
     }
 
 
@@ -8922,6 +9028,7 @@ parse: function parse(input) {
             ++depth;
         }
     }
+
 
     try {
         this.__reentrant_call_depth++;
@@ -9034,6 +9141,8 @@ parse: function parse(input) {
 
                     continue;
                 }
+
+
             }
 
 
@@ -9059,6 +9168,14 @@ parse: function parse(input) {
                 vstack[sp] = lexer.yytext;
 
                 sstack[sp] = newState; // push state
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'shift',
+                        text: lexer.yytext,
+                        terminal: this.describeSymbol(symbol) || symbol,
+                        terminal_id: symbol
+                    });
+                }
                 ++sp;
                 symbol = 0;
                 if (!preErrorSymbol) { // normal execution / no error
@@ -9127,6 +9244,28 @@ parse: function parse(input) {
 
                 r = this.performAction.call(yyval, yytext, newState, sp - 1, vstack);
 
+                if (len && typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    var prereduceValue = vstack.slice(vstack.length - len, vstack.length);
+                    var debuggableProductions = [];
+                    for (var debugIdx = len - 1; debugIdx >= 0; debugIdx--) {
+                        var debuggableProduction = getNonTerminalFromCode(stack[stack.length - ((debugIdx + 1) * 2)], this.symbols_);
+                        debuggableProductions.push(debuggableProduction);
+                    }
+                    // find the current nonterminal name (- nolan)
+                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
+                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode, this.symbols_);
+
+                    Jison.parserDebugger.push({
+                        action: 'reduce',
+                        nonterminal: currentNonterminal,
+                        nonterminal_id: currentNonterminalCode,
+                        prereduce: prereduceValue,
+                        result: r,
+                        productions: debuggableProductions,
+                        text: yyval.$
+                    });
+                }
+
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -9149,6 +9288,13 @@ parse: function parse(input) {
 
             // accept:
             case 3:
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -9207,7 +9353,7 @@ function prepareString (s) {
     s = encodeRE(s);
     return s;
 };
-/* generated by jison-lex 0.3.4-160 */
+/* generated by jison-lex 0.3.4-164 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -9503,7 +9649,7 @@ var lexer = {
     // consumes and returns one char from the input
     input: function lexer_input() {
         if (!this._input) {
-            this.done = true;
+            //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
         }
         var ch = this._input[0];
@@ -10019,7 +10165,7 @@ break;
 case 16 : 
 /*! Conditions:: rules */ 
 /*! Rule::       %% */ 
- this.begin('code'); return 22; 
+ this.begin('code'); return 19; 
 break;
 case 17 : 
 /*! Conditions:: rules */ 
@@ -10027,23 +10173,23 @@ case 17 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 66;
+                                            return 36;
                                          
 break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39; 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 71; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 69; 
+ this.popState(); return 38; 
 break;
 case 24 : 
 /*! Conditions:: options */ 
@@ -10073,12 +10219,12 @@ break;
 case 30 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 34; 
+ this.begin('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 23; 
 break;
 case 31 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 34; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 23; 
 break;
 case 32 : 
 /*! Conditions:: indented */ 
@@ -10100,13 +10246,13 @@ case 32 :
                                             this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path');
-                                            return 73;
+                                            return 40;
                                          
 break;
 case 33 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .* */ 
- this.popState(); return 34; 
+ this.popState(); return 23; 
 break;
 case 34 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -10121,7 +10267,7 @@ break;
 case 36 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       {ID} */ 
- this.pushState('macro'); return 27; 
+ this.pushState('macro'); return 20; 
 break;
 case 37 : 
 /*! Conditions:: macro */ 
@@ -10134,7 +10280,7 @@ case 38 :
  
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
-                                            return 66;
+                                            return 36;
                                          
 break;
 case 39 : 
@@ -10150,17 +10296,17 @@ break;
 case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 65; 
+ yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 35; 
 break;
 case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 65; 
+ yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 35; 
 break;
 case 43 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \[ */ 
- this.pushState('set'); return 58; 
+ this.pushState('set'); return 30; 
 break;
 case 56 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -10170,7 +10316,7 @@ break;
 case 57 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/! */ 
- return 51;                    // treated as `(?!atom)` 
+ return 28;                    // treated as `(?!atom)` 
 break;
 case 58 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
@@ -10180,27 +10326,27 @@ break;
 case 60 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \\. */ 
- yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 63; 
+ yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 33; 
 break;
 case 63 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %options\b */ 
- this.begin('options'); return 67; 
+ this.begin('options'); return 37; 
 break;
 case 64 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %s\b */ 
- this.begin('start_condition'); return 29; 
+ this.begin('start_condition'); return 21; 
 break;
 case 65 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %x\b */ 
- this.begin('start_condition'); return 31; 
+ this.begin('start_condition'); return 22; 
 break;
 case 66 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 73; 
+ this.pushState('path'); return 40; 
 break;
 case 67 : 
 /*! Conditions:: INITIAL rules trail code */ 
@@ -10208,23 +10354,23 @@ case 67 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            return 37;
+                                            return 24;
                                          
 break;
 case 68 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %% */ 
- this.begin('rules'); return 22; 
+ this.begin('rules'); return 19; 
 break;
 case 76 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
- this.popState('set'); return 60; 
+ this.popState('set'); return 31; 
 break;
 case 78 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 76;      // the bit of CODE just before EOF... 
+ return 42;      // the bit of CODE just before EOF... 
 break;
 case 79 : 
 /*! Conditions:: path */ 
@@ -10234,12 +10380,12 @@ break;
 case 80 : 
 /*! Conditions:: path */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 74; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 41; 
 break;
 case 81 : 
 /*! Conditions:: path */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 74; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 41; 
 break;
 case 82 : 
 /*! Conditions:: path */ 
@@ -10249,7 +10395,7 @@ break;
 case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 74; 
+ this.popState(); return 41; 
 break;
 case 84 : 
 /*! Conditions:: * */ 
@@ -10270,28 +10416,28 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   0 : 44,
+   0 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/.* */ 
-   1 : 44,
+   1 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       \/[^ /]*?['"{}][^ ]*?\/ */ 
-   2 : 44,
+   2 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       "(\\\\|\\"|[^"])*" */ 
-   3 : 44,
+   3 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       '(\\\\|\\'|[^'])*' */ 
-   4 : 44,
+   4 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   5 : 44,
+   5 : 26,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   6 : 44,
+   6 : 26,
   /*! Conditions:: conditions */ 
   /*! Rule::       {NAME} */ 
-   9 : 27,
+   9 : 20,
   /*! Conditions:: conditions */ 
   /*! Rule::       , */ 
    11 : 8,
@@ -10300,28 +10446,28 @@ simpleCaseActionClusters: {
    12 : 7,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   18 : 27,
+   18 : 20,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    19 : 18,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 71,
+   22 : 39,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   25 : 38,
+   25 : 25,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \| */ 
    44 : 9,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 50,
+   45 : 27,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?= */ 
-   46 : 50,
+   46 : 27,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?! */ 
-   47 : 50,
+   47 : 27,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \( */ 
    48 : 10,
@@ -10348,7 +10494,7 @@ simpleCaseActionClusters: {
    55 : 17,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 63,
+   59 : 33,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \$ */ 
    61 : 17,
@@ -10357,13 +10503,13 @@ simpleCaseActionClusters: {
    62 : 15,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 64,
+   69 : 34,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{{ID}\} */ 
-   70 : 57,
+   70 : 29,
   /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
-   71 : 57,
+   71 : 29,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{ */ 
    72 : 3,
@@ -10372,13 +10518,13 @@ simpleCaseActionClusters: {
    73 : 4,
   /*! Conditions:: set */ 
   /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */ 
-   74 : 62,
+   74 : 32,
   /*! Conditions:: set */ 
   /*! Rule::       \{ */ 
-   75 : 62,
+   75 : 32,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   77 : 76,
+   77 : 42,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
    85 : 1
@@ -10829,7 +10975,7 @@ module.exports={
   "name": "jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.3.4-160",
+  "version": "0.3.4-164",
   "keywords": [
     "jison",
     "parser",
@@ -10870,7 +11016,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-160 */
+/* parser generated by jison 0.4.18-164 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -10947,15 +11093,15 @@ module.exports={
  *                 This one comes in handy when you are going to do advanced things to the parser
  *                 stacks, all of which are accessible from your action code (see the next entries below).
  *
- *                 Also note that you can access this and other stack index values using the new back-quote
- *                 syntax, i.e. ``$ === `0 === yysp`, while ``1` is the stack index for all things
- *                 related to the first rule term, just like you have `$1` and `@1`.
+ *                 Also note that you can access this and other stack index values using the new double-hash
+ *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things
+ *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.
  *                 This is made available to write very advanced grammar action rules, e.g. when you want
  *                 to investigate the parse state stack in your action code, which would, for example,
  *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
  *                 to the work described here:
  *
- *                 + Pottier, F., 2016. Reachability and error diagnosis in LR (1) automata.
+ *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
  *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
@@ -11376,7 +11522,7 @@ options: {
 symbols_: {
   "$accept": 0,
   "$end": 1,
-  "%%": 16,
+  "%%": 14,
   "(": 7,
   ")": 8,
   "*": 9,
@@ -11385,79 +11531,79 @@ symbols_: {
   ";": 5,
   "=": 3,
   "?": 10,
-  "ACTION": 21,
-  "ACTION_BODY": 80,
-  "ALIAS": 75,
-  "ARROW_ACTION": 78,
-  "CODE": 85,
-  "DEBUG": 33,
+  "ACTION": 15,
+  "ACTION_BODY": 40,
+  "ALIAS": 37,
+  "ARROW_ACTION": 39,
+  "CODE": 43,
+  "DEBUG": 19,
   "EOF": 1,
-  "EPSILON": 70,
-  "ID": 40,
-  "IMPORT": 35,
-  "INCLUDE": 82,
-  "INIT_CODE": 38,
-  "INTEGER": 62,
-  "LEFT": 53,
-  "LEX_BLOCK": 26,
-  "NAME": 46,
-  "NONASSOC": 55,
-  "OPTIONS": 42,
-  "OPTIONS_END": 44,
-  "OPTION_VALUE": 47,
-  "PARSER_TYPE": 50,
-  "PARSE_PARAM": 48,
-  "PATH": 83,
-  "PREC": 76,
-  "RIGHT": 54,
-  "START": 24,
-  "STRING": 41,
-  "TOKEN": 28,
-  "TOKEN_TYPE": 61,
-  "UNKNOWN_DECL": 34,
-  "action": 69,
-  "action_body": 77,
-  "action_comments_body": 79,
-  "action_ne": 39,
-  "associativity": 52,
-  "declaration": 23,
-  "declaration_list": 15,
+  "EPSILON": 36,
+  "ID": 23,
+  "IMPORT": 21,
+  "INCLUDE": 41,
+  "INIT_CODE": 22,
+  "INTEGER": 35,
+  "LEFT": 31,
+  "LEX_BLOCK": 17,
+  "NAME": 27,
+  "NONASSOC": 33,
+  "OPTIONS": 25,
+  "OPTIONS_END": 26,
+  "OPTION_VALUE": 28,
+  "PARSER_TYPE": 30,
+  "PARSE_PARAM": 29,
+  "PATH": 42,
+  "PREC": 38,
+  "RIGHT": 32,
+  "START": 16,
+  "STRING": 24,
+  "TOKEN": 18,
+  "TOKEN_TYPE": 34,
+  "UNKNOWN_DECL": 20,
+  "action": 79,
+  "action_body": 80,
+  "action_comments_body": 81,
+  "action_ne": 78,
+  "associativity": 57,
+  "declaration": 48,
+  "declaration_list": 47,
   "error": 2,
   "expression": 73,
-  "expression_suffix": 71,
-  "extra_parser_module_code": 19,
-  "full_token_definitions": 29,
-  "grammar": 17,
-  "handle": 67,
-  "handle_action": 66,
-  "handle_list": 65,
-  "handle_sublist": 72,
-  "id": 25,
-  "id_list": 57,
-  "import_name": 36,
-  "import_path": 37,
-  "include_macro_code": 22,
+  "expression_suffix": 72,
+  "extra_parser_module_code": 82,
+  "full_token_definitions": 59,
+  "grammar": 65,
+  "handle": 70,
+  "handle_action": 69,
+  "handle_list": 68,
+  "handle_sublist": 71,
+  "id": 77,
+  "id_list": 64,
+  "import_name": 49,
+  "import_path": 50,
+  "include_macro_code": 83,
   "module_code_chunk": 84,
-  "one_full_token": 58,
-  "operator": 27,
-  "option": 45,
-  "option_list": 43,
-  "optional_action_header_block": 20,
-  "optional_end_block": 18,
-  "optional_module_code_chunk": 81,
-  "optional_token_type": 56,
-  "options": 32,
-  "parse_params": 30,
-  "parser_type": 31,
-  "prec": 68,
-  "production": 64,
-  "production_list": 63,
-  "spec": 14,
+  "one_full_token": 60,
+  "operator": 56,
+  "option": 53,
+  "option_list": 52,
+  "optional_action_header_block": 46,
+  "optional_end_block": 45,
+  "optional_module_code_chunk": 85,
+  "optional_token_type": 61,
+  "options": 51,
+  "parse_params": 54,
+  "parser_type": 55,
+  "prec": 75,
+  "production": 67,
+  "production_list": 66,
+  "spec": 44,
   "suffix": 74,
-  "symbol": 51,
-  "token_description": 60,
-  "token_list": 49,
-  "token_value": 59,
+  "symbol": 76,
+  "token_description": 63,
+  "token_list": 58,
+  "token_value": 62,
   "{": 12,
   "|": 6,
   "}": 13
@@ -11476,36 +11622,36 @@ terminals_: {
   11: "+",
   12: "{",
   13: "}",
-  16: "%%",
-  21: "ACTION",
-  24: "START",
-  26: "LEX_BLOCK",
-  28: "TOKEN",
-  33: "DEBUG",
-  34: "UNKNOWN_DECL",
-  35: "IMPORT",
-  38: "INIT_CODE",
-  40: "ID",
-  41: "STRING",
-  42: "OPTIONS",
-  44: "OPTIONS_END",
-  46: "NAME",
-  47: "OPTION_VALUE",
-  48: "PARSE_PARAM",
-  50: "PARSER_TYPE",
-  53: "LEFT",
-  54: "RIGHT",
-  55: "NONASSOC",
-  61: "TOKEN_TYPE",
-  62: "INTEGER",
-  70: "EPSILON",
-  75: "ALIAS",
-  76: "PREC",
-  78: "ARROW_ACTION",
-  80: "ACTION_BODY",
-  82: "INCLUDE",
-  83: "PATH",
-  85: "CODE"
+  14: "%%",
+  15: "ACTION",
+  16: "START",
+  17: "LEX_BLOCK",
+  18: "TOKEN",
+  19: "DEBUG",
+  20: "UNKNOWN_DECL",
+  21: "IMPORT",
+  22: "INIT_CODE",
+  23: "ID",
+  24: "STRING",
+  25: "OPTIONS",
+  26: "OPTIONS_END",
+  27: "NAME",
+  28: "OPTION_VALUE",
+  29: "PARSE_PARAM",
+  30: "PARSER_TYPE",
+  31: "LEFT",
+  32: "RIGHT",
+  33: "NONASSOC",
+  34: "TOKEN_TYPE",
+  35: "INTEGER",
+  36: "EPSILON",
+  37: "ALIAS",
+  38: "PREC",
+  39: "ARROW_ACTION",
+  40: "ACTION_BODY",
+  41: "INCLUDE",
+  42: "PATH",
+  43: "CODE"
 },
 TERROR: 2,
 EOF: 1,
@@ -11597,80 +11743,77 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  14,
-  18,
-  18,
+  44,
+  45,
+  45,
   s,
-  [20, 3],
-  15,
-  15,
+  [46, 3],
+  47,
+  47,
   s,
-  [23, 13],
-  36,
-  36,
-  37,
-  37,
-  32,
-  43,
-  43,
-  s,
-  [45, 3],
-  30,
-  31,
-  27,
-  s,
-  [52, 3],
+  [48, 13],
   49,
   49,
-  29,
-  29,
+  50,
+  50,
+  51,
+  52,
+  52,
   s,
-  [58, 3],
-  56,
-  56,
+  [53, 3],
+  s,
+  [54, 4, 1],
+  57,
+  57,
+  58,
+  58,
   59,
-  60,
-  57,
-  57,
-  17,
-  63,
-  63,
+  59,
+  s,
+  [60, 3],
+  61,
+  s,
+  [61, 4, 1],
   64,
   65,
-  65,
   66,
   66,
   67,
-  67,
-  72,
-  72,
+  68,
+  68,
+  69,
+  69,
+  70,
+  70,
   71,
   71,
+  72,
+  72,
   s,
   [73, 3],
   s,
   [74, 4],
-  68,
-  68,
-  51,
-  51,
-  25,
+  75,
+  75,
+  76,
+  76,
+  77,
   s,
-  [39, 4],
-  69,
-  69,
-  s,
-  [77, 4],
+  [78, 4],
   79,
   79,
-  19,
-  19,
-  22,
-  22,
-  84,
-  84,
+  s,
+  [80, 4],
   81,
-  81
+  81,
+  82,
+  82,
+  83,
+  83,
+  84,
+  84,
+  85,
+  85
 ]),
   rule: u([
   5,
@@ -11739,13 +11882,13 @@ productions_: bp({
   0
 ])
 }),
-performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack, options) {
+performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, $0, yyvstack, yylstack) {
 /* this == yyval */
 var yy = this.yy;
 
 switch (yystate) {
 case 1:
-    /*! Production::    spec : declaration_list '%%' grammar optional_end_block EOF */
+    /*! Production::    spec : declaration_list "%%" grammar optional_end_block EOF */
     this.$ = yyvstack[$0 - 4];
     if (yyvstack[$0 - 1] && yyvstack[$0 - 1].trim() !== '') {
         yy.addDeclaration(this.$, { include: yyvstack[$0 - 1] });
@@ -11754,7 +11897,7 @@ case 1:
     break;
 
 case 3:
-    /*! Production::    optional_end_block : '%%' extra_parser_module_code */
+    /*! Production::    optional_end_block : "%%" extra_parser_module_code */
 case 32:
     /*! Production::    parse_params : PARSE_PARAM token_list */
 case 33:
@@ -11871,7 +12014,7 @@ case 21:
 case 26:
     /*! Production::    options : OPTIONS option_list OPTIONS_END */
 case 77:
-    /*! Production::    action_ne : '{' action_body '}' */
+    /*! Production::    action_ne : "{" action_body "}" */
     this.$ = yyvstack[$0 - 1];
     break;
 
@@ -11896,14 +12039,14 @@ case 56:
     break;
 
 case 29:
-    /*! Production::    option : NAME[option] */
+    /*! Production::    option : NAME */
     this.$ = [yyvstack[$0], true];
     break;
 
 case 30:
-    /*! Production::    option : NAME[option] '=' OPTION_VALUE[value] */
+    /*! Production::    option : NAME "=" OPTION_VALUE */
 case 31:
-    /*! Production::    option : NAME[option] '=' NAME[value] */
+    /*! Production::    option : NAME "=" NAME */
     this.$ = [yyvstack[$0 - 2], yyvstack[$0]];
     break;
 
@@ -12003,12 +12146,12 @@ case 53:
     break;
 
 case 54:
-    /*! Production::    production : id ':' handle_list ';' */
+    /*! Production::    production : id ":" handle_list ";" */
     this.$ = [yyvstack[$0 - 3], yyvstack[$0 - 1]];
     break;
 
 case 55:
-    /*! Production::    handle_list : handle_list '|' handle_action */
+    /*! Production::    handle_list : handle_list "|" handle_action */
     this.$ = yyvstack[$0 - 2];
     this.$.push(yyvstack[$0]);
     break;
@@ -12050,7 +12193,7 @@ case 60:
     break;
 
 case 61:
-    /*! Production::    handle_sublist : handle_sublist '|' handle */
+    /*! Production::    handle_sublist : handle_sublist "|" handle */
     this.$ = yyvstack[$0 - 2];
     this.$.push(yyvstack[$0].join(' '));
     break;
@@ -12088,7 +12231,7 @@ case 66:
     break;
 
 case 67:
-    /*! Production::    expression : '(' handle_sublist ')' */
+    /*! Production::    expression : "(" handle_sublist ")" */
     this.$ = '(' + yyvstack[$0 - 1].join(' | ') + ')';
     break;
 
@@ -12119,12 +12262,12 @@ case 80:
     break;
 
 case 85:
-    /*! Production::    action_body : action_body '{' action_body '}' action_comments_body */
+    /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
     this.$ = yyvstack[$0 - 4] + yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
 case 86:
-    /*! Production::    action_body : action_body '{' action_body '}' */
+    /*! Production::    action_body : action_body "{" action_body "}" */
     this.$ = yyvstack[$0 - 3] + yyvstack[$0 - 2] + yyvstack[$0 - 1] + yyvstack[$0];
     break;
 
@@ -12254,140 +12397,121 @@ table: bt({
   7
 ]),
   symbol: u([
-  14,
-  15,
-  16,
-  21,
-  24,
-  26,
-  28,
-  33,
-  34,
-  35,
-  38,
-  42,
-  48,
-  50,
-  53,
-  54,
-  55,
-  82,
-  1,
-  16,
   s,
-  [21, 4, 1],
-  26,
-  27,
-  28,
-  s,
-  [30, 6, 1],
-  c,
-  [23, 4],
-  s,
-  [52, 4, 1],
-  82,
-  17,
-  20,
-  21,
-  40,
-  82,
-  c,
-  [45, 16],
+  [14, 9, 1],
   25,
-  40,
+  s,
+  [29, 5, 1],
+  41,
+  44,
+  47,
+  1,
+  c,
+  [19, 16],
+  48,
+  51,
+  s,
+  [54, 4, 1],
+  83,
+  15,
+  23,
+  41,
+  46,
+  65,
+  c,
+  [28, 16],
+  23,
+  77,
   c,
   [18, 16],
   c,
-  [16, 16],
-  29,
-  40,
-  56,
+  [34, 17],
+  34,
+  59,
   61,
   c,
   [36, 32],
   c,
   [16, 80],
-  36,
-  40,
-  41,
-  c,
-  [3, 3],
-  25,
-  40,
-  41,
+  23,
+  24,
   49,
-  51,
+  c,
+  [3, 5],
+  58,
+  76,
+  77,
   2,
-  83,
+  42,
   c,
   [7, 5],
-  c,
-  [5, 3],
-  51,
-  43,
-  45,
-  46,
-  40,
-  41,
-  40,
-  41,
-  40,
-  41,
+  23,
+  24,
+  76,
+  77,
+  27,
+  52,
+  53,
+  23,
+  24,
+  23,
+  24,
+  23,
+  24,
   1,
-  16,
-  18,
-  21,
-  22,
-  25,
-  40,
-  63,
-  64,
+  14,
+  45,
   c,
-  [57, 17],
+  [205, 3],
+  66,
+  67,
+  77,
+  83,
+  c,
+  [57, 16],
   4,
   5,
   6,
   12,
+  s,
+  [14, 12, 1],
   c,
-  [20, 9],
-  40,
-  41,
-  c,
-  [22, 6],
-  62,
-  78,
-  c,
-  [247, 19],
-  57,
-  58,
-  40,
-  37,
-  40,
-  41,
-  12,
-  21,
-  40,
-  41,
-  78,
-  82,
-  c,
-  [6, 8],
-  22,
+  [22, 5],
+  35,
   39,
   c,
-  [42, 5],
-  25,
+  [97, 18],
+  60,
+  64,
+  77,
+  23,
+  23,
+  24,
+  50,
+  12,
+  15,
+  23,
+  24,
+  39,
+  41,
   c,
-  [63, 11],
-  51,
+  [6, 8],
+  39,
+  41,
+  78,
   c,
-  [159, 13],
+  [82, 10],
   c,
-  [82, 8],
-  82,
+  [62, 8],
+  41,
+  76,
+  c,
+  [291, 10],
+  c,
+  [20, 9],
   c,
   [103, 20],
-  78,
+  39,
   c,
   [22, 23],
   1,
@@ -12397,57 +12521,56 @@ table: bt({
   [22, 10],
   c,
   [64, 7],
-  85,
+  43,
   c,
   [21, 21],
   c,
   [124, 29],
   c,
-  [37, 7],
-  44,
-  45,
-  46,
-  44,
-  46,
+  [18, 7],
+  26,
+  27,
+  53,
+  26,
+  27,
   3,
-  44,
-  46,
+  26,
+  27,
   1,
   1,
-  19,
-  81,
+  41,
+  43,
   82,
   84,
   85,
   1,
-  16,
-  25,
-  40,
-  64,
+  14,
+  23,
+  67,
+  77,
   c,
-  [472, 3],
+  [269, 3],
   c,
   [3, 3],
-  1,
-  16,
-  40,
+  c,
+  [11, 3],
   4,
   c,
-  [66, 11],
+  [84, 17],
   c,
-  [363, 32],
+  [479, 26],
   c,
-  [161, 8],
-  59,
-  60,
+  [286, 9],
+  41,
   62,
+  63,
   c,
-  [432, 65],
+  [432, 64],
   12,
   13,
-  77,
-  79,
+  40,
   80,
+  81,
   c,
   [210, 11],
   c,
@@ -12455,125 +12578,122 @@ table: bt({
   c,
   [18, 34],
   c,
-  [348, 18],
+  [244, 18],
   c,
-  [242, 17],
-  46,
-  46,
-  47,
+  [242, 18],
+  27,
+  28,
   s,
   [1, 3],
-  22,
-  82,
-  1,
+  41,
+  83,
   c,
-  [311, 3],
+  [242, 3],
   c,
-  [3, 3],
-  16,
-  40,
+  [3, 4],
+  14,
+  23,
   5,
   6,
   7,
   c,
   [435, 4],
-  65,
-  66,
-  67,
+  36,
+  38,
+  39,
+  41,
+  68,
+  69,
   70,
-  76,
   c,
-  [476, 11],
+  [244, 17],
   c,
-  [243, 17],
+  [17, 9],
   c,
-  [82, 7],
-  60,
+  [82, 8],
   c,
-  [192, 26],
+  [224, 26],
   c,
   [116, 24],
   12,
   13,
-  12,
-  13,
-  80,
+  c,
+  [211, 3],
   c,
   [3, 3],
-  44,
+  26,
+  27,
   c,
-  [365, 3],
+  [362, 3],
   c,
-  [361, 7],
-  82,
-  85,
+  [361, 6],
+  41,
+  43,
   5,
   6,
   5,
   6,
   c,
   [123, 7],
-  68,
-  71,
-  73,
   c,
   [122, 3],
+  72,
+  73,
+  75,
   c,
   [496, 3],
   c,
-  [564, 3],
-  69,
+  [564, 4],
+  79,
   c,
-  [607, 18],
+  [647, 17],
   c,
   [231, 18],
   c,
   [290, 5],
   c,
-  [81, 3],
+  [5, 3],
   1,
   c,
-  [191, 10],
-  c,
-  [190, 6],
+  [191, 14],
+  69,
+  70,
   c,
   [68, 9],
   s,
   [5, 4, 1],
   c,
-  [23, 4],
-  c,
-  [20, 3],
+  [91, 7],
   c,
   [749, 4],
   s,
   [5, 8, 1],
   c,
   [18, 3],
+  37,
+  c,
+  [19, 3],
   74,
-  75,
   c,
-  [40, 5],
+  [16, 15],
   c,
-  [16, 9],
-  c,
-  [15, 19],
+  [15, 15],
   c,
   [14, 3],
-  40,
-  41,
-  67,
-  72,
+  23,
+  24,
+  70,
+  71,
   c,
   [160, 4],
   12,
   13,
   c,
   [168, 6],
-  12,
-  21,
   c,
-  [84, 10],
+  [87, 4],
+  c,
+  [84, 8],
   c,
   [50, 8],
   c,
@@ -12582,167 +12702,151 @@ table: bt({
   8,
   c,
   [73, 5],
-  71,
+  72,
   73,
-  12,
-  13,
   c,
-  [464, 4],
+  [170, 3],
+  c,
+  [464, 3],
   c,
   [145, 9],
   c,
   [110, 21],
   c,
-  [206, 3],
+  [36, 3],
   c,
   [46, 7]
 ]),
   type: u([
-  0,
-  0,
   s,
   [2, 16],
-  1,
-  2,
-  2,
-  c,
-  [21, 4],
   0,
+  0,
+  1,
   c,
-  [6, 3],
-  c,
-  [28, 8],
-  c,
-  [8, 5],
-  c,
-  [42, 18],
-  c,
-  [26, 8],
+  [19, 18],
   s,
-  [2, 29],
+  [0, 5],
   c,
-  [72, 3],
+  [10, 5],
   s,
-  [2, 113],
+  [2, 17],
   c,
-  [191, 5],
+  [18, 18],
   c,
-  [3, 5],
+  [35, 18],
   c,
-  [7, 8],
+  [36, 35],
+  s,
+  [2, 80],
   c,
-  [5, 8],
+  [115, 3],
   c,
-  [149, 10],
+  [3, 4],
   c,
-  [3, 5],
+  [123, 6],
   c,
-  [97, 58],
+  [7, 5],
   c,
-  [64, 4],
+  [4, 3],
   c,
-  [22, 17],
+  [137, 10],
   c,
-  [18, 6],
+  [205, 6],
   c,
-  [24, 12],
+  [153, 59],
   c,
-  [252, 112],
+  [272, 7],
   c,
-  [124, 34],
+  [235, 36],
   c,
-  [22, 9],
+  [255, 116],
   c,
-  [194, 7],
+  [144, 29],
   c,
-  [200, 16],
+  [197, 16],
   c,
-  [178, 48],
+  [160, 28],
   c,
-  [326, 59],
+  [188, 36],
   c,
-  [70, 81],
+  [225, 69],
   c,
-  [282, 40],
+  [294, 98],
   c,
-  [116, 8],
+  [97, 21],
   c,
-  [117, 38],
+  [516, 37],
   c,
-  [155, 64],
+  [155, 65],
   c,
-  [555, 19],
+  [102, 20],
   c,
-  [859, 11],
+  [20, 9],
   c,
-  [250, 40],
+  [647, 40],
   c,
-  [40, 17],
-  c,
-  [17, 10],
+  [604, 28],
   c,
   [68, 16],
   c,
-  [757, 6],
+  [44, 17],
   c,
-  [192, 49],
+  [456, 105],
   c,
-  [388, 73],
+  [73, 9],
   c,
-  [886, 7],
+  [77, 32],
   c,
-  [342, 39],
-  0,
+  [908, 10],
   0
 ]),
   state: u([
   1,
   2,
-  10,
   4,
-  7,
+  13,
   11,
   12,
-  13,
+  7,
   18,
-  26,
+  10,
   27,
+  26,
   28,
   30,
   31,
   33,
-  36,
-  39,
-  37,
-  38,
-  39,
+  s,
+  [36, 4, 1],
   43,
   38,
   39,
   44,
+  39,
   45,
   46,
   48,
-  52,
-  54,
   50,
   53,
-  57,
-  55,
+  54,
+  52,
   56,
+  55,
+  57,
   58,
-  64,
   61,
-  39,
+  64,
   66,
   39,
   66,
+  39,
   68,
   71,
-  72,
   73,
-  54,
+  72,
   75,
+  54,
   77,
   78,
   79,
@@ -12754,23 +12858,23 @@ table: bt({
   91,
   93,
   97,
-  72,
   73,
-  100,
+  72,
   101,
   103,
-  64,
+  100,
   108,
   107,
+  64,
   109,
   83,
   110,
   91,
-  64,
   108,
   111,
-  39,
+  64,
   112,
+  39,
   113,
   118,
   117,
@@ -13314,7 +13418,7 @@ parseError: function parseError(str, hash) {
         throw new this.JisonParserError(str, hash);
     }
 },
-parse: function parse(input, options) {
+parse: function parse(input) {
     var self = this,
         stack = new Array(128),         // token stack: stores token which leads to state at the same index (column storage)
         sstack = new Array(128),        // state stack: stores states (column storage)
@@ -13412,11 +13516,11 @@ parse: function parse(input, options) {
 
         if (invoke_post_methods) {
             if (sharedState_yy.post_parse) {
-                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue, options);
+                rv = sharedState_yy.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
             if (this.post_parse) {
-                rv = this.post_parse.call(this, sharedState_yy, resultValue, options);
+                rv = this.post_parse.call(this, sharedState_yy, resultValue);
                 if (typeof rv !== 'undefined') resultValue = rv;
             }
         }
@@ -13527,7 +13631,28 @@ parse: function parse(input, options) {
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
         }
+        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
+            var tokenName = Object.keys(self.symbols_).filter(function (x) {
+                return self.symbols_[x] === token;
+            });
+            Jison.lexDebugger.push({
+                tokenName: tokenName,
+                tokenText: lexer.match,
+                tokenValue: lexer.yytext
+            });
+        }
         return token || EOF;
+    }
+
+    function getNonTerminalFromCode(targetCode, symbols) {
+        for (var key in symbols) {
+            if (!symbols.hasOwnProperty(key)) {
+                continue;
+            }
+            if (symbols[key] === targetCode) {
+                return key;
+            }
+        }
     }
 
 
@@ -13595,14 +13720,15 @@ parse: function parse(input, options) {
         }
     }
 
+
     try {
         this.__reentrant_call_depth++;
 
         if (this.pre_parse) {
-            this.pre_parse.call(this, sharedState_yy, options);
+            this.pre_parse.call(this, sharedState_yy);
         }
         if (sharedState_yy.pre_parse) {
-            sharedState_yy.pre_parse.call(this, sharedState_yy, options);
+            sharedState_yy.pre_parse.call(this, sharedState_yy);
         }
 
         newState = sstack[sp - 1];
@@ -13706,6 +13832,8 @@ parse: function parse(input, options) {
 
                     continue;
                 }
+
+
             }
 
 
@@ -13731,6 +13859,14 @@ parse: function parse(input, options) {
                 vstack[sp] = lexer.yytext;
                 lstack[sp] = lexer.yylloc;
                 sstack[sp] = newState; // push state
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'shift',
+                        text: lexer.yytext,
+                        terminal: this.describeSymbol(symbol) || symbol,
+                        terminal_id: symbol
+                    });
+                }
                 ++sp;
                 symbol = 0;
                 if (!preErrorSymbol) { // normal execution / no error
@@ -13799,7 +13935,29 @@ parse: function parse(input, options) {
                   yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
-                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack, options);
+                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack);
+
+                if (len && typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    var prereduceValue = vstack.slice(vstack.length - len, vstack.length);
+                    var debuggableProductions = [];
+                    for (var debugIdx = len - 1; debugIdx >= 0; debugIdx--) {
+                        var debuggableProduction = getNonTerminalFromCode(stack[stack.length - ((debugIdx + 1) * 2)], this.symbols_);
+                        debuggableProductions.push(debuggableProduction);
+                    }
+                    // find the current nonterminal name (- nolan)
+                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
+                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode, this.symbols_);
+
+                    Jison.parserDebugger.push({
+                        action: 'reduce',
+                        nonterminal: currentNonterminal,
+                        nonterminal_id: currentNonterminalCode,
+                        prereduce: prereduceValue,
+                        result: r,
+                        productions: debuggableProductions,
+                        text: yyval.$
+                    });
+                }
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -13823,6 +13981,13 @@ parse: function parse(input, options) {
 
             // accept:
             case 3:
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -13883,7 +14048,7 @@ function extend(json, grammar) {
     }
     return json;
 }
-/* generated by jison-lex 0.3.4-160 */
+/* generated by jison-lex 0.3.4-164 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -14179,7 +14344,7 @@ var lexer = {
     // consumes and returns one char from the input
     input: function lexer_input() {
         if (!this._input) {
-            this.done = true;
+            //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
         }
         var ch = this._input[0];
@@ -14673,17 +14838,17 @@ break;
 case 3 : 
 /*! Conditions:: bnf ebnf */ 
 /*! Rule::       %% */ 
- this.pushState('code'); return 16; 
+ this.pushState('code'); return 14; 
 break;
 case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28; 
 break;
 case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 47; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28; 
 break;
 case 19 : 
 /*! Conditions:: INITIAL ebnf bnf token path options */ 
@@ -14698,7 +14863,7 @@ break;
 case 22 : 
 /*! Conditions:: options */ 
 /*! Rule::       {BR}+ */ 
- this.popState(); return 44; 
+ this.popState(); return 26; 
 break;
 case 23 : 
 /*! Conditions:: options */ 
@@ -14718,22 +14883,22 @@ break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 75; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 37; 
 break;
 case 30 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 24; 
 break;
 case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 41; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 24; 
 break;
 case 36 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
- this.pushState(ebnf ? 'ebnf' : 'bnf'); return 16; 
+ this.pushState(ebnf ? 'ebnf' : 'bnf'); return 14; 
 break;
 case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -14743,17 +14908,17 @@ break;
 case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
- if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 33; 
+ if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 19; 
 break;
 case 45 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
- this.pushState('token'); return 28; 
+ this.pushState('token'); return 18; 
 break;
 case 47 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %options\b */ 
- this.pushState('options'); return 42; 
+ this.pushState('options'); return 25; 
 break;
 case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -14761,13 +14926,13 @@ case 48 :
  
                                             // remove the %lex../lex wrapper and return the pure lex section:
                                             yy_.yytext = this.matches[1];
-                                            return 26;
+                                            return 17;
                                          
 break;
 case 51 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 82; 
+ this.pushState('path'); return 41; 
 break;
 case 52 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -14775,23 +14940,23 @@ case 52 :
  
                                             /* ignore unrecognized decl */
                                             console.warn('ignoring unsupported parser option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state');
-                                            return 34;
+                                            return 20;
                                          
 break;
 case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 61; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 34; 
 break;
 case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 21; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 15; 
 break;
 case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 21; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 15; 
 break;
 case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
@@ -14801,22 +14966,22 @@ break;
 case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 78; 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 39; 
 break;
 case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 62; 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 35; 
 break;
 case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 62; 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 35; 
 break;
 case 62 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 80; // regexp with braces or quotes (and no spaces) 
+ return 40; // regexp with braces or quotes (and no spaces) 
 break;
 case 67 : 
 /*! Conditions:: action */ 
@@ -14831,7 +14996,7 @@ break;
 case 70 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 85;      // the bit of CODE just before EOF... 
+ return 43;      // the bit of CODE just before EOF... 
 break;
 case 71 : 
 /*! Conditions:: path */ 
@@ -14841,12 +15006,12 @@ break;
 case 72 : 
 /*! Conditions:: path */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
 break;
 case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 83; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
 break;
 case 74 : 
 /*! Conditions:: path */ 
@@ -14856,7 +15021,7 @@ break;
 case 75 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 83; 
+ this.popState(); return 42; 
 break;
 case 76 : 
 /*! Conditions:: * */ 
@@ -14877,22 +15042,22 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 70,
+   4 : 36,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 70,
+   5 : 36,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u0190 */ 
-   6 : 70,
+   6 : 36,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u025B */ 
-   7 : 70,
+   7 : 36,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u03B5 */ 
-   8 : 70,
+   8 : 36,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u03F5 */ 
-   9 : 70,
+   9 : 36,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
    10 : 7,
@@ -14910,22 +15075,22 @@ simpleCaseActionClusters: {
    14 : 11,
   /*! Conditions:: options */ 
   /*! Rule::       {NAME} */ 
-   15 : 46,
+   15 : 27,
   /*! Conditions:: options */ 
   /*! Rule::       = */ 
    16 : 3,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   21 : 47,
+   21 : 28,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   27 : 40,
+   27 : 23,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$end\b */ 
-   28 : 40,
+   28 : 23,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \$eof\b */ 
-   29 : 40,
+   29 : 23,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
    32 : 'TOKEN_WORD',
@@ -14940,52 +15105,52 @@ simpleCaseActionClusters: {
    35 : 6,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   39 : 50,
+   39 : 30,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   40 : 76,
+   40 : 38,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   41 : 24,
+   41 : 16,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   42 : 53,
+   42 : 31,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %right\b */ 
-   43 : 54,
+   43 : 32,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %nonassoc\b */ 
-   44 : 55,
+   44 : 33,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   46 : 48,
+   46 : 29,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   49 : 38,
+   49 : 22,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   50 : 35,
+   50 : 21,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   60 : 80,
+   60 : 40,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   61 : 80,
+   61 : 40,
   /*! Conditions:: action */ 
   /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   63 : 80,
+   63 : 40,
   /*! Conditions:: action */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   64 : 80,
+   64 : 40,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   65 : 80,
+   65 : 40,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   66 : 80,
+   66 : 40,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   69 : 85,
+   69 : 43,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
    77 : 1
@@ -17525,7 +17690,7 @@ var __objdef__ = {
     // consumes and returns one char from the input
     input: function lexer_input() {
         if (!this._input) {
-            this.done = true;
+            //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
         }
         var ch = this._input[0];
@@ -17746,7 +17911,7 @@ var __objdef__ = {
     // - matches
     // - yylloc
     // - offset
-    test_match: function lexer_test_match(match, indexed_rule) {
+    test_match: function lexer_test_match(match, indexed_rule, parseParams) {
         var token,
             lines,
             backup,
@@ -17811,7 +17976,7 @@ var __objdef__ = {
         // calling this method: 
         //
         //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */);
+        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */, parseParams);
         // otherwise, when the action codes are all simple return token statements:
         //token = this.simpleCaseActionClusters[indexed_rule];
 
@@ -17837,7 +18002,7 @@ var __objdef__ = {
     },
 
     // return next match in input
-    next: function lexer_next() {
+    next: function lexer_next(parseParams) {
         if (this.done) {
             this.clear();
             return this.EOF;
@@ -17887,7 +18052,7 @@ var __objdef__ = {
                 match = tempMatch;
                 index = i;
                 if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rule_ids[i]);
+                    token = this.test_match(tempMatch, rule_ids[i], parseParams);
                     if (token !== false) {
                         return token;
                     } else if (this._backtrack) {
@@ -17903,7 +18068,7 @@ var __objdef__ = {
             }
         }
         if (match) {
-            token = this.test_match(match, rule_ids[index]);
+            token = this.test_match(match, rule_ids[index], parseParams);
             if (token !== false) {
                 return token;
             }
@@ -17927,18 +18092,18 @@ var __objdef__ = {
     },
 
     // return next match that has a token
-    lex: function lexer_lex() {
+    lex: function lexer_lex(parseParams) {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.call(this);
+            r = this.options.pre_lex.call(this, parseParams);
         }
         while (!r) {
-            r = this.next();
+            r = this.next(parseParams);
         }
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.call(this, r) || r;
+            r = this.options.post_lex.call(this, r, parseParams) || r;
         }
         return r;
     },
@@ -18016,6 +18181,28 @@ function camelCaseAllOptions(opts) {
 }
 
 
+// Fill in the optional, extra parse parameters (`%parse-param ...`)
+// in the generated *lexer*.
+//
+// See for important context:
+//
+//     https://github.com/zaach/jison/pull/332
+function expandParseArguments(parseFn, options) {
+    var arglist = (options && options.parseParams);
+
+    if (!arglist) {
+        parseFn = parseFn.replace(/, parseParams\b/g, '');
+        parseFn = parseFn.replace(/\bparseParams\b/g, '');
+    } else {
+        parseFn = parseFn.replace(/, parseParams\b/g, ', ' + arglist.join(', '));
+        parseFn = parseFn.replace(/\bparseParams\b/g, arglist.join(', '));
+    }
+    return parseFn;
+}
+
+
+
+
 
 // generate lexer source from a grammar
 function generate(dict, tokens) {
@@ -18039,6 +18226,8 @@ function processGrammar(dict, tokens) {
     // Make sure to camelCase all options:
     opts.options = camelCaseAllOptions(dict.options);
 
+    opts.parseParams = opts.options.parseParams;
+
     opts.moduleType = opts.options.moduleType;
     opts.moduleName = opts.options.moduleName;
 
@@ -18058,6 +18247,7 @@ function processGrammar(dict, tokens) {
 
     opts.actionInclude = (dict.actionInclude || '');
     opts.moduleInclude = (opts.moduleInclude || '') + (dict.moduleInclude || '').trim();
+
     return opts;
 }
 
@@ -18153,6 +18343,7 @@ function generateModuleBody(opt) {
         protosrc = protosrc
         .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
         .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
+        protosrc = expandParseArguments(protosrc, opt.options);
         out += protosrc + ',\n';
 
         if (opt.options) {
@@ -18373,7 +18564,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":11,"assert":12}],10:[function(require,module,exports){
-/* parser generated by jison 0.4.18-159 */
+/* parser generated by jison 0.4.18-161 */
 /*
  * Returns a Parser object of the following structure:
  *
@@ -19712,7 +19903,7 @@ parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
 
-/* generated by jison-lex 0.3.4-160 */
+/* generated by jison-lex 0.3.4-161 */
 var lexer = (function () {
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -21875,7 +22066,10 @@ JSON5.stringify = function (obj, replacer, space) {
                         }
                     }
                     objStack.pop();
-                    buffer += makeIndent(indentStr, objStack.length, true) + "]";
+                    if (obj_part.length) {
+                        buffer += makeIndent(indentStr, objStack.length, true)
+                    }
+                    buffer += "]";
                 } else {
                     checkForCircular(obj_part);
                     buffer = "{";
@@ -27574,7 +27768,7 @@ module.exports={
   },
   "name": "jison",
   "description": "A parser generator with Bison's API",
-  "version": "0.4.18-160",
+  "version": "0.4.18-164",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -27607,9 +27801,9 @@ module.exports={
     "ebnf-parser": "GerHobbelt/ebnf-parser#master",
     "jison-lex": "GerHobbelt/jison-lex#master",
     "lex-parser": "GerHobbelt/lex-parser#master",
-    "recast": "0.11.17",
+    "recast": "0.11.18",
     "jscodeshift": "0.3.30",
-    "json5": "0.5.0",
+    "json5": "0.5.1",
     "nomnom": "GerHobbelt/nomnom#master",
     "xregexp": "GerHobbelt/xregexp#master"
   },
@@ -27617,7 +27811,7 @@ module.exports={
     "browserify": "13.1.1",
     "glob": "7.1.1",
     "test": "0.6.0",
-    "uglify-js": "2.7.4"
+    "uglify-js": "2.7.5"
   },
   "scripts": {
     "test": "node tests/all-tests.js"

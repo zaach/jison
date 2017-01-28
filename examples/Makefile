@@ -70,11 +70,13 @@ MISC_TARGETS =                                                   \
 			reduce_conflict                                     \
 			regex                                               \
 			semwhitespace                                       \
+			test-EOF-bugfix                                     \
 			test-epsilon-rules-early-reduce                     \
 			test-literal-quote-tokens-in-grammar                \
 			test-nonassociative-operator-0                      \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
+			test-propagation-rules-reduction-1                  \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -394,6 +396,11 @@ theory-left-recurs-01:
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
+test-EOF-bugfix:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
 test-epsilon-rules-early-reduce:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
@@ -417,6 +424,13 @@ test-nonassociative-operator-1:
 test-nonassociative-operator-2:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
+
+# build *AND* run the test:
+test-propagation-rules-reduction-1:
+	$(JISON) --main -c 0 -I ./$@.jison
+	$(JISON) --main -c 0 -I ./test-propagation-rules-reduction-2.jison
+	node ./output/$@/$@.js
+	node ./output/$@/test-propagation-rules-reduction-2.js
 
 
 

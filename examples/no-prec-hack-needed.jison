@@ -7,39 +7,39 @@
  * At the same time the grammar exhibits error recovery rules which cause 
  * conflicts, despite of which we get a working grammar (because we don't
  * worry when a conflict occurs where only error rules are involved...)
-
-    $ ./lib/cli.js -c 0 --main examples/no-prec-hack-needed.jison
-        Conflict in grammar: multiple actions possible when lookahead token is EOF in state 3
-        - reduce by rule: v -> error
-        - shift token (then go to state 17)
-          (Resolved S/R conflict: shift by default.)
-        Conflict in grammar: multiple actions possible when lookahead token is ) in state 27
-        - reduce by rule: v -> error
-        - shift token (then go to state 34)
-          (Resolved S/R conflict: shift by default.)
-
-        States with conflicts:
-
-        State 3    (EOF @ v -> error .)
-
-          expressions -> error .EOF              #lookaheads= [$end]
-          v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [EOF]  [+]  [-]  [^]
-
-        State 27    () @ v -> error .)
-
-          u -> ( error .)                        #lookaheads= [^]  [-]  [+]  [EOF]  [*]  [/]  [!]  [%]  [)]
-          v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [)]  [+]  [-]  [^]
-
-
-        JISON output for module [noPrecHackNeeded] has been written to file: no-prec-hack-needed.js
-
-    $ node no-prec-hack-needed.js
-        Time: total:  4995ms , sample_count: 177 , # runs: 35400 , average: 0.1411ms , deviation: 2.96% , peak_de
-        viation: 31.28%
-
-    $ node -v
-        v6.1.0
-
+ *
+ *   $ ./lib/cli.js -c 0 --main examples/no-prec-hack-needed.jison
+ *       Conflict in grammar: multiple actions possible when lookahead token is EOF in state 3
+ *       - reduce by rule: v -> error
+ *       - shift token (then go to state 17)
+ *         (Resolved S/R conflict: shift by default.)
+ *       Conflict in grammar: multiple actions possible when lookahead token is ) in state 27
+ *       - reduce by rule: v -> error
+ *       - shift token (then go to state 34)
+ *         (Resolved S/R conflict: shift by default.)
+ *
+ *       States with conflicts:
+ *
+ *       State 3    (EOF @ v -> error .)
+ *
+ *         expressions -> error .EOF              #lookaheads= [$end]
+ *         v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [EOF]  [+]  [-]  [^]
+ * 
+ *       State 27    () @ v -> error .)
+ *
+ *         u -> ( error .)                        #lookaheads= [^]  [-]  [+]  [EOF]  [*]  [/]  [!]  [%]  [)]
+ *         v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [)]  [+]  [-]  [^]
+ *
+ *
+ *       JISON output for module [noPrecHackNeeded] has been written to file: no-prec-hack-needed.js
+ *
+ *   $ node no-prec-hack-needed.js
+ *       Time: total:  4995ms , sample_count: 177 , # runs: 35400 , average: 0.1411ms , deviation: 2.96% , peak_de
+ *       viation: 31.28%
+ *
+ *   $ node -v
+ *       v6.1.0
+ *
  */
 
 
