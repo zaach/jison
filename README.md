@@ -11,7 +11,7 @@ Jison
 >  
 > This repository contains a fork maintained by GerHobbelt. The original JISON work has been done by Zachary Carter and is available in zaach/jison.
 >
-> For an overview of all all changes (fixes and features), see the section (What's New or Different?)[#user-content-whats-new-or-different] further below. See also (pullreq #338)[https://github.com/zaach/jison/pull/338].
+> For an overview of all all changes (fixes and features), see the section [What's New or Different?](#user-content-whats-new-or-different) further below. See also [pullreq #338](https://github.com/zaach/jison/pull/338).
 >
 
 
