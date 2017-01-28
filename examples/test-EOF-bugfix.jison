@@ -21,7 +21,7 @@
 
 expressions
     : X BUGGY EOF
-        { $$ = $X + $BUGGY + $EOF; }
+        { $$ = $X + 'B:' + $BUGGY + 'E:' + $EOF; }
     ;
 
 %%
@@ -41,10 +41,25 @@ expressions
 var assert = require("assert");
 
 parser.main = function () {
-    var rv = parser.parse("x<<EOF>>x");
-    console.log("test 1: x<<EOF>>x input:\n\n  x<<EOF>>x ==> ", rv);
+    var rv;
 
-    assert.equal(rv, "εεaε");
+    try {
+      rv = parser.parse("x<<EOF>>x");
+      console.log("test 1: x<<EOF>>x input:\n\n  x<<EOF>>x ==> ", rv);
+    } catch (ex) {
+      rv = ex;
+      console.log("test 1: x<<EOF>>x input threw exception:\n\n  x<<EOF>>x ==> ", rv.message);
+    }
+
+    try {
+      rv = parser.parse("x");
+      console.log("test 2: x input:\n\n  x ==> ", rv);
+    } catch (ex) {
+      rv = ex;
+      console.log("test 2: x input threw exception:\n\n  x ==> ", rv);
+    }
+
+    assert.equal(rv, "xB:E:");
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

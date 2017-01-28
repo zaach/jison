@@ -271,6 +271,9 @@ examples/regex: build
 examples/semwhitespace: build
 	cd examples/ && make semwhitespace
 
+examples/test-EOF-bugfix: build
+	cd examples/ && make test-EOF-bugfix
+
 examples/test-epsilon-rules-early-reduce: build
 	cd examples/ && make test-epsilon-rules-early-reduce
 

@@ -128,6 +128,9 @@ const test_list = [
     name: 'theory-left-recurs-01',
   },
   {
+    name: 'test-EOF-bugfix',
+  },
+  {
     name: 'test-epsilon-rules-early-reduce',
   },
   {
