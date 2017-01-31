@@ -52,6 +52,48 @@ const defaultJisonOptions = {
 
 Jison.defaultJisonOptions = defaultJisonOptions;
 
+// convert alternative jison option names to their base option:
+function mkStdOptions(o) {
+    var h = Object.prototype.hasOwnProperty;
+    // clone input, so we do not modify the input parameter:
+    var opts = {};
+    o = o || {};
+
+    for (var p in o) {
+        if (h.call(o, p)) {
+            opts[p] = o[p];
+        }
+    }
+
+    // now clean them options up:
+    if (typeof opts.main !== 'undefined') {
+        opts.noMain = !opts.main;
+    }
+    if (typeof opts.hasDefaultResolve !== 'undefined') {
+        opts.noDefaultResolve = !opts.hasDefaultResolve;
+    }
+    if (typeof opts.hasDefaultAction !== 'undefined') {
+        opts.noDefaultAction = !opts.hasDefaultAction;
+    }
+    if (typeof opts.hasTryCatch !== 'undefined') {
+        opts.noTryCatch = !opts.hasTryCatch;
+    }
+    if (typeof opts.parserType !== 'undefined') {
+        opts.type = opts.parserType;
+    }
+
+    delete opts.parserType;
+    delete opts.main;
+    delete opts.hasDefaultResolve;
+    delete opts.hasDefaultAction;
+    delete opts.hasTryCatch;
+
+    return opts;
+}
+
+Jison.mkStdOptions = mkStdOptions;
+
+
 // detect print
 if (typeof console !== 'undefined' && console.log) {
     // wrap console.log to prevent 'Illegal Invocation' exceptions when Jison.print() is used, e.g.
@@ -298,7 +340,7 @@ var generator = typal.beget();
 //
 generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     // pick the correct argument for the `options` for this call:
-    var options = typal.camelMix.call({}, (opt || (typeof grammar === 'string' && typeof lexGrammarStr === 'string')) ? opt : lexGrammarStr);
+    var options = typal.camelMix.call({}, mkStdOptions, (opt || (typeof grammar === 'string' && typeof lexGrammarStr === 'string')) ? opt : lexGrammarStr);
     var err;
 
     if (typeof grammar === 'string') {
@@ -341,7 +383,8 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
         }
     }
 
-    options = typal.camelMix.call({}, Jison.defaultJisonOptions, grammar.options, options);
+    // make sure all options are 'standardized' before we go and mix them together:
+    options = typal.camelMix.call({}, mkStdOptions, Jison.defaultJisonOptions, grammar.options, options);
 
     this.terms = {};
     this.operators = {};
@@ -2864,7 +2907,7 @@ var generatorMixin = {};
 
 // internal helper function:
 generatorMixin.__prepareOptions = function parser___prepare_Options(opt) {
-    opt = typal.camelMix.call({}, Jison.defaultJisonOptions, this.options, opt);
+    opt = typal.camelMix.call({}, mkStdOptions, Jison.defaultJisonOptions, this.options, opt);
     this.options = opt;
     this.DEBUG = !!opt.debug;
     if (this.DEBUG && devDebug) {
@@ -3272,6 +3315,19 @@ function removeUnusedKernelFeatures(parseFn, info) {
             return '\n' + p1 + '\n    // ... AND FINALLY ...\n' + p2;
         })
         .replace(/^[^\n]+\b__reentrant_call_depth\b[^\n]+$/gm, '\n');
+    }
+
+    if (info.options.noDefaultAction && info.options.noTryCatch) {
+        /*
+         * This is a very performance-oriented setting and does not care if the 
+         * userland code for the grammar rules is flaky. 
+         * Kill this protection code:
+         *
+         *     // Do this to prevent ...
+         *     vstack[sp] = undefined;
+         */
+        parseFn = parseFn
+        .replace(/\s+\/\/ Do this to prevent nasty action block codes[^\n]+\n\s+vstack\[sp\] = undefined;[^\n]+\n/g, '\n\n');
     }
 
     info.performAction = actionFn;
@@ -5989,7 +6045,7 @@ var LLGenerator = exports.LLGenerator = ll.construct();
 
 Jison.Generator = function Jison_Generator(g, optionalLexerSection, options) {
     // pick the correct argument for the `options` for this call:
-    var opt = typal.camelMix.call({}, (options || typeof optionalLexerSection === 'string') ? options : optionalLexerSection);
+    var opt = typal.camelMix.call({}, mkStdOptions, (options || typeof optionalLexerSection === 'string') ? options : optionalLexerSection);
     var chk_g;
 
     // Provisionally parse the grammar, really only to obtain the *options.type*
@@ -6018,7 +6074,7 @@ Jison.Generator = function Jison_Generator(g, optionalLexerSection, options) {
         chk_g = g;
     }
 
-    opt = typal.camelMix.call({}, Jison.defaultJisonOptions, chk_g && chk_g.options, opt);
+    opt = typal.camelMix.call({}, mkStdOptions, Jison.defaultJisonOptions, chk_g && chk_g.options, opt);
     switch (opt.type || '') {
     case 'lr0':
         return new LR0Generator(g, optionalLexerSection, opt);
@@ -20792,9 +20848,11 @@ function typal_mix() {
     return this;
 }
 
-// Same as typal_mix but also camelCases every object member.
+// Same as typal_mix but also camelCases every object member and 'standardizes' the key set of every input
+// argument through a caLLback function.
+// 
 // This is useful for processing options with dashes in their key, e.g. `token-stack` --> tokenStack.
-function typal_camel_mix() {
+function typal_camel_mix(cb) {
     var self = this;
     var i, o, k;
 
@@ -20812,7 +20870,7 @@ function typal_camel_mix() {
         });
     }
 
-    for (i = 0; i < arguments.length; i++) {
+    for (i = 1; i < arguments.length; i++) {
         o = arguments[i];
         if (!o) continue;
         if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
@@ -20820,6 +20878,9 @@ function typal_camel_mix() {
         }
         if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
             this.toString = o.toString;
+        }
+        if (cb) {
+            o = cb(o);
         }
         for (k in o) {
             if (Object.prototype.hasOwnProperty.call(o, k)) {
