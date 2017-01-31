@@ -390,7 +390,7 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.processGrammar(grammar);
 
     if (grammar.lex) {
-        this.lexer = new Lexer(grammar.lex, null, this.terminals_);
+        this.lexer = new Lexer(grammar.lex, null, this.terminals_, this);
     }
 };
 
@@ -17083,12 +17083,12 @@ function generateErrorClass() {
 var jisonLexerErrorDefinition = generateErrorClass();
 
 
-function RegExpLexer(dict, input, tokens) {
+function RegExpLexer(dict, input, tokens, build_options) {
     var opts;
     var dump = false;
 
     function test_me(tweak_cb, description, src_exception, ex_callback) {
-        opts = processGrammar(dict, tokens);
+        opts = processGrammar(dict, tokens, build_options);
         opts.__in_rules_failure_analysis_mode__ = false;
         if (tweak_cb) {
             tweak_cb();
@@ -18031,15 +18031,40 @@ function expandParseArguments(parseFn, options) {
 
 
 // generate lexer source from a grammar
-function generate(dict, tokens) {
-    var opt = processGrammar(dict, tokens);
+function generate(dict, tokens, build_options) {
+    var opt = processGrammar(dict, tokens, build_options);
 
     return generateFromOpts(opt);
 }
 
 // process the grammar and build final data structures and functions
-function processGrammar(dict, tokens) {
+function processGrammar(dict, tokens, build_options) {
+    build_options = build_options || {};
     var opts = {};
+    // include the knowledge passed through `build_options` about which lexer
+    // features will actually be *used* by the environment (which in 99.9% 
+    // of cases is a jison *parser*):
+    // 
+    // (this stuff comes striaght from the jison Optimization Analysis.)
+    // 
+    opts.actionsAreAllDefault = build_options.actionsAreAllDefault;
+    opts.actionsUseYYLENG = build_options.actionsUseYYLENG;
+    opts.actionsUseYYLINENO = build_options.actionsUseYYLINENO;
+    opts.actionsUseYYTEXT = build_options.actionsUseYYTEXT;
+    opts.actionsUseYYLOC = build_options.actionsUseYYLOC;
+    opts.actionsUseParseError = build_options.actionsUseParseError;
+    opts.actionsUseYYERROR = build_options.actionsUseYYERROR;
+    opts.actionsUseYYERROK = build_options.actionsUseYYERROK;
+    opts.actionsUseYYCLEARIN = build_options.actionsUseYYCLEARIN;
+    opts.actionsUseValueTracking = build_options.actionsUseValueTracking;
+    opts.actionsUseValueAssignment = build_options.actionsUseValueAssignment;
+    opts.actionsUseLocationTracking = build_options.actionsUseLocationTracking;
+    opts.actionsUseLocationAssignment = build_options.actionsUseLocationAssignment;
+    opts.actionsUseYYSTACK = build_options.actionsUseYYSTACK;
+    opts.actionsUseYYSSTACK = build_options.actionsUseYYSSTACK;
+    opts.actionsUseYYSTACKPOINTER = build_options.actionsUseYYSTACKPOINTER;
+    opts.hasErrorRecovery = build_options.hasErrorRecovery;
+
     if (typeof dict === 'string') {
         dict = lexParser.parse(dict);
     }
@@ -27760,14 +27785,14 @@ module.exports={
     "node": ">=4.0"
   },
   "dependencies": {
-    "ebnf-parser": "GerHobbelt/ebnf-parser#master",
-    "jison-lex": "GerHobbelt/jison-lex#master",
-    "lex-parser": "GerHobbelt/lex-parser#master",
+    "ebnf-parser": "github:GerHobbelt/ebnf-parser#master",
+    "jison-lex": "github:GerHobbelt/jison-lex#master",
+    "lex-parser": "github:GerHobbelt/lex-parser#master",
     "recast": "0.11.20",
     "jscodeshift": "0.3.30",
     "json5": "0.5.1",
-    "nomnom": "GerHobbelt/nomnom#master",
-    "xregexp": "GerHobbelt/xregexp#master"
+    "nomnom": "github:GerHobbelt/nomnom#master",
+    "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "browserify": "14.0.0",
