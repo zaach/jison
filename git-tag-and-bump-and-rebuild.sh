@@ -57,11 +57,10 @@ while true; do
 
 # ---------------------------------------------------------------------------
 # stage 1: rebuild all libraries from scratch, using existing NPM packages.
-#          Commit. (`npm install` fails often enough that we invoke the bastard TWICE!)
+#          Commit.
 # ---------------------------------------------------------------------------
 
 if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
-if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
@@ -98,7 +97,6 @@ git push --all
 
 
 if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
-if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
@@ -226,7 +224,6 @@ git push --all
 
 
 if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
-if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make prep 						; then break; fi; 			# GOTO END on failure
 if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
