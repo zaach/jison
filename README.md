@@ -3,6 +3,8 @@ Jison
 
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](mailto:jison@librelist.com)
+* [Website](https://gerhobbelt.github.io/jison/)
+* [**Original** JISON Website](http://jison.org)
 
 [![build status](https://secure.travis-ci.org/GerHobbelt/jison.png)](http://travis-ci.org/GerHobbelt/jison)
 
