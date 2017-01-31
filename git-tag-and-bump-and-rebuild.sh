@@ -8,37 +8,37 @@
 # 
 are_we_okay() {
 	if ! file_exists lib/util/ebnf-parser.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/ebnf-transform.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/lex-parser.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/parser.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/regexp-lexer.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/set.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/transform-parser.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
 	if ! file_exists lib/util/typal.js ; then
-		return 1;  // fail
+		return 1;  # fail
 	fi
-	return 0; 	 // ok!
+	return 0; 	 # ok!
 } 
 
 file_exists() {
 	if test -n "$1" && test -f "$1"; then
 		return 0;  // ok 
 	else
-		return 1;  // fail
+		return 1;  # fail
 	fi
 }
 
