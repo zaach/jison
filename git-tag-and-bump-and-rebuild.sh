@@ -60,7 +60,10 @@ while true; do
 #          Commit. (`npm install` fails often enough that we invoke the bastard TWICE!)
 # ---------------------------------------------------------------------------
 
-make superclean ; make prep ; make prep ; make site
+if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi; 			# GOTO END on failure
@@ -94,7 +97,10 @@ git commit -a -m 'rebuilt library files'
 git push --all
 
 
-make superclean ; make prep ; make prep ; make site
+if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi; 			# GOTO END on failure
@@ -130,11 +136,12 @@ git push --all
 # ---------------------------------------------------------------------------
 
 
-make git-tag
+if ! 		make git-tag    			; then break; fi; 			# GOTO END on failure
 
 if ! are_we_okay ; then break; fi; 			# GOTO END on failure
 
-npm publish
+if ! 		npm publish     			; then break; fi; 			# GOTO END on failure
+
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +149,7 @@ npm publish
 # ---------------------------------------------------------------------------
 
 
-make bump
+if ! 		make bump 						; then break; fi; 			# GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi; 			# GOTO END on failure
@@ -218,7 +225,10 @@ git commit -a -m 'updated NPM packages'
 git push --all
 
 
-make superclean ; make prep ; make prep ; make site
+if ! 		make superclean 			; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make prep 						; then break; fi; 			# GOTO END on failure
+if ! 		make site 						; then break; fi; 			# GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi; 			# GOTO END on failure
