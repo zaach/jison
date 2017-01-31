@@ -1,7 +1,58 @@
 #! /bin/bash
 #
 
+
+#
+# check if important files exist; if not, abort mission!
+# Prevent major boo-boo's which only pollute our git repo!
+# 
+are_we_okay() {
+	if ! file_exists lib/util/ebnf-parser.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/ebnf-transform.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/lex-parser.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/parser.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/regexp-lexer.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/set.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/transform-parser.js ; then
+		return 1;  // fail
+	fi
+	if ! file_exists lib/util/typal.js ; then
+		return 1;  // fail
+	fi
+	return 0; 	 // ok!
+} 
+
+file_exists() {
+	if test -n "$1" && test -f "$1"; then
+		return 0;  // ok 
+	else
+		return 1;  // fail
+	fi
+}
+
+
+# ---------------------------------------------------------------------------
+
+
+
+
 pushd $(dirname $0)                                                                                     2> /dev/null  > /dev/null
+
+
+# to emulate GOTO: we run a loop and BREAK out of it:
+while true; do
 
 
 # ---------------------------------------------------------------------------
@@ -10,6 +61,9 @@ pushd $(dirname $0)                                                             
 # ---------------------------------------------------------------------------
 
 make superclean ; make prep ; make prep ; make site
+
+
+if ! are_we_okay ; then break; fi; 			# GOTO END on failure
 
 
 # git submodule foreach git commit -a -m 'rebuilt library files'
@@ -41,6 +95,9 @@ git push --all
 
 
 make superclean ; make prep ; make prep ; make site
+
+
+if ! are_we_okay ; then break; fi; 			# GOTO END on failure
 
 
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
@@ -75,6 +132,8 @@ git push --all
 
 make git-tag
 
+if ! are_we_okay ; then break; fi; 			# GOTO END on failure
+
 npm publish
 
 
@@ -84,6 +143,9 @@ npm publish
 
 
 make bump
+
+
+if ! are_we_okay ; then break; fi; 			# GOTO END on failure
 
 
 # git submodule foreach git commit -a -m 'rebuilt library files'
@@ -159,6 +221,9 @@ git push --all
 make superclean ; make prep ; make prep ; make site
 
 
+if ! are_we_okay ; then break; fi; 			# GOTO END on failure
+
+
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
 git commit -a -m 'rebuilt library files'
 git push --all
@@ -189,7 +254,11 @@ echo "Done. You can now continue work on the new version:"
 node lib/cli.js -V
 
 
-popd                                                                                                    2> /dev/null  > /dev/null
+# end of BREAK-as-emulation-of-GOTO loop:
+break
+done
 
+
+popd                                                                                                    2> /dev/null  > /dev/null
 
 
