@@ -38,14 +38,17 @@ expressions
 
 unused_rule_1
     : epsilon WORD WORD
+        { $$ = $1 + $2 + $3; }
     ;
 
 unused_rule_2
     : expressions WORD
+        { $$ = $1 + $2; }
     ;
 
 unused_rule_3
     : e WORD
+        { $$ = $1 + $2; }
     ;
 
 %%
