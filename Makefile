@@ -326,10 +326,10 @@ build: build_bnf build_lex
 
 npm-install: submodules-npm-install
 	npm install
+	npm install --only=dev
 
 JISON_DEPS = \
 	lib/util/regexp-lexer.js \
-	lib/util/package.json \
 	lib/util/ebnf-parser.js \
 	lib/util/ebnf-transform.js \
 	lib/util/transform-parser.js
@@ -348,18 +348,15 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  modules/ebnf-parser/node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
 	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
-
-lib/util/package.json: modules/jison-lex/package.json
-	cat modules/jison-lex/package.json > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
 	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@

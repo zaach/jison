@@ -18,3 +18,8 @@ web/crash.log
 
 # Ignore the web directory, i.e. the web pages
 web/
+
+# Ignore build/publish scripts, etc.
+git-tag-and-bump-and-rebuild.sh
+Makefile
+
