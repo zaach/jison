@@ -23,3 +23,6 @@ web/
 git-tag-and-bump-and-rebuild.sh
 Makefile
 
+# `npm install jison` doesn't need any submodules: ignore them!
+.gitmodules
+
