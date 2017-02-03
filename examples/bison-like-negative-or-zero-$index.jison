@@ -20,7 +20,7 @@ From the bison docs @ http://dinosaur.compilertools.net/bison/bison_6.html#IDX85
 >          | expr bar '-' expr  { ... }
 >          ;
 >
-> bar:       /* empty */
+> bar:       // empty
 >          { previous_expr = $0; }
 >          ;
 > ```
@@ -32,6 +32,7 @@ From the bison docs @ http://dinosaur.compilertools.net/bison/bison_6.html#IDX85
 
 //%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 
+//%options module-name=bison_bugger_no1
 
 
 %lex
@@ -39,8 +40,10 @@ From the bison docs @ http://dinosaur.compilertools.net/bison/bison_6.html#IDX85
 %%
 
 \s+                   /* skip whitespace */
-a                     return 'ID';
+[a-z]                 return 'ID';
 ';'                   return ';';
+'+'                   return '+';
+'-'                   return '-';
 .                     return 'ERROR';
 
 /lex
@@ -52,36 +55,31 @@ a                     return 'ID';
 
 %%
 
+start
+    : init foo
+        { $$ = $foo + yy.previous_expr; }
+    ;
+
+init
+    : %epsilon
+        { yy.previous_expr = '#'; }
+    ;
 
 foo
     : expr bar '+' expr  
-        { ... }
+        { $$ = '+' + $expr1 + $bar + $expr2; }
     | expr bar '-' expr
-        { ... }
+        { $$ = '-' + $expr1 + $bar + $expr2; }
     ;
 
 bar
     : %epsilon      /* empty */
-        { previous_expr = $0; }
-    ;
-
-
-
-stmt
-    : type ID ';'
-        { $$ = 'V' + $type + ':' + $ID; }
-    | expr ';'
-        { $$ = 'X' + $expr; }
-    ;
-
-type
-    : ID
-        { $$ = 'T'; }
+        { yy.previous_expr = 'X:' + $0; $$ = 'D' + $0; }
     ;
 
 expr
     : ID
-        { $$ = 'E'; }
+        { $$ = $ID; }
     ;
 
 
@@ -102,12 +100,12 @@ expr
 var assert = require("assert");
 
 parser.main = function () {
-    var rv = parser.parse('aa;');
-    console.log("test #1: 'aa;' ==> ", rv);
-    assert.equal(rv, 'VT:a');
+    var rv = parser.parse('a+b');
+    console.log("test #1: 'a+b' ==> ", rv, parser.yy);
+    assert.equal(rv, '+aDabX:a');
 
-    rv = parser.parse('a;');
-    console.log("test #2: 'a;' ==> ", rv);
+    rv = parser.parse('a-b');
+    console.log("test #2: 'a-b' ==> ", rv);
     assert.equal(rv, 'XE');
 
     console.log("\nAnd now the failing inputs: even these deliver a result:\n");
