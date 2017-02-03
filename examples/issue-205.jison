@@ -53,7 +53,7 @@ opt_prefix2:
 var assert = require("assert");
 
 parser.main = function () {
-    var testset_ok = ['A', 'B', 'aA', 'aB', 'bA', 'bB'];
+    var testset_ok = ['A', 'B', 'aA', 'bB'];
     var rv;
     for (var i = 0, len = testset_ok.length; i < len; i++) {
         try {
