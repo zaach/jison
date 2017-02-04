@@ -1,38 +1,38 @@
 /*
-From the bison docs @ http://dinosaur.compilertools.net/bison/bison_6.html#IDX85: 
-
->
-> If you don't specify an action for a rule, Bison supplies a default: `$$ = $1`. 
-> Thus, the value of the first symbol in the rule becomes the value of the whole rule. 
-> Of course, the default rule is valid only if the two data types match. 
-> There is no meaningful default action for an empty rule; 
-> every empty rule must have an explicit action unless the rule's value does not matter.
->
->
-> `$n` with `n` zero or negative is allowed for reference to tokens and groupings on the stack 
-> before those that match the current rule. 
-> This is a very risky practice, and to use it reliably you must be certain of the context 
-> in which the rule is applied. 
-> Here is a case in which you can use this reliably:
->
-> ```
-> foo:       expr bar '+' expr  { ... }
->          | expr bar '-' expr  { ... }
->          ;
->
-> bar:       // empty
->          { previous_expr = $0; }
->          ;
-> ```
->
-> As long as `bar` is used only in the fashion shown here, `$0` always refers to the `expr` 
-> which precedes `bar` in the definition of `foo`.
->
-*/
+ * From the bison docs @ http://dinosaur.compilertools.net/bison/bison_6.html#IDX85: 
+ * 
+ * >
+ * > If you don't specify an action for a rule, Bison supplies a default: `$$ = $1`. 
+ * > Thus, the value of the first symbol in the rule becomes the value of the whole rule. 
+ * > Of course, the default rule is valid only if the two data types match. 
+ * > There is no meaningful default action for an empty rule; 
+ * > every empty rule must have an explicit action unless the rule's value does not matter.
+ * >
+ * >
+ * > `$n` with `n` zero or negative is allowed for reference to tokens and groupings on the stack 
+ * > before those that match the current rule. 
+ * > This is a very risky practice, and to use it reliably you must be certain of the context 
+ * > in which the rule is applied. 
+ * > Here is a case in which you can use this reliably:
+ * >
+ * > ```
+ * > foo:       expr bar '+' expr  { ... }
+ * >          | expr bar '-' expr  { ... }
+ * >          ;
+ * >
+ * > bar:       // empty
+ * >          { previous_expr = $0; }
+ * >          ;
+ * > ```
+ * >
+ * > As long as `bar` is used only in the fashion shown here, `$0` always refers to the `expr` 
+ * > which precedes `bar` in the definition of `foo`.
+ * >
+ */
 
 //%options on-demand-lookahead    // camelCased: option.onDemandLookahead
 
-//%options module-name=bison_bugger_no1
+%options module-name=bison_bugger_no1
 
 
 %lex
