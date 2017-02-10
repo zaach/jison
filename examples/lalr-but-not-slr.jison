@@ -8,10 +8,18 @@ A → a
 
 is LALR(1) but not SLR(1). 
 
-Answer: In addition to the rules given above, one extra rule S' → S as the initial item. Following the procedures for constructing the LR(1) parser, here is the initial state and the resulting state diagram by taking closure:
+Answer: In addition to the rules given above, one extra rule S' → S as 
+the initial item. Following the procedures for constructing the LR(1) 
+parser, here is the initial state and the resulting state diagram by 
+taking closure:
 
-Based on the state diagram, we derive the LR(1) parsing table as follows: State Action a b c d $ S A Goto s3 s4 acc s5 s7 s8 r5 s10 r3r2r4 r5s9 1 2 6 Then, the LALR(1) parsing table can be obtained by merging items with common first components, In this pro
+Based on the state diagram, we derive the LR(1) parsing table as follows: 
 
+State Action a b c d $ S A Goto 
+s3 s4 acc s5 s7 s8 r5 s10 r3r2r4 r5s9 1 2 6 
+
+Then, the LALR(1) parsing table can be obtained by merging items with 
+common first components, In this problem
 
 
 ASU 4.40 
