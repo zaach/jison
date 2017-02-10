@@ -61,25 +61,57 @@
 %%
 
 start
-    : init foo
-        { $$ = $foo + yy.previous_expr; }
-    ;
-
-init
-    : %epsilon
-        { yy.previous_expr = '#'; }
+    : foo
     ;
 
 foo
-    : expr bar '+' expr  
-        { $$ = '+' + $expr1 + $bar + $expr2; }
-    | expr bar '-' expr
-        { $$ = '-' + $expr1 + $bar + $expr2; }
+    : var '='[eq] expr bar '+'[op] expr  
+        { 
+            $$ = $var + $eq + $expr1 + $bar + $op + $expr2; 
+        }
+    | var '='[eq] expr bar '-'[op] expr
+        { 
+            $$ = $var + $eq + $expr1 + $bar + $op + $expr2; 
+        }
+    | error '+'[op] expr
+        { 
+            $$ = $error;
+            console.log('errinfo: ', {
+                loc: @error, 
+                val: $error, 
+                id: #error, 
+                index: ##error
+            });
+
+            var t = yystack.slice(0, yysp);
+            var v = yyvstack.slice(0, yysp);
+            var l = yylstack.slice(0, yysp);
+            var s = yysstack.slice(0, yysp);
+            console.log('error state dump: ', {
+                tokens: t,
+                values: v,
+                locations: l,
+                states: s
+            });
+
+            yyerrok; 
+        }
+    | error
+        { 
+            $$ = $error;
+            console.log('errinfo: ', {
+                loc: @error, 
+                val: $error, 
+                id: #error, 
+                index: ##error
+            });
+            yyerrok; 
+        }
     ;
 
 bar
     : %epsilon      /* empty */
-        { yy.previous_expr = 'X:' + $0; $$ = 'D' + $0; }
+        { $$ = '↝' + $0; }
     ;
 
 expr
@@ -87,6 +119,10 @@ expr
         { $$ = $ID; }
     ;
 
+var
+    : ID
+        { console.log('var!'); $$ = '⦿' + $ID; }
+    ;
 
 %%
 
