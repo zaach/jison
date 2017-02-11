@@ -1,4 +1,7 @@
 
+//%options on-demand-lookahead    // camelCased: option.onDemandLookahead
+
+
 
 %lex
 
@@ -9,6 +12,7 @@ a                     return 'PREFIX1';
 b                     return 'PREFIX2';
 A                     return 'SUFFIX1';
 B                     return 'SUFFIX2';
+X                     return 'COMMON1';
 .                     return 'ERROR';
 
 /lex
@@ -26,12 +30,12 @@ start:
         ;
 
 opt_prefix1:
-          ε                 /* empty */
+          COMMON1
         | PREFIX1
         ;
 
 opt_prefix2:
-          ε                 /* empty */
+          COMMON1
         | PREFIX2
         ;
 
@@ -53,7 +57,7 @@ opt_prefix2:
 var assert = require("assert");
 
 parser.main = function () {
-    var testset_ok = ['A', 'B', 'aA', 'bB'];
+    var testset_ok = ['XA', 'XB', 'aA', 'bB'];
     var rv;
     for (var i = 0, len = testset_ok.length; i < len; i++) {
         try {

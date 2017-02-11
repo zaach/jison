@@ -465,6 +465,7 @@ parser.main = function compiledRunner(args) {
       __cursor_pos__: 0,                                    // index position of next token to deliver
 
       // ## API
+      yytext: null,
 
       setInput: function setInput2(input, yy) {
         console.log('set input to from token list: ', input);
