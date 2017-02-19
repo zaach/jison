@@ -253,3 +253,123 @@ exports["test bison error recovery example"] = function() {
 
     assert.ok(parser.parse("0+0++++>;0;"), "should recover");
 };
+
+
+  it("test parse error exception class API", function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           [".", "return 'ERR';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "A" :['A x',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    parser.lexer = new Lexer(lexData);
+    try {
+      parser.parse('xxy'); // must fail with exception being thrown of specific type!
+      assert(false, "exception should have been thrown on parse error!");
+    } catch (ex) {
+      var JisonParserError = parser.JisonParserError;
+      assert(JisonParserError);
+
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonParserError);
+      assert(ex.hash);
+      assert(ex.message);
+
+      // test API
+      var t = new JisonParserError('test', 42);
+      assert(t instanceof Error);
+      assert(t instanceof JisonParserError);
+      assert(t.hash === 42);
+      assert(t.message === 'test');
+      assert(t.toString() === 'JisonParserError: test');
+
+      var t2 = new Error('a');
+      var t3 = new JisonParserError('test', { exception: t2 });
+      assert(t2 instanceof Error);
+      assert(!(t2 instanceof JisonParserError));
+      assert(t3 instanceof Error);
+      assert(t3 instanceof JisonParserError);
+      assert(!t2.hash);
+      assert(t3.hash);
+      assert(t3.hash.exception);
+      assert(t2.message === 'a');
+      assert(t3.message === 'a');
+      assert(t2.toString() === 'Error: a');
+      assert(t3.toString() === 'JisonParserError: a');
+
+    }                    
+  });
+
+  it("test lex error exception class API", function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "A" :['A x',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    parser.lexer = new Lexer(lexData);
+    try {
+      parser.parse('xxy'); // must fail with exception being thrown of specific type!
+      assert(false, "exception should have been thrown on lex error!");
+    } catch (ex) {
+      var JisonParserError = parser.JisonParserError;
+      assert(JisonParserError);
+
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonParserError);
+      assert(ex.hash);
+      assert(ex.message);
+
+      assert(parser.lexer);
+      var JisonLexerError = parser.lexer.JisonLexerError;
+      assert(JisonLexerError);
+
+      var ex_l = ex.hash.exception;
+      assert(ex_l);
+      assert(ex_l instanceof Error);
+      assert(ex_l instanceof JisonLexerError);
+      assert(ex_l.hash);
+      assert(ex_l.message);
+
+
+      // test API
+      var t = new JisonLexerError('test', 42);
+      assert(t instanceof Error);
+      assert(t instanceof JisonLexerError);
+      assert(t.hash === 42);
+      assert(t.message === 'test');
+      assert(t.toString() === 'JisonLexerError: test');
+
+      var t2 = new Error('a');
+      var t3 = new JisonLexerError('test', { exception: t2 });
+      assert(t2 instanceof Error);
+      assert(!(t2 instanceof JisonLexerError));
+      assert(t3 instanceof Error);
+      assert(t3 instanceof JisonLexerError);
+      assert(!t2.hash);
+      assert(t3.hash);
+      assert(t3.hash.exception);
+      assert(t2.message === 'a');
+      assert(t3.message === 'a');
+      assert(t2.toString() === 'Error: a');
+      assert(t3.toString() === 'JisonLexerError: a');
+    }                    
+  });
+
+
+
