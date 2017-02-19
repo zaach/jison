@@ -22,7 +22,7 @@
   "preferGlobal": true,
   "repository": {
     "type": "git",
-    "url": "git://github.com/GerHobbelt/jison.git"
+    "url": "https://github.com/GerHobbelt/jison.git"
   },
   "bugs": {
     "email": "jison@librelist.com",
@@ -48,11 +48,12 @@
   "devDependencies": {
     "browserify": "14.0.0",
     "glob": "7.1.1",
-    "test": "0.6.0",
-    "uglify-js": "2.7.5"
+    "uglify-js": "2.7.5",
+    "chai": "3.5.0",
+    "mocha": "3.2.0"
   },
   "scripts": {
-    "test": "node tests/all-tests.js"
+    "test": "make test"
   },
   "homepage": "http://jison.org"
 }

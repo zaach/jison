@@ -1,6 +1,7 @@
-var Jison = require("../setup").Jison,
-    RegExpLexer = require("../setup").RegExpLexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var RegExpLexer = require("../setup").RegExpLexer;
+
 
 var lexData = {
     rules: [
@@ -10,7 +11,9 @@ var lexData = {
     ]
 };
 
-exports["test Left associative rule"] = function () {
+
+describe("Precedence in the grammar", function () {
+  it("test Left associative rule", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -38,9 +41,9 @@ exports["test Left associative rule"] = function () {
 
     var r = parser.parse("x+x+x");
     assert.deepEqual(r, expectedAST);
-};
+  });
 
-exports["test Right associative rule"] = function () {
+  it("test Right associative rule", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -68,9 +71,9 @@ exports["test Right associative rule"] = function () {
 
     var r = parser.parse("x+x+x");
     assert.deepEqual(r, expectedAST);
-};
+  });
 
-exports["test Multiple precedence operators"] = function () {
+  it("test Multiple precedence operators", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -101,9 +104,9 @@ exports["test Multiple precedence operators"] = function () {
 
     var r = parser.parse("x*x+x");
     assert.deepEqual(r, expectedAST);
-};
+  });
 
-exports["test Multiple precedence operators"] = function () {
+  it("test Multiple precedence operators", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -134,9 +137,9 @@ exports["test Multiple precedence operators"] = function () {
 
     var r = parser.parse("x+x*x");
     assert.deepEqual(r, expectedAST);
-};
+  });
 
-exports["test Non-associative operator"] = function () {
+  it("test Non-associative operator", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -162,9 +165,9 @@ exports["test Non-associative operator"] = function () {
 
     assert.throws(function () {parser.parse("x=x=x");}, "throws parse error when operator used twice.");
     assert.ok(parser.parse("x=x"), "normal use is okay.");
-};
+  });
 
-exports["test Context-dependent precedence"] = function () {
+  it("test Context-dependent precedence", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -199,9 +202,9 @@ exports["test Context-dependent precedence"] = function () {
 
     var r = parser.parse("-x*-x*x-x");
     assert.deepEqual(r, expectedAST);
-};
+  });
 
-exports["test multi-operator rules"] = function () {
+  it("test multi-operator rules", function () {
     var lexData = {
         rules: [
            ["x", "return 'ID';"],
@@ -234,4 +237,6 @@ exports["test multi-operator rules"] = function () {
     var gen = new Jison.Generator(grammar, {type: 'slr'});
 
     assert.equal(gen.conflicts, 0);
-};
+  });
+});
+

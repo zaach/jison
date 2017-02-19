@@ -1,8 +1,10 @@
-var Jison = require("../setup").Jison,
-    Lexer = require("../setup").Lexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var Lexer = require("../setup").Lexer;
 
-exports["test error caught"] = function () {
+
+describe("Error Recovery/Handling", function () {
+  it("test error caught", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -23,9 +25,9 @@ exports["test error caught"] = function () {
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xxy'), "should parse");
     assert.equal(parser.parse('xyg'), "caught", "should return 'caught'");
-};
+  });
 
-exports["test error recovery"] = function () {
+  it("test error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -45,9 +47,9 @@ exports["test error recovery"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
     assert.equal(parser.parse('xxgy'), "recovery", "should return 'recovery'");
-};
+  });
 
-exports["test deep error recovery"] = function () {
+  it("test deep error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -71,9 +73,9 @@ exports["test deep error recovery"] = function () {
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('gxxx;'), "should parse");
     assert.equal(parser.parse('gxxg;'), "nested", "should return 'nested'");
-};
+  });
 
-exports["test no recovery"] = function () {
+  it("test no recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -92,9 +94,9 @@ exports["test no recovery"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
     assert.throws(function () { parser.parse('xxgy'); }, "should throw");
-};
+  });
 
-exports["test error after error recovery"] = function () {
+  it("test error after error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -116,10 +118,10 @@ exports["test error after error recovery"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
     assert.throws(function () { parser.parse('gxxx;'); }, "should return bar");
-};
+  });
 
 // WARNING: the actual test in here differs from what it says on the tin, as we differ from jison in error recovery behaviour in this regard:
-exports["test throws error despite recovery rule"] = function() {
+  it("test throws error despite recovery rule", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -146,9 +148,9 @@ exports["test throws error despite recovery rule"] = function() {
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
     assert.doesNotThrow(function () { parser.parse("0+0+0>"); });     // here we expect behaviour different from vanilla jison as our error recovery handling is a bit more sophisticated and this error is coped with
-};
+  });
 
-exports["test error recovery rule on replacement error"] = function() {
+  it("test error recovery rule on replacement error", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -195,9 +197,9 @@ exports["test error recovery rule on replacement error"] = function() {
     assert.deepEqual(parser.parse("0+0>+0"), expectedAST3, 'round 3');
     assert.deepEqual(parser.parse("0+>0+0"), expectedAST4, 'round 4');
     assert.deepEqual(parser.parse("0+>+0"), expectedAST5, 'round 5');
-};
+  });
 
-exports["test correct AST after error recovery abrupt end"] = function() {
+  it("test correct AST after error recovery abrupt end", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -224,10 +226,10 @@ exports["test correct AST after error recovery abrupt end"] = function() {
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
     assert.deepEqual(parser.parse("0+0+0"), expectedAST);
-};
+  });
 
 
-exports["test bison error recovery example"] = function() {
+  it("test bison error recovery example", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -252,7 +254,7 @@ exports["test bison error recovery example"] = function() {
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0++++>;0;"), "should recover");
-};
+  });
 
 
   it("test parse error exception class API", function () {
@@ -370,6 +372,7 @@ exports["test bison error recovery example"] = function() {
       assert(t3.toString() === 'JisonLexerError: a');
     }                    
   });
+});
 
 
 

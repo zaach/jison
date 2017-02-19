@@ -1,6 +1,6 @@
-var Jison = require("../setup").Jison,
-    Lexer = require("../setup").Lexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var Lexer = require("../setup").Lexer;
 
 var lexData = {
     rules: [
@@ -9,7 +9,9 @@ var lexData = {
     ]
 };
 
-exports["test tokens as a string"] = function () {
+
+describe("JISON API", function () {
+  it("test tokens as a string", function () {
 
     var grammar = {
         tokens: "x y",
@@ -24,9 +26,9 @@ exports["test tokens as a string"] = function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test generator"] = function () {
+  it("test generator", function () {
 
     var grammar = {
         bnf: {
@@ -39,9 +41,9 @@ exports["test generator"] = function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test extra spaces in productions"] = function () {
+  it("test extra spaces in productions", function () {
 
     var grammar = {
         tokens: "x y",
@@ -56,9 +58,9 @@ exports["test extra spaces in productions"] = function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test | separated rules"] = function () {
+  it("test | separated rules", function () {
 
     var grammar = {
         tokens: "x y",
@@ -71,9 +73,9 @@ exports["test | separated rules"] = function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test start symbol optional"] = function () {
+  it("test start symbol optional", function () {
 
     var grammar = {
         tokens: "x y z",
@@ -88,9 +90,9 @@ exports["test start symbol optional"] = function () {
     assert.ok(gen.nonterminals['A'], 'A must be identified as a non-terminal');
     assert.ok(gen.startSymbol, 'A default startsymbol must be picked by Jison');
     assert.ok(gen.startSymbol === 'A', 'The default startsymbol must match the first rule');
-};
+  });
 
-exports["test start symbol should be nonterminal"] = function () {
+  it("test start symbol should be nonterminal", function () {
 
     var grammar = {
         tokens: "x y",
@@ -101,9 +103,9 @@ exports["test start symbol should be nonterminal"] = function () {
     };
 
     assert.throws(function () { new Jison.Generator(grammar); }, "throws error");
-};
+  });
 
-exports["test token list as string"] = function () {
+  it("test token list as string", function () {
 
     var grammar = {
         tokens: "x y",
@@ -115,9 +117,9 @@ exports["test token list as string"] = function () {
 
     var gen = new Jison.Generator(grammar);
     assert.ok(gen.terminals.indexOf('x') >= 0);
-};
+  });
 
-exports["test grammar options"] = function () {
+  it("test grammar options", function () {
 
     var grammar = {
         options: {type: "slr"},
@@ -135,9 +137,9 @@ exports["test grammar options"] = function () {
     assert.ok(gen.options);
     assert.ok(gen.options.type);
     assert.ok(gen.options.type === 'slr');
-};
+  });
 
-exports["test overwrite grammar options"] = function () {
+  it("test overwrite grammar options", function () {
 
     var grammar = {
         options: {type: "slr"},
@@ -156,9 +158,9 @@ exports["test overwrite grammar options"] = function () {
     assert.ok(gen.options.type);
     assert.ok(gen.options.type === 'lr0');
     assert.equal(gen.constructor, Jison.LR0Generator);
-};
+  });
 
-exports["test yy shared scope"] = function () {
+  it("test yy shared scope", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -180,10 +182,10 @@ exports["test yy shared scope"] = function () {
     parser.lexer = new Lexer(lexData);
     assert.equal(parser.parse('y'), "bar", "should return bar");
     assert.equal(parser.parse('xxy'), "foo", "should return foo");
-};
+  });
 
 
-exports["test parser generator selection"] = function () {
+  it("test parser generator selection", function () {
 
     var grammar = {
         options: {type: "slr"},
@@ -196,10 +198,10 @@ exports["test parser generator selection"] = function () {
 
     var gen = new Jison.Generator(grammar, {type: "lr0"});
     assert.equal(gen.constructor, Jison.LR0Generator);
-};
+  });
 
 
-exports["test custom parse error method"] = function () {
+  it("test custom parse error method", function () {
     var lexData = {
         rules: [
            ["a", "return 'a';"],
@@ -234,18 +236,18 @@ exports["test custom parse error method"] = function () {
     assert.strictEqual(result.text, "a", "parse error text should equal b");
     assert.strictEqual(typeof result.token, 'string', "parse error token should be a string");
     assert.strictEqual(result.line, 0, "hash should include line number");
-};
+  });
 
-exports["test jison grammar as string"] = function () {
+  it("test jison grammar as string", function () {
 
     var grammar = "%% A : A x | A y | ;"
 
     var parser = new Jison.Generator(grammar).createParser();
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test no default resolve"] = function () {
+  it("test no default resolve", function () {
     var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
@@ -262,10 +264,10 @@ exports["test no default resolve"] = function () {
     assert.ok(gen.table.length === 4, "table has 4 states");
     assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
     assert.throws(function () { parser.parse("xx"); }, "throws parse error for multiple actions");
-};
+  });
 
 
-exports["test EOF in 'Unexpected token' error message"] = function () {
+  it("test EOF in 'Unexpected token' error message", function () {
 
     var grammar = {
         bnf: {
@@ -289,9 +291,9 @@ exports["test EOF in 'Unexpected token' error message"] = function () {
     };
 
     assert.ok(parser.parse("xx") === 666, "on error, the parseError return value is the parse result");
-};
+  });
 
-exports["test whether default parser error handling throws an exception"] = function () {
+  it("test whether default parser error handling throws an exception", function () {
 
     var grammar = {
         bnf: {
@@ -304,9 +306,9 @@ exports["test whether default parser error handling throws an exception"] = func
 //    parser.lexer.showPosition = null; // needed for "Unexpected" message
 
     assert.throws(function () { parser.parse("xx"); });
-};
+  });
 
-exports["test locations"] = function () {
+  it("test locations", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -333,9 +335,9 @@ exports["test locations"] = function () {
     assert.equal(loc.last_line, 2, 'last line correct');
     assert.equal(loc.first_column, 1, 'first column correct');
     assert.equal(loc.last_column, 2, 'last column correct');
-};
+  });
 
-exports["test default location action"] = function () {
+  it("test default location action", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -362,9 +364,9 @@ exports["test default location action"] = function () {
     assert.equal(loc.last_line, 2, 'last line correct');
     assert.equal(loc.first_column, 1, 'first column correct');
     assert.equal(loc.last_column, 2, 'last column correct');
-};
+  });
 
-exports["test locations by term name in action"] = function () {
+  it("test locations by term name in action", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -392,9 +394,9 @@ exports["test locations by term name in action"] = function () {
     assert.equal(loc.last_line, 2, 'last line correct');
     assert.equal(loc.first_column, 1, 'first column correct');
     assert.equal(loc.last_column, 2, 'last column correct');
-};
+  });
 
-exports["test lexer with no location support"] = function () {
+  it("test lexer with no location support", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -416,9 +418,9 @@ exports["test lexer with no location support"] = function () {
       setInput: function () {}
     };
     var loc = parser.parse('xx\nxy');
-};
+  });
 
-exports["test instance creation"] = function () {
+  it("test instance creation", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
@@ -446,9 +448,9 @@ exports["test instance creation"] = function () {
     parser.blah = true;
 
     assert.notEqual(parser.blah, parser2.blah, "should not inherit");
-};
+  });
 
-exports["test reentrant parsing"] = function () {
+  it("test reentrant parsing", function () {
     var grammar = {
         bnf: {
             "S" :['A EOF'],
@@ -475,17 +477,17 @@ exports["test reentrant parsing"] = function () {
     parser.lexer = new Lexer(lexData);
     var result = parser.parse('xxw');
     assert.equal(result, "foobar");
-};
+  });
 
-exports["test generated parser must have working parse API method"] = function () {
+  it("test generated parser must have working parse API method", function () {
     var grammar = "%% A : A x | A y | ; %%";
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-};
+  });
 
-exports["test generated parser must export added user-defined methods"] = function () {
+  it("test generated parser must export added user-defined methods", function () {
     var grammar = "%% A : A x | A y | ; %% parser.dummy = function () { return 42; };"
 
     var parser = new Jison.Parser(grammar);
@@ -493,9 +495,9 @@ exports["test generated parser must export added user-defined methods"] = functi
     assert.ok(parser.parse('xyx'), "parse xyx");
     assert.ok(typeof parser.dummy === 'function');
     assert.ok(parser.dummy() === 42);
-};
+  });
 
-exports["test consistent behaviour across many invocations of the parse() API"] = function () {
+  it("test consistent behaviour across many invocations of the parse() API", function () {
     var grammar = "%% A : A x | A y | ;"
 
     // this test should catch the closure error fixed in 
@@ -510,9 +512,9 @@ exports["test consistent behaviour across many invocations of the parse() API"] 
     assert.ok(parser.parse('xyx'), "parse xyx - round 4");
     assert.ok(parser.parse('xyx'), "parse xyx - round 5");
     assert.ok(parser.parse('xyx'), "parse xyx - round 6");
-};
+  });
 
-exports["test multiple invocations of the cleanupAfterParse API should be survivable"] = function () {
+  it("test multiple invocations of the cleanupAfterParse API should be survivable", function () {
     var grammar = "%options no-try-catch\n%% A : A x | A y | ;"
 
     // this test should catch the closure error fixed in 
@@ -535,10 +537,10 @@ exports["test multiple invocations of the cleanupAfterParse API should be surviv
     assert.ok(parser.parseError === parser.originalParseError);
     assert.ok(typeof parser.quoteName === 'function');
     assert.ok(parser.quoteName === parser.originalQuoteName);
-};
+  });
 
 // See if `$$` is properly returned by the grammar when there's no explicit `return` statement in the actions:
-exports["test default parse value return of $$"] = function () {
+  it("test default parse value return of $$", function () {
     var grammar = "\n" +
         "%%\n" +
         "A :\n" +
@@ -552,9 +554,9 @@ exports["test default parse value return of $$"] = function () {
     parser.lexer = new Lexer(lexData);
     var rv = parser.parse('xyx');
     assert.ok(rv === 'exyx', "parse xyx");
-};
+  });
 
-exports["test YY shared state usage"] = function () {
+  it("test YY shared state usage", function () {
     var grammar = "\n" +
         "%%\n" +
         "A :\n" +
@@ -595,9 +597,9 @@ exports["test YY shared state usage"] = function () {
     assert.ok(work_state.step1 === 2, "yy reference available in parser rule actions must be the active shared state object");
     assert.ok(work_state.step2 === 1, "yy reference available in parser rule actions must be the active shared state object");
     assert.ok(work_state.step3 === 1, "yy reference available in parser rule actions must be the active shared state object");
-};
+  });
 
-exports["test default parse exception hash object contents"] = function () {
+  it("test default parse exception hash object contents", function () {
     var grammar = "\n" +
         "%%\n" +
         "A :\n" +
@@ -745,13 +747,13 @@ exports["test default parse exception hash object contents"] = function () {
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
     assert.ok(post_count === 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
-};
+  });
 
 // a side-effect of a crash/exception thrown in a no-try-catch grammar is that the cleanup is NOT executed then,
 // hence no post_parse callback invocation will occur!
 //
 // For the rest, this test is the same as the previous one...
-exports["test %options no-try-catch"] = function () {
+  it("test %options no-try-catch", function () {
     var grammar = "%options no-try-catch\n" +
         "%%\n" +
         "A :\n" +
@@ -871,9 +873,9 @@ exports["test %options no-try-catch"] = function () {
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
     assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
-};
+  });
 
-exports["test %options on-demand-lookahead"] = function () {
+  it("test %options on-demand-lookahead", function () {
     var grammar = "%options no-try-catch\n" +
         "%options on-demand-lookahead\n" +
         "%%\n" +
@@ -994,9 +996,9 @@ exports["test %options on-demand-lookahead"] = function () {
     }
     assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
     assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
-};
+  });
 
-exports["test %options no-default-action"] = function () {
+  it("test %options no-default-action", function () {
     var grammar = "%options no-default-action\n" +
         "%%\n" +
         "A :\n" +
@@ -1053,7 +1055,8 @@ exports["test %options no-default-action"] = function () {
 
     assert.ok(rv === 'eyyyyyy', "parse xyxyx with no-default-action");
     assert.ok(rv2 === 'eyyyyyy', "parse xyxyx with default-action enabled (the default)");
-};
+  });
+});
 
 
 

@@ -1,8 +1,10 @@
-var Jison = require("../setup").Jison,
-    Lexer = require("../setup").Lexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var Lexer = require("../setup").Lexer;
 
-exports["test xx nullable grammar"] = function () {
+
+describe("LR(1)", function () {
+  it("test xx nullable grammar", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -24,9 +26,9 @@ exports["test xx nullable grammar"] = function () {
     assert.ok(parser.parse("xxx"), "parse");
     assert.ok(parser.parse("x"), "parse single x");
     assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
-};
+  });
 
-exports["test LR parse"] = function () {
+  it("test LR parse", function () {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -46,9 +48,9 @@ exports["test LR parse"] = function () {
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0+0"), "parse");
-};
+  });
 
-exports["test basic JSON grammar"] = function () {
+  it("test basic JSON grammar", function () {
     var grammar = {
         "lex": {
             "macros": {
@@ -115,9 +117,9 @@ exports["test basic JSON grammar"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr"});
     assert.ok(parser.parse(source));
-}
+  });
 
-exports["test compilers test grammar"] = function () {
+  it("test compilers test grammar", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"]
@@ -137,17 +139,17 @@ exports["test compilers test grammar"] = function () {
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse("xxx"), "parse");
-};
+  });
 
-exports["test compilers test grammar 2"] = function () {
+  it("test compilers test grammar 2", function () {
     var grammar = "%% n : a b ; a : | a x ; b : | b x y ;";
 
     var parser = new Jison.Generator(grammar, {type: "lr"});
 
     assert.equal(parser.conflicts, 1, "only one conflict");
-};
+  });
 
-exports["test nullables"] = function () {
+  it("test nullables", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -173,4 +175,6 @@ exports["test nullables"] = function () {
     parser.lexer = new Lexer(lexData);
 
     assert.ok(parser.parse("x;"), "parse");
-};
+  });
+});
+  
