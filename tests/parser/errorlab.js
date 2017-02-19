@@ -93,7 +93,7 @@ describe("Error Recovery/Handling", function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert.throws(function () { parser.parse('xxgy'); }, "should throw");
+    assert.throws(function () { parser.parse('xxgy'); }, /JisonParserError:.*?got unexpected ERR/);
   });
 
   it("test error after error recovery", function () {

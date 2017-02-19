@@ -27,7 +27,7 @@ describe("LALR(1)", function () {
     assert.ok(parser.parse("0+0+0"), "parse");
     assert.ok(parser.parse("0"), "parse single 0");
 
-    assert.throws(function () { parser.parse("+"); }, "throws parse error on invalid");
+    assert.throws(function () { parser.parse("+"); }, /JisonParserError:.*?got unexpected "PLUS"/);
   });
 
   it("test xx nullable grammar", function () {

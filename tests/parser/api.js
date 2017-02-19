@@ -102,7 +102,7 @@ describe("JISON API", function () {
         }
     };
 
-    assert.throws(function () { new Jison.Generator(grammar); }, "throws error");
+    assert.throws(function () { new Jison.Generator(grammar); }, /startSymbol must be a non-terminal found in your grammar/);
   });
 
   it("test token list as string", function () {
@@ -263,7 +263,7 @@ describe("JISON API", function () {
 
     assert.ok(gen.table.length === 4, "table has 4 states");
     assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
-    assert.throws(function () { parser.parse("xx"); }, "throws parse error for multiple actions");
+    assert.throws(function () { parser.parse("xx"); }, /JisonParserError:/);
   });
 
 

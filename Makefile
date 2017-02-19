@@ -38,7 +38,7 @@ deploy: site
 	git checkout master
 
 test:
-	node_modules/.bin/mocha tests/
+	node_modules/.bin/mocha --recursive tests/
 
 web-examples: web/content/assets/js/calculator.js
 
