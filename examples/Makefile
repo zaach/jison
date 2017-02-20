@@ -47,7 +47,7 @@ MISC_TARGETS =                                                   \
 			flow                                                \
 			formula                                             \
 			grammar                                             \
-			handlebars-BAD                                          \
+			handlebars                                          \
 			happyhappy                                          \
 			inherited_y                                         \
 			issue-205                                           \
@@ -58,7 +58,8 @@ MISC_TARGETS =                                                   \
 			issue-289                                           \
 			issue-293                                           \
 			issue-342                                           \
-			issue-344                                           \
+			issue-344-BAD                                           \
+			issue-344-2-BAD                                         \
 			json_ast_js                                         \
 			json_js                                             \
 			klammergebirge                                      \
@@ -103,11 +104,11 @@ ALL_TARGETS =                                                   \
 			c99                                                 \
 			fsyacc-cgrammar                                     \
 			gantt                                               \
-			handlebars-BAD                                          \
+			handlebars                                          \
 			jscore                                              \
 			lojban-300                                          \
 			mermaid                                             \
-			pascal-BAD                                              \
+			pascal                                              \
 			tikiwikiparser                                      
 
 
@@ -241,8 +242,17 @@ issue-342:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
+issue-344-BAD:
+
+issue-344-2-BAD:
+
 # build *AND* run the test:
 issue-344:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-344-2:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
@@ -504,10 +514,6 @@ compiled_calc:
 	# and run it!
 	node output/$@/$@_exec.js $@_input.txt
 
-
-handlebars-BAD:
-
-pascal-BAD:
 
 
 

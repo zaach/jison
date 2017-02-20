@@ -9,6 +9,7 @@ all: build test 									\
 			examples/issue-205-4				\
 			examples/issue-342  				\
 			examples/issue-344  				\
+			examples/issue-344-2				
 
 
 prep: npm-install
@@ -229,6 +230,9 @@ examples/issue-342: build
 
 examples/issue-344: build
 	cd examples/ && make issue-344
+
+examples/issue-344-2: build
+	cd examples/ && make issue-344-2
 
 examples/jscore: build
 	cd examples/ && make jscore
