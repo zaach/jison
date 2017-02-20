@@ -39,14 +39,14 @@
     "ebnf-parser": "github:GerHobbelt/ebnf-parser#master",
     "jison-lex": "github:GerHobbelt/jison-lex#master",
     "lex-parser": "github:GerHobbelt/lex-parser#master",
-    "recast": "0.11.20",
+    "recast": "0.11.22",
     "jscodeshift": "0.3.30",
     "json5": "0.5.1",
     "nomnom": "github:GerHobbelt/nomnom#master",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": "14.0.0",
+    "browserify": "14.1.0",
     "glob": "7.1.1",
     "uglify-js": "2.7.5",
     "chai": "3.5.0",
