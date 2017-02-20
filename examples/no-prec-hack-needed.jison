@@ -279,17 +279,18 @@ parser.pre_parse = function (yy) {
 
 
 
-parser.yy.parseError = function parseError(str, hash) {
+parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
     assert(hash.yy);
-    assert(this.yy);
-    assert(this.yy !== hash.yy);
+    assert(this);
+    assert(this !== parser.yy);
+    assert(this === hash.yy);
     if (hash.recoverable) {
-        this.trace(str);
+        hash.yy.parser.trace(str);
         hash.yy.lastErrorMessage = str;
         hash.yy.lastErrorHash = hash;
     } else {
         console.error(str, hash && hash.exception);
-        throw new this.JisonParserError(str, hash);
+        throw new ExceptionClass(str, hash);
     }
 };
 
