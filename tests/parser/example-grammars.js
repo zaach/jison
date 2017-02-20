@@ -241,12 +241,12 @@ describe("Example/Test Grammars", function () {
         for (var i = 0, l = filespec.inputs.length; i < l; i++) {
           rv = parser.parse(filespec.inputs[i]);
           console.log('parse A: ', filespec.inputs[i], rv);
-          assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
+          assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
         }
       } else {
         rv = parser.parse('zz; yy; zz;zz ;');
-        console.log('parse B: ', filespec, rv);
-        assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
+        console.log('parse B: ', path.basename(filespec.path), rv);
+        assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
       }
 
       if (filespec.__check__) {
