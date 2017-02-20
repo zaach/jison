@@ -1,11 +1,13 @@
 /*
  * From:
- *   
+ *
  * The yyerrok macro
  *
  * z/OS UNIX System Services Programming Tools
- * SA22-7805-08 
+ * SA22-7805-08
  */
+
+
 
 
 
@@ -21,26 +23,34 @@ C           return 'C';
 /lex
 
 
+
+
+
+
+%options debug=0
+         output-debug-tables=0
+         no-default-action=1
+
+
 %%
 
-
-
 start : lines
-    ;
+      ;
 
 lines : lines line
-    | '\n'
-    | /* */
-    ;
+      | '\n'
+      | %epsilon
+      ;
 
 
-line : error '\n'
+line  : error '\n'
         {
-            yyerrok(); 
-            yyclearin(); 
+            yyerrok();
+            yyclearin();
         }
-    | A '\n'
-    ;
+      | A '\n'
+      ;
+
 
 
 /*
@@ -62,7 +72,7 @@ line : error '\n'
  * tokens. Simply code:
  *
  *     yyerrok;
- * 
+ *
  * as part of the error recognition action.
  *
  * For example, you might have the rule:
@@ -76,5 +86,4 @@ line : error '\n'
  * yyerrok expands into code that takes the
  * parser out of its potential error state and lets it start fresh.
  */
-
 
