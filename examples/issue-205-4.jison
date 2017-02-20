@@ -33,7 +33,7 @@ X                     return 'COMMON1';
 
 start:
           opt_prefix SUFFIX1
-        | PREFIX1    SUFFIX2
+        | PREFIX1    SUFFIX1
         | opt_prefix SUFFIX2
         | PREFIX2    SUFFIX2
         ;

@@ -50,9 +50,15 @@ MISC_TARGETS =                                                   \
 			handlebars-BAD                                          \
 			happyhappy                                          \
 			inherited_y                                         \
+			issue-205                                           \
+			issue-205-2                                         \
+			issue-205-3                                         \
+			issue-205-4                                         \
 			issue-254                                           \
-			issue-289-BAD                                           \
+			issue-289                                           \
 			issue-293                                           \
+			issue-342                                           \
+			issue-344                                           \
 			json_ast_js                                         \
 			json_js                                             \
 			klammergebirge                                      \
@@ -192,9 +198,38 @@ inherited_y:
 	$(JISON) --main ./inherited.y
 
 # build *AND* run the test:
+issue-205:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-205-2:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-205-3:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-205-4:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
 issue-254:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-289:
+	$(JISON) --main -p lalr --no-partial-lr-upgrade-on-conflict ./$@.jison
+	node ./output/$@/$@.js
+	$(JISON) --main -p lalr ./$@.jison -o ./output/$@/$@-HQ.js
+	node ./output/$@/$@-HQ.js
+	$(JISON) --main -p lr ./$@.jison -o ./output/$@/$@-LR.js
+	node ./output/$@/$@-LR.js
 
 # build *AND* run the test:
 issue-293:
@@ -202,8 +237,13 @@ issue-293:
 	node ./output/$@/$@.js
 
 # build *AND* run the test:
-issue-289:
-	$(JISON) --main -t -p lalr ./$@.jison
+issue-342:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-344:
+	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
 jscore:
@@ -469,6 +509,5 @@ handlebars-BAD:
 
 pascal-BAD:
 
-issue-289-BAD:
 
 

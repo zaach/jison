@@ -1,5 +1,15 @@
 
-all: build test examples/issue-293 examples/issue-254 examples/issue-289-BAD
+all: build test 									\
+			examples/issue-293 					\
+			examples/issue-254 					\
+			examples/issue-289 					\
+			examples/issue-205 					\
+			examples/issue-205-2				\
+			examples/issue-205-3				\
+			examples/issue-205-4				\
+			examples/issue-342  				\
+			examples/issue-344  				\
+
 
 prep: npm-install
 
@@ -193,17 +203,32 @@ examples/happyhappy: build
 examples/inherited_y: build
 	cd examples/ && make inherited_y
 
+examples/issue-205: build
+	cd examples/ && make issue-205
+
+examples/issue-205-2: build
+	cd examples/ && make issue-205-2
+
+examples/issue-205-3: build
+	cd examples/ && make issue-205-3
+
+examples/issue-205-4: build
+	cd examples/ && make issue-205-4
+
 examples/issue-254: build
 	cd examples/ && make issue-254
 
 examples/issue-289: build
 	cd examples/ && make issue-289
 
-examples/issue-289-BAD: build
-	cd examples/ && make issue-289-BAD
-
 examples/issue-293: build
 	cd examples/ && make issue-293
+
+examples/issue-342: build
+	cd examples/ && make issue-342
+
+examples/issue-344: build
+	cd examples/ && make issue-344
 
 examples/jscore: build
 	cd examples/ && make jscore
