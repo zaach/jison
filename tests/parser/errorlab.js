@@ -348,7 +348,6 @@ describe("Error Recovery/Handling", function () {
       var ex_l = ex.hash.exception;
       assert(ex_l);
       assert(ex_l instanceof Error);
-console.warn("@@@\n@@@\n@@@\n@@@ ex_l: ", ex_l, JisonLexerError, ex_l instanceof Error, ex);      
       assert(ex_l instanceof JisonLexerError);
       assert(ex_l.hash);
       assert(ex_l.message);
