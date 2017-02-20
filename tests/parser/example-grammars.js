@@ -240,12 +240,12 @@ describe("Example/Test Grammars", function () {
       } else if (filespec.inputs) {
         for (var i = 0, l = filespec.inputs.length; i < l; i++) {
           rv = parser.parse(filespec.inputs[i]);
-          // console.log('parse: ', filespec.inputs[i], rv);
+          console.log('parse A: ', filespec.inputs[i], rv);
           assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
         }
       } else {
         rv = parser.parse('zz; yy; zz;zz ;');
-        // console.log('parse: ', filespec, rv);
+        console.log('parse B: ', filespec, rv);
         assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
       }
 
