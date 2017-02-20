@@ -39,6 +39,7 @@ const defaultJisonOptions = {
     noDefaultResolve: false,
     noDefaultAction: false,
     noTryCatch: false,
+    hasPartialLrUpgradeOnConflict: true,
     errorRecoveryTokenDiscardCount: 3,
     exportAllTables: false,
     noMain: false,                  // CLI: not:(--main option)
@@ -1653,7 +1654,7 @@ generator.buildProductionActions = function buildProductionActions() {
             })), ' */\n');
             var action = preprocessActionCode(handle.action);
             var actionHash;
-            var rule4msg = symbol + ': ' + rhs.join(' ');
+            var rule4msg = handle.symbol + ': ' + rhs.join(' ');
 
             // before anything else, replace direct symbol references, e.g. #NUMBER# when there's a %token NUMBER for your grammar.
             // This is done to prevent incorrect expansions where tokens are used in rules as RHS elements: we allow these to
@@ -2443,7 +2444,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                     if (sol.bydefault) {
                         self.conflicts++;
 
-                        if (self.conflict_fixing_round) {
+                        if (self.conflict_fixing_round && self.options.hasPartialLrUpgradeOnConflict) {
                             // have we encountered a *new* conflict, compared to previous rounds?
                             if (!self.conflict_productions_LU[item.production.id]) {
                                 self.new_conflicts_found_this_round++;
@@ -2458,7 +2459,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                                 console.log('RESET conflict fixing: we need another round to see us through...');
                             }
                         }
-                        if (!self.conflict_fixing_round) {
+                        if (!self.conflict_fixing_round && self.options.hasPartialLrUpgradeOnConflict) {
                             self.conflict_productions_LU[item.production.id] = true;
                             self.conflict_states_LU[k] = true;
 
@@ -3697,7 +3698,12 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         break;
 
     case 2: // column-mode compression
-        tableCode = this.generateTableCode2(this.table, this.defaultActions, this.productions_);
+        // this compression method corrupts the table when this option is turned on (and one or more conflicts occur)
+        if (this.options.noDefaultResolve && this.conflicts > 0) {
+            tableCode = this.generateTableCode1(this.table, this.defaultActions, this.productions_);
+        } else {
+            tableCode = this.generateTableCode2(this.table, this.defaultActions, this.productions_);
+        }
         break;
     }
 
@@ -4392,6 +4398,8 @@ function createObjectCode(k, v, o) {
 
 // Generate code that represents the specified parser table
 lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productions) {
+    assert(!(this.options.noDefaultResolve && this.conflicts > 0));           // this compression method corrupts the table when this option is turned on (and one or more conflicts occur)
+
     var tableCode = JSON.stringify(table, null, 2);
     var defaultActionsCode = JSON.stringify(defaultActions, null, 2).replace(/"([0-9]+)":/g, '$1:');
     var productionsCode = JSON.stringify(productions, null, 2);
@@ -5876,7 +5884,7 @@ var LR0Generator = exports.LR0Generator = lr0.construct();
 var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: 'LALR(1)',
 
-    afterconstructor: function (typal_property_return_value, grammar, options) {
+    afterconstructor: function (typal_property_return_value, grammar, optionalLexerSection, options) {
         if (this.DEBUG) {
             this.mix(lrGeneratorDebug, lalrGeneratorDebug); // mixin debug methods
         }
@@ -5963,7 +5971,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             // in the `.goes[]` arrays.
             //
             // Also quit when we're at the end of the conflict resolution round (which is round #2)
-            if (this.conflicts === 0 || this.conflict_fixing_round) {
+            if (this.conflicts === 0 || this.conflict_fixing_round || !options.hasPartialLrUpgradeOnConflict) {
                 break;
             }
 
@@ -6371,14 +6379,18 @@ Jison.Generator = function Jison_Generator(g, optionalLexerSection, options) {
     opt = mkStdOptions(chk_g && chk_g.options, opt);
     switch (opt.type || '') {
     case 'lr0':
+        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
         return new LR0Generator(g, optionalLexerSection, opt);
     case 'slr':
+        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
         return new SLRGenerator(g, optionalLexerSection, opt);
     case 'lr':
     case 'lr1':
+        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
         return new LR1Generator(g, optionalLexerSection, opt);
     case 'll':
     case 'll1':
+        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
         return new LLGenerator(g, optionalLexerSection, opt);
     case 'lalr1':
     case 'lalr':
@@ -7309,6 +7321,7 @@ JisonParserError: JisonParserError,
 yy: {},
 options: {
   type: "lalr",
+  hasPartialLrUpgradeOnConflict: true,
   errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
@@ -12114,6 +12127,7 @@ JisonParserError: JisonParserError,
 yy: {},
 options: {
   type: "lalr",
+  hasPartialLrUpgradeOnConflict: true,
   errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
