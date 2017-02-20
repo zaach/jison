@@ -25,7 +25,9 @@ describe("LR(1)", function () {
 
     assert.ok(parser.parse("xxx"), "parse");
     assert.ok(parser.parse("x"), "parse single x");
-    assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
+    assert.throws(function () {
+      parser.parse("+");
+    }, Error, /JisonParserError:[^]*?Unrecognized text/);
   });
 
   it("test LR parse", function () {

@@ -31,7 +31,7 @@ describe("SLR", function () {
     assert.ok(parser.parse("x"), "parse single x");
     assert.throws(function () {
       parser.parse("y");
-    }, /JisonParserError:.*?got unexpected y/);
+    }, Error, /JisonParserError:[^]*?got unexpected y/);
     assert.strictEqual(gen.conflicts, 0, "no conflicts");
   });
 

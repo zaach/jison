@@ -4,7 +4,6 @@ var Jison = require("../setup").Jison;
 
 describe("Parser Tables", function () {
   it("test right-recursive nullable grammar", function () {
-
     var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
@@ -43,7 +42,6 @@ describe("Parser Tables", function () {
   });
 
   it("test LL parse table", function () {
-
     var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
@@ -75,7 +73,6 @@ describe("Parser Tables", function () {
   });
 
   it("test Ambigous grammar", function () {
-
     var grammar = {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",

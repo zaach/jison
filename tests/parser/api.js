@@ -102,7 +102,9 @@ describe("JISON API", function () {
         }
     };
 
-    assert.throws(function () { new Jison.Generator(grammar); }, /startSymbol must be a non-terminal found in your grammar/);
+    assert.throws(function () { 
+      new Jison.Generator(grammar); 
+    }, Error, /startSymbol must be a non-terminal found in your grammar/);
   });
 
   it("test token list as string", function () {
@@ -229,10 +231,12 @@ describe("JISON API", function () {
     var result = {};
     parser.yy.parseError = function (str, hash) {
         result = hash;
-        throw str;
+        throw new Error("CUSTOM: " + str);
     };
 
-    assert.throws(function () { parser.parse("aga"); });
+    assert.throws(function () { 
+      parser.parse("aga"); 
+    }, Error, /CUSTOM: Parsing aborted due to exception\./);
     assert.strictEqual(result.text, "a", "parse error text should equal b");
     assert.strictEqual(typeof result.token, 'string', "parse error token should be a string");
     assert.strictEqual(result.line, 0, "hash should include line number");
@@ -263,7 +267,9 @@ describe("JISON API", function () {
 
     assert.ok(gen.table.length === 4, "table has 4 states");
     assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
-    assert.throws(function () { parser.parse("xx"); }, /JisonParserError:/);
+    assert.throws(function () { 
+      parser.parse("xx"); 
+    }, Error, /JisonParserError:/);
   });
 
 
@@ -305,7 +311,9 @@ describe("JISON API", function () {
     parser.lexer = new Lexer(lexData);
 //    parser.lexer.showPosition = null; // needed for "Unexpected" message
 
-    assert.throws(function () { parser.parse("xx"); });
+    assert.throws(function () { 
+      parser.parse("xx"); 
+    }, Error);
   });
 
   it("test locations", function () {

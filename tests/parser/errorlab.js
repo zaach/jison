@@ -93,7 +93,9 @@ describe("Error Recovery/Handling", function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert.throws(function () { parser.parse('xxgy'); }, /JisonParserError:.*?got unexpected ERR/);
+    assert.throws(function () { 
+      parser.parse('xxgy'); 
+    }, Error, /JisonParserError:[^]*?got unexpected ERR/);
   });
 
   it("test error after error recovery", function () {
@@ -117,7 +119,9 @@ describe("Error Recovery/Handling", function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert.throws(function () { parser.parse('gxxx;'); }, "should return bar");
+    assert.throws(function () { 
+      parser.parse('gxxx;'); 
+    }, Error, /JisonParserError: Parsing halted while starting to recover from another error/);
   });
 
 // WARNING: the actual test in here differs from what it says on the tin, as we differ from jison in error recovery behaviour in this regard:
@@ -344,6 +348,7 @@ describe("Error Recovery/Handling", function () {
       var ex_l = ex.hash.exception;
       assert(ex_l);
       assert(ex_l instanceof Error);
+console.warn("@@@\n@@@\n@@@\n@@@ ex_l: ", ex_l, JisonLexerError, ex_l instanceof Error, ex);      
       assert(ex_l instanceof JisonLexerError);
       assert(ex_l.hash);
       assert(ex_l.message);

@@ -28,7 +28,9 @@ describe("LR(0)", function () {
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
-    assert.throws(function () {parser.parse("y")},  "throws parse error on invalid token");
+    assert.throws(function () {
+      parser.parse("y");
+    }, Error, /JisonParserError:[^]*?got unexpected y/);
   });
 
   it("test right-recursive nullable grammar", function () {
@@ -71,6 +73,8 @@ describe("LR(0)", function () {
     assert.ok(parser.parse("0+0+0"), "parse");
     assert.ok(parser.parse("0"), "parse single 0");
 
-    assert.throws(function () {parser.parse("+")}, "throws parse error on invalid");
+    assert.throws(function () {
+      parser.parse("+");
+    }, Error, /JisonParserError:[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
   });
 });
