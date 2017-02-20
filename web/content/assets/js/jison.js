@@ -54,25 +54,25 @@ const defaultJisonOptions = {
 
 Jison.defaultJisonOptions = defaultJisonOptions;
 
-// Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'` 
+// Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
 function camelCase(s) {
     // Convert first character to lowercase
-    return s.replace(/^\w/, function (match) { 
-        return match.toLowerCase(); 
+    return s.replace(/^\w/, function (match) {
+        return match.toLowerCase();
     })
-    .replace(/-\w/g, function (match) { 
-        return match.charAt(1).toUpperCase(); 
+    .replace(/-\w/g, function (match) {
+        return match.charAt(1).toUpperCase();
     });
 }
 
 // Merge sets of options.
-// 
+//
 // Convert alternative jison option names to their base option.
-// 
+//
 // The *last* option set which overrides the default wins, where 'override' is
 // defined as specifying a not-undefined value which is not equal to the
 // default value.
-// 
+//
 // Return a fresh set of options.
 function mkStdOptions(/*args...*/) {
     var h = Object.prototype.hasOwnProperty;
@@ -1495,11 +1495,11 @@ generator.buildProductionActions = function buildProductionActions() {
     // in the knowledge that the 'sourcecode' we have here is a complete generated *function* which will include
     // the `function ` prelude and `}` postlude at least! Hence we can replace `\b` with `[^\w]` and we'll be good.
     this.actionsUseValueTracking = analyzeFeatureUsage(this.performAction, /\byyvstack\b/g, 1);
-    // Ditto for the specific case where we are assigning a value to `$$`:
+    // Ditto for the specific case where we are assigning a value to `$$`, i.e. `this.$`:
     this.actionsUseValueAssignment = analyzeFeatureUsage(this.performAction, /\bthis\.\$[^\w]/g, 0);
     // Ditto for the expansion of `@name`, `@$` and `@n` to its `yylstack[n]` index expression:
     this.actionsUseLocationTracking = analyzeFeatureUsage(this.performAction, /\byylstack\b/g, 1);
-    // Ditto for the specific case where we are assigning a value to `@$`:
+    // Ditto for the specific case where we are assigning a value to `@$`, i.e. `this._$`:
     this.actionsUseLocationAssignment = analyzeFeatureUsage(this.performAction, /\bthis\._\$[^\w]/g, 0);
     // Note that the `#name`, `#$` and `#n` constructs are expanded directly to their symbol number without
     // the need to use yystack! Hence yystack is only there for very special use action code.)
@@ -1533,7 +1533,7 @@ generator.buildProductionActions = function buildProductionActions() {
     }
 
     this.performAction = this.performAction
-    .replace(/\byyerror\b/g, 'return yy.parser.yyError')
+    .replace(/\byyerror\b/g, 'yy.parser.yyError')
     .replace(/\byyerrok\b(?:\s*\(\s*\))?/g, 'yy.parser.yyErrOk()')
     .replace(/\byyclearin\b(?:\s*\(\s*\))?/g, 'yy.parser.yyClearIn()');
 
@@ -1879,10 +1879,10 @@ generator.reportGrammarInformation = function reportGrammarInformation() {
     }
 
     if (devDebug > 3) Jison.print('LALR parse table: ', {
-    	table: this.table, 
-	defaultActions: this.defaultActions
+      table: this.table,
+      defaultActions: this.defaultActions
     });
-    
+
     this.warn('Number of productions in parser:........ ' + this.productions_.length);
     this.warn('Number of non-terminals in grammar:..... ' + ntc);
     this.warn('Number of states:....................... ' + this.states.size());
@@ -2168,7 +2168,7 @@ var lookaheadDebug = {
 var lrGeneratorMixin = {};
 
 
-// LR state machine actions: 
+// LR state machine actions:
 const NONASSOC = 0;
 const SHIFT = 1; // shift
 const REDUCE = 2; // reduce
@@ -2450,10 +2450,10 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                                 // and we RESET the `conflict_fixing_round` flag to signal that
                                 // this round needs another one to attempt a *complete* fix
                                 // of the grammar.
-                                // 
-                                // This little act also conveniently helps to manage the 
+                                //
+                                // This little act also conveniently helps to manage the
                                 // *finity* of the big parsetable production loop, which
-                                // wraps around all this work (and more). 
+                                // wraps around all this work (and more).
                                 self.conflict_fixing_round = false;
                                 console.log('RESET conflict fixing: we need another round to see us through...');
                             }
@@ -3206,19 +3206,19 @@ function removeUnusedKernelFeatures(parseFn, info) {
     var actionFn = info.performAction;
 
     if (info.actionsAreAllDefault) {
-        // in this case, there's no need to call the parseAction function at all: 
+        // in this case, there's no need to call the parseAction function at all:
         // it is functionally empty anyway.
         actionFn = '';
 
         // remove:
-        // 
+        //
         //     r = this.performAction.call(yyval, ...
-        //     
+        //
         //     if (typeof r !== 'undefined') {
         //         retval = r;
         //         break;
         //     }
-        //     
+        //
 
         parseFn = parseFn
         .replace(/\s+r = this\.performAction\.call[^}]+\}/g, '');
@@ -3232,7 +3232,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
             .replace(/\(\byytext\b(,\s*)?/g, '(');
         }
 
-        // kill the passing of the local variable as a parameter, 
+        // kill the passing of the local variable as a parameter,
         // its use in an assignment and its declaration:
         parseFn = parseFn
         .replace(/, yytext\b/g, '')
@@ -3339,7 +3339,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/, vstack\b/g, '');
 
         // kill *all* value tracking when there's also no *implicit* `$$ = $1` action any more:
-        if (info.options.noDefaultAction || 1) {
+        if (info.options.noDefaultAction) {
             // remove:
             //
             //     // Make sure subsequent `$$ = $1` bla bla bla ...
@@ -3353,6 +3353,44 @@ function removeUnusedKernelFeatures(parseFn, info) {
             .replace(/\s+\/\/ Make sure subsequent `\$\$ = \$1` \n\s+yyval\.\$ = vstack\[sp - [^\n]+\n/g, '\n\n')
             .replace(/^.*?\bvstack\b.*$/gm, '');
 
+            // also nuke all `yyval`-related code as we know, when this set of
+            // features is set, that the grammar doesn't produce any value:
+            // we are looking at a *matcher*, rather than a *parser*!
+            //
+            // remove
+            //
+            //     // Return the `$accept` rule's `$$` result, if available.
+            //     // ...
+            //     if (typeof yyval.$ !== 'undefined') {
+            //         retval = yyval.$;
+            //     }
+            //
+            // bit keep the yyval declaration as either location tracking MAY
+            // still be employed by the grammar OR the grammar uses advanced
+            // code which uses `yyval` as a run-time store which carries data
+            // across multiple reduction calls to `performAction`, as per
+            // the suggestion in the document comment for the grammar:
+            //
+            // >
+            // > One important thing to note about `this` a.k.a. `yyval`: ...
+            // >
+            parseFn = parseFn
+            .replace(/\s+\/\/ Return the \`\$accept\` rule's \`\$\$\` result[\s\S]+?if \(typeof yyval\.\$ !== 'undefined'\)[^\}]+\}[^\n]*\n/g, '\n\n\n\n\n\n');
+
+            // ... unless, of course, when there's no `performAction()` call
+            // at all! Then the `yyval` declaration can safely be discarded
+            // as well.
+            if (info.actionsAreAllDefault) {
+                // remove
+                //
+                //     var yyval = {
+                //         $: true,
+                //         _$: undefined,
+                //         yy: sharedState_yy
+                //     };
+                parseFn = parseFn
+                .replace(/\s+var yyval =[\s\S]+?\};[^\n]*\n/g, '\n\n\n\n\n\n');
+            }
         }
     }
 
@@ -3374,7 +3412,10 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
         parseFn = parseFn
         .replace(/\s+var yydebug = [\s\S]+?self\.trace[\s\S]+?};[^}]+}/g, '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
-        .replace(/^.*?\byydebug\b.*?$/gm, '');
+        // strip single-line `yydebug(...);` statements
+        .replace(/^.*?\byydebug\b[^;]+?\);[^\r\n]*?$/gm, '')
+        // strip multi-line `if (debug) yydebug(..., {...});` statements
+        .replace(/\n\s+if\s+\(yydebug\)\s+yydebug\([^]+?\}\);[^\r\n]*?/g, '\n\n\n\n\n\n\n\n\n');
     }
 
     if (!info.actionsUseYYERROK && !info.actionsUseYYCLEARIN && !info.actionsUseYYERROR) {
@@ -3441,8 +3482,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
         if (info.options.noTryCatch) {
             /*
-             * This is a very performance-oriented setting and does not care if the 
-             * userland code for the grammar rules is flaky. 
+             * This is a very performance-oriented setting and does not care if the
+             * userland code for the grammar rules is flaky.
              * Kill this protection code:
              *
              *     // Do this to prevent ...
@@ -3481,7 +3522,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
     if (!info.actionsUseYYTEXT) {
         // See the comment for the same section near the start of this function:
-        // 
+        //
         // Wait with this bit of cleanup until the very end to help keep the
         // other cleanup/optimization options below that much simpler to code:
         actionFn = actionFn
@@ -4114,6 +4155,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         'parseError: ' + String(this.parseError || parser.parseError),
         'parse: ' + parseFn
     ]).concat(
+        this.actionsUseYYERROR ?
+        'yyError: 1' :
+        []
+    ).concat(
         this.actionsUseYYERROK ?
         'yyErrOk: 1' :
         []
@@ -5217,7 +5262,7 @@ parser.parse = function parse(input, parseParams) {
             // var error_rule_depth = locateNearestErrorRecoveryRule(state);
             // var expected = this.collect_expected_token_set(state);
             var hash = this.constructParseErrorInfo(str, null, null, false); // (str, null, expected, (error_rule_depth >= 0));
-            return this.parseError(str, hash, this.JisonParserError);
+            var r = this.parseError(str, hash, this.JisonParserError);
         };
     }
 
@@ -5646,7 +5691,13 @@ parser.parse = function parse(input, parseParams) {
 
             }
 
-            if (yydebug) yydebug('::: action: ' + (action === 1 ? 'shift token (then go to state ' + newState + ')' : action === 2 ? 'reduce by rule: ' + newState : action === 3 ? 'accept' : '???unexpected???'), { action: action, newState: newState, symbol: symbol });
+            if (yydebug) yydebug('::: action: ' + (action === 1 ? 'shift token ' + symbol + ' (then go to state ' + newState + ')' : action === 2 ? 'reduce by rule: ' + newState + (function __print_rule(nt, state) {
+                if (!nt || !nt.states || !nt.rules)
+                  return '';
+                var rulename = nt.states[state];
+                var rulespec = nt.rules[rulename][state];
+                return ' (' + rulespec.symbol + ' := ' + rulespec.handle + ')';
+            })(this.nonterminals_, newState) : action === 3 ? 'accept' : '???unexpected???'), { action: action, newState: newState, recovering: recovering, symbol: symbol });
             switch (action) {
             // catch misc. parse failures:
             default:
@@ -5714,7 +5765,7 @@ parser.parse = function parse(input, parseParams) {
                 lstack_begin = lstack_end - (len || 1);
                 lstack_end--;
 
-                if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: len, newState: newState, symbol: symbol });
+                if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: len, newState: newState, recovering: recovering, symbol: symbol });
 
                 // Make sure subsequent `$$ = $1` default action doesn't fail
                 // for rules where len==0 as then there's no $1 (you're reducing an epsilon rule then!)
@@ -5910,7 +5961,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
 
             // When some productions are flagged as conflicting, we redo the G' generation and consequent union-ing of the productions
             // in the `.goes[]` arrays.
-            // 
+            //
             // Also quit when we're at the end of the conflict resolution round (which is round #2)
             if (this.conflicts === 0 || this.conflict_fixing_round) {
                 break;
@@ -6043,7 +6094,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                         goes: goes,
                         handle: handle,
                         symbol: symbol,
-                        pathInfo: pathInfo 
+                        pathInfo: pathInfo
                     });
                 }
             });
@@ -6080,8 +6131,8 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
 
                     if (devDebug > 2) Jison.print('not-yet-unioned item', {
-                        handle: handle, 
-                        item: item, 
+                        handle: handle,
+                        item: item,
                         follows: follows,
                         goes: state.goes,
                         state: state,
@@ -6095,10 +6146,10 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                                 follows[terminal] = true;
 
                                 if (devDebug > 2) Jison.print('adding to FOLLOW set (union)', {
-                                    terminal: terminal, 
-                                    nonterminal: symbol, 
+                                    terminal: terminal,
+                                    nonterminal: symbol,
                                     in_follows: newg.nonterminals[symbol],
-                                    out_follows: item.follows 
+                                    out_follows: item.follows
                                 });
 
                                 item.follows.push(terminal);
@@ -7280,16 +7331,17 @@ symbols_: {
   "ACTION": 23,
   "ACTION_BODY": 26,
   "CHARACTER_LIT": 36,
-  "CODE": 42,
+  "CODE": 43,
   "EOF": 1,
   "ESCAPE_CHAR": 33,
-  "INCLUDE": 40,
+  "INCLUDE": 41,
   "NAME": 20,
   "NAME_BRACE": 29,
   "OPTIONS": 37,
   "OPTIONS_END": 38,
-  "OPTION_VALUE": 39,
-  "PATH": 41,
+  "OPTION_STRING_VALUE": 39,
+  "OPTION_VALUE": 40,
+  "PATH": 42,
   "RANGE_REGEX": 34,
   "REGEX_SET": 32,
   "REGEX_SET_END": 31,
@@ -7301,43 +7353,43 @@ symbols_: {
   "STRING_LIT": 35,
   "UNKNOWN_DECL": 24,
   "^": 16,
-  "action": 54,
-  "action_body": 56,
-  "action_comments_body": 57,
-  "any_group_regex": 66,
-  "definition": 47,
-  "definitions": 46,
+  "action": 55,
+  "action_body": 57,
+  "action_comments_body": 58,
+  "any_group_regex": 67,
+  "definition": 48,
+  "definitions": 47,
   "error": 2,
-  "escape_char": 69,
-  "extra_lexer_module_code": 75,
-  "include_macro_code": 76,
-  "init": 45,
-  "lex": 43,
-  "module_code_chunk": 77,
-  "name_expansion": 65,
-  "name_list": 59,
-  "names_exclusive": 49,
-  "names_inclusive": 48,
-  "nonempty_regex_list": 62,
-  "option": 74,
-  "option_list": 73,
-  "optional_module_code_chunk": 78,
-  "options": 72,
-  "range_regex": 70,
-  "regex": 60,
-  "regex_base": 64,
-  "regex_concat": 63,
-  "regex_list": 61,
-  "regex_set": 67,
-  "regex_set_atom": 68,
-  "rule": 53,
-  "rule_block": 52,
-  "rules": 50,
-  "rules_and_epilogue": 44,
-  "rules_collective": 51,
-  "start_conditions": 58,
-  "string": 71,
-  "unbracketed_action_body": 55,
+  "escape_char": 70,
+  "extra_lexer_module_code": 76,
+  "include_macro_code": 77,
+  "init": 46,
+  "lex": 44,
+  "module_code_chunk": 78,
+  "name_expansion": 66,
+  "name_list": 60,
+  "names_exclusive": 50,
+  "names_inclusive": 49,
+  "nonempty_regex_list": 63,
+  "option": 75,
+  "option_list": 74,
+  "optional_module_code_chunk": 79,
+  "options": 73,
+  "range_regex": 71,
+  "regex": 61,
+  "regex_base": 65,
+  "regex_concat": 64,
+  "regex_list": 62,
+  "regex_set": 68,
+  "regex_set_atom": 69,
+  "rule": 54,
+  "rule_block": 53,
+  "rules": 51,
+  "rules_and_epilogue": 45,
+  "rules_collective": 52,
+  "start_conditions": 59,
+  "string": 72,
+  "unbracketed_action_body": 56,
   "{": 3,
   "|": 9,
   "}": 4
@@ -7381,10 +7433,11 @@ terminals_: {
   36: "CHARACTER_LIT",
   37: "OPTIONS",
   38: "OPTIONS_END",
-  39: "OPTION_VALUE",
-  40: "INCLUDE",
-  41: "PATH",
-  42: "CODE"
+  39: "OPTION_STRING_VALUE",
+  40: "OPTION_VALUE",
+  41: "INCLUDE",
+  42: "PATH",
+  43: "CODE"
 },
 TERROR: 2,
 EOF: 1,
@@ -7476,16 +7529,14 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  43,
+  44,
   s,
-  [44, 3],
-  45,
+  [45, 3],
   46,
-  46,
+  47,
+  47,
   s,
-  [47, 8],
-  48,
-  48,
+  [48, 8],
   49,
   49,
   50,
@@ -7495,48 +7546,50 @@ productions_: bp({
   52,
   52,
   53,
+  53,
+  54,
   s,
-  [54, 3],
-  55,
-  55,
+  [55, 3],
   56,
   56,
   57,
   57,
+  58,
+  58,
   s,
-  [58, 3],
-  59,
-  59,
+  [59, 3],
+  60,
   60,
   61,
-  61,
+  62,
+  62,
   s,
-  [62, 3],
-  63,
-  63,
+  [63, 3],
+  64,
+  64,
   s,
-  [64, 15],
-  65,
+  [65, 15],
   66,
   67,
-  67,
   68,
+  68,
+  69,
   s,
-  [68, 4, 1],
-  71,
+  [69, 4, 1],
   72,
   73,
-  73,
+  74,
+  74,
   s,
-  [74, 3],
-  75,
-  75,
+  [75, 4],
   76,
   76,
   77,
   77,
   78,
-  78
+  78,
+  79,
+  79
 ]),
   rule: u([
   4,
@@ -7587,12 +7640,12 @@ productions_: bp({
   [21, 3],
   c,
   [9, 10],
-  3,
-  3,
+  s,
+  [3, 3],
   c,
-  [7, 3],
+  [8, 3],
   c,
-  [28, 4],
+  [29, 4],
   0
 ])
 }),
@@ -7696,11 +7749,11 @@ case 70:
     /*! Production::    escape_char : ESCAPE_CHAR */
 case 71:
     /*! Production::    range_regex : RANGE_REGEX */
-case 80:
+case 81:
     /*! Production::    extra_lexer_module_code : optional_module_code_chunk */
-case 84:
+case 85:
     /*! Production::    module_code_chunk : CODE */
-case 86:
+case 87:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
     this.$ = yyvstack[yysp];
     break;
@@ -7803,7 +7856,7 @@ case 34:
     /*! Production::    action_comments_body : ε */
 case 43:
     /*! Production::    regex_list : ε */
-case 87:
+case 88:
     /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
@@ -7816,7 +7869,7 @@ case 57:
     /*! Production::    regex_base : regex_base range_regex */
 case 66:
     /*! Production::    regex_set : regex_set_atom regex_set */
-case 85:
+case 86:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
@@ -7960,7 +8013,7 @@ case 61:
 
 case 65:
     /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
-case 81:
+case 82:
     /*! Production::    extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
@@ -7989,13 +8042,18 @@ case 77:
     break;
 
 case 78:
-    /*! Production::    option : NAME "=" OPTION_VALUE */
-case 79:
-    /*! Production::    option : NAME "=" NAME */
+    /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
     yy.options[yyvstack[yysp - 2]] = yyvstack[yysp];
     break;
 
-case 82:
+case 79:
+    /*! Production::    option : NAME "=" OPTION_VALUE */
+case 80:
+    /*! Production::    option : NAME "=" NAME */
+    yy.options[yyvstack[yysp - 2]] = parseValue(yyvstack[yysp]);
+    break;
+
+case 83:
     /*! Production::    include_macro_code : INCLUDE PATH */
     var fs = require('fs');
     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
@@ -8003,7 +8061,7 @@ case 82:
     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
     break;
 
-case 83:
+case 84:
     /*! Production::    include_macro_code : INCLUDE error */
     console.error("%include MUST be followed by a valid file path");
     break;
@@ -8075,7 +8133,7 @@ table: bt({
   3,
   10,
   1,
-  2,
+  3,
   6,
   17,
   23,
@@ -8084,7 +8142,7 @@ table: bt({
   [26, 4],
   1,
   s,
-  [2, 3],
+  [2, 4],
   1,
   s,
   [3, 3],
@@ -8105,7 +8163,7 @@ table: bt({
   19,
   14,
   c,
-  [108, 3],
+  [109, 3],
   1,
   17,
   14,
@@ -8120,19 +8178,19 @@ table: bt({
   s,
   [19, 6, 1],
   37,
-  40,
-  43,
-  45,
+  41,
+  44,
+  46,
   1,
   c,
   [13, 10],
-  46,
   47,
-  72,
-  76,
+  48,
+  73,
+  77,
   1,
   19,
-  44,
+  45,
   c,
   [17, 14],
   9,
@@ -8144,29 +8202,29 @@ table: bt({
   33,
   35,
   36,
-  60,
+  61,
   s,
-  [62, 5, 1],
-  69,
-  71,
-  25,
-  48,
+  [63, 5, 1],
+  70,
+  72,
   25,
   49,
+  25,
+  50,
   3,
   4,
   26,
-  56,
   57,
+  58,
   c,
   [44, 10],
   c,
   [10, 30],
   2,
-  41,
+  42,
   20,
-  73,
   74,
+  75,
   c,
   [107, 3],
   5,
@@ -8175,7 +8233,7 @@ table: bt({
   19,
   c,
   [80, 7],
-  50,
+  51,
   1,
   19,
   c,
@@ -8190,13 +8248,13 @@ table: bt({
   c,
   [45, 7],
   37,
-  40,
+  41,
   c,
   [124, 5],
   c,
   [29, 24],
   s,
-  [61, 6, 1],
+  [62, 6, 1],
   c,
   [32, 4],
   7,
@@ -8206,8 +8264,8 @@ table: bt({
   [35, 11],
   s,
   [34, 4, 1],
-  40,
-  70,
+  41,
+  71,
   c,
   [59, 7],
   c,
@@ -8226,12 +8284,12 @@ table: bt({
   [28, 190],
   s,
   [31, 7, 1],
-  40,
+  41,
   29,
   32,
-  65,
-  67,
+  66,
   68,
+  69,
   c,
   [119, 86],
   s,
@@ -8249,21 +8307,21 @@ table: bt({
   [573, 8],
   c,
   [504, 14],
-  42,
+  43,
   c,
   [26, 26],
   38,
   20,
   38,
-  73,
   74,
+  75,
   18,
   20,
   38,
   c,
   [633, 18],
-  51,
-  58,
+  52,
+  59,
   c,
   [583, 61],
   1,
@@ -8303,74 +8361,75 @@ table: bt({
   38,
   20,
   39,
-  1,
   40,
-  42,
-  75,
-  77,
+  1,
+  41,
+  43,
+  76,
   78,
+  79,
   c,
-  [374, 17],
+  [375, 17],
   c,
-  [371, 3],
+  [372, 3],
   c,
-  [835, 11],
-  53,
+  [836, 11],
+  54,
   c,
-  [1102, 8],
+  [1103, 8],
   7,
   20,
-  59,
+  60,
   c,
-  [326, 95],
+  [327, 95],
   31,
   3,
   4,
   20,
   c,
-  [525, 3],
-  1,
-  1,
-  40,
-  76,
+  [526, 3],
   c,
-  [155, 3],
+  [523, 4],
+  41,
+  77,
+  c,
+  [157, 3],
   c,
   [3, 4],
   c,
-  [155, 16],
+  [157, 16],
   4,
   c,
-  [155, 13],
-  52,
+  [157, 13],
+  53,
   3,
   23,
-  40,
-  54,
+  41,
   55,
-  76,
+  56,
+  77,
   6,
   8,
   6,
   6,
   8,
   c,
-  [220, 3],
-  57,
+  [223, 3],
+  58,
   c,
-  [208, 7],
-  40,
-  42,
+  [210, 7],
+  41,
+  43,
   c,
   [39, 14],
   c,
-  [194, 9],
+  [196, 9],
   c,
-  [643, 11],
+  [646, 11],
   c,
-  [235, 8],
+  [237, 8],
   c,
-  [1310, 6],
+  [1313, 6],
   c,
   [23, 9],
   23,
@@ -8381,12 +8440,12 @@ table: bt({
   c,
   [37, 19],
   c,
-  [296, 14],
+  [298, 14],
   20,
   c,
   [15, 14],
   c,
-  [364, 4],
+  [367, 4],
   c,
   [191, 31],
   3,
@@ -8457,25 +8516,25 @@ table: bt({
   c,
   [503, 44],
   c,
-  [43, 21],
+  [43, 22],
   c,
-  [65, 34],
+  [66, 34],
   s,
   [0, 9],
   c,
-  [337, 108],
+  [338, 110],
   c,
-  [106, 38],
+  [108, 38],
   c,
-  [1245, 6],
+  [1248, 6],
   c,
   [44, 9],
   c,
   [15, 15],
   c,
-  [194, 20],
+  [196, 20],
   c,
-  [612, 45],
+  [615, 45],
   s,
   [2, 137]
 ]),
@@ -8540,27 +8599,27 @@ table: bt({
   66,
   86,
   44,
-  89,
-  91,
   90,
-  93,
-  95,
+  92,
+  91,
+  94,
+  96,
   c,
   [82, 7],
-  96,
-  100,
-  102,
+  97,
+  101,
   103,
-  105,
+  104,
   106,
-  111,
+  107,
   112,
+  113,
+  92,
   91,
-  90,
-  114,
+  115,
   c,
   [19, 8],
-  115,
+  116,
   44
 ]),
   mode: u([
@@ -8625,23 +8684,23 @@ table: bt({
   c,
   [761, 30],
   c,
-  [117, 63],
+  [117, 57],
   c,
-  [961, 18],
+  [413, 21],
   c,
-  [806, 108],
+  [807, 112],
   c,
-  [458, 9],
+  [98, 10],
   c,
-  [429, 37],
+  [556, 38],
   c,
-  [148, 13],
+  [150, 13],
   c,
-  [278, 6],
+  [281, 6],
   c,
-  [173, 44],
+  [175, 44],
   c,
-  [206, 59],
+  [208, 59],
   c,
   [59, 17],
   c,
@@ -8795,9 +8854,9 @@ table: bt({
   32,
   73,
   s,
-  [82, 26],
-  s,
   [83, 26],
+  s,
+  [84, 26],
   74,
   49,
   76,
@@ -8888,17 +8947,18 @@ table: bt({
   s,
   [74, 10],
   75,
-  88,
+  89,
+  87,
   s,
-  [87, 3],
-  92,
+  [88, 3],
+  93,
   s,
   [20, 17],
-  94,
+  95,
   c,
-  [1020, 13],
-  97,
+  [1021, 13],
   98,
+  99,
   s,
   [44, 11],
   s,
@@ -8909,47 +8969,49 @@ table: bt({
   [65, 28],
   66,
   72,
-  99,
+  100,
   78,
   78,
   79,
   79,
-  2,
   80,
+  80,
+  2,
+  81,
   13,
-  86,
-  86,
-  101,
+  87,
+  87,
+  102,
   s,
-  [84, 3],
+  [85, 3],
   s,
   [22, 17],
   s,
   [25, 14],
-  104,
-  107,
-  13,
+  105,
   108,
+  13,
   109,
   110,
+  111,
   39,
   39,
   s,
   [34, 3],
   c,
-  [189, 3],
+  [191, 3],
   s,
-  [85, 3],
-  113,
+  [86, 3],
+  114,
   c,
-  [175, 13],
+  [177, 13],
   s,
   [26, 18],
   s,
   [34, 3],
   s,
   [28, 11],
-  116,
+  117,
   s,
   [28, 7],
   s,
@@ -8958,19 +9020,19 @@ table: bt({
   [30, 19],
   s,
   [36, 14],
-  117,
+  118,
   s,
   [37, 14],
   33,
   33,
   73,
-  81,
+  82,
   s,
   [23, 17],
   s,
   [24, 14],
   72,
-  118,
+  119,
   s,
   [31, 19],
   40,
@@ -9003,27 +9065,26 @@ defaultActions: bda({
   78,
   s,
   [81, 5, 1],
-  87,
-  88,
-  89,
-  92,
+  s,
+  [87, 4, 1],
   93,
   94,
-  98,
+  95,
   99,
-  101,
-  103,
+  100,
+  102,
   104,
-  106,
+  105,
   107,
   108,
-  110,
-  112,
+  109,
+  111,
   113,
   114,
-  116,
+  115,
   117,
-  118
+  118,
+  119
 ]),
   goto: u([
   5,
@@ -9042,8 +9103,8 @@ defaultActions: bda({
   70,
   16,
   18,
-  82,
   83,
+  84,
   1,
   45,
   42,
@@ -9069,20 +9130,21 @@ defaultActions: bda({
   66,
   78,
   79,
+  80,
   2,
-  84,
+  85,
   22,
   25,
   39,
   34,
-  85,
+  86,
   26,
   34,
   29,
   30,
   36,
   37,
-  81,
+  82,
   23,
   24,
   31,
@@ -9494,6 +9556,13 @@ parse: function parse(input) {
             }
 
 
+
+
+
+
+
+
+
             switch (action) {
             // catch misc. parse failures:
             default:
@@ -9663,7 +9732,28 @@ function prepareString (s) {
     s = s.replace(/\\\\/g, "\\");
     s = encodeRE(s);
     return s;
-};
+}
+
+// convert string value to number or boolean value, when possible
+// (and when this is more or less obviously the intent)
+// otherwise produce the string itself as value.
+function parseValue(v) {
+    if (v === 'false') {
+        return false;
+    }
+    if (v === 'true') {
+        return true;
+    }
+    // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+    // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
+    if (v && !isNaN(v)) {
+        var rv = +v;
+        if (isFinite(rv)) {
+            return rv;
+        }
+    }
+    return v;
+}
 /* lexer generated by jison-lex 0.3.4-166 */
 /*
  * Returns a Lexer object of the following structure:
@@ -10621,11 +10711,11 @@ case 8 :
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  
-                                            if (yy.depth == 0) { 
-                                                this.pushState('trail'); 
-                                            } else { 
-                                                yy.depth--; 
-                                            } 
+                                            if (yy.depth == 0) {
+                                                this.pushState('trail');
+                                            } else {
+                                                yy.depth--;
+                                            }
                                             return 4;
                                          
 break;
@@ -10666,54 +10756,69 @@ break;
 case 20 : 
 /*! Conditions:: options */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39;   // value is always a string type 
 break;
 case 21 : 
 /*! Conditions:: options */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 39;   // value is always a string type 
+break;
+case 22 : 
+/*! Conditions:: INITIAL start_condition trail rules macro path options */ 
+/*! Rule::       \/\/[^\r\n]* */ 
+ /* skip single-line comment */ 
 break;
 case 23 : 
+/*! Conditions:: INITIAL start_condition trail rules macro path options */ 
+/*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
+ /* skip multi-line comment */ 
+break;
+case 25 : 
 /*! Conditions:: options */ 
-/*! Rule::       {BR}+ */ 
+/*! Rule::       {BR}{WS}+(?=\S) */ 
+ /* skip leading whitespace on the next line of input, when followed by more options */ 
+break;
+case 26 : 
+/*! Conditions:: options */ 
+/*! Rule::       {BR} */ 
  this.popState(); return 38; 
 break;
-case 24 : 
+case 27 : 
 /*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
-case 26 : 
+case 29 : 
 /*! Conditions:: start_condition */ 
 /*! Rule::       {BR}+ */ 
  this.popState(); 
 break;
-case 27 : 
+case 30 : 
 /*! Conditions:: start_condition */ 
 /*! Rule::       {WS}+ */ 
  /* empty */ 
 break;
-case 28 : 
+case 31 : 
 /*! Conditions:: trail */ 
 /*! Rule::       {WS}*{BR}+ */ 
  this.pushState('rules'); 
 break;
-case 29 : 
+case 32 : 
 /*! Conditions:: indented */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 3; 
 break;
-case 30 : 
+case 33 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
  this.pushState('trail'); yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 23; 
 break;
-case 31 : 
+case 34 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %\{(.|{BR})*?%\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 23; 
 break;
-case 32 : 
+case 35 : 
 /*! Conditions:: indented */ 
 /*! Rule::       %include\b */ 
  
@@ -10733,35 +10838,25 @@ case 32 :
                                             this.pushState('trail');
                                             // then push the immediate need: the 'path' condition.
                                             this.pushState('path');
-                                            return 40;
+                                            return 41;
                                          
 break;
-case 33 : 
+case 36 : 
 /*! Conditions:: indented */ 
 /*! Rule::       .* */ 
  this.popState(); return 23; 
 break;
-case 34 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
- /* ignore */ 
-break;
-case 35 : 
-/*! Conditions:: indented trail rules macro INITIAL */ 
-/*! Rule::       \/\/[^\r\n]* */ 
- /* ignore */ 
-break;
-case 36 : 
+case 37 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       {ID} */ 
  this.pushState('macro'); return 20; 
 break;
-case 37 : 
+case 38 : 
 /*! Conditions:: macro */ 
 /*! Rule::       {BR}+ */ 
  this.popState('macro'); 
 break;
-case 38 : 
+case 39 : 
 /*! Conditions:: macro */ 
 /*! Rule::       {ANY_LITERAL_CHAR}+ */ 
  
@@ -10770,77 +10865,77 @@ case 38 :
                                             return 36;
                                          
 break;
-case 39 : 
+case 40 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       {BR}+ */ 
  /* empty */ 
 break;
-case 40 : 
+case 41 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \s+ */ 
  /* empty */ 
 break;
-case 41 : 
+case 42 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.replace(/\\"/g,'"'); return 35; 
 break;
-case 42 : 
+case 43 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.replace(/\\'/g,"'"); return 35; 
 break;
-case 43 : 
+case 44 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \[ */ 
  this.pushState('set'); return 30; 
 break;
-case 56 : 
+case 57 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       < */ 
  this.pushState('conditions'); return 5; 
 break;
-case 57 : 
+case 58 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/! */ 
  return 28;                    // treated as `(?!atom)` 
 break;
-case 58 : 
+case 59 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \/ */ 
  return 14;                     // treated as `(?=atom)` 
 break;
-case 60 : 
+case 61 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       \\. */ 
  yy_.yytext = yy_.yytext.replace(/^\\/g, ''); return 33; 
 break;
-case 63 : 
+case 64 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %options\b */ 
  this.pushState('options'); return 37; 
 break;
-case 64 : 
+case 65 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %s\b */ 
  this.pushState('start_condition'); return 21; 
 break;
-case 65 : 
+case 66 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %x\b */ 
  this.pushState('start_condition'); return 22; 
 break;
-case 66 : 
+case 67 : 
 /*! Conditions:: INITIAL trail code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 40; 
+ this.pushState('path'); return 41; 
 break;
-case 67 : 
+case 68 : 
 /*! Conditions:: INITIAL rules trail code */ 
 /*! Rule::       %{NAME}([^\r\n]*) */ 
  
                                             /* ignore unrecognized decl */
-                                            console.warn('LEX: ignoring unsupported lexer option: ', yy_.yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
+                                            console.warn('LEX: ignoring unsupported lexer option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state:', this._input, ' /////// ', this.matched);
                                             // this.pushState('options');
                                             yy_.yytext = [
                                                 this.matches[1],            // {NAME}
@@ -10849,47 +10944,47 @@ case 67 :
                                             return 24;
                                          
 break;
-case 68 : 
+case 69 : 
 /*! Conditions:: indented trail rules macro INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState('rules'); return 19; 
 break;
-case 76 : 
+case 77 : 
 /*! Conditions:: set */ 
 /*! Rule::       \] */ 
  this.popState('set'); return 31; 
 break;
-case 78 : 
+case 79 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 42;      // the bit of CODE just before EOF... 
+ return 43;      // the bit of CODE just before EOF... 
 break;
-case 79 : 
+case 80 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 80 : 
-/*! Conditions:: path */ 
-/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 41; 
-break;
 case 81 : 
 /*! Conditions:: path */ 
-/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 41; 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
 break;
 case 82 : 
+/*! Conditions:: path */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
+break;
+case 83 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 83 : 
+case 84 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 41; 
+ this.popState(); return 42; 
 break;
-case 84 : 
+case 85 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
  
@@ -10897,7 +10992,7 @@ case 84 :
                                             var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
                                             var l2 = 3;
                                             var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
-                                            throw new Error('unsupported lexer input: ', yy_.yytext, ' @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + this.topState() + ' state:\n', indent(this.showPosition(l1, l2), 4));
+                                            throw new Error('unsupported lexer input: "' + yy_.yytext + '" @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + this.topState() + ' state:\n' + indent(this.showPosition(l1, l2), 4));
                                          
 break;
 default:
@@ -10944,82 +11039,82 @@ simpleCaseActionClusters: {
    19 : 18,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   22 : 39,
+   24 : 40,
   /*! Conditions:: start_condition */ 
   /*! Rule::       {ID} */ 
-   25 : 25,
+   28 : 25,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \| */ 
-   44 : 9,
+   45 : 9,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \(\?: */ 
-   45 : 27,
-  /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \(\?= */ 
    46 : 27,
   /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \(\?! */ 
+  /*! Rule::       \(\?= */ 
    47 : 27,
   /*! Conditions:: indented trail rules macro INITIAL */ 
+  /*! Rule::       \(\?! */ 
+   48 : 27,
+  /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \( */ 
-   48 : 10,
+   49 : 10,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \) */ 
-   49 : 11,
+   50 : 11,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \+ */ 
-   50 : 12,
+   51 : 12,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \* */ 
-   51 : 7,
+   52 : 7,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \? */ 
-   52 : 13,
+   53 : 13,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \^ */ 
-   53 : 16,
+   54 : 16,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       , */ 
-   54 : 8,
+   55 : 8,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       <<EOF>> */ 
-   55 : 17,
+   56 : 17,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */ 
-   59 : 33,
+   60 : 33,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \$ */ 
-   61 : 17,
+   62 : 17,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \. */ 
-   62 : 15,
+   63 : 15,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{\d+(,\s?\d+|,)?\} */ 
-   69 : 34,
+   70 : 34,
   /*! Conditions:: indented trail rules macro INITIAL */ 
-  /*! Rule::       \{{ID}\} */ 
-   70 : 29,
-  /*! Conditions:: set options */ 
   /*! Rule::       \{{ID}\} */ 
    71 : 29,
+  /*! Conditions:: set options */ 
+  /*! Rule::       \{{ID}\} */ 
+   72 : 29,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \{ */ 
-   72 : 3,
+   73 : 3,
   /*! Conditions:: indented trail rules macro INITIAL */ 
   /*! Rule::       \} */ 
-   73 : 4,
+   74 : 4,
   /*! Conditions:: set */ 
   /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */ 
-   74 : 32,
+   75 : 32,
   /*! Conditions:: set */ 
   /*! Rule::       \{ */ 
-   75 : 32,
+   76 : 32,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   77 : 42,
+   78 : 43,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   85 : 1
+   86 : 1
 },
 rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -11044,8 +11139,11 @@ new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{
 /^(?:=)/,
 /^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
 /^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
+/^(?:\/\/[^\r\n]*)/,
+/^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\S+)/,
-/^(?:(\r\n|\n|\r)+)/,
+/^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
+/^(?:(\r\n|\n|\r))/,
 /^(?:([^\S\n\r])+)/,
 new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
@@ -11056,8 +11154,6 @@ new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:%\{(.|(\r\n|\n|\r))*?%\})/,
 /^(?:%include\b)/,
 /^(?:.*)/,
-/^(?:\/\*(.|\n|\r)*?\*\/)/,
-/^(?:\/\/[^\r\n]*)/,
 new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:(\r\n|\n|\r)+)/,
 /^(?:([^\s!"$%'-,.\/:-?\[-\^{-}])+)/,
@@ -11112,22 +11208,24 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
 conditions: {
   "code": {
     rules: [
-      66,
       67,
-      77,
+      68,
       78,
-      84,
-      85
+      79,
+      85,
+      86
     ],
     inclusive: false
   },
   "start_condition": {
     rules: [
-      25,
-      26,
-      27,
-      84,
-      85
+      22,
+      23,
+      28,
+      29,
+      30,
+      85,
+      86
     ],
     inclusive: false
   },
@@ -11140,9 +11238,12 @@ conditions: {
       22,
       23,
       24,
-      71,
-      84,
-      85
+      25,
+      26,
+      27,
+      72,
+      85,
+      86
     ],
     inclusive: false
   },
@@ -11152,8 +11253,8 @@ conditions: {
       10,
       11,
       12,
-      84,
-      85
+      85,
+      86
     ],
     inclusive: false
   },
@@ -11168,44 +11269,43 @@ conditions: {
       6,
       7,
       8,
-      84,
-      85
+      85,
+      86
     ],
     inclusive: false
   },
   "path": {
     rules: [
-      79,
+      22,
+      23,
       80,
       81,
       82,
       83,
       84,
-      85
+      85,
+      86
     ],
     inclusive: false
   },
   "set": {
     rules: [
-      71,
-      74,
+      72,
       75,
       76,
-      84,
-      85
+      77,
+      85,
+      86
     ],
     inclusive: false
   },
   "indented": {
     rules: [
-      29,
-      30,
-      31,
       32,
       33,
       34,
       35,
-      39,
+      36,
       40,
       41,
       42,
@@ -11232,23 +11332,23 @@ conditions: {
       63,
       64,
       65,
-      68,
+      66,
       69,
       70,
-      72,
+      71,
       73,
-      84,
-      85
+      74,
+      85,
+      86
     ],
     inclusive: true
   },
   "trail": {
     rules: [
-      28,
+      22,
+      23,
       31,
       34,
-      35,
-      39,
       40,
       41,
       42,
@@ -11280,10 +11380,11 @@ conditions: {
       68,
       69,
       70,
-      72,
+      71,
       73,
-      84,
-      85
+      74,
+      85,
+      86
     ],
     inclusive: true
   },
@@ -11294,10 +11395,9 @@ conditions: {
       15,
       16,
       17,
-      31,
+      22,
+      23,
       34,
-      35,
-      39,
       40,
       41,
       42,
@@ -11324,23 +11424,23 @@ conditions: {
       63,
       64,
       65,
-      67,
+      66,
       68,
       69,
       70,
-      72,
+      71,
       73,
-      84,
-      85
+      74,
+      85,
+      86
     ],
     inclusive: true
   },
   "macro": {
     rules: [
-      31,
+      22,
+      23,
       34,
-      35,
-      37,
       38,
       39,
       40,
@@ -11369,23 +11469,23 @@ conditions: {
       63,
       64,
       65,
-      68,
+      66,
       69,
       70,
-      72,
+      71,
       73,
-      84,
-      85
+      74,
+      85,
+      86
     ],
     inclusive: true
   },
   "INITIAL": {
     rules: [
-      31,
+      22,
+      23,
       34,
-      35,
-      36,
-      39,
+      37,
       40,
       41,
       42,
@@ -11417,10 +11517,11 @@ conditions: {
       68,
       69,
       70,
-      72,
+      71,
       73,
-      84,
-      85
+      74,
+      85,
+      86
     ],
     inclusive: true
   }
@@ -12028,78 +12129,79 @@ symbols_: {
   "=": 3,
   "?": 10,
   "ACTION": 15,
-  "ACTION_BODY": 40,
-  "ALIAS": 37,
-  "ARROW_ACTION": 39,
-  "CODE": 43,
+  "ACTION_BODY": 41,
+  "ALIAS": 38,
+  "ARROW_ACTION": 40,
+  "CODE": 44,
   "DEBUG": 19,
   "EOF": 1,
-  "EPSILON": 36,
+  "EPSILON": 37,
   "ID": 23,
   "IMPORT": 21,
-  "INCLUDE": 41,
+  "INCLUDE": 42,
   "INIT_CODE": 22,
-  "INTEGER": 35,
-  "LEFT": 31,
+  "INTEGER": 36,
+  "LEFT": 32,
   "LEX_BLOCK": 17,
   "NAME": 27,
-  "NONASSOC": 33,
+  "NONASSOC": 34,
   "OPTIONS": 25,
   "OPTIONS_END": 26,
-  "OPTION_VALUE": 28,
-  "PARSER_TYPE": 30,
-  "PARSE_PARAM": 29,
-  "PATH": 42,
-  "PREC": 38,
-  "RIGHT": 32,
+  "OPTION_STRING_VALUE": 28,
+  "OPTION_VALUE": 29,
+  "PARSER_TYPE": 31,
+  "PARSE_PARAM": 30,
+  "PATH": 43,
+  "PREC": 39,
+  "RIGHT": 33,
   "START": 16,
   "STRING": 24,
   "TOKEN": 18,
-  "TOKEN_TYPE": 34,
+  "TOKEN_TYPE": 35,
   "UNKNOWN_DECL": 20,
-  "action": 79,
-  "action_body": 80,
-  "action_comments_body": 81,
-  "action_ne": 78,
-  "associativity": 57,
-  "declaration": 48,
-  "declaration_list": 47,
+  "action": 80,
+  "action_body": 81,
+  "action_comments_body": 82,
+  "action_ne": 79,
+  "associativity": 58,
+  "declaration": 49,
+  "declaration_list": 48,
   "error": 2,
-  "expression": 73,
-  "expression_suffix": 72,
-  "extra_parser_module_code": 82,
-  "full_token_definitions": 59,
-  "grammar": 65,
-  "handle": 70,
-  "handle_action": 69,
-  "handle_list": 68,
-  "handle_sublist": 71,
-  "id": 77,
-  "id_list": 64,
-  "import_name": 49,
-  "import_path": 50,
-  "include_macro_code": 83,
-  "module_code_chunk": 84,
-  "one_full_token": 60,
-  "operator": 56,
-  "option": 53,
-  "option_list": 52,
-  "optional_action_header_block": 46,
-  "optional_end_block": 45,
-  "optional_module_code_chunk": 85,
-  "optional_token_type": 61,
-  "options": 51,
-  "parse_params": 54,
-  "parser_type": 55,
-  "prec": 75,
-  "production": 67,
-  "production_list": 66,
-  "spec": 44,
-  "suffix": 74,
-  "symbol": 76,
-  "token_description": 63,
-  "token_list": 58,
-  "token_value": 62,
+  "expression": 74,
+  "expression_suffix": 73,
+  "extra_parser_module_code": 83,
+  "full_token_definitions": 60,
+  "grammar": 66,
+  "handle": 71,
+  "handle_action": 70,
+  "handle_list": 69,
+  "handle_sublist": 72,
+  "id": 78,
+  "id_list": 65,
+  "import_name": 50,
+  "import_path": 51,
+  "include_macro_code": 84,
+  "module_code_chunk": 85,
+  "one_full_token": 61,
+  "operator": 57,
+  "option": 54,
+  "option_list": 53,
+  "optional_action_header_block": 47,
+  "optional_end_block": 46,
+  "optional_module_code_chunk": 86,
+  "optional_token_type": 62,
+  "options": 52,
+  "parse_params": 55,
+  "parser_type": 56,
+  "prec": 76,
+  "production": 68,
+  "production_list": 67,
+  "spec": 45,
+  "suffix": 75,
+  "symbol": 77,
+  "token_description": 64,
+  "token_list": 59,
+  "token_value": 63,
   "{": 12,
   "|": 6,
   "}": 13
@@ -12132,22 +12234,23 @@ terminals_: {
   25: "OPTIONS",
   26: "OPTIONS_END",
   27: "NAME",
-  28: "OPTION_VALUE",
-  29: "PARSE_PARAM",
-  30: "PARSER_TYPE",
-  31: "LEFT",
-  32: "RIGHT",
-  33: "NONASSOC",
-  34: "TOKEN_TYPE",
-  35: "INTEGER",
-  36: "EPSILON",
-  37: "ALIAS",
-  38: "PREC",
-  39: "ARROW_ACTION",
-  40: "ACTION_BODY",
-  41: "INCLUDE",
-  42: "PATH",
-  43: "CODE"
+  28: "OPTION_STRING_VALUE",
+  29: "OPTION_VALUE",
+  30: "PARSE_PARAM",
+  31: "PARSER_TYPE",
+  32: "LEFT",
+  33: "RIGHT",
+  34: "NONASSOC",
+  35: "TOKEN_TYPE",
+  36: "INTEGER",
+  37: "EPSILON",
+  38: "ALIAS",
+  39: "PREC",
+  40: "ARROW_ACTION",
+  41: "ACTION_BODY",
+  42: "INCLUDE",
+  43: "PATH",
+  44: "CODE"
 },
 TERROR: 2,
 EOF: 1,
@@ -12239,44 +12342,42 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  44,
   45,
-  45,
+  46,
+  46,
   s,
-  [46, 3],
-  47,
-  47,
+  [47, 3],
+  48,
+  48,
   s,
-  [48, 13],
-  49,
-  49,
+  [49, 13],
   50,
   50,
   51,
+  51,
   52,
-  52,
+  53,
+  53,
   s,
-  [53, 3],
+  [54, 4],
   s,
-  [54, 4, 1],
-  57,
-  57,
+  [55, 4, 1],
   58,
   58,
   59,
   59,
+  60,
+  60,
   s,
-  [60, 3],
-  61,
+  [61, 3],
+  62,
   s,
-  [61, 4, 1],
-  64,
+  [62, 4, 1],
   65,
   66,
-  66,
+  67,
   67,
   68,
-  68,
   69,
   69,
   70,
@@ -12285,23 +12386,23 @@ productions_: bp({
   71,
   72,
   72,
+  73,
+  73,
   s,
-  [73, 3],
+  [74, 3],
   s,
-  [74, 4],
-  75,
-  75,
+  [75, 4],
   76,
   76,
   77,
+  77,
+  78,
   s,
-  [78, 4],
-  79,
-  79,
+  [79, 4],
+  80,
+  80,
   s,
-  [80, 4],
-  81,
-  81,
+  [81, 4],
   82,
   82,
   83,
@@ -12309,7 +12410,9 @@ productions_: bp({
   84,
   84,
   85,
-  85
+  85,
+  86,
+  86
 ]),
   rule: u([
   5,
@@ -12332,8 +12435,8 @@ productions_: bp({
   [6, 5],
   c,
   [15, 3],
-  3,
-  3,
+  s,
+  [3, 3],
   s,
   [2, 3],
   s,
@@ -12351,19 +12454,19 @@ productions_: bp({
   4,
   3,
   c,
-  [31, 3],
+  [32, 3],
   2,
   0,
   c,
   [6, 4],
   c,
-  [37, 3],
+  [38, 3],
   c,
   [23, 5],
   c,
   [5, 4],
   c,
-  [56, 5],
+  [57, 5],
   0,
   0,
   1,
@@ -12394,33 +12497,33 @@ case 1:
 
 case 3:
     /*! Production::    optional_end_block : "%%" extra_parser_module_code */
-case 32:
-    /*! Production::    parse_params : PARSE_PARAM token_list */
 case 33:
+    /*! Production::    parse_params : PARSE_PARAM token_list */
+case 34:
     /*! Production::    parser_type : PARSER_TYPE symbol */
-case 65:
+case 66:
     /*! Production::    expression : ID */
-case 74:
-    /*! Production::    symbol : id */
 case 75:
-    /*! Production::    symbol : STRING */
+    /*! Production::    symbol : id */
 case 76:
+    /*! Production::    symbol : STRING */
+case 77:
     /*! Production::    id : ID */
-case 78:
-    /*! Production::    action_ne : ACTION */
 case 79:
+    /*! Production::    action_ne : ACTION */
+case 80:
     /*! Production::    action_ne : include_macro_code */
-case 81:
+case 82:
     /*! Production::    action : action_ne */
-case 84:
+case 85:
     /*! Production::    action_body : action_comments_body */
-case 87:
+case 88:
     /*! Production::    action_comments_body : ACTION_BODY */
-case 89:
+case 90:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk */
-case 93:
+case 94:
     /*! Production::    module_code_chunk : CODE */
-case 95:
+case 96:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
     this.$ = yyvstack[yysp];
     break;
@@ -12509,27 +12612,27 @@ case 21:
 
 case 26:
     /*! Production::    options : OPTIONS option_list OPTIONS_END */
-case 77:
+case 78:
     /*! Production::    action_ne : "{" action_body "}" */
     this.$ = yyvstack[yysp - 1];
     break;
 
 case 27:
     /*! Production::    option_list : option_list option */
-case 38:
+case 39:
     /*! Production::    token_list : token_list symbol */
-case 49:
+case 50:
     /*! Production::    id_list : id_list id */
     this.$ = yyvstack[yysp - 1]; this.$.push(yyvstack[yysp]);
     break;
 
 case 28:
     /*! Production::    option_list : option */
-case 39:
+case 40:
     /*! Production::    token_list : symbol */
-case 50:
+case 51:
     /*! Production::    id_list : id */
-case 56:
+case 57:
     /*! Production::    handle_list : handle_action */
     this.$ = [yyvstack[yysp]];
     break;
@@ -12540,33 +12643,38 @@ case 29:
     break;
 
 case 30:
-    /*! Production::    option : NAME "=" OPTION_VALUE */
-case 31:
-    /*! Production::    option : NAME "=" NAME */
+    /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
     break;
 
-case 34:
+case 31:
+    /*! Production::    option : NAME "=" OPTION_VALUE */
+case 32:
+    /*! Production::    option : NAME "=" NAME */
+    this.$ = [yyvstack[yysp - 2], parseValue(yyvstack[yysp])];
+    break;
+
+case 35:
     /*! Production::    operator : associativity token_list */
     this.$ = [yyvstack[yysp - 1]]; this.$.push.apply(this.$, yyvstack[yysp]);
     break;
 
-case 35:
+case 36:
     /*! Production::    associativity : LEFT */
     this.$ = 'left';
     break;
 
-case 36:
+case 37:
     /*! Production::    associativity : RIGHT */
     this.$ = 'right';
     break;
 
-case 37:
+case 38:
     /*! Production::    associativity : NONASSOC */
     this.$ = 'nonassoc';
     break;
 
-case 40:
+case 41:
     /*! Production::    full_token_definitions : optional_token_type id_list */
     var rv = [];
     var lst = yyvstack[yysp];
@@ -12581,7 +12689,7 @@ case 40:
     this.$ = rv;
     break;
 
-case 41:
+case 42:
     /*! Production::    full_token_definitions : optional_token_type one_full_token */
     var m = yyvstack[yysp];
     if (yyvstack[yysp - 1]) {
@@ -12590,7 +12698,7 @@ case 41:
     this.$ = [m];
     break;
 
-case 42:
+case 43:
     /*! Production::    one_full_token : id token_value token_description */
     this.$ = {
         id: yyvstack[yysp - 2],
@@ -12598,7 +12706,7 @@ case 42:
     };
     break;
 
-case 43:
+case 44:
     /*! Production::    one_full_token : id token_description */
     this.$ = {
         id: yyvstack[yysp - 1],
@@ -12606,7 +12714,7 @@ case 43:
     };
     break;
 
-case 44:
+case 45:
     /*! Production::    one_full_token : id token_value */
     this.$ = {
         id: yyvstack[yysp - 1],
@@ -12615,18 +12723,18 @@ case 44:
     };
     break;
 
-case 45:
+case 46:
     /*! Production::    optional_token_type : ε */
     this.$ = false;
     break;
 
-case 51:
+case 52:
     /*! Production::    grammar : optional_action_header_block production_list */
     this.$ = yyvstack[yysp - 1];
     this.$.grammar = yyvstack[yysp];
     break;
 
-case 52:
+case 53:
     /*! Production::    production_list : production_list production */
     this.$ = yyvstack[yysp - 1];
     if (yyvstack[yysp][0] in this.$) {
@@ -12636,23 +12744,23 @@ case 52:
     }
     break;
 
-case 53:
+case 54:
     /*! Production::    production_list : production */
     this.$ = {}; this.$[yyvstack[yysp][0]] = yyvstack[yysp][1];
     break;
 
-case 54:
+case 55:
     /*! Production::    production : id ":" handle_list ";" */
     this.$ = [yyvstack[yysp - 3], yyvstack[yysp - 1]];
     break;
 
-case 55:
+case 56:
     /*! Production::    handle_list : handle_list "|" handle_action */
     this.$ = yyvstack[yysp - 2];
     this.$.push(yyvstack[yysp]);
     break;
 
-case 57:
+case 58:
     /*! Production::    handle_action : handle prec action */
     this.$ = [(yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : '')];
     if (yyvstack[yysp]) {
@@ -12666,7 +12774,7 @@ case 57:
     }
     break;
 
-case 58:
+case 59:
     /*! Production::    handle_action : EPSILON action */
     this.$ = [''];
     if (yyvstack[yysp]) {
@@ -12677,43 +12785,43 @@ case 58:
     }
     break;
 
-case 59:
+case 60:
     /*! Production::    handle : handle expression_suffix */
     this.$ = yyvstack[yysp - 1];
     this.$.push(yyvstack[yysp]);
     break;
 
-case 60:
+case 61:
     /*! Production::    handle : ε */
     this.$ = [];
     break;
 
-case 61:
+case 62:
     /*! Production::    handle_sublist : handle_sublist "|" handle */
     this.$ = yyvstack[yysp - 2];
     this.$.push(yyvstack[yysp].join(' '));
     break;
 
-case 62:
+case 63:
     /*! Production::    handle_sublist : handle */
     this.$ = [yyvstack[yysp].join(' ')];
     break;
 
-case 63:
+case 64:
     /*! Production::    expression_suffix : expression suffix ALIAS */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + "[" + yyvstack[yysp] + "]";
     break;
 
-case 64:
+case 65:
     /*! Production::    expression_suffix : expression suffix */
-case 88:
+case 89:
     /*! Production::    action_comments_body : action_comments_body ACTION_BODY */
-case 94:
+case 95:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 66:
+case 67:
     /*! Production::    expression : STRING */
     // Re-encode the string *anyway* as it will
     // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
@@ -12726,60 +12834,61 @@ case 66:
     }
     break;
 
-case 67:
+case 68:
     /*! Production::    expression : "(" handle_sublist ")" */
     this.$ = '(' + yyvstack[yysp - 1].join(' | ') + ')';
     break;
 
-case 68:
+case 69:
     /*! Production::    suffix : ε */
-case 82:
-    /*! Production::    action : ε */
 case 83:
+    /*! Production::    action : ε */
+case 84:
     /*! Production::    action_body : ε */
-case 96:
+case 97:
     /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
 
-case 72:
+case 73:
     /*! Production::    prec : PREC symbol */
     this.$ = { prec: yyvstack[yysp] };
     break;
 
-case 73:
+case 74:
     /*! Production::    prec : ε */
     this.$ = null;
     break;
 
-case 80:
+case 81:
     /*! Production::    action_ne : ARROW_ACTION */
     this.$ = '$$ = ' + yyvstack[yysp];
     break;
 
-case 85:
+case 86:
     /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
     this.$ = yyvstack[yysp - 4] + yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 86:
+case 87:
     /*! Production::    action_body : action_body "{" action_body "}" */
     this.$ = yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 90:
+case 91:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 91:
+case 92:
     /*! Production::    include_macro_code : INCLUDE PATH */
+    var fs = require('fs');
     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
     // And no, we don't support nested '%include':
     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
     break;
 
-case 92:
+case 93:
     /*! Production::    include_macro_code : INCLUDE error */
     console.error("%include MUST be followed by a valid file path");
     break;
@@ -12843,9 +12952,8 @@ table: bt({
   s,
   [18, 4],
   16,
-  2,
-  2,
-  1,
+  c,
+  [22, 3],
   1,
   s,
   [3, 4],
@@ -12854,14 +12962,13 @@ table: bt({
   18,
   16,
   17,
-  16,
-  2,
-  3,
   c,
-  [62, 3],
+  [14, 3],
+  c,
+  [62, 4],
   6,
   c,
-  [4, 3],
+  [5, 3],
   13,
   9,
   16,
@@ -12897,57 +13004,57 @@ table: bt({
   [14, 9, 1],
   25,
   s,
-  [29, 5, 1],
-  41,
-  44,
-  47,
+  [30, 5, 1],
+  42,
+  45,
+  48,
   1,
   c,
   [19, 16],
-  48,
-  51,
+  49,
+  52,
   s,
-  [54, 4, 1],
-  83,
+  [55, 4, 1],
+  84,
   15,
   23,
-  41,
-  46,
-  65,
+  42,
+  47,
+  66,
   c,
   [28, 16],
   23,
-  77,
+  78,
   c,
   [18, 16],
   c,
   [34, 17],
-  34,
-  59,
-  61,
+  35,
+  60,
+  62,
   c,
   [36, 32],
   c,
   [16, 80],
   23,
   24,
-  49,
+  50,
   c,
   [3, 5],
-  58,
-  76,
+  59,
   77,
+  78,
   2,
-  42,
+  43,
   c,
   [7, 5],
   23,
   24,
-  76,
   77,
+  78,
   27,
-  52,
   53,
+  54,
   23,
   24,
   23,
@@ -12956,13 +13063,13 @@ table: bt({
   24,
   1,
   14,
-  45,
+  46,
   c,
   [205, 3],
-  66,
   67,
-  77,
-  83,
+  68,
+  78,
+  84,
   c,
   [57, 16],
   4,
@@ -12973,41 +13080,41 @@ table: bt({
   [14, 12, 1],
   c,
   [22, 5],
-  35,
-  39,
+  36,
+  40,
   c,
   [97, 18],
-  60,
-  64,
-  77,
+  61,
+  65,
+  78,
   23,
   23,
   24,
-  50,
+  51,
   12,
   15,
   23,
   24,
-  39,
-  41,
+  40,
+  42,
   c,
   [6, 8],
-  39,
-  41,
-  78,
+  40,
+  42,
+  79,
   c,
   [82, 10],
   c,
   [62, 8],
-  41,
-  76,
+  42,
+  77,
   c,
   [291, 10],
   c,
   [20, 9],
   c,
   [103, 20],
-  39,
+  40,
   c,
   [22, 23],
   1,
@@ -13017,7 +13124,7 @@ table: bt({
   [22, 10],
   c,
   [64, 7],
-  43,
+  44,
   c,
   [21, 21],
   c,
@@ -13026,7 +13133,7 @@ table: bt({
   [18, 7],
   26,
   27,
-  53,
+  54,
   26,
   27,
   3,
@@ -13034,16 +13141,16 @@ table: bt({
   27,
   1,
   1,
-  41,
-  43,
-  82,
-  84,
+  42,
+  44,
+  83,
   85,
+  86,
   1,
   14,
   23,
-  67,
-  77,
+  68,
+  78,
   c,
   [269, 3],
   c,
@@ -13057,16 +13164,16 @@ table: bt({
   [479, 26],
   c,
   [286, 9],
-  41,
-  62,
+  42,
   63,
+  64,
   c,
   [432, 64],
   12,
   13,
-  40,
-  80,
+  41,
   81,
+  82,
   c,
   [210, 11],
   c,
@@ -13079,12 +13186,13 @@ table: bt({
   [242, 18],
   27,
   28,
+  29,
   s,
   [1, 3],
-  41,
-  83,
+  42,
+  84,
   c,
-  [242, 3],
+  [243, 3],
   c,
   [3, 4],
   14,
@@ -13093,67 +13201,69 @@ table: bt({
   6,
   7,
   c,
-  [435, 4],
-  36,
-  38,
+  [436, 4],
+  37,
   39,
-  41,
-  68,
+  40,
+  42,
   69,
   70,
+  71,
   c,
-  [244, 17],
+  [245, 17],
   c,
   [17, 9],
   c,
-  [82, 8],
+  [83, 8],
   c,
-  [224, 26],
+  [225, 26],
   c,
-  [116, 24],
+  [117, 24],
   12,
   13,
   c,
-  [211, 3],
+  [212, 3],
   c,
   [3, 3],
   26,
   27,
+  26,
+  27,
   c,
-  [362, 3],
+  [365, 3],
   c,
-  [361, 6],
-  41,
-  43,
+  [364, 6],
+  42,
+  44,
   5,
   6,
   5,
   6,
   c,
-  [123, 7],
+  [125, 7],
   c,
-  [122, 3],
-  72,
+  [124, 3],
   73,
-  75,
+  74,
+  76,
   c,
-  [496, 3],
+  [499, 3],
   c,
-  [564, 4],
-  79,
+  [567, 4],
+  80,
   c,
-  [647, 17],
+  [650, 17],
   c,
-  [231, 18],
+  [234, 18],
   c,
-  [290, 5],
+  [293, 5],
   c,
   [5, 3],
   1,
   c,
-  [191, 14],
-  69,
+  [193, 14],
   70,
+  71,
   c,
   [68, 9],
   s,
@@ -13161,15 +13271,15 @@ table: bt({
   c,
   [91, 7],
   c,
-  [749, 4],
+  [752, 4],
   s,
   [5, 8, 1],
   c,
   [18, 3],
-  37,
+  38,
   c,
   [19, 3],
-  74,
+  75,
   c,
   [16, 15],
   c,
@@ -13178,8 +13288,8 @@ table: bt({
   [14, 3],
   23,
   24,
-  70,
   71,
+  72,
   c,
   [160, 4],
   12,
@@ -13198,12 +13308,12 @@ table: bt({
   8,
   c,
   [73, 5],
-  72,
   73,
+  74,
   c,
   [170, 3],
   c,
-  [464, 3],
+  [467, 3],
   c,
   [145, 9],
   c,
@@ -13268,33 +13378,33 @@ table: bt({
   c,
   [225, 69],
   c,
-  [294, 98],
+  [294, 99],
   c,
-  [97, 21],
+  [98, 21],
   c,
-  [516, 37],
+  [517, 37],
   c,
-  [155, 65],
+  [156, 67],
   c,
-  [102, 20],
+  [104, 20],
   c,
   [20, 9],
   c,
-  [647, 40],
+  [650, 40],
   c,
-  [604, 28],
+  [607, 28],
   c,
   [68, 16],
   c,
   [44, 17],
   c,
-  [456, 105],
+  [459, 105],
   c,
   [73, 9],
   c,
   [77, 32],
   c,
-  [908, 10],
+  [911, 10],
   0
 ]),
   state: u([
@@ -13348,38 +13458,38 @@ table: bt({
   79,
   82,
   83,
-  87,
-  89,
+  88,
   90,
   91,
-  93,
-  97,
+  92,
+  94,
+  98,
   73,
   72,
+  102,
+  104,
   101,
-  103,
-  100,
-  108,
-  107,
-  64,
   109,
-  83,
-  110,
-  91,
   108,
-  111,
   64,
+  110,
+  83,
+  111,
+  92,
+  109,
   112,
-  39,
+  64,
   113,
+  39,
+  114,
+  119,
   118,
-  117,
-  101,
-  103,
-  123,
+  102,
+  104,
   124,
-  101,
-  103
+  125,
+  102,
+  104
 ]),
   mode: u([
   s,
@@ -13423,23 +13533,25 @@ table: bt({
   c,
   [288, 91],
   c,
-  [258, 5],
+  [392, 6],
   c,
-  [228, 13],
+  [229, 13],
   c,
-  [113, 34],
+  [114, 34],
   c,
-  [518, 58],
+  [519, 58],
   c,
-  [333, 17],
+  [105, 15],
   c,
-  [385, 6],
+  [124, 5],
   c,
-  [23, 4],
+  [17, 5],
+  c,
+  [25, 4],
   c,
   [10, 7],
   c,
-  [612, 39],
+  [615, 39],
   c,
   [37, 15],
   c,
@@ -13449,15 +13561,15 @@ table: bt({
   c,
   [82, 9],
   c,
-  [533, 67],
+  [536, 67],
   c,
   [68, 40],
   c,
   [60, 3],
   c,
-  [747, 6],
+  [750, 6],
   c,
-  [544, 36],
+  [547, 36],
   c,
   [42, 4]
 ]),
@@ -13487,7 +13599,7 @@ table: bt({
   [10, 16],
   s,
   [11, 16],
-  45,
+  46,
   32,
   s,
   [13, 16],
@@ -13516,12 +13628,12 @@ table: bt({
   29,
   40,
   47,
-  35,
-  35,
   36,
   36,
   37,
   37,
+  38,
+  38,
   2,
   49,
   51,
@@ -13530,11 +13642,11 @@ table: bt({
   s,
   [9, 16],
   s,
-  [76, 24],
+  [77, 24],
   s,
   [12, 16],
   29,
-  46,
+  47,
   59,
   60,
   s,
@@ -13546,29 +13658,29 @@ table: bt({
   65,
   19,
   s,
-  [34, 9],
+  [35, 9],
   29,
   40,
   s,
-  [34, 7],
+  [35, 7],
   s,
-  [39, 18],
-  s,
-  [74, 22],
+  [40, 18],
   s,
   [75, 22],
   s,
-  [91, 21],
+  [76, 22],
   s,
   [92, 21],
   s,
-  [32, 9],
+  [93, 21],
+  s,
+  [33, 9],
   29,
   40,
   s,
-  [32, 7],
+  [33, 7],
   s,
-  [33, 16],
+  [34, 16],
   67,
   47,
   28,
@@ -13577,33 +13689,33 @@ table: bt({
   29,
   29,
   70,
-  96,
-  96,
+  97,
+  97,
   74,
-  51,
-  51,
+  52,
+  52,
   29,
   s,
   [5, 3],
   s,
   [6, 3],
   s,
-  [53, 3],
+  [54, 3],
   76,
   s,
-  [40, 9],
+  [41, 9],
   29,
   s,
-  [40, 7],
+  [41, 7],
   s,
-  [41, 16],
+  [42, 16],
   s,
-  [50, 10],
+  [51, 10],
   81,
   s,
-  [50, 6],
+  [51, 6],
   80,
-  50,
+  51,
   s,
   [20, 16],
   s,
@@ -13612,164 +13724,166 @@ table: bt({
   [25, 16],
   s,
   [21, 16],
-  83,
-  83,
-  84,
   s,
-  [78, 18],
+  [84, 3],
   s,
   [79, 18],
   s,
   [80, 18],
   s,
-  [38, 18],
+  [81, 18],
+  s,
+  [39, 18],
   s,
   [26, 16],
   27,
   27,
-  86,
+  87,
   85,
+  86,
   1,
   3,
-  89,
+  90,
   19,
-  95,
-  95,
-  88,
+  96,
+  96,
+  89,
   s,
-  [93, 3],
+  [94, 3],
   s,
-  [52, 3],
+  [53, 3],
   s,
-  [60, 7],
-  92,
+  [61, 7],
+  93,
   s,
-  [60, 3],
+  [61, 3],
   s,
-  [49, 17],
+  [50, 17],
   s,
-  [44, 9],
+  [45, 9],
   81,
   s,
-  [44, 7],
+  [45, 7],
+  s,
+  [44, 16],
+  s,
+  [48, 17],
+  s,
+  [49, 16],
+  96,
+  95,
+  85,
+  85,
+  97,
+  s,
+  [88, 3],
+  30,
+  30,
+  31,
+  31,
+  32,
+  32,
+  c,
+  [349, 3],
+  s,
+  [95, 3],
+  99,
+  100,
+  57,
+  57,
+  74,
+  74,
+  107,
+  74,
+  74,
+  105,
+  106,
+  103,
+  74,
+  74,
+  83,
+  83,
+  c,
+  [539, 4],
   s,
   [43, 16],
   s,
-  [47, 17],
+  [78, 18],
   s,
-  [48, 16],
-  95,
-  94,
-  84,
-  84,
-  96,
+  [84, 3],
   s,
-  [87, 3],
-  30,
-  30,
-  31,
-  31,
+  [89, 3],
+  91,
+  s,
+  [55, 3],
   c,
-  [346, 3],
-  s,
-  [94, 3],
-  98,
-  99,
-  56,
-  56,
-  73,
-  73,
-  106,
-  73,
-  73,
-  104,
-  105,
-  102,
-  73,
-  73,
-  82,
-  82,
-  c,
-  [536, 4],
-  s,
-  [42, 16],
-  s,
-  [77, 18],
-  c,
-  [274, 3],
-  s,
-  [88, 3],
-  90,
-  s,
-  [54, 3],
-  c,
-  [176, 11],
+  [178, 11],
   c,
   [61, 6],
   s,
-  [59, 11],
+  [60, 11],
   29,
   40,
   s,
-  [68, 4],
-  114,
+  [69, 4],
   115,
   116,
+  117,
   s,
-  [68, 8],
-  s,
-  [65, 15],
+  [69, 8],
   s,
   [66, 15],
   s,
-  [60, 5],
-  58,
-  58,
-  81,
-  81,
-  95,
-  119,
-  55,
-  55,
-  57,
-  57,
+  [67, 15],
   s,
-  [72, 6],
-  s,
-  [64, 8],
+  [61, 5],
+  59,
+  59,
+  82,
+  82,
+  96,
   120,
+  56,
+  56,
+  58,
+  58,
   s,
-  [64, 3],
+  [73, 6],
   s,
-  [69, 12],
+  [65, 8],
+  121,
+  s,
+  [65, 3],
   s,
   [70, 12],
   s,
   [71, 12],
+  s,
+  [72, 12],
+  123,
   122,
-  121,
-  62,
-  106,
-  62,
-  104,
+  63,
+  107,
+  63,
   105,
-  86,
-  86,
+  106,
+  87,
+  87,
   84,
   s,
-  [63, 11],
+  [64, 11],
   s,
-  [67, 15],
+  [68, 15],
   s,
-  [60, 5],
-  85,
-  85,
-  96,
-  61,
-  106,
-  61,
-  104,
-  105
+  [61, 5],
+  86,
+  86,
+  97,
+  62,
+  107,
+  62,
+  105,
+  106
 ])
 }),
 defaultActions: bda({
@@ -13810,28 +13924,27 @@ defaultActions: bda({
   79,
   80,
   81,
-  84,
-  85,
-  86,
-  88,
-  90,
-  93,
+  s,
+  [84, 4, 1],
+  89,
+  91,
   94,
-  96,
+  95,
   97,
   98,
-  101,
+  99,
+  102,
   s,
-  [104, 5, 1],
-  110,
+  [105, 5, 1],
   111,
   112,
-  114,
+  113,
   115,
   116,
-  120,
+  117,
   121,
-  122
+  122,
+  123
 ]),
   goto: u([
   8,
@@ -13841,69 +13954,70 @@ defaultActions: bda({
   11,
   s,
   [13, 7, 1],
-  35,
   36,
   37,
+  38,
   9,
-  76,
+  77,
   12,
-  46,
+  47,
   22,
   23,
-  39,
-  74,
+  40,
   75,
-  91,
+  76,
   92,
-  33,
+  93,
+  34,
   28,
   5,
   6,
-  53,
-  41,
+  54,
+  42,
   20,
   24,
   25,
   21,
-  78,
   79,
   80,
-  38,
+  81,
+  39,
   26,
   27,
   1,
   3,
-  93,
-  52,
-  49,
-  43,
-  47,
+  94,
+  53,
+  50,
+  44,
   48,
-  87,
+  49,
+  88,
   30,
   31,
-  94,
-  56,
-  42,
-  77,
-  88,
-  90,
-  54,
-  59,
-  65,
-  66,
-  60,
-  58,
-  81,
-  55,
+  32,
+  95,
   57,
-  72,
-  69,
+  43,
+  78,
+  89,
+  91,
+  55,
+  60,
+  66,
+  67,
+  61,
+  59,
+  82,
+  56,
+  58,
+  73,
   70,
   71,
-  63,
-  67,
-  60
+  72,
+  64,
+  68,
+  61
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -14314,6 +14428,13 @@ parse: function parse(input) {
             }
 
 
+
+
+
+
+
+
+
             switch (action) {
             // catch misc. parse failures:
             default:
@@ -14487,6 +14608,27 @@ function extend(json, grammar) {
         json.actionInclude = grammar.actionInclude;
     }
     return json;
+}
+
+// convert string value to number or boolean value, when possible
+// (and when this is more or less obviously the intent)
+// otherwise produce the string itself as value.
+function parseValue(v) {
+    if (v === 'false') {
+        return false;
+    }
+    if (v === 'true') {
+        return true;
+    }
+    // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+    // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
+    if (v && !isNaN(v)) {
+        var rv = +v;
+        if (isFinite(rv)) {
+            return rv;
+        }
+    }
+    return v;
 }
 /* lexer generated by jison-lex 0.3.4-166 */
 /*
@@ -15459,12 +15601,12 @@ break;
 case 17 : 
 /*! Conditions:: options */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28;   // value is always a string type 
 break;
 case 18 : 
 /*! Conditions:: options */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 28;   // value is always a string type 
 break;
 case 19 : 
 /*! Conditions:: INITIAL ebnf bnf token path options */ 
@@ -15478,65 +15620,70 @@ case 20 :
 break;
 case 22 : 
 /*! Conditions:: options */ 
-/*! Rule::       {BR}+ */ 
- this.popState(); return 26; 
+/*! Rule::       {BR}{WS}+(?=\S) */ 
+ /* skip leading whitespace on the next line of input, when followed by more options */ 
 break;
 case 23 : 
 /*! Conditions:: options */ 
-/*! Rule::       {WS}+ */ 
- /* skip whitespace */ 
+/*! Rule::       {BR} */ 
+ this.popState(); return 26; 
 break;
 case 24 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Conditions:: options */ 
 /*! Rule::       {WS}+ */ 
  /* skip whitespace */ 
 break;
 case 25 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       {BR}+ */ 
- /* skip newlines */ 
+/*! Rule::       {WS}+ */ 
+ /* skip whitespace */ 
 break;
 case 26 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 37; 
+/*! Rule::       {BR}+ */ 
+ /* skip newlines */ 
 break;
-case 30 : 
+case 27 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       \[{ID}\] */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 38; 
+break;
+case 31 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 24; 
 break;
-case 31 : 
+case 32 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 24; 
 break;
-case 36 : 
+case 37 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %% */ 
  this.pushState(ebnf ? 'ebnf' : 'bnf'); return 14; 
 break;
-case 37 : 
+case 38 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %ebnf\b */ 
  if (!yy.options) { yy.options = {}; } ebnf = yy.options.ebnf = true; 
 break;
-case 38 : 
+case 39 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %debug\b */ 
  if (!yy.options) { yy.options = {}; } yy.options.debug = true; return 19; 
 break;
-case 45 : 
+case 46 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %token\b */ 
  this.pushState('token'); return 18; 
 break;
-case 47 : 
+case 48 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %options\b */ 
  this.pushState('options'); return 25; 
 break;
-case 48 : 
+case 49 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %lex{LEX_CONTENT}\/lex\b */ 
  
@@ -15545,12 +15692,12 @@ case 48 :
                                             return 17;
                                          
 break;
-case 51 : 
+case 52 : 
 /*! Conditions:: INITIAL ebnf bnf code */ 
 /*! Rule::       %include\b */ 
- this.pushState('path'); return 41; 
+ this.pushState('path'); return 42; 
 break;
-case 52 : 
+case 53 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %{NAME}([^\r\n]*) */ 
  
@@ -15564,92 +15711,92 @@ case 52 :
                                             return 20;
                                          
 break;
-case 53 : 
+case 54 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       <{ID}> */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 34; 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); return 35; 
 break;
-case 54 : 
+case 55 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{\{[\w\W]*?\}\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 15; 
 break;
-case 55 : 
+case 56 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       %\{(.|\r|\n)*?%\} */ 
  yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4); return 15; 
 break;
-case 56 : 
+case 57 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
 /*! Rule::       \{ */ 
  yy.depth = 0; this.pushState('action'); return 12; 
 break;
-case 57 : 
-/*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       ->.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 39; 
-break;
 case 58 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       →.* */ 
- yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 39; 
+/*! Rule::       ->.* */ 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 40; 
 break;
 case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       {HEX_NUMBER} */ 
- yy_.yytext = parseInt(yy_.yytext, 16); return 35; 
+/*! Rule::       →.* */ 
+ yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim(); return 40; 
 break;
 case 60 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
- yy_.yytext = parseInt(yy_.yytext, 10); return 35; 
+/*! Rule::       {HEX_NUMBER} */ 
+ yy_.yytext = parseInt(yy_.yytext, 16); return 36; 
 break;
-case 63 : 
+case 61 : 
+/*! Conditions:: bnf ebnf token INITIAL */ 
+/*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */ 
+ yy_.yytext = parseInt(yy_.yytext, 10); return 36; 
+break;
+case 64 : 
 /*! Conditions:: action */ 
 /*! Rule::       \/[^ /]*?['"{}'][^ ]*?\/ */ 
- return 40; // regexp with braces or quotes (and no spaces) 
+ return 41; // regexp with braces or quotes (and no spaces) 
 break;
-case 68 : 
+case 69 : 
 /*! Conditions:: action */ 
 /*! Rule::       \{ */ 
  yy.depth++; return 12; 
 break;
-case 69 : 
+case 70 : 
 /*! Conditions:: action */ 
 /*! Rule::       \} */ 
  if (yy.depth === 0) { this.popState(); } else { yy.depth--; } return 13; 
 break;
-case 71 : 
+case 72 : 
 /*! Conditions:: code */ 
 /*! Rule::       [^\r\n]+ */ 
- return 43;      // the bit of CODE just before EOF... 
+ return 44;      // the bit of CODE just before EOF... 
 break;
-case 72 : 
+case 73 : 
 /*! Conditions:: path */ 
 /*! Rule::       {BR} */ 
  this.popState(); this.unput(yy_.yytext); 
 break;
-case 73 : 
-/*! Conditions:: path */ 
-/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
-break;
 case 74 : 
 /*! Conditions:: path */ 
-/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
- yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 42; 
+/*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 43; 
 break;
 case 75 : 
+/*! Conditions:: path */ 
+/*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
+ yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 2); this.popState(); return 43; 
+break;
+case 76 : 
 /*! Conditions:: path */ 
 /*! Rule::       {WS}+ */ 
  // skip whitespace in the line 
 break;
-case 76 : 
+case 77 : 
 /*! Conditions:: path */ 
 /*! Rule::       [^\s\r\n]+ */ 
- this.popState(); return 42; 
+ this.popState(); return 43; 
 break;
-case 77 : 
+case 78 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
  
@@ -15668,22 +15815,22 @@ simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
-   4 : 36,
+   4 : 37,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %epsilon\b */ 
-   5 : 36,
+   5 : 37,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u0190 */ 
-   6 : 36,
+   6 : 37,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u025B */ 
-   7 : 36,
+   7 : 37,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u03B5 */ 
-   8 : 36,
+   8 : 37,
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       \u03F5 */ 
-   9 : 36,
+   9 : 37,
   /*! Conditions:: ebnf */ 
   /*! Rule::       \( */ 
    10 : 7,
@@ -15707,79 +15854,79 @@ simpleCaseActionClusters: {
    16 : 3,
   /*! Conditions:: options */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   21 : 28,
+   21 : 29,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       {ID} */ 
-   27 : 23,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       \$end\b */ 
    28 : 23,
   /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       \$eof\b */ 
+  /*! Rule::       \$end\b */ 
    29 : 23,
+  /*! Conditions:: bnf ebnf token INITIAL */ 
+  /*! Rule::       \$eof\b */ 
+   30 : 23,
   /*! Conditions:: token */ 
   /*! Rule::       [^\s\r\n]+ */ 
-   32 : 'TOKEN_WORD',
+   33 : 'TOKEN_WORD',
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       : */ 
-   33 : 4,
+   34 : 4,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       ; */ 
-   34 : 5,
+   35 : 5,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       \| */ 
-   35 : 6,
+   36 : 6,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parser-type\b */ 
-   39 : 30,
+   40 : 31,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %prec\b */ 
-   40 : 38,
+   41 : 39,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %start\b */ 
-   41 : 16,
+   42 : 16,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %left\b */ 
-   42 : 31,
-  /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %right\b */ 
    43 : 32,
   /*! Conditions:: bnf ebnf token INITIAL */ 
-  /*! Rule::       %nonassoc\b */ 
+  /*! Rule::       %right\b */ 
    44 : 33,
   /*! Conditions:: bnf ebnf token INITIAL */ 
+  /*! Rule::       %nonassoc\b */ 
+   45 : 34,
+  /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %parse-param\b */ 
-   46 : 29,
+   47 : 30,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %code\b */ 
-   49 : 22,
+   50 : 22,
   /*! Conditions:: bnf ebnf token INITIAL */ 
   /*! Rule::       %import\b */ 
-   50 : 21,
+   51 : 21,
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
-   61 : 40,
+   62 : 41,
   /*! Conditions:: action */ 
   /*! Rule::       \/\/[^\r\n]* */ 
-   62 : 40,
+   63 : 41,
   /*! Conditions:: action */ 
   /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   64 : 40,
+   65 : 41,
   /*! Conditions:: action */ 
   /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   65 : 40,
+   66 : 41,
   /*! Conditions:: action */ 
   /*! Rule::       [/"'][^{}/"']+ */ 
-   66 : 40,
+   67 : 41,
   /*! Conditions:: action */ 
   /*! Rule::       [^{}/"']+ */ 
-   67 : 40,
+   68 : 41,
   /*! Conditions:: code */ 
   /*! Rule::       [^\r\n]*(\r|\n)+ */ 
-   70 : 43,
+   71 : 44,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   78 : 1
+   79 : 1
 },
 rules: [
 /^(?:(\r\n|\n|\r))/,
@@ -15804,7 +15951,8 @@ new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{
 /^(?:\/\/[^\r\n]*)/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\S+)/,
-/^(?:(\r\n|\n|\r)+)/,
+/^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
+/^(?:(\r\n|\n|\r))/,
 /^(?:([^\S\n\r])+)/,
 /^(?:([^\S\n\r])+)/,
 /^(?:(\r\n|\n|\r)+)/,
@@ -15874,7 +16022,6 @@ conditions: {
       9,
       19,
       20,
-      24,
       25,
       26,
       27,
@@ -15882,7 +16029,7 @@ conditions: {
       29,
       30,
       31,
-      33,
+      32,
       34,
       35,
       36,
@@ -15910,8 +16057,9 @@ conditions: {
       58,
       59,
       60,
-      77,
-      78
+      61,
+      78,
+      79
     ],
     inclusive: true
   },
@@ -15931,7 +16079,6 @@ conditions: {
       14,
       19,
       20,
-      24,
       25,
       26,
       27,
@@ -15939,7 +16086,7 @@ conditions: {
       29,
       30,
       31,
-      33,
+      32,
       34,
       35,
       36,
@@ -15967,8 +16114,9 @@ conditions: {
       58,
       59,
       60,
-      77,
-      78
+      61,
+      78,
+      79
     ],
     inclusive: true
   },
@@ -15979,7 +16127,6 @@ conditions: {
       2,
       19,
       20,
-      24,
       25,
       26,
       27,
@@ -16006,7 +16153,7 @@ conditions: {
       48,
       49,
       50,
-      52,
+      51,
       53,
       54,
       55,
@@ -16015,14 +16162,14 @@ conditions: {
       58,
       59,
       60,
-      77,
-      78
+      61,
+      78,
+      79
     ],
     inclusive: true
   },
   "action": {
     rules: [
-      61,
       62,
       63,
       64,
@@ -16031,18 +16178,19 @@ conditions: {
       67,
       68,
       69,
-      77,
-      78
+      70,
+      78,
+      79
     ],
     inclusive: false
   },
   "code": {
     rules: [
-      51,
-      70,
+      52,
       71,
-      77,
-      78
+      72,
+      78,
+      79
     ],
     inclusive: false
   },
@@ -16050,13 +16198,13 @@ conditions: {
     rules: [
       19,
       20,
-      72,
       73,
       74,
       75,
       76,
       77,
-      78
+      78,
+      79
     ],
     inclusive: false
   },
@@ -16071,8 +16219,9 @@ conditions: {
       21,
       22,
       23,
-      77,
-      78
+      24,
+      78,
+      79
     ],
     inclusive: false
   },
@@ -16080,7 +16229,6 @@ conditions: {
     rules: [
       19,
       20,
-      24,
       25,
       26,
       27,
@@ -16088,7 +16236,7 @@ conditions: {
       29,
       30,
       31,
-      33,
+      32,
       34,
       35,
       36,
@@ -16116,8 +16264,9 @@ conditions: {
       58,
       59,
       60,
-      77,
-      78
+      61,
+      78,
+      79
     ],
     inclusive: true
   }
