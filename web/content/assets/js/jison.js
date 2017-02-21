@@ -5384,7 +5384,7 @@ parser.parse = function parse(input, parseParams) {
         sstack.length = 0;
         lstack.length = 0;
         vstack.length = 0;
-        stack_pointer = 0;
+        sp = 0;
 
         // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
@@ -9305,7 +9305,7 @@ parse: function parse(input) {
         sstack.length = 0;
 
         vstack.length = 0;
-        stack_pointer = 0;
+        sp = 0;
 
         // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
@@ -14178,7 +14178,7 @@ parse: function parse(input) {
         sstack.length = 0;
         lstack.length = 0;
         vstack.length = 0;
-        stack_pointer = 0;
+        sp = 0;
 
         // nuke the error hash info instances created during this run.
         // Userland code must COPY any data/references
