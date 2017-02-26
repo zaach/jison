@@ -3,12 +3,12 @@
 ## Overview
 
 * [Preface / What will you find in here?](README.md)
-* [Introduction](Introduction.md)
-* [The Goal of JISON](1_Goal.md)
-* [The Basics](2_Basics.md)
-* [Diving Into JISON](#Diving_Into_JISON)
-* [The Real Meat: Advanced Topics](#The_Real_Meat)
-* [Appendix: Reference of JISON specifics](#Our_Goodies)
+* [Introduction](Introduction.adoc)
+* [The Goal of JISON](1_Goal.adoc)
+* [The Basics](2_Basics.adoc)
+* [Diving Into JISON](3_Diving_Into_JISON.adoc)
+* [The Real Meat: Advanced Topics](4_The_Real_Meat_Advanced_Topics.adoc)
+* [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
 
 
 
@@ -51,9 +51,9 @@
 
       1. [What does reducing the number of parse states do?](#optimizing)
       1. [What is the bother about Left Recursive vs. Right Recursive grammar rules?]
-         1. [... when you use LR type parsers]
-         1. [... when you use LL type parsers]
-         1. [... when you use PEG type parsers]
+         1. [... when you use LR type parsers](#dummy)
+         1. [... when you use LL type parsers](#dummy)
+         1. [... when you use PEG type parsers](#dummy)
 
 
 ## [Diving Into JISON](3_Diving_Into_JISON.md)
@@ -68,34 +68,34 @@
   1. [Writing Your First Grammar](#first_grammar)
      1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
      1. [Writing the lexer spec](#first_grammar_lexer)
-     1. [Testing the generated lexer]
-     1. [Writing the grammar spec]
-     1. [Testing the generated parser]
-     1. [Writing the grammar rules' actions: make the parser work]
+     1. [Testing the generated lexer](#dummy)
+     1. [Writing the grammar spec](#dummy)
+     1. [Testing the generated parser](#dummy)
+     1. [Writing the grammar rules' actions: make the parser work](#dummy)
 
    1. [Stepping it up: Writing Your Second Grammar](#second_grammar)
       1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
       1. [Writing the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer]
-      1. [Writing the grammar spec]
-      1. [Testing the generated parser]
-      1. [Writing the grammar rules' actions: make the parser work]
+      1. [Testing the generated lexer](#dummy)
+      1. [Writing the grammar spec](#dummy)
+      1. [Testing the generated parser](#dummy)
+      1. [Writing the grammar rules' actions: make the parser work](#dummy)
 
    1. [How about 'porting' an existing LEX/FLEX+YACC/BISON grammar?](#porting_a_grammar)
       1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
       1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer]
-      1. [Porting the grammar spec]
-      1. [Testing the generated parser]
-      1. [Porting the grammar rules' actions: make the parser work]
+      1. [Testing the generated lexer](#dummy)
+      1. [Porting the grammar spec](#dummy)
+      1. [Testing the generated parser](#dummy)
+      1. [Porting the grammar rules' actions: make the parser work](#dummy)
 
    1. [How about 'porting' an existing ANTLR/PCCTS/PEG grammar?](#porting_a_grammar)
       1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
       1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer]
-      1. [Porting the grammar spec]
-      1. [Testing the generated parser]
-      1. [Porting the grammar rules' actions: make the parser work]
+      1. [Testing the generated lexer](#dummy)
+      1. [Porting the grammar spec](#dummy)
+      1. [Testing the generated parser](#dummy)
+      1. [Porting the grammar rules' actions: make the parser work](#dummy)
 
 1. [Driving JISON settings from your grammar or the CLI](#error_handling)
 1. [Stuff we might not support yet](#error_handling)
@@ -139,15 +139,15 @@
 
 ## [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
 
-* Parser options
-* Lexer options
-* Generated Code
-  * Parser Kernel API
-    * SLR/LALR/LALR
-    * LL
-    * PEG
-  * Lexer options
-    * Minimal required API to interface with the parser
+* [Parser options](#dummy)
+* [Lexer options](#dummy)
+* [Generated Code](#dummy)
+  * [Parser Kernel API](#dummy)
+    * [SLR/LALR/LALR](#dummy)
+    * [LL](#dummy)
+    * [PEG](#dummy)
+  * [Lexer options](#dummy)
+    * [Minimal required API to interface with the parser](#dummy)
 
 
 
