@@ -1,0 +1,28 @@
+.DS_Store
+node_modules/
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~
+
+# Generated web content directories (nanoc output)
+web/tmp/
+web/crash.log
+
+# ignore the compiler output for any examples:            
+/examples/output
+
+# scratch space
+/tmp/
+
+# Ignore the web directory, i.e. the web pages
+web/
+
+# Ignore build/publish scripts, etc.
+git-tag-and-bump-and-rebuild.sh
+Makefile
+
+# `npm install jison` doesn't need any submodules: ignore them!
+.gitmodules
+

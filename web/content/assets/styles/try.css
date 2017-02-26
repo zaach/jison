@@ -1,0 +1,96 @@
+
+a img { border: 0px; }
+
+#try textarea {
+  width: 100%;
+}
+
+#content {
+    max-width: 2600px;
+    margin: 0 auto;
+    padding: 0 1em;
+}
+
+#intro {
+  font-size: 2em;
+  -moz-border-radius: 8px;
+  background-color: #eee;
+}
+#intro p { margin: 1em 1em; padding: 1em 0em; }
+
+#table table, #productions li, #nonterminals dl {
+  font-family: monospace;
+}
+#usf_logo {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+#loading {
+  position: fixed;
+  top: 0px;
+  right: 100px;
+  z-index: 10;
+  width: 16px;
+  height: 16px;
+}
+#nonterminals dl {
+  font-size: 90%;
+}
+#parsing { display: none; }
+
+dt { font-weight: bold; }
+
+.nonterm { background-color: #eef; }
+.action_s { color: #940; /* #074 */ }
+.action_r { color: #707; }
+.accept { background-color: #dfd !important; }
+.conflict { background-color: #ffa !important; /* #feb */ }
+.action, .state, .llaction {
+  cursor: pointer;
+}
+.action:hover {
+}
+.open .details{
+  white-space:nowrap;
+  display: block;
+}
+.details {
+  background-color: #eee;
+  font-size: 90%;
+  display: none;
+}
+.details.open {
+  white-space:nowrap;
+}
+button, select {
+}
+table tr:hover td {
+  background-color: #eee;
+}
+#table table {
+  border: 1px #6699CC solid;
+  border-collapse: collapse;
+  border-spacing: 0px;
+}
+#table table tr td, #table table th { padding: 3px; }
+
+
+#try button {
+  font-size: 1.5em;
+}
+
+.good {
+  background: #efe;
+  border: 2px solid green;
+}
+
+.bad {
+  background: #fee;
+  border: 2px solid red;
+}
+
+.warning {
+  background: #feffef;
+  border: 2px solid yellow;
+}

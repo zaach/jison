@@ -5,12 +5,33 @@
 ## Dependency directory
 ## Commenting this out is preferred by some people, see
 ## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
-node_modules
+node_modules/
 
-# Book build output
-_book
+## Book build output
+#_book
 
-# eBook build output
-*.epub
-*.mobi
-*.pdf
+## eBook build output
+#*.epub
+#*.mobi
+#*.pdf
+
+# Apple Crap
+.DS_Store
+
+# more npm dung
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~
+
+# Generated web content directories (nanoc output)
+web/tmp/
+web/crash.log
+
+# ignore the compiler output for any examples:            
+/examples/output
+
+# scratch space
+/tmp/
+

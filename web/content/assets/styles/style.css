@@ -1,0 +1,102 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    background: white;
+    font-family: Monaco, Consolas, 'Lucida Console', monospace;
+    color: #333;
+}
+
+a {
+    color: #41a3c2;
+}
+
+a:hover {
+    color: #000;
+}
+
+pre {
+    font-family: Monaco, Consolas, 'Lucida Console', monospace;
+    background-color: #eee;
+    padding: 1em;
+    -moz-border-radius: 1em;
+    -webkit-border-radius: 1em;
+}
+
+pre code {
+    white-space: pre-wrap;
+}
+
+h3 code {
+    font-size: 135%;
+    background-color: #eee;
+}
+
+p code {
+    font-size: 130%;
+    background-color: #eee;
+}
+
+#header, #main, #content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+#header h1 {
+    text-indent: -100000px;
+}
+
+textarea {
+  font-family: monospace;
+}
+
+#header h1 a {
+    display: block;
+    width: 586px;
+    height: 200px;
+    background: url(../../assets/images/png/jison_x1.png) no-repeat;
+    outline-style: none;
+    margin: 0 auto; /* center the jison logo */
+}
+#header h1 a:active {
+    background: url(../../assets/images/png/jison_x1.png) no-repeat 2px 3px;
+}
+
+#header h2 {
+    color: #41a3c2;
+    font-weight: normal;
+    font-size: 1.3em;
+    text-align: center;
+}
+
+#nav {
+    text-align: center;
+}
+#nav li {
+    list-style: none;
+    display: inline;
+    margin: 0 1em;
+}
+
+#main, #content {
+    padding: 20px 0;
+    line-height: 1.5em;
+}
+
+#main {
+    font-size: 2em;
+}
+
+#content h2 {
+    background: #41a3c2;
+    color: white;
+    text-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+    padding: 4px 10px;
+    margin-top: 2em;
+
+    -moz-border-radius: 1em;
+    -webkit-border-radius: 1em;
+}
+
+#footer {
+    text-align: center;
+    color: #999;
+}

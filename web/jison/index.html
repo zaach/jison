@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Jison, parse table visualation page</title>
+
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/jquery.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/json2.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/es5.js"></script>
+
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/lexer.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/typal.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/set.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/util/bnf-parser.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison/bnf.js"></script>
+    <script src="http://github.com/zaach/jison/raw/master/web/content/assets/js/lib/jison.js"></script>
+    <script src="main.js"></script>
+
+    <link href="../style/main.css" type="text/css" rel="stylesheet" media="screen" />
+  </head>
+
+  <body>
+  <div id="container">
+    <div id="intro">
+      <p><a href="http://github.com/zaach/jison/">Jison</a> is a parser generator written in JavaScript. This page uses Jison to display an interactive parsing table based on the grammar and parsing algorithm chosen, which can be very helpful for debugging.</p>
+    </div>
+    <p> Special thanks to <a href="http://www.cse.usf.edu/~ligatti/">Dr. Ligatti</a> for suggesting and giving feedback on the initial interface.<br /></p>
+
+    <h2>Input</h2>
+
+    <p>Input a <a href="http://en.wikipedia.org/wiki/Backus%E2%80%93Naur_Form">BNF</a> grammar along with a token list and optional start symbol, in <a href="http://json.org/">JSON</a> format.
+    </p>
+
+    <p>
+    Load an example:
+    <select id="examples">
+      <option value="basic.jison" selected="selected">Basic</option>
+      <option value="basic2.jison">Basic #2</option>
+      <option value="dism.jison">DISM</option>
+      <option value="dism_lr0.jison">DISM in LR(0)</option>
+      <option value="precedence.jison">Precedence operators</option>
+      <option value="reduce_conflict.jison">Reduce-Reduce conflict</option>
+      <option value="ansic.jison">ANSI C</option>
+    </select>
+    </p>
+
+    <textarea id="grammar" rows="20" cols="80">
+%%
+
+E
+    : E PLUS T
+    | T
+    ;
+
+T
+    : ZERO
+    ;
+</textarea>
+
+    <p>
+      Parser type: <select id="type">
+        <option value="lr0">LR(0)</option>
+        <option value="slr">SLR(1)</option>
+        <option value="lalr">LALR(1)</option>
+        <option value="lr">LR(1)</option>
+        <option value="ll">LL(1)</option>
+      </select>
+      <small>* WARNING: LR(1) may take considerable time to execute for large/ambigous grammars.</small>
+      </p>
+      <p><button id="process_btn">Process Grammar</button>
+    </p>
+
+
+    <h2>Output</h2>
+    <div id="nonterminals"><p>Process your grammar to see the result here.</p></div>
+    <div id="productions"></div>
+    <div id="table"></div>
+
+
+    <div id="parsing">
+      <h2>Parse a program</h2>
+      <p>Grammars with lexing information allow for parsing. Use the form below to parse a program using your grammar:</p>
+      <textarea id="source" rows="8" cols="80"></textarea><br/>
+      <button id="parse_btn">Parse source</button>
+      <h3>Result</h3>
+      <textarea id="out" readonly="readonly" rows="5" cols="80"></textarea>
+    </div>
+
+    <div id="loading"></div>
+
+    <p>
+      <small><i>Zach Carter (zcarter@mail.usf.edu) 2009</i></small>
+    </p>
+
+  </div>
+  </body>
+</html>

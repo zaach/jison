@@ -1,0 +1,12 @@
+if (a+b):
+	print "this line has trailing spaces"   
+	if (123-b):
+		print "this one does not"
+	else:
+	print "will error until indentation corrected"
+		print "correctly indented"
+	print "another line, a couple trailing tabs"		
+		print "unexpected indent"
+
+print "end of program"
+

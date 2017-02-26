@@ -1,0 +1,35 @@
+sudo: false
+language: node_js
+node_js:
+  - 6
+  - 6.0
+  - 5
+  - 5.0
+  - 4
+  - 4.0
+  - stable
+
+# http://stackoverflow.com/questions/15674064/github-submodule-access-rights-travis-ci
+# 
+# This can (thankfully) be easily solved by modifying the .gitmodules file on-the-fly on Travis, 
+# so that the SSH URL is replaced with the public URL, before initializing submodules. 
+# To accomplish this, add the following to .travis.yml:
+
+# Handle git submodules yourself
+git:
+    submodules: false
+
+# Use sed to replace the SSH URL with the public URL, then initialize submodules
+before_install:
+    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+    - git submodule update --init --recursive
+
+# Thanks to Michael Iedema for his gist from which I derived this solution.
+#
+# If your submodules are private repositories, it should work to include credentials 
+# in the https URLs, I recommend making a GitHub access token with restricted permissions 
+# for this purpose:
+
+# # Replace <user> and <token> with your GitHub username and access token respectively
+# - sed -i 's/git@github.com:/https:\/\/<user>:<token>@github.com\//' .gitmodules
+
