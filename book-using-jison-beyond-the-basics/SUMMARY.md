@@ -3,11 +3,11 @@
 ## Overview
 
 * [Preface / What will you find in here?](README.md)
-* [Introduction](Introduction.adoc)
-* [The Goal of JISON](1_Goal.adoc)
-* [The Basics](2_Basics.adoc)
-* [Diving Into JISON](3_Diving_Into_JISON.adoc)
-* [The Real Meat: Advanced Topics](4_The_Real_Meat_Advanced_Topics.adoc)
+* [Introduction](Introduction.md)
+* [The Goal of JISON](1_Goal.md)
+* [The Basics](2_Basics.md)
+* [Diving Into JISON](3_Diving_Into_JISON.md)
+* [The Real Meat: Advanced Topics](4_The_Real_Meat_Advanced_Topics.md)
 * [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
 
 
@@ -142,11 +142,15 @@
 * [Parser options](#dummy)
 * [Lexer options](#dummy)
 * [Generated Code](#dummy)
+
   * [Parser Kernel API](#dummy)
+
     * [SLR/LALR/LALR](#dummy)
     * [LL](#dummy)
     * [PEG](#dummy)
+
   * [Lexer options](#dummy)
+
     * [Minimal required API to interface with the parser](#dummy)
 
 
