@@ -4,18 +4,14 @@
     "description": "Following a quick basic introduction on LR/LALR grammar design and compilation using YACC/BISON-like tools such as JISON, this book addresses advanced topics in LALR and LR grammar construction available when using JISON",
     "author": "Ger Hobbelt",
 
-    "plugins": [ "theme-api" ],
+    "plugins": [ "theme-default" ],
     "pluginsConfig": {
-        "theme-api": {
+        "theme-default": {
             "languages": [
                 {
                     "lang": "js",
                     "name": "JavaScript",
                     "default": true
-                },
-                {
-                    "lang": "go",
-                    "name": "Go"
                 }
             ]
         }
