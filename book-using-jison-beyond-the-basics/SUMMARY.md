@@ -4,8 +4,8 @@
 
 * [Preface / What will you find in here?](README.md)
 * [Introduction](Introduction.md)
-* [The Goal of JISON](#The_Goal)
-* [The Basics](#The_Basics)
+* [The Goal of JISON](1_Goal.md)
+* [The Basics](2_Basics.md)
 * [Diving Into JISON](#Diving_Into_JISON)
 * [The Real Meat: Advanced Topics](#The_Real_Meat)
 * [Appendix: Reference of JISON specifics](#Our_Goodies)
