@@ -4,7 +4,7 @@
 
 Language architects and grammar designers. Grammar coders. Folks curious about JISON and more or less aware of what is available out there: you have worked with `yacc` and `lex` and you have looked beyond.
 
->
+
 > WARNING
 >
 > This is not for novices who are writing their first parser. Though this book includes introduction material if is no substitute for your CS101 Compiler Construction class. Just in case you haven't attended that one, you may want [consult a few referenced books](A_JISON_Specifics_Reference.md#Reference_Materials) while you go through this book.
