@@ -14,6 +14,18 @@ TBD
     * [PEG](#dummy)
   * [Lexer options](#dummy)
     * [Minimal required API to interface with the parser](#dummy)
+* [Reference Materials](#dummy)
+
+  Books and published articles you may want to read.
+  
+  * Teaching Materials
+
+    Books which can serve as educational material.
+    
+  * Research Papers
+  
+    The rest of the stuff that would interest us.  
+    
 
 
 
