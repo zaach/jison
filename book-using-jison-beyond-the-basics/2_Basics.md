@@ -2,23 +2,6 @@ TBD
 
 ---
 
-# Summary
-
-## Overview
-
-* [Preface / What will you find in here?](README.md)
-* [Introduction](Introduction.adoc)
-* [The Goal of JISON](1_Goal.adoc)
-* [The Basics](2_Basics.adoc)
-* [Diving Into JISON](3_Diving_Into_JISON.adoc)
-* [The Real Meat: Advanced Topics](4_The_Real_Meat_Advanced_Topics.adoc)
-* [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
-
-
-
-
-## [The Goal of JISON](1_Goal.md)
-
 
 ## [The Basics](2_Basics.md)
 
@@ -60,108 +43,9 @@ TBD
          1. [... when you use PEG type parsers](#dummy)
 
 
-## [Diving Into JISON](3_Diving_Into_JISON.md)
-
-1. [Simply Invoking JISON](#Basic_Invoke)
-
-  1. [The CLI (Command Line Interface)](#CLI)
-  1. [The API: invoking JISON programmatically](#JISON_API)
-
-1. [Simply Using JISON](#Basic_Usage)
-
-  1. [Writing Your First Grammar](#first_grammar)
-     1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
-     1. [Writing the lexer spec](#first_grammar_lexer)
-     1. [Testing the generated lexer](#dummy)
-     1. [Writing the grammar spec](#dummy)
-     1. [Testing the generated parser](#dummy)
-     1. [Writing the grammar rules' actions: make the parser work](#dummy)
-
-   1. [Stepping it up: Writing Your Second Grammar](#second_grammar)
-      1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
-      1. [Writing the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Writing the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Writing the grammar rules' actions: make the parser work](#dummy)
-
-   1. [How about 'porting' an existing LEX/FLEX+YACC/BISON grammar?](#porting_a_grammar)
-      1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
-      1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Porting the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Porting the grammar rules' actions: make the parser work](#dummy)
-
-   1. [How about 'porting' an existing ANTLR/PCCTS/PEG grammar?](#porting_a_grammar)
-      1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
-      1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Porting the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Porting the grammar rules' actions: make the parser work](#dummy)
-
-1. [Driving JISON settings from your grammar or the CLI](#error_handling)
-1. [Stuff we might not support yet](#error_handling)
-1. [Stuff we are not intent on supporting](#error_handling)
 
 
 
-
-## The Real Meat: Advanced Topics
-
-   1. [Debugging your work - Episode 1: turning it *ON*](#error_handling)
-
-   1. [Error handling](#error_handling)
-
-      1. [Error handling in the lexer](#error_handling)
-      1. [Error handling in the parser](#error_handling)
-      1. [Loving Living dangerously: Messing with the Error Recovery mechanisms](#error_handling)
-
-   1. [Debugging your work - Episode 2: customizing the parser](#error_handling)
-
-   1. [Debugging *their* work - Episode 1: improving your error diagnostics and reporting to the grammar user](#error_handling)
-
-   1. [Performance Considerations: Speed is what I need!](#speed_is_what_I_need)
-
-      1. [Don't skimp on your Theory pages! Giving it raw to your grammar spec](#cleaning_out)
-      1. [Cleaning out the parser kernel](#cleaning_out)
-      1. [Cleaning out the lexer kernel](#cleaning_out)
-
-   1. [Performance Considerations: Compact **Size** is what I crave!](#right_I_like_em_tight)
-
-      1. [Don't skimp on your Theory pages! Giving it raw to your grammar spec](#cleaning_out)
-      1. [Cleaning out the parser kernel](#cleaning_out)
-      1. [Cleaning out the lexer kernel](#cleaning_out)
-      1. [If you must: writing a 100% custom lexer](#cleaning_out)
-
-
-1. [Debugging *their* work - Episode 2: stepping through a parse](#error_handling)
-
-
-
-
-## [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
-
-* [Parser options](#dummy)
-* [Lexer options](#dummy)
-* [Generated Code](#dummy)
-  * [Parser Kernel API](#dummy)
-    * [SLR/LALR/LALR](#dummy)
-    * [LL](#dummy)
-    * [PEG](#dummy)
-  * [Lexer options](#dummy)
-    * [Minimal required API to interface with the parser](#dummy)
-
-
-
-
-
-
-
-
-
-
-
+---
 
 
