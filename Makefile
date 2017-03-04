@@ -1,22 +1,12 @@
 
-all: build test 									\
-			examples/issue-293 					\
-			examples/issue-254 					\
-			examples/issue-289 					\
-			examples/issue-205 					\
-			examples/issue-205-2				\
-			examples/issue-205-3				\
-			examples/issue-205-4				\
-			examples/issue-342  				\
-			examples/issue-344  				\
-			examples/issue-344-2				
+all: build test examples-test
 
 
 prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: build test web-examples web/content/assets/js/jison.js compile-site 
+site: build test web-examples web/content/assets/js/jison.js compile-site
 
 clean-site:
 	-@rm -rf web/tmp/
@@ -44,7 +34,7 @@ preview:
 deploy: site
 	git checkout gh-pages
 	cp -r web/output/jison/* ./
-	#git add . --all 
+	#git add . --all
 	git commit -m 'Deploy site updates'
 	git checkout master
 
@@ -61,6 +51,23 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 
 examples_directory: build
 	cd examples/ && make all
+
+
+examples-test: build
+	cd examples/ && make error-handling-tests basic-tests github-issue-tests misc-tests
+
+error-handling-tests: build
+	cd examples/ && make error-handling-tests
+
+basic-tests: build
+	cd examples/ && make basic-tests
+
+github-issue-tests: build
+	cd examples/ && make github-issue-tests
+
+misc-tests: build
+	cd examples/ && make misc-tests
+
 
 
 examples/ansic: build
@@ -476,5 +483,5 @@ superclean: clean clean-site
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
 

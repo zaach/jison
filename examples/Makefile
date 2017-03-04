@@ -22,6 +22,79 @@ ERROR_HANDLING_TARGETS =                                        \
 
 
 
+GITHUB_ISSUE_TARGETS =                                    \
+			issue-205                                           \
+			issue-205-2                                         \
+			issue-205-3                                         \
+			issue-205-4                                         \
+			issue-254                                           \
+			issue-289                                           \
+			issue-293                                           \
+			issue-342                                           \
+			issue-344-BAD                                           \
+			issue-344-2-BAD
+
+
+
+BASIC_TARGETS =                                           \
+			basic                                               \
+			basic2                                              \
+			basic2_lex                                          \
+			basic_lex                                           \
+			basic_w_error_rule                                  \
+			bloop                                               \
+			calc_LA_on_demand                                   \
+			calculator                                          \
+			calculator_json                                     \
+			ccalc                                               \
+			classy                                              \
+			classy_ast                                          \
+			comments                                            \
+			compiled_calc                                       \
+			dism                                                \
+			dism_lr0                                            \
+			dot                                                 \
+			error-only                                          \
+			faking-multiple-start-rules                         \
+			faking-multiple-start-rules-alt                     \
+			flow                                                \
+			formula                                             \
+			grammar                                             \
+			handlebars                                          \
+			happyhappy                                          \
+			inherited_y                                         \
+			json_ast_js                                         \
+			json_js                                             \
+			klammergebirge                                      \
+			lalr-but-not-slr                                    \
+			lambdacalc                                          \
+			lex                                                 \
+			lr-but-not-lalr                                     \
+			mfcalc                                              \
+			no-prec-hack-needed                                 \
+			nv_classy_ast                                       \
+			olmenu-proto2                                       \
+			parser-to-lexer-communication-test                  \
+			phraser                                             \
+			precedence                                          \
+			reduce_conflict                                     \
+			regex                                               \
+			semwhitespace                                       \
+			test-EOF-bugfix                                     \
+			test-epsilon-rules-early-reduce                     \
+			test-literal-quote-tokens-in-grammar                \
+			test-nonassociative-operator-0                      \
+			test-nonassociative-operator-1                      \
+			test-nonassociative-operator-2                      \
+			test-propagation-rules-reduction-1                  \
+			theory-left-recurs-01                               \
+			unicode                                             \
+			unicode2                                            \
+			with-includes                                       \
+			with_custom_lexer
+
+
+
 MISC_TARGETS =                                                   \
 			basic                                               \
 			basic2                                              \
@@ -68,7 +141,7 @@ MISC_TARGETS =                                                   \
 			lex                                                 \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
-			no-prec-hack-needed									                \
+			no-prec-hack-needed                                 \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -93,6 +166,8 @@ MISC_TARGETS =                                                   \
 
 
 ALL_TARGETS =                                                   \
+			$(BASIC_TARGETS)                                    \
+			$(GITHUB+ISSUE_TARGETS)                             \
 			$(MISC_TARGETS)                                     \
 			$(ERROR_HANDLING_TARGETS)                           \
 			ansic                                               \
@@ -109,7 +184,7 @@ ALL_TARGETS =                                                   \
 			lojban-300                                          \
 			mermaid                                             \
 			pascal                                              \
-			tikiwikiparser                                      
+			tikiwikiparser
 
 
 
@@ -122,7 +197,7 @@ ALL_TARGETS =                                                   \
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean error-handling $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
+.PHONY: all clean superclean error-handling-tests basic-tests github-issue-tests misc-tests $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
 
 
 clean:
@@ -131,9 +206,16 @@ clean:
 superclean: clean
 
 
-error-handling: $(ERROR_HANDLING_TARGETS)
 
-misc: $(MISC_TARGETS)
+error-handling-tests: $(ERROR_HANDLING_TARGETS)
+
+basic-tests: $(BASIC_TARGETS)
+
+github-issue-tests: $(GITHUB_ISSUE_TARGETS)
+
+misc-tests: $(MISC_TARGETS)
+
+
 
 ansic:
 	$(JISON) --main ./$@.jison
@@ -507,10 +589,10 @@ compiled_calc:
 	#$(JISON) --main -t ./$@_exec.jison
 	$(JISON) --main ./$@_exec.jison
 	# postprocess generated source code:
-	#node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js 
-	node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
-	#node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js 
-	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js 
+	#node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js
+	node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
+	#node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js
+	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
 	# and run it!
 	node output/$@/$@_exec.js $@_input.txt
 
