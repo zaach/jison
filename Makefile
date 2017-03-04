@@ -6,7 +6,7 @@ prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: build test web-examples web/content/assets/js/jison.js compile-site
+site: build test examples-test web-examples web/content/assets/js/jison.js compile-site
 
 clean-site:
 	-@rm -rf web/tmp/
