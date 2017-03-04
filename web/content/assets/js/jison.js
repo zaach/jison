@@ -29178,7 +29178,7 @@ module.exports={
   "devDependencies": {
     "browserify": "14.1.0",
     "glob": "7.1.1",
-    "uglify-js": "2.7.5",
+    "uglify-js": "2.8.5",
     "chai": "3.5.0",
     "mocha": "3.2.0"
   },
