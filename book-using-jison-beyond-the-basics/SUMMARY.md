@@ -1,7 +1,6 @@
 # Summary
 
 ## Overview
-
 * [Preface / What will you find in here?](README.md)
 * [Introduction](Introduction.md)
 * [The Goal of JISON](1_Goal.md)
@@ -10,157 +9,100 @@
 * [The Real Meat: Advanced Topics](4_The_Real_Meat_Advanced_Topics.md)
 * [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
 
+## The Goal of JISON
 
+## The Basics
+* [First Principles: Parsing Theory](gitbook-is-buggered.md#Theory)
+    * [Parsing a Language: CFGs a.k.a. Context Free Grammars, and why they're such a bother](gitbook-is-buggered.md#Methods)
+    * [Parsing Methods: Bottom-up and Top-down](gitbook-is-buggered.md#Methods)
+    * [Bottom-up: SLR, LR(0), LR(1), LALR(1), LR(k), why do we care?](gitbook-is-buggered.md#Methods)
+    * [Top-down: LL(1), LL(k), LL(*), why do we care?](gitbook-is-buggered.md#Methods)
+    * [More from Top-down News Desk: PEG](gitbook-is-buggered.md#PEG)
+    * [... and when you truly wish to travel The Light Fantastic, here's a little taste for ya](gitbook-is-buggered.md#beyond_the_pale)
+* [Parser Engineering: practice vs. theory](gitbook-is-buggered.md#Engineering)
+    * [Tokenizing: bothering with a Lexer ... or not?](gitbook-is-buggered.md#Lexing)
+    * [Lexer Automation: tooling up](gitbook-is-buggered.md#Lex_Tooling_Up)
+        * [LEX and friends](gitbook-is-buggered.md#lex)
+            * [... and JISON in particular](gitbook-is-buggered.md#lex_jison)
+    * [Parser Automation: tooling up](gitbook-is-buggered.md#Parser_Tooling_Up)
+        * [YACC and friends](gitbook-is-buggered.md#yacc)
+            * [... and JISON in particular](gitbook-is-buggered.md#yacc_jison)
+        * [Parser generators of a different kind: ANTLR, PCCTS, PEGjs, ...](gitbook-is-buggered.md#pccts)
+        * [Beyond parser generators](gitbook-is-buggered.md#burg_et_al)
+* [Anticipating the devil waiting in the details: JISON vs. YACC, BISON, BTYACC, ...](gitbook-is-buggered.md#comparing_JISON)
+* [Performance Considerations](gitbook-is-buggered.md#optimizing_grammars)
+    * [What does reducing the number of parse states do?](gitbook-is-buggered.md#optimizing)
+    * [What is the bother about Left Recursive vs. Right Recursive grammar rules?]
+        * [... when you use LR type parsers](gitbook-is-buggered.md#dummy)
+        * [... when you use LL type parsers](gitbook-is-buggered.md#dummy)
+        * [... when you use PEG type parsers](gitbook-is-buggered.md#dummy)
 
-
-## [The Goal of JISON](1_Goal.md)
-
-
-## [The Basics](2_Basics.md)
-
-   1. [First Principles: Parsing Theory](#Theory)
-
-      1. [Parsing a Language: CFGs a.k.a. Context Free Grammars, and why they're such a bother](#Methods)
-      1. [Parsing Methods: Bottom-up and Top-down](#Methods)
-      1. [Bottom-up: SLR, LR(0), LR(1), LALR(1), LR(k), why do we care?](#Methods)
-      1. [Top-down: LL(1), LL(k), LL(*), why do we care?](#Methods)
-      1. [More from Top-down News Desk: PEG](#PEG)
-      1. [... and when you truly wish to travel The Light Fantastic, here's a little taste for ya](#beyond_the_pale)
-
-   1. [Parser Engineering: practice vs. theory](#Engineering)
-
-      1. [Tokenizing: bothering with a Lexer ... or not?](#Lexing)
-      1. [Lexer Automation: tooling up](#Lex_Tooling_Up)
-
-         1. [LEX and friends](#lex)
-
-            1. [... and JISON in particular](#lex_jison)
-
-      1. [Parser Automation: tooling up](#Parser_Tooling_Up)
-
-         1. [YACC and friends](#yacc)
-
-            1. [... and JISON in particular](#yacc_jison)
-
-         1. [Parser generators of a different kind: ANTLR, PCCTS, PEGjs, ...](#pccts)
-         1. [Beyond parser generators](#burg_et_al)
-
-   1. [Anticipating the devil waiting in the details: JISON vs. YACC, BISON, BTYACC, ...](#comparing_JISON)
-
-   1. [Performance Considerations](#optimizing_grammars)
-
-      1. [What does reducing the number of parse states do?](#optimizing)
-      1. [What is the bother about Left Recursive vs. Right Recursive grammar rules?]
-         1. [... when you use LR type parsers](#dummy)
-         1. [... when you use LL type parsers](#dummy)
-         1. [... when you use PEG type parsers](#dummy)
-
-
-## [Diving Into JISON](3_Diving_Into_JISON.md)
-
-1. [Simply Invoking JISON](#Basic_Invoke)
-
-  1. [The CLI (Command Line Interface)](#CLI)
-  1. [The API: invoking JISON programmatically](#JISON_API)
-
-1. [Simply Using JISON](#Basic_Usage)
-
-  1. [Writing Your First Grammar](#first_grammar)
-     1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
-     1. [Writing the lexer spec](#first_grammar_lexer)
-     1. [Testing the generated lexer](#dummy)
-     1. [Writing the grammar spec](#dummy)
-     1. [Testing the generated parser](#dummy)
-     1. [Writing the grammar rules' actions: make the parser work](#dummy)
-
-   1. [Stepping it up: Writing Your Second Grammar](#second_grammar)
-      1. [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](#first_grammar_specs)
-      1. [Writing the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Writing the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Writing the grammar rules' actions: make the parser work](#dummy)
-
-   1. [How about 'porting' an existing LEX/FLEX+YACC/BISON grammar?](#porting_a_grammar)
-      1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
-      1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Porting the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Porting the grammar rules' actions: make the parser work](#dummy)
-
-   1. [How about 'porting' an existing ANTLR/PCCTS/PEG grammar?](#porting_a_grammar)
-      1. [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](#first_grammar_specs)
-      1. [Porting the lexer spec](#first_grammar_lexer)
-      1. [Testing the generated lexer](#dummy)
-      1. [Porting the grammar spec](#dummy)
-      1. [Testing the generated parser](#dummy)
-      1. [Porting the grammar rules' actions: make the parser work](#dummy)
-
-1. [Driving JISON settings from your grammar or the CLI](#error_handling)
-1. [Stuff we might not support yet](#error_handling)
-1. [Stuff we are not intent on supporting](#error_handling)
-
-
-
+## Diving Into JISON
+* [Simply Invoking JISON](gitbook-is-buggered.md#Basic_Invoke)
+    * [The CLI (Command Line Interface)](gitbook-is-buggered.md#CLI)
+    * [The API: invoking JISON programmatically](gitbook-is-buggered.md#JISON_API)
+* [Simply Using JISON](gitbook-is-buggered.md#Basic_Usage)
+    * [Writing Your First Grammar](gitbook-is-buggered.md#first_grammar)
+        * [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](gitbook-is-buggered.md#first_grammar_specs)
+        * [Writing the lexer spec](gitbook-is-buggered.md#first_grammar_lexer)
+        * [Testing the generated lexer](gitbook-is-buggered.md#dummy)
+        * [Writing the grammar spec](gitbook-is-buggered.md#dummy)
+        * [Testing the generated parser](gitbook-is-buggered.md#dummy)
+        * [Writing the grammar rules' actions: make the parser work](gitbook-is-buggered.md#dummy)
+    * [Stepping it up: Writing Your Second Grammar](gitbook-is-buggered.md#second_grammar)
+        * [Necessary Preparation: Specifying the 'language' we are going to parse and what it'll have to accomplish](gitbook-is-buggered.md#first_grammar_specs)
+        * [Writing the lexer spec](gitbook-is-buggered.md#first_grammar_lexer)
+        * [Testing the generated lexer](gitbook-is-buggered.md#dummy)
+        * [Writing the grammar spec](gitbook-is-buggered.md#dummy)
+        * [Testing the generated parser](gitbook-is-buggered.md#dummy)
+        * [Writing the grammar rules' actions: make the parser work](gitbook-is-buggered.md#dummy)
+    * [How about 'porting' an existing LEX/FLEX+YACC/BISON grammar?](gitbook-is-buggered.md#porting_a_grammar)
+        * [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](gitbook-is-buggered.md#first_grammar_specs)
+        * [Porting the lexer spec](gitbook-is-buggered.md#first_grammar_lexer)
+        * [Testing the generated lexer](gitbook-is-buggered.md#dummy)
+        * [Porting the grammar spec](gitbook-is-buggered.md#dummy)
+        * [Testing the generated parser](gitbook-is-buggered.md#dummy)
+        * [Porting the grammar rules' actions: make the parser work](gitbook-is-buggered.md#dummy)
+    * [How about 'porting' an existing ANTLR/PCCTS/PEG grammar?](gitbook-is-buggered.md#porting_a_grammar)
+        * [Necessary Preparation: Checking the original to find out what grammar type it uses/requires](gitbook-is-buggered.md#first_grammar_specs)
+        * [Porting the lexer spec](gitbook-is-buggered.md#first_grammar_lexer)
+        * [Testing the generated lexer](gitbook-is-buggered.md#dummy)
+        * [Porting the grammar spec](gitbook-is-buggered.md#dummy)
+        * [Testing the generated parser](gitbook-is-buggered.md#dummy)
+        * [Porting the grammar rules' actions: make the parser work](gitbook-is-buggered.md#dummy)
+* [Driving JISON settings from your grammar or the CLI](gitbook-is-buggered.md#error_handling)
+* [Stuff we might not support yet](gitbook-is-buggered.md#error_handling)
+* [Stuff we are not intent on supporting](gitbook-is-buggered.md#error_handling)
 
 ## The Real Meat: Advanced Topics
+* [Debugging your work - Episode 1: turning it ON](gitbook-is-buggered.md#error_handling)
+* [Error handling](gitbook-is-buggered.md#error_handling)
+    * [Error handling in the lexer](gitbook-is-buggered.md#error_handling)
+    * [Error handling in the parser](gitbook-is-buggered.md#error_handling)
+    * [Loving Living dangerously: Messing with the Error Recovery mechanisms](gitbook-is-buggered.md#error_handling)
+* [Debugging your work - Episode 2: customizing the parser](gitbook-is-buggered.md#error_handling)
+* [Debugging their work - Episode 1: improving your error diagnostics and reporting to the grammar user](gitbook-is-buggered.md#error_handling)
+* [Performance Considerations: Speed is what I need!](gitbook-is-buggered.md#speed_is_what_I_need)
+    * [Don't skimp on your Theory pages! Giving it raw to your grammar spec](gitbook-is-buggered.md#cleaning_out)
+    * [Cleaning out the parser kernel](gitbook-is-buggered.md#cleaning_out)
+    * [Cleaning out the lexer kernel](gitbook-is-buggered.md#cleaning_out)
+* [Performance Considerations: Compact Size is what I crave!](gitbook-is-buggered.md#right_I_like_em_tight)
+    * [Don't skimp on your Theory pages! Giving it raw to your grammar spec](gitbook-is-buggered.md#cleaning_out)
+    * [Cleaning out the parser kernel](gitbook-is-buggered.md#cleaning_out)
+    * [Cleaning out the lexer kernel](gitbook-is-buggered.md#cleaning_out)
+    * [If you must: writing a 100% custom lexer](gitbook-is-buggered.md#cleaning_out)
 
-   1. [Debugging your work - Episode 1: turning it *ON*](#error_handling)
+-----
+* [Debugging their work - Episode 2: stepping through a parse](gitbook-is-buggered.md#error_handling)
 
-   1. [Error handling](#error_handling)
-
-      1. [Error handling in the lexer](#error_handling)
-      1. [Error handling in the parser](#error_handling)
-      1. [Loving Living dangerously: Messing with the Error Recovery mechanisms](#error_handling)
-
-   1. [Debugging your work - Episode 2: customizing the parser](#error_handling)
-
-   1. [Debugging *their* work - Episode 1: improving your error diagnostics and reporting to the grammar user](#error_handling)
-
-   1. [Performance Considerations: Speed is what I need!](#speed_is_what_I_need)
-
-      1. [Don't skimp on your Theory pages! Giving it raw to your grammar spec](#cleaning_out)
-      1. [Cleaning out the parser kernel](#cleaning_out)
-      1. [Cleaning out the lexer kernel](#cleaning_out)
-
-   1. [Performance Considerations: Compact **Size** is what I crave!](#right_I_like_em_tight)
-
-      1. [Don't skimp on your Theory pages! Giving it raw to your grammar spec](#cleaning_out)
-      1. [Cleaning out the parser kernel](#cleaning_out)
-      1. [Cleaning out the lexer kernel](#cleaning_out)
-      1. [If you must: writing a 100% custom lexer](#cleaning_out)
-
-
-1. [Debugging *their* work - Episode 2: stepping through a parse](#error_handling)
-
-
-
-
-## [Appendix: Reference of JISON specifics](A_JISON_Specifics_Reference.md)
-
-* [Parser options](#dummy)
-* [Lexer options](#dummy)
-* [Generated Code](#dummy)
-
-  * [Parser Kernel API](#dummy)
-
-    * [SLR/LALR/LALR](#dummy)
-    * [LL](#dummy)
-    * [PEG](#dummy)
-
-  * [Lexer options](#dummy)
-
-    * [Minimal required API to interface with the parser](#dummy)
-
-
-
-
-
-
-
-
-
-
-
+## Appendix: Reference of JISON specifics
+* [Parser options](gitbook-is-buggered.md#dummy)
+* [Lexer options](gitbook-is-buggered.md#dummy)
+* [Generated Code](gitbook-is-buggered.md#dummy)
+    * [Parser Kernel API](gitbook-is-buggered.md#dummy)
+        * [SLR/LALR/LALR](gitbook-is-buggered.md#dummy)
+        * [LL](gitbook-is-buggered.md#dummy)
+        * [PEG](gitbook-is-buggered.md#dummy)
+    * [Lexer options](gitbook-is-buggered.md#dummy)
+        * [Minimal required API to interface with the parser](gitbook-is-buggered.md#dummy)
 
