@@ -145,9 +145,109 @@ function mkStdOptions(/*args...*/) {
     return opts;
 }
 
+// Autodetect if the input grammar and optional lexer spec is in JSON or JISON
+// format when the `options.json` flag is `true`.
+// 
+// Produce the JSON parse result when these are JSON formatted already as that
+// would save us the trouble of doing this again, anywhere else in the JISON
+// compiler/generator.
+// 
+// Otherwise return the *parsed* grammar and optional lexer specs as they have 
+// been processed through EBNFParser and LEXParser respectively.
+function autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options) {
+    var chk_g = null;
+    var chk_l = null;
+    var ex1;
+
+    if (typeof grammar === 'string') {
+      if (options.json) {
+        try {
+            chk_g = json5.parse(grammar);
+
+            // When JSON5-based parsing of the grammar succeeds, this implies the grammar is specified in `JSON mode`
+            // *OR* there's a JSON/JSON5 format error in the input:
+        } catch (e) {
+            ex1 = e;
+        }
+      }
+      if (!chk_g) {
+        try {
+            chk_g = ebnfParser.parse(grammar, options);
+        } catch (e) {
+            if (options.json) {
+                err = new Error('Could not parse jison grammar in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
+                err.secondary_exception = e;
+                err.stack = ex1.stack;
+            } else {
+                err = new Error('Could not parse jison grammar\nError: ' + e.message);
+                err.stack = e.stack;
+            }
+            throw err;
+        }
+      }
+
+      // Save time! Don't reparse the entire grammar *again* inside the code generators when that's not necessary:
+      // if (chk_g) {
+      //   grammar = chk_g;
+      // }
+    } else {
+        chk_g = grammar;
+    }
+
+    // Now the same treatment for the lexer:
+    if (chk_g && optionalLexerSection) {
+      if (chk_g.lex) {
+          throw new Error('Cannot invoke with both a lexer section in the grammar input and a separate lexer input at the same time!');
+      }
+
+      if (typeof optionalLexerSection === 'string') {
+        if (options.json) {
+          try {
+              chk_l = json5.parse(optionalLexerSection);
+
+              // When JSON5-based parsing of the lexer spec succeeds, this implies the lexer spec is specified in `JSON mode`
+              // *OR* there's a JSON/JSON5 format error in the input:
+          } catch (e) {
+              ex1 = e;
+          }
+        }
+        if (!chk_l) {
+          // // WARNING: the lexer may receive options specified in the **grammar spec file**,
+          // //          hence we should mix the options to ensure the lexParser always
+          // //          receives the full set!
+          // //          
+          // // make sure all options are 'standardized' before we go and mix them together:
+          // options = mkStdOptions(grammar.options, options);
+          try {
+              chk_l = lexParser.parse(optionalLexerSection, options);
+          } catch (e) {
+              if (options.json) {
+                  err = new Error('Could not parse lexer spec in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
+                  err.secondary_exception = e;
+                  err.stack = ex1.stack;
+              } else {
+                  err = new Error('Could not parse lexer spec\nError: ' + e.message);
+                  err.stack = e.stack;
+              }
+              throw err;
+          }
+        }
+      } else {
+        chk_l = optionalLexerSection;
+      }
+
+      // Save time! Don't reparse the entire grammar *again* inside the code generators when that's not necessary:
+      if (chk_l) {
+        chk_g.lex = chk_l;
+      }
+    }
+
+    return chk_g;
+}
+
 Jison.mkStdOptions = mkStdOptions;
 Jison.camelCase = camelCase;
-
+Jison.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 // detect print
 if (typeof console !== 'undefined' && console.log) {
@@ -321,9 +421,11 @@ var Production = typal.construct({
     }
 });
 
+
+
 var generator = typal.beget();
 
-// `lexGrammarStr` is an optional {String} argument, specifying the lexer rules.
+// `optionalLexerSection` is an optional {String} argument, specifying the lexer rules.
 // May only be specified when the specified `grammar` also is a yet-unparsed
 // {String} defining the grammar.
 //
@@ -393,50 +495,18 @@ var generator = typal.beget();
 //
 // Any other arguments / arguments' types sequence is illegal.
 //
-generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
-    // pick the correct argument for the `options` for this call:
-    var options = mkStdOptions((opt || (typeof grammar === 'string' && typeof lexGrammarStr === 'string')) ? opt : lexGrammarStr);
+generator.constructor = function Jison_Generator(grammar, optionalLexerSection, options) {
     var err;
 
-    if (typeof grammar === 'string') {
-        try {
-            if (options.json) {
-                grammar = json5.parse(grammar);
-            } else {
-                grammar = ebnfParser.parse(grammar);
-            }
-        } catch (e) {
-            if (options.json) {
-                err = new Error('Could not parse jison grammar in JSON mode\nError: ' + e.message);
-            } else {
-                err = new Error('Could not parse jison grammar\nError: ' + e.message);
-            }
-            err.stack = e.stack;
-            throw err;
-        }
+    // pick the correct argument for the `options` for this call:
+    if (!options && optionalLexerSection && typeof optionalLexerSection !== 'string') {
+      options = optionalLexerSection;
+      optionalLexerSection = null;
     }
+    // and standardize it:
+    options = mkStdOptions(options);
 
-    if (typeof lexGrammarStr === 'string') {
-        if (grammar.lex) {
-            throw new Error('Cannot invoke with both a lexer section in the grammar input and a separate lexer input at the same time!');
-        }
-
-        try {
-            if (options.json) {
-                grammar.lex = json5.parse(lexGrammarStr);
-            } else {
-                grammar.lex = lexParser.parse(lexGrammarStr);
-            }
-        } catch (e) {
-            if (options.json) {
-                err = new Error('Could not parse lex grammar in JSON mode\nError: ' + e.message);
-            } else {
-                err = new Error('Could not parse lex grammar\nError: ' + e.message);
-            }
-            err.stack = e.stack;
-            throw err;
-        }
-    }
+    grammar = autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options);
 
     // make sure all options are 'standardized' before we go and mix them together:
     options = mkStdOptions(grammar.options, options);
@@ -451,9 +521,12 @@ generator.constructor = function Jison_Generator(grammar, lexGrammarStr, opt) {
     this.conflict_productions_LU = {};
     this.conflict_states_LU = {};
     this.conflict_fixing_round = false;
-    this.options = options;
     this.parseParams = grammar.parseParams;
     this.yy = {}; // accessed as yy free variable in the parser/lexer actions
+
+    // also export the grammar itself *and* the cleaned-up generator options:
+    this.options = options;
+    this.grammar = grammar;
 
     // propagate %parse-params into the lexer!
     if (grammar.lex) {
@@ -684,9 +757,6 @@ generator.augmentGrammar = function augmentGrammar(grammar) {
 
     // add follow $ to start symbol
     this.nonterminals[this.startSymbol].follows.push(this.EOF);
-
-    // also export the grammar itself:
-    this.grammar = grammar;
 };
 
 // Mark unused productions
@@ -5884,12 +5954,10 @@ var LR0Generator = exports.LR0Generator = lr0.construct();
 var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     type: 'LALR(1)',
 
-    afterconstructor: function (typal_property_return_value, grammar, optionalLexerSection, options) {
+    afterconstructor: function lalr_afterconstructor() {
         if (this.DEBUG) {
             this.mix(lrGeneratorDebug, lalrGeneratorDebug); // mixin debug methods
         }
-
-        options = options || {};
 
         for (var round = 1; /* infinite loop if it weren't for the `break`s at the end */ ; round++) {
             this.states = this.canonicalCollection();
@@ -5928,7 +5996,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             // WARNING: using this has a negative effect on your error reports:
             //          a lot of 'expected' symbols are reported which are not in the real FOLLOW set,
             //          resulting in 'illogical' error messages!
-            this.onDemandLookahead = !!options.onDemandLookahead;
+            this.onDemandLookahead = !!this.options.onDemandLookahead;
             if (devDebug || this.DEBUG) Jison.print('LALR: using on-demand look-ahead: ', (this.onDemandLookahead ? 'yes' : 'no'));
 
             this.buildNewGrammar();
@@ -5971,7 +6039,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             // in the `.goes[]` arrays.
             //
             // Also quit when we're at the end of the conflict resolution round (which is round #2)
-            if (this.conflicts === 0 || this.conflict_fixing_round || !options.hasPartialLrUpgradeOnConflict) {
+            if (this.conflicts === 0 || this.conflict_fixing_round || !this.options.hasPartialLrUpgradeOnConflict) {
                 break;
             }
 
@@ -6345,59 +6413,48 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
 
 var LLGenerator = exports.LLGenerator = ll.construct();
 
-Jison.Generator = function Jison_Generator(g, optionalLexerSection, options) {
+Jison.Generator = function Jison_Generator(grammar, optionalLexerSection, options) {
     // pick the correct argument for the `options` for this call:
-    var opt = mkStdOptions((options || typeof optionalLexerSection === 'string') ? options : optionalLexerSection);
-    var chk_g;
+    if (!options && optionalLexerSection && typeof optionalLexerSection !== 'string') {
+      options = optionalLexerSection;
+      optionalLexerSection = null;
+    }
+    // and standardize it:
+    options = mkStdOptions(options);
 
     // Provisionally parse the grammar, really only to obtain the *options.type*
-    // specified within the grammar, if specified (via `%parser-type`):
-    if (typeof g === 'string') {
-        try {
-            chk_g = json5.parse(g);
+    // specified within the grammar, if specified (via `%parser-type`).
+    // 
+    // Meanwhile, we *auto-detect* if the input is in JSON or JISON format
+    // and parse the specs, so we don't have to, nor should we have to, do
+    // *that* activity again in the specific generators below: they all
+    // share a common grammar+lexer spec format (JSON/JSON5/JISON) which will
+    // be parsed by `autodetectAndConvertToJSONformat()` right now!
+    grammar = autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options);
 
-            // When JSON5-based parsing of the grammar succeeds, this implies the grammar is specified in `JSON mode`:
-            opt.json = true;
-        } catch (e) {
-            try {
-                chk_g = ebnfParser.parse(g);
-
-                opt.json = false;
-            } catch (e) {
-                chk_g = null;
-            }
-        }
-
-        // Save time! Don't reparse the entire grammar *again* inside the code generators when that's not necessary:
-        if (chk_g) {
-            g = chk_g;
-        }
-    } else {
-        chk_g = g;
-    }
-
-    opt = mkStdOptions(chk_g && chk_g.options, opt);
-    switch (opt.type || '') {
+    // make sure all options are 'standardized' before we go and mix them together:
+    options = mkStdOptions(grammar.options, options);
+    switch (options.type || '') {
     case 'lr0':
-        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
-        return new LR0Generator(g, optionalLexerSection, opt);
+        options.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
+        return new LR0Generator(grammar, null, options);
     case 'slr':
-        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
-        return new SLRGenerator(g, optionalLexerSection, opt);
+        options.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
+        return new SLRGenerator(grammar, null, options);
     case 'lr':
     case 'lr1':
-        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
-        return new LR1Generator(g, optionalLexerSection, opt);
+        options.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
+        return new LR1Generator(grammar, null, options);
     case 'll':
     case 'll1':
-        opt.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
-        return new LLGenerator(g, optionalLexerSection, opt);
+        options.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
+        return new LLGenerator(grammar, null, options);
     case 'lalr1':
     case 'lalr':
     case '':
-        return new LALRGenerator(g, optionalLexerSection, opt);
+        return new LALRGenerator(grammar, null, options);
     default:
-        throw new Error('Unsupported parser type: ' + opt.type);
+        throw new Error('Unsupported parser type: ' + options.type);
     }
 };
 
