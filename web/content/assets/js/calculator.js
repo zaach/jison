@@ -2242,9 +2242,9 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
-JisonLexerError: JisonLexerError,
-performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
+    options: {},
+    JisonLexerError: JisonLexerError,
+    performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
@@ -2257,7 +2257,7 @@ default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
 }
 },
-simpleCaseActionClusters: {
+    simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
@@ -2302,7 +2302,7 @@ simpleCaseActionClusters: {
   /*! Rule::       . */ 
    14 : 'INVALID'
 },
-rules: [
+    rules: [
 /^(?:\s+)/,
 /^(?:\d+(\.\d+)?\b)/,
 /^(?:\*)/,
@@ -2319,7 +2319,7 @@ rules: [
 /^(?:$)/,
 /^(?:.)/
 ],
-conditions: {
+    conditions: {
   "INITIAL": {
     rules: [
       0,

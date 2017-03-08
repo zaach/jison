@@ -10762,13 +10762,13 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-options: {
+    options: {
   easy_keyword_rules: true,
   ranges: true,
   xregexp: true
 },
-JisonLexerError: JisonLexerError,
-performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
+    JisonLexerError: JisonLexerError,
+    performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
@@ -11069,7 +11069,7 @@ default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
 }
 },
-simpleCaseActionClusters: {
+    simpleCaseActionClusters: {
 
   /*! Conditions:: action */ 
   /*! Rule::       \/\*(.|\n|\r)*?\*\/ */ 
@@ -11186,7 +11186,7 @@ simpleCaseActionClusters: {
   /*! Rule::       $ */ 
    86 : 1
 },
-rules: [
+    rules: [
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
 /^(?:\/\/.*)/,
 /^(?:\/[^ \/]*?['"{}][^ ]*?\/)/,
@@ -11275,7 +11275,7 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
 /^(?:.)/,
 /^(?:$)/
 ],
-conditions: {
+    conditions: {
   "code": {
     rules: [
       67,
@@ -15639,13 +15639,13 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-options: {
+    options: {
   easy_keyword_rules: true,
   ranges: true,
   xregexp: true
 },
-JisonLexerError: JisonLexerError,
-performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
+    JisonLexerError: JisonLexerError,
+    performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
@@ -15882,7 +15882,7 @@ default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
 }
 },
-simpleCaseActionClusters: {
+    simpleCaseActionClusters: {
 
   /*! Conditions:: bnf ebnf */ 
   /*! Rule::       %empty\b */ 
@@ -15999,7 +15999,7 @@ simpleCaseActionClusters: {
   /*! Rule::       $ */ 
    79 : 1
 },
-rules: [
+    rules: [
 /^(?:(\r\n|\n|\r))/,
 /^(?:%%)/,
 /^(?:;)/,
@@ -16081,7 +16081,7 @@ new XRegExp("^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)", "")
 /^(?:.)/,
 /^(?:$)/
 ],
-conditions: {
+    conditions: {
   "bnf": {
     rules: [
       3,
@@ -16388,9 +16388,9 @@ var version = require('./package.json').version;
 var assert = require('assert');
 
 const XREGEXP_UNICODE_ESCAPE_RE = /^\{[A-Za-z0-9 \-\._]+\}/;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
-const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})/;
-const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
-const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]\}{4})+/;
+const CHR_RE = /^(?:[^\\]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\})/;
+const SET_PART_RE = /^(?:[^\\\]]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\})+/;
+const NOTHING_SPECIAL_RE = /^(?:[^\\\[\]\(\)\|^\{\}]|\\[^cxu0-9]|\\[0-9]{1,3}|\\c[A-Z]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\})+/;
 const SET_IS_SINGLE_PCODE_RE = /^\\[dDwWsS]$|^\\p\{[A-Za-z0-9 \-\._]+\}$/;
 
 // The expanded regex sets which are equivalent to the given `\\{c}` escapes:
@@ -16542,7 +16542,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
 // Helper for `bitarray2set()`: convert character code to a representation string suitable for use in a regex
 function i2c(i) {
-    var c;
+    var c, x;
 
     switch (i) {
     case 10:
@@ -16578,13 +16578,9 @@ function i2c(i) {
     case 94:        // ']'
         return '\\^';
     }
-    // Check and warn user about Unicode Supplementary Plane content as that will be FRIED!
-    if (i >= 0xD800 && i < 0xDFFF) {
-        throw new Error("You have Unicode Supplementary Plane content in a regex set: JavaScript has severe problems with Supplementary Plane content, particularly in regexes, so you are kindly required to get rid of this stuff. Sorry! (Offending UCS-2 code which triggered this: 0x" + i.toString(16) + ")");
-    }
     if (i < 32
             || i > 0xFFF0 /* Unicode Specials, also in UTF16 */
-            || (i >= 0xD800 && i < 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
+            || (i >= 0xD800 && i <= 0xDFFF) /* Unicode Supplementary Planes; we're TOAST in JavaScript as we're NOT UTF-16 but UCS-2! */
             || String.fromCharCode(i).match(/[\u2028\u2029]/) /* Code compilation via `new Function()` does not like to see these, or rather: treats them as just another form of CRLF, which breaks your generated regex code! */
         ) {
         // Detail about a detail:
@@ -16592,8 +16588,13 @@ function i2c(i) {
         // source file verbatim (without escaping it as a `\uNNNN` item) then JavaScript will interpret it as such and consequently report
         // a b0rked generated parser, as the generated code would include this regex right here.
         // Hence we MUST escape these buggers everywhere we go...
-        c = '0000' + i.toString(16);
-        return '\\u' + c.substr(c.length - 4);
+        x = i.toString(16);
+        if (x.length >= 1 && i <= 0xFFFF) {
+          c = '0000' + x;
+          return '\\u' + c.substr(c.length - 4);
+        } else {
+          return '\\u{' + x + '}';
+        }
     }
     return String.fromCharCode(i);
 }
@@ -16833,6 +16834,9 @@ function set2bitarray(bitarr, s, opts) {
                     s = s.substr(1, s.length - 2);
                 }
                 c = parseInt(s, 16);
+                if (c >= 0x10000) {
+                  return new Error('We do NOT support Extended Plane Unicode Codepoints (i.e. CodePoints beyond U:FFFF) in regex set expressions, e.g. \\u{' + s + '}');
+                }
                 return String.fromCharCode(c);
 
             case '\\0':
@@ -16862,8 +16866,8 @@ function set2bitarray(bitarr, s, opts) {
             case '\\t':
                 return '\t';
 
-            case '\\r':
-                return '\r';
+            case '\\b':
+                return '\b';
 
             default:
                 // just the character itself:
@@ -16948,6 +16952,10 @@ function set2bitarray(bitarr, s, opts) {
                 }
             }
             var v1 = eval_escaped_code(c1);
+            // propagate deferred exceptions = error reports.
+            if (v1 instanceof Error) {
+                return v1;
+            }
             v1 = v1.charCodeAt(0);
             s = s.substr(c1.length);
 
@@ -16962,6 +16970,10 @@ function set2bitarray(bitarr, s, opts) {
                     c2 = c2[0];
                 }
                 var v2 = eval_escaped_code(c2);
+                // propagate deferred exceptions = error reports.
+                if (v2 instanceof Error) {
+                    return v1;
+                }
                 v2 = v2.charCodeAt(0);
                 s = s.substr(c2.length);
 
@@ -16992,6 +17004,7 @@ function set2bitarray(bitarr, s, opts) {
             }
         }
     }
+    return false;
 }
 
 
@@ -17223,6 +17236,7 @@ function reduceRegexToSetBitArray(s, name, opts) {
 
     var l = new Array(65536 + 3);
     var internal_state = 0;
+    var derr;
 
     while (s.length) {
         var c1 = s.match(CHR_RE);
@@ -17271,7 +17285,11 @@ function reduceRegexToSetBitArray(s, name, opts) {
 
             var se = set_content.join('');
             if (!internal_state) {
-                set2bitarray(l, se, opts);
+                derr = set2bitarray(l, se, opts);
+                // propagate deferred exceptions = error reports.
+                if (derr instanceof Error) {
+                    return derr;
+                }
 
                 // a set is to use like a single character in a longer literal phrase, hence input `[abc]word[def]` would thus produce output `[abc]`:
                 internal_state = 1;
@@ -17325,7 +17343,11 @@ function reduceRegexToSetBitArray(s, name, opts) {
             // literal character or word: take the first character only and ignore the rest, so that
             // the constructed set for `word|noun` would be `[wb]`:
             if (!internal_state) {
-                set2bitarray(l, c1, opts);
+                derr = set2bitarray(l, c1, opts);
+                // propagate deferred exceptions = error reports.
+                if (derr instanceof Error) {
+                    return derr;
+                }
 
                 internal_state = 2;
             }
@@ -17462,6 +17484,8 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
 
     var c1, c2;
     var rv = [];
+    var derr;
+    var se;
 
     while (s.length) {
         c1 = s.match(CHR_RE);
@@ -17510,7 +17534,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             }
             s = s.substr(c2.length);
 
-            var se = set_content.join('');
+            se = set_content.join('');
 
             // expand any macros in here:
             if (expandAllMacrosInSet_cb) {
@@ -17521,7 +17545,10 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
                 }
             }
 
-            set2bitarray(l, se, opts);
+            derr = set2bitarray(l, se, opts);
+            if (derr instanceof Error) {
+                return new Error(errinfo() + ': ' + derr.message);
+            }
 
             // find out which set expression is optimal in size:
             var s1 = produceOptimizedRegex4Set(l);
@@ -19222,17 +19249,17 @@ function generateModuleBody(opt) {
             // Assure all options are camelCased:
             assert(typeof opt.options['case-insensitive'] === 'undefined');
 
-            out += 'options: ' + produceOptions(opt.options);
+            out += '    options: ' + produceOptions(opt.options);
         } else {
             // always provide the lexer with an options object, even if it's empty!
-            out += 'options: {}';
+            out += '    options: {}';
         }
 
-        out += ',\nJisonLexerError: JisonLexerError';
-        out += ',\nperformAction: ' + String(opt.performAction);
-        out += ',\nsimpleCaseActionClusters: ' + String(opt.caseHelperInclude);
-        out += ',\nrules: [\n' + generateRegexesInitTableCode(opt) + '\n]';
-        out += ',\nconditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
+        out += ',\n    JisonLexerError: JisonLexerError';
+        out += ',\n    performAction: ' + String(opt.performAction);
+        out += ',\n    simpleCaseActionClusters: ' + String(opt.caseHelperInclude);
+        out += ',\n    rules: [\n' + generateRegexesInitTableCode(opt) + '\n]';
+        out += ',\n    conditions: ' + cleanupJSON(JSON.stringify(opt.conditions, null, 2));
         out += '\n};\n';
     } else {
         // We're clearly looking at a custom lexer here as there's no lexer rules at all.
@@ -21949,9 +21976,9 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-options: {},
-JisonLexerError: JisonLexerError,
-performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
+    options: {},
+    JisonLexerError: JisonLexerError,
+    performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 
 var YYSTATE = YY_START;
 switch($avoiding_name_collisions) {
@@ -21969,7 +21996,7 @@ default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
 }
 },
-simpleCaseActionClusters: {
+    simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
   /*! Rule::       {ID} */ 
@@ -22029,7 +22056,7 @@ simpleCaseActionClusters: {
   /*! Rule::       $ */ 
    20 : 1
 },
-rules: [
+    rules: [
 /^(?:\s+)/,
 /^(?:([^\u0000-@\[-\^`{-©«-´¶-¹»-¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٠-٭۔۝-۠۩-۬۰-۹۽۾܀-܏݀-݌޲-߉߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।-॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤-৯৲-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੯੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤-୰୲-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤-ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤-೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෱෴-฀฻-฿็-์๎-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎-໛໠-໿༁-༿཈཭-཰ྂ-྇྘྽-࿿့္်၀-၏ၣၤၩ-ၭႇ-ႍႏ-ႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥏᥮᥯᥵-᥿᦬-᦯᧊-᧿᨜-᨟᩟᩠᩵-᪦᪨-᫿᬴᭄ᭌ-᭿᮪᮫᮰-᮹᯦᯲-᯿ᰶ-᱌᱐-᱙᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁰⁲-⁾₀-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏-⅟↉-⒵⓪-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆟ㆻ-㇯㈀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘠-꘩꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠿꡴-꡿꣄-꣱꣸-꣺꣼ꣾ-꤉꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧐-꧟ꧥ꧰-꧹꧿꨷-꨿꩎-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff](?:[^\u0000-\/:-@\[-\^`{-©«-±´¶-¸»¿×÷˂-˅˒-˟˥-˫˭˯-̈́͆-ͯ͵͸͹;΀-΅·΋΍΢϶҂-҉԰՗՘՚-ՠֈ-֯־׀׃׆׈-׏׫-ׯ׳-؏؛-؟٘٪-٭۔۝-۠۩-۬۽۾܀-܏݀-݌޲-޿߫-߳߶-߹߻-߿࠘࠙࠭-࠿࡙-࢟ࢵ-࣢࣪-़्࣯॑-॔।॥॰঄঍঎঑঒঩঱঳-঵঺-়৅৆৉৊্৏-৖৘-৛৞৤৥৲৳৺-਀਄਋-਎਑਒਩਱਴਷਺-਽੃-੆੉੊੍-੐੒-੘੝੟-੥੶-઀઄઎઒઩઱઴઺-઼૆૊્-૏૑-૟૤૥૰-૸ૺ-଀଄଍଎଑଒଩଱଴଺-଼୅୆୉୊୍-୕୘-୛୞୤୥୰୸-஁஄஋-஍஑஖-஘஛஝஠-஢஥-஧஫-஭஺-஽௃-௅௉்-௏௑-௖௘-௥௳-௿ఄ఍఑఩఺-఼౅౉్-౔౗౛-౟౤౥౰-౷౿ಀ಄಍಑಩಴಺-಼೅೉್-೔೗-ೝ೟೤೥೰ೳ-ഀഄ഍഑഻഼൅൉്൏-ൖ൘-൞൤൥൶-൹඀ඁ඄඗-඙඲඼඾඿෇-෎෕෗෠-෥෰෱෴-฀฻-฿็-์๎๏๚-຀຃຅ຆຉ຋ຌຎ-ຓຘຠ຤຦ຨຩຬ຺຾຿໅໇-໌໎໏໚໛໠-໿༁-༟༴-༿཈཭-཰ྂ-྇྘྽-࿿့္်၊-၏ၣၤၩ-ၭႇ-ႍႏႚႛ႞႟჆჈-჌჎჏჻቉቎቏቗቙቞቟኉኎኏኱኶኷኿዁዆዇዗጑጖጗፛-፞፠-፨፽-፿᎐-᎟᏶᏷᏾-᐀᙭᙮ ᚛-᚟᛫-᛭᛹-᛿ᜍ᜔-ᜟ᜴-᜿᝔-᝟᝭᝱᝴-᝿឴឵៉-៖៘-៛៝-៟៪-៯៺-᠏᠚-᠟ᡸ-᡿᢫-᢯᣶-᣿᤟᤬-᤯᤹-᥅᥮᥯᥵-᥿᦬-᦯᧊-᧏᧛-᧿᨜-᨟᩟᩠᩵-᩿᪊-᪏᪚-᪦᪨-᫿᬴᭄ᭌ-᭏᭚-᭿᯦᮪᮫᯲-᯿ᰶ-᰿᱊-᱌᱾-᳨᳭᳴᳷-᳿᷀-ᷦ᷵-᷿἖἗἞἟὆὇὎὏὘὚὜὞὾὿᾵᾽᾿-῁῅῍-῏῔῕῜-῟῭-῱῵´-⁯⁲⁳⁺-⁾₊-₏₝-℁℃-℆℈℉℔№-℘℞-℣℥℧℩℮℺℻⅀-⅄⅊-⅍⅏↊-⑟⒜-⒵─-❵➔-⯿Ⱟⱟ⳥-⳪⳯-⳱⳴-⳼⳾⳿⴦⴨-⴬⴮⴯⵨-⵮⵰-⵿⶗-⶟⶧⶯⶷⶿⷇⷏⷗⷟⸀-⸮⸰-〄〈-〠〪-〰〶〷〽-぀゗-゜゠・㄀-㄄ㄮ-㄰㆏-㆑㆖-㆟ㆻ-㇯㈀-㈟㈪-㉇㉐㉠-㉿㊊-㊰㋀-㏿䶶-䷿鿖-鿿꒍-꓏꓾꓿꘍-꘏꘬-꘿꙯-꙳꙼-꙾꛰-꜖꜠꜡꞉꞊ꞮꞯꞸ-ꟶꠂ꠆ꠋ꠨-꠯꠶-꠿꡴-꡿꣄-꣏꣚-꣱꣸-꣺꣼ꣾꣿ꤫-꤯꥓-꥟꥽-꥿꦳꧀-꧎꧚-꧟ꧥ꧿꨷-꨿꩎꩏꩚-꩟꩷-꩹ꩻ-ꩽ꪿꫁꫃-꫚꫞꫟꫰꫱꫶-꬀꬇꬈꬏꬐꬗-꬟꬧꬯꭛ꭦ-꭯꯫-꯯꯺-꯿힤-힯퟇-퟊퟼-﩮﩯﫚-﫿﬇-﬒﬘-﬜﬩﬷﬽﬿﭂﭅﮲-﯒﴾-﵏﶐﶑﷈-﷯﷼-﹯﹵﻽-／：-＠［-｀｛-･﾿-￁￈￉￐￑￘￙￝-\uffff])*))/,
 /^(?:\$end)/,
@@ -22052,7 +22079,7 @@ rules: [
 /^(?:\+)/,
 /^(?:$)/
 ],
-conditions: {
+    conditions: {
   "INITIAL": {
     rules: [
       0,
