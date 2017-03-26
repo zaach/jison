@@ -31,8 +31,9 @@ GITHUB_ISSUE_TARGETS =                                    \
 			issue-289                                           \
 			issue-293                                           \
 			issue-342                                           \
-			issue-344-BAD                                           \
-			issue-344-2-BAD
+			issue-344-BAD                                       \
+			issue-344-2-BAD                                     \
+			issue-348                                           
 
 
 
@@ -123,16 +124,7 @@ MISC_TARGETS =                                                   \
 			handlebars                                          \
 			happyhappy                                          \
 			inherited_y                                         \
-			issue-205                                           \
-			issue-205-2                                         \
-			issue-205-3                                         \
-			issue-205-4                                         \
-			issue-254                                           \
-			issue-289                                           \
-			issue-293                                           \
-			issue-342                                           \
-			issue-344-BAD                                           \
-			issue-344-2-BAD                                         \
+			$(GITHUB_ISSUE_TARGETS)                             \
 			json_ast_js                                         \
 			json_js                                             \
 			klammergebirge                                      \
@@ -335,6 +327,11 @@ issue-344:
 
 # build *AND* run the test:
 issue-344-2:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-348:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
