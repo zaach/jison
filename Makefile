@@ -241,6 +241,9 @@ examples/issue-344: build
 examples/issue-344-2: build
 	cd examples/ && make issue-344-2
 
+examples/issue-348: build
+	cd examples/ && make issue-348
+
 examples/jscore: build
 	cd examples/ && make jscore
 
@@ -365,6 +368,7 @@ npm-install: submodules-npm-install
 	npm install --only=dev
 
 JISON_DEPS = \
+	lib/util/regexp-set-management.js \
 	lib/util/regexp-lexer.js \
 	lib/util/ebnf-parser.js \
 	lib/util/ebnf-transform.js \
@@ -391,17 +395,20 @@ prep_util_dir:
 	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 
+lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
-	cat modules/ebnf-parser/ebnf-transform.js > $@
+	cat $< > $@
 
 lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
-	cat modules/ebnf-parser/transform-parser.js > $@
+	cat $< > $@
 
 
 submodules:
