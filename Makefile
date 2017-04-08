@@ -24,7 +24,8 @@ compile-site: web-examples web/content/assets/js/jison.js
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
 ifndef NANOC
-	-$(error "nanoc is not available, please install ruby, gem and nanoc")
+	$(warning "*** nanoc is not available, please install ruby, gem and nanoc. ***")
+	$(warning "*** JISON website pages have NOT been updated!                  ***")
 else
 	cd web/ && nanoc compile
 endif

@@ -63,6 +63,14 @@ Then you can also preview the site by doing:
     
 Note that you will need `nanoc` and `adsf` in order to build/preview the site. `gem install` them if you haven't.
 
+> ### Note
+>
+> The `make site` build command will print a WARNING message when `nanoc` is not available, 
+> but WILL NOT fail the `site` build task. This behaviour has been specifically chosen to
+> allow (pre)release build runs to complete and deliver a new jison revision when everything
+> but the web pages has compiled successfully.
+> 
+
 
 ## Building a new (beta-)release
 
@@ -94,6 +102,17 @@ and then execute your regular full-build command:
 When you are happy with the result, you can apply the new (previously bumped) version as a TAG to the current commit (which is not necessarily the commit where you ran `make bump` if you found some stuff to do along the way here ;-) ):
 
 	make git-tag
+
+
+### Doing all this in one go
+
+You can accomplish all the above (and a few other cleanups and checks along the way) by invoking
+the bash shell script:
+
+```
+./git-tag-and-bump-and-rebuild.sh
+```
+
 
 ---
 
