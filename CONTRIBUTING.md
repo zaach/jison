@@ -9,6 +9,14 @@ Fork, make your changes, run tests and/or add tests then send a pull request.
 - NPM
 - GNU make  (make sure you can run the `make` command from your (bash) shell command line)
 
+When you are working on the Microsoft Windows OS, you can obtain the prerequisite tools 
+by installing Git-for-Windows **and its Developer SDK** 
+(as only the latter includes *GNU make*, for example, at the time of writing: April 2017):
+
+- [Git-for-Windows](https://git-for-windows.github.io/)
+- [Git-fo-Windows Developer SDK](https://github.com/git-for-windows/build-extra/releases/latest)
+
+
 ## Installing
 
 JISON consists of the main project and a couple of git modules; when you work on JISON itself you MUST install those submodules too:
@@ -25,6 +33,7 @@ The next step would be to install the required NPM packages for all modules. `ma
 $ make prep
 ```
 
+
 ## Building the app
 
 Simply run `make`; this includes running the unit tests for every module as the app is assembled:
@@ -33,11 +42,13 @@ Simply run `make`; this includes running the unit tests for every module as the 
 $ make
 ```
 
+
 ## Running tests
 
 Then run tests with:
 
     make test
+
 
 
 ## Building the site
@@ -51,6 +62,7 @@ Then you can also preview the site by doing:
     make preview
     
 Note that you will need `nanoc` and `adsf` in order to build/preview the site. `gem install` them if you haven't.
+
 
 ## Building a new (beta-)release
 
@@ -84,6 +96,7 @@ When you are happy with the result, you can apply the new (previously bumped) ve
 	make git-tag
 
 ---
+
 
 ## TL;DR
 
