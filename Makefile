@@ -365,7 +365,6 @@ build: build_bnf build_lex
 
 npm-install: submodules-npm-install
 	npm install
-	npm install --only=dev
 
 JISON_DEPS = \
 	lib/util/regexp-set-management.js \
