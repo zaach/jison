@@ -1,4 +1,7 @@
 
+NANOC := $(shell command -v nanoc 2> /dev/null)
+
+
 all: build test examples-test
 
 
@@ -20,15 +23,23 @@ compile-site: web-examples web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
+ifndef NANOC
+	-$(error "nanoc is not available, please install ruby, gem and nanoc")
+else
 	cd web/ && nanoc compile
+endif
 
 web/content/assets/js/jison.js: build
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 
 preview:
+ifndef NANOC
+	$(error "nanoc is not available, please install ruby, gem and nanoc")
+else
 	cd web/ && nanoc view &
 	open http://localhost:3000/jison/
+endif
 
 # `make deploy` is `make site` plus GIT checkin of the result into the gh-pages branch
 deploy: site
