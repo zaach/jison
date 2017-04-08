@@ -579,23 +579,24 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             //
             // (this stuff comes straight from the jison Optimization Analysis.)
             //
-            actionsAreAllDefault: this.actionsAreAllDefault,
-            actionsUseYYLENG: this.actionsUseYYLENG,
-            actionsUseYYLINENO: this.actionsUseYYLINENO,
-            actionsUseYYTEXT: this.actionsUseYYTEXT,
-            actionsUseYYLOC: this.actionsUseYYLOC,
-            actionsUseParseError: this.actionsUseParseError,
-            actionsUseYYERROR: this.actionsUseYYERROR,
-            actionsUseYYERROK: this.actionsUseYYERROK,
-            actionsUseYYCLEARIN: this.actionsUseYYCLEARIN,
-            actionsUseValueTracking: this.actionsUseValueTracking,
-            actionsUseValueAssignment: this.actionsUseValueAssignment,
-            actionsUseLocationTracking: this.actionsUseLocationTracking,
-            actionsUseLocationAssignment: this.actionsUseLocationAssignment,
-            actionsUseYYSTACK: this.actionsUseYYSTACK,
-            actionsUseYYSSTACK: this.actionsUseYYSSTACK,
-            actionsUseYYSTACKPOINTER: this.actionsUseYYSTACKPOINTER,
-            hasErrorRecovery: this.hasErrorRecovery,
+            parseActionsAreAllDefault: this.actionsAreAllDefault,
+            parseActionsUseYYLENG: this.actionsUseYYLENG,
+            parseActionsUseYYLINENO: this.actionsUseYYLINENO,
+            parseActionsUseYYTEXT: this.actionsUseYYTEXT,
+            parseActionsUseYYLOC: this.actionsUseYYLOC,
+            parseActionsUseParseError: this.actionsUseParseError,
+            parseActionsUseYYERROR: this.actionsUseYYERROR,
+            parseActionsUseYYRECOVERING: this.actionsUseYYRECOVERING,
+            parseActionsUseYYERROK: this.actionsUseYYERROK,
+            parseActionsUseYYCLEARIN: this.actionsUseYYCLEARIN,
+            parseActionsUseValueTracking: this.actionsUseValueTracking,
+            parseActionsUseValueAssignment: this.actionsUseValueAssignment,
+            parseActionsUseLocationTracking: this.actionsUseLocationTracking,
+            parseActionsUseLocationAssignment: this.actionsUseLocationAssignment,
+            parseActionsUseYYSTACK: this.actionsUseYYSTACK,
+            parseActionsUseYYSSTACK: this.actionsUseYYSSTACK,
+            parseActionsUseYYSTACKPOINTER: this.actionsUseYYSTACKPOINTER,
+            parserHasErrorRecovery: this.hasErrorRecovery,
 
             // and re-use any useful options:
             moduleType: this.options.moduleType,
@@ -1414,9 +1415,10 @@ generator.buildProductionActions = function buildProductionActions() {
             .replace(/\byyvstack\b/g, '\x01\x16')
             .replace(/\byylstack\b/g, '\x01\x17')
             .replace(/\byyerror\b/g, '\x01\x18')
-            .replace(/\byyerrok\b/g, '\x01\x19')
-            .replace(/\byyclearin\b/g, '\x01\x1A')
-            .replace(/\byysp\b/g, '\x01\x1B');
+            .replace(/\bYYRECOVERING\b/g, '\x01\x19')
+            .replace(/\byyerrok\b/g, '\x01\x1A')
+            .replace(/\byyclearin\b/g, '\x01\x1B')
+            .replace(/\byysp\b/g, '\x01\x1C');
 
             return cmt;
         }
@@ -1543,9 +1545,10 @@ generator.buildProductionActions = function buildProductionActions() {
         .replace(/\x01\x16/g, 'yyvstack')
         .replace(/\x01\x17/g, 'yylstack')
         .replace(/\x01\x18/g, 'yyerror')
-        .replace(/\x01\x19/g, 'yyerrok')
-        .replace(/\x01\x1A/g, 'yyclearin')
-        .replace(/\x01\x1B/g, 'yysp');
+        .replace(/\x01\x19/g, 'YYRECOVERING')
+        .replace(/\x01\x1A/g, 'yyerrok')
+        .replace(/\x01\x1B/g, 'yyclearin')
+        .replace(/\x01\x1C/g, 'yysp');
 
         // And a final, minimal, fixup for the semicolon-lovers -- like me! ;-)
         //
@@ -1597,6 +1600,7 @@ generator.buildProductionActions = function buildProductionActions() {
     this.actionsUseYYLOC = analyzeFeatureUsage(this.performAction, /\byyloc\b/g, 1);
     this.actionsUseParseError = analyzeFeatureUsage(this.performAction, /\.parseError\b/g, 0);
     this.actionsUseYYERROR = analyzeFeatureUsage(this.performAction, /\byyerror\b/g, 0);
+    this.actionsUseYYRECOVERING = analyzeFeatureUsage(this.performAction, /\bYYRECOVERING\b/g, 0);
     this.actionsUseYYERROK = analyzeFeatureUsage(this.performAction, /\byyerrok\b/g, 0);
     this.actionsUseYYCLEARIN = analyzeFeatureUsage(this.performAction, /\byyclearin\b/g, 0);
     // At this point in time, we have already expanded `$name`, `$$` and `$n` to its `$$[n]` index expression.
@@ -1621,6 +1625,7 @@ generator.buildProductionActions = function buildProductionActions() {
 
     this.performAction = this.performAction
     .replace(/\byyerror\b/g, 'yy.parser.yyError')
+    .replace(/\bYYRECOVERING\b(?:\s*\(\s*\))?/g, 'yy.parser.yyRecovering()')
     .replace(/\byyerrok\b(?:\s*\(\s*\))?/g, 'yy.parser.yyErrOk()')
     .replace(/\byyclearin\b(?:\s*\(\s*\))?/g, 'yy.parser.yyClearIn()');
 
@@ -1666,6 +1671,7 @@ generator.buildProductionActions = function buildProductionActions() {
             actionsUseYYLOC: this.actionsUseYYLOC,
             actionsUseParseError: this.actionsUseParseError,
             actionsUseYYERROR: this.actionsUseYYERROR,
+            actionsUseYYRECOVERING: this.actionsUseYYRECOVERING,
             actionsUseYYERROK: this.actionsUseYYERROK,
             actionsUseYYCLEARIN: this.actionsUseYYCLEARIN,
             actionsUseValueTracking: this.actionsUseValueTracking,
@@ -2964,6 +2970,7 @@ generatorMixin.generateGenericHeaderComment = function generateGenericHeaderComm
  *
  *    parseError: function(str, hash, ExceptionClass),
  *    yyError: function(str, ...),
+ *    yyRecovering: function(),
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
@@ -3431,13 +3438,10 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //
         //    var ranges = lexer.options && lexer.options.ranges;
         //    ...
-        //    if (typeof lexer.yylloc === 'undefined') {
-        //        lexer.yylloc = {};
-        //    }
-        //    var yyloc = lexer.yylloc;
+        //    var yyloc = lexer.yylloc || {};
         //    lstack[sp] = yyloc;
         //    ...
-        //        lstack[sp] = lexer.yylloc;
+        //        lstack[sp] = lexer.yylloc || {};
         //    ...
         //        // default location, uses first token for firsts, last for lasts
         //        yyval._$ = {
@@ -3551,15 +3555,15 @@ function removeUnusedKernelFeatures(parseFn, info) {
         .replace(/\n\s+if\s+\(yydebug\)\s+yydebug\([^]+?\}\);[^\r\n]*?/g, '\n\n\n\n\n\n\n\n\n');
     }
 
-    if (!info.actionsUseYYERROK && !info.actionsUseYYCLEARIN && !info.actionsUseYYERROR) {
+    if (!info.actionsUseYYERROK && !info.actionsUseYYRECOVERING && !info.actionsUseYYCLEARIN && !info.actionsUseYYERROR) {
         /*
-         * Kill long multi-line comment about yyerror + yyerrok + yyclearin before this code:
+         * Kill long multi-line comment about yyerror + YYRECOVERING + yyerrok + yyclearin before this code:
          *
          *       if (this.yyError) {
          *           ...
          */
         parseFn = parseFn
-        .replace(/\s+\/\/.*setup `yyError`, `yyErrOk` and `yyClearIn` functions[^\0]+?\n\s+if \(/g, '\n\n\n\n\n  if (');
+        .replace(/\s+\/\/.*setup `yyError`, `YYRECOVERING`, `yyErrOk` and `yyClearIn` functions[^\0]+?\n\s+if \(/g, '\n\n\n\n\n  if (');
     }
 
     if (!info.actionsUseYYERROR) {
@@ -3574,6 +3578,20 @@ function removeUnusedKernelFeatures(parseFn, info) {
          */
         parseFn = parseFn
         .replace(/\s+if \(this\.yyError\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n');
+    }
+
+    if (!info.actionsUseYYRECOVERING) {
+        /*
+         * Kill this code:
+         *
+         *       if (this.yyRecovering) {
+         *           this.yyRecovering = function yyRecovering() {
+         *               return recovering;
+         *           };
+         *       }
+         */
+        parseFn = parseFn
+        .replace(/\s+if \(this\.yyRecovering\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n');
     }
 
     if (!info.actionsUseYYERROK) {
@@ -3592,7 +3610,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
     if (!info.actionsUseYYCLEARIN) {
         parseFn = parseFn
-        .replace(/\s+if \(this\.yyClearIn\) \{[^\0]+?\};\n\s+\}\n/g, '\n\n\n\n\n\n');
+        .replace(/\s+if \(this\.yyClearIn\) \{[^\0]+?[^{]\};\n\s+\}\n/g, '\n\n\n\n\n\n');
     }
 
     if (info.options.noDefaultAction) {
@@ -4301,6 +4319,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     //   uses yylloc: ..................... ${this.actionsUseYYLOC}
     //   uses ParseError API: ............. ${this.actionsUseParseError}
     //   uses YYERROR: .................... ${this.actionsUseYYERROR}
+    //   uses YYRECOVERING: ............... ${this.actionsUseYYRECOVERING}
     //   uses YYERROK: .................... ${this.actionsUseYYERROK}
     //   uses YYCLEARIN: .................. ${this.actionsUseYYCLEARIN}
     //   tracks rule values: .............. ${this.actionsUseValueTracking}
@@ -4349,6 +4368,10 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     ]).concat(
         this.actionsUseYYERROR ?
         'yyError: 1' :
+        []
+    ).concat(
+        this.actionsUseYYRECOVERING ?
+        'yyRecovering: 1' :
         []
     ).concat(
         this.actionsUseYYERROK ?
@@ -5245,6 +5268,7 @@ function define_parser_APIs_1() {
         __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
         // APIs which will be set up depending on user action code analysis:
+        //yyRecovering: 0,
         //yyErrOk: 0,
         //yyClearIn: 0,
 
@@ -5444,7 +5468,7 @@ parser.parse = function parse(input, parseParams) {
         };
     }
 
-    // *Always* setup `yyError`, `yyErrOk` and `yyClearIn` functions as it is paramount
+    // *Always* setup `yyError`, `YYRECOVERING`, `yyErrOk` and `yyClearIn` functions as it is paramount
     // to have *their* closure match ours -- if we only set them up once,
     // any subsequent `parse()` runs will fail in very obscure ways when
     // these functions are invoked in the user action code block(s) as
@@ -5457,6 +5481,13 @@ parser.parse = function parse(input, parseParams) {
             // var expected = this.collect_expected_token_set(state);
             var hash = this.constructParseErrorInfo(str, null, null, false); // (str, null, expected, (error_rule_depth >= 0));
             var r = this.parseError(str, hash, this.JisonParserError);
+        };
+    }
+
+    if (this.yyRecovering) {
+        this.yyRecovering = function yyRecovering() {
+            if (yydebug) yydebug('yyrecovering: ', { symbol: symbol, state: state, newState: newState, recovering: recovering, action: action });
+            return recovering;
         };
     }
 
@@ -5474,7 +5505,7 @@ parser.parse = function parse(input, parseParams) {
                 symbol = 0;
                 yytext = null;
                 yyleng = 0;
-                yyloc = null;
+                yyloc = {};
             }
             preErrorSymbol = 0;
         };
@@ -5482,27 +5513,15 @@ parser.parse = function parse(input, parseParams) {
 
     lexer.setInput(input, sharedState_yy);
 
-    if (typeof lexer.yylloc === 'undefined') {
-        lexer.yylloc = {};
-    }
-    var yyloc = lexer.yylloc;
+    var yyloc = lexer.yylloc || {};
     lstack[sp] = yyloc;
     vstack[sp] = null;
     sstack[sp] = 0;
     stack[sp] = 0;
     ++sp;
 
-    if (typeof lexer.yytext === 'undefined') {
-        lexer.yytext = '';
-    }
     var yytext = lexer.yytext;
-    if (typeof lexer.yylineno === 'undefined') {
-        lexer.yylineno = 0;
-    }
     var yylineno = lexer.yylineno;
-    if (typeof lexer.yyleng === 'undefined') {
-        lexer.yyleng = 0;
-    }
     var yyleng = lexer.yyleng;
 
     var ranges = lexer.options && lexer.options.ranges;
@@ -5599,7 +5618,7 @@ parser.parse = function parse(input, parseParams) {
             token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
-            loc: lexer.yylloc,
+            loc: lexer.yylloc || {},
             expected: expected,
             recoverable: recoverable,
             state: state,
@@ -5789,10 +5808,13 @@ parser.parse = function parse(input, parseParams) {
 
                     if (!recovering) {
                         // Report error
-                        if (lexer.showPosition) {
-                            errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition(79 - 10, 10) + '\n';
-                        } else {
+                        if (typeof lexer.yylineno === 'number') {
                             errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                        } else {
+                            errStr = 'Parse error: ';
+                        }
+                        if (lexer.showPosition) {
+                            errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
                         }
                         if (expected.length) {
                             errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
@@ -5829,7 +5851,7 @@ parser.parse = function parse(input, parseParams) {
                         yyleng = lexer.yyleng;
                         yytext = lexer.yytext;
                         yylineno = lexer.yylineno;
-                        yyloc = lexer.yylloc;
+                        yyloc = lexer.yylloc || {};
 
                         symbol = lex(parseParams);
 
@@ -5865,10 +5887,13 @@ parser.parse = function parse(input, parseParams) {
                     var expected = this.collect_expected_token_set(state);
 
                     // Report error
-                    if (lexer.showPosition) {
-                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition() + '\n';
-                    } else {
+                    if (typeof lexer.yylineno === 'number') {
                         errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                    } else {
+                        errStr = 'Parse error: ';
+                    }
+                    if (lexer.showPosition) {
+                        errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
                     }
                     if (expected.length) {
                         errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
@@ -5912,7 +5937,7 @@ parser.parse = function parse(input, parseParams) {
                 //this.shiftCount++;
                 stack[sp] = symbol;
                 vstack[sp] = lexer.yytext;
-                lstack[sp] = lexer.yylloc;
+                lstack[sp] = lexer.yylloc || {};
                 sstack[sp] = newState; // push state
                 ++sp;
                 symbol = 0;
@@ -5921,7 +5946,7 @@ parser.parse = function parse(input, parseParams) {
                     yyleng = lexer.yyleng;
                     yytext = lexer.yytext;
                     yylineno = lexer.yylineno;
-                    yyloc = lexer.yylloc;
+                    yyloc = lexer.yylloc || {};
 
                     if (recovering > 0) {
                         recovering--;
@@ -7127,6 +7152,7 @@ exports.transform = EBNF.transform;
  *
  *    parseError: function(str, hash, ExceptionClass),
  *    yyError: function(str, ...),
+ *    yyRecovering: function(),
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
@@ -7520,6 +7546,7 @@ var parser = {
     //   uses yylloc: ..................... false
     //   uses ParseError API: ............. false
     //   uses YYERROR: .................... false
+    //   uses YYRECOVERING: ............... false
     //   uses YYERROK: .................... false
     //   uses YYCLEARIN: .................. false
     //   tracks rule values: .............. true
@@ -7683,6 +7710,7 @@ __reentrant_call_depth: 0,      // INTERNAL USE ONLY
 __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
+//yyRecovering: 0,
 //yyErrOk: 0,
 //yyClearIn: 0,
 
@@ -9442,21 +9470,10 @@ parse: function parse(input) {
 
 
 
-
-
-
     vstack[sp] = null;
     sstack[sp] = 0;
     stack[sp] = 0;
     ++sp;
-
-    if (typeof lexer.yytext === 'undefined') {
-        lexer.yytext = '';
-    }
-
-    if (typeof lexer.yylineno === 'undefined') {
-        lexer.yylineno = 0;
-    }
 
 
     // Does the shared state override the default `parseError` that already comes with this instance?
@@ -9715,10 +9732,13 @@ parse: function parse(input) {
 
                     if (!recovering) {
                         // Report error
-                        if (lexer.showPosition) {
-                            errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition(79 - 10, 10) + '\n';
-                        } else {
+                        if (typeof lexer.yylineno === 'number') {
                             errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                        } else {
+                            errStr = 'Parse error: ';
+                        }
+                        if (lexer.showPosition) {
+                            errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
                         }
                         if (expected.length) {
                             errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
@@ -11948,6 +11968,7 @@ module.exports={
  *
  *    parseError: function(str, hash, ExceptionClass),
  *    yyError: function(str, ...),
+ *    yyRecovering: function(),
  *    yyErrOk: function(),
  *    yyClearIn: function(),
  *
@@ -12341,6 +12362,7 @@ var parser = {
     //   uses yylloc: ..................... false
     //   uses ParseError API: ............. false
     //   uses YYERROR: .................... false
+    //   uses YYRECOVERING: ............... false
     //   uses YYERROK: .................... false
     //   uses YYCLEARIN: .................. false
     //   tracks rule values: .............. true
@@ -12512,6 +12534,7 @@ __reentrant_call_depth: 0,      // INTERNAL USE ONLY
 __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
+//yyRecovering: 0,
 //yyErrOk: 0,
 //yyClearIn: 0,
 
@@ -14324,23 +14347,13 @@ parse: function parse(input) {
 
     lexer.setInput(input, sharedState_yy);
 
-    if (typeof lexer.yylloc === 'undefined') {
-        lexer.yylloc = {};
-    }
-    var yyloc = lexer.yylloc;
+    var yyloc = lexer.yylloc || {};
     lstack[sp] = yyloc;
     vstack[sp] = null;
     sstack[sp] = 0;
     stack[sp] = 0;
     ++sp;
 
-    if (typeof lexer.yytext === 'undefined') {
-        lexer.yytext = '';
-    }
-
-    if (typeof lexer.yylineno === 'undefined') {
-        lexer.yylineno = 0;
-    }
 
 
 
@@ -14439,7 +14452,7 @@ parse: function parse(input) {
             token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
-            loc: lexer.yylloc,
+            loc: lexer.yylloc || {},
             expected: expected,
             recoverable: recoverable,
             state: state,
@@ -14603,10 +14616,13 @@ parse: function parse(input) {
 
                     if (!recovering) {
                         // Report error
-                        if (lexer.showPosition) {
-                            errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ':\n' + lexer.showPosition(79 - 10, 10) + '\n';
-                        } else {
+                        if (typeof lexer.yylineno === 'number') {
                             errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                        } else {
+                            errStr = 'Parse error: ';
+                        }
+                        if (lexer.showPosition) {
+                            errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
                         }
                         if (expected.length) {
                             errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
@@ -14643,7 +14659,7 @@ parse: function parse(input) {
 
 
 
-                        yyloc = lexer.yylloc;
+                        yyloc = lexer.yylloc || {};
 
                         symbol = lex();
 
@@ -14701,7 +14717,7 @@ parse: function parse(input) {
                 //this.shiftCount++;
                 stack[sp] = symbol;
                 vstack[sp] = lexer.yytext;
-                lstack[sp] = lexer.yylloc;
+                lstack[sp] = lexer.yylloc || {};
                 sstack[sp] = newState; // push state
                 ++sp;
                 symbol = 0;
@@ -14710,7 +14726,7 @@ parse: function parse(input) {
 
 
 
-                    yyloc = lexer.yylloc;
+                    yyloc = lexer.yylloc || {};
 
                     if (recovering > 0) {
                         recovering--;
@@ -16726,7 +16742,9 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         active_conditions,
         rules = dict.rules,
         newRules = [],
-        macros = {};
+        macros = {},
+        regular_rule_count = 0,
+        simple_rule_count = 0;
 
     // Assure all options are camelCased:
     assert(typeof opts.options['case-insensitive'] === 'undefined');
@@ -16831,8 +16849,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         // always append `break;` even when it would be obvious to a human that such would be 'unreachable code'.
         var match_nr = /^return[\s\r\n]+((?:'(?:\\'|[^']+)+')|(?:"(?:\\"|[^"]+)+")|\d+)[\s\r\n]*;?$/.exec(action.trim());
         if (match_nr) {
+            simple_rule_count++;
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
+            regular_rule_count++;
             actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
     }
@@ -16842,7 +16862,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
 
     return {
         rules: newRules,
-        macros: macros
+        macros: macros,
+
+        regular_rule_count: regular_rule_count,
+        simple_rule_count: simple_rule_count,
     };
 }
 
@@ -17428,7 +17451,10 @@ function buildActions(dict, tokens, opts) {
         actions: expandParseArguments('function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START, parseParams) {\n', opts) + fun + '\n}',
 
         rules: gen.rules,
-        macros: gen.macros                   // propagate these for debugging/diagnostic purposes
+        macros: gen.macros,                   // propagate these for debugging/diagnostic purposes
+
+        regular_rule_count: gen.regular_rule_count,
+        simple_rule_count: gen.simple_rule_count,
     };
 }
 
@@ -17517,6 +17543,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
     function test_me(tweak_cb, description, src_exception, ex_callback) {
         opts = processGrammar(dict, tokens, build_options);
         opts.__in_rules_failure_analysis_mode__ = false;
+        assert(opts.options);
         if (tweak_cb) {
             tweak_cb();
         }
@@ -18426,23 +18453,23 @@ function processGrammar(dict, tokens, build_options) {
     //
     // (this stuff comes straight from the jison Optimization Analysis.)
     //
-    opts.actionsAreAllDefault = build_options.actionsAreAllDefault;
-    opts.actionsUseYYLENG = build_options.actionsUseYYLENG;
-    opts.actionsUseYYLINENO = build_options.actionsUseYYLINENO;
-    opts.actionsUseYYTEXT = build_options.actionsUseYYTEXT;
-    opts.actionsUseYYLOC = build_options.actionsUseYYLOC;
-    opts.actionsUseParseError = build_options.actionsUseParseError;
-    opts.actionsUseYYERROR = build_options.actionsUseYYERROR;
-    opts.actionsUseYYERROK = build_options.actionsUseYYERROK;
-    opts.actionsUseYYCLEARIN = build_options.actionsUseYYCLEARIN;
-    opts.actionsUseValueTracking = build_options.actionsUseValueTracking;
-    opts.actionsUseValueAssignment = build_options.actionsUseValueAssignment;
-    opts.actionsUseLocationTracking = build_options.actionsUseLocationTracking;
-    opts.actionsUseLocationAssignment = build_options.actionsUseLocationAssignment;
-    opts.actionsUseYYSTACK = build_options.actionsUseYYSTACK;
-    opts.actionsUseYYSSTACK = build_options.actionsUseYYSSTACK;
-    opts.actionsUseYYSTACKPOINTER = build_options.actionsUseYYSTACKPOINTER;
-    opts.hasErrorRecovery = build_options.hasErrorRecovery;
+    opts.parseActionsAreAllDefault = build_options.parseActionsAreAllDefault;
+    opts.parseActionsUseYYLENG = build_options.parseActionsUseYYLENG;
+    opts.parseActionsUseYYLINENO = build_options.parseActionsUseYYLINENO;
+    opts.parseActionsUseYYTEXT = build_options.parseActionsUseYYTEXT;
+    opts.parseActionsUseYYLOC = build_options.parseActionsUseYYLOC;
+    opts.parseActionsUseParseError = build_options.parseActionsUseParseError;
+    opts.parseActionsUseYYERROR = build_options.parseActionsUseYYERROR;
+    opts.parseActionsUseYYERROK = build_options.parseActionsUseYYERROK;
+    opts.parseActionsUseYYCLEARIN = build_options.parseActionsUseYYCLEARIN;
+    opts.parseActionsUseValueTracking = build_options.parseActionsUseValueTracking;
+    opts.parseActionsUseValueAssignment = build_options.parseActionsUseValueAssignment;
+    opts.parseActionsUseLocationTracking = build_options.parseActionsUseLocationTracking;
+    opts.parseActionsUseLocationAssignment = build_options.parseActionsUseLocationAssignment;
+    opts.parseActionsUseYYSTACK = build_options.parseActionsUseYYSTACK;
+    opts.parseActionsUseYYSSTACK = build_options.parseActionsUseYYSSTACK;
+    opts.parseActionsUseYYSTACKPOINTER = build_options.parseActionsUseYYSTACKPOINTER;
+    opts.parserHasErrorRecovery = build_options.parserHasErrorRecovery;
 
     dict = autodetectAndConvertToJSONformat(dict, build_options) || {};
 
@@ -18450,6 +18477,7 @@ function processGrammar(dict, tokens, build_options) {
     // (for use by our error diagnostic assistance code)
     opts.lex_rule_dictionary = dict;
 
+    // Always provide the lexer with an options object, even if it's empty!
     // Make sure to camelCase all options:
     opts.options = mkStdOptions(build_options, dict.options);
 
@@ -18548,23 +18576,23 @@ function generateModuleBody(opt) {
           backtrack_lexer: 0,
           caseInsensitive: 0,
           showSource: 1,
-          actionsAreAllDefault: 1,
-          actionsUseYYLENG: 1,
-          actionsUseYYLINENO: 1,
-          actionsUseYYTEXT: 1,
-          actionsUseYYLOC: 1,
-          actionsUseParseError: 1,
-          actionsUseYYERROR: 1,
-          actionsUseYYERROK: 1,
-          actionsUseYYCLEARIN: 1,
-          actionsUseValueTracking: 1,
-          actionsUseValueAssignment: 1,
-          actionsUseLocationTracking: 1,
-          actionsUseLocationAssignment: 1,
-          actionsUseYYSTACK: 1,
-          actionsUseYYSSTACK: 1,
-          actionsUseYYSTACKPOINTER: 1,
-          hasErrorRecovery: 1,
+          parseActionsAreAllDefault: 1,
+          parseActionsUseYYLENG: 1,
+          parseActionsUseYYLINENO: 1,
+          parseActionsUseYYTEXT: 1,
+          parseActionsUseYYLOC: 1,
+          parseActionsUseParseError: 1,
+          parseActionsUseYYERROR: 1,
+          parseActionsUseYYERROK: 1,
+          parseActionsUseYYCLEARIN: 1,
+          parseActionsUseValueTracking: 1,
+          parseActionsUseValueAssignment: 1,
+          parseActionsUseLocationTracking: 1,
+          parseActionsUseLocationAssignment: 1,
+          parseActionsUseYYSTACK: 1,
+          parseActionsUseYYSSTACK: 1,
+          parseActionsUseYYSTACKPOINTER: 1,
+          parserHasErrorRecovery: 1,
         };
         for (var k in opts) {
             if (!do_not_pass[k] && opts[k] != null && opts[k] !== false) {
@@ -18612,13 +18640,13 @@ var lexer = {
     //   location.ranges:     ${opt.options.ranges}
     //
     // Forwarded Parser Analysis flags:
-    //   uses yyleng:         ${opt.actionsUseYYLENG}
-    //   uses yylineno:       ${opt.actionsUseYYLINENO}
-    //   uses yytext:         ${opt.actionsUseYYTEXT}
-    //   uses yylloc:         ${opt.actionsUseYYLOC}
-    //   uses lexer values:   ${opt.actionsUseValueTracking} / ${opt.actionsUseValueAssignment}
-    //   location tracking:   ${opt.actionsUseLocationTracking}
-    //   location assignment: ${opt.actionsUseLocationAssignment}
+    //   uses yyleng:         ${opt.parseActionsUseYYLENG}
+    //   uses yylineno:       ${opt.parseActionsUseYYLINENO}
+    //   uses yytext:         ${opt.parseActionsUseYYTEXT}
+    //   uses yylloc:         ${opt.parseActionsUseYYLOC}
+    //   uses lexer values:   ${opt.parseActionsUseValueTracking} / ${opt.parseActionsUseValueAssignment}
+    //   location tracking:   ${opt.parseActionsUseLocationTracking}
+    //   location assignment: ${opt.parseActionsUseLocationAssignment}
     //
     // --------- END OF REPORT -----------
 
@@ -18634,15 +18662,11 @@ var lexer = {
         protosrc = stripUnusedLexerCode(protosrc, opt);
         out += protosrc + ',\n';
 
-        if (opt.options) {
-            // Assure all options are camelCased:
-            assert(typeof opt.options['case-insensitive'] === 'undefined');
+        assert(opt.options);
+        // Assure all options are camelCased:
+        assert(typeof opt.options['case-insensitive'] === 'undefined');
 
-            out += '    options: ' + produceOptions(opt.options);
-        } else {
-            // always provide the lexer with an options object, even if it's empty!
-            out += '    options: {}';
-        }
+        out += '    options: ' + produceOptions(opt.options);
 
         out += ',\n    JisonLexerError: JisonLexerError';
         out += ',\n    performAction: ' + String(opt.performAction);
@@ -22133,7 +22157,8 @@ var lexer = {
         var token,
             lines,
             backup,
-            match_str;
+            match_str,
+            match_str_len;
 
         if (this.options.backtrack_lexer) {
             // save context
@@ -22163,6 +22188,7 @@ var lexer = {
         }
 
         match_str = match[0];
+        match_str_len = match_str.length;
         // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
             lines = match_str.match(/(?:\r\n?|\n).*/g);
             if (lines) {
@@ -22175,7 +22201,7 @@ var lexer = {
             first_column: this.yylloc.last_column,
             last_column: lines ?
                          lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
-                         this.yylloc.last_column + match_str.length
+                         this.yylloc.last_column + match_str_len
         };
         this.yytext += match_str;
         this.match += match_str;
@@ -22187,10 +22213,10 @@ var lexer = {
         // previous lex rules MAY have invoked the `more()` API rather than producing a token:
         // those rules will already have moved this `offset` forward matching their match lengths,
         // hence we must only add our own match length now:
-        this.offset += match_str.length;
+        this.offset += match_str_len;
         this._more = false;
         this._backtrack = false;
-        this._input = this._input.slice(match_str.length);
+        this._input = this._input.slice(match_str_len);
         this.matched += match_str;
 
         // calling this method:
