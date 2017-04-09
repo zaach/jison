@@ -50,6 +50,7 @@ const defaultJisonOptions = {
     file: undefined,
     outfile: undefined,
     inputPath: undefined,
+    inputFilename: undefined,
     lexfile: undefined,
     warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
@@ -551,6 +552,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
     var inpath = options.file || options.outfile || './dummy';
     inpath = path.normalize(inpath);
     options.inputPath = path.dirname(inpath);
+    options.inputFilename = path.basename(inpath);
 
     // source included in semantic action execution scope
     if (grammar.actionInclude) {
@@ -607,6 +609,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             file: this.options.file,
             outfile: this.options.outfile,
             inputPath: this.options.inputPath,
+            inputFilename: this.options.inputFilename,
             warn_cb: this.options.warn_cb,
             parseParams: this.options.parseParams,
             xregexp: this.options.xregexp,
@@ -3352,7 +3355,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
         // remove:
         //
-        //     r = this.performAction.call(yyval, ...
+        //     r = this.performAction.call(yyval, ...);
         //
         //     if (typeof r !== 'undefined') {
         //         retval = r;
@@ -3361,7 +3364,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //
 
         parseFn = parseFn
-        .replace(/\s+r = this\.performAction\.call[^}]+\}/g, '');
+        .replace(/\s+r = this\.performAction\.call[^)]+\)\;/g, '')
+        .replace(/\s+if \(typeof r !== 'undefined'\) \{[^}]+\}/g, '');
     }
 
     if (!info.actionsUseYYTEXT) {
@@ -4219,6 +4223,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           file: 1,
           outfile: 1,
           inputPath: 1,
+          inputFilename: 1,
           lexfile: 1,
           defaultModuleName: 1,
           moduleName: 1,
@@ -5209,7 +5214,45 @@ var parser = typal.beget();
 generatorMixin.createParser = function createParser() {
     var sourcecode = this.generateModuleExpr();
     //console.warn('generated code:\n', sourcecode);
-    var p = eval(sourcecode);
+    var p;
+    try {
+        p = eval(sourcecode);
+    } catch (ex) {
+        console.error("generated source code fatal error: ", ex.message);
+        try {
+            var fs = require('fs');
+            var path = require('path');
+            var dumpPath = (this.options.outfile ? path.dirname(this.options.outfile) : null) || this.options.inputPath || process.cwd();
+            var dumpName = this.options.inputFilename || this.options.moduleName || this.options.defaultModuleName;
+            var ts = new Date();
+            function pad(n, p) {
+                p = p || 2;
+                var rv = '0000' + n;
+                return rv.slice(-p);
+            }
+            var tm = ts.getUTCFullYear() +
+                '_' + pad(ts.getUTCMonth() + 1) +
+                '_' + pad(ts.getUTCDate()) +
+                'T' + pad(ts.getUTCHours()) +
+                '' + pad(ts.getUTCMinutes()) +
+                '' + pad(ts.getUTCSeconds()) +
+                '.' + pad(ts.getUTCMilliseconds(), 3) +
+                'Z';
+            var dumpfile = dumpPath + '/' + dumpName + '.fatal_dump_' + tm + '.js';
+            console.error("****** offending source code dumped into file: ", {
+                dumpfile: dumpfile,
+                normalized: path.normalize(dumpfile),
+                dirname: __dirname,
+                cwd: process.cwd(),
+                inputPath: this.options.inputPath,
+                outputPath: this.options.outfile,
+            });
+            fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+        } catch (ex2) {
+            console.error("generated source code fatal DUMPING error: ", ex2.message, ex2.stack);
+        }
+        throw ex;
+    }
 
     // for debugging
     p.productions = this.productions;
