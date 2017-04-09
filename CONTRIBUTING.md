@@ -3,11 +3,19 @@ Contributing to Jison
 
 Fork, make your changes, run tests and/or add tests then send a pull request.
 
-## Required tools for Development 
+## Required tools for Development
 
 - NodeJS
 - NPM
 - GNU make  (make sure you can run the `make` command from your (bash) shell command line)
+
+When you are working on the Microsoft Windows OS, you can obtain the prerequisite tools
+by installing Git-for-Windows **and its Developer SDK**
+(as only the latter includes *GNU make*, for example, at the time of writing: April 2017):
+
+- [Git-for-Windows](https://git-for-windows.github.io/)
+- [Git-fo-Windows Developer SDK](https://github.com/git-for-windows/build-extra/releases/latest)
+
 
 ## Installing
 
@@ -25,6 +33,7 @@ The next step would be to install the required NPM packages for all modules. `ma
 $ make prep
 ```
 
+
 ## Building the app
 
 Simply run `make`; this includes running the unit tests for every module as the app is assembled:
@@ -33,6 +42,7 @@ Simply run `make`; this includes running the unit tests for every module as the 
 $ make
 ```
 
+
 ## Running tests
 
 Then run tests with:
@@ -40,17 +50,27 @@ Then run tests with:
     make test
 
 
+
 ## Building the site
 
 To build the site, as well as the Browserified web version of Jison, run:
 
     make site
-    
+
 Then you can also preview the site by doing:
 
     make preview
-    
+
 Note that you will need `nanoc` and `adsf` in order to build/preview the site. `gem install` them if you haven't.
+
+> ### Note
+>
+> The `make site` build command will print a WARNING message when `nanoc` is not available,
+> but WILL NOT fail the `site` build task. This behaviour has been specifically chosen to
+> allow (pre)release build runs to complete and deliver a new jison revision when everything
+> but the web pages has compiled successfully.
+>
+
 
 ## Building a new (beta-)release
 
@@ -62,7 +82,7 @@ which will patch all `package.json` files.
 
 You can now run
 
-    make 
+    make
     make site
 
 to build all files, but when you want to be absolute sure and/or need to update some of the core files using your latest jison compiler, then push jison and all its submodules to github and run
@@ -83,7 +103,19 @@ When you are happy with the result, you can apply the new (previously bumped) ve
 
 	make git-tag
 
+
+### Doing all this in one go
+
+You can accomplish all the above (and a few other cleanups and checks along the way) by invoking
+the bash shell script:
+
+```
+./git-tag-and-bump-and-rebuild.sh
+```
+
+
 ---
+
 
 ## TL;DR
 

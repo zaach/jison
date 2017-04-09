@@ -16,24 +16,30 @@ zz          return 'ZZ';
 ";"         return ';';
 "("         return '(';
 ")"         return ')';
-\n          return '\n';
-\s+         // ignore
+[\r\n\s]+   // ignore
 <<EOF>>     return 'EOF';
 
 /lex
 
 
 
+
+
 /*
  * The long wait
  * -------------
- * 
+ *
  * Consider this grammar:
  *
  */
 
 
-%token YY ZZ 
+%token YY ZZ
+
+%options debug=0
+         output-debug-tables=0
+         no-default-action=1
+
 
 %%
 
@@ -44,14 +50,14 @@ slist : slist stmt ';' { console.log("stmt\n"); }
 stmt  :  ZZ
       | '(' stmt ')'
       | '(' error ')'
-      ; 
+      ;
 
-%% 
+%%
 
 
 /*
  * and this input:
- * 
+ *
  *      zz ;
  *      ( zz ) ;
  *      ( zz ;
@@ -59,7 +65,7 @@ stmt  :  ZZ
  *      zz ;
  *      zz );
  *      zz ;
- * 
+ *
  * you get this result:
  *
  * Starting parse
@@ -79,8 +85,8 @@ stmt  :  ZZ
  * Shifting token 40 ('('), Entering state 2
  * Reading a token: Next token is 258 (ZZ)
  * Shifting token 258 (ZZ), Entering state 1
- * Reducing via rule 3 (line 32), ZZ  -> stmt 
- * state stack now 0 3 2 
+ * Reducing via rule 3 (line 32), ZZ  -> stmt
+ * state stack now 0 3 2
  * Entering state 6
  * Reading a token: Next token is 41 (')')
  * Shifting token 41 (')'), Entering state 10
@@ -88,7 +94,7 @@ stmt  :  ZZ
  * state stack now 0 3
  * Entering state 7
  * Reading a token: Next token is 59 (';')
- * Shifting token 59 (';'), Entering state 11 
+ * Shifting token 59 (';'), Entering state 11
  * Reducing via rule 1 (line 28), slist stmt ';'  -> slist
  * stmt
  * state stack now 0
@@ -99,29 +105,29 @@ stmt  :  ZZ
  * Shifting token 258 (ZZ), Entering state 1
  * Reducing via rule 3 (line 32), ZZ  -> stmt
  * state stack now 0 3 2
- * Entering state 6 
+ * Entering state 6
  * Reading a token: Next token is 59 (';')
  * ERROR lineno(1):parse error, expecting `')''.  I got: ;
- * Error: state stack now 0 3 2 
- * Shifting error token, Entering state 5 <--- SHIFT ERROR TOKEN AND WAIT FOR ')' 
+ * Error: state stack now 0 3 2
+ * Shifting error token, Entering state 5 <--- SHIFT ERROR TOKEN AND WAIT FOR ')'
  * Next token is 59 (';')
  * Discarding token 59 (';').
  * Error: state stack now 0 3 2
  * Shifting error token, Entering state 5
  * Reading a token: Next token is 258 (ZZ)
  * Discarding token 258 (ZZ).
- * Error: state stack now 0 3 2 
- * Shifting error token, Entering state 5 
+ * Error: state stack now 0 3 2
+ * Shifting error token, Entering state 5
  * Reading a token: Next token is 59 (';')
  * Discarding token 59 (';').
  * Error: state stack now 0 3 2
- * Shifting error token, Entering state 5 
+ * Shifting error token, Entering state 5
  * Reading a token: Next token is 258 (ZZ)
  * Discarding token 258 (ZZ).
- * Error: state stack now 0 3 2 
+ * Error: state stack now 0 3 2
  * Shifting error token, Entering state 5
  * Reading a token: Next token is 59 (';')
- * Discarding token 59 (';'). 
+ * Discarding token 59 (';').
  * Error: state stack now 0 3 2
  * Shifting error token, Entering state 5
  * Reading a token: Next token is 258 (ZZ)
@@ -130,8 +136,8 @@ stmt  :  ZZ
  * Shifting error token, Entering state 5
  * Reading a token: Next token is 41 (')')
  * Shifting token 41 (')'), Entering state 9
- * Reducing via rule 5 (line 34), '(' error ')'  -> stmt 
- * state stack now 0 3 
+ * Reducing via rule 5 (line 34), '(' error ')'  -> stmt
+ * state stack now 0 3
  * Entering state 7
  * Reading a token: Next token is 59 (';')
  * Shifting token 59 (';'), Entering state 11
@@ -141,7 +147,7 @@ stmt  :  ZZ
  * Entering state 3
  * Reading a token: Next token is 258 (ZZ)
  * Shifting token 258 (ZZ), Entering state 1
- * Reducing via rule 3 (line 32), ZZ  -> stmt 
+ * Reducing via rule 3 (line 32), ZZ  -> stmt
  * state stack now 0 3
  * Entering state 7
  * Reading a token: Next token is 59 (';')
@@ -160,7 +166,7 @@ stmt  :  ZZ
  *
  * Insufficient coverage
  * ---------------------
- * 
+ *
  * If the input is now:
  *
  *      zz );
@@ -174,7 +180,7 @@ stmt  :  ZZ
  * Shifting token 258 (ZZ), Entering state 1
  * Reducing via rule 3 (line 32), ZZ  -> stmt
  * state stack now 0
- * Entering state 4 
+ * Entering state 4
  * Reading a token: Next token is 41 (')')
  * ERROR lineno(1):parse error, expecting `';''.  I got: )
  * Error: state stack now 0
@@ -182,11 +188,10 @@ stmt  :  ZZ
  *
  * The error on the closing parenthesis is the last thing the parser does.
  *
- *
  */
 
 
 /*
- * Continued in error-handling-and-yyerrok-part4a.jison ... 
+ * Continued in error-handling-and-yyerrok-part4a.jison ...
  */
 

@@ -1,0 +1,25 @@
+{
+    "root": "book-using-jison-beyond-the-basics",
+    "title": "Using JISON - Beyond the Basics",
+    "description": "Following a quick basic introduction on LR/LALR grammar design and compilation using YACC/BISON-like tools such as JISON, this book addresses advanced topics in LALR and LR grammar construction available when using JISON",
+    "author": "Ger Hobbelt",
+
+    "plugins": [ "theme-api" ],
+    "pluginsConfig": {
+        "theme-api": {
+            "languages": [
+                {
+                    "lang": "js",
+                    "name": "JavaScript",
+                    "default": true
+                },
+                {
+                    "lang": "go",
+                    "name": "Go"
+                }
+            ]
+        }
+    },
+
+    "pdf.paperSize": "a4"
+}

@@ -1,11 +1,13 @@
 /*
  * From:
- *   
+ *
  * Error recognition actions
  *
  * z/OS UNIX System Services Programming Tools
- * SA22-7805-08 
+ * SA22-7805-08
  */
+
+
 
 
 
@@ -23,45 +25,53 @@ C           return 'C';
 
 
 
+
+
+%options debug=0
+         output-debug-tables=0
+         no-default-action=1
+
+
 %%
 
 
 
 start : lines
-    ;
+      ;
 
 lines : lines line
-    | '\n'
-    | /* */
-    ;
+      | '\n'
+      | %epsilon
+      ;
 
 
 /*
  * The easiest way to generate an error message is to associate a
  * recognition action with the grammar rule that recognizes the error.
  * You can do something simple:
- * 
+ *
  *     statement : error
  *         {
  *             console.log("You made an error!\n");
  *         }
  *     ;
- * 
+ *
  * or you can be fancier:
  */
 
 line : error '\n' prompt line
         { $$ = $4; }
-    | A '\n'
-    ;
+      | A '\n'
+      ;
 
-prompt : /* null token */
+prompt 
+      : %epsilon
         { console.log("Please reenter line.\n"); }
-    ;
+      ;
 
 /*
- * If an error occurs, the parser skips until it finds a newline character. 
- * After the newline, it always finds a null token matching prompt, 
+ * If an error occurs, the parser skips until it finds a newline character.
+ * After the newline, it always finds a null token matching prompt,
  * and the recognition action for prompt displays the message:
  *
  *      Please reenter line.
@@ -86,8 +96,8 @@ prompt : /* null token */
  * parenthesization. Why? Once an error occurs, the rule:
  *
  *      statement : error ';'
- * 
- * effectively tells the parser to discard absolutely everything until 
+ *
+ * effectively tells the parser to discard absolutely everything until
  * it finds a semicolon character. If you have a parser for C, for example, it would
  * skip over important characters such as ) or } until
  * it found a semicolon. Your parentheses and braces would be out of
@@ -101,12 +111,11 @@ prompt : /* null token */
  *     statement : error
  *          | ';'
  *          | // other stuff //
- * 
+ *
  * In this case, the error token
  * matches material only until the parser finds something else it recognizes
  * (for example, the semicolon). After this happens, the error state
  * is reduced to a statement symbol and popped off the stack.
  * Parsing can then proceed as usual.
  */
-
 

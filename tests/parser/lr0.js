@@ -1,6 +1,7 @@
-var Jison = require("../setup").Jison,
-    Lexer = require("../setup").Lexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var Lexer = require("../setup").Lexer;
+
 
 var lexData = {
     rules: [
@@ -9,7 +10,9 @@ var lexData = {
     ]
 };
 
-exports["test left-recursive nullable grammar"] = function () {
+
+describe("LR(0)", function () {
+  it("test left-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -25,10 +28,12 @@ exports["test left-recursive nullable grammar"] = function () {
 
     assert.ok(parser.parse('xxx'), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
-    assert.throws(function () {parser.parse("y")},  "throws parse error on invalid token");
-};
+    assert.throws(function () {
+      parser.parse("y");
+    }, Error, /JisonParserError:[^]*?got unexpected y/);
+  });
 
-exports["test right-recursive nullable grammar"] = function () {
+  it("test right-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -43,9 +48,9 @@ exports["test right-recursive nullable grammar"] = function () {
 
     assert.ok(gen.table.length == 4, "table has 4 states");
     assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
-};
+  });
 
-exports["test 0+0 grammar"] = function () {
+  it("test 0+0 grammar", function () {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -68,5 +73,8 @@ exports["test 0+0 grammar"] = function () {
     assert.ok(parser.parse("0+0+0"), "parse");
     assert.ok(parser.parse("0"), "parse single 0");
 
-    assert.throws(function () {parser.parse("+")}, "throws parse error on invalid");
-};
+    assert.throws(function () {
+      parser.parse("+");
+    }, Error, /JisonParserError:[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
+  });
+});

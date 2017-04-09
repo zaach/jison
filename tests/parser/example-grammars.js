@@ -1,9 +1,9 @@
+var assert = require("chai").assert;
 var Jison = require('../setup').Jison;
 var Lexer = require('../setup').Lexer;
 var glob = require('glob');
 var fs = require('fs');
 var path = require('path');
-var assert = require('assert');
 
 
 var lexData = {
@@ -204,53 +204,56 @@ testset = testset.sort().map(function (filepath) {
 
 var original_cwd = process.cwd();
 
-testset.forEach(function (filespec) {
-  // process this file:
-  exports['test example: ' + filespec.path.replace(/^.*?\/examples\//, '')] = function test_one_example_grammar_now() {
-    var grammar = fs.readFileSync(filespec.path, 'utf8');
 
-    // Change CWD to the directory where the source grammar resides: this helps us properly
-    // %include any files mentioned in the grammar with relative paths:
-    var new_cwd = path.dirname(path.normalize(filespec.path));
-    process.chdir(new_cwd);
+describe("Example/Test Grammars", function () {
+  testset.forEach(function (filespec) {
+    // process this file:
+    it('test example: ' + filespec.path.replace(/^.*?\/examples\//, ''), function test_one_example_grammar_now() {
+      var grammar = fs.readFileSync(filespec.path, 'utf8');
 
-    var options = {};
-    for (var k in filespec) {
-      if (k !== 'path' && k !== 'inputs' && k !== '__check__' && k !== 'exportAllTables') {
-        options[k] = filespec[k];
+      // Change CWD to the directory where the source grammar resides: this helps us properly
+      // %include any files mentioned in the grammar with relative paths:
+      var new_cwd = path.dirname(path.normalize(filespec.path));
+      process.chdir(new_cwd);
+
+      var options = {};
+      for (var k in filespec) {
+        if (k !== 'path' && k !== 'inputs' && k !== '__check__' && k !== 'exportAllTables') {
+          options[k] = filespec[k];
+        }
+        if (k === 'exportAllTables') {
+          options.exportAllTables = {};
+        }
       }
-      if (k === 'exportAllTables') {
-        options.exportAllTables = {};
+      var parser = new Jison.Parser(grammar, options);
+      var rv;
+
+      // and change back to the CWD we started out with:
+      process.chdir(original_cwd);
+
+      if (filespec.__ignore__) {
+        return;
       }
-    }
-    var parser = new Jison.Parser(grammar, options);
-    var rv;
 
-    // and change back to the CWD we started out with:
-    process.chdir(original_cwd);
-
-    if (filespec.__ignore__) {
-      return;
-    }
-
-    if (typeof parser.main === 'function') {
-      assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
-    } else if (filespec.inputs) {
-      for (var i = 0, l = filespec.inputs.length; i < l; i++) {
-        rv = parser.parse(filespec.inputs[i]);
-        // console.log('parse: ', filespec.inputs[i], rv);
-        assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
+      if (typeof parser.main === 'function') {
+        assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
+      } else if (filespec.inputs) {
+        for (var i = 0, l = filespec.inputs.length; i < l; i++) {
+          rv = parser.parse(filespec.inputs[i]);
+          console.log('parse A: ', filespec.inputs[i], rv);
+          assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
+        }
+      } else {
+        rv = parser.parse('zz; yy; zz;zz ;');
+        console.log('parse B: ', path.basename(filespec.path), rv);
+        assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
       }
-    } else {
-      rv = parser.parse('zz; yy; zz;zz ;');
-      // console.log('parse: ', filespec, rv);
-      assert.ok(rv === true, 'parser.parse() is supposed to produce TRUE');
-    }
 
-    if (filespec.__check__) {
-      filespec.__check__(parser, filespec, rv, options.exportAllTables);
-    }
-  };
+      if (filespec.__check__) {
+        filespec.__check__(parser, filespec, rv, options.exportAllTables);
+      }
+    });
+  });
 });
 
 

@@ -1,8 +1,10 @@
-var Jison = require("../setup").Jison,
-    Lexer = require("../setup").Lexer,
-    assert = require("assert");
+var assert = require("chai").assert;
+var Jison = require("../setup").Jison;
+var Lexer = require("../setup").Lexer;
 
-exports["test error caught"] = function () {
+
+describe("Error Recovery/Handling", function () {
+  it("test error caught", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -23,9 +25,9 @@ exports["test error caught"] = function () {
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xxy'), "should parse");
     assert.equal(parser.parse('xyg'), "caught", "should return 'caught'");
-};
+  });
 
-exports["test error recovery"] = function () {
+  it("test error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -45,9 +47,9 @@ exports["test error recovery"] = function () {
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
     assert.equal(parser.parse('xxgy'), "recovery", "should return 'recovery'");
-};
+  });
 
-exports["test deep error recovery"] = function () {
+  it("test deep error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -71,9 +73,9 @@ exports["test deep error recovery"] = function () {
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('gxxx;'), "should parse");
     assert.equal(parser.parse('gxxg;'), "nested", "should return 'nested'");
-};
+  });
 
-exports["test no recovery"] = function () {
+  it("test no recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -91,10 +93,12 @@ exports["test no recovery"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert.throws(function () { parser.parse('xxgy'); }, "should throw");
-};
+    assert.throws(function () { 
+      parser.parse('xxgy'); 
+    }, Error, /JisonParserError:[^]*?got unexpected ERR/);
+  });
 
-exports["test error after error recovery"] = function () {
+  it("test error after error recovery", function () {
     var lexData = {
         rules: [
            ["x", "return 'x';"],
@@ -115,11 +119,13 @@ exports["test error after error recovery"] = function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
-    assert.throws(function () { parser.parse('gxxx;'); }, "should return bar");
-};
+    assert.throws(function () { 
+      parser.parse('gxxx;'); 
+    }, Error, /JisonParserError: Parsing halted while starting to recover from another error/);
+  });
 
 // WARNING: the actual test in here differs from what it says on the tin, as we differ from jison in error recovery behaviour in this regard:
-exports["test throws error despite recovery rule"] = function() {
+  it("test throws error despite recovery rule", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -146,9 +152,9 @@ exports["test throws error despite recovery rule"] = function() {
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
     assert.doesNotThrow(function () { parser.parse("0+0+0>"); });     // here we expect behaviour different from vanilla jison as our error recovery handling is a bit more sophisticated and this error is coped with
-};
+  });
 
-exports["test error recovery rule on replacement error"] = function() {
+  it("test error recovery rule on replacement error", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -195,9 +201,9 @@ exports["test error recovery rule on replacement error"] = function() {
     assert.deepEqual(parser.parse("0+0>+0"), expectedAST3, 'round 3');
     assert.deepEqual(parser.parse("0+>0+0"), expectedAST4, 'round 4');
     assert.deepEqual(parser.parse("0+>+0"), expectedAST5, 'round 5');
-};
+  });
 
-exports["test correct AST after error recovery abrupt end"] = function() {
+  it("test correct AST after error recovery abrupt end", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -224,10 +230,10 @@ exports["test correct AST after error recovery abrupt end"] = function() {
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
     assert.deepEqual(parser.parse("0+0+0"), expectedAST);
-};
+  });
 
 
-exports["test bison error recovery example"] = function() {
+  it("test bison error recovery example", function() {
     var lexData2 = {
         rules: [
            ["0", "return 'ZERO';"],
@@ -252,4 +258,125 @@ exports["test bison error recovery example"] = function() {
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0++++>;0;"), "should recover");
-};
+  });
+
+
+  it("test parse error exception class API", function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           [".", "return 'ERR';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "A" :['A x',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    parser.lexer = new Lexer(lexData);
+    try {
+      parser.parse('xxy'); // must fail with exception being thrown of specific type!
+      assert(false, "exception should have been thrown on parse error!");
+    } catch (ex) {
+      var JisonParserError = parser.JisonParserError;
+      assert(JisonParserError);
+
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonParserError);
+      assert(ex.hash);
+      assert(ex.message);
+
+      // test API
+      var t = new JisonParserError('test', 42);
+      assert(t instanceof Error);
+      assert(t instanceof JisonParserError);
+      assert(t.hash === 42);
+      assert(t.message === 'test');
+      assert(t.toString() === 'JisonParserError: test');
+
+      var t2 = new Error('a');
+      var t3 = new JisonParserError('test', { exception: t2 });
+      assert(t2 instanceof Error);
+      assert(!(t2 instanceof JisonParserError));
+      assert(t3 instanceof Error);
+      assert(t3 instanceof JisonParserError);
+      assert(!t2.hash);
+      assert(t3.hash);
+      assert(t3.hash.exception);
+      assert(t2.message === 'a');
+      assert(t3.message === 'a');
+      assert(t2.toString() === 'Error: a');
+      assert(t3.toString() === 'JisonParserError: a');
+
+    }                    
+  });
+
+  it("test lex error exception class API", function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "A" :['A x',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lr0"});
+    parser.lexer = new Lexer(lexData);
+    try {
+      parser.parse('xxy'); // must fail with exception being thrown of specific type!
+      assert(false, "exception should have been thrown on lex error!");
+    } catch (ex) {
+      var JisonParserError = parser.JisonParserError;
+      assert(JisonParserError);
+
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonParserError);
+      assert(ex.hash);
+      assert(ex.message);
+
+      assert(parser.lexer);
+      var JisonLexerError = parser.lexer.JisonLexerError;
+      assert(JisonLexerError);
+
+      var ex_l = ex.hash.exception;
+      assert(ex_l);
+      assert(ex_l instanceof Error);
+      assert(ex_l instanceof JisonLexerError);
+      assert(ex_l.hash);
+      assert(ex_l.message);
+
+
+      // test API
+      var t = new JisonLexerError('test', 42);
+      assert(t instanceof Error);
+      assert(t instanceof JisonLexerError);
+      assert(t.hash === 42);
+      assert(t.message === 'test');
+      assert(t.toString() === 'JisonLexerError: test');
+
+      var t2 = new Error('a');
+      var t3 = new JisonLexerError('test', { exception: t2 });
+      assert(t2 instanceof Error);
+      assert(!(t2 instanceof JisonLexerError));
+      assert(t3 instanceof Error);
+      assert(t3 instanceof JisonLexerError);
+      assert(!t2.hash);
+      assert(t3.hash);
+      assert(t3.hash.exception);
+      assert(t2.message === 'a');
+      assert(t3.message === 'a');
+      assert(t2.toString() === 'Error: a');
+      assert(t3.toString() === 'JisonLexerError: a');
+    }                    
+  });
+});
+
+
+

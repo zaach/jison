@@ -1,11 +1,15 @@
 
-all: build test examples/issue-293 examples/issue-254 examples/issue-289-BAD
+NANOC := $(shell command -v nanoc 2> /dev/null)
+
+
+all: build test examples-test
+
 
 prep: npm-install
 
 # `make site` will perform an extensive (re)build of the jison tool, all examples and the web pages.
 # Use `make compile-site` for a faster, if less complete, site rebuild action.
-site: build test web-examples web/content/assets/js/jison.js compile-site 
+site: build test examples-test web-examples web/content/assets/js/jison.js compile-site
 
 clean-site:
 	-@rm -rf web/tmp/
@@ -19,26 +23,35 @@ compile-site: web-examples web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
+ifndef NANOC
+	$(warning "*** nanoc is not available, please install ruby, gem and nanoc. ***")
+	$(warning "*** JISON website pages have NOT been updated!                  ***")
+else
 	cd web/ && nanoc compile
+endif
 
 web/content/assets/js/jison.js: build
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 
 preview:
+ifndef NANOC
+	$(error "nanoc is not available, please install ruby, gem and nanoc")
+else
 	cd web/ && nanoc view &
 	open http://localhost:3000/jison/
+endif
 
 # `make deploy` is `make site` plus GIT checkin of the result into the gh-pages branch
 deploy: site
 	git checkout gh-pages
 	cp -r web/output/jison/* ./
-	#git add . --all 
+	#git add . --all
 	git commit -m 'Deploy site updates'
 	git checkout master
 
 test:
-	node tests/all-tests.js
+	node_modules/.bin/mocha --recursive tests/
 
 web-examples: web/content/assets/js/calculator.js
 
@@ -50,6 +63,23 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 
 examples_directory: build
 	cd examples/ && make all
+
+
+examples-test: build
+	cd examples/ && make error-handling-tests basic-tests github-issue-tests misc-tests
+
+error-handling-tests: build
+	cd examples/ && make error-handling-tests
+
+basic-tests: build
+	cd examples/ && make basic-tests
+
+github-issue-tests: build
+	cd examples/ && make github-issue-tests
+
+misc-tests: build
+	cd examples/ && make misc-tests
+
 
 
 examples/ansic: build
@@ -193,17 +223,38 @@ examples/happyhappy: build
 examples/inherited_y: build
 	cd examples/ && make inherited_y
 
+examples/issue-205: build
+	cd examples/ && make issue-205
+
+examples/issue-205-2: build
+	cd examples/ && make issue-205-2
+
+examples/issue-205-3: build
+	cd examples/ && make issue-205-3
+
+examples/issue-205-4: build
+	cd examples/ && make issue-205-4
+
 examples/issue-254: build
 	cd examples/ && make issue-254
 
 examples/issue-289: build
 	cd examples/ && make issue-289
 
-examples/issue-289-BAD: build
-	cd examples/ && make issue-289-BAD
-
 examples/issue-293: build
 	cd examples/ && make issue-293
+
+examples/issue-342: build
+	cd examples/ && make issue-342
+
+examples/issue-344: build
+	cd examples/ && make issue-344
+
+examples/issue-344-2: build
+	cd examples/ && make issue-344-2
+
+examples/issue-348: build
+	cd examples/ && make issue-348
 
 examples/jscore: build
 	cd examples/ && make jscore
@@ -328,8 +379,8 @@ npm-install: submodules-npm-install
 	npm install
 
 JISON_DEPS = \
+	lib/util/regexp-set-management.js \
 	lib/util/regexp-lexer.js \
-	lib/util/package.json \
 	lib/util/ebnf-parser.js \
 	lib/util/ebnf-transform.js \
 	lib/util/transform-parser.js
@@ -348,27 +399,27 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  modules/ebnf-parser/node_modules/jison/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
+
+lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat modules/jison-lex/regexp-lexer.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
-
-lib/util/package.json: modules/jison-lex/package.json
-	cat modules/jison-lex/package.json > $@
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat modules/ebnf-parser/ebnf-parser.js | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
-	cat modules/ebnf-parser/ebnf-transform.js > $@
+	cat $< > $@
 
 lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
-	cat modules/ebnf-parser/transform-parser.js > $@
+	cat $< > $@
 
 
 submodules:
@@ -450,5 +501,5 @@ superclean: clean clean-site
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
 

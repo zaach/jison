@@ -85,13 +85,13 @@ f_b
     ;
 
 lb
-    : '('                       -> parser.trace('lb+PUSH:[(] '); yy.lexer.pushState('alt'); $$ = '(';
-    | BEGIN                     -> parser.trace('lb:[alt-(] '); $$ = '{';
+    : '('                       -> parser.trace('lb+PUSH:[(] ');                 yy.lexer.pushState('alt'); $$ = '(';
+    | BEGIN                     -> parser.trace('lb:[alt-(] ');                  $$ = '{';
     ;
 
 rb
     : ')'                       -> parser.trace('lb:[)] ');                      $$ = ')';
-    | END                       -> parser.trace('lb+POP:[alt-)] '); yy.lexer.popState(); $$ = '}';
+    | END                       -> parser.trace('lb+POP:[alt-)] ');              yy.lexer.popState(); $$ = '}';
     ;
 
 %%

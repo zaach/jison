@@ -4,9 +4,9 @@
     "email": "zach@carter.name",
     "url": "http://zaa.ch"
   },
-  "name": "jison",
-  "description": "A parser generator with Bison's API",
-  "version": "0.4.18-164",
+  "name": "jison-gho",
+  "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
+  "version": "0.4.18-178",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -22,11 +22,11 @@
   "preferGlobal": true,
   "repository": {
     "type": "git",
-    "url": "git://github.com/zaach/jison.git"
+    "url": "https://github.com/GerHobbelt/jison.git"
   },
   "bugs": {
     "email": "jison@librelist.com",
-    "url": "http://github.com/zaach/jison/issues"
+    "url": "http://github.com/GerHobbelt/jison/issues"
   },
   "main": "lib/jison",
   "bin": {
@@ -36,23 +36,24 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "ebnf-parser": "GerHobbelt/ebnf-parser#master",
-    "jison-lex": "GerHobbelt/jison-lex#master",
-    "lex-parser": "GerHobbelt/lex-parser#master",
-    "recast": "0.11.18",
+    "ebnf-parser": "github:GerHobbelt/ebnf-parser#master",
+    "jison-lex": "github:GerHobbelt/jison-lex#master",
+    "lex-parser": "github:GerHobbelt/lex-parser#master",
+    "recast": "0.12.3",
     "jscodeshift": "0.3.30",
     "json5": "0.5.1",
-    "nomnom": "GerHobbelt/nomnom#master",
-    "xregexp": "GerHobbelt/xregexp#master"
+    "nomnom": "github:GerHobbelt/nomnom#master",
+    "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": "13.1.1",
+    "browserify": "14.3.0",
     "glob": "7.1.1",
-    "test": "0.6.0",
-    "uglify-js": "2.7.5"
+    "uglify-js": "2.8.22",
+    "chai": "3.5.0",
+    "mocha": "3.2.0"
   },
   "scripts": {
-    "test": "node tests/all-tests.js"
+    "test": "make test"
   },
   "homepage": "http://jison.org"
 }

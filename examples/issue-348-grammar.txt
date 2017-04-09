@@ -1,0 +1,167 @@
+/* description: Declarative Kite MCMS Interface Parser */
+
+/* Some variables */
+%{
+var pendingToken;
+var isCorrect;
+var pointSpec;
+var scoreCriteria;
+var numCorrect;
+%}
+
+
+/* lexical grammar */
+%lex
+
+%%
+\s+                   /* skip whitespace */
+[a-zA-Z0-9.-]+        return 'STRING'
+[0-9]+                return 'NUMBER'
+"mc" | "ms"           return 'TYPE'
+
+/lex
+
+/* declare tokens */
+%token NUMBER
+%token STRING
+%token TYPE
+
+
+%% /* language grammar */
+
+
+mcms
+  : "define" TYPE withRule "as" stem options scores done {setType($2);}
+  ;
+  
+withRule
+  : %empty | "with" attributeList
+  ;
+  
+attributeList
+  : %empty | (attribute moreAttributes)
+  ;
+  
+moreAttributes
+  : %empty | ("," attribute)
+  ;
+
+attribute
+  : nameAttr | orientAttr | minSelectAttr | maxSelectAttr
+  ;
+
+nameAttr
+  : "name" equals STRING {addAttribute("name", yytext);}
+  ;
+
+orientAttr
+  : "orientation" equals ("horizontal" | "vertical") {addAttribute("orientation", yytext);}
+  ;
+
+equals
+  : "=" | "is"
+  ;
+  
+maxSelectAttr
+  : ("max" | "maximum") select {pendingToken = "maxSelect";}
+  ;
+  
+selectSpec
+  :("select" | "selection") equals NUMBER {addAttribute(pendingToken, yytext);}
+  ;
+  
+minSelectAttr
+  : ("min" | "minimum") select {pendingToken = "maxSelect";}
+  ;
+
+stem
+  : %empty | ("stem" "text" equals STRING {setStem(yytext);})
+  ;
+
+options
+  : anOption moreOptions
+  ;
+
+anOption
+  : "option" "text" equals STRING correctSpec {addOption($4, isCorrect);}
+  ;
+
+moreOptions
+  : %empty | options
+  ;
+
+correctSpec
+  : %empty | (("and" "is" "correct") {isCorrect = true;})
+  ;
+  
+scores
+  : aScore moreScores
+  ;
+  
+aScore
+  : "score" pointSpec "for" quantity {numCorrect = 0; addScore(pointSpec, scoreCriteria, numCorrect);}
+  ;
+  
+pointSpec
+  : NUMBER ("point" | "points") {pointSpec = $1;}
+  ;
+  
+quantity
+  : ("all" | (("at" "least") | "exactly" | "any") NUMBER) "correct" {scoreCriteria = $1; numCorrect = $2;}
+  ;
+  
+moreScores
+  : %empty | scores
+  ;
+  
+done
+  : "end" TYPE {printDeclaration();}
+  ;
+
+%%
+
+var declaration = {
+  interactionType: null,
+  attributes: [],
+  stemText: null,
+  options: [],
+  scores: []
+};
+
+function setType(theType) {
+  declaration.interactionType = (theType == mc ? "Multiple Choice" : "Multiple Select");
+}
+
+function addAttribute(theName, theValue) {
+  declaration.attributes.add({name theName, value: theValue});
+}
+
+function setStem(text) {
+  declaration.stemText = text;
+}
+
+function addOption(optionText, correctFlag) {
+  declaration.options.add({text: optionText, isCorrect: correctFlag});
+}
+
+function addScore(pointSpec, scoreCriteria, numCorrect) {
+  declaration.scores.add({points: pointSpec, criteria: scoreCriteria, correctNum: numCorrect});
+}
+
+function printDeclaration() {
+  println(declaration.interactionType + " interaction:");
+  println("Has attributes:");
+  for(anAttr in declaration.attributes) {
+    printLn("\t" + anAttr.name + " = " + anAttr.value);
+  }
+  println("\nHas Options:");
+  for(anOpt in declaration.options) {
+    printLn("\t" + anOpt.text + " = " + "isCorrect = " + anOpt.isCorrect);
+  }
+  println("\nHas Scores:");
+  for(aScore in declaration.scores) {
+    printLn("\t" + anScore.points + " for " + aScore.criteria + (aScore.numCorrect > 0 ? aScore.numCorrect : ""));
+  }
+  println("end " + declaration.interactionType + "interaction");
+  
+}
