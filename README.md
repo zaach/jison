@@ -64,55 +64,55 @@ lexfile     file containing a lexical grammar
 
 Where the available `options` are:
 
-:   -j, --json  
+:   -j, --json
 force jison to expect a grammar in JSON format  \[false\]
 
-:   -o FILE, --outfile FILE  
+:   -o FILE, --outfile FILE
 Filepath and base module name of the generated parser; when terminated with a / \(dir separator\) it is treated as the destination directory where the generated output will be stored
 
-:   -t, --debug  
+:   -t, --debug
 Debug mode  \[false\]
 
-:   -I, --info  
+:   -I, --info
 Report some statistics about the generated parser  \[false\]
 
-:   -m TYPE, --module-type TYPE  
+:   -m TYPE, --module-type TYPE
 The type of module to generate \(commonjs, amd, es, js\)  \[commonjs\]
 
-:   -n NAME, --module-name NAME  
+:   -n NAME, --module-name NAME
 The name of the generated parser object, namespace supported
 
-:   -p TYPE, --parser-type TYPE  
+:   -p TYPE, --parser-type TYPE
 The type of algorithm to use for the parser \(lr0, slr, lalr, lr, ll\)  \[lalr\]
 
-:   -c, --compress-tables  
+:   -c, --compress-tables
 Output compressed parser tables in generated modules \(0 = no compression, 1 = default compression, 2 = deep compression\)  \[2\]
 
-:   -T, --output-debug-tables  
+:   -T, --output-debug-tables
 Output extra parser tables \(rules list + look-ahead analysis\) in generated modules to assist debugging / diagnostics purposes  \[false\]
 
-:   -X, --no-default-resolve  
+:   -X, --no-default-resolve
 Act another way when a conflict is found in the grammar  \[false\]
 
-:   --no-default-action  
+:   --no-default-action
 Generate a parser which does NOT include the default "$$ = $1" action for every rule. This produces a slightly faster parser but now you are solely reponsible for propagating rule action "$$" results.  \[false\]
 
-:   --no-try-catch  
+:   --no-try-catch
 Generate a parser which does NOT try/catch exceptions \(from the grammar action code or parseError error reporting calls. This produces a slightly faster parser at the cost of enhanced code safety.  \[false\]
 
-:   -Q, --error-recovery-token-discard-count  
+:   -Q, --error-recovery-token-discard-count
 Set the number of lexed tokens that may be gobbled by an error recovery process before we cry wolf \(default: 3\)  \[3\]
 
-:   -E, --export-all-tables  
+:   -E, --export-all-tables
 Next to producing a grammar source file, also export the symbols, terminals, grammar and parse tables to separate JSON files for further use by other tools. The files' names will be derived from the outputFile name by appending a suffix.  \[false\]
 
-:   -x, --main  
+:   -x, --main
 Include .main\(\) entry point in generated commonjs module  \[false\]
 
-:   -y NAME, --module-main NAME  
+:   -y NAME, --module-main NAME
 The main module function definition
 
-:   -V, --version  
+:   -V, --version
 print version and exit
 
 ## Usage from a CommonJS module
@@ -183,7 +183,7 @@ Here's a comprehensive list of features and fixes compared to the [original](htt
 
 * EBNF LR/LALR/SLR/LR0 grammars are correctly rewritten to BNF grammars, allowing your action code blocks to access all elements of the grammar rule at hand. See also [the wiki section about EBNF](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-extended-bnf).
 
-* **Parser engine optimization**: jison analyzes not just your grammar, but also your action code and will strip any feature you don't use \(such as [location tracking](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-accessing-values-and-location-information) via  
+* **Parser engine optimization**: jison analyzes not just your grammar, but also your action code and will strip any feature you don't use \(such as [location tracking](https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison#user-content-accessing-values-and-location-information) via
   `@element` references and `yylloc`\) from the parser kernel, which will benefit your parser run-time performance. The fastest parsers are obtained when you do not include error recovery \(`error` tokens in your grammar\), nor any lexer location tracking: this can potentially result in run-time execution cost reductions of over 70% \(hence your parser executes more than 3 times as fast\)!
 
 * generated grammar / lexer source files carry a full API and internals documentation in the code comments to help you to read and debug a grammar. For example, every grammar rule is printed above its action code so that stepping through the parser when debugging hard-to-find problems makes it quite obvious which rule the engine is currently 'reducing'.
@@ -228,28 +228,28 @@ Here's a comprehensive list of features and fixes compared to the [original](htt
 
 > Copyright \(c\) 2009-2016 Zachary Carter
 >
-> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  files \(the "Software"\), to deal in the Software without restriction, including without  
-> limitation the rights to use,  copy, modify, merge, publish, distribute,  
-> sublicense, and/or sell  copies of the  
-> Software, and to permit persons to  
-> whom the  Software is furnished to do  
-> so, subject to the following  
+> Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation  files \(the "Software"\), to deal in the Software without restriction, including without
+> limitation the rights to use,  copy, modify, merge, publish, distribute,
+> sublicense, and/or sell  copies of the
+> Software, and to permit persons to
+> whom the  Software is furnished to do
+> so, subject to the following
 > conditions:
 >
-> The above copyright notice and this  
-> permission notice shall be  included  
-> in all copies or substantial portions  
+> The above copyright notice and this
+> permission notice shall be  included
+> in all copies or substantial portions
 > of the Software.
 >
-> THE SOFTWARE IS PROVIDED "AS IS",  
-> WITHOUT WARRANTY OF ANY KIND,  EXPRESS  
-> OR IMPLIED, INCLUDING BUT NOT LIMITED  
-> TO THE WARRANTIES  OF MERCHANTABILITY,  
-> FITNESS FOR A PARTICULAR PURPOSE AND  
-> NONINFRINGEMENT. IN NO EVENT SHALL THE  
-> AUTHORS OR COPYRIGHT  HOLDERS BE  
-> LIABLE FOR ANY CLAIM, DAMAGES OR OTHER  
-> LIABILITY,  WHETHER IN AN ACTION OF  
+> THE SOFTWARE IS PROVIDED "AS IS",
+> WITHOUT WARRANTY OF ANY KIND,  EXPRESS
+> OR IMPLIED, INCLUDING BUT NOT LIMITED
+> TO THE WARRANTIES  OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND
+> NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT  HOLDERS BE
+> LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY,  WHETHER IN AN ACTION OF
 > CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR  OTHER DEALINGS IN THE SOFTWARE.
 
 
