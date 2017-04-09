@@ -517,6 +517,7 @@ var parser = {
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
+    //   number of expected conflicts: .... 0
     //
     //
     // Parser Analysis flags:
@@ -2254,7 +2255,9 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-    options: {},
+    options: {
+  inputFilename: "calculator.jison"
+},
     JisonLexerError: JisonLexerError,
     performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 

@@ -32,6 +32,8 @@ Jison.version = version;
 const defaultJisonOptions = {
     moduleType: 'commonjs',
     debug: false,
+    enableDebugLogs: false,
+    numExpectedConflictStates: 0,
     json: false,
     type: 'lalr',                   // CLI: --parserType option
     compressTables: 2,              // 0, 1, 2
@@ -566,6 +568,9 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
     assert(Array.isArray(this.moduleInit));
 
     this.DEBUG = !!this.options.debug;
+    this.enableDebugLogs = options.enableDebugLogs || false;
+    this.numExpectedConflictStates = options.numExpectedConflictStates || 0;
+
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
 
@@ -2604,7 +2609,9 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                                 // *finity* of the big parsetable production loop, which
                                 // wraps around all this work (and more).
                                 self.conflict_fixing_round = false;
-                                console.log('RESET conflict fixing: we need another round to see us through...');
+                                if (self.enableDebugLogs) {
+                                    self.warn('RESET conflict fixing: we need another round to see us through...');
+                                }
                             }
                         }
                         if (!self.conflict_fixing_round && self.options.hasPartialLrUpgradeOnConflict) {
@@ -2619,7 +2626,9 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                             });
                         }
 
-                        self.warn('Conflict in grammar: multiple actions possible when lookahead token is ', stackSymbol, ' in state ', k, '\n- ', printAction(sol.r, self), '\n- ', printAction(sol.s, self), '\n  (', sol.msg, ')');
+                        if (self.enableDebugLogs) {
+                            self.warn('Conflict in grammar: multiple actions possible when lookahead token is ', stackSymbol, ' in state ', k, '\n- ', printAction(sol.r, self), '\n- ', printAction(sol.s, self), '\n  (', sol.msg, ')');
+                        }
                         conflictedStates[k] = {
                             reduction: item,
                             symbol: stackSymbol,
@@ -2659,12 +2668,14 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
     self.conflicting_states = conflictedStates;
 
     if (self.conflicts > 0) {
-        self.warn('\nStates with conflicts:');
-        each(conflictedStates, function report_conflict_state(val, state) {
-            self.warn('\nState ' + state, '    (' + val.symbol + ' @ ' + val.reduction.production.symbol + ' -> ' + val.reduction.handleToString() + ')\n');
-            self.warn('  ', itemSets.item(state).join('\n  '));
-        });
-        self.warn('\n');
+        if (this.numExpectedConflictStates !== self.conflicts || self.enableDebugLogs) {
+            self.warn('\nStates with conflicts:');
+            each(conflictedStates, function report_conflict_state(val, state) {
+                self.warn('\nState ' + state, '    (' + val.symbol + ' @ ' + val.reduction.production.symbol + ' -> ' + val.reduction.handleToString() + ')\n');
+                self.warn('  ', itemSets.item(state).join('\n  '));
+            });
+            self.warn('\n');
+        }
     }
 
     return states;
@@ -4210,6 +4221,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
         var do_not_pass = {
           type: 0,                   // CLI: --parserType option
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
+          enableDebugLogs: 1,
+          numExpectedConflictStates: 1,
           json: 1,
           _: 1,
           noMain: 1,
@@ -4320,6 +4333,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     //   module type: ..................... ${this.options.moduleType}
     //   parser engine type: .............. ${this.options.type}
     //   output main() in the module: ..... ${this.options.noMain}
+    //   number of expected conflicts: .... ${this.options.numExpectedConflictStates}
     //
     //
     // Parser Analysis flags:
@@ -7578,6 +7592,7 @@ var parser = {
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
+    //   number of expected conflicts: .... 0
     //
     //
     // Parser Analysis flags:
@@ -10958,6 +10973,7 @@ var lexer = {
     },
     options: {
   xregexp: true,
+  inputFilename: "lex.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -12394,6 +12410,7 @@ var parser = {
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
+    //   number of expected conflicts: .... 0
     //
     //
     // Parser Analysis flags:
@@ -15846,6 +15863,7 @@ var lexer = {
     },
     options: {
   xregexp: true,
+  inputFilename: "bnf.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -20665,6 +20683,7 @@ var parser = {
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
+    //   number of expected conflicts: .... 0
     //
     //
     // Parser Analysis flags:
@@ -22450,6 +22469,7 @@ var lexer = {
     },
     options: {
   xregexp: true,
+  inputFilename: "ebnf.y",
   easy_keyword_rules: true,
   ranges: true
 },
