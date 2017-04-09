@@ -1349,13 +1349,6 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: yyval.$
-                    });
-                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -1381,6 +1374,15 @@ parse: function parse(input) {
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
+
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
+                
                 break;
             }
 
@@ -2312,7 +2314,9 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-    options: {},
+    options: {
+  inputFilename: "calculator.jison"
+},
     JisonLexerError: JisonLexerError,
     performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 

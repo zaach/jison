@@ -4,7 +4,7 @@ Jison = require('./lib/jison.js');
 //bnf = require('ebnf-parser');
 
 },{"./lib/jison.js":2}],2:[function(require,module,exports){
-(function (process){
+(function (process,__dirname){
 // Jison, an LR(0), SLR(1), LARL(1), LR(1) Parser Generator
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
@@ -50,6 +50,7 @@ const defaultJisonOptions = {
     file: undefined,
     outfile: undefined,
     inputPath: undefined,
+    inputFilename: undefined,
     lexfile: undefined,
     warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
@@ -551,6 +552,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
     var inpath = options.file || options.outfile || './dummy';
     inpath = path.normalize(inpath);
     options.inputPath = path.dirname(inpath);
+    options.inputFilename = path.basename(inpath);
 
     // source included in semantic action execution scope
     if (grammar.actionInclude) {
@@ -607,6 +609,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             file: this.options.file,
             outfile: this.options.outfile,
             inputPath: this.options.inputPath,
+            inputFilename: this.options.inputFilename,
             warn_cb: this.options.warn_cb,
             parseParams: this.options.parseParams,
             xregexp: this.options.xregexp,
@@ -1720,11 +1723,11 @@ generator.buildProductionActions = function buildProductionActions() {
     function postprocessComment(str) {
         if (Array.isArray(str)) {
             str = str.map(function (_) {
-                return (_ === '' || _ == null) ? 'Îµ' : _;
+                return (_ === '' || _ == null) ? 'ε' : _;
             }).join(' ');
         }
         if (str === '') {
-            str = 'Îµ';
+            str = 'ε';
         }
         str = str.replace(/\*\//g, '*\\/');         // destroy any inner `*/` comment terminator sequence.
         return str;
@@ -2921,10 +2924,10 @@ generatorMixin.generateGenericHeaderComment = function generateGenericHeaderComm
  *                 to the work described here:
  *
  *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
- *                   In JournÃ©es Francophones des Languages Applicatifs.
+ *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
- *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631â€“640.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
  *
  *               - \`yyvstack\`: reference to the parser value stack. Also accessed via the \`$1\` etc.
  *                             constructs.
@@ -3352,7 +3355,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
 
         // remove:
         //
-        //     r = this.performAction.call(yyval, ...
+        //     r = this.performAction.call(yyval, ...);
         //
         //     if (typeof r !== 'undefined') {
         //         retval = r;
@@ -3361,7 +3364,8 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //
 
         parseFn = parseFn
-        .replace(/\s+r = this\.performAction\.call[^}]+\}/g, '');
+        .replace(/\s+r = this\.performAction\.call[^)]+\)\;/g, '')
+        .replace(/\s+if \(typeof r !== 'undefined'\) \{[^}]+\}/g, '');
     }
 
     if (!info.actionsUseYYTEXT) {
@@ -4020,12 +4024,12 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
                 }
 
                 if (dotPosition === idx) {
-                    t = 'â¬¤' + t;
+                    t = '⬤' + t;
                 }
                 return t;
             }).join(' ');
             if (dotPosition === hlen) {
-                rulestr += ' â¬¤';
+                rulestr += ' ⬤';
             }
 
             var base_rulestr = production.handle.map(function (t) {
@@ -4219,6 +4223,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           file: 1,
           outfile: 1,
           inputPath: 1,
+          inputFilename: 1,
           lexfile: 1,
           defaultModuleName: 1,
           moduleName: 1,
@@ -4662,14 +4667,14 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
         var track_prev4delta = {};
         var c, delta, val, delta_val;
         var line = [];
-        line.push('â•‘');
+        line.push('║');
         for (c in def_arr) {
             key = clip(c, col_width);
-            delta = clip('âˆ†', col_delta_width);
+            delta = clip('∆', col_delta_width);
             line.push(key);
-            line.push('â”Š');
+            line.push('┊');
             line.push(delta);
-            line.push('â•‘');
+            line.push('║');
 
             track_prev4delta[c] = 10000000;
         }
@@ -4677,7 +4682,7 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
 
         for (i = 0; i < len; i++) {
             line = [];
-            line.push('â•‘');
+            line.push('║');
 
             for (c in def_arr) {
                 var tbl = def_arr[c];
@@ -4699,9 +4704,9 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
                 key = clip(val, col_width);
                 delta = clip(delta_val, col_delta_width);
                 line.push(key);
-                line.push('â”Š');
+                line.push('┊');
                 line.push(delta);
-                line.push('â•‘');
+                line.push('║');
             }
             report.push(line.join(''));
         }
@@ -5209,7 +5214,45 @@ var parser = typal.beget();
 generatorMixin.createParser = function createParser() {
     var sourcecode = this.generateModuleExpr();
     //console.warn('generated code:\n', sourcecode);
-    var p = eval(sourcecode);
+    var p;
+    try {
+        p = eval(sourcecode);
+    } catch (ex) {
+        console.error("generated source code fatal error: ", ex.message);
+        try {
+            var fs = require('fs');
+            var path = require('path');
+            var dumpPath = (this.options.outfile ? path.dirname(this.options.outfile) : null) || this.options.inputPath || process.cwd();
+            var dumpName = this.options.inputFilename || this.options.moduleName || this.options.defaultModuleName;
+            var ts = new Date();
+            function pad(n, p) {
+                p = p || 2;
+                var rv = '0000' + n;
+                return rv.slice(-p);
+            }
+            var tm = ts.getUTCFullYear() +
+                '_' + pad(ts.getUTCMonth() + 1) +
+                '_' + pad(ts.getUTCDate()) +
+                'T' + pad(ts.getUTCHours()) +
+                '' + pad(ts.getUTCMinutes()) +
+                '' + pad(ts.getUTCSeconds()) +
+                '.' + pad(ts.getUTCMilliseconds(), 3) +
+                'Z';
+            var dumpfile = dumpPath + '/' + dumpName + '.fatal_dump_' + tm + '.js';
+            console.error("****** offending source code dumped into file: ", {
+                dumpfile: dumpfile,
+                normalized: path.normalize(dumpfile),
+                dirname: __dirname,
+                cwd: process.cwd(),
+                inputPath: this.options.inputPath,
+                outputPath: this.options.outfile,
+            });
+            fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+        } catch (ex2) {
+            console.error("generated source code fatal DUMPING error: ", ex2.message, ex2.stack);
+        }
+        throw ex;
+    }
 
     // for debugging
     p.productions = this.productions;
@@ -6082,13 +6125,6 @@ parser.parse = function parse(input, parseParams) {
 
             // accept:
             case 3:
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: yyval.$
-                    });
-                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -6114,6 +6150,15 @@ parser.parse = function parse(input, parseParams) {
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
+
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
+                
                 break;
             }
 
@@ -6664,7 +6709,7 @@ return function Parser(g, l, options) {
 
 })();
 
-}).call(this,require('_process'))
+}).call(this,require('_process'),"/lib")
 },{"../package.json":22,"./util/ebnf-parser.js":3,"./util/lex-parser.js":5,"./util/regexp-lexer.js":8,"./util/set":10,"./util/typal":12,"_process":17,"assert":13,"fs":14,"json5":15,"path":16,"xregexp":21}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
@@ -7161,10 +7206,10 @@ exports.transform = EBNF.transform;
  *                 to the work described here:
  *
  *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
- *                   In JournÃ©es Francophones des Languages Applicatifs.
+ *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
- *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631â€“640.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
  *
  *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
  *                             constructs.
@@ -8009,12 +8054,12 @@ case 3:
     break;
 
 case 4:
-    /*! Production::    rules_and_epilogue : Îµ */
+    /*! Production::    rules_and_epilogue : ε */
     this.$ = { rules: [] };
     break;
 
 case 5:
-    /*! Production::    init : Îµ */
+    /*! Production::    init : ε */
     yy.actionInclude = [];
     if (!yy.options) yy.options = {};
     break;
@@ -8036,7 +8081,7 @@ case 6:
     break;
 
 case 7:
-    /*! Production::    definitions : Îµ */
+    /*! Production::    definitions : ε */
     this.$ = {
       macros: {},           // { hash table }
       startConditions: {},  // { hash table }
@@ -8122,9 +8167,9 @@ case 20:
     break;
 
 case 21:
-    /*! Production::    rules : Îµ */
+    /*! Production::    rules : ε */
 case 25:
-    /*! Production::    rule_block : Îµ */
+    /*! Production::    rule_block : ε */
     this.$ = [];
     break;
 
@@ -8169,11 +8214,11 @@ case 33:
     break;
 
 case 34:
-    /*! Production::    action_comments_body : Îµ */
+    /*! Production::    action_comments_body : ε */
 case 43:
-    /*! Production::    regex_list : Îµ */
+    /*! Production::    regex_list : ε */
 case 88:
-    /*! Production::    optional_module_code_chunk : Îµ */
+    /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
 
@@ -8213,7 +8258,7 @@ case 41:
     // all valid 'words' for the 'easy keyword rules' option:
     //
     // - hello_kitty
-    // - Î³ÎµÎ¹Î±_ÏƒÎ¿Ï…_Î³Î±Ï„Î¿ÏÎ»Î±
+    // - γεια_σου_γατούλα
     // - \u03B3\u03B5\u03B9\u03B1_\u03C3\u03BF\u03C5_\u03B3\u03B1\u03C4\u03BF\u03CD\u03BB\u03B1
     //
     // http://stackoverflow.com/questions/7885096/how-do-i-decode-a-string-with-escaped-unicode#12869914
@@ -10034,13 +10079,6 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: yyval.$
-                    });
-                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -10066,6 +10104,15 @@ parse: function parse(input) {
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
+
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
+                
                 break;
             }
 
@@ -11031,6 +11078,7 @@ var lexer = {
     },
     options: {
   xregexp: true,
+  inputFilename: "lex.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -12035,10 +12083,10 @@ module.exports={
  *                 to the work described here:
  *
  *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
- *                   In JournÃ©es Francophones des Languages Applicatifs.
+ *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
- *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631â€“640.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
  *
  *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
  *                             constructs.
@@ -12914,9 +12962,9 @@ case 96:
     break;
 
 case 4:
-    /*! Production::    optional_action_header_block : Îµ */
+    /*! Production::    optional_action_header_block : ε */
 case 8:
-    /*! Production::    declaration_list : Îµ */
+    /*! Production::    declaration_list : ε */
     this.$ = {};
     break;
 
@@ -13109,7 +13157,7 @@ case 45:
     break;
 
 case 46:
-    /*! Production::    optional_token_type : Îµ */
+    /*! Production::    optional_token_type : ε */
     this.$ = false;
     break;
 
@@ -13177,7 +13225,7 @@ case 60:
     break;
 
 case 61:
-    /*! Production::    handle : Îµ */
+    /*! Production::    handle : ε */
     this.$ = [];
     break;
 
@@ -13225,13 +13273,13 @@ case 68:
     break;
 
 case 69:
-    /*! Production::    suffix : Îµ */
+    /*! Production::    suffix : ε */
 case 83:
-    /*! Production::    action : Îµ */
+    /*! Production::    action : ε */
 case 84:
-    /*! Production::    action_body : Îµ */
+    /*! Production::    action_body : ε */
 case 97:
-    /*! Production::    optional_module_code_chunk : Îµ */
+    /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
 
@@ -13241,7 +13289,7 @@ case 73:
     break;
 
 case 74:
-    /*! Production::    prec : Îµ */
+    /*! Production::    prec : ε */
     this.$ = null;
     break;
 
@@ -14934,6 +14982,28 @@ parse: function parse(input) {
 
                 r = this.performAction.call(yyval, yyloc, newState, sp - 1, vstack, lstack);
 
+                if (len && typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    var prereduceValue = vstack.slice(vstack.length - len, vstack.length);
+                    var debuggableProductions = [];
+                    for (var debugIdx = len - 1; debugIdx >= 0; debugIdx--) {
+                        var debuggableProduction = getNonTerminalFromCode(stack[stack.length - ((debugIdx + 1) * 2)], this.symbols_);
+                        debuggableProductions.push(debuggableProduction);
+                    }
+                    // find the current nonterminal name (- nolan)
+                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
+                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode, this.symbols_);
+
+                    Jison.parserDebugger.push({
+                        action: 'reduce',
+                        nonterminal: currentNonterminal,
+                        nonterminal_id: currentNonterminalCode,
+                        prereduce: prereduceValue,
+                        result: r,
+                        productions: debuggableProductions,
+                        text: yyval.$
+                    });
+                }
+
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -14956,13 +15026,6 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: yyval.$
-                    });
-                  console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
                 retval = true;
                 // Return the `$accept` rule's `$$` result, if available.
                 //
@@ -14988,6 +15051,15 @@ parse: function parse(input) {
                 if (typeof yyval.$ !== 'undefined') {
                     retval = yyval.$;
                 }
+
+                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
+                    Jison.parserDebugger.push({
+                        action: 'accept',
+                        text: yyval.$
+                    });
+                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
+                }
+                
                 break;
             }
 
@@ -15955,6 +16027,7 @@ var lexer = {
     },
     options: {
   xregexp: true,
+  inputFilename: "bnf.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -16123,7 +16196,7 @@ case 58 :
 break;
 case 59 : 
 /*! Conditions:: bnf ebnf token INITIAL */ 
-/*! Rule::       â†’.* */ 
+/*! Rule::       →.* */ 
  yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 1).trim(); return 40; 
 break;
 case 60 : 
@@ -16373,7 +16446,7 @@ new XRegExp("^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)", "")
 /^(?:%\{(?:.|\r|\n)*?%\})/,
 /^(?:\{)/,
 /^(?:->.*)/,
-/^(?:â†’.*)/,
+/^(?:→.*)/,
 /^(?:(0[Xx][\dA-Fa-f]+))/,
 /^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
 /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -20342,10 +20415,10 @@ if (typeof exports !== 'undefined') {
  *                 to the work described here:
  *
  *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
- *                   In JournÃ©es Francophones des Languages Applicatifs.
+ *                   In Journées Francophones des Languages Applicatifs.
  *
  *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
- *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631â€“640.
+ *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
  *
  *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
  *                             constructs.
@@ -20983,7 +21056,7 @@ case 3:
     break;
 
 case 4:
-    /*! Production::    handle : Îµ */
+    /*! Production::    handle : ε */
 case 5:
     /*! Production::    handle : EPSILON */
     this.$ = [];
