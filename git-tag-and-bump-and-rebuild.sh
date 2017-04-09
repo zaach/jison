@@ -159,26 +159,32 @@ if ! are_we_okay ; then break; fi;          # GOTO END on failure
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 popd                                                                                                           2> /dev/null  > /dev/null
 
 git commit -a -m 'bumped build revision'
 git push --all
+git push --tags
 
 
 # ---------------------------------------------------------------------------
