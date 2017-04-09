@@ -4,7 +4,7 @@ Jison = require('./lib/jison.js');
 //bnf = require('ebnf-parser');
 
 },{"./lib/jison.js":2}],2:[function(require,module,exports){
-(function (process,__dirname){
+(function (process){
 // Jison, an LR(0), SLR(1), LARL(1), LR(1) Parser Generator
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
@@ -4208,7 +4208,7 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     function produceOptions(opts) {
         var obj = {};
         var do_not_pass = {
-          // type: 1,
+          type: 0,                   // CLI: --parserType option
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
           json: 1,
           _: 1,
@@ -4232,6 +4232,13 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           tokenStack: 1,
           lexer_errors_are_recoverable: 1,
           showSource: 1,
+
+          errorRecoveryTokenDiscardCount: 0,
+
+          warn_cb: 0,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
+
+          parseParams: 1,
+          ranges: 0,
         };
         for (var k in opts) {
             if (!do_not_pass[k] && opts[k] != null && opts[k] !== false) {
@@ -5238,15 +5245,8 @@ generatorMixin.createParser = function createParser() {
                 '' + pad(ts.getUTCSeconds()) +
                 '.' + pad(ts.getUTCMilliseconds(), 3) +
                 'Z';
-            var dumpfile = dumpPath + '/' + dumpName + '.fatal_dump_' + tm + '.js';
-            console.error("****** offending source code dumped into file: ", {
-                dumpfile: dumpfile,
-                normalized: path.normalize(dumpfile),
-                dirname: __dirname,
-                cwd: process.cwd(),
-                inputPath: this.options.inputPath,
-                outputPath: this.options.outfile,
-            });
+            var dumpfile = path.normalize(dumpPath + '/' + dumpName + '.fatal_dump_' + tm + '.js');
+            console.error("****** offending source code dumped into file: ", dumpfile);
             fs.writeFileSync(dumpfile, sourcecode, 'utf8');
         } catch (ex2) {
             console.error("generated source code fatal DUMPING error: ", ex2.message, ex2.stack);
@@ -6709,7 +6709,7 @@ return function Parser(g, l, options) {
 
 })();
 
-}).call(this,require('_process'),"/lib")
+}).call(this,require('_process'))
 },{"../package.json":22,"./util/ebnf-parser.js":3,"./util/lex-parser.js":5,"./util/regexp-lexer.js":8,"./util/set":10,"./util/typal":12,"_process":17,"assert":13,"fs":14,"json5":15,"path":16,"xregexp":21}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
