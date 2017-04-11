@@ -380,6 +380,7 @@ npm-install: submodules-npm-install
 
 JISON_DEPS = \
 	lib/util/regexp-set-management.js \
+	lib/util/safe-code-exec-and-diag.js \
 	lib/util/regexp-lexer.js \
 	lib/util/ebnf-parser.js \
 	lib/util/ebnf-transform.js \
@@ -407,7 +408,10 @@ prep_util_dir:
 
 
 lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
-	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< > $@
+
+lib/util/safe-code-exec-and-diag.js: modules/jison-lex/safe-code-exec-and-diag.js
+	cat $< > $@
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
 	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
