@@ -47,6 +47,8 @@ const defaultJisonOptions = {
     exportAllTables: false,
     noMain: false,                  // CLI: not:(--main option)
     tokenStack: false,
+    dumpSourceCodeOnFailure: true,
+    throwErrorOnCompileFailure: true,
 
     moduleName: undefined,
     defaultModuleName: 'parser',
@@ -5240,16 +5242,7 @@ generatorMixin.createParser = function createParser() {
         //console.log("===============================PARSER TEST CODE\n", sourcecode, "\n=====================END====================\n");
         var rv = eval(sourcecode);
         return rv;
-    }, {
-        dumpSourceCodeOnFailure: true,
-        throwErrorOnFailure: true,
-
-        outfile: this.options.outfile,
-        inputPath: this.options.inputPath,
-        inputFilename: this.options.inputFilename,
-        moduleName: this.options.moduleName,
-        defaultModuleName: this.options.defaultModuleName,
-    }, "parser");
+    }, this.options, "parser");
 
     // for debugging
     p.productions = this.productions;
@@ -7607,7 +7600,9 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3
+  errorRecoveryTokenDiscardCount: 3,
+  dumpSourceCodeOnFailure: true,
+  throwErrorOnCompileFailure: true
 },
 symbols_: {
   "$": 17,
@@ -12425,7 +12420,9 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3
+  errorRecoveryTokenDiscardCount: 3,
+  dumpSourceCodeOnFailure: true,
+  throwErrorOnCompileFailure: true
 },
 symbols_: {
   "$accept": 0,
@@ -16620,6 +16617,8 @@ const defaultJisonLexOptions = {
     debug: false,
     json: false,
     noMain: false,                  // CLI: not:(--main option)
+    dumpSourceCodeOnFailure: true,
+    throwErrorOnCompileFailure: true,
 
     moduleName: undefined,
     defaultModuleName: 'lexer',
@@ -17644,7 +17643,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 return lexer_f();
             }, {
                 dumpSourceCodeOnFailure: true,
-                throwErrorOnFailure: true,
+                throwErrorOnCompileFailure: true,
 
                 outfile: opts.outfile || opts.options.outfile,
                 inputPath: opts.inputPath || opts.options.inputPath,
@@ -18633,6 +18632,8 @@ function generateModuleBody(opt) {
           json: 1,
           _: 1,
           noMain: 1,
+          dumpSourceCodeOnFailure: 1,
+          throwErrorOnCompileFailure: 1,
           reportStats: 1,
           file: 1,
           outfile: 1,
@@ -20103,7 +20104,7 @@ function pad(n, p) {
 // Two options drive the internal behaviour:
 //
 // - options.dumpSourceCodeOnFailure -- default: FALSE
-// - options.throwErrorOnFailure     -- default: FALSE
+// - options.throwErrorOnCompileFailure     -- default: FALSE
 //
 // Dumpfile naming and path are determined through these options:
 //
@@ -20163,7 +20164,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         ex.offending_source_title = errname;
         ex.offending_source_dumpfile = dumpfile;
         
-        if (options.throwErrorOnFailure) {
+        if (options.throwErrorOnCompileFailure) {
             throw ex;
         }
     }
