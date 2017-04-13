@@ -611,13 +611,16 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             // and re-use any useful options:
             moduleType: this.options.moduleType,
             debug: this.options.debug,
+            enableDebugLogs: this.options.enableDebugLogs,
             json: this.options.json,
             main: false,
+            dumpSourceCodeOnFailure: this.options.dumpSourceCodeOnFailure,
+            throwErrorOnCompileFailure: this.options.throwErrorOnCompileFailure,
             moduleName: 'lexer',        // this.options.moduleName + '_Lexer',
             file: this.options.file,
             outfile: this.options.outfile,
             inputPath: this.options.inputPath,
-            inputFilename: this.options.inputFilename,
+            inputFilename: this.options.inputFilename,       // or should we feed it `this.options.lexfile` instead?
             warn_cb: this.options.warn_cb,
             parseParams: this.options.parseParams,
             xregexp: this.options.xregexp,
@@ -4226,6 +4229,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
           enableDebugLogs: 1,
           numExpectedConflictStates: 1,
+          dumpSourceCodeOnFailure: 1,
+          throwErrorOnCompileFailure: 1,
           json: 1,
           _: 1,
           noMain: 1,
@@ -7600,9 +7605,7 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3,
-  dumpSourceCodeOnFailure: true,
-  throwErrorOnCompileFailure: true
+  errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
   "$": 17,
@@ -10951,7 +10954,6 @@ var lexer = {
     },
     options: {
   xregexp: true,
-  inputFilename: "lex.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -12420,9 +12422,7 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3,
-  dumpSourceCodeOnFailure: true,
-  throwErrorOnCompileFailure: true
+  errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
   "$accept": 0,
@@ -15843,7 +15843,6 @@ var lexer = {
     },
     options: {
   xregexp: true,
-  inputFilename: "bnf.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -16615,8 +16614,9 @@ const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
 const defaultJisonLexOptions = {
     moduleType: 'commonjs',
     debug: false,
+    enableDebugLogs: false,
     json: false,
-    noMain: false,                  // CLI: not:(--main option)
+    main: false,                  // CLI: not:(--main option)
     dumpSourceCodeOnFailure: true,
     throwErrorOnCompileFailure: true,
 
@@ -16625,6 +16625,7 @@ const defaultJisonLexOptions = {
     file: undefined,
     outfile: undefined,
     inputPath: undefined,
+    inputFilename: undefined,
     warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
     parseParams: undefined,
@@ -17641,16 +17642,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
-            }, {
-                dumpSourceCodeOnFailure: true,
-                throwErrorOnCompileFailure: true,
-
-                outfile: opts.outfile || opts.options.outfile,
-                inputPath: opts.inputPath || opts.options.inputPath,
-                inputFilename: opts.inputFilename || opts.options.inputFilename,
-                moduleName: opts.moduleName || opts.options.moduleName,
-                defaultModuleName: opts.defaultModuleName || opts.options.defaultModuleName,
-            }, "lexer");
+            }, opts.options, "lexer");
 
             if (!lexer) {
                 throw new Error('no lexer defined *at all*?!');
@@ -18629,6 +18621,7 @@ function generateModuleBody(opt) {
         var obj = {};
         var do_not_pass = {
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
+          enableDebugLogs: 1,
           json: 1,
           _: 1,
           noMain: 1,
@@ -18638,6 +18631,7 @@ function generateModuleBody(opt) {
           file: 1,
           outfile: 1,
           inputPath: 1,
+          inputFilename: 1,
           defaultModuleName: 1,
           moduleName: 1,
           moduleType: 1,
@@ -20103,7 +20097,7 @@ function pad(n, p) {
 //
 // Two options drive the internal behaviour:
 //
-// - options.dumpSourceCodeOnFailure -- default: FALSE
+// - options.dumpSourceCodeOnFailure        -- default: FALSE
 // - options.throwErrorOnCompileFailure     -- default: FALSE
 //
 // Dumpfile naming and path are determined through these options:

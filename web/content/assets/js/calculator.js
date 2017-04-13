@@ -549,9 +549,7 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3,
-  dumpSourceCodeOnFailure: true,
-  throwErrorOnCompileFailure: true
+  errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
   "!": 8,
@@ -2257,9 +2255,7 @@ var lexer = {
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
-    options: {
-  inputFilename: "calculator.jison"
-},
+    options: {},
     JisonLexerError: JisonLexerError,
     performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
 
