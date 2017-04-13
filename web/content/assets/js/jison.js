@@ -14,6 +14,7 @@ var Set        = require('./util/set').Set;
 var Lexer      = require('./util/regexp-lexer.js');
 var ebnfParser = require('./util/ebnf-parser.js');
 var lexParser  = require('./util/lex-parser.js');
+var code_exec  = require('./util/safe-code-exec-and-diag.js');
 var XRegExp    = require('xregexp');
 //var recast     = require('recast');
 //var codeShift  = require('jscodeshift');
@@ -46,6 +47,8 @@ const defaultJisonOptions = {
     exportAllTables: false,
     noMain: false,                  // CLI: not:(--main option)
     tokenStack: false,
+    dumpSourceCodeOnFailure: true,
+    throwErrorOnCompileFailure: true,
 
     moduleName: undefined,
     defaultModuleName: 'parser',
@@ -608,13 +611,16 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             // and re-use any useful options:
             moduleType: this.options.moduleType,
             debug: this.options.debug,
+            enableDebugLogs: this.options.enableDebugLogs,
             json: this.options.json,
             main: false,
+            dumpSourceCodeOnFailure: this.options.dumpSourceCodeOnFailure,
+            throwErrorOnCompileFailure: this.options.throwErrorOnCompileFailure,
             moduleName: 'lexer',        // this.options.moduleName + '_Lexer',
             file: this.options.file,
             outfile: this.options.outfile,
             inputPath: this.options.inputPath,
-            inputFilename: this.options.inputFilename,
+            inputFilename: this.options.inputFilename,       // or should we feed it `this.options.lexfile` instead?
             warn_cb: this.options.warn_cb,
             parseParams: this.options.parseParams,
             xregexp: this.options.xregexp,
@@ -4223,6 +4229,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
           enableDebugLogs: 1,
           numExpectedConflictStates: 1,
+          dumpSourceCodeOnFailure: 1,
+          throwErrorOnCompileFailure: 1,
           json: 1,
           _: 1,
           noMain: 1,
@@ -5234,39 +5242,12 @@ var parser = typal.beget();
 
 generatorMixin.createParser = function createParser() {
     var sourcecode = this.generateModuleExpr();
-    //console.warn('generated code:\n', sourcecode);
-    var p;
-    try {
-        p = eval(sourcecode);
-    } catch (ex) {
-        console.error("generated source code fatal error: ", ex.message);
-        try {
-            var fs = require('fs');
-            var path = require('path');
-            var dumpPath = (this.options.outfile ? path.dirname(this.options.outfile) : null) || this.options.inputPath || process.cwd();
-            var dumpName = this.options.inputFilename || this.options.moduleName || this.options.defaultModuleName;
-            var ts = new Date();
-            function pad(n, p) {
-                p = p || 2;
-                var rv = '0000' + n;
-                return rv.slice(-p);
-            }
-            var tm = ts.getUTCFullYear() +
-                '_' + pad(ts.getUTCMonth() + 1) +
-                '_' + pad(ts.getUTCDate()) +
-                'T' + pad(ts.getUTCHours()) +
-                '' + pad(ts.getUTCMinutes()) +
-                '' + pad(ts.getUTCSeconds()) +
-                '.' + pad(ts.getUTCMilliseconds(), 3) +
-                'Z';
-            var dumpfile = path.normalize(dumpPath + '/' + dumpName + '.fatal_dump_' + tm + '.js');
-            console.error("****** offending source code dumped into file: ", dumpfile);
-            fs.writeFileSync(dumpfile, sourcecode, 'utf8');
-        } catch (ex2) {
-            console.error("generated source code fatal DUMPING error: ", ex2.message, ex2.stack);
-        }
-        throw ex;
-    }
+
+    var p = code_exec(sourcecode, function generated_code_exec_wrapper(sourcecode) {
+        //console.log("===============================PARSER TEST CODE\n", sourcecode, "\n=====================END====================\n");
+        var rv = eval(sourcecode);
+        return rv;
+    }, this.options, "parser");
 
     // for debugging
     p.productions = this.productions;
@@ -6724,7 +6705,7 @@ return function Parser(g, l, options) {
 })();
 
 }).call(this,require('_process'))
-},{"../package.json":22,"./util/ebnf-parser.js":3,"./util/lex-parser.js":5,"./util/regexp-lexer.js":8,"./util/set":10,"./util/typal":12,"_process":17,"assert":13,"fs":14,"json5":15,"path":16,"xregexp":21}],3:[function(require,module,exports){
+},{"../package.json":23,"./util/ebnf-parser.js":3,"./util/lex-parser.js":5,"./util/regexp-lexer.js":8,"./util/safe-code-exec-and-diag.js":10,"./util/set":11,"./util/typal":13,"_process":18,"assert":14,"fs":15,"json5":16,"path":17,"xregexp":22}],3:[function(require,module,exports){
 var bnf = require("./parser").parser,
     ebnf = require("./ebnf-transform"),
     jisonlex = require("./lex-parser");
@@ -7132,7 +7113,7 @@ var EBNF = (function(){
 exports.transform = EBNF.transform;
 
 
-},{"./transform-parser.js":11}],5:[function(require,module,exports){
+},{"./transform-parser.js":12}],5:[function(require,module,exports){
 /* parser generated by jison 0.4.18-179 */
 
 /*
@@ -11093,7 +11074,6 @@ var lexer = {
     },
     options: {
   xregexp: true,
-  inputFilename: "lex.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -11960,7 +11940,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 
 }
 
-},{"fs":14,"xregexp":21}],6:[function(require,module,exports){
+},{"fs":15,"xregexp":22}],6:[function(require,module,exports){
 module.exports={
   "author": {
     "name": "Zach Carter",
@@ -16043,7 +16023,6 @@ var lexer = {
     },
     options: {
   xregexp: true,
-  inputFilename: "bnf.y",
   easy_keyword_rules: true,
   ranges: true
 },
@@ -16779,7 +16758,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 
 }
 
-},{"./ebnf-transform":4,"fs":14,"xregexp":21}],8:[function(require,module,exports){
+},{"./ebnf-transform":4,"fs":15,"xregexp":22}],8:[function(require,module,exports){
 // Basic Lexer implemented using JavaScript regular expressions
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
@@ -16790,6 +16769,7 @@ var XRegExp = require('xregexp');
 var json5 = require('json5');
 var lexParser = require('./lex-parser');
 var setmgmt = require('./regexp-set-management');
+var code_exec = require('./safe-code-exec-and-diag');
 var version = require('./package.json').version;
 var assert = require('assert');
 
@@ -16814,14 +16794,18 @@ const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
 const defaultJisonLexOptions = {
     moduleType: 'commonjs',
     debug: false,
+    enableDebugLogs: false,
     json: false,
-    noMain: false,                  // CLI: not:(--main option)
+    main: false,                  // CLI: not:(--main option)
+    dumpSourceCodeOnFailure: true,
+    throwErrorOnCompileFailure: true,
 
     moduleName: undefined,
     defaultModuleName: 'lexer',
     file: undefined,
     outfile: undefined,
     inputPath: undefined,
+    inputFilename: undefined,
     warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
     parseParams: undefined,
@@ -17777,6 +17761,26 @@ function generateErrorClass() {
 var jisonLexerErrorDefinition = generateErrorClass();
 
 
+function generateFakeXRegExpClassSrcCode() {
+    function fake() {
+        var __hacky_counter__ = 0;
+
+        function XRegExp(re, f) {
+          this.re = re;
+          this.flags = f;
+          var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
+          __hacky_counter__++;
+          fake.__hacky_backy__ = __hacky_counter__;
+          return fake;
+        }
+    }
+
+    return printFunctionSourceCodeContainer(fake);
+}
+
+
+
+
 function RegExpLexer(dict, input, tokens, build_options) {
     var opts;
     var dump = false;
@@ -17809,21 +17813,16 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 '// provide a local version for test purposes:',
                 jisonLexerErrorDefinition,
                 '',
-                'var __hacky_counter__ = 0;',
-                'function XRegExp(re, f) {',
-                '  this.re = re;',
-                '  this.flags = f;',
-                '  var fake = /./;',    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
-                '  __hacky_counter__++;',
-                '  fake.__hacky_backy__ = __hacky_counter__;',
-                '  return fake;',
-                '}',
+                generateFakeXRegExpClassSrcCode(),
                 '',
                 source,
+                '',
                 'return lexer;'].join('\n');
-            //console.log("===============================TEST CODE\n", testcode, "\n=====================END====================\n");
-            var lexer_f = new Function('', testcode);
-            var lexer = lexer_f();
+            var lexer = code_exec(testcode, function generated_code_exec_wrapper(sourcecode) {
+                //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
+                var lexer_f = new Function('', sourcecode);
+                return lexer_f();
+            }, opts.options, "lexer");
 
             if (!lexer) {
                 throw new Error('no lexer defined *at all*?!');
@@ -18802,13 +18801,17 @@ function generateModuleBody(opt) {
         var obj = {};
         var do_not_pass = {
           debug: !opts.debug,     // do not include this item when it is FALSE as there's no debug tracing built into the generated grammar anyway!
+          enableDebugLogs: 1,
           json: 1,
           _: 1,
           noMain: 1,
+          dumpSourceCodeOnFailure: 1,
+          throwErrorOnCompileFailure: 1,
           reportStats: 1,
           file: 1,
           outfile: 1,
           inputPath: 1,
+          inputFilename: 1,
           defaultModuleName: 1,
           moduleName: 1,
           moduleType: 1,
@@ -19231,7 +19234,7 @@ RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 module.exports = RegExpLexer;
 
 
-},{"./lex-parser":5,"./package.json":6,"./regexp-set-management":9,"assert":13,"json5":15,"xregexp":21}],9:[function(require,module,exports){
+},{"./lex-parser":5,"./package.json":6,"./regexp-set-management":9,"./safe-code-exec-and-diag":10,"assert":14,"json5":16,"xregexp":22}],9:[function(require,module,exports){
 //
 // Helper library for set definitions
 //
@@ -20232,7 +20235,128 @@ module.exports = {
 };
 
 
-},{"assert":13,"xregexp":21}],10:[function(require,module,exports){
+},{"assert":14,"xregexp":22}],10:[function(require,module,exports){
+(function (process){
+//
+// Helper library for safe code execution/compilation, including dumping offending code to file for further error analysis
+// (the idea was originally coded in https://github.com/GerHobbelt/jison/commit/85e367d03b977780516d2b643afbe6f65ee758f2 )
+//
+// MIT Licensed
+//
+//
+// This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
+//
+// the given code fails, but where exactly and why? It's precise failure conditions are 'hidden' due to 
+// the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
+// we can test the code in a different environment so that we can see what precisely is causing the failure.
+// 
+
+'use strict';
+
+var fs = require('fs');
+var path = require('path');
+
+var assert = require('assert');
+
+
+
+
+// Helper function: pad number with leading zeroes
+function pad(n, p) {
+    p = p || 2;
+    var rv = '0000' + n;
+    return rv.slice(-p);
+}
+
+
+
+//
+// `code_execution_rig` is a function which gets executed, while it is fed the `sourcecode` as a parameter.
+// When the `code_execution_rig` crashes, its failure is caught and (using the `options`) the sourcecode
+// is dumped to file for later diagnosis.
+//
+// Two options drive the internal behaviour:
+//
+// - options.dumpSourceCodeOnFailure        -- default: FALSE
+// - options.throwErrorOnCompileFailure     -- default: FALSE
+//
+// Dumpfile naming and path are determined through these options:
+//
+// - options.outfile
+// - options.inputPath
+// - options.inputFilename
+// - options.moduleName
+// - options.defaultModuleName
+//
+function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, title) {
+    options = options || {};
+    var errname = "" + title;
+    var err_id = errname.replace(/[^a-z0-9_]/ig, "_");
+    if (err_id.length === 0) {
+        err_id = "exec_crash";
+    }
+    const debug = false;
+
+    if (debug) console.warn('generated ' + errname + ' code under EXEC TEST:\n', sourcecode);
+
+    var p;
+    try {
+        // p = eval(sourcecode);
+        if (typeof code_execution_rig !== 'function') {
+            throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
+        }
+        p = code_execution_rig.call(this, sourcecode, options, errname, debug);
+    } catch (ex) {
+        console.error("generated " + errname + " source code fatal error: ", ex.message);
+
+        var dumpfile;
+
+        if (options.dumpSourceCodeOnFailure) {
+            try {
+                var dumpPath = (options.outfile ? path.dirname(options.outfile) : null) || options.inputPath || process.cwd();
+                var dumpName = options.inputFilename || options.moduleName || options.defaultModuleName || err_id;
+
+                var ts = new Date();
+                var tm = ts.getUTCFullYear() +
+                    '_' + pad(ts.getUTCMonth() + 1) +
+                    '_' + pad(ts.getUTCDate()) +
+                    'T' + pad(ts.getUTCHours()) +
+                    '' + pad(ts.getUTCMinutes()) +
+                    '' + pad(ts.getUTCSeconds()) +
+                    '.' + pad(ts.getUTCMilliseconds(), 3) +
+                    'Z';
+
+                dumpfile = path.normalize(dumpPath + '/' + dumpName + '.fatal_' + err_id + '_dump_' + tm + '.js');
+                console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
+                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+            } catch (ex2) {
+                console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, ex2.stack);
+            }
+        }
+
+        ex.offending_source_code = sourcecode;
+        ex.offending_source_title = errname;
+        ex.offending_source_dumpfile = dumpfile;
+        
+        if (options.throwErrorOnCompileFailure) {
+            throw ex;
+        }
+    }
+    return p;
+}
+
+
+
+
+
+
+
+
+module.exports = exec_and_diagnose_this_stuff;
+
+
+}).call(this,require('_process'))
+},{"_process":18,"assert":14,"fs":15,"path":17}],11:[function(require,module,exports){
 // Set class to wrap arrays
 
 var typal = require('./typal').typal;
@@ -20343,7 +20467,7 @@ if (typeof exports !== 'undefined') {
 }
 
 
-},{"./typal":12,"assert":13}],11:[function(require,module,exports){
+},{"./typal":13,"assert":14}],12:[function(require,module,exports){
 /* parser generated by jison 0.4.18-179 */
 
 /*
@@ -22813,7 +22937,7 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
 
 }
 
-},{"xregexp":21}],12:[function(require,module,exports){
+},{"xregexp":22}],13:[function(require,module,exports){
 /*
  * Introduces a typal object to make classical/prototypal patterns easier
  * Plus some AOP sugar
@@ -22971,7 +23095,7 @@ return {
 if (typeof exports !== 'undefined')
     exports.typal = typal;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -23465,9 +23589,9 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":20}],14:[function(require,module,exports){
+},{"util/":21}],15:[function(require,module,exports){
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // json5.js
 // Modern JSON. See README.md for details.
 //
@@ -24239,7 +24363,7 @@ JSON5.stringify = function (obj, replacer, space) {
     return internalStringify(topLevelHolder, '', true);
 };
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -24467,7 +24591,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":17}],17:[function(require,module,exports){
+},{"_process":18}],18:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -24649,7 +24773,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -24674,14 +24798,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -25271,7 +25395,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":19,"_process":17,"inherits":18}],21:[function(require,module,exports){
+},{"./support/isBuffer":20,"_process":18,"inherits":19}],22:[function(require,module,exports){
 /*!
  * XRegExp-All 
  * <xregexp.com>
@@ -29887,7 +30011,7 @@ return XRegExp;
 }));
 
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 module.exports={
   "author": {
     "name": "Zach Carter",
