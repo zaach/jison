@@ -10286,6 +10286,7 @@ var lexer = {
     //
     // --------- END OF REPORT -----------
 
+
     EOF: 1,
     ERROR: 2,
 
@@ -10319,7 +10320,12 @@ var lexer = {
     yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
     // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+    /**
+    @public 
+    @this {RegExpLexer} 
+    */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+        /** @constructor */
         var pei = {
             errStr: msg,
             recoverable: !!recoverable,
@@ -10337,6 +10343,10 @@ var lexer = {
             // Note that only array and object references are nuked as those
             // constitute the set of elements which can produce a cyclic ref.
             // The rest of the members is kept intact as they are harmless.
+            /** 
+            @public 
+            @this {LexErrorInfo} 
+            */
             destroy: function destructLexErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -10356,6 +10366,10 @@ var lexer = {
         return pei;
     },
 
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
@@ -10373,6 +10387,10 @@ var lexer = {
     // up these constructs, which *may* carry cyclic references which would
     // otherwise prevent the instances from being properly and timely
     // garbage-collected, i.e. this function helps prevent memory leaks!
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
         var rv;
 
@@ -10396,6 +10414,10 @@ var lexer = {
     },
 
     // clear the lexer token context; intended for internal use only
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     clear: function lexer_clear() {
         this.yytext = '';
         this.yyleng = 0;
@@ -10406,6 +10428,10 @@ var lexer = {
     },
 
     // resets the lexer, sets new input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
 
@@ -10472,6 +10498,10 @@ var lexer = {
     },
 
     // consumes and returns one char from the input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     input: function lexer_input() {
         if (!this._input) {
             //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
@@ -10522,6 +10552,10 @@ var lexer = {
     },
 
     // unshifts one char (or a string) into the input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     unput: function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
@@ -10553,12 +10587,20 @@ var lexer = {
     },
 
     // When called from action, caches matched text and appends it on next action
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     more: function lexer_more() {
         this._more = true;
         return this;
     },
 
     // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
@@ -10573,6 +10615,10 @@ var lexer = {
     },
 
     // retain first n characters of the match
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     less: function lexer_less(n) {
         return this.unput(this.match.slice(n));
     },
@@ -10581,6 +10627,10 @@ var lexer = {
     // Limit the returned string length to `maxSize` (default: 20).
     // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
@@ -10612,6 +10662,10 @@ var lexer = {
     // Limit the returned string length to `maxSize` (default: 20).
     // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
         if (maxSize < 0)
@@ -10642,6 +10696,10 @@ var lexer = {
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
         var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
@@ -10652,6 +10710,10 @@ var lexer = {
     // the input `yylloc` location object.
     // Set `display_range_too` to TRUE to include the string character index position(s)
     // in the description if the `yylloc.range` is available.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
@@ -10695,6 +10757,10 @@ var lexer = {
     // - matches
     // - yylloc
     // - offset
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
@@ -10790,6 +10856,10 @@ var lexer = {
     },
 
     // return next match in input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     next: function lexer_next() {
         if (this.done) {
             this.clear();
@@ -10823,11 +10893,11 @@ var lexer = {
         }
 
         var rule_ids = spec.rules;
-//        var dispatch = spec.__dispatch_lut;
+        //var dispatch = spec.__dispatch_lut;
         var regexes = spec.__rule_regexes;
         var len = spec.__rule_count;
 
-//        var c0 = this._input[0];
+        //var c0 = this._input[0];
 
         // Note: the arrays are 1-based, while `len` itself is a valid index,
         // hence the non-standard less-or-equal check in the next loop condition!
@@ -10888,6 +10958,10 @@ var lexer = {
     },
 
     // return next match that has a token
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
@@ -10907,11 +10981,19 @@ var lexer = {
     // backwards compatible alias for `pushState()`;
     // the latter is symmetrical with `popState()` and we advise to use
     // those APIs in any modern lexer code, rather than `begin()`.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     begin: function lexer_begin(condition) {
         return this.pushState(condition);
     },
 
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     pushState: function lexer_pushState(condition) {
         this.conditionStack.push(condition);
         this.__currentRuleSet__ = null;
@@ -10919,6 +11001,10 @@ var lexer = {
     },
 
     // pop the previously active lexer condition state off the condition stack
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
@@ -10930,6 +11016,10 @@ var lexer = {
     },
 
     // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
@@ -10940,6 +11030,10 @@ var lexer = {
     },
 
     // (internal) determine the lexer rule set which is active for the currently active lexer condition state
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
@@ -10949,6 +11043,10 @@ var lexer = {
     },
 
     // return the number of states currently on the stack
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
@@ -15175,6 +15273,7 @@ var lexer = {
     //
     // --------- END OF REPORT -----------
 
+
     EOF: 1,
     ERROR: 2,
 
@@ -15208,7 +15307,12 @@ var lexer = {
     yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
     // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+    /**
+    @public 
+    @this {RegExpLexer} 
+    */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+        /** @constructor */
         var pei = {
             errStr: msg,
             recoverable: !!recoverable,
@@ -15226,6 +15330,10 @@ var lexer = {
             // Note that only array and object references are nuked as those
             // constitute the set of elements which can produce a cyclic ref.
             // The rest of the members is kept intact as they are harmless.
+            /** 
+            @public 
+            @this {LexErrorInfo} 
+            */
             destroy: function destructLexErrorInfo() {
                 // remove cyclic references added to error info:
                 // info.yy = null;
@@ -15245,6 +15353,10 @@ var lexer = {
         return pei;
     },
 
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
@@ -15262,6 +15374,10 @@ var lexer = {
     // up these constructs, which *may* carry cyclic references which would
     // otherwise prevent the instances from being properly and timely
     // garbage-collected, i.e. this function helps prevent memory leaks!
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
         var rv;
 
@@ -15285,6 +15401,10 @@ var lexer = {
     },
 
     // clear the lexer token context; intended for internal use only
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     clear: function lexer_clear() {
         this.yytext = '';
         this.yyleng = 0;
@@ -15295,6 +15415,10 @@ var lexer = {
     },
 
     // resets the lexer, sets new input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
 
@@ -15361,6 +15485,10 @@ var lexer = {
     },
 
     // consumes and returns one char from the input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     input: function lexer_input() {
         if (!this._input) {
             //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
@@ -15411,6 +15539,10 @@ var lexer = {
     },
 
     // unshifts one char (or a string) into the input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     unput: function lexer_unput(ch) {
         var len = ch.length;
         var lines = ch.split(/(?:\r\n?|\n)/g);
@@ -15442,12 +15574,20 @@ var lexer = {
     },
 
     // When called from action, caches matched text and appends it on next action
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     more: function lexer_more() {
         this._more = true;
         return this;
     },
 
     // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
@@ -15462,6 +15602,10 @@ var lexer = {
     },
 
     // retain first n characters of the match
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     less: function lexer_less(n) {
         return this.unput(this.match.slice(n));
     },
@@ -15470,6 +15614,10 @@ var lexer = {
     // Limit the returned string length to `maxSize` (default: 20).
     // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
@@ -15501,6 +15649,10 @@ var lexer = {
     // Limit the returned string length to `maxSize` (default: 20).
     // Limit the returned string to the `maxLines` number of lines of input (default: 1).
     // Negative limit values equal *unlimited*.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
         if (maxSize < 0)
@@ -15531,6 +15683,10 @@ var lexer = {
     },
 
     // return a string which displays the character position where the lexing error occurred, i.e. for error messages
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
         var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
@@ -15541,6 +15697,10 @@ var lexer = {
     // the input `yylloc` location object.
     // Set `display_range_too` to TRUE to include the string character index position(s)
     // in the description if the `yylloc.range` is available.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
@@ -15584,6 +15744,10 @@ var lexer = {
     // - matches
     // - yylloc
     // - offset
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     test_match: function lexer_test_match(match, indexed_rule) {
         var token,
             lines,
@@ -15679,6 +15843,10 @@ var lexer = {
     },
 
     // return next match in input
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     next: function lexer_next() {
         if (this.done) {
             this.clear();
@@ -15712,11 +15880,11 @@ var lexer = {
         }
 
         var rule_ids = spec.rules;
-//        var dispatch = spec.__dispatch_lut;
+        //var dispatch = spec.__dispatch_lut;
         var regexes = spec.__rule_regexes;
         var len = spec.__rule_count;
 
-//        var c0 = this._input[0];
+        //var c0 = this._input[0];
 
         // Note: the arrays are 1-based, while `len` itself is a valid index,
         // hence the non-standard less-or-equal check in the next loop condition!
@@ -15777,6 +15945,10 @@ var lexer = {
     },
 
     // return next match that has a token
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
@@ -15796,11 +15968,19 @@ var lexer = {
     // backwards compatible alias for `pushState()`;
     // the latter is symmetrical with `popState()` and we advise to use
     // those APIs in any modern lexer code, rather than `begin()`.
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     begin: function lexer_begin(condition) {
         return this.pushState(condition);
     },
 
     // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     pushState: function lexer_pushState(condition) {
         this.conditionStack.push(condition);
         this.__currentRuleSet__ = null;
@@ -15808,6 +15988,10 @@ var lexer = {
     },
 
     // pop the previously active lexer condition state off the condition stack
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
         if (n > 0) {
@@ -15819,6 +16003,10 @@ var lexer = {
     },
 
     // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
@@ -15829,6 +16017,10 @@ var lexer = {
     },
 
     // (internal) determine the lexer rule set which is active for the currently active lexer condition state
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
             return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
@@ -15838,6 +16030,10 @@ var lexer = {
     },
 
     // return the number of states currently on the stack
+    /** 
+    @public 
+    @this {RegExpLexer} 
+    */
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
@@ -16611,6 +16807,10 @@ const WORDCHAR_SETSTR = setmgmt.WORDCHAR_SETSTR;
 
 
 // see also ./lib/cli.js
+/** 
+@public 
+@nocollapse
+*/
 const defaultJisonLexOptions = {
     moduleType: 'commonjs',
     debug: false,
@@ -16642,6 +16842,7 @@ const defaultJisonLexOptions = {
 
 
 // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
+/** @public */
 function camelCase(s) {
     // Convert first character to lowercase
     return s.replace(/^\w/, function (match) {
@@ -16661,7 +16862,8 @@ function camelCase(s) {
 // default value.
 //
 // Return a fresh set of options.
-function mkStdOptions(/*args...*/) {
+/** @public */
+function mkStdOptions(...args) {
     var h = Object.prototype.hasOwnProperty;
 
     // clone defaults, so we do not modify those constants.
@@ -16724,7 +16926,7 @@ function mkStdOptions(/*args...*/) {
 // been processed through LEXParser.
 function autodetectAndConvertToJSONformat(lexerSpec, options) {
   var chk_l = null;
-  var ex1;
+  var ex1, err;
 
   if (typeof lexerSpec === 'string') {
     if (options.json) {
@@ -16772,11 +16974,18 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 
 
 // HELPER FUNCTION: print the function in source code form, properly indented.
+/** @public */
 function printFunctionSourceCode(f) {
     return String(f).replace(/^    /gm, '');
 }
-function printFunctionSourceCodeContainer(f) {
-    return String(f).replace(/^    /gm, '').replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, '');
+/** @public */
+function printFunctionSourceCodeContainer(f, depth) {
+    var s = String(f);
+    for (var d = (depth || 2); d > 0; d--) {
+        s = s.replace(/^    /gm, '');
+    }
+    s = s.replace(/^\s*function\b[^\{]+\{/, '').replace(/\}\s*$/, '');
+    return s;
 }
 
 
@@ -17454,7 +17663,7 @@ function expandMacros(src, macros, opts) {
     return src;
 }
 
-function prepareStartConditions (conditions) {
+function prepareStartConditions(conditions) {
     var sc,
         hash = {};
     for (sc in conditions) {
@@ -17508,10 +17717,16 @@ function buildActions(dict, tokens, opts) {
 //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
 //
 function generateErrorClass() {
-    // See also:
-    // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-    // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-    // with userland code which might access the derived class in a 'classic' way.
+    /**
+     * See also:
+     * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+     * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+     * with userland code which might access the derived class in a 'classic' way.
+     *
+     * @export
+     * @constructor
+     * @nocollapse
+     */
     function JisonLexerError(msg, hash) {
         Object.defineProperty(this, 'name', {
             enumerable: false,
@@ -17585,9 +17800,14 @@ function generateFakeXRegExpClassSrcCode() {
     function fake() {
         var __hacky_counter__ = 0;
 
+        /**
+         * @constructor
+         * @nocollapse
+         */
         function XRegExp(re, f) {
           this.re = re;
           this.flags = f;
+          this._getUnicodeProperty = function (k) {};
           var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
           __hacky_counter__++;
           fake.__hacky_backy__ = __hacky_counter__;
@@ -17600,7 +17820,7 @@ function generateFakeXRegExpClassSrcCode() {
 
 
 
-
+/** @constructor */
 function RegExpLexer(dict, input, tokens, build_options) {
     var opts;
     var dump = false;
@@ -17697,6 +17917,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
         }
     }
 
+    /** @constructor */
     var lexer = test_me(null, null, null, function (ex) {
         // When we get an exception here, it means some part of the user-specified lexer is botched.
         //
@@ -17706,13 +17927,13 @@ function RegExpLexer(dict, input, tokens, build_options) {
             opts.showSource = false;
         }, (dict.rules.length > 0 ?
             'One or more of your lexer state names are possibly botched?' :
-            'Your custom lexer is somehow botched.'), ex)) {
+            'Your custom lexer is somehow botched.'), ex, null)) {
             if (!test_me(function () {
                 // opts.conditions = [];
                 opts.rules = [];
                 opts.showSource = false;
                 opts.__in_rules_failure_analysis_mode__ = true;
-            }, 'One or more of your lexer rules are possibly botched?', ex)) {
+            }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
                 // kill each rule action block, one at a time and test again after each 'edit':
                 var rv = false;
                 for (var i = 0, len = dict.rules.length; i < len; i++) {
@@ -17721,7 +17942,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                         // opts.conditions = [];
                         // opts.rules = [];
                         // opts.__in_rules_failure_analysis_mode__ = true;
-                    }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex);
+                    }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex, null);
                     if (rv) {
                         break;
                     }
@@ -17737,7 +17958,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                         opts.__in_rules_failure_analysis_mode__ = true;
 
                         dump = false;
-                    }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex);
+                    }, 'One or more of your lexer rule action code block(s) are possibly botched?', ex, null);
                 }
             }
         }
@@ -17746,20 +17967,25 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
     lexer.setInput(input);
 
+    /** @public */
     lexer.generate = function () {
         return generateFromOpts(opts);
     };
+    /** @public */
     lexer.generateModule = function () {
         return generateModule(opts);
     };
+    /** @public */
     lexer.generateCommonJSModule = function () {
         return generateCommonJSModule(opts);
     };
+    /** @public */
     lexer.generateAMDModule = function () {
         return generateAMDModule(opts);
     };
 
     // internal APIs to aid testing:
+    /** @public */
     lexer.getExpandedMacros = function () {
         return opts.macros;
     };
@@ -17787,676 +18013,776 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
 // As a function can be reproduced in source-code form by any JavaScript engine, we're going to wrap this chunk
 // of code in a function so that we can easily get it including it comments, etc.:
+/** 
+@public 
+@nocollapse
+*/
 function getRegExpLexerPrototype() {
-var __objdef__ = {
-    EOF: 1,
-    ERROR: 2,
+    return {
+        EOF: 1,
+        ERROR: 2,
 
-    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+        // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
 
-    // options: {},                             // <-- injected by the code generator
+        // options: {},                             // <-- injected by the code generator
 
-    // yy: ...,                                 // <-- injected by setInput()
+        // yy: ...,                                 // <-- injected by setInput()
 
-    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+        __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+        __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
-    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+        __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
 
-    done: false,                                // INTERNAL USE ONLY
-    _backtrack: false,                          // INTERNAL USE ONLY
-    _input: '',                                 // INTERNAL USE ONLY
-    _more: false,                               // INTERNAL USE ONLY
-    _signaled_error_token: false,               // INTERNAL USE ONLY
+        done: false,                                // INTERNAL USE ONLY
+        _backtrack: false,                          // INTERNAL USE ONLY
+        _input: '',                                 // INTERNAL USE ONLY
+        _more: false,                               // INTERNAL USE ONLY
+        _signaled_error_token: false,               // INTERNAL USE ONLY
 
-    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+        conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
-    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
-    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
-    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
-    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
-    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
-    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
-    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
-    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+        match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+        matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+        matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+        yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+        offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+        yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+        yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+        yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
-    // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
-    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-        var pei = {
-            errStr: msg,
-            recoverable: !!recoverable,
-            text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...
-            token: null,
-            line: this.yylineno,
-            loc: this.yylloc,
-            yy: this.yy,
-            lexer: this,
+        // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+        /**
+        @public 
+        @this {RegExpLexer} 
+        */
+        constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+            /** @constructor */
+            var pei = {
+                errStr: msg,
+                recoverable: !!recoverable,
+                text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...
+                token: null,
+                line: this.yylineno,
+                loc: this.yylloc,
+                yy: this.yy,
+                lexer: this,
 
-            // and make sure the error info doesn't stay due to potential
-            // ref cycle via userland code manipulations.
-            // These would otherwise all be memory leak opportunities!
-            //
-            // Note that only array and object references are nuked as those
-            // constitute the set of elements which can produce a cyclic ref.
-            // The rest of the members is kept intact as they are harmless.
-            destroy: function destructLexErrorInfo() {
-                // remove cyclic references added to error info:
-                // info.yy = null;
-                // info.lexer = null;
-                // ...
-                var rec = !!this.recoverable;
-                for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key === 'object') {
-                        this[key] = undefined;
+                // and make sure the error info doesn't stay due to potential
+                // ref cycle via userland code manipulations.
+                // These would otherwise all be memory leak opportunities!
+                //
+                // Note that only array and object references are nuked as those
+                // constitute the set of elements which can produce a cyclic ref.
+                // The rest of the members is kept intact as they are harmless.
+                /** 
+                @public 
+                @this {LexErrorInfo} 
+                */
+                destroy: function destructLexErrorInfo() {
+                    // remove cyclic references added to error info:
+                    // info.yy = null;
+                    // info.lexer = null;
+                    // ...
+                    var rec = !!this.recoverable;
+                    for (var key in this) {
+                        if (this.hasOwnProperty(key) && typeof key === 'object') {
+                            this[key] = undefined;
+                        }
+                    }
+                    this.recoverable = rec;
+                }
+            };
+            // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
+            this.__error_infos.push(pei);
+            return pei;
+        },
+
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        parseError: function lexer_parseError(str, hash, ExceptionClass) {
+            if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
+                return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
+            } else if (typeof this.yy.parseError === 'function') {
+                return this.yy.parseError(str, hash, ExceptionClass) || this.ERROR;
+            } else {
+                throw new ExceptionClass(str, hash);
+            }
+        },
+
+        // final cleanup function for when we have completed lexing the input;
+        // make it an API so that external code can use this one once userland
+        // code has decided it's time to destroy any lingering lexer error
+        // hash object instances and the like: this function helps to clean
+        // up these constructs, which *may* carry cyclic references which would
+        // otherwise prevent the instances from being properly and timely
+        // garbage-collected, i.e. this function helps prevent memory leaks!
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+            var rv;
+
+            // prevent lingering circular references from causing memory leaks:
+            this.setInput('', {});
+
+            // nuke the error hash info instances created during this run.
+            // Userland code must COPY any data/references
+            // in the error hash instance(s) it is more permanently interested in.
+            if (!do_not_nuke_errorinfos) {
+                for (var i = this.__error_infos.length - 1; i >= 0; i--) {
+                    var el = this.__error_infos[i];
+                    if (el && typeof el.destroy === 'function') {
+                        el.destroy();
                     }
                 }
-                this.recoverable = rec;
+                this.__error_infos.length = 0;
             }
-        };
-        // track this instance so we can `destroy()` it once we deem it superfluous and ready for garbage collection!
-        this.__error_infos.push(pei);
-        return pei;
-    },
 
-    parseError: function lexer_parseError(str, hash, ExceptionClass) {
-        if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
-            return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
-        } else if (typeof this.yy.parseError === 'function') {
-            return this.yy.parseError(str, hash, ExceptionClass) || this.ERROR;
-        } else {
-            throw new ExceptionClass(str, hash);
-        }
-    },
+            return this;
+        },
 
-    // final cleanup function for when we have completed lexing the input;
-    // make it an API so that external code can use this one once userland
-    // code has decided it's time to destroy any lingering lexer error
-    // hash object instances and the like: this function helps to clean
-    // up these constructs, which *may* carry cyclic references which would
-    // otherwise prevent the instances from being properly and timely
-    // garbage-collected, i.e. this function helps prevent memory leaks!
-    cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
-        var rv;
+        // clear the lexer token context; intended for internal use only
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        clear: function lexer_clear() {
+            this.yytext = '';
+            this.yyleng = 0;
+            this.match = '';
+            this.matches = false;
+            this._more = false;
+            this._backtrack = false;
+        },
 
-        // prevent lingering circular references from causing memory leaks:
-        this.setInput('', {});
+        // resets the lexer, sets new input
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        setInput: function lexer_setInput(input, yy) {
+            this.yy = yy || this.yy || {};
 
-        // nuke the error hash info instances created during this run.
-        // Userland code must COPY any data/references
-        // in the error hash instance(s) it is more permanently interested in.
-        if (!do_not_nuke_errorinfos) {
-            for (var i = this.__error_infos.length - 1; i >= 0; i--) {
-                var el = this.__error_infos[i];
-                if (el && typeof el.destroy === 'function') {
-                    el.destroy();
+            // also check if we've fully initialized the lexer instance,
+            // including expansion work to be done to go from a loaded
+            // lexer to a usable lexer:
+            if (!this.__decompressed) {
+              // step 1: decompress the regex list:
+              var rules = this.rules;
+              for (var i = 0, len = rules.length; i < len; i++) {
+                var rule_re = rules[i];
+
+                // compression: is the RE an xref to another RE slot in the rules[] table?
+                if (typeof rule_re === 'number') {
+                  rules[i] = rules[rule_re];
                 }
-            }
-            this.__error_infos.length = 0;
-        }
+              }
 
-        return this;
-    },
+              // step 2: unfold the conditions[] set to make these ready for use:
+              var conditions = this.conditions;
+              for (var k in conditions) {
+                var spec = conditions[k];
 
-    // clear the lexer token context; intended for internal use only
-    clear: function lexer_clear() {
-        this.yytext = '';
-        this.yyleng = 0;
-        this.match = '';
-        this.matches = false;
-        this._more = false;
-        this._backtrack = false;
-    },
+                var rule_ids = spec.rules;
 
-    // resets the lexer, sets new input
-    setInput: function lexer_setInput(input, yy) {
-        this.yy = yy || this.yy || {};
+                var len = rule_ids.length;
+                var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
+                var rule_new_ids = new Array(len + 1);
 
-        // also check if we've fully initialized the lexer instance,
-        // including expansion work to be done to go from a loaded
-        // lexer to a usable lexer:
-        if (!this.__decompressed) {
-          // step 1: decompress the regex list:
-          var rules = this.rules;
-          for (var i = 0, len = rules.length; i < len; i++) {
-            var rule_re = rules[i];
-
-            // compression: is the RE an xref to another RE slot in the rules[] table?
-            if (typeof rule_re === 'number') {
-              rules[i] = rules[rule_re];
-            }
-          }
-
-          // step 2: unfold the conditions[] set to make these ready for use:
-          var conditions = this.conditions;
-          for (var k in conditions) {
-            var spec = conditions[k];
-
-            var rule_ids = spec.rules;
-
-            var len = rule_ids.length;
-            var rule_regexes = new Array(len + 1);            // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
-            var rule_new_ids = new Array(len + 1);
-
-            for (var i = 0; i < len; i++) {
-              var idx = rule_ids[i];
-              var rule_re = rules[idx];
-              rule_regexes[i + 1] = rule_re;
-              rule_new_ids[i + 1] = idx;
-            }
-
-            spec.rules = rule_new_ids;
-            spec.__rule_regexes = rule_regexes;
-            spec.__rule_count = len;
-          }
-
-          this.__decompressed = true;
-        }
-
-        this._input = input || '';
-        this.clear();
-        this._signaled_error_token = false;
-        this.done = false;
-        this.yylineno = 0;
-        this.matched = '';
-        this.conditionStack = ['INITIAL'];
-        this.__currentRuleSet__ = null;
-        this.yylloc = {
-            first_line: 1,
-            first_column: 0,
-            last_line: 1,
-            last_column: 0
-        };
-        if (this.options.ranges) {
-            this.yylloc.range = [0, 0];
-        }
-        this.offset = 0;
-        return this;
-    },
-
-    // consumes and returns one char from the input
-    input: function lexer_input() {
-        if (!this._input) {
-            //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
-            return null;
-        }
-        var ch = this._input[0];
-        this.yytext += ch;
-        this.yyleng++;
-        this.offset++;
-        this.match += ch;
-        this.matched += ch;
-        // Count the linenumber up when we hit the LF (or a stand-alone CR).
-        // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
-        // and we advance immediately past the LF as well, returning both together as if
-        // it was all a single 'character' only.
-        var slice_len = 1;
-        var lines = false;
-        if (ch === '\n') {
-            lines = true;
-        } else if (ch === '\r') {
-            lines = true;
-            var ch2 = this._input[1];
-            if (ch2 === '\n') {
-                slice_len++;
-                ch += ch2;
-                this.yytext += ch2;
-                this.yyleng++;
-                this.offset++;
-                this.match += ch2;
-                this.matched += ch2;
-                if (this.options.ranges) {
-                    this.yylloc.range[1]++;
+                for (var i = 0; i < len; i++) {
+                  var idx = rule_ids[i];
+                  var rule_re = rules[idx];
+                  rule_regexes[i + 1] = rule_re;
+                  rule_new_ids[i + 1] = idx;
                 }
+
+                spec.rules = rule_new_ids;
+                spec.__rule_regexes = rule_regexes;
+                spec.__rule_count = len;
+              }
+
+              this.__decompressed = true;
             }
-        }
-        if (lines) {
-            this.yylineno++;
-            this.yylloc.last_line++;
-        } else {
-            this.yylloc.last_column++;
-        }
-        if (this.options.ranges) {
-            this.yylloc.range[1]++;
-        }
 
-        this._input = this._input.slice(slice_len);
-        return ch;
-    },
-
-    // unshifts one char (or a string) into the input
-    unput: function lexer_unput(ch) {
-        var len = ch.length;
-        var lines = ch.split(/(?:\r\n?|\n)/g);
-
-        this._input = ch + this._input;
-        this.yytext = this.yytext.substr(0, this.yytext.length - len);
-        //this.yyleng -= len;
-        this.offset -= len;
-        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
-        this.match = this.match.substr(0, this.match.length - len);
-        this.matched = this.matched.substr(0, this.matched.length - len);
-
-        if (lines.length - 1) {
-            this.yylineno -= lines.length - 1;
-        }
-
-        this.yylloc.last_line = this.yylineno + 1;
-        this.yylloc.last_column = (lines ?
-                (lines.length === oldLines.length ? this.yylloc.first_column : 0)
-                + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len);
-
-        if (this.options.ranges) {
-            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
-        }
-        this.yyleng = this.yytext.length;
-        this.done = false;
-        return this;
-    },
-
-    // When called from action, caches matched text and appends it on next action
-    more: function lexer_more() {
-        this._more = true;
-        return this;
-    },
-
-    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-    reject: function lexer_reject() {
-        if (this.options.backtrack_lexer) {
-            this._backtrack = true;
-        } else {
-            // when the `parseError()` call returns, we MUST ensure that the error is registered.
-            // We accomplish this by signaling an 'error' token to be produced for the current
-            // `.lex()` run.
-            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
-            this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
-        }
-        return this;
-    },
-
-    // retain first n characters of the match
-    less: function lexer_less(n) {
-        return this.unput(this.match.slice(n));
-    },
-
-    // return (part of the) already matched input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
-    pastInput: function lexer_pastInput(maxSize, maxLines) {
-        var past = this.matched.substring(0, this.matched.length - this.match.length);
-        if (maxSize < 0)
-            maxSize = past.length;
-        else if (!maxSize)
-            maxSize = 20;
-        if (maxLines < 0)
-            maxLines = past.length;         // can't ever have more input lines than this!
-        else if (!maxLines)
-            maxLines = 1;
-        // `substr` anticipation: treat \r\n as a single character and take a little
-        // more than necessary so that we can still properly check against maxSize
-        // after we've transformed and limited the newLines in here:
-        past = past.substr(-maxSize * 2 - 2);
-        // now that we have a significantly reduced string to process, transform the newlines
-        // and chop them, then limit them:
-        var a = past.replace(/\r\n|\r/g, '\n').split('\n');
-        a = a.slice(-maxLines);
-        past = a.join('\n');
-        // When, after limiting to maxLines, we still have too much to return,
-        // do add an ellipsis prefix...
-        if (past.length > maxSize) {
-            past = '...' + past.substr(-maxSize);
-        }
-        return past;
-    },
-
-    // return (part of the) upcoming input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
-    upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
-        var next = this.match;
-        if (maxSize < 0)
-            maxSize = next.length + this._input.length;
-        else if (!maxSize)
-            maxSize = 20;
-        if (maxLines < 0)
-            maxLines = maxSize;         // can't ever have more input lines than this!
-        else if (!maxLines)
-            maxLines = 1;
-        // `substring` anticipation: treat \r\n as a single character and take a little
-        // more than necessary so that we can still properly check against maxSize
-        // after we've transformed and limited the newLines in here:
-        if (next.length < maxSize * 2 + 2) {
-            next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8
-        }
-        // now that we have a significantly reduced string to process, transform the newlines
-        // and chop them, then limit them:
-        var a = next.replace(/\r\n|\r/g, '\n').split('\n');
-        a = a.slice(0, maxLines);
-        next = a.join('\n');
-        // When, after limiting to maxLines, we still have too much to return,
-        // do add an ellipsis postfix...
-        if (next.length > maxSize) {
-            next = next.substring(0, maxSize) + '...';
-        }
-        return next;
-    },
-
-    // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-    showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
-        var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
-        var c = new Array(pre.length + 1).join('-');
-        return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
-    },
-
-    // helper function, used to produce a human readable description as a string, given
-    // the input `yylloc` location object.
-    // Set `display_range_too` to TRUE to include the string character index position(s)
-    // in the description if the `yylloc.range` is available.
-    describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
-        var l1 = yylloc.first_line;
-        var l2 = yylloc.last_line;
-        var o1 = yylloc.first_column;
-        var o2 = yylloc.last_column - 1;
-        var dl = l2 - l1;
-        var d_o = (dl === 0 ? o2 - o1 : 1000);
-        var rv;
-        if (dl === 0) {
-            rv = 'line ' + l1 + ', ';
-            if (d_o === 0) {
-                rv += 'column ' + o1;
-            } else {
-                rv += 'columns ' + o1 + ' .. ' + o2;
-            }
-        } else {
-            rv = 'lines ' + l1 + '(column ' + o1 + ') .. ' + l2 + '(column ' + o2 + ')';
-        }
-        if (yylloc.range && display_range_too) {
-            var r1 = yylloc.range[0];
-            var r2 = yylloc.range[1] - 1;
-            if (r2 === r1) {
-                rv += ' {String Offset: ' + r1 + '}';
-            } else {
-                rv += ' {String Offset range: ' + r1 + ' .. ' + r2 + '}';
-            }
-        }
-        return rv;
-        // return JSON.stringify(yylloc);
-    },
-
-    // test the lexed token: return FALSE when not a match, otherwise return token.
-    //
-    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
-    // contains the actually matched text string.
-    //
-    // Also move the input cursor forward and update the match collectors:
-    // - yytext
-    // - yyleng
-    // - match
-    // - matches
-    // - yylloc
-    // - offset
-    test_match: function lexer_test_match(match, indexed_rule, parseParams) {
-        var token,
-            lines,
-            backup,
-            match_str,
-            match_str_len;
-
-        if (this.options.backtrack_lexer) {
-            // save context
-            backup = {
-                yylineno: this.yylineno,
-                yylloc: {
-                    first_line: this.yylloc.first_line,
-                    last_line: this.last_line,
-                    first_column: this.yylloc.first_column,
-                    last_column: this.yylloc.last_column
-                },
-                yytext: this.yytext,
-                match: this.match,
-                matches: this.matches,
-                matched: this.matched,
-                yyleng: this.yyleng,
-                offset: this.offset,
-                _more: this._more,
-                _input: this._input,
-                yy: this.yy,
-                conditionStack: this.conditionStack.slice(0),
-                done: this.done
+            this._input = input || '';
+            this.clear();
+            this._signaled_error_token = false;
+            this.done = false;
+            this.yylineno = 0;
+            this.matched = '';
+            this.conditionStack = ['INITIAL'];
+            this.__currentRuleSet__ = null;
+            this.yylloc = {
+                first_line: 1,
+                first_column: 0,
+                last_line: 1,
+                last_column: 0
             };
             if (this.options.ranges) {
-                backup.yylloc.range = this.yylloc.range.slice(0);
+                this.yylloc.range = [0, 0];
             }
-        }
+            this.offset = 0;
+            return this;
+        },
 
-        match_str = match[0];
-        match_str_len = match_str.length;
-        // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-            lines = match_str.match(/(?:\r\n?|\n).*/g);
-            if (lines) {
-                this.yylineno += lines.length;
+        // consumes and returns one char from the input
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        input: function lexer_input() {
+            if (!this._input) {
+                //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
+                return null;
             }
-        // }
-        this.yylloc = {
-            first_line: this.yylloc.last_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.last_column,
-            last_column: lines ?
-                         lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
-                         this.yylloc.last_column + match_str_len
-        };
-        this.yytext += match_str;
-        this.match += match_str;
-        this.matches = match;
-        this.yyleng = this.yytext.length;
-        if (this.options.ranges) {
-            this.yylloc.range = [this.offset, this.offset + this.yyleng];
-        }
-        // previous lex rules MAY have invoked the `more()` API rather than producing a token:
-        // those rules will already have moved this `offset` forward matching their match lengths,
-        // hence we must only add our own match length now:
-        this.offset += match_str_len;
-        this._more = false;
-        this._backtrack = false;
-        this._input = this._input.slice(match_str_len);
-        this.matched += match_str;
-
-        // calling this method:
-        //
-        //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
-        token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */, parseParams);
-        // otherwise, when the action codes are all simple return token statements:
-        //token = this.simpleCaseActionClusters[indexed_rule];
-
-        if (this.done && this._input) {
-            this.done = false;
-        }
-        if (token) {
-            return token;
-        } else if (this._backtrack) {
-            // recover context
-            for (var k in backup) {
-                this[k] = backup[k];
-            }
-            this.__currentRuleSet__ = null;
-            return false; // rule action called reject() implying the next rule should be tested instead.
-        } else if (this._signaled_error_token) {
-            // produce one 'error' token as `.parseError()` in `reject()` did not guarantee a failure signal by throwing an exception!
-            token = this._signaled_error_token;
-            this._signaled_error_token = false;
-            return token;
-        }
-        return false;
-    },
-
-    // return next match in input
-    next: function lexer_next(parseParams) {
-        if (this.done) {
-            this.clear();
-            return this.EOF;
-        }
-        if (!this._input) {
-            this.done = true;
-        }
-
-        var token,
-            match,
-            tempMatch,
-            index;
-        if (!this._more) {
-            this.clear();
-        }
-        var spec = this.__currentRuleSet__;
-        if (!spec) {
-            // Update the ruleset cache as we apparently encountered a state change or just started lexing.
-            // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
-            // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
-            // speed up those activities a tiny bit.
-            spec = this.__currentRuleSet__ = this._currentRules();
-            // Check whether a *sane* condition has been pushed before: this makes the lexer robust against
-            // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
-            if (!spec || !spec.rules) {
-                var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + '. The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
-                // produce one 'error' token until this situation has been resolved, most probably by parse termination!
-                return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
-            }
-        }
-
-        var rule_ids = spec.rules;
-//        var dispatch = spec.__dispatch_lut;
-        var regexes = spec.__rule_regexes;
-        var len = spec.__rule_count;
-
-//        var c0 = this._input[0];
-
-        // Note: the arrays are 1-based, while `len` itself is a valid index,
-        // hence the non-standard less-or-equal check in the next loop condition!
-        //
-        // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
-        // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
-        // O(n) ideally, where:
-        //
-        // - N is the number of input particles -- which is not precisely characters
-        //   as we progress on a per-regex-match basis rather than on a per-character basis
-        //
-        // - M is the number of rules (regexes) to test in the active condition state.
-        //
-        for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
-            tempMatch = this._input.match(regexes[i]);
-            if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
-                match = tempMatch;
-                index = i;
-                if (this.options.backtrack_lexer) {
-                    token = this.test_match(tempMatch, rule_ids[i], parseParams);
-                    if (token !== false) {
-                        return token;
-                    } else if (this._backtrack) {
-                        match = undefined;
-                        continue; // rule action called reject() implying a rule MISmatch.
-                    } else {
-                        // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
-                        return false;
+            var ch = this._input[0];
+            this.yytext += ch;
+            this.yyleng++;
+            this.offset++;
+            this.match += ch;
+            this.matched += ch;
+            // Count the linenumber up when we hit the LF (or a stand-alone CR).
+            // On CRLF, the linenumber is incremented when you fetch the CR or the CRLF combo
+            // and we advance immediately past the LF as well, returning both together as if
+            // it was all a single 'character' only.
+            var slice_len = 1;
+            var lines = false;
+            if (ch === '\n') {
+                lines = true;
+            } else if (ch === '\r') {
+                lines = true;
+                var ch2 = this._input[1];
+                if (ch2 === '\n') {
+                    slice_len++;
+                    ch += ch2;
+                    this.yytext += ch2;
+                    this.yyleng++;
+                    this.offset++;
+                    this.match += ch2;
+                    this.matched += ch2;
+                    if (this.options.ranges) {
+                        this.yylloc.range[1]++;
                     }
-                } else if (!this.options.flex) {
-                    break;
                 }
             }
-        }
-        if (match) {
-            token = this.test_match(match, rule_ids[index], parseParams);
-            if (token !== false) {
+            if (lines) {
+                this.yylineno++;
+                this.yylloc.last_line++;
+            } else {
+                this.yylloc.last_column++;
+            }
+            if (this.options.ranges) {
+                this.yylloc.range[1]++;
+            }
+
+            this._input = this._input.slice(slice_len);
+            return ch;
+        },
+
+        // unshifts one char (or a string) into the input
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        unput: function lexer_unput(ch) {
+            var len = ch.length;
+            var lines = ch.split(/(?:\r\n?|\n)/g);
+
+            this._input = ch + this._input;
+            this.yytext = this.yytext.substr(0, this.yytext.length - len);
+            //this.yyleng -= len;
+            this.offset -= len;
+            var oldLines = this.match.split(/(?:\r\n?|\n)/g);
+            this.match = this.match.substr(0, this.match.length - len);
+            this.matched = this.matched.substr(0, this.matched.length - len);
+
+            if (lines.length - 1) {
+                this.yylineno -= lines.length - 1;
+            }
+
+            this.yylloc.last_line = this.yylineno + 1;
+            this.yylloc.last_column = (lines ?
+                    (lines.length === oldLines.length ? this.yylloc.first_column : 0)
+                    + oldLines[oldLines.length - lines.length].length - lines[0].length :
+                    this.yylloc.first_column - len);
+
+            if (this.options.ranges) {
+                this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
+            }
+            this.yyleng = this.yytext.length;
+            this.done = false;
+            return this;
+        },
+
+        // When called from action, caches matched text and appends it on next action
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        more: function lexer_more() {
+            this._more = true;
+            return this;
+        },
+
+        // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        reject: function lexer_reject() {
+            if (this.options.backtrack_lexer) {
+                this._backtrack = true;
+            } else {
+                // when the `parseError()` call returns, we MUST ensure that the error is registered.
+                // We accomplish this by signaling an 'error' token to be produced for the current
+                // `.lex()` run.
+                var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+                this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+            }
+            return this;
+        },
+
+        // retain first n characters of the match
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        less: function lexer_less(n) {
+            return this.unput(this.match.slice(n));
+        },
+
+        // return (part of the) already matched input, i.e. for error messages.
+        // Limit the returned string length to `maxSize` (default: 20).
+        // Limit the returned string to the `maxLines` number of lines of input (default: 1).
+        // Negative limit values equal *unlimited*.
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        pastInput: function lexer_pastInput(maxSize, maxLines) {
+            var past = this.matched.substring(0, this.matched.length - this.match.length);
+            if (maxSize < 0)
+                maxSize = past.length;
+            else if (!maxSize)
+                maxSize = 20;
+            if (maxLines < 0)
+                maxLines = past.length;         // can't ever have more input lines than this!
+            else if (!maxLines)
+                maxLines = 1;
+            // `substr` anticipation: treat \r\n as a single character and take a little
+            // more than necessary so that we can still properly check against maxSize
+            // after we've transformed and limited the newLines in here:
+            past = past.substr(-maxSize * 2 - 2);
+            // now that we have a significantly reduced string to process, transform the newlines
+            // and chop them, then limit them:
+            var a = past.replace(/\r\n|\r/g, '\n').split('\n');
+            a = a.slice(-maxLines);
+            past = a.join('\n');
+            // When, after limiting to maxLines, we still have too much to return,
+            // do add an ellipsis prefix...
+            if (past.length > maxSize) {
+                past = '...' + past.substr(-maxSize);
+            }
+            return past;
+        },
+
+        // return (part of the) upcoming input, i.e. for error messages.
+        // Limit the returned string length to `maxSize` (default: 20).
+        // Limit the returned string to the `maxLines` number of lines of input (default: 1).
+        // Negative limit values equal *unlimited*.
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
+            var next = this.match;
+            if (maxSize < 0)
+                maxSize = next.length + this._input.length;
+            else if (!maxSize)
+                maxSize = 20;
+            if (maxLines < 0)
+                maxLines = maxSize;         // can't ever have more input lines than this!
+            else if (!maxLines)
+                maxLines = 1;
+            // `substring` anticipation: treat \r\n as a single character and take a little
+            // more than necessary so that we can still properly check against maxSize
+            // after we've transformed and limited the newLines in here:
+            if (next.length < maxSize * 2 + 2) {
+                next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8
+            }
+            // now that we have a significantly reduced string to process, transform the newlines
+            // and chop them, then limit them:
+            var a = next.replace(/\r\n|\r/g, '\n').split('\n');
+            a = a.slice(0, maxLines);
+            next = a.join('\n');
+            // When, after limiting to maxLines, we still have too much to return,
+            // do add an ellipsis postfix...
+            if (next.length > maxSize) {
+                next = next.substring(0, maxSize) + '...';
+            }
+            return next;
+        },
+
+        // return a string which displays the character position where the lexing error occurred, i.e. for error messages
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
+            var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
+            var c = new Array(pre.length + 1).join('-');
+            return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
+        },
+
+        // helper function, used to produce a human readable description as a string, given
+        // the input `yylloc` location object.
+        // Set `display_range_too` to TRUE to include the string character index position(s)
+        // in the description if the `yylloc.range` is available.
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
+            var l1 = yylloc.first_line;
+            var l2 = yylloc.last_line;
+            var o1 = yylloc.first_column;
+            var o2 = yylloc.last_column - 1;
+            var dl = l2 - l1;
+            var d_o = (dl === 0 ? o2 - o1 : 1000);
+            var rv;
+            if (dl === 0) {
+                rv = 'line ' + l1 + ', ';
+                if (d_o === 0) {
+                    rv += 'column ' + o1;
+                } else {
+                    rv += 'columns ' + o1 + ' .. ' + o2;
+                }
+            } else {
+                rv = 'lines ' + l1 + '(column ' + o1 + ') .. ' + l2 + '(column ' + o2 + ')';
+            }
+            if (yylloc.range && display_range_too) {
+                var r1 = yylloc.range[0];
+                var r2 = yylloc.range[1] - 1;
+                if (r2 === r1) {
+                    rv += ' {String Offset: ' + r1 + '}';
+                } else {
+                    rv += ' {String Offset range: ' + r1 + ' .. ' + r2 + '}';
+                }
+            }
+            return rv;
+            // return JSON.stringify(yylloc);
+        },
+
+        // test the lexed token: return FALSE when not a match, otherwise return token.
+        //
+        // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
+        // contains the actually matched text string.
+        //
+        // Also move the input cursor forward and update the match collectors:
+        // - yytext
+        // - yyleng
+        // - match
+        // - matches
+        // - yylloc
+        // - offset
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        test_match: function lexer_test_match(match, indexed_rule, parseParams) {
+            var token,
+                lines,
+                backup,
+                match_str,
+                match_str_len;
+
+            if (this.options.backtrack_lexer) {
+                // save context
+                backup = {
+                    yylineno: this.yylineno,
+                    yylloc: {
+                        first_line: this.yylloc.first_line,
+                        last_line: this.last_line,
+                        first_column: this.yylloc.first_column,
+                        last_column: this.yylloc.last_column
+                    },
+                    yytext: this.yytext,
+                    match: this.match,
+                    matches: this.matches,
+                    matched: this.matched,
+                    yyleng: this.yyleng,
+                    offset: this.offset,
+                    _more: this._more,
+                    _input: this._input,
+                    yy: this.yy,
+                    conditionStack: this.conditionStack.slice(0),
+                    done: this.done
+                };
+                if (this.options.ranges) {
+                    backup.yylloc.range = this.yylloc.range.slice(0);
+                }
+            }
+
+            match_str = match[0];
+            match_str_len = match_str.length;
+            // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
+                lines = match_str.match(/(?:\r\n?|\n).*/g);
+                if (lines) {
+                    this.yylineno += lines.length;
+                }
+            // }
+            this.yylloc = {
+                first_line: this.yylloc.last_line,
+                last_line: this.yylineno + 1,
+                first_column: this.yylloc.last_column,
+                last_column: lines ?
+                             lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
+                             this.yylloc.last_column + match_str_len
+            };
+            this.yytext += match_str;
+            this.match += match_str;
+            this.matches = match;
+            this.yyleng = this.yytext.length;
+            if (this.options.ranges) {
+                this.yylloc.range = [this.offset, this.offset + this.yyleng];
+            }
+            // previous lex rules MAY have invoked the `more()` API rather than producing a token:
+            // those rules will already have moved this `offset` forward matching their match lengths,
+            // hence we must only add our own match length now:
+            this.offset += match_str_len;
+            this._more = false;
+            this._backtrack = false;
+            this._input = this._input.slice(match_str_len);
+            this.matched += match_str;
+
+            // calling this method:
+            //
+            //   function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {...}
+            token = this.performAction.call(this, this.yy, this, indexed_rule, this.conditionStack[this.conditionStack.length - 1] /* = YY_START */, parseParams);
+            // otherwise, when the action codes are all simple return token statements:
+            //token = this.simpleCaseActionClusters[indexed_rule];
+
+            if (this.done && this._input) {
+                this.done = false;
+            }
+            if (token) {
+                return token;
+            } else if (this._backtrack) {
+                // recover context
+                for (var k in backup) {
+                    this[k] = backup[k];
+                }
+                this.__currentRuleSet__ = null;
+                return false; // rule action called reject() implying the next rule should be tested instead.
+            } else if (this._signaled_error_token) {
+                // produce one 'error' token as `.parseError()` in `reject()` did not guarantee a failure signal by throwing an exception!
+                token = this._signaled_error_token;
+                this._signaled_error_token = false;
                 return token;
             }
-            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
             return false;
-        }
-        if (this._input === '') {
-            this.done = true;
-            return this.EOF;
-        } else {
-            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
-            token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
-            if (token === this.ERROR) {
-                // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
-                // by moving forward at least one character at a time:
-                if (!this.match.length) {
-                    this.input();
+        },
+
+        // return next match in input
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        next: function lexer_next(parseParams) {
+            if (this.done) {
+                this.clear();
+                return this.EOF;
+            }
+            if (!this._input) {
+                this.done = true;
+            }
+
+            var token,
+                match,
+                tempMatch,
+                index;
+            if (!this._more) {
+                this.clear();
+            }
+            var spec = this.__currentRuleSet__;
+            if (!spec) {
+                // Update the ruleset cache as we apparently encountered a state change or just started lexing.
+                // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
+                // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
+                // speed up those activities a tiny bit.
+                spec = this.__currentRuleSet__ = this._currentRules();
+                // Check whether a *sane* condition has been pushed before: this makes the lexer robust against
+                // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
+                if (!spec || !spec.rules) {
+                    var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + '. The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                    // produce one 'error' token until this situation has been resolved, most probably by parse termination!
+                    return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
                 }
             }
-            return token;
-        }
-    },
 
-    // return next match that has a token
-    lex: function lexer_lex(parseParams) {
-        var r;
-        // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
-        if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.call(this, parseParams);
-        }
-        while (!r) {
-            r = this.next(parseParams);
-        }
-        if (typeof this.options.post_lex === 'function') {
-            // (also account for a userdef function which does not return any value: keep the token as is)
-            r = this.options.post_lex.call(this, r, parseParams) || r;
-        }
-        return r;
-    },
+            var rule_ids = spec.rules;
+            //var dispatch = spec.__dispatch_lut;
+            var regexes = spec.__rule_regexes;
+            var len = spec.__rule_count;
 
-    // backwards compatible alias for `pushState()`;
-    // the latter is symmetrical with `popState()` and we advise to use
-    // those APIs in any modern lexer code, rather than `begin()`.
-    begin: function lexer_begin(condition) {
-        return this.pushState(condition);
-    },
+            //var c0 = this._input[0];
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-    pushState: function lexer_pushState(condition) {
-        this.conditionStack.push(condition);
-        this.__currentRuleSet__ = null;
-        return this;
-    },
+            // Note: the arrays are 1-based, while `len` itself is a valid index,
+            // hence the non-standard less-or-equal check in the next loop condition!
+            //
+            // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
+            // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
+            // O(n) ideally, where:
+            //
+            // - N is the number of input particles -- which is not precisely characters
+            //   as we progress on a per-regex-match basis rather than on a per-character basis
+            //
+            // - M is the number of rules (regexes) to test in the active condition state.
+            //
+            for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+                tempMatch = this._input.match(regexes[i]);
+                if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
+                    match = tempMatch;
+                    index = i;
+                    if (this.options.backtrack_lexer) {
+                        token = this.test_match(tempMatch, rule_ids[i], parseParams);
+                        if (token !== false) {
+                            return token;
+                        } else if (this._backtrack) {
+                            match = undefined;
+                            continue; // rule action called reject() implying a rule MISmatch.
+                        } else {
+                            // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                            return false;
+                        }
+                    } else if (!this.options.flex) {
+                        break;
+                    }
+                }
+            }
+            if (match) {
+                token = this.test_match(match, rule_ids[index], parseParams);
+                if (token !== false) {
+                    return token;
+                }
+                // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
+                return false;
+            }
+            if (this._input === '') {
+                this.done = true;
+                return this.EOF;
+            } else {
+                var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
+                token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+                if (token === this.ERROR) {
+                    // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
+                    // by moving forward at least one character at a time:
+                    if (!this.match.length) {
+                        this.input();
+                    }
+                }
+                return token;
+            }
+        },
 
-    // pop the previously active lexer condition state off the condition stack
-    popState: function lexer_popState() {
-        var n = this.conditionStack.length - 1;
-        if (n > 0) {
+        // return next match that has a token
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        lex: function lexer_lex(parseParams) {
+            var r;
+            // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
+            if (typeof this.options.pre_lex === 'function') {
+                r = this.options.pre_lex.call(this, parseParams);
+            }
+            while (!r) {
+                r = this.next(parseParams);
+            }
+            if (typeof this.options.post_lex === 'function') {
+                // (also account for a userdef function which does not return any value: keep the token as is)
+                r = this.options.post_lex.call(this, r, parseParams) || r;
+            }
+            return r;
+        },
+
+        // backwards compatible alias for `pushState()`;
+        // the latter is symmetrical with `popState()` and we advise to use
+        // those APIs in any modern lexer code, rather than `begin()`.
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        begin: function lexer_begin(condition) {
+            return this.pushState(condition);
+        },
+
+        // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        pushState: function lexer_pushState(condition) {
+            this.conditionStack.push(condition);
             this.__currentRuleSet__ = null;
-            return this.conditionStack.pop();
-        } else {
-            return this.conditionStack[0];
-        }
-    },
+            return this;
+        },
 
-    // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-    topState: function lexer_topState(n) {
-        n = this.conditionStack.length - 1 - Math.abs(n || 0);
-        if (n >= 0) {
-            return this.conditionStack[n];
-        } else {
-            return 'INITIAL';
-        }
-    },
+        // pop the previously active lexer condition state off the condition stack
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        popState: function lexer_popState() {
+            var n = this.conditionStack.length - 1;
+            if (n > 0) {
+                this.__currentRuleSet__ = null;
+                return this.conditionStack.pop();
+            } else {
+                return this.conditionStack[0];
+            }
+        },
 
-    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
-    _currentRules: function lexer__currentRules() {
-        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
-        } else {
-            return this.conditions['INITIAL'];
-        }
-    },
+        // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        topState: function lexer_topState(n) {
+            n = this.conditionStack.length - 1 - Math.abs(n || 0);
+            if (n >= 0) {
+                return this.conditionStack[n];
+            } else {
+                return 'INITIAL';
+            }
+        },
 
-    // return the number of states currently on the stack
-    stateStackSize: function lexer_stateStackSize() {
-        return this.conditionStack.length;
-    }
-};
-    return __objdef__;
+        // (internal) determine the lexer rule set which is active for the currently active lexer condition state
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        _currentRules: function lexer__currentRules() {
+            if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
+                return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
+            } else {
+                return this.conditions['INITIAL'];
+            }
+        },
+
+        // return the number of states currently on the stack
+        /** 
+        @public 
+        @this {RegExpLexer} 
+        */
+        stateStackSize: function lexer_stateStackSize() {
+            return this.conditionStack.length;
+        }
+    };
 }
 
 RegExpLexer.prototype = getRegExpLexerPrototype();
@@ -18496,6 +18822,7 @@ function stripUnusedLexerCode(src, options) {
 
 
 // generate lexer source from a grammar
+/**  @public */
 function generate(dict, tokens, build_options) {
     var opt = processGrammar(dict, tokens, build_options);
 
@@ -18503,6 +18830,7 @@ function generate(dict, tokens, build_options) {
 }
 
 // process the grammar and build final data structures and functions
+/**  @public */
 function processGrammar(dict, tokens, build_options) {
     build_options = build_options || {};
     var opts = {};
@@ -18567,6 +18895,7 @@ function processGrammar(dict, tokens, build_options) {
 }
 
 // Assemble the final source from the processed grammar
+/**  @public */
 function generateFromOpts(opt) {
     var code = '';
 
@@ -18717,11 +19046,11 @@ var lexer = {
 `;
 
         // get the RegExpLexer.prototype in source code form:
-        var protosrc = String(getRegExpLexerPrototype);
+        var protosrc = printFunctionSourceCodeContainer(getRegExpLexerPrototype, 1);
         // and strip off the surrounding bits we don't want:
         protosrc = protosrc
-        .replace(/^[\s\r\n]*function getRegExpLexerPrototype\(\) \{[\s\r\n]*var __objdef__ = \{[\s]*[\r\n]/, '')
-        .replace(/[\s\r\n]*\};[\s\r\n]*return __objdef__;[\s\r\n]*\}[\s\r\n]*/, '');
+        .replace(/^[\s\r\n]*return[\s\r\n]*\{/, '')
+        .replace(/\s*\};[\s\r\n]*$/, '');
         protosrc = expandParseArguments(protosrc, opt.options);
         protosrc = stripUnusedLexerCode(protosrc, opt);
         out += protosrc + ',\n';
@@ -19049,6 +19378,8 @@ RegExpLexer.generate = generate;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
+RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
+RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 module.exports = RegExpLexer;
@@ -20132,9 +20463,10 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         var dumpfile;
 
         if (options.dumpSourceCodeOnFailure) {
+            // attempt to dump in one of several locations: first winner is *it*!
             try {
-                var dumpPath = (options.outfile ? path.dirname(options.outfile) : null) || options.inputPath || process.cwd();
-                var dumpName = options.inputFilename || options.moduleName || options.defaultModuleName || err_id;
+                var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
+                var dumpName = (options.inputFilename || options.moduleName || options.defaultModuleName || errname).replace(/[^a-z0-9_]/ig, "_");
 
                 var ts = new Date();
                 var tm = ts.getUTCFullYear() +
@@ -20146,11 +20478,27 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
                     '.' + pad(ts.getUTCMilliseconds(), 3) +
                     'Z';
 
-                dumpfile = path.normalize(dumpPath + '/' + dumpName + '.fatal_' + err_id + '_dump_' + tm + '.js');
-                console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
-                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+                dumpName += '.fatal_' + err_id + '_dump_' + tm + '.js';
+
+                for (var i = 0, l = dumpPaths.length; i < l; i++) {
+                    if (!dumpPaths[i]) {
+                        continue;
+                    }
+
+                    try {
+                        dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
+                        fs.writeFileSync(dumpfile, sourcecode, 'utf8');
+                        console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
+                        break;          // abort loop once a dump action was successful!
+                    } catch (ex3) {
+                        //console.error("generated " + errname + " source code fatal DUMPING error ATTEMPT: ", i, " = ", ex3.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex3.stack);
+                        if (i === l - 1) {
+                            throw ex3;
+                        }
+                    }
+                }
             } catch (ex2) {
-                console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, ex2.stack);
+                console.error("generated " + errname + " source code fatal DUMPING error: ", ex2.message, " -- while attempting to dump into file: ", dumpfile, "\n", ex2.stack);
             }
         }
 
