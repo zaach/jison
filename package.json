@@ -4,9 +4,9 @@
     "email": "zach@carter.name",
     "url": "http://zaa.ch"
   },
-  "name": "jison-gho",
+  "name": "jison-nny",
   "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
-  "version": "0.4.18-181",
+  "version": "0.5",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -22,11 +22,11 @@
   "preferGlobal": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/GerHobbelt/jison.git"
+    "url": "https://github.com/nnydjesus/jison.git"
   },
   "bugs": {
     "email": "jison@librelist.com",
-    "url": "http://github.com/GerHobbelt/jison/issues"
+    "url": "http://github.com/nnydjesus/jison/issues"
   },
   "main": "lib/jison",
   "bin": {
