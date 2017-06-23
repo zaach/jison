@@ -2,6 +2,29 @@ var Jison = require("../setup").Jison,
     Lexer = require("../setup").Lexer,
     assert = require("assert");
 
+exports["test xx nullable grammar"] = function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'A x',
+                   ''      ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(parser.parse("xxx"), "parse");
+    assert.ok(parser.parse("x"), "parse single x");
+    assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
+};
+
 exports["test 0+0 grammar"] = function () {
     var lexData2 = {
         rules: [
@@ -26,29 +49,6 @@ exports["test 0+0 grammar"] = function () {
     assert.ok(parser.parse("0"), "parse single 0");
 
     assert.throws(function () {parser.parse("+")}, "throws parse error on invalid");
-};
-
-exports["test xx nullable grammar"] = function () {
-    var lexData = {
-        rules: [
-           ["x", "return 'x';"]
-        ]
-    };
-    var grammar = {
-        tokens: [ 'x' ],
-        startSymbol: "A",
-        bnf: {
-            "A" :[ 'A x',
-                   ''      ]
-        }
-    };
-
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
-    parser.lexer = new Lexer(lexData);
-
-    assert.ok(parser.parse("xxx"), "parse");
-    assert.ok(parser.parse("x"), "parse single x");
-    assert.throws(function (){parser.parse("+");}, "throws parse error on invalid");
 };
 
 exports["test LALR algorithm from Bermudez, Logothetis"] = function () {
