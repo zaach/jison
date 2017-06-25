@@ -161,11 +161,14 @@ describe("Precedence in the grammar", function () {
     };
 
     var parser = new Jison.Parser(grammar, {type: "lalr"});
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new RegExpLexer(lexData);
 
     assert.throws(function () {
       parser.parse("x=x=x");
-    }, Error, /JisonParserError:[^]*?Expecting end of input, got unexpected "="/);
+    }, JisonParserError, /Parse error on line[^]*?Expecting end of input, got unexpected "="/);
     assert.ok(parser.parse("x=x"), "normal use is okay.");
   });
 

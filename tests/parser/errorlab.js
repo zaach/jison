@@ -93,9 +93,13 @@ describe("Error Recovery/Handling", function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
+
+    var JisonParserError = parser.JisonParserError;
+    assert(JisonParserError);
+
     assert.throws(function () { 
       parser.parse('xxgy'); 
-    }, Error, /JisonParserError:[^]*?got unexpected ERR/);
+    }, JisonParserError, /Parse error on line \d+[^]*?got unexpected ERR/);
   });
 
   it("test error after error recovery", function () {
@@ -119,9 +123,13 @@ describe("Error Recovery/Handling", function () {
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
     parser.lexer = new Lexer(lexData);
+
+    var JisonParserError = parser.JisonParserError;
+    assert(JisonParserError);
+
     assert.throws(function () { 
       parser.parse('gxxx;'); 
-    }, Error, /JisonParserError: Parsing halted while starting to recover from another error/);
+    }, JisonParserError, /Parsing halted while starting to recover from another error/);
   });
 
 // WARNING: the actual test in here differs from what it says on the tin, as we differ from jison in error recovery behaviour in this regard:
@@ -152,6 +160,9 @@ describe("Error Recovery/Handling", function () {
     var expectedAST = ["+", ["+", [0], [0]], [0]];
 
     assert.doesNotThrow(function () { parser.parse("0+0+0>"); });     // here we expect behaviour different from vanilla jison as our error recovery handling is a bit more sophisticated and this error is coped with
+
+    // and since we have error recovery, we should see it at work:
+    assert.deepEqual(parser.parse("0+0+0>"), expectedAST, "the error recovery rule should have gobbled the erroneous '>' at the end of the input");
   });
 
   it("test error recovery rule on replacement error", function() {
@@ -337,20 +348,15 @@ describe("Error Recovery/Handling", function () {
       assert(JisonParserError);
 
       assert(ex instanceof Error);
-      assert(ex instanceof JisonParserError);
-      assert(ex.hash);
-      assert(ex.message);
+      assert(!(ex instanceof JisonParserError));
 
       assert(parser.lexer);
       var JisonLexerError = parser.lexer.JisonLexerError;
       assert(JisonLexerError);
 
-      var ex_l = ex.hash.exception;
-      assert(ex_l);
-      assert(ex_l instanceof Error);
-      assert(ex_l instanceof JisonLexerError);
-      assert(ex_l.hash);
-      assert(ex_l.message);
+      assert(ex instanceof JisonLexerError);
+      assert(ex.hash);
+      assert(ex.message);
 
 
       // test API
@@ -376,6 +382,130 @@ describe("Error Recovery/Handling", function () {
       assert(t3.toString() === 'JisonLexerError: a');
     }                    
   });
+
+  it("parser comes with its own JisonParserError exception/error class", function () {
+    var grammar = [
+      '%lex',
+      '',
+      '%%',
+      '',
+      'x      return "x";',
+      '',
+      '/lex',
+      '',
+      '%%',
+      '',
+      'A: A x',
+      ' | %epsilon',
+      ' ;',
+    ].join('\n');
+
+    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    var lexer = parser.lexer;
+    assert(lexer);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+    // assert(JisonLexerError instanceof Error);
+    assert((new JisonLexerError('x')) instanceof Error);
+
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+    // assert(JisonParserError instanceof Error);
+    assert((new JisonParserError('x')) instanceof Error);
+
+    var t = new JisonLexerError('test', 42);
+    assert(t instanceof Error);
+    assert(t instanceof JisonLexerError);
+    assert(t.hash === 42);
+    assert(t.message === 'test');
+    assert(t.toString() === 'JisonLexerError: test');
+
+    var t2 = new Error('a');
+    var t3 = new JisonLexerError('test', { exception: t2 });
+    assert(t2 instanceof Error);
+    assert(!(t2 instanceof JisonLexerError));
+    assert(t3 instanceof Error);
+    assert(t3 instanceof JisonLexerError);
+    assert(!t2.hash);
+    assert(t3.hash);
+    assert(t3.hash.exception);
+    assert(t2.message === 'a');
+    assert(t3.message === 'a');
+    assert(t2.toString() === 'Error: a');
+    assert(t3.toString() === 'JisonLexerError: a');
+  });
+
+  it("parser errors are thrown using its own JisonParserError exception/error class", function () {
+    var dict = [
+      "%%",
+      "'x'     {return 'X';}",
+    ].join('\n');
+
+    var lexer = new Lexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+    assert((new JisonLexerError('x')) instanceof Error);
+
+    var input = "xxyx";
+
+    lexer.setInput(input);
+    assert.equal(lexer.lex(), 'X');
+    assert.equal(lexer.lex(), 'X');
+    var ex1 = null;
+    try {
+      lexer.lex();
+      assert(false, "should never get here!");
+    } catch (ex) {
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonLexerError);
+      assert(/JisonLexerError:[^]*?Unrecognized text\./.test(ex));
+      assert(ex.hash);
+      assert.equal(typeof ex.hash.errStr, 'string');
+      assert.equal(typeof ex.message, 'string');
+      ex1 = ex;
+    }
+    // since the lexer has been using the standard parseError method, 
+    // which throws an exception **AND DOES NOT MOVE THE READ CURSOR FORWARD**,
+    // we WILL observe the same error again on the next invocation:
+    try {
+      lexer.lex();
+      assert(false, "should never get here!");
+    } catch (ex) {
+      assert(ex instanceof Error);
+      assert(ex instanceof JisonLexerError);
+      assert(/JisonLexerError:[^]*?Unrecognized text\./.test(ex));
+      assert(ex.hash);
+      assert.equal(typeof ex.hash.errStr, 'string');
+      assert.equal(typeof ex.message, 'string');
+
+      assert.strictEqual(ex.message, ex1.message);
+      var check_items = ['text', 'line', 'loc', 'errStr'];
+      check_items.forEach(function (item) {
+        assert.deepEqual(ex[item], ex1[item], "both exceptions should have a matching member '" + item + "'");
+      });
+    }
+    // however, when we apply a non-throwing parseError, we MUST shift one character 
+    // forward on error:
+    lexer.parseError = function (str, hash) {
+      assert(hash);
+      assert(str);
+      // and make sure the `this` reference points right back at the current *lexer* instance!
+      assert.equal(this, lexer);
+    };
+    assert.equal(lexer.lex(), lexer.ERROR);
+    assert.equal(lexer.yytext, "y");          // the one character shifted on error should end up in the lexer "value", i.e. `yytext`!
+
+    assert.equal(lexer.lex(), 'X');
+    assert.equal(lexer.yytext, "x");
+    assert.equal(lexer.lex(), lexer.EOF);
+  });
+
+  it("default parser and lexer parseError() hooks should be linked up so that lexer errors travel through the parser's parseError() hook", function () {
+  });
+
+  it("lexer and parser errors travelling via parseError() should be identifiable by their specific exception class instance", function () {
+  });
+
 });
 
 

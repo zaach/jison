@@ -2,6 +2,19 @@ var assert = require("chai").assert;
 var Jison = require("../setup").Jison;
 
 
+var lexData = {
+    rules: [
+       ["a", "return 'a';"],
+       ["b", "return 'b';"],
+       ["c", "return 'c';"],
+       ["d", "return 'd';"],
+       ["e", "return 'e';"],
+       ["x", "return 'x';"],
+       ["y", "return 'y';"],
+       ["z", "return 'z';"]
+    ]
+};
+
 describe("Parser Tables", function () {
   it("test right-recursive nullable grammar", function () {
     var grammar = {
@@ -89,7 +102,7 @@ describe("Parser Tables", function () {
   });
 
   // for Minimal LR testing. Not there yet.
-  xit("test Spector grammar G1", function () {
+  it("test Spector grammar G1", function () {
     var grammar = {
         "tokens": "z d b c a",
         "startSymbol": "S",
@@ -103,11 +116,41 @@ describe("Parser Tables", function () {
         }
     };
 
-    var gen = new Jison.Generator(grammar, {type: "mlr", debug:true});
-    assert.strictEqual(gen.conflicts, 0, "should have no conflict");
+    var gen = new Jison.Generator(grammar, {type: "lalr", debug: false});
+    assert.ok(!gen.DEBUG, "should have DEBUG *DIS*abled");
+    assert.strictEqual(gen.conflicts, 2, "should have 2 conflicts");
+
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
+    parser.lexer = gen.createLexer(lexData);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.ok(parser.parse("azc"), "parse 'azc'");
+
+    // The if(0)'d checks are the ones you would expect to work if this 
+    // was an LALR(2) or LR(2) parser, which would have reported ZERO CONFLICTS:
+
+    if (0) {
+      assert.ok(parser.parse("azd"), "parse 'azd'");
+    } else { 
+      assert.throws(function () {
+        parser.parse("azd");
+      }, JisonParserError, /Parse error on line[^]*?got unexpected "d"/);
+    }
+    if (0) {
+      assert.ok(parser.parse("bzc"), "parse 'bzc'");
+    } else {
+      assert.throws(function () {
+        parser.parse("bzc");
+      }, JisonParserError, /Parse error on line[^]*?got unexpected "c"/);
+    }
+    assert.ok(parser.parse("bzd"), "parse 'bzd'");
   });
 
-  xit("test De Remer G4", function () {
+  it("test De Remer G4", function () {
     var grammar = {
         "tokens": "z d b c a",
         "startSymbol": "S",
@@ -118,7 +161,21 @@ describe("Parser Tables", function () {
         }
     };
 
-    var gen = new Jison.Generator(grammar, {type: "mlr", debug:true});
+    var gen = new Jison.Generator(grammar, {type: "lalr", debug: false});
     assert.strictEqual(gen.conflicts, 0, "should have no conflict");
+
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
+    parser.lexer = gen.createLexer(lexData);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.ok(parser.parse("aed"), "parse 'aed'");
+    assert.ok(parser.parse("bec"), "parse 'bec'");
+    assert.ok(parser.parse("bed"), "parse 'bed'");
+    assert.ok(parser.parse("beec"), "parse 'beec'");
+    assert.ok(parser.parse("beed"), "parse 'beed'");
   });
 });
