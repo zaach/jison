@@ -39,18 +39,19 @@
     "ebnf-parser": "github:GerHobbelt/ebnf-parser#master",
     "jison-lex": "github:GerHobbelt/jison-lex#master",
     "lex-parser": "github:GerHobbelt/lex-parser#master",
-    "recast": "0.12.3",
-    "jscodeshift": "0.3.30",
-    "json5": "0.5.1",
+    "recast": "github:GerHobbelt/recast#master",
+    "ast-util": "github:GerHobbelt/ast-util#master",
+    "jscodeshift": "github:GerHobbelt/jscodeshift#master",
+    "json5": "github:GerHobbelt/json5#master",
     "nomnom": "github:GerHobbelt/nomnom#master",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
-    "browserify": "14.3.0",
-    "glob": "7.1.1",
-    "uglify-js": "2.8.22",
-    "chai": "3.5.0",
-    "mocha": "3.2.0"
+    "browserify": "14.4.0",
+    "glob": "7.1.2",
+    "uglify-js": "3.0.19",
+    "chai": "4.0.2",
+    "mocha": "3.4.2"
   },
   "scripts": {
     "test": "make test"
