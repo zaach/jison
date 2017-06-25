@@ -149,7 +149,7 @@ describe("Parser Generator API", function () {
     var gen = new Jison.Generator(grammar);
     gen.lexer = new Lexer(lexData);
 
-    var parserSource = gen.generate({moduleName: "compiler.parser"});
+    var parserSource = gen.generateModule({moduleName: "compiler.parser"});
     eval(parserSource);
 
     assert.ok(compiler.parser.parse(input));

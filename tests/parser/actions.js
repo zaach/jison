@@ -507,7 +507,7 @@ describe("Parser Actions", function () {
     assert.equal(parser.parse('abc'), "abc", "should return original string");
   });
 
-  it("test symbol aliases in ebnf", function() {
+  it("test symbol aliases in ebnf (basic)", function() {
     var lexData = {
         rules: [
            ["a", "return 'a';"],
@@ -529,6 +529,72 @@ describe("Parser Actions", function () {
     assert.equal(parser.parse('abc'), "a[b,c]", "should tolerate aliases in subexpression");
   });
 
+  it("test symbol aliases in ebnf (group alias)", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr[alice] (expr[bob] expr[carol])+[steve]", "return $alice+'['+$steve.join(',')+']';"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "a[b,c]", "should accept alias for outer-most group expression");
+  });
+
+  it("test implicit symbol aliases in ebnf 1", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr (expr expr)+ expr", "return $expr1+'['+$2.join(',')+']';"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "a[b,c]", "should accept implicit (numbered) alias for outer-most element");
+  });
+
+  it("test implicit symbol aliases in ebnf 2", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr (expr expr)+", "return $expr1+'['+$expr2.join(',')+']';"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "a[b,c]", "should accept implicit (numbered) alias for outer-most element");
+  });
+
   it("test symbol aliases for terminals", function() {
     var lexData = {
         rules: [
@@ -540,6 +606,25 @@ describe("Parser Actions", function () {
     var grammar = {
         bnf: {
             "pgm" :[ ["a[alice] b[bob] c[carol]", "return $alice+$bob+$carol;"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abc'), "abc", "should return original string");
+  });
+
+  it("test implicit (numbered) symbol aliases for terminals", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        bnf: {
+            "pgm" :[ ["a b c", "return $a1+$b1+$c1;"] ]
         }
     };
 
