@@ -561,7 +561,7 @@ describe("Parser Actions", function () {
     };
     var grammar = {
         ebnf: {
-            "pgm" :[ ["expr (expr expr)+ expr", "return $expr1+'['+$2.join(',')+']';"] ],
+            "pgm" :[ ["expr (expr expr)+ expr", "return $expr1+'['+$2.join(',')+']'+$3;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
                         ["c", "$$ = 'c';"] ]
@@ -570,7 +570,7 @@ describe("Parser Actions", function () {
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
-    assert.equal(parser.parse('abc'), "a[b,c]", "should accept implicit (numbered) alias for outer-most element");
+    assert.equal(parser.parse('abcb'), "a[b,c]b", "should accept implicit (numbered) alias for outer-most element");
   });
 
   it("test implicit symbol aliases in ebnf 2", function() {
@@ -583,7 +583,7 @@ describe("Parser Actions", function () {
     };
     var grammar = {
         ebnf: {
-            "pgm" :[ ["expr (expr expr)+", "return $expr1+'['+$expr2.join(',')+']';"] ],
+            "pgm" :[ ["expr (expr expr)+ expr", "return $expr1+'['+$2.join(',')+']'+$expr2;"] ],
             "expr"   :[ ["a", "$$ = 'a';"],
                         ["b", "$$ = 'b';"],
                         ["c", "$$ = 'c';"] ]
@@ -592,7 +592,29 @@ describe("Parser Actions", function () {
 
     var parser = new Jison.Parser(grammar);
     parser.lexer = new RegExpLexer(lexData);
-    assert.equal(parser.parse('abc'), "a[b,c]", "should accept implicit (numbered) alias for outer-most element");
+    assert.equal(parser.parse('abcb'), "a[b,c]b", "should accept implicit (and correctly numbered) alias for last outer-most element");
+  });
+
+  it("test implicit symbol aliases in ebnf 3", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"]
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr (expr expr)+ expr", "return $expr1+'['+$pgm_repetition_plus1.join(',')+']'+$expr2;"] ],
+            "expr"   :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abcb'), "a[b,c]b", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
   });
 
   it("test symbol aliases for terminals", function() {
