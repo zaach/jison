@@ -268,7 +268,7 @@ RegExpLexer.prototype = {
                 return token;
             } else {
                 return this.parseError('Lexical error on line ' + (this.yylineno + 1)
-                                        + '. Text matched by regex #' + index
+                                        + ': Text matched by regex #' + index
                                         + ' (' + rules[index] + ': ' + this.rules[rules[index]]
                                         + ') did not produce a token.\n' + this.showPosition(), {
                     text: "",
@@ -280,7 +280,7 @@ RegExpLexer.prototype = {
         if (this._input === "") {
             return this.EOF;
         } else {
-            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), {
+            return this.parseError('Lexical error on line ' + (this.yylineno + 1) + ': Unrecognized text.\n' + this.showPosition(), {
                 text: "",
                 token: null,
                 line: this.yylineno

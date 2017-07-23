@@ -3,7 +3,103 @@ var Jison = require("../setup").Jison;
 var Lexer = require("../setup").Lexer;
 
 
+var lexData = {
+    rules: [
+       ["x", "return 'x';"],
+       ["y", "return 'y';"]
+    ]
+};
+
+
 describe("LALR(1)", function () {
+  it("test left-recursive nullable grammar", function () {
+
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'A x',
+                   ''      ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
+    parser.lexer = new Lexer(lexData);
+    assert(parser.lexer);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.equal(gen.nullable('A'), true, "A is nullable");
+
+    assert.ok(parser.parse("xxx"), "parse 3 x's");
+    assert.ok(parser.parse("x"),   "parse single x");
+
+    // also test the two different types of errors a parser can produce:
+
+    assert.throws(function () {
+      parser.parse("y");
+    }, JisonParserError, /Parse error on line[^]*?got unexpected y/);
+
+    assert.throws(function () {
+      parser.parse("+");
+    }, JisonLexerError, /Lexical error on line[^]*?Unrecognized text/);
+
+    assert.strictEqual(gen.conflicts, 0, "no conflicts");
+
+    // parsers generated 'live' have a few extra members copied over from
+    // the JISON parser generator engine itself: 
+    // - conflicts (count)
+    // - productions (rule set)
+    // - unused_productions (rule set)
+    // which is a feature we employ here to check no conflicts have been
+    // reported during grammar compilation:
+    assert.strictEqual(parser.conflicts, 0, "no conflicts");
+  });
+
+  it("test right-recursive nullable grammar", function () {
+
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                   ''      ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar, {type: "lalr", debug: false, hasPartialLrUpgradeOnConflict: false});
+
+    assert.equal(gen.table.length, 4, "table has 4 states");
+    assert.equal(gen.conflicts, 0, "no conflicts");
+
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
+    parser.lexer = new Lexer(lexData);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.ok(parser.parse("xxx"), "parse 3 x's");
+    assert.ok(parser.parse("x"),   "parse single x");
+
+    assert.equal(gen.nullable('A'), true, "A is nullable");
+
+    // also test the two different types of errors a parser can produce:
+
+    assert.throws(function () {
+      parser.parse("y");
+    }, JisonParserError, /Parse error on line[^]*?got unexpected y/);
+
+    assert.throws(function () {
+      parser.parse("+");
+    }, JisonLexerError, /Lexical error on line[^]*?Unrecognized text/);
+  });
+
   it("test 0+0 grammar", function () {
     var lexData2 = {
         rules: [
@@ -21,40 +117,18 @@ describe("LALR(1)", function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    var parser = new Jison.Parser(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0+0"), "parse");
     assert.ok(parser.parse("0"), "parse single 0");
 
-    assert.throws(function () { 
-      parser.parse("+"); 
-    }, Error, /JisonParserError:[^]*?got unexpected "PLUS"/);
-  });
-
-  it("test xx nullable grammar", function () {
-    var lexData = {
-        rules: [
-           ["x", "return 'x';"]
-        ]
-    };
-    var grammar = {
-        tokens: [ 'x' ],
-        startSymbol: "A",
-        bnf: {
-            "A" :[ 'A x',
-                   ''      ]
-        }
-    };
-
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
-    parser.lexer = new Lexer(lexData);
-
-    assert.ok(parser.parse("xxx"), "parse");
-    assert.ok(parser.parse("x"), "parse single x");
-    assert.throws(function () { 
-      parser.parse("+"); 
-    }, Error, /JisonParserError:[^]*?Unrecognized text\./);
+    assert.throws(function () {
+      parser.parse("+");
+    }, JisonParserError, /Parse error on line \d+[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
   });
 
   it("test LALR algorithm from Bermudez, Logothetis", function () {
@@ -80,7 +154,7 @@ describe("LALR(1)", function () {
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lalr"});
+    var parser = new Jison.Parser(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse("agd"));
     assert.ok(parser.parse("agc"));
@@ -145,9 +219,9 @@ describe("LALR(1)", function () {
         },
     };
 
-    var source = '{"foo": "Bar", "hi": 42, "array": [1,2,3.004, -4.04e-4], "false": false, "true":true, "null": null, "obj": {"ha":"ho"}, "string": "str\\ting\\"sgfg" }';
+    var source = '{"foo": "Bar", "hi": 42, "array": [1, 2, 3.004, -4.04e-4], "false": false, "true": true, "null": null, "obj": {"ha": "ho"}, "string": "str\\ting\\"sgfg" }';
 
-    var gen = new Jison.Generator(grammar, {type: "lalr"});
+    var gen = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
     var parser = gen.createParser();
     var gen2 = new Jison.Generator(grammar, {type: "slr"});
     var parser2 = gen2.createParser();
@@ -155,7 +229,7 @@ describe("LALR(1)", function () {
     assert.ok(parser.parse(source));
   });
 
-  it("test LR(1) grammar", function () {
+  it("test an LR(1) grammar in strict LALR mode", function () {
     var grammar = {
         "comment": "Produces a reduce-reduce conflict unless using LR(1).",
         "tokens": "z d b c a",
@@ -170,7 +244,26 @@ describe("LALR(1)", function () {
         }
     };
 
-    var gen = new Jison.Generator(grammar, {type: "lalr"});
+    var gen = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+    assert.equal(gen.conflicts, 2);
+  });
+
+  it("test an LR(1) grammar in LALR mode with partial-lr-upgrade-on-conflict option", function () {
+    var grammar = {
+        "comment": "Produces a reduce-reduce conflict unless using LR(1).",
+        "tokens": "z d b c a",
+        "start": "S",
+        "bnf": {
+            "S" :[ "a A c",
+                   "a B d",
+                   "b A d",
+                   "b B c"],
+            "A" :[ "z" ],
+            "B" :[ "z" ]
+        }
+    };
+
+    var gen = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: true});
     assert.equal(gen.conflicts, 2);
   });
 
@@ -180,12 +273,65 @@ describe("LALR(1)", function () {
     var lex = "\n%%\n\\s+    \t{/* skip whitespace */}\n\"/*\"[^*]*\"*\"    \t{return yy.lexComment(this);}\n[a-zA-Z][a-zA-Z0-9_-]*    \t{return 'ID';}\n'\"'[^\"]+'\"'    \t{yytext = yytext.substr(1, yyleng-2); return 'STRING';}\n\"'\"[^']+\"'\"    \t{yytext = yytext.substr(1, yyleng-2); return 'STRING';}\n\":\"    \t{return ':';}\n\";\"    \t{return ';';}\n\"|\"    \t{return '|';}\n\"%%\"    \t{return '%%';}\n\"%prec\"    \t{return 'PREC';}\n\"%start\"    \t{return 'START';}\n\"%left\"    \t{return 'LEFT';}\n\"%right\"    \t{return 'RIGHT';}\n\"%nonassoc\"    \t{return 'NONASSOC';}\n\"%\"[a-zA-Z]+[^\\n]*    \t{/* ignore unrecognized decl */}\n\"{{\"[^}]*\"}\"    \t{return yy.lexAction(this);}\n\"{\"[^}]*\"}\"    \t{yytext = yytext.substr(1, yyleng-2); return 'ACTION';}\n\"%{\"(.|\\n)*?\"%}\"    	{yytext = yytext.substr(2, yyleng-4);return 'ACTION';} \n.    \t{/* ignore bad characters */}\n<<EOF>>    \t{return 'EOF';}\n\n%%\n\n";
 
 
-    var gen = new Jison.Generator(grammar, {type: "lalr"});
+    var gen = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
     gen.lexer = new Lexer(lex);
 
     var parser = gen.createParser();
 
     assert.ok(parser.parse(grammar), "bootstrapped bnf parser should parse correctly.");
+  });
+
+  it("test compilers test grammar", function () {
+    var grammar = {
+        tokens: [ 'x' ],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ 'A' ],
+            "A" :[ 'B A', '' ],
+            "B" :[ '', 'x' ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(parser.parse("xxx"), "parse");
+  });
+
+  it("test compilers test grammar 2", function () {
+    var grammar = "%% n : a b ; a : | a x ; b : | b x y ;";
+
+    var parser = new Jison.Generator(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+
+    assert.equal(parser.conflicts, 1, "only one conflict");
+  });
+
+  it("test nullables", function () {
+    var lexData = {
+        rules: [
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           ["z", "return 'z';"],
+           [";", "return ';';"]
+        ]
+    };
+    var grammar = {
+        tokens: [ ';', 'x', 'y', 'z' ],
+        startSymbol: "S",
+        bnf: {
+            "S" :[ 'A ;' ],
+            "A" :[ 'B C' ],
+            "B" :[ 'x' ],
+            "C" :[ 'y', 'D' ],
+            "D" :[ 'F' ],
+            "F" :[ '', 'F z' ],
+        }
+    };
+
+    var parser = new Jison.Parser(grammar, {type: "lalr", hasPartialLrUpgradeOnConflict: false});
+    parser.lexer = new Lexer(lexData);
+
+    assert.ok(parser.parse("x;"), "parse");
   });
 });
 

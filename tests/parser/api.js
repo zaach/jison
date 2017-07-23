@@ -263,13 +263,20 @@ describe("JISON API", function () {
 
     var gen = new Jison.Generator(grammar, {type: "lr0", noDefaultResolve: true});
     var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new Lexer(lexData);
+    assert(parser.lexer);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
 
     assert.ok(gen.table.length === 4, "table has 4 states");
     assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
+
     assert.throws(function () { 
       parser.parse("xx"); 
-    }, Error, /JisonParserError:/);
+    }, JisonParserError, /multiple actions possible/);
   });
 
 
@@ -308,12 +315,23 @@ describe("JISON API", function () {
     };
 
     var parser = new Jison.Parser(grammar);
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new Lexer(lexData);
+    assert(parser.lexer);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
 //    parser.lexer.showPosition = null; // needed for "Unexpected" message
 
     assert.throws(function () { 
       parser.parse("xx"); 
-    }, Error);
+    }, JisonParserError, /Expecting "y", got unexpected end/);
+
+    assert.throws(function () { 
+      parser.parse("xxQ"); 
+    }, JisonLexerError, /Unrecognized text/);
   });
 
   it("test locations", function () {
@@ -416,16 +434,76 @@ describe("JISON API", function () {
         }
     };
 
+    var fake_loc = {
+        first_line: 666,
+        last_line: 999,
+        first_column: 1,
+        last_column: 42
+    };
+
     var gen = new Jison.Generator(grammar);
     var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = {
       toks: ['x','x','x','y'],
       lex: function () {
         return this.toks.shift();
       },
-      setInput: function () {}
+      setInput: function () {},
+      // fake loc:
+      yylloc: fake_loc
     };
+
     var loc = parser.parse('xx\nxy');
+
+    assert.deepEqual(loc, fake_loc, "`return @B;` action code should produce the `fake_loc` value stored in the lexer");
+
+    // when you don't have a more-or-less usable fake yylloc in your lexer 
+    // when your PARSER/GRAMMAR has location tracking code, you're still 
+    // not gonna crash as then a default (empty) yylloc will be assumed
+    // by the parser code:
+    delete parser.lexer.yylloc;
+    var loc1 = parser.parse('xx\nxy');
+
+    assert.strictEqual(loc1, true, "`return @B;` action code should produce TRUE (default parser exit value on successful parse) as the lexer-provided location would be UNDEFINED");
+
+
+
+    // ------------------------------------------------------------------------
+    //
+    // However, you should be FINE when your grammar does not do anything with
+    // locations:
+    var grammar2 = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ 'x A',
+                  ['B', 'return #B'],   // return token ID number of `B`!
+            ''      ],
+            "B" :[ 'y' ]
+        }
+    };
+
+    var gen2 = new Jison.Generator(grammar2);
+    var parser2 = gen2.createParser();
+    var JisonParserError2 = parser2.JisonParserError; 
+    assert(JisonParserError2);
+    assert.notEqual(JisonParserError, JisonParserError2, "JISON code generator produces a new parser error class for every generated parser");
+
+    parser2.lexer = {
+      toks: ['x','x','x','y'],
+      lex: function () {
+        return this.toks.shift();
+      },
+      setInput: function () {},
+      // fake loc:
+      yylloc: undefined
+    };
+
+    var loc2 = parser2.parse('xx\nxy');
+    assert.equal(loc2, parser2.symbols_['B'], "grammar2's `return #B;` action code should produce the symbol ID value for grammar token `B`");
   });
 
   it("test instance creation", function () {
@@ -532,22 +610,22 @@ describe("JISON API", function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    assert.ok(typeof parser.cleanupAfterParse !== 'function', 'API will only be present after first call to parse() API');
+    assert.notEqual(typeof parser.cleanupAfterParse, 'function', 'API will only be present after first call to parse() API');
     assert.ok(!parser.cleanupAfterParse, 'API will only be present after first call to parse() API (null check)');
     assert.ok(parser.parse('xyx'), "parse xyx");
-    assert.ok(typeof parser.cleanupAfterParse === 'function', 'API must be present after first call to parse() API');
+    assert.equal(typeof parser.cleanupAfterParse, 'function', 'API must be present after first call to parse() API');
     assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 1');
     assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 2');
     assert.doesNotThrow(function () { parser.cleanupAfterParse(); }, 'repetitive invocations of the cleanup API should be fine: round 3');
 
     // did cleanup reset the API properly?
-    assert.ok(typeof parser.parseError === 'function');
-    assert.ok(parser.parseError === parser.originalParseError);
-    assert.ok(typeof parser.quoteName === 'function');
-    assert.ok(parser.quoteName === parser.originalQuoteName);
+    assert.equal(typeof parser.parseError, 'function');
+    assert.equal(parser.parseError, parser.originalParseError);
+    assert.equal(typeof parser.quoteName, 'function');
+    assert.equal(parser.quoteName, parser.originalQuoteName);
   });
 
-// See if `$$` is properly returned by the grammar when there's no explicit `return` statement in the actions:
+  // See if `$$` is properly returned by the grammar when there's no explicit `return` statement in the actions:
   it("test default parse value return of $$", function () {
     var grammar = "\n" +
         "%%\n" +
@@ -561,7 +639,7 @@ describe("JISON API", function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     var rv = parser.parse('xyx');
-    assert.ok(rv === 'exyx', "parse xyx");
+    assert.equal(rv, 'exyx', "parse xyx");
   });
 
   it("test YY shared state usage", function () {
@@ -594,17 +672,17 @@ describe("JISON API", function () {
 
     var rv = parser.parse('xyx');
     //console.log('shared state = ', parser.yy, shared_state_base, work_state);
-    assert.ok(rv === 'exyx', "parse xyx");
-    assert.ok(shared_state_base.step1 === 0, "object to initialize shared state should not be modified");
-    assert.ok(shared_state_base.step2 === 0, "object to initialize shared state should not be modified");
-    assert.ok(shared_state_base.step3 === 0, "object to initialize shared state should not be modified");
+    assert.equal(rv, 'exyx', "parse xyx");
+    assert.equal(shared_state_base.step1, 0, "object to initialize shared state should not be modified");
+    assert.equal(shared_state_base.step2, 0, "object to initialize shared state should not be modified");
+    assert.equal(shared_state_base.step3, 0, "object to initialize shared state should not be modified");
 
-    assert.ok(parser.yy === shared_state_base, "yy reference of parser object points to object used to initialize shared state");
+    assert.equal(parser.yy, shared_state_base, "yy reference of parser object points to object used to initialize shared state");
 
-    assert.ok(work_state !== shared_state_base, "yy reference passed to parser callbacks must be the active shared state object");
-    assert.ok(work_state.step1 === 2, "yy reference available in parser rule actions must be the active shared state object");
-    assert.ok(work_state.step2 === 1, "yy reference available in parser rule actions must be the active shared state object");
-    assert.ok(work_state.step3 === 1, "yy reference available in parser rule actions must be the active shared state object");
+    assert.notEqual(work_state, shared_state_base, "yy reference passed to parser callbacks must be the active shared state object");
+    assert.equal(work_state.step1, 2, "yy reference available in parser rule actions must be the active shared state object");
+    assert.equal(work_state.step2, 1, "yy reference available in parser rule actions must be the active shared state object");
+    assert.equal(work_state.step3, 1, "yy reference available in parser rule actions must be the active shared state object");
   });
 
   it("test default parse exception hash object contents", function () {
@@ -629,15 +707,22 @@ describe("JISON API", function () {
     };
 
     var parser = new Jison.Parser(grammar);
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new Lexer(lexData);
+    assert(parser.lexer);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
     parser.yy = shared_state;
 
     // a good run: no errors:
     var rv = parser.parse('xyx');
 
-    assert.ok(rv === 'exy:x', "parse xyx");
-    assert.ok(pre_count === 1, "# invocations of pre_parse");
-    assert.ok(post_count === 1, "# invocations of post_parse");
+    assert.equal(rv, 'exy:x', "parse xyx");
+    assert.equal(pre_count, 1, "# invocations of pre_parse");
+    assert.equal(post_count, 1, "# invocations of post_parse");
 
     // a bad run: a LEXER exception will be thrown:
     // Thanks to the parser kernel catching it and transforming it to 
@@ -648,44 +733,14 @@ describe("JISON API", function () {
         rv = parser.parse('xyx?');
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
+        // exception is supposed to be a LEXER exception:
         rv = ex;
+        assert.ok(ex instanceof JisonLexerError, "parse failure is expected to originate from the lexer this time");
+
         assert.ok(rv.hash, "exception is supposed to be a parser/lexer exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
         const kl_sollwert = [ 
-          'action',
-          'destroy',
-          'errStr',
-          'exception',
-          'expected',
-          'lexer',
-          'line',
-          //'loc',
-          'new_state',
-          'parser',
-          'recoverable',
-          'stack_pointer',
-          'state',
-          'state_stack',
-          'symbol_stack',
-          'text',
-          'token',
-          'token_id',
-          'value',
-          'value_stack',
-          'yy' 
-        ];
-        assert.ok(kl.length === kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
-        for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members, but not " + kl[i]);
-        }
-
-        // exception is supposed to contain a LEXER exception:
-        rv = rv.hash.exception;
-        assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
-        var kl = Object.keys(rv.hash).sort();
-        // the `hash` object is supposed to carry all these members:
-        const kl_sollwert2 = [ 
           // 'action',
           'destroy',
           'errStr',
@@ -695,6 +750,7 @@ describe("JISON API", function () {
           'line',
           'loc',
           // 'new_state',
+          // 'parser',
           'recoverable',
           // 'stack_pointer',
           // 'state',
@@ -707,13 +763,15 @@ describe("JISON API", function () {
           // 'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
+        assert.equal(kl.length, kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+
+        assert.ok(typeof rv.hash.exception === "undefined", "lexer exceptions don't contain inner exceptions in their `hash` property");
     }
-    assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 2, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
+    assert.equal(pre_count, 2, "pre_parse is invoked at the start of every parse");
+    assert.equal(post_count, 2, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
 
     // a bad run: a PARSER exception will be thrown:
     rv = false;
@@ -757,10 +815,10 @@ describe("JISON API", function () {
     assert.ok(post_count === 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
   });
 
-// a side-effect of a crash/exception thrown in a no-try-catch grammar is that the cleanup is NOT executed then,
-// hence no post_parse callback invocation will occur!
-//
-// For the rest, this test is the same as the previous one...
+  // a side-effect of a crash/exception thrown in a no-try-catch grammar is that the cleanup is NOT executed then,
+  // hence no post_parse callback invocation will occur!
+  //
+  // For the rest, this test is the same as the previous one...
   it("test %options no-try-catch", function () {
     var grammar = "%options no-try-catch\n" +
         "%%\n" +
@@ -918,10 +976,12 @@ describe("JISON API", function () {
 
     // a bad run: a LEXER exception will be thrown:
     //
-    // The *parser* no longer has a try/catch block in its kernel, hence
-    // lexer errors/exceptions will arrive here unadorned!
+    // Since 2017/6/24 edition, the *parser* no longer adorns
+    // lexer errors/exceptions, hence the unmodified lexer exceptions
+    // arrive at userland code, so you may use `instanceof` to quickly 
+    // and easily detect which type of parse error you're coping with.
     //
-    // I.e. the lexer exception won't be wrapped in a parser exception!
+    // I.e. the lexer exception won't ever be wrapped in a parser exception!
     rv = false;
     try {
         rv = parser.parse('xyx?');
@@ -1037,13 +1097,11 @@ describe("JISON API", function () {
     // result of the `x A` rule will be at least reproducible, hence we can test for 
     // the (weird) return value!
     var rv = parser.parse('xyxyx');
-    //console.log('rv: ', rv);
 
     var rv2 = parser2.parse('xyxyx');
-    //console.log('rv2: ', rv2);
 
-    assert.ok(rv === 'eyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.ok(rv2 === 'x', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
+    assert.equal(rv, 'eyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv2, 'x', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
 
     rv = parser.parse('yyyyx');
     //console.log('rv: ', rv);
@@ -1051,8 +1109,8 @@ describe("JISON API", function () {
     rv2 = parser2.parse('yyyyx');
     //console.log('rv2: ', rv2);
 
-    assert.ok(rv === 'eyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.ok(rv2 === 'xyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
+    assert.equal(rv, 'eyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv2, 'xyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
 
 
     rv = parser.parse('yyyyyy');
@@ -1061,8 +1119,8 @@ describe("JISON API", function () {
     rv2 = parser2.parse('yyyyyy');
     //console.log('rv2: ', rv2);
 
-    assert.ok(rv === 'eyyyyyy', "parse xyxyx with no-default-action");
-    assert.ok(rv2 === 'eyyyyyy', "parse xyxyx with default-action enabled (the default)");
+    assert.equal(rv, 'eyyyyyy', "parse xyxyx with no-default-action");
+    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with default-action enabled (the default)");
   });
 });
 
@@ -1070,9 +1128,6 @@ describe("JISON API", function () {
 
 
 
-// %options on-demand-lookahead    // camelCased: option.onDemandLookahead
-// %options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-// %options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 // %parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 

@@ -74,7 +74,7 @@ var Production = typal.construct({
 
 var generator = typal.beget();
 
-generator.constructor = function Jison_Generator (grammar, opt) {
+generator.constructor = function Jison_Generator(grammar, opt) {
     if (typeof grammar === 'string') {
         grammar = require("jison/bnf").parse(grammar);
     }
@@ -102,7 +102,7 @@ generator.constructor = function Jison_Generator (grammar, opt) {
     this.processGrammar(grammar);
 
     if (grammar.lex) {
-        this.lexer = new RegExpLexer(grammar.lex, null, this.terminals_);
+        this.lexer = new RegExpLexer(grammar.lex, null, this.terminals_, lexer_options);
     }
 };
 

@@ -12,42 +12,92 @@ var lexData = {
 
 
 describe("LR(0)", function () {
-  it("test left-recursive nullable grammar", function () {
+  xit("test left-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
         bnf: {
             "A" :[ 'A x',
-            ''      ]
+                   ''      ]
         }
     };
 
-    var parser = new Jison.Parser(grammar, {type: "lr0"});
-    parser.lexer = new Lexer(lexData);
+    var gen = new Jison.Generator(grammar, {type: "lr0"});
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
 
-    assert.ok(parser.parse('xxx'), "parse 3 x's");
+    parser.lexer = new Lexer(lexData);
+    assert(parser.lexer);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.equal(gen.nullable('A'), true, "A is nullable");
+
+    assert.ok(parser.parse("xxx"), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
+
+    // also test the two different types of errors a parser can produce:
+
     assert.throws(function () {
       parser.parse("y");
-    }, Error, /JisonParserError:[^]*?got unexpected y/);
+    }, JisonParserError, /Parse error on line[^]*?got unexpected y/);
+
+    assert.throws(function () {
+      parser.parse("+");
+    }, JisonLexerError, /Lexical error on line[^]*?Unrecognized text/);
+
+    assert.strictEqual(gen.conflicts, 0, "no conflicts");
+
+    // parsers generated 'live' have a few extra members copied over from
+    // the JISON parser generator engine itself: 
+    // - conflicts (count)
+    // - productions (rule set)
+    // - unused_productions (rule set)
+    // which is a feature we employ here to check no conflicts have been
+    // reported during grammar compilation:
+    assert.strictEqual(parser.conflicts, 0, "no conflicts");
   });
 
-  it("test right-recursive nullable grammar", function () {
+  xit("test right-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
         startSymbol: "A",
         bnf: {
             "A" :[ 'x A',
-            ''      ]
+                   ''      ]
         }
     };
 
     var gen = new Jison.Generator(grammar, {type: "lr0"});
 
-    assert.ok(gen.table.length == 4, "table has 4 states");
-    assert.ok(gen.conflicts == 2, "encountered 2 conflicts");
+    assert.equal(gen.table.length, 4, "table has 4 states");
+    assert.equal(gen.conflicts, 0, "no conflicts");
+
+    var parser = gen.createParser();
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
+    parser.lexer = new Lexer(lexData);
+    var JisonLexerError = parser.lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    assert.ok(parser.parse("xxx"), "parse 3 x's");
+    assert.ok(parser.parse("x"),   "parse single x");
+
+    assert.equal(gen.nullable('A'), true, "A is nullable");
+
+    // also test the two different types of errors a parser can produce:
+
+    assert.throws(function () {
+      parser.parse("y");
+    }, JisonParserError, /Parse error on line[^]*?got unexpected y/);
+
+    assert.throws(function () {
+      parser.parse("+");
+    }, JisonLexerError, /Lexical error on line[^]*?Unrecognized text/);
   });
 
   it("test 0+0 grammar", function () {
@@ -68,6 +118,9 @@ describe("LR(0)", function () {
     };
 
     var parser = new Jison.Parser(grammar, {type: "lr0"});
+    var JisonParserError = parser.JisonParserError; 
+    assert(JisonParserError);
+
     parser.lexer = new Lexer(lexData2);
 
     assert.ok(parser.parse("0+0+0"), "parse");
@@ -75,6 +128,6 @@ describe("LR(0)", function () {
 
     assert.throws(function () {
       parser.parse("+");
-    }, Error, /JisonParserError:[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
+    }, JisonParserError, /Parse error on line \d+[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
   });
 });
