@@ -12,7 +12,7 @@ var lexData = {
 
 
 describe("LR(0)", function () {
-  it("test left-recursive nullable grammar", function () {
+  xit("test left-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -60,7 +60,7 @@ describe("LR(0)", function () {
     assert.strictEqual(parser.conflicts, 0, "no conflicts");
   });
 
-  it("test right-recursive nullable grammar", function () {
+  xit("test right-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
