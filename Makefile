@@ -50,6 +50,14 @@ deploy: site
 	git commit -a -m 'Deploy site updates'
 	git checkout master
 
+# special make target for when `git checkout gh-pages` has failed in `make deploy`:
+# continue from there.
+__cp_web: 
+	cp -r web/output/jison/* ./
+	#git add . --all
+	git commit -a -m 'Deploy site updates'
+	git checkout master
+
 test:
 	node_modules/.bin/mocha --timeout 8000 --recursive tests/
 
@@ -505,5 +513,5 @@ superclean: clean clean-site
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site __cp_web
 
