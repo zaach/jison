@@ -359,7 +359,7 @@ input:
                                       // AST stream -- iff our assumption holds in actual use!
                                       //
                                       // NOTE: We only need to add a sentinel when multiple statements (lines)
-                                      // are input: when there's only a single statement (line) it'll unambiguously
+                                      // are input: when there's only a single statement (line) it'll be unambiguously
                                       // terminated by EOF!
                                       if (rv.length) {
                                         rv.push(#EOL#);
@@ -381,7 +381,7 @@ input:
                                     // AST stream -- iff our assumption holds in actual use!
                                     //
                                     // NOTE: We only need to add a sentinel when multiple statements (lines)
-                                    // are input: when there's only a single statement (line) it'll unambiguously
+                                    // are input: when there's only a single statement (line) it'll be unambiguously
                                     // terminated by EOF!
                                     if (rv.length) {
                                       rv.push(#EOL#);

@@ -19,7 +19,7 @@
 %%
 
 value
-    : STR                           {$$ = $1;}
+    : ID                            {$$ = $1;}
     | '[' ']'                       {$$ = [];}
     | '[' values ']'                {$$ = $2;}
     | id '(' ')'                    {$$ = [$1, []];}
@@ -58,10 +58,50 @@ values
 var assert = require("assert");
 
 parser.main = function () {
-    var rv = parser.parse('a(b)');
-    console.log("a(b) ==> ", rv);
-    assert.equal(rv, ["a", ["b"]]);
+    parser.yy = {
+        parseError: function custom_parseError(str, hash, ExceptionClass) {
+            // grab the collected values already present on the parse stack:
+            var vs = hash.value_stack;
+            vs = vs.slice(1, hash.stack_pointer);
 
+            console.error("parse error: ", str, "\n");
+            return vs.join(':') + ':FAILURE';
+        }
+    };
+    var type = parser.options.type + (parser.options.hasPartialLrUpgradeOnConflict ? '+HQ' : '');
+    var rv = parser.parse('a(b())');
+    console.log("a(b()) ==> ", rv, ' when grammar has been compiled as type: ', type);
+    switch (type) {
+    default:
+        assert.ok(false, "should never get here");
+        break;
+
+    case "lalr":
+        assert.equal(rv, "a:FAILURE");
+        break;
+
+    case "lalr+HQ":
+    case "lr":
+        assert.deepEqual(rv, ["a", [["b", []]]]);
+        break;
+    }
+
+    rv = parser.parse('a(b)');
+    console.log("a(b) ==> ", rv, ' when grammar has been compiled as type: ', type);
+    switch (type) {
+    default:
+        assert.ok(false, "should never get here");
+        break;
+
+    case "lalr":
+        assert.equal(rv, "a:FAILURE");
+        break;
+
+    case "lalr+HQ":
+    case "lr":
+        assert.deepEqual(rv, ["a", ["b"]]);
+        break;
+    }
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

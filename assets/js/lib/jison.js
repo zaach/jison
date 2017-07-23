@@ -1,6 +1,6 @@
 // Jison, an LR(0), SLR(1), LARL(1), LR(1) Parser Generator
 // Zachary Carter <zach@carter.name>
-// MIT X Licensed
+// MIT Licensed
 
 if (typeof exports === 'undefined') {
     exports = {};
@@ -74,7 +74,7 @@ var Production = typal.construct({
 
 var generator = typal.beget();
 
-generator.constructor = function Jison_Generator (grammar, opt) {
+generator.constructor = function Jison_Generator(grammar, opt) {
     if (typeof grammar === 'string') {
         grammar = require("jison/bnf").parse(grammar);
     }
@@ -102,7 +102,7 @@ generator.constructor = function Jison_Generator (grammar, opt) {
     this.processGrammar(grammar);
 
     if (grammar.lex) {
-        this.lexer = new RegExpLexer(grammar.lex, null, this.terminals_);
+        this.lexer = new RegExpLexer(grammar.lex, null, this.terminals_, lexer_options);
     }
 };
 

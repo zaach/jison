@@ -1,11 +1,13 @@
 /*
  * From:
- *   
+ *
  * The yyclearin macro
  *
  * z/OS UNIX System Services Programming Tools
- * SA22-7805-08 
+ * SA22-7805-08
  */
+
+
 
 
 
@@ -23,27 +25,35 @@ C           return 'C';
 
 
 
+
+
+%options debug=0
+         output-debug-tables=0
+         no-default-action=1
+
+
 %%
 
 
 
 start : lines
-    ;
+      ;
 
 lines : lines line
-    | '\n'
-    | /* */
-    ;
+      | '\n'
+      | %epsilon
+      ;
 
 
-line : error '\n' prompt
+line  : error '\n' prompt
         { yyclearin(); }
-    | A '\n'
-    ;
+      | A '\n'
+      ;
 
-prompt : /* null token */
+prompt 
+      : %epsilon
         { console.log("Please reenter line.\n"); }
-    ;
+      ;
 
 /*
  * After an Error action, the parser restores
@@ -60,10 +70,9 @@ prompt : /* null token */
  * an error, put:
  *
  *     yyclearin;
- * 
+ *
  * in the recognition action associated
  * with the error symbol. yyclearin is a macro that
  * expands into code that discards the lookahead symbol.
  */
-
 

@@ -10,80 +10,168 @@
 
 %start root
 
+%ebnf
+
 %%
 
 root
-  : program { return $1; }
+  : program EOF { return $1; }
   ;
 
 program
-  : statements simpleInverse statements { $$ = new yy.ProgramNode($1, $3); }
-  | statements { $$ = new yy.ProgramNode($1); }
-  | "" { $$ = new yy.ProgramNode([]); }
-  ;
-
-statements
-  : statement { $$ = [$1]; }
-  | statements statement { $1.push($2); $$ = $1; }
+  : statement* -> yy.prepareProgram($1)
   ;
 
 statement
-  : openInverse program closeBlock { $$ = new yy.InverseNode($1, $2, $3); }
-  | openBlock program closeBlock { $$ = new yy.BlockNode($1, $2, $3); }
-  | mustache { $$ = $1; }
-  | partial { $$ = $1; }
-  | CONTENT { $$ = new yy.ContentNode($1); }
-  | COMMENT { $$ = new yy.CommentNode($1); }
+  : mustache -> $1
+  | block -> $1
+  | rawBlock -> $1
+  | partial -> $1
+  | partialBlock -> $1
+  | content -> $1
+  | COMMENT {
+    $$ = {
+      type: 'CommentStatement',
+      value: yy.stripComment($1),
+      strip: yy.stripFlags($1, $1),
+      loc: yy.locInfo(@$)
+    };
+  };
+
+content
+  : CONTENT {
+    $$ = {
+      type: 'ContentStatement',
+      original: $1,
+      value: $1,
+      loc: yy.locInfo(@$)
+    };
+  };
+
+rawBlock
+  : openRawBlock content+ END_RAW_BLOCK -> yy.prepareRawBlock($1, $2, $3, @$)
+  ;
+
+openRawBlock
+  : OPEN_RAW_BLOCK helperName param* hash? CLOSE_RAW_BLOCK -> { path: $2, params: $3, hash: $4 }
+  ;
+
+block
+  : openBlock program inverseChain? closeBlock -> yy.prepareBlock($1, $2, $3, $4, false, @$)
+  | openInverse program inverseAndProgram? closeBlock -> yy.prepareBlock($1, $2, $3, $4, true, @$)
   ;
 
 openBlock
-  : OPEN_BLOCK inMustache CLOSE { $$ = new yy.MustacheNode($2); }
+  : OPEN_BLOCK helperName param* hash? blockParams? CLOSE -> { open: $1, path: $2, params: $3, hash: $4, blockParams: $5, strip: yy.stripFlags($1, $6) }
   ;
 
 openInverse
-  : OPEN_INVERSE inMustache CLOSE { $$ = new yy.MustacheNode($2); }
+  : OPEN_INVERSE helperName param* hash? blockParams? CLOSE -> { path: $2, params: $3, hash: $4, blockParams: $5, strip: yy.stripFlags($1, $6) }
+  ;
+
+openInverseChain
+  : OPEN_INVERSE_CHAIN helperName param* hash? blockParams? CLOSE -> { path: $2, params: $3, hash: $4, blockParams: $5, strip: yy.stripFlags($1, $6) }
+  ;
+
+inverseAndProgram
+  : INVERSE program -> { strip: yy.stripFlags($1, $1), program: $2 }
+  ;
+
+inverseChain
+  : openInverseChain program inverseChain? {
+    var inverse = yy.prepareBlock($1, $2, $3, $3, false, @$),
+        program = yy.prepareProgram([inverse], $2.loc);
+    program.chained = true;
+
+    $$ = { strip: $1.strip, program: program, chain: true };
+  }
+  | inverseAndProgram -> $1
   ;
 
 closeBlock
-  : OPEN_ENDBLOCK path CLOSE { $$ = $2; }
+  : OPEN_ENDBLOCK helperName CLOSE -> {path: $2, strip: yy.stripFlags($1, $3)}
   ;
 
 mustache
-  : OPEN inMustache CLOSE { $$ = new yy.MustacheNode($2); }
-  | OPEN_UNESCAPED inMustache CLOSE { $$ = new yy.MustacheNode($2, true); }
+  // Parsing out the '&' escape token at AST level saves ~500 bytes after min due to the removal of one parser node.
+  // This also allows for handler unification as all mustache node instances can utilize the same handler
+  : OPEN helperName param* hash? CLOSE -> yy.prepareMustache($2, $3, $4, $1, yy.stripFlags($1, $5), @$)
+  | OPEN_UNESCAPED helperName param* hash? CLOSE_UNESCAPED -> yy.prepareMustache($2, $3, $4, $1, yy.stripFlags($1, $5), @$)
   ;
-
 
 partial
-  : OPEN_PARTIAL path CLOSE { $$ = new yy.PartialNode($2); }
-  | OPEN_PARTIAL path path CLOSE { $$ = new yy.PartialNode($2, $3); }
+  : OPEN_PARTIAL partialName param* hash? CLOSE {
+    $$ = {
+      type: 'PartialStatement',
+      name: $2,
+      params: $3,
+      hash: $4,
+      indent: '',
+      strip: yy.stripFlags($1, $5),
+      loc: yy.locInfo(@$)
+    };
+  }
   ;
-
-simpleInverse
-  : OPEN_INVERSE CLOSE { }
+partialBlock
+  : openPartialBlock program closeBlock -> yy.preparePartialBlock($1, $2, $3, @$)
   ;
-
-inMustache
-  : path params { $$ = [$1].concat($2); }
-  | path { $$ = [$1]; }
-  ;
-
-params
-  : params param { $1.push($2); $$ = $1; }
-  | param { $$ = [$1]; }
+openPartialBlock
+  : OPEN_PARTIAL_BLOCK partialName param* hash? CLOSE -> { path: $2, params: $3, hash: $4, strip: yy.stripFlags($1, $5) }
   ;
 
 param
-  : path { $$ = $1; }
-  | STRING { $$ = new yy.StringNode($1); }
+  : helperName -> $1
+  | sexpr -> $1
+  ;
+
+sexpr
+  : OPEN_SEXPR helperName param* hash? CLOSE_SEXPR {
+    $$ = {
+      type: 'SubExpression',
+      path: $2,
+      params: $3,
+      hash: $4,
+      loc: yy.locInfo(@$)
+    };
+  };
+
+hash
+  : hashSegment+ -> {type: 'Hash', pairs: $1, loc: yy.locInfo(@$)}
+  ;
+
+hashSegment
+  : ID EQUALS param -> {type: 'HashPair', key: yy.id($1), value: $3, loc: yy.locInfo(@$)}
+  ;
+
+blockParams
+  : OPEN_BLOCK_PARAMS ID+ CLOSE_BLOCK_PARAMS -> yy.id($2)
+  ;
+
+helperName
+  : path -> $1
+  | dataName -> $1
+  | STRING -> {type: 'StringLiteral', value: $1, original: $1, loc: yy.locInfo(@$)}
+  | NUMBER -> {type: 'NumberLiteral', value: Number($1), original: Number($1), loc: yy.locInfo(@$)}
+  | BOOLEAN -> {type: 'BooleanLiteral', value: $1 === 'true', original: $1 === 'true', loc: yy.locInfo(@$)}
+  | UNDEFINED -> {type: 'UndefinedLiteral', original: undefined, value: undefined, loc: yy.locInfo(@$)}
+  | NULL -> {type: 'NullLiteral', original: null, value: null, loc: yy.locInfo(@$)}
+  ;
+
+partialName
+  : helperName -> $1
+  | sexpr -> $1
+  ;
+
+dataName
+  : DATA pathSegments -> yy.preparePath(true, $2, @$)
   ;
 
 path
-  : pathSegments { $$ = new yy.IdNode($1); }
+  : pathSegments -> yy.preparePath(false, $1, @$)
   ;
 
 pathSegments
-  : pathSegments SEP ID { $1.push($3); $$ = $1; }
-  | ID { $$ = [$1]; }
+  : pathSegments SEP ID { $1.push({part: yy.id($3), original: $3, separator: $2}); $$ = $1; }
+  | ID -> [{part: yy.id($1), original: $1}]
   ;
 

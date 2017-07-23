@@ -16,8 +16,7 @@ zz          return 'ZZ';
 ";"         return ';';
 "("         return '(';
 ")"         return ')';
-\n          return '\n';
-\s+         // ignore
+[\r\n\s]+   // ignore
 <<EOF>>     return 'EOF';
 
 /lex
@@ -38,13 +37,18 @@ zz          return 'ZZ';
 
 %token YY ZZ
 
+%options debug=0
+         output-debug-tables=0
+         no-default-action=1
+
+
 %%
 
 slist : slist stmt ';' { console.log("** stmt\n"); }
       | stmt ';'       {
                          console.log("** stmt\n");
                        }
-;
+      ;
 
 stmt  : ZZ
       | error          {
@@ -55,9 +59,10 @@ stmt  : ZZ
 
                          if (yy.error_count > 42) { throw new Error('kaboom! loop!'); }
                        }
-;
+      ;
 
 %%
+
 
 /*
  *
@@ -117,9 +122,6 @@ stmt  : ZZ
  *      .                                                               <
  *                                                                      <
  *   forever!                                                           <
- *
- *
- *
  *
  */
 

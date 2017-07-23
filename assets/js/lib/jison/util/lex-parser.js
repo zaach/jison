@@ -330,7 +330,7 @@ next:function () {
     if (this._input == this.EOF) {
         return this.EOF;
     } else {
-        this.parseError("Lexical error on line " + (this.yylineno + 1) + ". Unrecognized text.\n" + this.showPosition(), {text: "", token: null, line: this.yylineno});
+        this.parseError("Lexical error on line " + (this.yylineno + 1) + ": Unrecognized text.\n" + this.showPosition(), {text: "", token: null, line: this.yylineno});
     }
 },
 lex:function () {
