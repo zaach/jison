@@ -5549,10 +5549,21 @@ parser.parse = function parse(input, parseParams) {
     if (this.yyError) {
         this.yyError = function yyError(str) {
             if (yydebug) yydebug('yyerror: ', { message: str, args: arguments, symbol: symbol, state: state, newState: newState, recovering: recovering, action: action });
-            // var error_rule_depth = locateNearestErrorRecoveryRule(state);
-            // var expected = this.collect_expected_token_set(state);
-            var hash = this.constructParseErrorInfo(str, null, null, false); // (str, null, expected, (error_rule_depth >= 0));
+
+//_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
+
+            var error_rule_depth = locateNearestErrorRecoveryRule(state);
+            var expected = this.collect_expected_token_set(state);
+            var hash = this.constructParseErrorInfo(str, null, expected, (error_rule_depth >= 0));
+
+//_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
+
+            var hash = this.constructParseErrorInfo(str, null, null, false);
+
+//_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
+
             var r = this.parseError(str, hash, this.JisonParserError);
+            return r;
         };
     }
 
