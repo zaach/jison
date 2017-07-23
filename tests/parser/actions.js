@@ -617,6 +617,113 @@ describe("Parser Actions", function () {
     assert.equal(parser.parse('abcb'), "a[b,c]b", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
   });
 
+  it("test correct blocking of implicit numbered symbol aliases in ebnf", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr (expr expr)+ expr expr expr expr expr expr expr expr expr expr expr11", 
+                      "return $expr11+'['+$pgm_repetition_plus1.join(',')+']'+$expr1;"] ],
+            "expr1"  :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ],
+            "expr11" :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    //assert.equal(parser.parse('abcabcabcabcab'), "a[b,c]abcabcabcab", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
+    assert.throws(function () { 
+        var parser = new Jison.Parser(grammar);
+    }, Error, /The action block references the named alias "expr1" which is not available in production/);
+  });
+
+  it("test correct blocking of using ambiguous named symbol references in ebnf", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr1 (expr1 expr1)+ expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1[expr11]", 
+                      "return $expr1+'['+$pgm_repetition_plus1.join(',')+']'+$expr11;"] ],
+            "expr1"  :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ],
+            "expr11" :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    assert.throws(function () { 
+        var parser = new Jison.Parser(grammar);
+        // parser.lexer = new RegExpLexer(lexData);
+        // assert.equal(parser.parse('abcabcabcabcab'), "a[b,c]b", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
+    }, Error, /The action block references the ambiguous named alias or term reference "expr1"/);
+  });
+
+  it("test correct use of unambiguous term reference constructs in ebnf", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr1 (expr1 expr1)+ expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1 expr1[expr11]", 
+                      "return $1+'['+$pgm_repetition_plus1.join(',')+']'+$expr11;"] ],
+            "expr1"  :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ],
+            "expr11" :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abcabcabcabcab'), "a[b,c]b", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
+  });
+
+  it("test correct use of unambiguous term references in ebnf (v2)", function() {
+    var lexData = {
+        rules: [
+           ["a", "return 'a';"],
+           ["b", "return 'b';"],
+           ["c", "return 'c';"],
+        ]
+    };
+    var grammar = {
+        ebnf: {
+            "pgm" :[ ["expr1[expr0] (expr1 expr1)+ expr1[expr2] expr1[expr3] expr1[expr4] expr1[expr5] expr1[expr6] expr1[expr7] expr1[expr8] expr1[expr9] expr1[expr10] expr1[expr11] expr1[expr12]", 
+                      "return $expr0+'['+$pgm_repetition_plus1.join(',')+']'+$expr2+$expr3+$expr4+$expr5+$expr6+$expr7+$expr8+$expr9+$expr10+$expr11+$expr12;"] ],
+            "expr1"  :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ],
+            "expr11" :[ ["a", "$$ = 'a';"],
+                        ["b", "$$ = 'b';"],
+                        ["c", "$$ = 'c';"] ]
+        }
+    };
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new RegExpLexer(lexData);
+    assert.equal(parser.parse('abcabcabcabcab'), "a[b,c]abcabcabcab", "should accept implicit (and correctly numbered) alias for EBNF wildcarded element");
+  });
+
   it("test symbol aliases for terminals", function() {
     var lexData = {
         rules: [
