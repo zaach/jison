@@ -204,37 +204,52 @@ find . -iname package-lock.json -delete
 
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
 ncu -a --packageFile package.json 
+popd                                                                                                           2> /dev/null  > /dev/null
+pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
+ncu -a --packageFile package.json 
+popd                                                                                                           2> /dev/null  > /dev/null
+pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
+ncu -a --packageFile package.json 
+popd                                                                                                           2> /dev/null  > /dev/null
+pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
+ncu -a --packageFile package.json 
+popd                                                                                                           2> /dev/null  > /dev/null
+pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
+ncu -a --packageFile package.json 
+popd                                                                                                           2> /dev/null  > /dev/null
+
+ncu -a --packageFile package.json 
+
+
+# make sure we regenerate the package-lock.json files BEFORE we run another git-commit:
+
+if !        make superclean                 ; then break; fi;           # GOTO END on failure
+if !        make prep                       ; then break; fi;           # GOTO END on failure
+
+pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
 git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
 git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
 git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
 git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
 git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 
-ncu -a --packageFile package.json 
 git commit -a -m 'updated NPM packages'
 git push --all
 
-
-if !        make superclean                 ; then break; fi;           # GOTO END on failure
-if !        make prep                       ; then break; fi;           # GOTO END on failure
 if !        make site                       ; then break; fi;           # GOTO END on failure
 
 
