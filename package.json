@@ -49,7 +49,7 @@
   "devDependencies": {
     "browserify": "14.4.0",
     "glob": "7.1.2",
-    "uglify-js": "3.0.25",
+    "uglify-js": "3.0.27",
     "chai": "4.1.0",
     "mocha": "3.4.2"
   },
