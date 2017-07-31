@@ -22,7 +22,7 @@ ERROR_HANDLING_TARGETS =                                        \
 
 
 
-GITHUB_ISSUE_TARGETS =                                    \
+GITHUB_ISSUE_TARGETS =                                          \
 			issue-205                                           \
 			issue-205-2                                         \
 			issue-205-3                                         \
@@ -33,11 +33,12 @@ GITHUB_ISSUE_TARGETS =                                    \
 			issue-342                                           \
 			issue-344-BAD                                       \
 			issue-344-2-BAD                                     \
-			issue-348                                           
+			issue-348                                           \
+			issue-357-url-lexing
 
 
 
-BASIC_TARGETS =                                           \
+BASIC_TARGETS =                                                 \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
@@ -332,6 +333,11 @@ issue-344-2:
 
 # build *AND* run the test:
 issue-348:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-357-url-lexing:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
 
