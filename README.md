@@ -1,5 +1,7 @@
 # Jison
 
+[![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](mailto:jison@librelist.com)
 * [Website](https://gerhobbelt.github.io/jison/)
