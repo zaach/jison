@@ -295,6 +295,9 @@ examples/mfcalc: build
 examples/no-prec-hack-needed: build
 	cd examples/ && make no-prec-hack-needed
 
+examples/codegen-feature-tester: build
+	cd examples/ && make codegen-feature-tester
+
 examples/nv_classy_ast: build
 	cd examples/ && make nv_classy_ast
 
