@@ -6,7 +6,7 @@
   },
   "name": "jison-gho",
   "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
-  "version": "0.4.18-181",
+  "version": "0.4.18-186",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -43,15 +43,16 @@
     "ast-util": "github:GerHobbelt/ast-util#master",
     "jscodeshift": "github:GerHobbelt/jscodeshift#master",
     "json5": "github:GerHobbelt/json5#master",
-    "nomnom": "github:GerHobbelt/nomnom#master",
+    "@gerhobbelt/nomnom": "1.8.4-16",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "browserify": "14.4.0",
+    "chai": "4.1.1",
     "glob": "7.1.2",
-    "uglify-js": "3.0.25",
-    "chai": "4.1.0",
-    "mocha": "3.4.2"
+    "mocha": "3.5.0",
+    "prettier": "1.5.3",
+    "uglify-js": "3.0.28"
   },
   "scripts": {
     "test": "make test"

@@ -1,11 +1,14 @@
 # Jison
 
+* [![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](mailto:jison@librelist.com)
 * [Website](https://gerhobbelt.github.io/jison/)
 * [**Original** JISON Website](http://jison.org)
+* [![build status](https://secure.travis-ci.org/GerHobbelt/jison.png)](http://travis-ci.org/GerHobbelt/jison)
 
-[![build status](https://secure.travis-ci.org/GerHobbelt/jison.png)](http://travis-ci.org/GerHobbelt/jison)
+
+
 
 > # Notice
 >
@@ -13,11 +16,17 @@
 >
 > For an overview of all all changes \(fixes and features\), see the section [What's New or Different?](#user-content-whats-new-or-different) further below. See also [pullreq \#338](https://github.com/zaach/jison/pull/338).
 
+
+
+
 ## An API for creating parsers in JavaScript
 
 Jison generates bottom-up parsers in JavaScript. Its API is similar to Bison's, hence the name. It supports many of Bison's major features, plus some of its own. If you are new to parser generators such as Bison, and Context-free Grammars in general, a [good introduction](http://dinosaur.compilertools.net/bison/bison_4.html) is found in the Bison manual. If you already know Bison, Jison should be easy to pickup.
 
 Briefly, Jison takes a JSON encoded grammar or Bison style grammar and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input.
+
+
+
 
 ## Installation
 
@@ -28,6 +37,9 @@ Using npm:
 ```
 npm install jison -g
 ```
+
+
+
 
 ## Usage from the command line
 
@@ -153,23 +165,51 @@ parser.parse("adfe34bc e82a");
 parser.parse("adfe34bc zxg");
 ```
 
+
+
+
 ## More Documentation
 
 For more information on creating grammars and using the generated parsers, read the [documentation](http://jison.org/docs).
+
+
+
 
 ## How to contribute
 
 See [CONTRIBUTING.md](https://github.com/GerHobbelt/jison/blob/master/CONTRIBUTING.md) for contribution guidelines, how to run the tests, etc.
 
+
+
+
 ## Projects using Jison
 
 View them on the [wiki](https://github.com/zaach/jison/wiki/ProjectsUsingJison), or add your own.
+
+
+
+
+## Submodules for Jison
+
+The JISON tool uses several modules:
+
+* [The `ebnf-parser` library](https://github.com/GerHobbelt/ebnf-parser) parses BNF and EBNF grammars to a basic AST used by Jison to produce a parser engine for your grammar spec.
+* [The `lex-parser` library](https://github.com/GerHobbelt/lex-parser) parses `%lex ... /lex` lexical grammars to a basic AST used by Jison to produce a parser engine for your grammar spec.
+* [The `jison-lex` library/utility](https://github.com/GerHobbelt/jison-lex) generates lexical analyzers which are included by Jison in your parser run-time engine to lex the input according to your `%lex ... /lex` lexical grammar definition. 
+* [The `jison2json` utility](https://github.com/GerHobbelt/jison2json) converts a Jison spec file to JSON format file.
+* [The `json2jison` utility](https://github.com/GerHobbelt/json2jison) converts a JSON format file to a Jison spec file.
+
+
+
 
 ## Contributors
 
 [Githubbers](http://github.com/GerHobbelt/jison/contributors)
 
 Special thanks to Jarred Ligatti, Manuel E. Bermúdez
+
+
+
 
 ## What's New or Different?
 
@@ -223,6 +263,9 @@ Here's a comprehensive list of features and fixes compared to the [original](htt
   * \(are we faster even when we run with the same feature set as 'vanilla' zaach jison? Probably a little bit, but haven't measured this thoroughly.\)
 
   * JSON \(rather than _JISON_\) grammar files support all [JSON5](https://github.com/json5/json5) features, i.e. you can include comments, etc. in your JSON-file based grammar specs!
+
+
+
 
 ## License
 

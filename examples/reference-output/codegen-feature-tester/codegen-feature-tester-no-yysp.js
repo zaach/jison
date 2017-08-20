@@ -335,7 +335,7 @@
  *                 rule regexes have been written as standard JavaScript RegExp expressions.
  *  }
  */
-var ebnf = (function () {
+var codegenFeatureTesterNoYysp = (function () {
 
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -519,7 +519,7 @@ var parser = {
     //   export *all* tables: ............. false
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
-    //   output main() in the module: ..... true
+    //   output main() in the module: ..... false
     //   number of expected conflicts: .... 0
     //
     //
@@ -528,21 +528,21 @@ var parser = {
     //   all actions are default: ......... false
     //   uses yyleng: ..................... false
     //   uses yylineno: ................... false
-    //   uses yytext: ..................... false
+    //   uses yytext: ..................... true
     //   uses yylloc: ..................... false
     //   uses ParseError API: ............. false
     //   uses YYERROR: .................... false
     //   uses YYRECOVERING: ............... false
-    //   uses YYERROK: .................... false
-    //   uses YYCLEARIN: .................. false
+    //   uses YYERROK: .................... true
+    //   uses YYCLEARIN: .................. true
     //   tracks rule values: .............. true
     //   assigns rule values: ............. true
-    //   uses location tracking: .......... false
-    //   assigns location: ................ false
-    //   uses yystack: .................... false
+    //   uses location tracking: .......... true
+    //   assigns location: ................ true
+    //   uses yystack: .................... true
     //   uses yysstack: ................... false
     //   uses yysp: ....................... true
-    //   has error recovery: .............. false
+    //   has error recovery: .............. true
     //
     // --------- END OF REPORT -----------
 
@@ -555,39 +555,46 @@ options: {
   errorRecoveryTokenDiscardCount: 3
 },
 symbols_: {
+  "!": 8,
   "$accept": 0,
   "$end": 1,
-  "(": 4,
-  ")": 5,
+  "%": 9,
+  "(": 10,
+  ")": 11,
   "*": 6,
-  "+": 8,
-  "?": 7,
-  "ALIAS": 10,
+  "+": 3,
+  "-": 4,
+  "/": 5,
+  "E": 12,
   "EOF": 1,
-  "EPSILON": 9,
-  "SYMBOL": 11,
+  "MOD": 13,
+  "NUMBER": 14,
+  "PI": 15,
+  "^": 7,
+  "e": 17,
   "error": 2,
-  "expression": 17,
-  "handle": 14,
-  "handle_list": 13,
-  "production": 12,
-  "rule": 15,
-  "suffix": 18,
-  "suffixed_expression": 16,
-  "|": 3
+  "expressions": 16,
+  "m": 18,
+  "p": 19,
+  "u": 20,
+  "v": 21
 },
 terminals_: {
   1: "EOF",
   2: "error",
-  3: "|",
-  4: "(",
-  5: ")",
+  3: "+",
+  4: "-",
+  5: "/",
   6: "*",
-  7: "?",
-  8: "+",
-  9: "EPSILON",
-  10: "ALIAS",
-  11: "SYMBOL"
+  7: "^",
+  8: "!",
+  9: "%",
+  10: "(",
+  11: ")",
+  12: "E",
+  13: "MOD",
+  14: "NUMBER",
+  15: "PI"
 },
 TERROR: 2,
 EOF: 1,
@@ -680,278 +687,453 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  12,
-  13,
-  13,
-  s,
-  [14, 3],
-  15,
-  15,
   16,
   16,
-  17,
-  17,
   s,
-  [18, 4]
+  [17, 3],
+  s,
+  [18, 4],
+  19,
+  19,
+  s,
+  [20, 7],
+  s,
+  [21, 4]
 ]),
   rule: u([
   2,
-  1,
-  3,
-  0,
   s,
-  [1, 3],
-  2,
-  3,
+  [3, 3],
+  1,
   c,
-  [9, 7]
+  [4, 5],
+  1,
+  s,
+  [2, 5],
+  3,
+  s,
+  [1, 5]
 ])
 }),
-performAction: function parser__PerformAction(yystate /* action[1] */, yysp, yyvstack) {
+performAction: function parser__PerformAction(yytext, yyloc, yystate /* action[1] */, yysp, yyvstack, yylstack, yystack) {
 /* this == yyval */
 var yy = this.yy;
 
 switch (yystate) {
 case 1:
-    /*! Production::    production : handle EOF */
-    return yyvstack[yysp - 1];
+    /*! Production::    expressions : e EOF */
+    print('### expression result:', yyvstack[yysp - 1]);
+    
+    // No need to `return $1;`: the value is automatically carried to the outside
+    // (UNLESS it is 'undefined', in which case the parser is assumed
+    // to be a recognizer, but that is not the case here!)
+    this.$ = yyvstack[yysp - 1];
     break;
 
 case 2:
-    /*! Production::    handle_list : handle */
-case 7:
-    /*! Production::    rule : suffixed_expression */
-    this.$ = [yyvstack[yysp]];
+    /*! Production::    expressions : e error EOF */
+    //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
+    print('~~~', parser.describeSymbol( /* error */ 2), ' error: ', { '$1': yyvstack[yysp - 2], '$2': yyvstack[yysp - 1], yytext: yytext, '@error': yylstack[yysp - 1], token: parser.describeSymbol( /* error */ 2)}, yy.lastErrorMessage);
+    yy.parser.yyErrOk();
+    yy.parser.yyClearIn();
+    this.$ = yyvstack[yysp - 2] + 1;
     break;
 
 case 3:
-    /*! Production::    handle_list : handle_list "|" handle */
-    yyvstack[yysp - 2].push(yyvstack[yysp]);
+    /*! Production::    e : e "+" e */
+    this.$ = yyvstack[yysp - 2] + yyvstack[yysp];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
     break;
 
 case 4:
-    /*! Production::    handle : ε */
-case 5:
-    /*! Production::    handle : EPSILON */
-    this.$ = [];
+    /*! Production::    e : e "-" e */
+    this.$ = yyvstack[yysp - 2] - yyvstack[yysp];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
     break;
 
 case 6:
-    /*! Production::    handle : rule */
-    this.$ = yyvstack[yysp];
+    /*! Production::    m : m MOD m */
+    this.$ = yyvstack[yysp - 2] % yyvstack[yysp];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 7:
+    /*! Production::    m : m "/" m */
+    this.$ = yyvstack[yysp - 2] / yyvstack[yysp];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
     break;
 
 case 8:
-    /*! Production::    rule : rule suffixed_expression */
-    yyvstack[yysp - 1].push(yyvstack[yysp]);
-    break;
-
-case 9:
-    /*! Production::    suffixed_expression : expression suffix ALIAS */
-    this.$ = ['xalias', yyvstack[yysp - 1], yyvstack[yysp - 2], yyvstack[yysp]];
+    /*! Production::    m : m "*" m */
+    this.$ = yyvstack[yysp - 2] * yyvstack[yysp];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
     break;
 
 case 10:
-    /*! Production::    suffixed_expression : expression suffix */
-    if (yyvstack[yysp]) {
-      this.$ = [yyvstack[yysp], yyvstack[yysp - 1]];
-    } else {
-      this.$ = yyvstack[yysp - 1];
-    }
-    break;
-
-case 11:
-    /*! Production::    expression : SYMBOL */
-    this.$ = ['symbol', yyvstack[yysp]];
+    /*! Production::    p : p "^" p */
+    this.$ = Math.pow(yyvstack[yysp - 2], yyvstack[yysp]);
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
     break;
 
 case 12:
-    /*! Production::    expression : "(" handle_list ")" */
-    this.$ = ['()', yyvstack[yysp - 1]];
+    /*! Production::    u : u "!" */
+    this.$ = (function fact(n) {
+        return n == 0 ? 1 : fact(n - 1) * n;
+    })(yyvstack[yysp - 1]);
+    print(yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 13:
+    /*! Production::    u : "!" u */
+    this.$ = (yyvstack[yysp] ? 0 : 1);
+    print(yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 14:
+    /*! Production::    u : u "%" */
+    this.$ = yyvstack[yysp - 1] / 100;
+    print(yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 15:
+    /*! Production::    u : "-" u */
+    this.$ = -yyvstack[yysp];
+    print(yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 16:
+    /*! Production::    u : "+" u */
+    this.$ = yyvstack[yysp];
+    print(yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 17:
+    /*! Production::    u : "(" e ")" */
+    this.$ = yyvstack[yysp - 1];
+    print(yyvstack[yysp - 2], yyvstack[yysp - 1], yyvstack[yysp], '==>', this.$);
+    break;
+
+case 19:
+    /*! Production::    v : NUMBER */
+    this.$ = Number(yytext);
+    print(yyvstack[yysp], '==>', this.$);
+    break;
+
+case 20:
+    /*! Production::    v : E */
+    this.$ = Math.E;
+    print(yyvstack[yysp], '==>', this.$);
+    break;
+
+case 21:
+    /*! Production::    v : PI */
+    this.$ = Math.PI;
+    print(yyvstack[yysp], '==>', this.$);
+    break;
+
+case 22:
+    /*! Production::    v : error */
+    //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
+    print('~~~', parser.describeSymbol( /* undefined */ false), ' error: ', { '$1': yyvstack[yysp], yytext: yytext, '@$': this._$, token: parser.describeSymbol( /* undefined */ false), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
+    yy.parser.yyErrOk();
+    //yyclearin;
+    this.$ = 1;
     break;
 
 }
 },
 table: bt({
   len: u([
+  14,
+  1,
+  4,
+  8,
   9,
+  11,
+  s,
+  [10, 3],
+  13,
+  s,
+  [11, 5],
   1,
   1,
-  0,
-  7,
-  0,
-  10,
-  0,
-  10,
-  0,
-  0,
-  6,
+  13,
+  13,
   s,
-  [0, 3],
-  2,
+  [12, 3],
   s,
-  [0, 3],
+  [11, 6],
+  3,
+  1,
+  5,
+  5,
+  s,
+  [8, 3],
   9,
-  0
+  11
 ]),
   symbol: u([
-  1,
-  4,
-  9,
-  11,
-  12,
-  s,
-  [14, 4, 1],
-  s,
-  [1, 3],
-  3,
-  4,
-  5,
-  11,
-  c,
-  [9, 3],
-  s,
-  [3, 6, 1],
-  10,
-  11,
-  18,
-  c,
-  [9, 3],
-  9,
-  11,
-  s,
-  [13, 5, 1],
-  c,
-  [20, 4],
-  10,
-  11,
-  3,
-  5,
-  c,
-  [18, 5],
-  c,
-  [17, 4]
-]),
-  type: u([
-  s,
-  [2, 4],
-  s,
-  [0, 5],
-  1,
-  s,
-  [2, 6],
-  0,
-  0,
-  s,
-  [2, 9],
-  c,
-  [10, 6],
-  s,
-  [0, 5],
-  s,
-  [2, 13],
-  s,
-  [0, 4]
-]),
-  state: u([
-  1,
   2,
+  3,
   4,
-  5,
-  6,
-  10,
-  6,
+  s,
+  [8, 4, 2],
+  s,
+  [15, 7, 1],
+  1,
+  s,
+  [1, 4, 1],
+  s,
+  [1, 6, 1],
   11,
-  15,
-  16,
+  13,
+  s,
+  [1, 7, 1],
   c,
-  [8, 3],
+  [9, 9],
+  8,
+  9,
+  11,
+  13,
+  c,
+  [47, 8],
   20,
+  21,
   c,
-  [4, 3]
-]),
-  mode: u([
-  2,
-  s,
-  [1, 4],
-  2,
-  2,
-  1,
-  2,
+  [10, 28],
   c,
-  [5, 3],
+  [76, 6],
   c,
-  [7, 3],
+  [54, 10],
+  c,
+  [11, 45],
   c,
   [12, 4],
   c,
-  [13, 4],
+  [70, 10],
   c,
-  [14, 6],
+  [13, 21],
   c,
-  [8, 4],
+  [12, 36],
   c,
-  [5, 4]
+  [130, 58],
+  3,
+  4,
+  11,
+  c,
+  [133, 5],
+  11,
+  c,
+  [5, 9],
+  c,
+  [270, 10],
+  c,
+  [8, 16],
+  c,
+  [286, 14]
+]),
+  type: u([
+  s,
+  [2, 8],
+  s,
+  [0, 6],
+  1,
+  s,
+  [2, 40],
+  0,
+  0,
+  c,
+  [10, 30],
+  s,
+  [0, 3],
+  s,
+  [2, 65],
+  c,
+  [70, 13],
+  c,
+  [13, 17],
+  c,
+  [12, 35],
+  s,
+  [2, 113]
+]),
+  state: u([
+  s,
+  [1, 5, 1],
+  10,
+  25,
+  10,
+  26,
+  10,
+  27,
+  10,
+  28,
+  c,
+  [11, 4],
+  30,
+  c,
+  [5, 4],
+  31,
+  c,
+  [5, 4],
+  32,
+  c,
+  [4, 3],
+  33,
+  c,
+  [4, 3],
+  34,
+  c,
+  [4, 3],
+  35,
+  5,
+  10
+]),
+  mode: u([
+  s,
+  [1, 12],
+  s,
+  [2, 4],
+  c,
+  [6, 3],
+  c,
+  [8, 5],
+  c,
+  [10, 3],
+  s,
+  [2, 9],
+  c,
+  [26, 4],
+  s,
+  [1, 32],
+  s,
+  [2, 56],
+  s,
+  [1, 49],
+  c,
+  [78, 31],
+  c,
+  [11, 24],
+  c,
+  [163, 44],
+  c,
+  [42, 14]
 ]),
   goto: u([
-  4,
-  8,
-  3,
-  7,
-  9,
-  6,
-  6,
-  8,
-  6,
-  7,
-  s,
-  [13, 4],
-  12,
-  13,
   14,
-  13,
-  13,
-  4,
   8,
-  4,
-  3,
   7,
+  6,
+  9,
+  12,
+  11,
+  13,
   s,
-  [10, 4],
-  17,
-  10,
+  [15, 4, 1],
+  s,
+  [5, 4],
+  20,
+  21,
+  5,
   19,
-  18,
+  s,
+  [9, 6],
+  22,
+  9,
+  9,
+  s,
+  [11, 7],
+  23,
+  24,
+  11,
+  11,
   c,
-  [13, 5]
+  [40, 8],
+  c,
+  [8, 24],
+  s,
+  [18, 11],
+  s,
+  [19, 11],
+  s,
+  [20, 11],
+  s,
+  [21, 11],
+  s,
+  [22, 11],
+  1,
+  29,
+  c,
+  [89, 32],
+  c,
+  [8, 16],
+  s,
+  [12, 11],
+  s,
+  [14, 11],
+  s,
+  [13, 7],
+  23,
+  24,
+  13,
+  13,
+  s,
+  [15, 7],
+  23,
+  24,
+  15,
+  15,
+  s,
+  [16, 7],
+  23,
+  24,
+  16,
+  c,
+  [222, 3],
+  36,
+  2,
+  s,
+  [3, 5],
+  s,
+  [4, 5],
+  s,
+  [6, 8],
+  s,
+  [7, 8],
+  s,
+  [8, 8],
+  s,
+  [10, 6],
+  22,
+  10,
+  10,
+  s,
+  [17, 11]
 ])
 }),
 defaultActions: bda({
   idx: u([
   s,
-  [3, 4, 2],
-  10,
-  12,
-  13,
-  14,
-  16,
-  17,
-  18,
-  20
+  [10, 6, 1],
+  23,
+  24,
+  s,
+  [29, 6, 1],
+  36
 ]),
   goto: u([
-  5,
-  7,
-  11,
+  s,
+  [18, 5, 1],
   1,
-  8,
-  14,
-  15,
-  16,
-  2,
-  9,
   12,
-  3
+  14,
+  2,
+  3,
+  4,
+  6,
+  7,
+  8,
+  17
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -971,10 +1153,11 @@ parse: function parse(input) {
         sstack = new Array(128),        // state stack: stores states (column storage)
 
         vstack = new Array(128),        // semantic value stack
-
+        lstack = new Array(128),        // location stack
         table = this.table,
         sp = 0;                         // 'stack pointer': index into the stacks
 
+    var recovering = 0;                 // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR,
         EOF = this.EOF,
         ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
@@ -1010,15 +1193,64 @@ parse: function parse(input) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // *Always* setup `yyError`, `YYRECOVERING`, `yyErrOk` and `yyClearIn` functions as it is paramount
+    // to have *their* closure match ours -- if we only set them up once,
+    // any subsequent `parse()` runs will fail in very obscure ways when
+    // these functions are invoked in the user action code block(s) as
+    // their closure will still refer to the `parse()` instance which set
+    // them up. Hence we MUST set them up at the start of every `parse()` run!
+
+
+
+
+
+    if (this.yyErrOk) {
+        this.yyErrOk = function yyErrOk() {
+
+            recovering = 0;
+        };
+    }
+
+    if (this.yyClearIn) {
+        this.yyClearIn = function yyClearIn() {
+
+            if (symbol === TERROR) {
+                symbol = 0;
+                yytext = null;
+                yyleng = 0;
+                yyloc = {};
+            }
+            preErrorSymbol = 0;
+        };
+    }
+
     lexer.setInput(input, sharedState_yy);
 
-
-
+    var yyloc = lexer.yylloc || {};
+    lstack[sp] = yyloc;
     vstack[sp] = null;
     sstack[sp] = 0;
     stack[sp] = 0;
     ++sp;
 
+    var yytext = lexer.yytext;
+
+
+
+    var ranges = lexer.options && lexer.options.ranges;
 
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState_yy.parseError === 'function') {
@@ -1084,7 +1316,7 @@ parse: function parse(input) {
         // To be safe, we nuke the other internal stack columns as well...
         stack.length = 0;               // fastest way to nuke an array without overly bothering the GC
         sstack.length = 0;
-
+        lstack.length = 0;
         vstack.length = 0;
         sp = 0;
 
@@ -1115,7 +1347,7 @@ parse: function parse(input) {
             token: this.describeSymbol(symbol) || symbol,
             token_id: symbol,
             line: lexer.yylineno,
-
+            loc: lexer.yylloc || {},
             expected: expected,
             recoverable: recoverable,
             state: state,
@@ -1124,7 +1356,7 @@ parse: function parse(input) {
             symbol_stack: stack,
             state_stack: sstack,
             value_stack: vstack,
-
+            location_stack: lstack,
             stack_pointer: sp,
             yy: sharedState_yy,
             lexer: lexer,
@@ -1170,7 +1402,8 @@ parse: function parse(input) {
 
 
     var symbol = 0;
-
+    var preErrorSymbol = 0;
+    var lastEofErrorStateDepth = 0;
     var state, action, r, t;
     var yyval = {
         $: true,
@@ -1178,9 +1411,59 @@ parse: function parse(input) {
         yy: sharedState_yy
     };
     var p, len, this_production;
-
+    var lstack_begin, lstack_end;
     var newState;
     var retval = false;
+
+
+    // Return the rule stack depth where the nearest error rule can be found.
+    // Return -1 when no error recovery rule was found.
+    function locateNearestErrorRecoveryRule(state) {
+        var stack_probe = sp - 1;
+        var depth = 0;
+
+        // try to recover from error
+        for (;;) {
+            // check for error recovery rule in this state
+
+            var t = table[state][TERROR] || NO_ACTION;
+            if (t[0]) {
+                // We need to make sure we're not cycling forever:
+                // once we hit EOF, even when we `yyerrok()` an error, we must
+                // prevent the core from running forever,
+                // e.g. when parent rules are still expecting certain input to
+                // follow after this, for example when you handle an error inside a set
+                // of braces which are matched by a parent rule in your grammar.
+                //
+                // Hence we require that every error handling/recovery attempt
+                // *after we've hit EOF* has a diminishing state stack: this means
+                // we will ultimately have unwound the state stack entirely and thus
+                // terminate the parse in a controlled fashion even when we have
+                // very complex error/recovery code interplay in the core + user
+                // action code blocks:
+
+                if (symbol === EOF) {
+                    if (!lastEofErrorStateDepth) {
+                        lastEofErrorStateDepth = sp - 1 - depth;
+                    } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
+
+                        --stack_probe; // popStack(1): [symbol, action]
+                        state = sstack[stack_probe];
+                        ++depth;
+                        continue;
+                    }
+                }
+                return depth;
+            }
+            if (state === 0 /* $accept rule */ || stack_probe < 1) {
+
+                return -1; // No suitable error recovery rule available.
+            }
+            --stack_probe; // popStack(1): [symbol, action]
+            state = sstack[stack_probe];
+            ++depth;
+        }
+    }
 
 
     try {
@@ -1220,28 +1503,88 @@ parse: function parse(input) {
 
                 // handle parse error
                 if (!action) {
-                    var errStr;
+                    // first see if there's any chance at hitting an error recovery rule:
+                    var error_rule_depth = locateNearestErrorRecoveryRule(state);
+                    var errStr = null;
                     var errSymbolDescr = (this.describeSymbol(symbol) || symbol);
                     var expected = this.collect_expected_token_set(state);
 
-                    // Report error
-                    if (typeof lexer.yylineno === 'number') {
-                        errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
-                    } else {
-                        errStr = 'Parse error: ';
+                    if (!recovering) {
+                        // Report error
+                        if (typeof lexer.yylineno === 'number') {
+                            errStr = 'Parse error on line ' + (lexer.yylineno + 1) + ': ';
+                        } else {
+                            errStr = 'Parse error: ';
+                        }
+                        if (lexer.showPosition) {
+                            errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
+                        }
+                        if (expected.length) {
+                            errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
+                        } else {
+                            errStr += 'Unexpected ' + errSymbolDescr;
+                        }
+                        p = this.constructParseErrorInfo(errStr, null, expected, (error_rule_depth >= 0));
+                        r = this.parseError(p.errStr, p, this.JisonParserError);
+
+
+                        if (!p.recoverable) {
+                            retval = r;
+                            break;
+                        } else {
+                            // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
+                        }
                     }
-                    if (lexer.showPosition) {
-                        errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
+
+
+
+                    // just recovered from another error
+                    if (recovering === ERROR_RECOVERY_TOKEN_DISCARD_COUNT && error_rule_depth >= 0) {
+                        // only barf a fatal hairball when we're out of look-ahead symbols and none hit a match;
+                        // this DOES discard look-ahead while recovering from an error when said look-ahead doesn't
+                        // suit the error recovery rules... The error HAS been reported already so we're fine with
+                        // throwing away a few items if that is what it takes to match the nearest recovery rule!
+                        if (symbol === EOF || preErrorSymbol === EOF) {
+                            p = this.__error_infos[this.__error_infos.length - 1];
+                            if (!p) {
+                                p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error.', null, expected, false);
+                            } else {
+                                p.errStr = 'Parsing halted while starting to recover from another error. Previous error which resulted in this fatal result: ' + p.errStr;
+                                p.recoverable = false;
+                            }
+                            retval = this.parseError(p.errStr, p, this.JisonParserError);
+                            break;
+                        }
+
+                        // discard current lookahead and grab another
+
+                        yytext = lexer.yytext;
+
+                        yyloc = lexer.yylloc || {};
+
+                        symbol = lex();
+
+
                     }
-                    if (expected.length) {
-                        errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
-                    } else {
-                        errStr += 'Unexpected ' + errSymbolDescr;
+
+                    // try to recover from error
+                    if (error_rule_depth < 0) {
+                        p = this.constructParseErrorInfo((errStr || 'Parsing halted. No suitable error recovery rule available.'), null, expected, false);
+                        retval = this.parseError(p.errStr, p, this.JisonParserError);
+                        break;
                     }
-                    // we cannot recover from the error!
-                    p = this.constructParseErrorInfo(errStr, null, expected, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
-                    break;
+                    sp -= error_rule_depth;
+
+                    preErrorSymbol = (symbol === TERROR ? 0 : symbol); // save the lookahead token
+                    symbol = TERROR;            // insert generic error symbol as new lookahead
+                    // allow N (default: 3) real symbols to be shifted before reporting a new error
+                    recovering = ERROR_RECOVERY_TOKEN_DISCARD_COUNT;
+
+                    newState = sstack[sp - 1];
+
+
+
+                    continue;
                 }
 
 
@@ -1274,26 +1617,41 @@ parse: function parse(input) {
             case 1:
                 stack[sp] = symbol;
                 vstack[sp] = lexer.yytext;
-
+                lstack[sp] = lexer.yylloc || {};
                 sstack[sp] = newState; // push state
                 ++sp;
                 symbol = 0;
-
+                if (!preErrorSymbol) { // normal execution / no error
                     // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
+                    yytext = lexer.yytext;
 
+                    yyloc = lexer.yylloc || {};
 
+                    if (recovering > 0) {
+                        recovering--;
 
+                    }
+                } else {
+                    // error just occurred, resume old lookahead f/ before error, *unless* that drops us straight back into error mode:
+                    symbol = preErrorSymbol;
+                    preErrorSymbol = 0;
 
+                    // read action for current state and first input
+                    t = (table[newState] && table[newState][symbol]) || NO_ACTION;
+                    if (!t[0] || symbol === TERROR) {
+                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
+                        // (simple) stuff might have been missing before the token which caused the error we're
+                        // recovering from now...
+                        //
+                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
+                        // recovery, for then this we would we idling (cycling) on the error forever.
+                        // Yes, this does not take into account the possibility that the *lexer* may have
+                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
 
-
-
-
-
-                
-
-
-
+                        symbol = 0;
+                    }
+                }
 
                 continue;
 
@@ -1301,9 +1659,9 @@ parse: function parse(input) {
             case 2:
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 len = this_production[1];
-
-
-
+                lstack_end = sp;
+                lstack_begin = lstack_end - (len || 1);
+                lstack_end--;
 
 
 
@@ -1317,16 +1675,18 @@ parse: function parse(input) {
                 // perform semantic action
                 yyval.$ = vstack[sp - len]; // default to $$ = $1; result must produce `undefined` when len == 0, as then there's no $1
 
+                // default location, uses first token for firsts, last for lasts
+                yyval._$ = {
+                    first_line: lstack[lstack_begin].first_line,
+                    last_line: lstack[lstack_end].last_line,
+                    first_column: lstack[lstack_begin].first_column,
+                    last_column: lstack[lstack_end].last_column
+                };
+                if (ranges) {
+                    yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+                }
 
-
-
-
-
-
-
-
-
-                r = this.performAction.call(yyval, newState, sp - 1, vstack);
+                r = this.performAction.call(yyval, yytext, yyloc, newState, sp - 1, vstack, lstack, stack);
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -1340,7 +1700,7 @@ parse: function parse(input) {
                 var ntsymbol = this_production[0];    // push nonterminal (reduce)
                 stack[sp] = ntsymbol;
                 vstack[sp] = yyval.$;
-
+                lstack[sp] = yyval._$;
                 // goto new state = table[STATE][NONTERMINAL]
                 newState = table[sstack[sp - 1]][ntsymbol];
                 sstack[sp] = newState;
@@ -1400,12 +1760,415 @@ parse: function parse(input) {
     }
 
     return retval;
-}
+},
+yyErrOk: 1,
+yyClearIn: 1
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
-var XRegExp = require('xregexp');       // for helping out the `%options xregexp` in the lexer;
+// feature of the GH fork: specify your own main.
+//
+// compile with
+//
+//      jison -o test.js --main that/will/be/me.jison
+//
+// then run
+//
+//      node ./test.js
+//
+// to see the output.
+
+var assert = require("assert");
+
+
+var print = (typeof console !== 'undefined' ? function __print__() {
+    console.log.apply(null, ['  '].concat(Array.prototype.slice.call(arguments, 0)));
+} : function __dummy__() {});
+
+
+
+
+
+
+
+
+
+
+parser.pre_parse = function (yy) {
+    print("parsing: ", yy.lexer.upcomingInput(-1 /* i.e. produce the entire (unparsed) input string */));
+
+    parser.lexer.options.post_lex = function (token) {
+        print("lex() ==> ", token, '[' + this.yytext + ']', parser.describeSymbol(token));
+    };
+};
+
+
+
+//parser.trace = function () {
+//    print.apply(null, ['TRACE: '].concat(Array.prototype.slice.call(arguments, 0)));
+//};
+
+
+
+parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
+    assert(hash.yy);
+    assert(this);
+    assert(this !== parser.yy);
+    assert(this === hash.yy);
+    if (hash.recoverable) {
+        hash.yy.parser.trace(str);
+        hash.yy.lastErrorMessage = str;
+        hash.yy.lastErrorHash = hash;
+    } else {
+        console.error(str, hash && hash.exception);
+        throw new ExceptionClass(str, hash);
+    }
+};
+
+
+
+
+// Included by Jison: benchmark.js:
+
+
+/**
+ * Provide a generic performance timer, which strives to produce highest possible accuracy time measurements.
+ * 
+ * methods:
+ * 
+ * - `start()` (re)starts the timer and 'marks' the current time for ID="start". 
+ *   `.start()` also CLEARS ALL .mark_delta() timers!
+ *
+ * - `mark(ID)` calculates the elapsed time for the current timer in MILLISECONDS (floating point) 
+ *   since `.start()`. `.mark_delta()` then updates the 'start/mark time' for the given ID.
+ *
+ *   ID *may* be NULL, in which case `.mark()` will not update any 'start/mark time'.
+ *    
+ * - `mark_delta(ID, START_ID)` calculates the elapsed time for the current timer in MILLISECONDS (floating point) since 
+ *   the last call to `.mark_delta()` or `.mark()` with the same ID. `.mark_delta()` then updates the 
+ *   'start/mark time' for the given ID.
+ *
+ *   When the optional START_ID is specified, the delta is calculated against the last marked time 
+ *   for that START_ID.
+ *
+ *   When the ID is NULL or not specified, then the default ID of "start" will be assumed.
+ *   
+ *   This results in consecutive calls to `.mark_delta()` with the same ID to produce 
+ *   each of the time intervals between the calls, while consecutive calls to
+ *   `.mark()` with he same ID would produce an increase each time instead as the time 
+ *   between the `.mark()` call and the original `.start()` increases.
+ * 
+ * Notes:
+ * 
+ * - when you invoke `.mark()` or `.mark_delta()` without having called .start() before, 
+ *   then the timer is started at the mark.
+ * 
+ * - `.start()` will erase all stored 'start/mark times' which may have been
+ *   set by `.mark()` or `.mark_delta()` before -- you may call `.start()` multiple times for
+ *   the same timer instance, after all.
+ * 
+ * - you are responsible to manage the IDs for `.mark()` and `.mark_delta()`. The ID MUST NOT be "start" 
+ *   as ID = "start" identifies the .start() timer.
+ * 
+ * References for the internal implementation:
+ * 
+ *    - http://updates.html5rocks.com/2012/08/When-milliseconds-are-not-enough-performance-now
+ *    - http://ejohn.org/blog/accuracy-of-javascript-time/
+ *
+ * @class 
+ * @constructor
+ */
+function PerformanceTimer() {
+  /* @private */ var start_time = false;
+  var obj = {
+  };
+  // feature detect:
+  /* @private */ var f, tv;
+  /* @private */ var p = (typeof window !== 'undefined' && window.performance);
+  if (p && p.timing.navigationStart && p.now) {
+    f = function () {
+      return p.now();
+    };
+  } else if (p && typeof p.webkitNow === 'function') {
+    f = function () {
+      return p.webkitNow();
+    };
+  } else {
+    p = (typeof process !== 'undefined' && process.hrtime);
+    if (typeof p === 'function') {
+      tv = p();
+      if (tv && tv.length === 2) {
+        f = function () {
+          var rv = p();
+          return rv[0] * 1e3 + rv[1] * 1e-6;
+        };
+      } 
+    } 
+    if (!f) {
+      f = function () {
+        return Date.now();
+      };
+      try {
+        f();
+      } catch (ex) {
+        f = function () {
+          return +new Date();
+        };
+      }
+    }
+  }
+
+  obj.start = function () {
+    start_time = {
+      start: f()
+    };
+    return obj;
+  };
+  
+  obj.mark = function (id, start_id) {
+    if (start_time === false) this.start();
+    var end_time = f();
+    var begin_time = start_time[start_id || id || "start"];
+    if (!begin_time) {
+      begin_time = end_time;
+    }
+    var rv = end_time - begin_time;
+    if (id) {
+      start_time[id] = end_time;
+    }
+    return rv;
+  };
+  
+  obj.mark_delta = function (id) {
+    if (start_time === false) this.start();
+    id = id || "start";
+    var end_time = f();
+    var begin_time = start_time[id];
+    if (!begin_time) {
+      begin_time = end_time;
+    }
+    var rv = end_time - begin_time;
+    start_time[id] = end_time;
+    return rv;
+  };
+  
+  obj.reset_mark = function (id) {
+    id = id || "start";
+    start_time[id] = null;
+    return obj;
+  };
+
+  obj.get_mark = function (id) {
+    id = id || "start";
+    return start_time[id];
+  };
+
+  obj.mark_sample_and_hold = function (id) {
+    if (start_time === false) this.start();
+    id = id || "start";
+    // sample ...
+    var end_time = f();
+    var begin_time = start_time[id];
+    if (!begin_time) {
+      begin_time = end_time;
+      // ... and hold
+      start_time[id] = begin_time;
+    }
+    var rv = end_time - begin_time;
+    return rv;
+  };
+
+  return obj;
+}
+
+var perf = PerformanceTimer();
+
+
+
+// round to the number of decimal digits:
+function r(v, n) {
+    var m = Math.pow(10, n | 0);
+    v *= m;
+    v = Math.round(v);
+    return v / m;
+}
+
+// run the benchmark on function `f` for at least 5 seconds.
+function bench(f, n, minimum_run_time, setup_f, destroy_f) {
+    var factor = 50;
+    const run = 1;         // factor of 50 !  
+    n |= 0;
+    n /= run;
+    n |= 0;
+    n = Math.max(n, 1); // --> minimum number of tests: 1*run*factor
+    
+    minimum_run_time |= 0;
+    if (!minimum_run_time) {
+        minimum_run_time = 5000;     // default: 5 seconds minimum run time!
+    }
+    minimum_run_time = Math.max(minimum_run_time, 1000);    // absolute minimum run time: 1 second
+
+    perf.mark('monitor');
+
+    if (setup_f) {
+        setup_f(f, n, minimum_run_time);
+    }
+
+    // get the number of tests internal to the test function: 1 or more
+    var internal_cnt = f();
+    if (typeof internal_cnt === 'number' && (internal_cnt | 0) === internal_cnt) {
+        factor *= internal_cnt;
+    }
+
+    var ts = [];
+    for (var i = 0; i < n; i++) {
+        perf.mark('bench');
+        for (var j = 0; j < run; j++) {
+            // 50 x f(): that seems a sort of 'sweet spot' for NodeJS v5, at least for some benchmarks...
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+            f();
+        }
+        ts.push(perf.mark('bench'));
+        var consumed = perf.mark_sample_and_hold('monitor');
+        //console.log('consumed', consumed, ts[ts.length - 1], i);
+        if (consumed < minimum_run_time) {
+            // stay in the loop until 5 seconds have expired!:
+            i = Math.min(i, n - 2);
+        }
+    }
+
+    if (destroy_f) {
+        destroy_f(f, n, minimum_run_time);
+    }
+
+    var consumed = perf.mark_sample_and_hold('monitor');
+    
+    var sum = 0;
+    for (var i = 0, cnt = ts.length; i < cnt; i++) {
+        sum += ts[i];
+    }
+    var avg = sum / cnt;
+
+    var dev = 0;
+    var peak = 0;
+    for (var i = 0; i < cnt; i++) {
+        var delta = Math.abs(ts[i] - avg);
+        dev += delta;
+        peak = Math.max(peak, delta);
+    }
+    dev /= cnt;
+    var sample_size = run * factor;
+    console.log(["Time: total: ", r(sum, 0) + 'ms',
+        ", sample_count: ", cnt,
+        ", # runs: ", cnt * sample_size,
+        ", # runs/sec: ", r(cnt * sample_size * 1000 / sum, 1),
+        ", average: ", r(avg / sample_size, 4) + 'ms',
+        ", deviation: ", r(100 * dev / avg, 2) + '%',
+        ", peak_deviation: ", r(100 * peak / avg, 2) + '%',
+        ", total overhead: ", r(consumed - sum, 0) + 'ms'].join('')
+    );
+}
+
+
+// End Of Include by Jison: benchmark.js
+
+
+
+
+
+
+parser.main = function () {
+    print("Running benchmark...");
+    var t1 = perf.start();
+
+    var basenum = 1;
+
+    function test() {
+        const formulas_and_expectations =  [
+            basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
+            basenum + '+2*E%^PI^2+4+5',                              9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     41 + basenum, // with error recovery and all it gives you a value...
+            basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
+        ];
+
+        basenum++;
+
+        for (var i = 0, len = formulas_and_expectations.length; i < len; i += 2) {
+            var formula = formulas_and_expectations[i];
+            var expectation = formulas_and_expectations[i + 1];
+
+            var rv = parser.parse(formula);
+            print("'" + formula + "' ==> ", rv, "\n");
+            assert.equal(rv, expectation);
+        }
+        return formulas_and_expectations.length / 2;
+    }
+
+    if (0) {
+        print = function dummy() {};
+    }
+    if (01) {
+        test();
+    } else {
+        bench(test);
+    }
+    
+    // if you get past the assert(), you're good.
+    print("tested OK @", r(perf.mark(), 2), " ms");
+};
 /* lexer generated by jison-lex 0.3.4-186 */
 /*
  * Returns a Lexer object of the following structure:
@@ -1638,7 +2401,7 @@ var lexer = {
     // Options:
     //
     //   backtracking: .................... false
-    //   location.ranges: ................. true
+    //   location.ranges: ................. false
     //   location line+column tracking: ... true
     //
     //
@@ -1646,11 +2409,11 @@ var lexer = {
     //
     //   uses yyleng: ..................... false
     //   uses yylineno: ................... false
-    //   uses yytext: ..................... false
+    //   uses yytext: ..................... true
     //   uses yylloc: ..................... false
     //   uses lexer values: ............... true / true
-    //   location tracking: ............... false
-    //   location assignment: ............. false
+    //   location tracking: ............... true
+    //   location assignment: ............. true
     //
     //
     // Lexer Analysis flags:
@@ -2561,10 +3324,7 @@ var lexer = {
         return this.conditionStack.length;
     },
     options: {
-  xregexp: true,
-  ranges: true,
-  trackPosition: true,
-  easy_keyword_rules: true
+  trackPosition: true
 },
     JisonLexerError: JisonLexerError,
     performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
@@ -2576,10 +3336,26 @@ case 0 :
 /*! Rule::       \s+ */ 
  /* skip whitespace */ 
 break;
-case 4 : 
+case 8 : 
 /*! Conditions:: INITIAL */ 
-/*! Rule::       \[{ID}\] */ 
- yy_.yytext = this.matches[1]; return 10; 
+/*! Rule::       %(?=\s*(?:[^0-9!]|E\b|PI\b|$)) */ 
+ // followed by another operator, i.e. anything that's not a number, or The End: then this is a unary `percent` operator.
+// `1%-2` would be ambiguous but isn't: the `-` is considered as a unary minus and thus `%` is a `modulo` operator.
+// `1%*5` thus is treated the same: any operator following the `%` is assumed to be a *binary* operator. Hence `1% times 5`
+// which brings us to operators which only exist in unary form: `!`, and values which are not numbers, e.g. `PI` and `E`:
+// how about 
+// - `1%E` -> modulo E, 
+// - `1%!0` -> modulo 1 (as !0 -> 1) 
+//
+// Of course, the easier way to handle this would be to keep the lexer itself dumb and put this additional logic inside
+// a post_lex handler which should then be able to obtain additional look-ahead tokens and queue them for later, while
+// using those to inspect and adjust the lexer output now -- a trick which is used in the cockroachDB SQL parser code, for example.
+//
+// The above regex solution however is a more local extra-lookahead solution and thus should cost us less overhead than
+// the suggested post_lex alternative, but it comes at a cost itself: complex regex and duplication of language knowledge
+// in the lexer itself, plus inclusion of *grammar* (syntactic) knowledge in the lexer too, where it doesn't belong in an ideal world...
+console.log('percent: ', yy_.yytext);
+return 9; 
 break;
 default:
   return this.simpleCaseActionClusters[$avoiding_name_collisions];
@@ -2588,85 +3364,65 @@ default:
     simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       {ID} */ 
-   1 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \$end\b */ 
-   2 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \$eof\b */ 
-   3 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       %empty\b */ 
-   5 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       %epsilon\b */ 
-   6 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \u0190 */ 
-   7 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \u025B */ 
-   8 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \u03B5 */ 
-   9 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \u03F5 */ 
-   10 : 9,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       '{QUOTED_STRING_CONTENT}' */ 
-   11 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */ 
-   12 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \. */ 
-   13 : 11,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \( */ 
-   14 : 4,
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \) */ 
-   15 : 5,
+  /*! Rule::       [0-9]+(\.[0-9]+)?\b */ 
+   1 : 14,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \* */ 
-   16 : 6,
+   2 : 6,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       \? */ 
-   17 : 7,
+  /*! Rule::       \/ */ 
+   3 : 5,
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       \| */ 
-   18 : 3,
+  /*! Rule::       - */ 
+   4 : 4,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       \+ */ 
-   19 : 8,
+   5 : 3,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \^ */ 
+   6 : 7,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       ! */ 
+   7 : 8,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       % */ 
+   9 : 13,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \( */ 
+   10 : 10,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       \) */ 
+   11 : 11,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       PI */ 
+   12 : 15,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       E */ 
+   13 : 12,
   /*! Conditions:: INITIAL */ 
   /*! Rule::       $ */ 
-   20 : 1
+   14 : 1,
+  /*! Conditions:: INITIAL */ 
+  /*! Rule::       . */ 
+   15 : 'INVALID'
 },
     rules: [
         /^(?:\s+)/,
-new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
-/^(?:\$end\b)/,
-/^(?:\$eof\b)/,
-new XRegExp("^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])", ""),
-/^(?:%empty\b)/,
-/^(?:%epsilon\b)/,
-/^(?:\u0190)/,
-/^(?:\u025B)/,
-/^(?:\u03B5)/,
-/^(?:\u03F5)/,
-/^(?:'((?:\\'|\\[^']|[^'\\])*)')/,
-/^(?:"((?:\\"|\\[^"]|[^"\\])*)")/,
-/^(?:\.)/,
+/^(?:\d+(\.\d+)?\b)/,
+/^(?:\*)/,
+/^(?:\/)/,
+/^(?:-)/,
+/^(?:\+)/,
+/^(?:\^)/,
+/^(?:!)/,
+/^(?:%(?=\s*(?:[^\d!]|E\b|PI\b|$)))/,
+/^(?:%)/,
 /^(?:\()/,
 /^(?:\))/,
-/^(?:\*)/,
-/^(?:\?)/,
-/^(?:\|)/,
-/^(?:\+)/,
-/^(?:$)/
+/^(?:PI)/,
+/^(?:E)/,
+/^(?:$)/,
+/^(?:.)/
     ],
     conditions: {
   "INITIAL": {
@@ -2686,12 +3442,7 @@ new XRegExp("^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])",
       12,
       13,
       14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20
+      15
     ],
     inclusive: true
   }
@@ -2718,10 +3469,39 @@ return new Parser();
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
-  exports.parser = ebnf;
-  exports.Parser = ebnf.Parser;
+  exports.parser = codegenFeatureTesterNoYysp;
+  exports.Parser = codegenFeatureTesterNoYysp.Parser;
   exports.parse = function () {
-    return ebnf.parse.apply(ebnf, arguments);
+    return codegenFeatureTesterNoYysp.parse.apply(codegenFeatureTesterNoYysp, arguments);
   };
-  
+   
+  exports.main = function commonjsMain(args) {
+    // When the parser comes with its own `main` function, then use that one:
+    if (typeof exports.parser.main === 'function') {
+      return exports.parser.main(args);
+    }
+
+    var fs = require('fs');
+    var path = require('path');
+
+    if (!args[1]) {
+        console.log('Usage:', path.basename(args[0]) + ' FILE');
+        process.exit(1);
+    }
+    var source = fs.readFileSync(path.normalize(args[1]), 'utf8');
+    var dst = exports.parser.parse(source);
+    console.log('parser output: ', {
+        type: typeof dst,
+        value: dst
+    });
+    var rv = 0;
+    if (typeof dst === 'number' || typeof dst === 'boolean') {
+        rv = dst;
+    }
+    return dst;
+};
+
+  if (typeof module !== 'undefined' && require.main === module) {
+    exports.main(process.argv.slice(1));
+  }
 }

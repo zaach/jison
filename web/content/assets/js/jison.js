@@ -60,7 +60,8 @@ const defaultJisonOptions = {
     warn_cb: undefined,  // function(msg) | true (= use Jison.Print) | false (= throw Exception)
 
     parseParams: undefined,
-    lexer_errors_are_recoverable: false,
+    parserErrorsAreRecoverable: false,
+    lexerErrorsAreRecoverable: false,
     ranges: undefined,
     showSource: false,
 };
@@ -171,7 +172,7 @@ function mkStdOptions(/*args...*/) {
 function autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options) {
     var chk_g = null;
     var chk_l = null;
-    var ex1;
+    var ex1, err;
 
     if (typeof grammar === 'string') {
       if (options.json) {
@@ -624,7 +625,8 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
             warn_cb: this.options.warn_cb,
             parseParams: this.options.parseParams,
             xregexp: this.options.xregexp,
-            lexer_errors_are_recoverable: this.options.lexer_errors_are_recoverable,
+            parserErrorsAreRecoverable: this.options.parserErrorsAreRecoverable,
+            lexerErrorsAreRecoverable: this.options.lexerErrorsAreRecoverable,
             flex: this.options.flex,
             backtrack_lexer: this.options.backtrack_lexer,
             ranges: this.options.ranges,
@@ -4267,7 +4269,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
           moduleType: 1,
           exportAllTables: 1,
           tokenStack: 1,
-          lexer_errors_are_recoverable: 1,
+          parserErrorsAreRecoverable: 0,
+          lexerErrorsAreRecoverable: 1,
           showSource: 1,
 
           errorRecoveryTokenDiscardCount: 0,
@@ -4348,6 +4351,9 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     //   no default resolve on conflict:    ${this.options.noDefaultResolve}
     //   on-demand look-ahead: ............ ${this.onDemandLookahead}
     //   error recovery token skip maximum: ${this.options.errorRecoveryTokenDiscardCount}
+    //   yyerror in parse actions is: ..... ${this.options.parserErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable'},
+    //   yyerror in lexer actions and other non-fatal lexer are:
+    //   .................................. ${this.options.lexerErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable'},
     //   debug grammar/output: ............ ${this.options.debug}
     //   has partial LR conflict upgrade:   ${this.options.hasPartialLrUpgradeOnConflict}
     //   rudimentary token-stack support:   ${this.options.tokenStack}
@@ -5547,12 +5553,29 @@ parser.parse = function parse(input, parseParams) {
     // their closure will still refer to the `parse()` instance which set
     // them up. Hence we MUST set them up at the start of every `parse()` run!
     if (this.yyError) {
-        this.yyError = function yyError(str) {
+        this.yyError = function yyError(str /*, ...args */) {
             if (yydebug) yydebug('yyerror: ', { message: str, args: arguments, symbol: symbol, state: state, newState: newState, recovering: recovering, action: action });
-            // var error_rule_depth = locateNearestErrorRecoveryRule(state);
-            // var expected = this.collect_expected_token_set(state);
-            var hash = this.constructParseErrorInfo(str, null, null, false); // (str, null, expected, (error_rule_depth >= 0));
+
+//_handle_error_with_recovery:                    // run this code when the grammar includes error recovery rules
+
+            var error_rule_depth = (this.options.parserErrorsAreRecoverable ? locateNearestErrorRecoveryRule(state) : -1);
+            var expected = this.collect_expected_token_set(state);
+            var hash = this.constructParseErrorInfo(str, null, expected, (error_rule_depth >= 0));
+
+//_handle_error_no_recovery:                      // run this code when the grammar does not include any error recovery rules
+
+            var hash = this.constructParseErrorInfo(str, null, null, false);
+
+//_handle_error_end_of_section:                   // this concludes the error recovery / no error recovery code section choice above
+
+            // Add any extra args to the hash under the name `extra_error_attributes`:
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (args.length) {
+                hash.extra_error_attributes = args;
+            }
+
             var r = this.parseError(str, hash, this.JisonParserError);
+            return r;
         };
     }
 
@@ -5938,7 +5961,13 @@ parser.parse = function parse(input, parseParams) {
                         // suit the error recovery rules... The error HAS been reported already so we're fine with
                         // throwing away a few items if that is what it takes to match the nearest recovery rule!
                         if (symbol === EOF || preErrorSymbol === EOF) {
-                            p = this.constructParseErrorInfo((errStr || 'Parsing halted while starting to recover from another error.'), null, expected, false);
+                            p = this.__error_infos[this.__error_infos.length - 1];
+                            if (!p) {
+                                p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error.', null, expected, false);
+                            } else {
+                                p.errStr = 'Parsing halted while starting to recover from another error. Previous error which resulted in this fatal result: ' + p.errStr;
+                                p.recoverable = false;
+                            }
                             retval = this.parseError(p.errStr, p, this.JisonParserError);
                             break;
                         }
@@ -6108,7 +6137,7 @@ parser.parse = function parse(input, parseParams) {
                     last_column: lstack[lstack_end].last_column
                 };
                 if (ranges) {
-                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+                    yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, newState, sp - 1, vstack, lstack, stack, sstack, parseParams);
@@ -7231,7 +7260,7 @@ exports.transform = EBNF.transform;
 
 
 },{"./transform-parser.js":12,"xregexp":22}],5:[function(require,module,exports){
-/* parser generated by jison 0.4.18-181 */
+/* parser generated by jison 0.4.18-184 */
 
 /*
  * Returns a Parser object of the following structure:
@@ -7741,6 +7770,9 @@ var parser = {
     //   no default resolve on conflict:    false
     //   on-demand look-ahead: ............ false
     //   error recovery token skip maximum: 3
+    //   yyerror in parse actions is: ..... NOT recoverable,
+    //   yyerror in lexer actions and other non-fatal lexer are:
+    //   .................................. NOT recoverable,
     //   debug grammar/output: ............ false
     //   has partial LR conflict upgrade:   true
     //   rudimentary token-stack support:   false
@@ -7761,7 +7793,7 @@ var parser = {
     //   uses yytext: ..................... false
     //   uses yylloc: ..................... false
     //   uses ParseError API: ............. false
-    //   uses YYERROR: .................... false
+    //   uses YYERROR: .................... true
     //   uses YYRECOVERING: ............... false
     //   uses YYERROK: .................... false
     //   uses YYCLEARIN: .................. false
@@ -8004,34 +8036,35 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 productions_: bp({
   pop: u([
   44,
+  44,
   s,
   [45, 3],
   46,
   47,
   47,
   s,
-  [48, 8],
+  [48, 9],
   49,
   49,
   50,
   50,
   51,
   51,
-  52,
-  52,
+  s,
+  [52, 3],
   53,
   53,
   54,
   s,
-  [55, 3],
+  [55, 4],
   56,
   56,
-  57,
-  57,
+  s,
+  [57, 3],
   58,
   58,
   s,
-  [59, 3],
+  [59, 4],
   60,
   60,
   61,
@@ -8042,8 +8075,9 @@ productions_: bp({
   64,
   64,
   s,
-  [65, 15],
+  [65, 17],
   66,
+  67,
   67,
   68,
   68,
@@ -8066,8 +8100,8 @@ productions_: bp({
   79
 ]),
   rule: u([
-  4,
-  4,
+  s,
+  [4, 3],
   2,
   0,
   0,
@@ -8076,50 +8110,54 @@ productions_: bp({
   s,
   [2, 3],
   3,
+  3,
   s,
   [1, 5],
   2,
   1,
   2,
   c,
-  [14, 3],
+  [15, 3],
   c,
-  [21, 3],
+  [23, 4],
   c,
-  [16, 5],
+  [18, 6],
   2,
   1,
   5,
+  4,
   c,
-  [9, 3],
+  [11, 4],
   3,
   0,
   1,
   c,
-  [13, 3],
+  [15, 3],
   0,
   3,
   c,
-  [28, 3],
+  [32, 3],
   1,
-  3,
-  3,
+  s,
+  [3, 4],
   s,
   [2, 5],
   c,
-  [10, 3],
+  [12, 3],
   s,
   [1, 6],
   c,
-  [21, 3],
+  [16, 3],
   c,
-  [9, 10],
+  [10, 8],
+  c,
+  [9, 3],
   s,
   [3, 3],
   c,
   [8, 3],
   c,
-  [29, 4],
+  [30, 4],
   0
 ])
 }),
@@ -8153,6 +8191,11 @@ case 1:
     break;
 
 case 2:
+    /*! Production::    lex : init definitions error EOF */
+    yy.parser.yyError("Maybe you did not correctly separate the lexer sections with a '%%' on an otherwise empty line? The lexer spec file should have this structure:  definitions  %%  rules  [%%  extra_module_code]");
+    break;
+
+case 3:
     /*! Production::    rules_and_epilogue : "%%" rules "%%" extra_lexer_module_code */
     if (yyvstack[yysp] && yyvstack[yysp].trim() !== '') {
       this.$ = { rules: yyvstack[yysp - 2], moduleInclude: yyvstack[yysp] };
@@ -8161,23 +8204,23 @@ case 2:
     }
     break;
 
-case 3:
+case 4:
     /*! Production::    rules_and_epilogue : "%%" rules */
     this.$ = { rules: yyvstack[yysp] };
     break;
 
-case 4:
+case 5:
     /*! Production::    rules_and_epilogue : ε */
     this.$ = { rules: [] };
     break;
 
-case 5:
+case 6:
     /*! Production::    init : ε */
     yy.actionInclude = [];
     if (!yy.options) yy.options = {};
     break;
 
-case 6:
+case 7:
     /*! Production::    definitions : definition definitions */
     this.$ = yyvstack[yysp];
     if (yyvstack[yysp - 1] != null) {
@@ -8193,7 +8236,7 @@ case 6:
     }
     break;
 
-case 7:
+case 8:
     /*! Production::    definitions : ε */
     this.$ = {
       macros: {},           // { hash table }
@@ -8202,91 +8245,98 @@ case 7:
     };
     break;
 
-case 8:
+case 9:
     /*! Production::    definition : NAME regex */
-case 26:
+case 29:
     /*! Production::    rule : regex action */
     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
     break;
 
-case 9:
-    /*! Production::    definition : START_INC names_inclusive */
 case 10:
+    /*! Production::    definition : START_INC names_inclusive */
+case 11:
     /*! Production::    definition : START_EXC names_exclusive */
-case 28:
-    /*! Production::    action : unbracketed_action_body */
-case 29:
-    /*! Production::    action : include_macro_code */
 case 32:
+    /*! Production::    action : unbracketed_action_body */
+case 33:
+    /*! Production::    action : include_macro_code */
+case 36:
     /*! Production::    action_body : action_comments_body */
-case 70:
+case 79:
     /*! Production::    escape_char : ESCAPE_CHAR */
-case 71:
+case 80:
     /*! Production::    range_regex : RANGE_REGEX */
-case 81:
+case 90:
     /*! Production::    extra_lexer_module_code : optional_module_code_chunk */
-case 85:
+case 94:
     /*! Production::    module_code_chunk : CODE */
-case 87:
+case 96:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
     this.$ = yyvstack[yysp];
     break;
 
-case 11:
+case 12:
     /*! Production::    definition : "{" action_body "}" */
     yy.actionInclude.push(yyvstack[yysp - 1]); this.$ = null;
     break;
 
-case 12:
-    /*! Production::    definition : ACTION */
 case 13:
+    /*! Production::    definition : "{" action_body error */
+    var l = yyvstack[yysp - 1].split('\n');
+    var ab = l.slice(0, 10).join('\n');
+    yy.parser.yyError("Seems you did not correctly bracket the lexer 'preparatory' action block in curly braces: '{ ... }'. Offending action body:\n" + ab);
+    break;
+
+case 14:
+    /*! Production::    definition : ACTION */
+case 15:
     /*! Production::    definition : include_macro_code */
     yy.actionInclude.push(yyvstack[yysp]); this.$ = null;
     break;
 
-case 14:
+case 16:
     /*! Production::    definition : options */
     this.$ = null;
     break;
 
-case 15:
+case 17:
     /*! Production::    definition : UNKNOWN_DECL */
     this.$ = {type: 'unknown', body: yyvstack[yysp]};
     break;
 
-case 16:
+case 18:
     /*! Production::    names_inclusive : START_COND */
     this.$ = {type: 'names', names: {}}; this.$.names[yyvstack[yysp]] = 0;
     break;
 
-case 17:
+case 19:
     /*! Production::    names_inclusive : names_inclusive START_COND */
     this.$ = yyvstack[yysp - 1]; this.$.names[yyvstack[yysp]] = 0;
     break;
 
-case 18:
+case 20:
     /*! Production::    names_exclusive : START_COND */
     this.$ = {type: 'names', names: {}}; this.$.names[yyvstack[yysp]] = 1;
     break;
 
-case 19:
+case 21:
     /*! Production::    names_exclusive : names_exclusive START_COND */
     this.$ = yyvstack[yysp - 1]; this.$.names[yyvstack[yysp]] = 1;
     break;
 
-case 20:
+case 22:
     /*! Production::    rules : rules rules_collective */
     this.$ = yyvstack[yysp - 1].concat(yyvstack[yysp]);
     break;
 
-case 21:
+case 23:
     /*! Production::    rules : ε */
-case 25:
+case 28:
     /*! Production::    rule_block : ε */
     this.$ = [];
     break;
 
-case 22:
+case 24:
     /*! Production::    rules_collective : start_conditions rule */
     if (yyvstack[yysp - 1]) {
         yyvstack[yysp].unshift(yyvstack[yysp - 1]);
@@ -8294,7 +8344,7 @@ case 22:
     this.$ = [yyvstack[yysp]];
     break;
 
-case 23:
+case 25:
     /*! Production::    rules_collective : start_conditions "{" rule_block "}" */
     if (yyvstack[yysp - 3]) {
         yyvstack[yysp - 1].forEach(function (d) {
@@ -8304,66 +8354,97 @@ case 23:
     this.$ = yyvstack[yysp - 1];
     break;
 
-case 24:
+case 26:
+    /*! Production::    rules_collective : start_conditions "{" rule_block error */
+    if (yyvstack[yysp - 3]) {
+        yyvstack[yysp - 1].forEach(function (d) {
+            d.unshift(yyvstack[yysp - 3]);
+        });
+    }
+    yy.parser.yyError("Seems you did not correctly bracket a lexer rule set inside the start condition <" + yyvstack[yysp - 3].join(',') + "> { rules... } as a terminating curly brace '}' could not be found.", yyvstack[yysp - 1]);
+    break;
+
+case 27:
     /*! Production::    rule_block : rule_block rule */
     this.$ = $rules; this.$.push(yyvstack[yysp]);
     break;
 
-case 27:
+case 30:
     /*! Production::    action : "{" action_body "}" */
-case 36:
+case 41:
     /*! Production::    start_conditions : "<" name_list ">" */
     this.$ = yyvstack[yysp - 1];
     break;
 
 case 31:
+    /*! Production::    action : "{" action_body error */
+    var l = yyvstack[yysp - 1].split('\n');
+    var ab = l.slice(0, 10).join('\n');
+    yy.parser.yyError("Seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'. Offending action body:\n" + ab);
+    break;
+
+case 35:
     /*! Production::    unbracketed_action_body : unbracketed_action_body ACTION */
     this.$ = yyvstack[yysp - 1] + '\n' + yyvstack[yysp];
     break;
 
-case 33:
+case 37:
     /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
     this.$ = yyvstack[yysp - 4] + yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 34:
+case 38:
+    /*! Production::    action_body : action_body "{" action_body error */
+    var l = yyvstack[yysp - 1].split('\n');
+    var ab = l.slice(0, 10).join('\n');
+    yy.parser.yyError("Seems you did not correctly match curly braces '{ ... }' in a lexer rule action block. Offending action body part:\n" + ab);
+    break;
+
+case 39:
     /*! Production::    action_comments_body : ε */
-case 43:
+case 49:
     /*! Production::    regex_list : ε */
-case 88:
+case 97:
     /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
 
-case 35:
+case 40:
     /*! Production::    action_comments_body : action_comments_body ACTION_BODY */
-case 47:
+case 53:
     /*! Production::    regex_concat : regex_concat regex_base */
-case 57:
+case 65:
     /*! Production::    regex_base : regex_base range_regex */
-case 66:
+case 75:
     /*! Production::    regex_set : regex_set_atom regex_set */
-case 86:
+case 95:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 37:
+case 42:
+    /*! Production::    start_conditions : "<" name_list error */
+    var l = yyvstack[yysp - 1];
+    var ab = l.slice(0, 10).join(',').replace(/[\s\r\n]/g, ' ');
+    yy.parser.yyError("Seems you did not correctly terminate the start condition set <" + ab + ",???> with a terminating '>'");
+    break;
+
+case 43:
     /*! Production::    start_conditions : "<" "*" ">" */
     this.$ = ['*'];
     break;
 
-case 39:
+case 45:
     /*! Production::    name_list : NAME */
     this.$ = [yyvstack[yysp]];
     break;
 
-case 40:
+case 46:
     /*! Production::    name_list : name_list "," NAME */
     this.$ = yyvstack[yysp - 2]; this.$.push(yyvstack[yysp]);
     break;
 
-case 41:
+case 47:
     /*! Production::    regex : nonempty_regex_list */
     // Detect if the regex ends with a pure (Unicode) word;
     // we *do* consider escaped characters which are 'alphanumeric'
@@ -8406,6 +8487,9 @@ case 41:
       .replace(/\\[^xu0-9]/g, '.');
     
       try {
+        // Convert Unicode escapes and other escapes to their literal characters
+        // BEFORE we go and check whether this item is subject to the 
+        // `easy_keyword_rules` option.  
         this.$ = eval('"' + this.$ + '"');
       }
       catch (ex) {
@@ -8425,74 +8509,95 @@ case 41:
     }
     break;
 
-case 44:
+case 50:
     /*! Production::    nonempty_regex_list : regex_concat "|" regex_list */
     this.$ = yyvstack[yysp - 2] + '|' + yyvstack[yysp];
     break;
 
-case 45:
+case 51:
     /*! Production::    nonempty_regex_list : "|" regex_list */
     this.$ = '|' + yyvstack[yysp];
     break;
 
-case 49:
+case 55:
     /*! Production::    regex_base : "(" regex_list ")" */
     this.$ = '(' + yyvstack[yysp - 1] + ')';
     break;
 
-case 50:
+case 56:
     /*! Production::    regex_base : SPECIAL_GROUP regex_list ")" */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + ')';
     break;
 
-case 51:
+case 57:
+    /*! Production::    regex_base : "(" regex_list error */
+    var l = yyvstack[yysp - 1];
+    var ab = l.replace(/[\s\r\n]/g, ' ').substring(0, 32);
+    yy.parser.yyError("Seems you did not correctly bracket a lex rule regex part in '(...)' braces. Unterminated regex part: (" + ab, yyvstack[yysp - 1]);
+    break;
+
+case 58:
+    /*! Production::    regex_base : SPECIAL_GROUP regex_list error */
+    var l = yyvstack[yysp - 1];
+    var ab = l.replace(/[\s\r\n]/g, ' ').substring(0, 32);
+    yy.parser.yyError("Seems you did not correctly bracket a lex rule regex part in '(...)' braces. Unterminated regex part: " + yyvstack[yysp - 2] + ab, yyvstack[yysp - 1]);
+    break;
+
+case 59:
     /*! Production::    regex_base : regex_base "+" */
     this.$ = yyvstack[yysp - 1] + '+';
     break;
 
-case 52:
+case 60:
     /*! Production::    regex_base : regex_base "*" */
     this.$ = yyvstack[yysp - 1] + '*';
     break;
 
-case 53:
+case 61:
     /*! Production::    regex_base : regex_base "?" */
     this.$ = yyvstack[yysp - 1] + '?';
     break;
 
-case 54:
+case 62:
     /*! Production::    regex_base : "/" regex_base */
     this.$ = '(?=' + yyvstack[yysp] + ')';
     break;
 
-case 55:
+case 63:
     /*! Production::    regex_base : "/!" regex_base */
     this.$ = '(?!' + yyvstack[yysp] + ')';
     break;
 
-case 59:
+case 67:
     /*! Production::    regex_base : "." */
     this.$ = '.';
     break;
 
-case 60:
+case 68:
     /*! Production::    regex_base : "^" */
     this.$ = '^';
     break;
 
-case 61:
+case 69:
     /*! Production::    regex_base : "$" */
     this.$ = '$';
     break;
 
-case 65:
+case 73:
     /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
-case 82:
+case 91:
     /*! Production::    extra_lexer_module_code : optional_module_code_chunk include_macro_code extra_lexer_module_code */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 69:
+case 74:
+    /*! Production::    any_group_regex : REGEX_SET_START regex_set error */
+    var l = yyvstack[yysp - 1];
+    var ab = l.replace(/[\s\r\n]/g, ' ').substring(0, 32);
+    yy.parser.yyError("Seems you did not correctly bracket a lex rule regex set in '[...]' brackets. Unterminated regex set: " + yyvstack[yysp - 2] + ab, yyvstack[yysp - 1]);
+    break;
+
+case 78:
     /*! Production::    regex_set_atom : name_expansion */
     if (XRegExp._getUnicodeProperty(yyvstack[yysp].replace(/[{}]/g, ''))
         && yyvstack[yysp].toUpperCase() !== yyvstack[yysp]
@@ -8505,29 +8610,29 @@ case 69:
     //console.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ });
     break;
 
-case 72:
+case 81:
     /*! Production::    string : STRING_LIT */
     this.$ = prepareString(yyvstack[yysp].substr(1, yyvstack[yysp].length - 2));
     break;
 
-case 77:
+case 86:
     /*! Production::    option : NAME */
     yy.options[yyvstack[yysp]] = true;
     break;
 
-case 78:
+case 87:
     /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
     yy.options[yyvstack[yysp - 2]] = yyvstack[yysp];
     break;
 
-case 79:
+case 88:
     /*! Production::    option : NAME "=" OPTION_VALUE */
-case 80:
+case 89:
     /*! Production::    option : NAME "=" NAME */
     yy.options[yyvstack[yysp - 2]] = parseValue(yyvstack[yysp]);
     break;
 
-case 83:
+case 92:
     /*! Production::    include_macro_code : INCLUDE PATH */
     var fs = require('fs');
     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
@@ -8535,77 +8640,79 @@ case 83:
     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
     break;
 
-case 84:
+case 93:
     /*! Production::    include_macro_code : INCLUDE error */
-    console.error("%include MUST be followed by a valid file path");
+    yy.parser.yyError("%include MUST be followed by a valid file path");
     break;
 
 }
 },
 table: bt({
   len: u([
-  12,
+  13,
   1,
-  14,
-  3,
-  14,
+  15,
+  4,
+  15,
   21,
   2,
   2,
-  5,
-  s,
-  [10, 4],
-  2,
-  3,
-  1,
-  18,
-  2,
-  10,
-  10,
-  29,
-  32,
-  29,
-  22,
-  22,
-  17,
-  17,
-  s,
-  [28, 7],
-  30,
-  5,
-  s,
-  [28, 3],
+  6,
   s,
   [11, 4],
   2,
   3,
-  26,
-  26,
+  1,
+  1,
+  18,
+  3,
+  11,
+  11,
+  30,
+  33,
+  30,
+  23,
+  23,
+  17,
+  17,
+  s,
+  [29, 7],
+  31,
+  5,
+  s,
+  [29, 3],
+  s,
+  [12, 4],
+  3,
+  4,
+  27,
+  27,
   1,
   4,
-  3,
-  1,
+  c,
+  [36, 3],
   19,
-  32,
-  29,
-  11,
-  11,
+  33,
+  30,
+  12,
+  12,
   s,
-  [28, 5],
-  1,
-  1,
-  29,
-  29,
-  1,
+  [29, 5],
+  2,
+  2,
+  30,
+  30,
+  2,
+  7,
+  4,
+  4,
+  12,
+  12,
+  11,
+  11,
   6,
-  3,
-  3,
+  4,
   11,
-  11,
-  10,
-  5,
-  3,
-  10,
   1,
   3,
   6,
@@ -8613,41 +8720,49 @@ table: bt({
   23,
   3,
   c,
-  [26, 4],
-  1,
+  [27, 6],
+  29,
+  2,
+  3,
   s,
-  [2, 4],
+  [2, 3],
   1,
   s,
   [3, 3],
   17,
-  15,
-  6,
-  2,
-  1,
-  2,
-  4,
+  16,
   6,
   3,
-  23,
-  18,
+  1,
+  3,
   5,
+  3,
+  6,
+  3,
+  24,
   19,
-  18,
+  6,
+  20,
   19,
+  20,
   14,
-  c,
-  [109, 3],
+  14,
+  1,
+  14,
+  4,
   1,
   17,
-  14,
-  2,
+  17,
+  15,
+  3,
+  20,
+  3,
   19,
-  2,
-  18
+  19
 ]),
   symbol: u([
   1,
+  2,
   3,
   s,
   [19, 6, 1],
@@ -8657,16 +8772,17 @@ table: bt({
   46,
   1,
   c,
-  [13, 10],
+  [14, 11],
   47,
   48,
   73,
   77,
   1,
+  2,
   19,
   45,
   c,
-  [17, 14],
+  [19, 15],
   9,
   10,
   s,
@@ -8685,77 +8801,80 @@ table: bt({
   49,
   25,
   50,
+  2,
   3,
   4,
   26,
   57,
   58,
   c,
-  [44, 10],
+  [46, 11],
   c,
-  [10, 30],
+  [11, 33],
   2,
   42,
   20,
   74,
   75,
-  c,
-  [107, 3],
+  s,
+  [1, 3],
+  3,
   5,
   c,
-  [79, 6],
+  [85, 6],
   19,
   c,
-  [80, 7],
+  [86, 7],
   51,
-  1,
-  19,
   c,
-  [56, 22],
+  [119, 3],
+  c,
+  [61, 25],
   9,
   10,
   11,
   c,
-  [40, 5],
+  [44, 5],
   c,
-  [17, 5],
+  [18, 5],
   c,
-  [45, 7],
+  [49, 7],
   37,
   41,
   c,
-  [124, 5],
+  [134, 5],
   c,
-  [29, 24],
+  [30, 25],
   s,
   [62, 6, 1],
   c,
-  [32, 4],
+  [33, 5],
   7,
   s,
   [9, 9, 1],
   c,
-  [35, 11],
+  [36, 11],
   s,
   [34, 4, 1],
   41,
   71,
+  2,
   c,
-  [59, 7],
+  [61, 7],
   c,
-  [53, 7],
+  [55, 7],
   c,
-  [51, 8],
+  [53, 8],
   c,
-  [22, 22],
+  [23, 23],
   c,
-  [249, 12],
+  [263, 12],
   c,
   [17, 22],
   c,
-  [107, 28],
+  [110, 29],
   c,
-  [28, 190],
+  [29, 197],
   s,
   [31, 7, 1],
   41,
@@ -8765,25 +8884,24 @@ table: bt({
   68,
   69,
   c,
-  [119, 86],
+  [123, 90],
   s,
   [19, 7, 1],
   c,
-  [11, 35],
-  3,
-  4,
+  [12, 38],
   c,
-  [620, 3],
-  1,
-  3,
-  4,
+  [647, 3],
   c,
-  [573, 8],
+  [650, 4],
+  s,
+  [1, 5, 1],
   c,
-  [504, 14],
+  [599, 7],
+  c,
+  [525, 14],
   43,
   c,
-  [26, 26],
+  [27, 27],
   38,
   20,
   38,
@@ -8793,45 +8911,48 @@ table: bt({
   20,
   38,
   c,
-  [633, 18],
+  [661, 19],
   52,
   59,
   c,
-  [583, 61],
-  1,
-  3,
+  [607, 63],
+  c,
+  [30, 3],
   11,
   c,
-  [684, 10],
+  [712, 11],
   c,
-  [11, 11],
+  [12, 12],
   c,
-  [471, 138],
+  [493, 142],
+  2,
   11,
+  2,
   11,
   c,
-  [193, 31],
+  [203, 33],
   c,
-  [29, 27],
+  [840, 28],
   31,
+  2,
   29,
   31,
   c,
-  [503, 4],
+  [530, 4],
   c,
-  [6, 3],
+  [7, 4],
   c,
-  [3, 3],
+  [4, 4],
   c,
-  [414, 30],
+  [439, 33],
   c,
-  [413, 4],
+  [1046, 14],
   c,
-  [1031, 3],
+  [1096, 5],
   c,
-  [416, 5],
+  [452, 7],
   c,
-  [18, 8],
+  [21, 8],
   38,
   20,
   39,
@@ -8843,38 +8964,41 @@ table: bt({
   78,
   79,
   c,
-  [375, 17],
+  [409, 17],
   c,
-  [372, 3],
+  [405, 3],
   c,
-  [836, 11],
+  [890, 11],
   54,
   c,
-  [1103, 8],
+  [1171, 8],
   7,
   20,
   60,
   c,
-  [327, 95],
+  [358, 157],
+  c,
+  [387, 30],
   31,
-  3,
-  4,
+  c,
+  [256, 3],
   20,
   c,
-  [526, 3],
+  [654, 3],
   c,
-  [523, 4],
+  [651, 4],
   41,
   77,
   c,
-  [157, 3],
+  [250, 3],
   c,
   [3, 4],
   c,
-  [157, 16],
+  [250, 16],
+  2,
   4,
   c,
-  [157, 13],
+  [251, 13],
   53,
   3,
   23,
@@ -8882,135 +9006,142 @@ table: bt({
   55,
   56,
   77,
+  2,
   6,
   8,
   6,
-  6,
-  8,
   c,
-  [223, 3],
-  58,
+  [4, 3],
   c,
-  [210, 7],
+  [321, 4],
+  c,
+  [326, 4],
+  c,
+  [310, 7],
   41,
   43,
   c,
-  [39, 14],
+  [46, 15],
   c,
-  [196, 9],
+  [297, 9],
   c,
-  [646, 11],
+  [783, 12],
   c,
-  [237, 8],
+  [89, 8],
   c,
-  [1313, 6],
+  [1483, 8],
   c,
-  [23, 9],
+  [25, 9],
   23,
   c,
-  [24, 7],
+  [26, 7],
   c,
-  [42, 18],
+  [45, 19],
   c,
-  [37, 19],
+  [39, 20],
   c,
-  [298, 14],
+  [404, 14],
+  c,
+  [14, 14],
   20,
   c,
   [15, 14],
   c,
-  [367, 4],
+  [489, 5],
   c,
-  [191, 31],
-  3,
-  4,
+  [219, 17],
   c,
-  [85, 19],
-  6,
-  8,
+  [236, 32],
   c,
-  [124, 18]
+  [217, 4],
+  c,
+  [120, 19],
+  c,
+  [248, 3],
+  c,
+  [162, 31],
+  c,
+  [19, 7]
 ]),
   type: u([
   s,
-  [2, 10],
+  [2, 11],
   0,
   0,
   1,
   c,
-  [13, 12],
+  [14, 13],
   0,
   0,
   c,
-  [6, 3],
+  [7, 4],
   c,
-  [17, 16],
+  [19, 18],
+  c,
+  [17, 14],
+  c,
+  [21, 5],
+  0,
+  c,
+  [40, 6],
+  c,
+  [31, 15],
   s,
-  [2, 11],
-  s,
-  [0, 8],
+  [2, 34],
   c,
-  [37, 3],
+  [49, 21],
   c,
-  [25, 4],
+  [69, 48],
   c,
-  [30, 15],
-  s,
-  [2, 30],
+  [137, 8],
   c,
-  [45, 20],
+  [30, 30],
   c,
-  [64, 44],
+  [33, 28],
   c,
-  [127, 8],
+  [118, 20],
   c,
-  [29, 29],
+  [53, 23],
   c,
-  [32, 27],
-  c,
-  [112, 19],
-  c,
-  [51, 22],
-  c,
-  [22, 20],
+  [23, 20],
   c,
   [17, 34],
   s,
-  [2, 216],
+  [2, 224],
   c,
-  [231, 191],
+  [239, 202],
   c,
-  [190, 23],
+  [201, 24],
   c,
-  [583, 77],
+  [607, 80],
   c,
-  [278, 179],
+  [291, 188],
   c,
-  [29, 33],
+  [30, 36],
   c,
-  [503, 44],
+  [530, 61],
   c,
-  [43, 22],
+  [389, 26],
   c,
-  [66, 34],
+  [85, 32],
   s,
   [0, 9],
   c,
-  [338, 110],
+  [370, 203],
   c,
-  [108, 38],
+  [201, 39],
   c,
-  [1248, 6],
+  [1454, 5],
   c,
-  [44, 9],
+  [289, 13],
   c,
-  [15, 15],
+  [395, 28],
   c,
-  [196, 20],
+  [297, 11],
   c,
-  [615, 45],
+  [752, 48],
   s,
-  [2, 137]
+  [2, 195]
 ]),
   state: u([
   s,
@@ -9018,176 +9149,181 @@ table: bt({
   11,
   10,
   15,
-  17,
+  18,
   c,
   [5, 3],
-  18,
   19,
   20,
-  22,
-  27,
+  21,
+  23,
   28,
+  29,
+  34,
   33,
-  32,
-  39,
-  41,
-  43,
+  40,
+  42,
   44,
-  47,
+  45,
   48,
-  51,
+  49,
   53,
-  c,
-  [12, 4],
-  54,
   55,
   c,
+  [12, 4],
+  56,
+  57,
+  c,
   [20, 6],
-  59,
   61,
-  c,
-  [9, 7],
-  62,
-  c,
-  [8, 7],
   63,
   c,
-  [5, 4],
+  [9, 7],
   64,
   c,
-  [5, 4],
-  68,
+  [8, 7],
   65,
+  c,
+  [5, 4],
   66,
-  75,
-  48,
+  c,
+  [5, 4],
+  70,
+  67,
+  68,
   78,
-  79,
+  49,
   81,
+  82,
+  84,
   c,
   [42, 8],
-  59,
-  59,
-  68,
-  85,
-  66,
-  86,
-  44,
-  90,
-  92,
+  61,
+  61,
+  70,
   91,
-  94,
+  68,
+  92,
+  45,
   96,
+  98,
+  97,
+  100,
+  102,
   c,
   [82, 7],
-  97,
-  101,
   103,
-  104,
-  106,
-  107,
-  112,
+  108,
+  110,
+  111,
   113,
-  92,
-  91,
-  115,
+  114,
+  120,
+  121,
+  98,
+  97,
+  124,
   c,
   [19, 8],
-  116,
-  44
+  125,
+  45
 ]),
   mode: u([
   s,
-  [2, 11],
+  [2, 13],
   1,
   2,
   s,
   [1, 7],
   c,
-  [10, 4],
+  [8, 3],
   c,
-  [12, 8],
+  [14, 11],
   s,
   [1, 15],
   s,
-  [2, 43],
+  [2, 48],
   c,
-  [47, 45],
+  [53, 50],
   c,
-  [117, 4],
+  [129, 5],
   c,
-  [48, 9],
+  [52, 8],
   c,
-  [108, 11],
+  [118, 12],
   c,
-  [24, 25],
+  [25, 26],
   c,
-  [28, 6],
+  [29, 6],
   c,
-  [69, 15],
+  [71, 15],
   c,
-  [50, 11],
+  [52, 12],
   c,
-  [178, 10],
+  [218, 11],
   s,
   [1, 35],
   s,
-  [2, 226],
+  [2, 234],
   c,
-  [228, 94],
+  [236, 98],
   c,
-  [93, 22],
+  [97, 24],
   c,
-  [22, 14],
+  [24, 15],
   c,
-  [130, 4],
+  [374, 6],
   c,
-  [133, 53],
+  [142, 55],
   c,
-  [656, 5],
+  [470, 4],
   c,
-  [80, 11],
+  [86, 13],
   c,
-  [69, 10],
+  [72, 11],
   c,
-  [541, 50],
+  [565, 52],
   c,
-  [425, 166],
+  [446, 170],
   c,
-  [192, 28],
+  [310, 9],
   c,
-  [761, 30],
+  [202, 25],
   c,
-  [117, 57],
+  [29, 26],
   c,
-  [413, 21],
+  [310, 5],
   c,
-  [807, 112],
+  [241, 75],
   c,
-  [98, 10],
+  [141, 5],
   c,
-  [556, 38],
+  [80, 18],
   c,
-  [150, 13],
+  [861, 204],
   c,
-  [281, 6],
+  [191, 11],
   c,
-  [175, 44],
+  [236, 21],
   c,
-  [208, 59],
+  [1279, 23],
   c,
-  [59, 17],
+  [245, 14],
   c,
-  [109, 34],
+  [402, 6],
   c,
-  [110, 40]
+  [276, 48],
+  c,
+  [425, 76],
+  c,
+  [93, 68],
+  c,
+  [458, 64]
 ]),
   goto: u([
   s,
-  [5, 10],
-  7,
-  8,
-  7,
+  [6, 11],
+  s,
+  [8, 4],
   5,
   6,
   7,
@@ -9195,324 +9331,351 @@ table: bt({
   12,
   14,
   13,
-  4,
+  5,
   16,
+  17,
   c,
-  [12, 10],
-  21,
-  23,
-  25,
-  29,
-  30,
-  31,
+  [14, 11],
+  22,
   24,
   26,
-  34,
+  30,
+  31,
+  32,
+  25,
+  27,
   35,
-  38,
   36,
+  39,
   37,
-  40,
-  42,
-  s,
-  [34, 3],
-  s,
-  [12, 10],
-  s,
-  [13, 10],
-  s,
-  [14, 10],
-  s,
-  [15, 10],
-  46,
-  45,
-  49,
-  50,
-  s,
-  [21, 17],
-  6,
-  6,
-  s,
-  [8, 10],
-  s,
-  [41, 10],
-  46,
-  46,
-  52,
-  23,
-  46,
-  c,
-  [104, 4],
-  s,
-  [46, 6],
-  c,
-  [110, 7],
-  46,
-  46,
+  38,
+  41,
   43,
-  43,
-  21,
-  23,
-  43,
-  c,
-  [24, 4],
   s,
-  [43, 6],
-  c,
-  [24, 7],
-  43,
-  43,
-  48,
-  48,
-  57,
+  [39, 4],
   s,
-  [48, 3],
-  56,
-  58,
+  [14, 11],
   s,
-  [48, 15],
-  60,
-  s,
-  [48, 4],
-  c,
-  [50, 7],
-  c,
-  [44, 7],
-  c,
-  [14, 14],
-  c,
-  [204, 12],
-  c,
-  [12, 12],
-  s,
-  [56, 28],
-  s,
-  [58, 28],
-  s,
-  [59, 28],
-  s,
-  [60, 28],
-  s,
-  [61, 28],
-  s,
-  [62, 28],
-  s,
-  [63, 28],
-  s,
-  [64, 30],
-  34,
-  67,
-  s,
-  [72, 28],
-  s,
-  [73, 28],
-  s,
-  [70, 28],
-  s,
-  [9, 8],
-  69,
-  9,
-  9,
+  [15, 11],
   s,
   [16, 11],
   s,
-  [10, 8],
-  70,
-  10,
-  10,
-  s,
-  [18, 11],
-  72,
-  71,
-  32,
-  32,
-  73,
-  s,
-  [83, 26],
-  s,
-  [84, 26],
-  74,
-  49,
-  76,
-  76,
-  77,
-  77,
-  1,
-  3,
-  38,
-  80,
-  s,
-  [38, 6],
-  77,
-  s,
-  [38, 7],
-  c,
-  [541, 24],
-  47,
-  47,
-  57,
-  s,
-  [47, 3],
-  56,
-  58,
-  s,
-  [47, 15],
-  60,
-  s,
-  [47, 4],
-  s,
-  [45, 11],
-  s,
-  [42, 11],
-  s,
-  [51, 28],
-  s,
-  [52, 28],
-  s,
-  [53, 28],
-  s,
-  [57, 28],
-  s,
-  [71, 28],
-  82,
-  83,
-  54,
-  54,
-  57,
-  s,
-  [54, 3],
-  56,
-  58,
-  s,
-  [54, 15],
-  60,
-  s,
-  [54, 4],
-  55,
-  55,
-  57,
-  s,
-  [55, 3],
-  56,
-  58,
-  s,
-  [55, 15],
-  60,
-  s,
-  [55, 4],
-  84,
-  34,
-  67,
-  67,
-  s,
-  [68, 3],
-  s,
-  [69, 3],
-  s,
   [17, 11],
-  s,
-  [19, 11],
-  s,
-  [11, 10],
-  s,
-  [34, 3],
-  s,
-  [35, 3],
-  s,
-  [74, 10],
-  75,
-  89,
-  87,
-  s,
-  [88, 3],
-  93,
-  s,
-  [20, 17],
-  95,
-  c,
-  [1021, 13],
-  98,
-  99,
-  s,
-  [44, 11],
-  s,
-  [49, 28],
-  s,
-  [50, 28],
-  s,
-  [65, 28],
-  66,
-  72,
-  100,
-  78,
-  78,
-  79,
-  79,
-  80,
-  80,
-  2,
-  81,
-  13,
-  87,
-  87,
-  102,
-  s,
-  [85, 3],
-  s,
-  [22, 17],
-  s,
-  [25, 14],
-  105,
-  108,
-  13,
-  109,
-  110,
-  111,
-  39,
-  39,
-  s,
-  [34, 3],
-  c,
-  [191, 3],
-  s,
-  [86, 3],
-  114,
-  c,
-  [177, 13],
-  s,
-  [26, 18],
-  s,
-  [34, 3],
-  s,
-  [28, 11],
-  117,
-  s,
-  [28, 7],
-  s,
-  [29, 18],
-  s,
-  [30, 19],
-  s,
-  [36, 14],
-  118,
-  s,
-  [37, 14],
-  33,
-  33,
-  73,
-  82,
+  47,
+  46,
+  50,
+  51,
+  52,
   s,
   [23, 17],
   s,
-  [24, 14],
+  [7, 3],
+  s,
+  [9, 11],
+  s,
+  [47, 11],
+  s,
+  [52, 3],
+  54,
+  24,
+  52,
+  c,
+  [114, 4],
+  s,
+  [52, 6],
+  c,
+  [120, 7],
+  52,
+  52,
+  s,
+  [49, 3],
+  22,
+  24,
+  49,
+  c,
+  [25, 4],
+  s,
+  [49, 6],
+  c,
+  [25, 7],
+  49,
+  49,
+  s,
+  [54, 3],
+  59,
+  s,
+  [54, 3],
+  58,
+  60,
+  s,
+  [54, 15],
+  62,
+  s,
+  [54, 4],
+  c,
+  [52, 8],
+  c,
+  [46, 8],
+  c,
+  [15, 14],
+  c,
+  [218, 12],
+  c,
+  [12, 12],
+  s,
+  [64, 29],
+  s,
+  [66, 29],
+  s,
+  [67, 29],
+  s,
+  [68, 29],
+  s,
+  [69, 29],
+  s,
+  [70, 29],
+  s,
+  [71, 29],
+  s,
+  [72, 31],
+  35,
+  69,
+  s,
+  [81, 29],
+  s,
+  [82, 29],
+  s,
+  [79, 29],
+  s,
+  [10, 9],
+  71,
+  10,
+  10,
+  s,
+  [18, 12],
+  s,
+  [11, 9],
   72,
+  11,
+  11,
+  s,
+  [20, 12],
+  74,
+  75,
+  73,
+  s,
+  [36, 3],
+  76,
+  s,
+  [92, 27],
+  s,
+  [93, 27],
+  77,
+  50,
+  85,
+  79,
+  86,
+  86,
+  1,
+  2,
+  4,
+  44,
+  83,
+  s,
+  [44, 6],
+  80,
+  s,
+  [44, 7],
+  c,
+  [565, 25],
+  s,
+  [53, 3],
+  59,
+  s,
+  [53, 3],
+  58,
+  60,
+  s,
+  [53, 15],
+  62,
+  s,
+  [53, 4],
+  s,
+  [51, 12],
+  s,
+  [48, 12],
+  s,
+  [59, 29],
+  s,
+  [60, 29],
+  s,
+  [61, 29],
+  s,
+  [65, 29],
+  s,
+  [80, 29],
+  86,
+  85,
+  88,
+  87,
+  s,
+  [62, 3],
+  59,
+  s,
+  [62, 3],
+  58,
+  60,
+  s,
+  [62, 20],
+  s,
+  [63, 3],
+  59,
+  s,
+  [63, 3],
+  58,
+  60,
+  s,
+  [63, 15],
+  c,
+  [25, 4],
+  63,
+  90,
+  89,
+  76,
+  35,
+  76,
+  69,
+  s,
+  [77, 4],
+  s,
+  [78, 4],
+  s,
+  [19, 12],
+  s,
+  [21, 12],
+  s,
+  [12, 11],
+  s,
+  [13, 11],
+  s,
+  [39, 4],
+  s,
+  [40, 4],
+  s,
+  [83, 11],
+  84,
+  95,
+  93,
+  94,
+  97,
+  97,
+  99,
+  s,
+  [22, 17],
+  101,
+  c,
+  [1089, 13],
+  104,
+  105,
+  s,
+  [50, 12],
+  s,
+  [55, 29],
+  s,
+  [57, 29],
+  s,
+  [56, 29],
+  s,
+  [58, 29],
+  s,
+  [73, 29],
+  s,
+  [74, 29],
+  75,
+  75,
+  107,
+  75,
+  106,
+  87,
+  87,
+  88,
+  88,
+  89,
+  89,
+  3,
+  90,
+  13,
+  96,
+  96,
+  109,
+  s,
+  [94, 3],
+  s,
+  [24, 17],
+  s,
+  [28, 15],
+  112,
+  115,
+  13,
+  117,
+  116,
+  118,
   119,
   s,
-  [31, 19],
-  40,
-  40,
+  [45, 3],
   s,
-  [27, 18]
+  [39, 4],
+  s,
+  [38, 3],
+  c,
+  [291, 3],
+  s,
+  [95, 3],
+  123,
+  122,
+  c,
+  [278, 13],
+  s,
+  [29, 19],
+  s,
+  [39, 4],
+  s,
+  [32, 12],
+  126,
+  s,
+  [32, 7],
+  s,
+  [33, 19],
+  s,
+  [34, 20],
+  s,
+  [41, 14],
+  s,
+  [42, 14],
+  127,
+  s,
+  [43, 14],
+  s,
+  [37, 3],
+  76,
+  91,
+  s,
+  [25, 17],
+  s,
+  [26, 17],
+  s,
+  [27, 15],
+  129,
+  75,
+  128,
+  s,
+  [35, 20],
+  s,
+  [46, 3],
+  s,
+  [30, 19],
+  s,
+  [31, 19]
 ])
 }),
 defaultActions: bda({
@@ -9521,109 +9684,117 @@ defaultActions: bda({
   s,
   [8, 5, 1],
   s,
-  [16, 4, 1],
+  [17, 4, 1],
   s,
-  [27, 8, 1],
-  36,
+  [28, 8, 1],
   37,
   38,
-  40,
-  42,
-  45,
-  46,
-  50,
-  s,
-  [54, 7, 1],
-  s,
-  [67, 9, 1],
-  78,
-  s,
-  [81, 5, 1],
-  s,
-  [87, 4, 1],
-  93,
-  94,
-  95,
-  99,
-  100,
-  102,
-  104,
-  105,
-  107,
-  108,
-  109,
-  111,
-  113,
-  114,
-  115,
-  117,
-  118,
-  119
-]),
-  goto: u([
-  5,
-  34,
-  s,
-  [12, 4, 1],
-  21,
-  6,
-  8,
+  39,
   41,
-  56,
-  s,
-  [58, 7, 1],
-  72,
-  73,
-  70,
-  16,
-  18,
-  83,
-  84,
-  1,
-  45,
-  42,
+  43,
+  46,
+  47,
   51,
   52,
-  53,
-  57,
-  71,
-  68,
-  69,
-  17,
+  s,
+  [56, 7, 1],
+  s,
+  [69, 10, 1],
+  81,
+  s,
+  [84, 8, 1],
+  s,
+  [93, 4, 1],
+  99,
+  100,
+  101,
+  105,
+  106,
+  107,
+  109,
+  111,
+  112,
+  s,
+  [114, 4, 1],
+  119,
+  s,
+  [121, 4, 1],
+  s,
+  [126, 4, 1]
+]),
+  goto: u([
+  6,
+  39,
+  s,
+  [14, 4, 1],
+  23,
+  7,
+  9,
+  47,
+  64,
+  s,
+  [66, 7, 1],
+  81,
+  82,
+  79,
+  18,
+  20,
+  92,
+  93,
+  1,
+  2,
+  51,
+  48,
+  59,
+  60,
+  61,
+  65,
+  80,
+  77,
+  78,
   19,
-  11,
-  34,
-  35,
+  21,
+  12,
+  13,
+  39,
+  40,
+  83,
+  84,
+  22,
+  50,
+  55,
+  57,
+  56,
+  58,
+  73,
   74,
   75,
-  20,
-  44,
-  49,
-  50,
-  65,
-  66,
-  78,
-  79,
-  80,
-  2,
-  85,
-  22,
-  25,
-  39,
-  34,
-  86,
-  26,
-  34,
-  29,
-  30,
-  36,
-  37,
-  82,
-  23,
+  87,
+  88,
+  89,
+  3,
+  94,
   24,
-  31,
-  40,
-  27
+  28,
+  45,
+  39,
+  38,
+  95,
+  29,
+  39,
+  33,
+  34,
+  41,
+  42,
+  43,
+  91,
+  25,
+  26,
+  27,
+  35,
+  46,
+  30,
+  31
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -9679,6 +9850,51 @@ parse: function parse(input) {
 
     sharedState_yy.lexer = lexer;
     sharedState_yy.parser = this;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // *Always* setup `yyError`, `YYRECOVERING`, `yyErrOk` and `yyClearIn` functions as it is paramount
+    // to have *their* closure match ours -- if we only set them up once,
+    // any subsequent `parse()` runs will fail in very obscure ways when
+    // these functions are invoked in the user action code block(s) as
+    // their closure will still refer to the `parse()` instance which set
+    // them up. Hence we MUST set them up at the start of every `parse()` run!
+    if (this.yyError) {
+        this.yyError = function yyError(str /*, ...args */) {
+
+
+
+            var error_rule_depth = (this.options.parserErrorsAreRecoverable ? locateNearestErrorRecoveryRule(state) : -1);
+            var expected = this.collect_expected_token_set(state);
+            var hash = this.constructParseErrorInfo(str, null, expected, (error_rule_depth >= 0));
+
+
+            // Add any extra args to the hash under the name `extra_error_attributes`:
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (args.length) {
+                hash.extra_error_attributes = args;
+            }
+
+            var r = this.parseError(str, hash, this.JisonParserError);
+            return r;
+        };
+    }
 
 
 
@@ -10009,7 +10225,13 @@ parse: function parse(input) {
                         // suit the error recovery rules... The error HAS been reported already so we're fine with
                         // throwing away a few items if that is what it takes to match the nearest recovery rule!
                         if (symbol === EOF || preErrorSymbol === EOF) {
-                            p = this.constructParseErrorInfo((errStr || 'Parsing halted while starting to recover from another error.'), null, expected, false);
+                            p = this.__error_infos[this.__error_infos.length - 1];
+                            if (!p) {
+                                p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error.', null, expected, false);
+                            } else {
+                                p.errStr = 'Parsing halted while starting to recover from another error. Previous error which resulted in this fatal result: ' + p.errStr;
+                                p.recoverable = false;
+                            }
                             retval = this.parseError(p.errStr, p, this.JisonParserError);
                             break;
                         }
@@ -10257,7 +10479,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}
+},
+yyError: 1
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
@@ -10564,37 +10787,38 @@ var lexer = {
     EOF: 1,
     ERROR: 2,
 
-    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+    // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
 
-    // options: {},                             // <-- injected by the code generator
+    // options: {},                             /// <-- injected by the code generator
 
-    // yy: ...,                                 // <-- injected by setInput()
+    // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+    __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
-    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
 
-    done: false,                                // INTERNAL USE ONLY
-    _backtrack: false,                          // INTERNAL USE ONLY
-    _input: '',                                 // INTERNAL USE ONLY
-    _more: false,                               // INTERNAL USE ONLY
-    _signaled_error_token: false,               // INTERNAL USE ONLY
+    done: false,                                /// INTERNAL USE ONLY
+    _backtrack: false,                          /// INTERNAL USE ONLY
+    _input: '',                                 /// INTERNAL USE ONLY
+    _more: false,                               /// INTERNAL USE ONLY
+    _signaled_error_token: false,               /// INTERNAL USE ONLY
 
-    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
-    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
-    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
-    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
-    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
-    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
-    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
-    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
-    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
-    // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     /**
+    INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+
     @public
     @this {RegExpLexer}
     */
@@ -10610,14 +10834,15 @@ var lexer = {
             yy: this.yy,
             lexer: this,
 
-            // and make sure the error info doesn't stay due to potential
-            // ref cycle via userland code manipulations.
-            // These would otherwise all be memory leak opportunities!
-            //
-            // Note that only array and object references are nuked as those
-            // constitute the set of elements which can produce a cyclic ref.
-            // The rest of the members is kept intact as they are harmless.
             /**
+            and make sure the error info doesn't stay due to potential
+            ref cycle via userland code manipulations.
+            These would otherwise all be memory leak opportunities!
+            
+            Note that only array and object references are nuked as those
+            constitute the set of elements which can produce a cyclic ref.
+            The rest of the members is kept intact as they are harmless.
+
             @public
             @this {LexErrorInfo}
             */
@@ -10641,6 +10866,8 @@ var lexer = {
     },
 
     /**
+    handler which is invoked when a lexer error occurs.
+
     @public
     @this {RegExpLexer}
     */
@@ -10657,14 +10884,37 @@ var lexer = {
         }
     },
 
-    // final cleanup function for when we have completed lexing the input;
-    // make it an API so that external code can use this one once userland
-    // code has decided it's time to destroy any lingering lexer error
-    // hash object instances and the like: this function helps to clean
-    // up these constructs, which *may* carry cyclic references which would
-    // otherwise prevent the instances from being properly and timely
-    // garbage-collected, i.e. this function helps prevent memory leaks!
     /**
+    method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
+
+    @public
+    @this {RegExpLexer}
+    */
+    yyerror: function yyError(str /*, ...args */) {
+        var lineno_msg = '';
+        if (this.options.trackPosition) {
+            lineno_msg = ' on line ' + (this.yylineno + 1);
+        }
+        var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
+
+        // Add any extra args to the hash under the name `extra_error_attributes`:
+        var args = Array.prototype.slice.call(arguments, 1);
+        if (args.length) {
+            hash.extra_error_attributes = args;
+        }
+
+        return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+    },
+
+    /**
+    final cleanup function for when we have completed lexing the input;
+    make it an API so that external code can use this one once userland
+    code has decided it's time to destroy any lingering lexer error
+    hash object instances and the like: this function helps to clean
+    up these constructs, which *may* carry cyclic references which would
+    otherwise prevent the instances from being properly and timely
+    garbage-collected, i.e. this function helps prevent memory leaks!
+
     @public
     @this {RegExpLexer}
     */
@@ -10690,8 +10940,9 @@ var lexer = {
         return this;
     },
 
-    // clear the lexer token context; intended for internal use only
     /**
+    clear the lexer token context; intended for internal use only
+
     @public
     @this {RegExpLexer}
     */
@@ -10711,11 +10962,12 @@ var lexer = {
             last_column: col,
 
             range: (this.options.ranges ? [this.offset, this.offset] : undefined)
-        }
+        };
     },
 
-    // resets the lexer, sets new input
     /**
+    resets the lexer, sets new input
+
     @public
     @this {RegExpLexer}
     */
@@ -10783,22 +11035,24 @@ var lexer = {
         return this;
     },
 
-    // push a new input into the lexer and activate it:
-    // the old input position is stored and will be resumed
-    // once this new input has been consumed.
-    //
-    // Use this API to help implement C-preprocessor-like
-    // `#include` statements.
-    //
-    // Available options:
-    // - emit_EOF_at_end : {int} the `EOF`-like token to emit 
-    //                     when the new input is consumed: use
-    //                     this to mark the end of the new input
-    //                     in the parser grammar. zero/falsey 
-    //                     token value means no end marker token
-    //                     will be emitted before the lexer 
-    //                     resumes reading from the previous input.
     /**
+    push a new input into the lexer and activate it:
+    the old input position is stored and will be resumed
+    once this new input has been consumed.
+
+    Use this API to help implement C-preprocessor-like
+    `#include` statements.
+
+    Available options:
+
+    - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
+                          when the new input is consumed: use
+                          this to mark the end of the new input
+                          in the parser grammar. zero/falsey
+                          token value means no end marker token
+                          will be emitted before the lexer
+                          resumes reading from the previous input.
+
     @public
     @this {RegExpLexer}
     */
@@ -10825,8 +11079,9 @@ var lexer = {
         return this;
     },
 
-    // consumes and returns one char from the input
     /**
+    consumes and returns one char from the input
+
     @public
     @this {RegExpLexer}
     */
@@ -10880,8 +11135,9 @@ var lexer = {
         return ch;
     },
 
-    // unshifts one char (or an entire string) into the input
     /**
+    unshifts one char (or an entire string) into the input
+
     @public
     @this {RegExpLexer}
     */
@@ -10918,8 +11174,9 @@ var lexer = {
         return this;
     },
 
-    // When called from action, caches matched text and appends it on next action
     /**
+    cache matched text and append it on next action
+
     @public
     @this {RegExpLexer}
     */
@@ -10928,8 +11185,9 @@ var lexer = {
         return this;
     },
 
-    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
     /**
+    signal the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+
     @public
     @this {RegExpLexer}
     */
@@ -10944,14 +11202,19 @@ var lexer = {
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
     },
 
-    // retain first n characters of the match
     /**
+    retain first n characters of the match
+
     @public
     @this {RegExpLexer}
     */
@@ -10959,11 +11222,15 @@ var lexer = {
         return this.unput(this.match.slice(n));
     },
 
-    // return (part of the) already matched input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
     /**
+    return (part of the) already matched input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
     @public
     @this {RegExpLexer}
     */
@@ -10994,11 +11261,15 @@ var lexer = {
         return past;
     },
 
-    // return (part of the) upcoming input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
     /**
+    return (part of the) upcoming input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
     @public
     @this {RegExpLexer}
     */
@@ -11031,8 +11302,9 @@ var lexer = {
         return next;
     },
 
-    // return a string which displays the character position where the lexing error occurred, i.e. for error messages
     /**
+    return a string which displays the character position where the lexing error occurred, i.e. for error messages
+
     @public
     @this {RegExpLexer}
     */
@@ -11042,11 +11314,13 @@ var lexer = {
         return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
-    // helper function, used to produce a human readable description as a string, given
-    // the input `yylloc` location object.
-    // Set `display_range_too` to TRUE to include the string character index position(s)
-    // in the description if the `yylloc.range` is available.
     /**
+    helper function, used to produce a human readable description as a string, given
+    the input `yylloc` location object.
+
+    Set `display_range_too` to TRUE to include the string character index position(s)
+    in the description if the `yylloc.range` is available.
+
     @public
     @this {RegExpLexer}
     */
@@ -11081,19 +11355,21 @@ var lexer = {
         // return JSON.stringify(yylloc);
     },
 
-    // test the lexed token: return FALSE when not a match, otherwise return token.
-    //
-    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
-    // contains the actually matched text string.
-    //
-    // Also move the input cursor forward and update the match collectors:
-    // - yytext
-    // - yyleng
-    // - match
-    // - matches
-    // - yylloc
-    // - offset
     /**
+    test the lexed token: return FALSE when not a match, otherwise return token.
+
+    `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
+    contains the actually matched text string.
+
+    Also move the input cursor forward and update the match collectors:
+
+    - `yytext`
+    - `yyleng`
+    - `match`
+    - `matches`
+    - `yylloc`
+    - `offset`
+
     @public
     @this {RegExpLexer}
     */
@@ -11188,8 +11464,9 @@ var lexer = {
         return false;
     },
 
-    // return next match in input
     /**
+    return next match in input
+
     @public
     @this {RegExpLexer}
     */
@@ -11223,7 +11500,11 @@ var lexer = {
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                var pos_str = this.showPosition();
+                if (pos_str && pos_str[0] !== '\n') {
+                    pos_str = '\n' + pos_str;
+                }
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -11274,7 +11555,11 @@ var lexer = {
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.\n' + this.showPosition(), this.options.lexerErrorsAreRecoverable);
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
@@ -11287,8 +11572,9 @@ var lexer = {
         }
     },
 
-    // return next match that has a token
     /**
+    return next match that has a token
+
     @public
     @this {RegExpLexer}
     */
@@ -11308,10 +11594,11 @@ var lexer = {
         return r;
     },
 
-    // backwards compatible alias for `pushState()`;
-    // the latter is symmetrical with `popState()` and we advise to use
-    // those APIs in any modern lexer code, rather than `begin()`.
     /**
+    backwards compatible alias for `pushState()`;
+    the latter is symmetrical with `popState()` and we advise to use
+    those APIs in any modern lexer code, rather than `begin()`.
+
     @public
     @this {RegExpLexer}
     */
@@ -11319,8 +11606,9 @@ var lexer = {
         return this.pushState(condition);
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     /**
+    activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+
     @public
     @this {RegExpLexer}
     */
@@ -11330,8 +11618,9 @@ var lexer = {
         return this;
     },
 
-    // pop the previously active lexer condition state off the condition stack
     /**
+    pop the previously active lexer condition state off the condition stack
+
     @public
     @this {RegExpLexer}
     */
@@ -11345,8 +11634,9 @@ var lexer = {
         }
     },
 
-    // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
     /**
+    return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+
     @public
     @this {RegExpLexer}
     */
@@ -11359,8 +11649,9 @@ var lexer = {
         }
     },
 
-    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
     /**
+    (internal) determine the lexer rule set which is active for the currently active lexer condition state
+
     @public
     @this {RegExpLexer}
     */
@@ -11372,8 +11663,9 @@ var lexer = {
         }
     },
 
-    // return the number of states currently on the stack
     /**
+    return the number of states currently on the stack
+
     @public
     @this {RegExpLexer}
     */
@@ -11624,7 +11916,10 @@ case 68 :
 /*! Rule::       %{NAME}([^\r\n]*) */ 
  
                                             /* ignore unrecognized decl */
-                                            console.warn('LEX: ignoring unsupported lexer option: ', yy_.yytext, ' while lexing in ', this.topState(), ' state:', this._input, ' /////// ', this.matched);
+                                            var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
+                                            var l2 = 19;
+                                            var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
+                                            console.warn('LEX: ignoring unsupported lexer option ' + dquote(yy_.yytext) + ' while lexing in ' + this.topState() + ' state:\n' + indent(this.showPosition(l1, l2), 4), this._input, ' /////// ', this.matched);
                                             // this.pushState('options');
                                             yy_.yytext = [
                                                 this.matches[1],            // {NAME}
@@ -11674,14 +11969,34 @@ case 84 :
  this.popState(); return 42; 
 break;
 case 85 : 
+/*! Conditions:: macro rules */ 
+/*! Rule::       . */ 
+ 
+                                            /* b0rk on bad characters */
+                                            var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
+                                            var l2 = 39;
+                                            var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
+                                            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+                                            var pos_str = this.showPosition(l1, l2);
+                                            if (pos_str && pos_str[0] !== '\n') {
+                                                pos_str = '\n\n       Offending input:\n' + indent(pos_str, 4);
+                                            }
+                                            yy_.yyerror('unsupported lexer input: ' + dquote(yy_.yytext) + ' while lexing ' + rules + '\n       (i.e. jison lex regexes).\n\n       NOTE: When you want the input ' + dquote(yy_.yytext) + ' to be interpreted as a literal part\n       of a lex rule regex, you MUST enclose it in double or single quotes,\n       e.g. as shown in this error message just before. If not, then know\n       that this is not accepted as a regex operator here in\n       jison-lex ' + rules + '.' + pos_str);
+                                         
+break;
+case 86 : 
 /*! Conditions:: * */ 
 /*! Rule::       . */ 
  
                                             /* b0rk on bad characters */
                                             var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
-                                            var l2 = 3;
+                                            var l2 = 39;
                                             var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
-                                            throw new Error('unsupported lexer input: "' + yy_.yytext + '" @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + this.topState() + ' state:\n' + indent(this.showPosition(l1, l2), 4));
+                                            var pos_str = this.showPosition(l1, l2);
+                                            if (pos_str && pos_str[0] !== '\n') {
+                                                pos_str = '\n\n       Offending input:\n' + indent(pos_str, 4);
+                                            }
+                                            yy_.yyerror('unsupported lexer input: ' + dquote(yy_.yytext) + ' while lexing in ' + dquote(this.topState()) + ' state.' + pos_str);
                                          
 break;
 default:
@@ -11803,7 +12118,7 @@ default:
    78 : 43,
   /*! Conditions:: * */ 
   /*! Rule::       $ */ 
-   86 : 1
+   87 : 1
 },
     rules: [
         /^(?:\/\*(.|\n|\r)*?\*\/)/,
@@ -11892,6 +12207,7 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
 /^(?:([^\S\n\r])+)/,
 /^(?:\S+)/,
 /^(?:.)/,
+/^(?:.)/,
 /^(?:$)/
     ],
     conditions: {
@@ -11901,8 +12217,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       68,
       78,
       79,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11913,8 +12229,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       28,
       29,
       30,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11931,8 +12247,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       26,
       27,
       72,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11942,8 +12258,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       10,
       11,
       12,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11958,8 +12274,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       6,
       7,
       8,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11972,8 +12288,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       82,
       83,
       84,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -11983,8 +12299,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       75,
       76,
       77,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: false
   },
@@ -12027,8 +12343,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       71,
       73,
       74,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: true
   },
@@ -12072,8 +12388,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       71,
       73,
       74,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: true
   },
@@ -12121,7 +12437,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       73,
       74,
       85,
-      86
+      86,
+      87
     ],
     inclusive: true
   },
@@ -12165,7 +12482,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       73,
       74,
       85,
-      86
+      86,
+      87
     ],
     inclusive: true
   },
@@ -12209,8 +12527,8 @@ new XRegExp("^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})",
       71,
       73,
       74,
-      85,
-      86
+      86,
+      87
     ],
     inclusive: true
   }
@@ -12222,6 +12540,23 @@ function indent(s, i) {
     var a = s.split('\n');
     var pf = (new Array(i + 1)).join(' ');
     return pf + a.join('\n' + pf);
+}
+
+// properly quote and escape the given input string
+function dquote(s) {
+    var sq = (s.indexOf('\'') >= 0);
+    var dq = (s.indexOf('"') >= 0);
+    if (sq && dq) {
+        s = s.replace(/"/g, '\\"');
+        dq = false;
+    }
+    if (dq) {
+        s = '\'' + s + '\'';
+    }
+    else {
+        s = '"' + s + '"';
+    }
+    return s;
 };
 
 return lexer;
@@ -12300,7 +12635,7 @@ module.exports={
 }
 
 },{}],7:[function(require,module,exports){
-/* parser generated by jison 0.4.18-181 */
+/* parser generated by jison 0.4.18-184 */
 
 /*
  * Returns a Parser object of the following structure:
@@ -12810,6 +13145,9 @@ var parser = {
     //   no default resolve on conflict:    false
     //   on-demand look-ahead: ............ false
     //   error recovery token skip maximum: 3
+    //   yyerror in parse actions is: ..... NOT recoverable,
+    //   yyerror in lexer actions and other non-fatal lexer are:
+    //   .................................. NOT recoverable,
     //   debug grammar/output: ............ false
     //   has partial LR conflict upgrade:   true
     //   rudimentary token-stack support:   false
@@ -12830,7 +13168,7 @@ var parser = {
     //   uses yytext: ..................... false
     //   uses yylloc: ..................... false
     //   uses ParseError API: ............. false
-    //   uses YYERROR: .................... false
+    //   uses YYERROR: .................... true
     //   uses YYRECOVERING: ............... false
     //   uses YYERROK: .................... false
     //   uses YYCLEARIN: .................. false
@@ -13080,7 +13418,8 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
 },
 productions_: bp({
   pop: u([
-  45,
+  s,
+  [45, 3],
   46,
   46,
   s,
@@ -13088,7 +13427,7 @@ productions_: bp({
   48,
   48,
   s,
-  [49, 13],
+  [49, 16],
   50,
   50,
   51,
@@ -13127,7 +13466,7 @@ productions_: bp({
   73,
   73,
   s,
-  [74, 3],
+  [74, 4],
   s,
   [75, 4],
   76,
@@ -13136,11 +13475,11 @@ productions_: bp({
   77,
   78,
   s,
-  [79, 4],
+  [79, 5],
   80,
   80,
   s,
-  [81, 4],
+  [81, 5],
   82,
   82,
   83,
@@ -13154,6 +13493,8 @@ productions_: bp({
 ]),
   rule: u([
   5,
+  5,
+  3,
   0,
   2,
   0,
@@ -13167,12 +13508,12 @@ productions_: bp({
   [3, 3],
   s,
   [1, 5],
-  3,
-  3,
+  s,
+  [3, 5],
   c,
-  [6, 5],
+  [9, 5],
   c,
-  [15, 3],
+  [18, 3],
   s,
   [3, 3],
   s,
@@ -13198,22 +13539,23 @@ productions_: bp({
   c,
   [6, 4],
   c,
-  [38, 3],
+  [38, 4],
   c,
-  [23, 5],
+  [24, 5],
   c,
   [5, 4],
   c,
-  [57, 5],
+  [59, 6],
   0,
   0,
   1,
   5,
   4,
+  4,
   c,
-  [39, 3],
+  [42, 3],
   c,
-  [33, 3],
+  [36, 3],
   c,
   [6, 3],
   0
@@ -13233,186 +13575,211 @@ case 1:
     return extend(this.$, yyvstack[yysp - 2]);
     break;
 
+case 2:
+    /*! Production::    spec : declaration_list "%%" grammar error EOF */
+    yy.parser.yyError("Maybe you did not correctly separate trailing code from the grammar rule set with a '%%' marker on an otherwise empty line?");
+    break;
+
 case 3:
+    /*! Production::    spec : declaration_list error EOF */
+    yy.parser.yyError("Maybe you did not correctly separate the parse 'header section' (token definitions, options, lexer spec, etc.) from the grammar rule set with a '%%' on an otherwise empty line?");
+    break;
+
+case 5:
     /*! Production::    optional_end_block : "%%" extra_parser_module_code */
-case 33:
+case 38:
     /*! Production::    parse_params : PARSE_PARAM token_list */
-case 34:
+case 39:
     /*! Production::    parser_type : PARSER_TYPE symbol */
-case 66:
+case 71:
     /*! Production::    expression : ID */
-case 75:
+case 81:
     /*! Production::    symbol : id */
-case 76:
-    /*! Production::    symbol : STRING */
-case 77:
-    /*! Production::    id : ID */
-case 79:
-    /*! Production::    action_ne : ACTION */
-case 80:
-    /*! Production::    action_ne : include_macro_code */
 case 82:
+    /*! Production::    symbol : STRING */
+case 83:
+    /*! Production::    id : ID */
+case 86:
+    /*! Production::    action_ne : ACTION */
+case 87:
+    /*! Production::    action_ne : include_macro_code */
+case 89:
     /*! Production::    action : action_ne */
-case 85:
+case 92:
     /*! Production::    action_body : action_comments_body */
-case 88:
-    /*! Production::    action_comments_body : ACTION_BODY */
-case 90:
-    /*! Production::    extra_parser_module_code : optional_module_code_chunk */
-case 94:
-    /*! Production::    module_code_chunk : CODE */
 case 96:
+    /*! Production::    action_comments_body : ACTION_BODY */
+case 98:
+    /*! Production::    extra_parser_module_code : optional_module_code_chunk */
+case 102:
+    /*! Production::    module_code_chunk : CODE */
+case 104:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
     this.$ = yyvstack[yysp];
     break;
 
-case 4:
+case 6:
     /*! Production::    optional_action_header_block : ε */
-case 8:
+case 10:
     /*! Production::    declaration_list : ε */
     this.$ = {};
     break;
 
-case 5:
+case 7:
     /*! Production::    optional_action_header_block : optional_action_header_block ACTION */
-case 6:
+case 8:
     /*! Production::    optional_action_header_block : optional_action_header_block include_macro_code */
     this.$ = yyvstack[yysp - 1];
     yy.addDeclaration(this.$, { actionInclude: yyvstack[yysp] });
     break;
 
-case 7:
+case 9:
     /*! Production::    declaration_list : declaration_list declaration */
     this.$ = yyvstack[yysp - 1]; yy.addDeclaration(this.$, yyvstack[yysp]);
     break;
 
-case 9:
+case 11:
     /*! Production::    declaration : START id */
     this.$ = {start: yyvstack[yysp]};
     break;
 
-case 10:
+case 12:
     /*! Production::    declaration : LEX_BLOCK */
     this.$ = {lex: {text: yyvstack[yysp], position: yylstack[yysp]}};
     break;
 
-case 11:
+case 13:
     /*! Production::    declaration : operator */
     this.$ = {operator: yyvstack[yysp]};
     break;
 
-case 12:
+case 14:
     /*! Production::    declaration : TOKEN full_token_definitions */
     this.$ = {token_list: yyvstack[yysp]};
     break;
 
-case 13:
+case 15:
     /*! Production::    declaration : ACTION */
-case 14:
+case 16:
     /*! Production::    declaration : include_macro_code */
     this.$ = {include: yyvstack[yysp]};
     break;
 
-case 15:
+case 17:
     /*! Production::    declaration : parse_params */
     this.$ = {parseParams: yyvstack[yysp]};
     break;
 
-case 16:
+case 18:
     /*! Production::    declaration : parser_type */
     this.$ = {parserType: yyvstack[yysp]};
     break;
 
-case 17:
+case 19:
     /*! Production::    declaration : options */
     this.$ = {options: yyvstack[yysp]};
     break;
 
-case 18:
+case 20:
     /*! Production::    declaration : DEBUG */
     this.$ = {options: [['debug', true]]};
     break;
 
-case 19:
+case 21:
     /*! Production::    declaration : UNKNOWN_DECL */
     this.$ = {unknownDecl: yyvstack[yysp]};
     break;
 
-case 20:
+case 22:
     /*! Production::    declaration : IMPORT import_name import_path */
     this.$ = {imports: {name: yyvstack[yysp - 1], path: yyvstack[yysp]}};
     break;
 
-case 21:
+case 23:
+    /*! Production::    declaration : IMPORT import_name error */
+    yy.parser.yyError("You did not specify a legal file path for the '%import' initialization code statement, which must have the format: '%import qualifier_name file_path'.");
+    break;
+
+case 24:
+    /*! Production::    declaration : IMPORT error import_path */
+    yy.parser.yyError("Each '%import'-ed initialization code section must be qualified by a name, e.g. 'required' before the import path itself: '%import qualifier_name file_path'.");
+    break;
+
+case 25:
     /*! Production::    declaration : INIT_CODE import_name action_ne */
     this.$ = {initCode: {qualifier: yyvstack[yysp - 1], include: yyvstack[yysp]}};
     break;
 
 case 26:
+    /*! Production::    declaration : INIT_CODE error action_ne */
+    yy.parser.yyError("Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself: '%code qualifier_name {action code}'.");
+    break;
+
+case 31:
     /*! Production::    options : OPTIONS option_list OPTIONS_END */
-case 78:
+case 84:
     /*! Production::    action_ne : "{" action_body "}" */
     this.$ = yyvstack[yysp - 1];
     break;
 
-case 27:
+case 32:
     /*! Production::    option_list : option_list option */
-case 39:
+case 44:
     /*! Production::    token_list : token_list symbol */
-case 50:
+case 55:
     /*! Production::    id_list : id_list id */
     this.$ = yyvstack[yysp - 1]; this.$.push(yyvstack[yysp]);
     break;
 
-case 28:
+case 33:
     /*! Production::    option_list : option */
-case 40:
+case 45:
     /*! Production::    token_list : symbol */
-case 51:
+case 56:
     /*! Production::    id_list : id */
-case 57:
+case 62:
     /*! Production::    handle_list : handle_action */
     this.$ = [yyvstack[yysp]];
     break;
 
-case 29:
+case 34:
     /*! Production::    option : NAME */
     this.$ = [yyvstack[yysp], true];
     break;
 
-case 30:
+case 35:
     /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
     break;
 
-case 31:
+case 36:
     /*! Production::    option : NAME "=" OPTION_VALUE */
-case 32:
+case 37:
     /*! Production::    option : NAME "=" NAME */
     this.$ = [yyvstack[yysp - 2], parseValue(yyvstack[yysp])];
     break;
 
-case 35:
+case 40:
     /*! Production::    operator : associativity token_list */
     this.$ = [yyvstack[yysp - 1]]; this.$.push.apply(this.$, yyvstack[yysp]);
     break;
 
-case 36:
+case 41:
     /*! Production::    associativity : LEFT */
     this.$ = 'left';
     break;
 
-case 37:
+case 42:
     /*! Production::    associativity : RIGHT */
     this.$ = 'right';
     break;
 
-case 38:
+case 43:
     /*! Production::    associativity : NONASSOC */
     this.$ = 'nonassoc';
     break;
 
-case 41:
+case 46:
     /*! Production::    full_token_definitions : optional_token_type id_list */
     var rv = [];
     var lst = yyvstack[yysp];
@@ -13427,7 +13794,7 @@ case 41:
     this.$ = rv;
     break;
 
-case 42:
+case 47:
     /*! Production::    full_token_definitions : optional_token_type one_full_token */
     var m = yyvstack[yysp];
     if (yyvstack[yysp - 1]) {
@@ -13436,7 +13803,7 @@ case 42:
     this.$ = [m];
     break;
 
-case 43:
+case 48:
     /*! Production::    one_full_token : id token_value token_description */
     this.$ = {
         id: yyvstack[yysp - 2],
@@ -13444,7 +13811,7 @@ case 43:
     };
     break;
 
-case 44:
+case 49:
     /*! Production::    one_full_token : id token_description */
     this.$ = {
         id: yyvstack[yysp - 1],
@@ -13452,7 +13819,7 @@ case 44:
     };
     break;
 
-case 45:
+case 50:
     /*! Production::    one_full_token : id token_value */
     this.$ = {
         id: yyvstack[yysp - 1],
@@ -13461,18 +13828,18 @@ case 45:
     };
     break;
 
-case 46:
+case 51:
     /*! Production::    optional_token_type : ε */
     this.$ = false;
     break;
 
-case 52:
+case 57:
     /*! Production::    grammar : optional_action_header_block production_list */
     this.$ = yyvstack[yysp - 1];
     this.$.grammar = yyvstack[yysp];
     break;
 
-case 53:
+case 58:
     /*! Production::    production_list : production_list production */
     this.$ = yyvstack[yysp - 1];
     if (yyvstack[yysp][0] in this.$) {
@@ -13482,29 +13849,32 @@ case 53:
     }
     break;
 
-case 54:
+case 59:
     /*! Production::    production_list : production */
     this.$ = {}; this.$[yyvstack[yysp][0]] = yyvstack[yysp][1];
     break;
 
-case 55:
+case 60:
     /*! Production::    production : id ":" handle_list ";" */
     this.$ = [yyvstack[yysp - 3], yyvstack[yysp - 1]];
     break;
 
-case 56:
+case 61:
     /*! Production::    handle_list : handle_list "|" handle_action */
     this.$ = yyvstack[yysp - 2];
     this.$.push(yyvstack[yysp]);
     break;
 
-case 58:
+case 63:
     /*! Production::    handle_action : handle prec action */
     this.$ = [(yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : '')];
     if (yyvstack[yysp]) {
         this.$.push(yyvstack[yysp]);
     }
     if (yyvstack[yysp - 1]) {
+        if (yyvstack[yysp - 2].length === 0) {
+            yy.parser.yyError('You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!');
+        }
         this.$.push(yyvstack[yysp - 1]);
     }
     if (this.$.length === 1) {
@@ -13512,7 +13882,7 @@ case 58:
     }
     break;
 
-case 59:
+case 64:
     /*! Production::    handle_action : EPSILON action */
     this.$ = [''];
     if (yyvstack[yysp]) {
@@ -13523,43 +13893,43 @@ case 59:
     }
     break;
 
-case 60:
+case 65:
     /*! Production::    handle : handle suffixed_expression */
     this.$ = yyvstack[yysp - 1];
     this.$.push(yyvstack[yysp]);
     break;
 
-case 61:
+case 66:
     /*! Production::    handle : ε */
     this.$ = [];
     break;
 
-case 62:
+case 67:
     /*! Production::    handle_sublist : handle_sublist "|" handle */
     this.$ = yyvstack[yysp - 2];
     this.$.push(yyvstack[yysp].join(' '));
     break;
 
-case 63:
+case 68:
     /*! Production::    handle_sublist : handle */
     this.$ = [yyvstack[yysp].join(' ')];
     break;
 
-case 64:
+case 69:
     /*! Production::    suffixed_expression : expression suffix ALIAS */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + "[" + yyvstack[yysp] + "]";
     break;
 
-case 65:
+case 70:
     /*! Production::    suffixed_expression : expression suffix */
-case 89:
+case 97:
     /*! Production::    action_comments_body : action_comments_body ACTION_BODY */
-case 95:
+case 103:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 67:
+case 72:
     /*! Production::    expression : STRING */
     // Re-encode the string *anyway* as it will
     // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
@@ -13572,53 +13942,74 @@ case 67:
     }
     break;
 
-case 68:
+case 73:
     /*! Production::    expression : "(" handle_sublist ")" */
     this.$ = '(' + yyvstack[yysp - 1].join(' | ') + ')';
     break;
 
-case 69:
+case 74:
+    /*! Production::    expression : "(" handle_sublist error */
+    var l = yyvstack[yysp - 1];
+    var ab = l.slice(0, 10).join(' | ');
+    yy.parser.yyError("Seems you did not correctly bracket a grammar rule sublist in '( ... )' brackets. Offending handle sublist:\n" + ab);
+    break;
+
+case 75:
     /*! Production::    suffix : ε */
-case 83:
+case 90:
     /*! Production::    action : ε */
-case 84:
+case 91:
     /*! Production::    action_body : ε */
-case 97:
+case 105:
     /*! Production::    optional_module_code_chunk : ε */
     this.$ = '';
     break;
 
-case 73:
+case 79:
     /*! Production::    prec : PREC symbol */
     this.$ = { prec: yyvstack[yysp] };
     break;
 
-case 74:
+case 80:
     /*! Production::    prec : ε */
     this.$ = null;
     break;
 
-case 81:
+case 85:
+    /*! Production::    action_ne : "{" action_body error */
+    var l = yyvstack[yysp - 1].split('\n');
+    var ab = l.slice(0, 10).join('\n');
+    yy.parser.yyError("Seems you did not correctly bracket a parser rule action block in curly braces: '{ ... }'. Offending action body:\n" + ab);
+    break;
+
+case 88:
     /*! Production::    action_ne : ARROW_ACTION */
     this.$ = '$$ = ' + yyvstack[yysp];
     break;
 
-case 86:
+case 93:
     /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
     this.$ = yyvstack[yysp - 4] + yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 87:
+case 94:
     /*! Production::    action_body : action_body "{" action_body "}" */
     this.$ = yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 91:
+case 95:
+    /*! Production::    action_body : action_body "{" action_body error */
+    var l = yyvstack[yysp - 1].split('\n');
+    var ab = l.slice(0, 10).join('\n');
+    yy.parser.yyError("Seems you did not correctly match curly braces '{ ... }' in a parser rule action block. Offending action body part:\n" + ab);
+    break;
+
+case 99:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 92:
+case 100:
     /*! Production::    include_macro_code : INCLUDE PATH */
     var fs = require('fs');
     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
@@ -13626,118 +14017,135 @@ case 92:
     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
     break;
 
-case 93:
+case 101:
     /*! Production::    include_macro_code : INCLUDE error */
-    console.error("%include MUST be followed by a valid file path");
+    yy.parser.yyError("%include MUST be followed by a valid file path");
     break;
 
 }
 },
 table: bt({
   len: u([
-  18,
+  19,
   1,
-  23,
+  24,
   5,
-  16,
+  1,
+  17,
   2,
-  16,
-  16,
+  17,
+  17,
   4,
   s,
-  [16, 7],
-  3,
-  3,
+  [17, 7],
+  4,
+  4,
   5,
   2,
   s,
   [5, 4, -1],
   2,
   2,
-  3,
+  4,
   7,
-  16,
-  24,
-  16,
+  1,
+  17,
+  25,
+  17,
   4,
   1,
+  4,
   3,
-  s,
-  [6, 3],
-  20,
-  18,
+  7,
+  7,
+  6,
+  6,
+  21,
+  19,
+  23,
+  23,
   22,
   22,
   21,
-  21,
-  20,
-  16,
+  17,
   3,
   2,
   3,
   1,
+  1,
   6,
-  5,
+  6,
+  3,
+  3,
+  4,
+  1,
+  19,
+  17,
+  22,
+  s,
+  [17, 6],
+  6,
+  s,
+  [19, 3],
+  17,
+  19,
+  17,
+  c,
+  [26, 4],
+  1,
   s,
   [3, 3],
-  1,
+  4,
+  14,
   18,
-  16,
-  21,
+  19,
+  17,
+  18,
+  17,
+  3,
+  4,
+  4,
   s,
-  [16, 4],
-  5,
-  s,
-  [18, 4],
+  [2, 3],
+  6,
+  c,
+  [75, 3],
+  13,
+  9,
+  17,
+  19,
+  19,
+  6,
+  c,
+  [74, 3],
+  13,
+  9,
+  12,
+  4,
+  17,
   16,
+  16,
+  8,
+  2,
+  2,
   c,
   [22, 3],
-  1,
-  s,
-  [3, 4],
-  14,
-  17,
-  18,
-  16,
-  17,
-  c,
-  [14, 3],
-  c,
-  [62, 4],
   6,
-  c,
-  [5, 3],
-  13,
-  9,
-  16,
-  18,
+  s,
+  [13, 4],
+  3,
+  8,
   5,
   3,
-  1,
-  3,
-  13,
-  9,
-  11,
-  4,
+  12,
   16,
-  15,
-  15,
-  7,
-  s,
-  [2, 5],
-  6,
-  s,
-  [12, 4],
-  2,
+  16,
   7,
   4,
-  11,
-  15,
-  6,
-  3,
-  7
+  8
 ]),
   symbol: u([
+  2,
   s,
   [14, 9, 1],
   25,
@@ -13748,7 +14156,7 @@ table: bt({
   48,
   1,
   c,
-  [19, 16],
+  [20, 17],
   49,
   52,
   s,
@@ -13760,25 +14168,27 @@ table: bt({
   47,
   66,
   c,
-  [28, 16],
+  [30, 18],
   23,
   78,
   c,
-  [18, 16],
+  [19, 17],
   c,
-  [34, 17],
+  [36, 18],
   35,
   60,
   62,
   c,
-  [36, 32],
+  [38, 34],
   c,
-  [16, 80],
+  [17, 86],
   23,
   24,
   50,
   c,
-  [3, 5],
+  [4, 4],
+  23,
+  24,
   59,
   77,
   78,
@@ -13799,17 +14209,18 @@ table: bt({
   24,
   23,
   24,
-  1,
-  14,
+  c,
+  [210, 3],
   46,
   c,
-  [205, 3],
+  [219, 3],
   67,
   68,
   78,
   84,
   c,
-  [57, 16],
+  [221, 18],
+  2,
   4,
   5,
   6,
@@ -13817,58 +14228,67 @@ table: bt({
   s,
   [14, 12, 1],
   c,
-  [22, 5],
+  [23, 5],
   36,
   40,
   c,
-  [97, 18],
+  [227, 19],
   61,
   65,
   78,
   23,
-  23,
-  24,
+  c,
+  [105, 3],
   51,
+  c,
+  [3, 3],
+  2,
   12,
   15,
   23,
   24,
-  40,
-  42,
   c,
-  [6, 8],
+  [36, 3],
+  c,
+  [7, 6],
+  12,
+  15,
   40,
   42,
   79,
+  84,
   c,
-  [82, 10],
+  [6, 6],
   c,
-  [62, 8],
+  [55, 10],
+  c,
+  [76, 8],
   42,
-  77,
   c,
-  [291, 10],
+  [150, 3],
   c,
-  [20, 9],
+  [21, 18],
+  2,
   c,
-  [103, 20],
-  40,
+  [119, 20],
   c,
-  [22, 23],
+  [82, 3],
+  c,
+  [23, 22],
   1,
-  5,
-  6,
   c,
-  [22, 10],
+  [24, 3],
   c,
-  [64, 7],
+  [23, 10],
+  c,
+  [67, 7],
   44,
   c,
-  [21, 21],
+  [22, 22],
   c,
-  [124, 29],
+  [130, 31],
   c,
-  [18, 7],
+  [19, 7],
   26,
   27,
   54,
@@ -13877,69 +14297,73 @@ table: bt({
   3,
   26,
   27,
-  1,
-  1,
+  s,
+  [1, 3],
   42,
   44,
   83,
   85,
   86,
-  1,
-  14,
+  c,
+  [282, 3],
   23,
   68,
   78,
   c,
-  [269, 3],
+  [295, 3],
   c,
   [3, 3],
   c,
-  [11, 3],
+  [12, 4],
   4,
   c,
-  [84, 17],
+  [71, 11],
   c,
-  [479, 26],
+  [51, 7],
   c,
-  [286, 9],
+  [519, 28],
+  c,
+  [313, 9],
   42,
   63,
   64,
   c,
-  [432, 64],
+  [503, 103],
   12,
   13,
   41,
   81,
   82,
   c,
-  [210, 11],
+  [258, 12],
   c,
-  [294, 9],
+  [346, 10],
   c,
-  [18, 34],
+  [19, 36],
   c,
-  [244, 18],
+  [204, 34],
   c,
-  [242, 18],
+  [36, 18],
+  26,
+  27,
   27,
   28,
   29,
   s,
-  [1, 3],
+  [1, 4],
   42,
   84,
   c,
-  [243, 3],
+  [310, 3],
   c,
   [3, 4],
-  14,
-  23,
+  c,
+  [298, 3],
   5,
   6,
   7,
   c,
-  [436, 4],
+  [519, 4],
   37,
   39,
   40,
@@ -13948,29 +14372,29 @@ table: bt({
   70,
   71,
   c,
-  [245, 17],
+  [311, 18],
   c,
-  [17, 9],
+  [18, 10],
   c,
-  [83, 8],
+  [88, 8],
   c,
-  [225, 26],
+  [290, 28],
   c,
-  [117, 24],
-  12,
-  13,
+  [124, 25],
   c,
-  [212, 3],
+  [240, 3],
   c,
-  [3, 3],
+  [243, 4],
+  c,
+  [4, 4],
   26,
   27,
   26,
   27,
   c,
-  [365, 3],
+  [442, 3],
   c,
-  [364, 6],
+  [440, 6],
   42,
   44,
   5,
@@ -13978,784 +14402,835 @@ table: bt({
   5,
   6,
   c,
-  [125, 7],
+  [133, 7],
   c,
-  [124, 3],
+  [132, 3],
   73,
   74,
   76,
   c,
-  [499, 3],
+  [580, 3],
   c,
-  [567, 4],
+  [652, 4],
   80,
   c,
-  [650, 17],
+  [653, 11],
   c,
-  [234, 18],
+  [284, 46],
   c,
-  [293, 5],
+  [347, 6],
   c,
-  [5, 3],
+  [6, 3],
   1,
   c,
-  [193, 14],
+  [225, 15],
   70,
   71,
   c,
-  [68, 9],
+  [92, 10],
   s,
   [5, 4, 1],
   c,
-  [91, 7],
+  [116, 7],
   c,
-  [752, 4],
+  [879, 4],
+  c,
+  [16, 5],
   s,
-  [5, 8, 1],
-  c,
-  [18, 3],
-  38,
+  [9, 4, 1],
   c,
   [19, 3],
+  38,
+  c,
+  [20, 3],
   75,
   c,
-  [16, 15],
+  [17, 16],
   c,
-  [15, 15],
+  [16, 17],
   c,
-  [14, 3],
+  [15, 3],
   23,
   24,
   71,
   72,
   c,
-  [160, 4],
-  12,
-  13,
+  [189, 4],
   c,
-  [168, 6],
+  [108, 3],
   c,
-  [87, 4],
+  [198, 6],
   c,
-  [84, 8],
+  [93, 4],
   c,
-  [50, 8],
+  [90, 9],
   c,
-  [12, 32],
+  [54, 9],
+  c,
+  [13, 35],
   6,
   8,
   c,
-  [73, 5],
+  [80, 6],
   73,
   74,
   c,
-  [170, 3],
+  [184, 4],
   c,
-  [467, 3],
+  [189, 4],
   c,
-  [145, 9],
+  [161, 12],
   c,
-  [110, 21],
+  [140, 39],
   c,
-  [36, 3],
+  [353, 5],
   c,
-  [46, 7]
+  [71, 7]
 ]),
   type: u([
   s,
-  [2, 16],
+  [2, 17],
   0,
   0,
   1,
   c,
-  [19, 18],
+  [20, 19],
   s,
   [0, 5],
   c,
   [10, 5],
   s,
-  [2, 17],
+  [2, 19],
   c,
-  [18, 18],
+  [20, 20],
   c,
-  [35, 18],
-  c,
-  [36, 35],
+  [68, 19],
   s,
-  [2, 80],
+  [2, 122],
   c,
-  [115, 3],
+  [186, 5],
   c,
-  [3, 4],
+  [199, 5],
   c,
-  [123, 6],
+  [206, 7],
   c,
-  [7, 5],
+  [143, 5],
   c,
-  [4, 3],
+  [146, 11],
   c,
-  [137, 10],
+  [219, 6],
   c,
-  [205, 6],
+  [163, 63],
   c,
-  [153, 59],
+  [95, 8],
   c,
-  [272, 7],
+  [273, 21],
   c,
-  [235, 36],
+  [123, 8],
   c,
-  [255, 116],
+  [282, 143],
   c,
-  [144, 29],
+  [130, 27],
   c,
-  [197, 16],
+  [20, 11],
   c,
-  [160, 28],
+  [313, 9],
   c,
-  [188, 36],
+  [358, 33],
   c,
-  [225, 69],
+  [520, 142],
   c,
-  [294, 99],
+  [346, 122],
   c,
-  [98, 21],
+  [121, 22],
   c,
-  [517, 37],
+  [610, 39],
   c,
-  [156, 67],
+  [182, 73],
   c,
-  [104, 20],
+  [112, 20],
   c,
   [20, 9],
   c,
-  [650, 40],
+  [751, 62],
   c,
-  [607, 28],
+  [61, 22],
   c,
-  [68, 16],
+  [92, 25],
   c,
-  [44, 17],
+  [47, 18],
   c,
-  [459, 105],
+  [125, 39],
   c,
-  [73, 9],
+  [451, 80],
   c,
-  [77, 32],
+  [932, 9],
   c,
-  [911, 10],
+  [469, 62],
+  0,
   0
 ]),
   state: u([
   1,
   2,
-  4,
-  13,
-  11,
+  5,
+  14,
   12,
-  7,
-  18,
-  10,
-  27,
-  26,
+  13,
+  8,
+  19,
+  11,
   28,
+  27,
   30,
-  31,
+  32,
   33,
-  s,
-  [36, 4, 1],
+  35,
+  39,
+  41,
+  42,
   43,
-  38,
-  39,
-  44,
-  39,
-  45,
-  46,
+  47,
+  42,
+  43,
   48,
+  43,
+  49,
   50,
-  53,
-  54,
   52,
-  56,
   55,
-  57,
   58,
+  59,
+  57,
   61,
-  64,
-  66,
-  39,
-  66,
-  39,
+  60,
+  62,
+  63,
+  67,
   68,
   71,
   73,
-  72,
-  75,
-  54,
-  77,
-  78,
-  79,
+  71,
+  74,
+  43,
+  74,
+  43,
+  76,
+  80,
   82,
-  83,
+  81,
+  84,
+  59,
+  86,
+  87,
   88,
-  90,
   91,
   92,
-  94,
-  98,
-  73,
-  72,
-  102,
-  104,
+  97,
+  99,
+  100,
   101,
-  109,
+  103,
   108,
-  64,
-  110,
-  83,
-  111,
-  92,
-  109,
+  82,
+  81,
   112,
-  64,
-  113,
-  39,
   114,
+  111,
   119,
   118,
-  102,
-  104,
+  71,
+  120,
+  92,
+  121,
+  101,
+  119,
+  122,
+  71,
+  123,
+  43,
   124,
-  125,
-  102,
-  104
+  129,
+  128,
+  112,
+  114,
+  136,
+  137,
+  112,
+  114
 ]),
   mode: u([
   s,
-  [2, 16],
+  [2, 17],
   s,
-  [1, 16],
+  [1, 17],
+  c,
+  [20, 4],
+  c,
+  [38, 18],
   s,
-  [2, 19],
+  [2, 35],
   c,
-  [20, 20],
-  c,
-  [34, 48],
+  [36, 36],
   s,
-  [2, 79],
+  [2, 84],
   c,
-  [179, 20],
+  [192, 18],
   c,
-  [190, 23],
+  [22, 9],
   c,
-  [80, 38],
+  [87, 61],
   c,
-  [62, 3],
+  [67, 20],
   c,
-  [96, 16],
+  [101, 15],
   c,
-  [13, 11],
+  [18, 5],
   s,
-  [2, 120],
+  [2, 126],
   c,
-  [122, 25],
+  [128, 26],
   c,
-  [25, 4],
+  [26, 4],
   c,
-  [3, 12],
+  [3, 4],
   c,
-  [392, 17],
+  [7, 6],
   c,
-  [436, 41],
+  [415, 12],
   c,
-  [220, 68],
+  [11, 22],
   c,
-  [288, 91],
+  [473, 32],
   c,
-  [392, 6],
+  [233, 107],
   c,
-  [229, 13],
+  [340, 113],
   c,
-  [114, 34],
+  [467, 7],
   c,
-  [519, 58],
+  [299, 7],
   c,
-  [105, 15],
+  [138, 43],
   c,
-  [124, 5],
+  [170, 60],
+  c,
+  [877, 19],
   c,
   [17, 5],
   c,
-  [25, 4],
+  [139, 9],
   c,
   [10, 7],
   c,
-  [615, 39],
+  [713, 61],
   c,
-  [37, 15],
+  [59, 17],
   c,
-  [15, 6],
+  [17, 6],
   c,
-  [61, 15],
+  [85, 16],
   c,
-  [82, 9],
+  [14, 7],
   c,
-  [536, 67],
+  [107, 53],
   c,
-  [68, 40],
+  [53, 22],
   c,
-  [60, 3],
+  [73, 43],
   c,
-  [750, 6],
+  [65, 5],
   c,
-  [547, 36],
+  [880, 4],
   c,
-  [42, 4]
+  [337, 60],
+  c,
+  [67, 7]
 ]),
   goto: u([
   s,
-  [8, 16],
+  [10, 17],
+  4,
   3,
-  9,
-  5,
+  10,
   6,
-  8,
+  7,
+  9,
   s,
-  [14, 4, 1],
-  22,
-  20,
-  21,
+  [15, 4, 1],
   23,
+  21,
+  22,
   24,
   25,
-  19,
-  s,
-  [4, 3],
-  s,
-  [7, 16],
-  29,
-  s,
-  [10, 16],
-  s,
-  [11, 16],
-  46,
-  32,
-  s,
-  [13, 16],
-  s,
-  [14, 16],
-  s,
-  [15, 16],
-  s,
-  [16, 16],
-  s,
-  [17, 16],
-  s,
-  [18, 16],
-  s,
-  [19, 16],
-  34,
-  35,
-  34,
-  35,
-  29,
-  40,
-  42,
-  41,
-  29,
-  40,
-  29,
-  40,
-  47,
-  36,
-  36,
-  37,
-  37,
-  38,
-  38,
-  2,
-  49,
-  51,
-  29,
-  19,
-  s,
-  [9, 16],
-  s,
-  [77, 24],
-  s,
-  [12, 16],
-  29,
-  47,
-  59,
-  60,
-  s,
-  [22, 6],
-  s,
-  [23, 6],
-  62,
-  63,
-  65,
-  19,
-  s,
-  [35, 9],
-  29,
-  40,
-  s,
-  [35, 7],
-  s,
-  [40, 18],
-  s,
-  [75, 22],
-  s,
-  [76, 22],
-  s,
-  [92, 21],
-  s,
-  [93, 21],
-  s,
-  [33, 9],
-  29,
-  40,
-  s,
-  [33, 7],
-  s,
-  [34, 16],
-  67,
-  47,
-  28,
-  28,
-  69,
-  29,
-  29,
-  70,
-  97,
-  97,
-  74,
-  52,
-  52,
-  29,
-  s,
-  [5, 3],
+  26,
+  20,
   s,
   [6, 3],
-  s,
-  [54, 3],
-  76,
-  s,
-  [41, 9],
   29,
   s,
-  [41, 7],
+  [9, 17],
+  31,
   s,
-  [42, 16],
+  [12, 17],
   s,
-  [51, 10],
-  81,
-  s,
-  [51, 6],
-  80,
+  [13, 17],
   51,
+  34,
   s,
-  [20, 16],
+  [15, 17],
   s,
-  [24, 16],
+  [16, 17],
   s,
-  [25, 16],
+  [17, 17],
   s,
-  [21, 16],
+  [18, 17],
   s,
-  [84, 3],
+  [19, 17],
   s,
-  [79, 18],
+  [20, 17],
   s,
-  [80, 18],
-  s,
-  [81, 18],
-  s,
-  [39, 18],
-  s,
-  [26, 16],
-  27,
-  27,
-  87,
-  85,
-  86,
-  1,
+  [21, 17],
+  36,
+  37,
+  38,
+  40,
+  37,
+  38,
+  31,
+  44,
+  46,
+  45,
+  31,
+  44,
+  31,
+  44,
+  51,
+  41,
+  41,
+  42,
+  42,
+  43,
+  43,
+  4,
+  53,
+  54,
+  56,
+  31,
+  20,
   3,
+  s,
+  [11, 17],
+  s,
+  [83, 25],
+  s,
+  [14, 17],
+  31,
+  52,
+  64,
+  65,
+  66,
+  65,
+  66,
+  s,
+  [27, 7],
+  s,
+  [28, 7],
+  69,
+  70,
+  72,
+  20,
+  c,
+  [4, 4],
+  s,
+  [40, 10],
+  31,
+  44,
+  s,
+  [40, 7],
+  s,
+  [45, 19],
+  s,
+  [81, 23],
+  s,
+  [82, 23],
+  s,
+  [100, 22],
+  s,
+  [101, 22],
+  s,
+  [38, 10],
+  31,
+  44,
+  s,
+  [38, 7],
+  s,
+  [39, 17],
+  75,
+  51,
+  33,
+  33,
+  77,
+  34,
+  34,
+  78,
+  79,
+  105,
+  105,
+  83,
+  s,
+  [57, 3],
+  31,
+  s,
+  [7, 3],
+  s,
+  [8, 3],
+  s,
+  [59, 4],
+  85,
+  s,
+  [46, 10],
+  31,
+  s,
+  [46, 7],
+  s,
+  [47, 17],
+  s,
+  [56, 11],
   90,
-  19,
-  96,
-  96,
+  s,
+  [56, 6],
   89,
+  56,
   s,
-  [94, 3],
+  [22, 17],
   s,
-  [53, 3],
+  [23, 17],
   s,
-  [61, 7],
+  [29, 17],
+  s,
+  [30, 17],
+  s,
+  [24, 17],
+  s,
+  [25, 17],
+  s,
+  [91, 3],
   93,
   s,
-  [61, 3],
+  [86, 19],
   s,
-  [50, 17],
+  [87, 19],
   s,
-  [45, 9],
-  81,
+  [88, 19],
   s,
-  [45, 7],
+  [26, 17],
   s,
-  [44, 16],
+  [44, 19],
+  s,
+  [31, 17],
+  32,
+  32,
+  96,
+  94,
+  95,
+  1,
+  2,
+  5,
+  98,
+  20,
+  104,
+  104,
+  98,
+  s,
+  [102, 3],
+  s,
+  [58, 4],
+  s,
+  [66, 7],
+  102,
+  s,
+  [66, 3],
+  s,
+  [55, 18],
+  s,
+  [50, 10],
+  90,
+  s,
+  [50, 7],
+  s,
+  [49, 17],
+  s,
+  [53, 18],
+  s,
+  [54, 17],
+  105,
+  106,
+  104,
+  s,
+  [92, 3],
+  107,
+  s,
+  [96, 4],
+  35,
+  35,
+  36,
+  36,
+  37,
+  37,
+  c,
+  [425, 3],
+  s,
+  [103, 3],
+  109,
+  110,
+  62,
+  62,
+  80,
+  80,
+  117,
+  80,
+  80,
+  115,
+  116,
+  113,
+  80,
+  80,
+  90,
+  90,
+  c,
+  [624, 4],
   s,
   [48, 17],
   s,
-  [49, 16],
-  96,
-  95,
-  85,
-  85,
-  97,
+  [84, 19],
   s,
-  [88, 3],
-  30,
-  30,
-  31,
-  31,
-  32,
-  32,
+  [85, 19],
   c,
-  [349, 3],
+  [331, 4],
   s,
-  [95, 3],
+  [97, 4],
   99,
-  100,
-  57,
-  57,
-  74,
-  74,
-  107,
-  74,
-  74,
-  105,
+  s,
+  [60, 4],
+  c,
+  [210, 11],
+  c,
+  [85, 6],
+  s,
+  [65, 12],
+  31,
+  44,
+  s,
+  [75, 5],
+  125,
+  126,
+  127,
+  s,
+  [75, 8],
+  s,
+  [71, 16],
+  s,
+  [72, 16],
+  s,
+  [66, 6],
+  64,
+  64,
+  89,
+  89,
+  131,
   106,
-  103,
-  74,
-  74,
-  83,
-  83,
-  c,
-  [539, 4],
+  130,
+  61,
+  61,
+  63,
+  63,
   s,
-  [43, 16],
+  [79, 6],
   s,
-  [78, 18],
+  [70, 9],
+  132,
   s,
-  [84, 3],
+  [70, 3],
   s,
-  [89, 3],
-  91,
+  [76, 13],
   s,
-  [55, 3],
-  c,
-  [178, 11],
-  c,
-  [61, 6],
+  [77, 13],
   s,
-  [60, 11],
-  29,
-  40,
-  s,
-  [69, 4],
+  [78, 13],
+  134,
+  135,
+  133,
+  68,
+  68,
+  117,
+  68,
   115,
   116,
+  s,
+  [94, 3],
+  93,
+  s,
+  [95, 3],
+  s,
+  [69, 12],
+  s,
+  [73, 16],
+  s,
+  [74, 16],
+  s,
+  [66, 6],
+  s,
+  [93, 3],
+  107,
+  67,
+  67,
   117,
-  s,
-  [69, 8],
-  s,
-  [66, 15],
-  s,
-  [67, 15],
-  s,
-  [61, 5],
-  59,
-  59,
-  82,
-  82,
-  96,
-  120,
-  56,
-  56,
-  58,
-  58,
-  s,
-  [73, 6],
-  s,
-  [65, 8],
-  121,
-  s,
-  [65, 3],
-  s,
-  [70, 12],
-  s,
-  [71, 12],
-  s,
-  [72, 12],
-  123,
-  122,
-  63,
-  107,
-  63,
-  105,
-  106,
-  87,
-  87,
-  84,
-  s,
-  [64, 11],
-  s,
-  [68, 15],
-  s,
-  [61, 5],
-  86,
-  86,
-  97,
-  62,
-  107,
-  62,
-  105,
-  106
+  67,
+  115,
+  116
 ])
 }),
 defaultActions: bda({
   idx: u([
   0,
   3,
-  4,
-  6,
+  5,
   7,
+  8,
   s,
-  [9, 7, 1],
-  23,
+  [10, 7, 1],
   24,
   25,
-  28,
-  29,
-  30,
-  32,
+  26,
+  s,
+  [29, 4, 1],
   34,
-  35,
-  s,
-  [38, 5, 1],
-  44,
-  46,
-  51,
-  52,
-  53,
-  56,
-  s,
-  [58, 4, 1],
-  s,
-  [63, 6, 1],
-  70,
-  71,
-  74,
-  75,
-  77,
-  79,
-  80,
-  81,
-  s,
-  [84, 4, 1],
-  89,
-  91,
-  94,
-  95,
-  97,
-  98,
-  99,
-  102,
-  s,
-  [105, 5, 1],
-  111,
-  112,
-  113,
-  115,
-  116,
-  117,
-  121,
-  122,
-  123
-]),
-  goto: u([
-  8,
-  4,
-  7,
-  10,
-  11,
-  s,
-  [13, 7, 1],
-  36,
   37,
   38,
+  s,
+  [42, 5, 1],
+  48,
+  50,
+  56,
+  57,
+  58,
+  61,
+  s,
+  [63, 6, 1],
+  s,
+  [70, 7, 1],
+  78,
+  79,
+  80,
+  83,
+  84,
+  86,
+  88,
+  89,
+  90,
+  s,
+  [93, 4, 1],
+  98,
+  100,
+  103,
+  104,
+  105,
+  107,
+  108,
+  109,
+  112,
+  s,
+  [115, 5, 1],
+  121,
+  122,
+  123,
+  125,
+  126,
+  127,
+  s,
+  [131, 5, 1]
+]),
+  goto: u([
+  10,
+  6,
   9,
-  77,
   12,
+  13,
+  s,
+  [15, 7, 1],
+  41,
+  42,
+  43,
+  3,
+  11,
+  83,
+  14,
+  52,
+  27,
+  28,
+  45,
+  81,
+  82,
+  100,
+  101,
+  39,
+  33,
+  7,
+  8,
+  59,
   47,
   22,
   23,
-  40,
-  75,
-  76,
-  92,
-  93,
-  34,
-  28,
-  5,
-  6,
-  54,
-  42,
-  20,
+  29,
+  30,
   24,
   25,
-  21,
-  79,
-  80,
-  81,
-  39,
-  26,
-  27,
-  1,
-  3,
-  94,
-  53,
-  50,
-  44,
-  48,
-  49,
+  86,
+  87,
   88,
-  30,
+  26,
+  44,
   31,
   32,
-  95,
-  57,
-  43,
-  78,
-  89,
-  91,
-  55,
-  60,
-  66,
-  67,
-  61,
-  59,
-  82,
-  56,
+  1,
+  2,
+  5,
+  102,
   58,
-  73,
-  70,
+  55,
+  49,
+  53,
+  54,
+  96,
+  35,
+  36,
+  37,
+  103,
+  62,
+  48,
+  84,
+  85,
+  97,
+  99,
+  60,
+  65,
   71,
   72,
+  66,
   64,
-  68,
-  61
+  89,
+  61,
+  63,
+  79,
+  76,
+  77,
+  78,
+  95,
+  69,
+  73,
+  74,
+  66
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -14811,6 +15286,51 @@ parse: function parse(input) {
 
     sharedState_yy.lexer = lexer;
     sharedState_yy.parser = this;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // *Always* setup `yyError`, `YYRECOVERING`, `yyErrOk` and `yyClearIn` functions as it is paramount
+    // to have *their* closure match ours -- if we only set them up once,
+    // any subsequent `parse()` runs will fail in very obscure ways when
+    // these functions are invoked in the user action code block(s) as
+    // their closure will still refer to the `parse()` instance which set
+    // them up. Hence we MUST set them up at the start of every `parse()` run!
+    if (this.yyError) {
+        this.yyError = function yyError(str /*, ...args */) {
+
+
+
+            var error_rule_depth = (this.options.parserErrorsAreRecoverable ? locateNearestErrorRecoveryRule(state) : -1);
+            var expected = this.collect_expected_token_set(state);
+            var hash = this.constructParseErrorInfo(str, null, expected, (error_rule_depth >= 0));
+
+
+            // Add any extra args to the hash under the name `extra_error_attributes`:
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (args.length) {
+                hash.extra_error_attributes = args;
+            }
+
+            var r = this.parseError(str, hash, this.JisonParserError);
+            return r;
+        };
+    }
 
 
 
@@ -15146,7 +15666,13 @@ parse: function parse(input) {
                         // suit the error recovery rules... The error HAS been reported already so we're fine with
                         // throwing away a few items if that is what it takes to match the nearest recovery rule!
                         if (symbol === EOF || preErrorSymbol === EOF) {
-                            p = this.constructParseErrorInfo((errStr || 'Parsing halted while starting to recover from another error.'), null, expected, false);
+                            p = this.__error_infos[this.__error_infos.length - 1];
+                            if (!p) {
+                                p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error.', null, expected, false);
+                            } else {
+                                p.errStr = 'Parsing halted while starting to recover from another error. Previous error which resulted in this fatal result: ' + p.errStr;
+                                p.recoverable = false;
+                            }
                             retval = this.parseError(p.errStr, p, this.JisonParserError);
                             break;
                         }
@@ -15288,7 +15814,7 @@ parse: function parse(input) {
                     last_column: lstack[lstack_end].last_column
                 };
                 if (ranges) {
-                  yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
+                    yyval._$.range = [lstack[lstack_begin].range[0], lstack[lstack_end].range[1]];
                 }
 
                 r = this.performAction.call(yyval, yyloc, newState, sp - 1, vstack, lstack);
@@ -15396,7 +15922,8 @@ parse: function parse(input) {
     }
 
     return retval;
-}
+},
+yyError: 1
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
@@ -15705,37 +16232,38 @@ var lexer = {
     EOF: 1,
     ERROR: 2,
 
-    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+    // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
 
-    // options: {},                             // <-- injected by the code generator
+    // options: {},                             /// <-- injected by the code generator
 
-    // yy: ...,                                 // <-- injected by setInput()
+    // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+    __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
-    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
 
-    done: false,                                // INTERNAL USE ONLY
-    _backtrack: false,                          // INTERNAL USE ONLY
-    _input: '',                                 // INTERNAL USE ONLY
-    _more: false,                               // INTERNAL USE ONLY
-    _signaled_error_token: false,               // INTERNAL USE ONLY
+    done: false,                                /// INTERNAL USE ONLY
+    _backtrack: false,                          /// INTERNAL USE ONLY
+    _input: '',                                 /// INTERNAL USE ONLY
+    _more: false,                               /// INTERNAL USE ONLY
+    _signaled_error_token: false,               /// INTERNAL USE ONLY
 
-    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
-    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
-    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
-    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
-    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
-    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
-    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
-    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
-    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
-    // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     /**
+    INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+
     @public
     @this {RegExpLexer}
     */
@@ -15751,14 +16279,15 @@ var lexer = {
             yy: this.yy,
             lexer: this,
 
-            // and make sure the error info doesn't stay due to potential
-            // ref cycle via userland code manipulations.
-            // These would otherwise all be memory leak opportunities!
-            //
-            // Note that only array and object references are nuked as those
-            // constitute the set of elements which can produce a cyclic ref.
-            // The rest of the members is kept intact as they are harmless.
             /**
+            and make sure the error info doesn't stay due to potential
+            ref cycle via userland code manipulations.
+            These would otherwise all be memory leak opportunities!
+            
+            Note that only array and object references are nuked as those
+            constitute the set of elements which can produce a cyclic ref.
+            The rest of the members is kept intact as they are harmless.
+
             @public
             @this {LexErrorInfo}
             */
@@ -15782,6 +16311,8 @@ var lexer = {
     },
 
     /**
+    handler which is invoked when a lexer error occurs.
+
     @public
     @this {RegExpLexer}
     */
@@ -15798,14 +16329,37 @@ var lexer = {
         }
     },
 
-    // final cleanup function for when we have completed lexing the input;
-    // make it an API so that external code can use this one once userland
-    // code has decided it's time to destroy any lingering lexer error
-    // hash object instances and the like: this function helps to clean
-    // up these constructs, which *may* carry cyclic references which would
-    // otherwise prevent the instances from being properly and timely
-    // garbage-collected, i.e. this function helps prevent memory leaks!
     /**
+    method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
+
+    @public
+    @this {RegExpLexer}
+    */
+    yyerror: function yyError(str /*, ...args */) {
+        var lineno_msg = '';
+        if (this.options.trackPosition) {
+            lineno_msg = ' on line ' + (this.yylineno + 1);
+        }
+        var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
+
+        // Add any extra args to the hash under the name `extra_error_attributes`:
+        var args = Array.prototype.slice.call(arguments, 1);
+        if (args.length) {
+            hash.extra_error_attributes = args;
+        }
+
+        return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+    },
+
+    /**
+    final cleanup function for when we have completed lexing the input;
+    make it an API so that external code can use this one once userland
+    code has decided it's time to destroy any lingering lexer error
+    hash object instances and the like: this function helps to clean
+    up these constructs, which *may* carry cyclic references which would
+    otherwise prevent the instances from being properly and timely
+    garbage-collected, i.e. this function helps prevent memory leaks!
+
     @public
     @this {RegExpLexer}
     */
@@ -15831,8 +16385,9 @@ var lexer = {
         return this;
     },
 
-    // clear the lexer token context; intended for internal use only
     /**
+    clear the lexer token context; intended for internal use only
+
     @public
     @this {RegExpLexer}
     */
@@ -15852,11 +16407,12 @@ var lexer = {
             last_column: col,
 
             range: (this.options.ranges ? [this.offset, this.offset] : undefined)
-        }
+        };
     },
 
-    // resets the lexer, sets new input
     /**
+    resets the lexer, sets new input
+
     @public
     @this {RegExpLexer}
     */
@@ -15924,22 +16480,24 @@ var lexer = {
         return this;
     },
 
-    // push a new input into the lexer and activate it:
-    // the old input position is stored and will be resumed
-    // once this new input has been consumed.
-    //
-    // Use this API to help implement C-preprocessor-like
-    // `#include` statements.
-    //
-    // Available options:
-    // - emit_EOF_at_end : {int} the `EOF`-like token to emit 
-    //                     when the new input is consumed: use
-    //                     this to mark the end of the new input
-    //                     in the parser grammar. zero/falsey 
-    //                     token value means no end marker token
-    //                     will be emitted before the lexer 
-    //                     resumes reading from the previous input.
     /**
+    push a new input into the lexer and activate it:
+    the old input position is stored and will be resumed
+    once this new input has been consumed.
+
+    Use this API to help implement C-preprocessor-like
+    `#include` statements.
+
+    Available options:
+
+    - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
+                          when the new input is consumed: use
+                          this to mark the end of the new input
+                          in the parser grammar. zero/falsey
+                          token value means no end marker token
+                          will be emitted before the lexer
+                          resumes reading from the previous input.
+
     @public
     @this {RegExpLexer}
     */
@@ -15966,8 +16524,9 @@ var lexer = {
         return this;
     },
 
-    // consumes and returns one char from the input
     /**
+    consumes and returns one char from the input
+
     @public
     @this {RegExpLexer}
     */
@@ -16021,8 +16580,9 @@ var lexer = {
         return ch;
     },
 
-    // unshifts one char (or an entire string) into the input
     /**
+    unshifts one char (or an entire string) into the input
+
     @public
     @this {RegExpLexer}
     */
@@ -16059,8 +16619,9 @@ var lexer = {
         return this;
     },
 
-    // When called from action, caches matched text and appends it on next action
     /**
+    cache matched text and append it on next action
+
     @public
     @this {RegExpLexer}
     */
@@ -16069,8 +16630,9 @@ var lexer = {
         return this;
     },
 
-    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
     /**
+    signal the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+
     @public
     @this {RegExpLexer}
     */
@@ -16085,14 +16647,19 @@ var lexer = {
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
     },
 
-    // retain first n characters of the match
     /**
+    retain first n characters of the match
+
     @public
     @this {RegExpLexer}
     */
@@ -16100,11 +16667,15 @@ var lexer = {
         return this.unput(this.match.slice(n));
     },
 
-    // return (part of the) already matched input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
     /**
+    return (part of the) already matched input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
     @public
     @this {RegExpLexer}
     */
@@ -16135,11 +16706,15 @@ var lexer = {
         return past;
     },
 
-    // return (part of the) upcoming input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
     /**
+    return (part of the) upcoming input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
     @public
     @this {RegExpLexer}
     */
@@ -16172,8 +16747,9 @@ var lexer = {
         return next;
     },
 
-    // return a string which displays the character position where the lexing error occurred, i.e. for error messages
     /**
+    return a string which displays the character position where the lexing error occurred, i.e. for error messages
+
     @public
     @this {RegExpLexer}
     */
@@ -16183,11 +16759,13 @@ var lexer = {
         return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
-    // helper function, used to produce a human readable description as a string, given
-    // the input `yylloc` location object.
-    // Set `display_range_too` to TRUE to include the string character index position(s)
-    // in the description if the `yylloc.range` is available.
     /**
+    helper function, used to produce a human readable description as a string, given
+    the input `yylloc` location object.
+
+    Set `display_range_too` to TRUE to include the string character index position(s)
+    in the description if the `yylloc.range` is available.
+
     @public
     @this {RegExpLexer}
     */
@@ -16222,19 +16800,21 @@ var lexer = {
         // return JSON.stringify(yylloc);
     },
 
-    // test the lexed token: return FALSE when not a match, otherwise return token.
-    //
-    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
-    // contains the actually matched text string.
-    //
-    // Also move the input cursor forward and update the match collectors:
-    // - yytext
-    // - yyleng
-    // - match
-    // - matches
-    // - yylloc
-    // - offset
     /**
+    test the lexed token: return FALSE when not a match, otherwise return token.
+
+    `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
+    contains the actually matched text string.
+
+    Also move the input cursor forward and update the match collectors:
+
+    - `yytext`
+    - `yyleng`
+    - `match`
+    - `matches`
+    - `yylloc`
+    - `offset`
+
     @public
     @this {RegExpLexer}
     */
@@ -16329,8 +16909,9 @@ var lexer = {
         return false;
     },
 
-    // return next match in input
     /**
+    return next match in input
+
     @public
     @this {RegExpLexer}
     */
@@ -16364,7 +16945,11 @@ var lexer = {
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                var pos_str = this.showPosition();
+                if (pos_str && pos_str[0] !== '\n') {
+                    pos_str = '\n' + pos_str;
+                }
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -16415,7 +17000,11 @@ var lexer = {
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.\n' + this.showPosition(), this.options.lexerErrorsAreRecoverable);
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
@@ -16428,8 +17017,9 @@ var lexer = {
         }
     },
 
-    // return next match that has a token
     /**
+    return next match that has a token
+
     @public
     @this {RegExpLexer}
     */
@@ -16449,10 +17039,11 @@ var lexer = {
         return r;
     },
 
-    // backwards compatible alias for `pushState()`;
-    // the latter is symmetrical with `popState()` and we advise to use
-    // those APIs in any modern lexer code, rather than `begin()`.
     /**
+    backwards compatible alias for `pushState()`;
+    the latter is symmetrical with `popState()` and we advise to use
+    those APIs in any modern lexer code, rather than `begin()`.
+
     @public
     @this {RegExpLexer}
     */
@@ -16460,8 +17051,9 @@ var lexer = {
         return this.pushState(condition);
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
     /**
+    activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+
     @public
     @this {RegExpLexer}
     */
@@ -16471,8 +17063,9 @@ var lexer = {
         return this;
     },
 
-    // pop the previously active lexer condition state off the condition stack
     /**
+    pop the previously active lexer condition state off the condition stack
+
     @public
     @this {RegExpLexer}
     */
@@ -16486,8 +17079,9 @@ var lexer = {
         }
     },
 
-    // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
     /**
+    return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+
     @public
     @this {RegExpLexer}
     */
@@ -16500,8 +17094,9 @@ var lexer = {
         }
     },
 
-    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
     /**
+    (internal) determine the lexer rule set which is active for the currently active lexer condition state
+
     @public
     @this {RegExpLexer}
     */
@@ -16513,8 +17108,9 @@ var lexer = {
         }
     },
 
-    // return the number of states currently on the stack
     /**
+    return the number of states currently on the stack
+
     @public
     @this {RegExpLexer}
     */
@@ -16756,9 +17352,13 @@ case 78 :
  
                                             /* b0rk on bad characters */
                                             var l0 = Math.max(0, yy_.yylloc.last_column - yy_.yylloc.first_column);
-                                            var l2 = 3;
+                                            var l2 = 39;
                                             var l1 = Math.min(79 - 4 - l0 - l2, yy_.yylloc.first_column, 0);
-                                            throw new Error('unsupported parser input: "' + yy_.yytext + '" @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + this.topState() + ' state:\n' + indent(this.showPosition(l1, l2), 4));
+                                            var pos_str = this.showPosition(l1, l2);
+                                            if (pos_str && pos_str[0] !== '\n') {
+                                                pos_str = '\n\n       Offending input:\n' + indent(pos_str, 4);
+                                            }
+                                            yy_.yyerror('unsupported parser input: ' + dquote(yy_.yytext) + ' @ ' + this.describeYYLLOC(yy_.yylloc) + ' while lexing in ' + dquote(this.topState()) + ' state.' + pos_str);
                                          
 break;
 default:
@@ -17232,6 +17832,23 @@ function indent(s, i) {
     var a = s.split('\n');
     var pf = (new Array(i + 1)).join(' ');
     return pf + a.join('\n' + pf);
+}
+
+// properly quote and escape the given input string
+function dquote(s) {
+    var sq = (s.indexOf('\'') >= 0);
+    var dq = (s.indexOf('"') >= 0);
+    if (sq && dq) {
+        s = s.replace(/"/g, '\\"');
+        dq = false;
+    }
+    if (dq) {
+        s = '\'' + s + '\'';
+    }
+    else {
+        s = '"' + s + '"';
+    }
+    return s;
 };
 
 return lexer;
@@ -18183,7 +18800,7 @@ function buildActions(dict, tokens, opts) {
     var gen = prepareRules(dict, actions, caseHelper, tokens && toks, opts.conditions, opts);
 
     var fun = actions.join('\n');
-    'yytext yyleng yylineno yylloc'.split(' ').forEach(function (yy) {
+    'yytext yyleng yylineno yylloc yyerror'.split(' ').forEach(function (yy) {
         fun = fun.replace(new RegExp('\\b(' + yy + ')\\b', 'g'), 'yy_.$1');
     });
 
@@ -18510,37 +19127,38 @@ function getRegExpLexerPrototype() {
         EOF: 1,
         ERROR: 2,
 
-        // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+        // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
 
-        // options: {},                             // <-- injected by the code generator
+        // options: {},                             /// <-- injected by the code generator
 
-        // yy: ...,                                 // <-- injected by setInput()
+        // yy: ...,                                 /// <-- injected by setInput()
 
-        __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+        __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state
 
-        __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+        __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
-        __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+        __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
 
-        done: false,                                // INTERNAL USE ONLY
-        _backtrack: false,                          // INTERNAL USE ONLY
-        _input: '',                                 // INTERNAL USE ONLY
-        _more: false,                               // INTERNAL USE ONLY
-        _signaled_error_token: false,               // INTERNAL USE ONLY
+        done: false,                                /// INTERNAL USE ONLY
+        _backtrack: false,                          /// INTERNAL USE ONLY
+        _input: '',                                 /// INTERNAL USE ONLY
+        _more: false,                               /// INTERNAL USE ONLY
+        _signaled_error_token: false,               /// INTERNAL USE ONLY
 
-        conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+        conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
-        match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
-        matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
-        matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
-        yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
-        offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
-        yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
-        yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
-        yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+        match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+        matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+        matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+        yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+        offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+        yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+        yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+        yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
-        // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
         /**
+        INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+
         @public
         @this {RegExpLexer}
         */
@@ -18556,14 +19174,15 @@ function getRegExpLexerPrototype() {
                 yy: this.yy,
                 lexer: this,
 
-                // and make sure the error info doesn't stay due to potential
-                // ref cycle via userland code manipulations.
-                // These would otherwise all be memory leak opportunities!
-                //
-                // Note that only array and object references are nuked as those
-                // constitute the set of elements which can produce a cyclic ref.
-                // The rest of the members is kept intact as they are harmless.
                 /**
+                and make sure the error info doesn't stay due to potential
+                ref cycle via userland code manipulations.
+                These would otherwise all be memory leak opportunities!
+                
+                Note that only array and object references are nuked as those
+                constitute the set of elements which can produce a cyclic ref.
+                The rest of the members is kept intact as they are harmless.
+
                 @public
                 @this {LexErrorInfo}
                 */
@@ -18587,6 +19206,8 @@ function getRegExpLexerPrototype() {
         },
 
         /**
+        handler which is invoked when a lexer error occurs.
+
         @public
         @this {RegExpLexer}
         */
@@ -18603,14 +19224,37 @@ function getRegExpLexerPrototype() {
             }
         },
 
-        // final cleanup function for when we have completed lexing the input;
-        // make it an API so that external code can use this one once userland
-        // code has decided it's time to destroy any lingering lexer error
-        // hash object instances and the like: this function helps to clean
-        // up these constructs, which *may* carry cyclic references which would
-        // otherwise prevent the instances from being properly and timely
-        // garbage-collected, i.e. this function helps prevent memory leaks!
         /**
+        method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
+
+        @public
+        @this {RegExpLexer}
+        */
+        yyerror: function yyError(str /*, ...args */) {
+            var lineno_msg = '';
+            if (this.options.trackPosition) {
+                lineno_msg = ' on line ' + (this.yylineno + 1);
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
+
+            // Add any extra args to the hash under the name `extra_error_attributes`:
+            var args = Array.prototype.slice.call(arguments, 1);
+            if (args.length) {
+                hash.extra_error_attributes = args;
+            }
+
+            return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+        },
+
+        /**
+        final cleanup function for when we have completed lexing the input;
+        make it an API so that external code can use this one once userland
+        code has decided it's time to destroy any lingering lexer error
+        hash object instances and the like: this function helps to clean
+        up these constructs, which *may* carry cyclic references which would
+        otherwise prevent the instances from being properly and timely
+        garbage-collected, i.e. this function helps prevent memory leaks!
+
         @public
         @this {RegExpLexer}
         */
@@ -18636,8 +19280,9 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // clear the lexer token context; intended for internal use only
         /**
+        clear the lexer token context; intended for internal use only
+
         @public
         @this {RegExpLexer}
         */
@@ -18657,11 +19302,12 @@ function getRegExpLexerPrototype() {
                 last_column: col,
 
                 range: (this.options.ranges ? [this.offset, this.offset] : undefined)
-            }
+            };
         },
 
-        // resets the lexer, sets new input
         /**
+        resets the lexer, sets new input
+
         @public
         @this {RegExpLexer}
         */
@@ -18729,22 +19375,24 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // push a new input into the lexer and activate it:
-        // the old input position is stored and will be resumed
-        // once this new input has been consumed.
-        //
-        // Use this API to help implement C-preprocessor-like
-        // `#include` statements.
-        //
-        // Available options:
-        // - emit_EOF_at_end : {int} the `EOF`-like token to emit 
-        //                     when the new input is consumed: use
-        //                     this to mark the end of the new input
-        //                     in the parser grammar. zero/falsey 
-        //                     token value means no end marker token
-        //                     will be emitted before the lexer 
-        //                     resumes reading from the previous input.
         /**
+        push a new input into the lexer and activate it:
+        the old input position is stored and will be resumed
+        once this new input has been consumed.
+
+        Use this API to help implement C-preprocessor-like
+        `#include` statements.
+
+        Available options:
+
+        - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
+                              when the new input is consumed: use
+                              this to mark the end of the new input
+                              in the parser grammar. zero/falsey
+                              token value means no end marker token
+                              will be emitted before the lexer
+                              resumes reading from the previous input.
+
         @public
         @this {RegExpLexer}
         */
@@ -18771,8 +19419,9 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // consumes and returns one char from the input
         /**
+        consumes and returns one char from the input
+
         @public
         @this {RegExpLexer}
         */
@@ -18826,8 +19475,9 @@ function getRegExpLexerPrototype() {
             return ch;
         },
 
-        // unshifts one char (or an entire string) into the input
         /**
+        unshifts one char (or an entire string) into the input
+
         @public
         @this {RegExpLexer}
         */
@@ -18864,8 +19514,9 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // When called from action, caches matched text and appends it on next action
         /**
+        cache matched text and append it on next action
+
         @public
         @this {RegExpLexer}
         */
@@ -18874,8 +19525,9 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
         /**
+        signal the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+
         @public
         @this {RegExpLexer}
         */
@@ -18890,14 +19542,19 @@ function getRegExpLexerPrototype() {
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+                var pos_str = this.showPosition();
+                if (pos_str && pos_str[0] !== '\n') {
+                    pos_str = '\n' + pos_str;
+                }
+                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
                 this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
             return this;
         },
 
-        // retain first n characters of the match
         /**
+        retain first n characters of the match
+
         @public
         @this {RegExpLexer}
         */
@@ -18905,11 +19562,15 @@ function getRegExpLexerPrototype() {
             return this.unput(this.match.slice(n));
         },
 
-        // return (part of the) already matched input, i.e. for error messages.
-        // Limit the returned string length to `maxSize` (default: 20).
-        // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-        // Negative limit values equal *unlimited*.
         /**
+        return (part of the) already matched input, i.e. for error messages.
+
+        Limit the returned string length to `maxSize` (default: 20).
+
+        Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+        Negative limit values equal *unlimited*.
+
         @public
         @this {RegExpLexer}
         */
@@ -18940,11 +19601,15 @@ function getRegExpLexerPrototype() {
             return past;
         },
 
-        // return (part of the) upcoming input, i.e. for error messages.
-        // Limit the returned string length to `maxSize` (default: 20).
-        // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-        // Negative limit values equal *unlimited*.
         /**
+        return (part of the) upcoming input, i.e. for error messages.
+
+        Limit the returned string length to `maxSize` (default: 20).
+
+        Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+        Negative limit values equal *unlimited*.
+
         @public
         @this {RegExpLexer}
         */
@@ -18977,8 +19642,9 @@ function getRegExpLexerPrototype() {
             return next;
         },
 
-        // return a string which displays the character position where the lexing error occurred, i.e. for error messages
         /**
+        return a string which displays the character position where the lexing error occurred, i.e. for error messages
+
         @public
         @this {RegExpLexer}
         */
@@ -18988,11 +19654,13 @@ function getRegExpLexerPrototype() {
             return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
         },
 
-        // helper function, used to produce a human readable description as a string, given
-        // the input `yylloc` location object.
-        // Set `display_range_too` to TRUE to include the string character index position(s)
-        // in the description if the `yylloc.range` is available.
         /**
+        helper function, used to produce a human readable description as a string, given
+        the input `yylloc` location object.
+
+        Set `display_range_too` to TRUE to include the string character index position(s)
+        in the description if the `yylloc.range` is available.
+
         @public
         @this {RegExpLexer}
         */
@@ -19027,19 +19695,21 @@ function getRegExpLexerPrototype() {
             // return JSON.stringify(yylloc);
         },
 
-        // test the lexed token: return FALSE when not a match, otherwise return token.
-        //
-        // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
-        // contains the actually matched text string.
-        //
-        // Also move the input cursor forward and update the match collectors:
-        // - yytext
-        // - yyleng
-        // - match
-        // - matches
-        // - yylloc
-        // - offset
         /**
+        test the lexed token: return FALSE when not a match, otherwise return token.
+
+        `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
+        contains the actually matched text string.
+
+        Also move the input cursor forward and update the match collectors:
+
+        - `yytext`
+        - `yyleng`
+        - `match`
+        - `matches`
+        - `yylloc`
+        - `offset`
+
         @public
         @this {RegExpLexer}
         */
@@ -19134,8 +19804,9 @@ function getRegExpLexerPrototype() {
             return false;
         },
 
-        // return next match in input
         /**
+        return next match in input
+
         @public
         @this {RegExpLexer}
         */
@@ -19169,7 +19840,11 @@ function getRegExpLexerPrototype() {
                     if (this.options.trackPosition) {
                         lineno_msg = ' on line ' + (this.yylineno + 1);
                     }
-                    var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                    var pos_str = this.showPosition();
+                    if (pos_str && pos_str[0] !== '\n') {
+                        pos_str = '\n' + pos_str;
+                    }
+                    var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
                     // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                     return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
                 }
@@ -19220,7 +19895,11 @@ function getRegExpLexerPrototype() {
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.\n' + this.showPosition(), this.options.lexerErrorsAreRecoverable);
+                var pos_str = this.showPosition();
+                if (pos_str && pos_str[0] !== '\n') {
+                    pos_str = '\n' + pos_str;
+                }
+                var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
                 token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
                 if (token === this.ERROR) {
                     // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
@@ -19233,8 +19912,9 @@ function getRegExpLexerPrototype() {
             }
         },
 
-        // return next match that has a token
         /**
+        return next match that has a token
+
         @public
         @this {RegExpLexer}
         */
@@ -19254,10 +19934,11 @@ function getRegExpLexerPrototype() {
             return r;
         },
 
-        // backwards compatible alias for `pushState()`;
-        // the latter is symmetrical with `popState()` and we advise to use
-        // those APIs in any modern lexer code, rather than `begin()`.
         /**
+        backwards compatible alias for `pushState()`;
+        the latter is symmetrical with `popState()` and we advise to use
+        those APIs in any modern lexer code, rather than `begin()`.
+
         @public
         @this {RegExpLexer}
         */
@@ -19265,8 +19946,9 @@ function getRegExpLexerPrototype() {
             return this.pushState(condition);
         },
 
-        // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
         /**
+        activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+
         @public
         @this {RegExpLexer}
         */
@@ -19276,8 +19958,9 @@ function getRegExpLexerPrototype() {
             return this;
         },
 
-        // pop the previously active lexer condition state off the condition stack
         /**
+        pop the previously active lexer condition state off the condition stack
+
         @public
         @this {RegExpLexer}
         */
@@ -19291,8 +19974,9 @@ function getRegExpLexerPrototype() {
             }
         },
 
-        // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
         /**
+        return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+
         @public
         @this {RegExpLexer}
         */
@@ -19305,8 +19989,9 @@ function getRegExpLexerPrototype() {
             }
         },
 
-        // (internal) determine the lexer rule set which is active for the currently active lexer condition state
         /**
+        (internal) determine the lexer rule set which is active for the currently active lexer condition state
+
         @public
         @this {RegExpLexer}
         */
@@ -19318,8 +20003,9 @@ function getRegExpLexerPrototype() {
             }
         },
 
-        // return the number of states currently on the stack
         /**
+        return the number of states currently on the stack
+
         @public
         @this {RegExpLexer}
         */
@@ -19549,14 +20235,22 @@ function generateModuleBody(opt) {
         var pre = obj.pre_lex;
         var post = obj.post_lex;
         // since JSON cannot encode functions, we'll have to do it manually at run-time, i.e. later on:
-        obj.pre_lex = (pre ? true : undefined);
-        obj.post_lex = (post ? true : undefined);
+        if (pre) {
+            obj.pre_lex = true;
+        }
+        if (post) {
+            obj.post_lex = true;
+        }
 
         var js = JSON.stringify(obj, null, 2);
 
         js = js.replace(new XRegExp('  "([\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*)": ', 'g'), '  $1: ');
-        js = js.replace(/^( +)pre_lex: true,$/gm, "$1pre_lex: " + String(pre) + ',');
-        js = js.replace(/^( +)post_lex: true,$/gm, "$1post_lex: " + String(post) + ',');
+        js = js.replace(/^( +)pre_lex: true(,)?$/gm, function (m, ls, tc) {
+            return ls + 'pre_lex: ' + String(pre) + (tc || '');
+        });
+        js = js.replace(/^( +)post_lex: true(,)?$/gm, function (m, ls, tc) {
+            return ls + 'post_lex: ' + String(post) + (tc || '');
+        });
         return js;
     }
 
@@ -21224,7 +21918,7 @@ if (typeof exports !== 'undefined') {
 
 
 },{"./typal":13,"assert":14}],12:[function(require,module,exports){
-/* parser generated by jison 0.4.18-181 */
+/* parser generated by jison 0.4.18-184 */
 
 /*
  * Returns a Parser object of the following structure:
@@ -21734,6 +22428,9 @@ var parser = {
     //   no default resolve on conflict:    false
     //   on-demand look-ahead: ............ false
     //   error recovery token skip maximum: 3
+    //   yyerror in parse actions is: ..... NOT recoverable,
+    //   yyerror in lexer actions and other non-fatal lexer are:
+    //   .................................. NOT recoverable,
     //   debug grammar/output: ............ false
     //   has partial LR conflict upgrade:   true
     //   rudimentary token-stack support:   false
@@ -22178,10 +22875,13 @@ defaultActions: bda({
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
-    if (hash.recoverable) {
+    if (hash.recoverable && typeof this.trace === 'function') {
         this.trace(str);
         hash.destroy();             // destroy... well, *almost*!
     } else {
+        if (!ExceptionClass) {
+            ExceptionClass = this.JisonParserError;
+        }
         throw new ExceptionClass(str, hash);
     }
 },
@@ -22245,6 +22945,9 @@ parse: function parse(input) {
     // Does the shared state override the default `parseError` that already comes with this instance?
     if (typeof sharedState_yy.parseError === 'function') {
         this.parseError = function parseErrorAlt(str, hash, ExceptionClass) {
+            if (!ExceptionClass) {
+                ExceptionClass = this.JisonParserError;
+            }
             return sharedState_yy.parseError(str, hash, ExceptionClass);
         };
     } else {
@@ -22603,9 +23306,18 @@ parse: function parse(input) {
             break;
         }
     } catch (ex) {
-        // report exceptions through the parseError callback too:
-        p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-        retval = this.parseError(p.errStr, p, this.JisonParserError);
+        // report exceptions through the parseError callback too, but keep the exception intact
+        // if it is a known parser or lexer error which has been thrown by parseError() already:
+        if (ex instanceof this.JisonParserError) {
+            throw ex;
+        }
+        else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
+            throw ex;
+        }
+        else {
+            p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+            retval = this.parseError(p.errStr, p, this.JisonParserError);
+        }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
@@ -22843,21 +23555,43 @@ JisonLexerError.prototype.name = 'JisonLexerError';
 
 
 var lexer = {
+
     // Code Generator Information Report
     // ---------------------------------
     //
     // Options:
-    //   backtracking:        false
-    //   location.ranges:     true
+    //
+    //   backtracking: .................... false
+    //   location.ranges: ................. true
+    //   location line+column tracking: ... true
+    //
     //
     // Forwarded Parser Analysis flags:
-    //   uses yyleng:         false
-    //   uses yylineno:       false
-    //   uses yytext:         false
-    //   uses yylloc:         false
-    //   uses lexer values:   true / true
-    //   location tracking:   false
-    //   location assignment: false
+    //
+    //   uses yyleng: ..................... false
+    //   uses yylineno: ................... false
+    //   uses yytext: ..................... false
+    //   uses yylloc: ..................... false
+    //   uses lexer values: ............... true / true
+    //   location tracking: ............... false
+    //   location assignment: ............. false
+    //
+    //
+    // Lexer Analysis flags:
+    //
+    //   uses yyleng: ..................... undefined
+    //   uses yylineno: ................... undefined
+    //   uses yytext: ..................... undefined
+    //   uses yylloc: ..................... undefined
+    //   uses ParseError API: ............. undefined
+    //   uses location tracking & editing:  undefined
+    //   uses more() API: ................. undefined
+    //   uses unput() API: ................ undefined
+    //   uses reject() API: ............... undefined
+    //   uses less() API: ................. undefined
+    //   uses display APIs pastInput(), upcomingInput(), showPosition():
+    //        ............................. undefined
+    //   uses describeYYLLOC() API: ....... undefined
     //
     // --------- END OF REPORT -----------
 
@@ -22865,39 +23599,40 @@ var lexer = {
     EOF: 1,
     ERROR: 2,
 
-    // JisonLexerError: JisonLexerError,        // <-- injected by the code generator
+    // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
 
-    // options: {},                             // <-- injected by the code generator
+    // options: {},                             /// <-- injected by the code generator
 
-    // yy: ...,                                 // <-- injected by setInput()
+    // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null,                   // <-- internal rule set cache for the current lexer state
+    __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state
 
-    __error_infos: [],                          // INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup
 
-    __decompressed: false,                      // INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use
 
-    done: false,                                // INTERNAL USE ONLY
-    _backtrack: false,                          // INTERNAL USE ONLY
-    _input: '',                                 // INTERNAL USE ONLY
-    _more: false,                               // INTERNAL USE ONLY
-    _signaled_error_token: false,               // INTERNAL USE ONLY
+    done: false,                                /// INTERNAL USE ONLY
+    _backtrack: false,                          /// INTERNAL USE ONLY
+    _input: '',                                 /// INTERNAL USE ONLY
+    _more: false,                               /// INTERNAL USE ONLY
+    _signaled_error_token: false,               /// INTERNAL USE ONLY
 
-    conditionStack: [],                         // INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
-    match: '',                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
-    matched: '',                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
-    matches: false,                             // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
-    yytext: '',                                 // ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
-    offset: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
-    yyleng: 0,                                  // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
-    yylineno: 0,                                // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
-    yylloc: null,                               // READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
 
-    // INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
     /**
-    @public 
-    @this {RegExpLexer} 
+    INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
+
+    @public
+    @this {RegExpLexer}
     */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
         /** @constructor */
@@ -22911,16 +23646,17 @@ var lexer = {
             yy: this.yy,
             lexer: this,
 
-            // and make sure the error info doesn't stay due to potential
-            // ref cycle via userland code manipulations.
-            // These would otherwise all be memory leak opportunities!
-            //
-            // Note that only array and object references are nuked as those
-            // constitute the set of elements which can produce a cyclic ref.
-            // The rest of the members is kept intact as they are harmless.
-            /** 
-            @public 
-            @this {LexErrorInfo} 
+            /**
+            and make sure the error info doesn't stay due to potential
+            ref cycle via userland code manipulations.
+            These would otherwise all be memory leak opportunities!
+            
+            Note that only array and object references are nuked as those
+            constitute the set of elements which can produce a cyclic ref.
+            The rest of the members is kept intact as they are harmless.
+
+            @public
+            @this {LexErrorInfo}
             */
             destroy: function destructLexErrorInfo() {
                 // remove cyclic references added to error info:
@@ -22941,11 +23677,16 @@ var lexer = {
         return pei;
     },
 
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    handler which is invoked when a lexer error occurs.
+
+    @public
+    @this {RegExpLexer}
     */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
+        if (!ExceptionClass) {
+            ExceptionClass = this.JisonLexerError;
+        }
         if (this.yy.parser && typeof this.yy.parser.parseError === 'function') {
             return this.yy.parser.parseError(str, hash, ExceptionClass) || this.ERROR;
         } else if (typeof this.yy.parseError === 'function') {
@@ -22955,16 +23696,39 @@ var lexer = {
         }
     },
 
-    // final cleanup function for when we have completed lexing the input;
-    // make it an API so that external code can use this one once userland
-    // code has decided it's time to destroy any lingering lexer error
-    // hash object instances and the like: this function helps to clean
-    // up these constructs, which *may* carry cyclic references which would
-    // otherwise prevent the instances from being properly and timely
-    // garbage-collected, i.e. this function helps prevent memory leaks!
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
+
+    @public
+    @this {RegExpLexer}
+    */
+    yyerror: function yyError(str /*, ...args */) {
+        var lineno_msg = '';
+        if (this.options.trackPosition) {
+            lineno_msg = ' on line ' + (this.yylineno + 1);
+        }
+        var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
+
+        // Add any extra args to the hash under the name `extra_error_attributes`:
+        var args = Array.prototype.slice.call(arguments, 1);
+        if (args.length) {
+            hash.extra_error_attributes = args;
+        }
+
+        return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
+    },
+
+    /**
+    final cleanup function for when we have completed lexing the input;
+    make it an API so that external code can use this one once userland
+    code has decided it's time to destroy any lingering lexer error
+    hash object instances and the like: this function helps to clean
+    up these constructs, which *may* carry cyclic references which would
+    otherwise prevent the instances from being properly and timely
+    garbage-collected, i.e. this function helps prevent memory leaks!
+
+    @public
+    @this {RegExpLexer}
     */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
         var rv;
@@ -22988,10 +23752,11 @@ var lexer = {
         return this;
     },
 
-    // clear the lexer token context; intended for internal use only
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    clear the lexer token context; intended for internal use only
+
+    @public
+    @this {RegExpLexer}
     */
     clear: function lexer_clear() {
         this.yytext = '';
@@ -23000,12 +23765,23 @@ var lexer = {
         this.matches = false;
         this._more = false;
         this._backtrack = false;
+
+        var col = this.yylloc ? this.yylloc.last_column : 0;
+        this.yylloc = {
+            first_line: this.yylineno + 1,
+            first_column: col,
+            last_line: this.yylineno + 1,
+            last_column: col,
+
+            range: (this.options.ranges ? [this.offset, this.offset] : undefined)
+        };
     },
 
-    // resets the lexer, sets new input
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    resets the lexer, sets new input
+
+    @public
+    @this {RegExpLexer}
     */
     setInput: function lexer_setInput(input, yy) {
         this.yy = yy || this.yy || {};
@@ -23063,19 +23839,63 @@ var lexer = {
             first_line: 1,
             first_column: 0,
             last_line: 1,
-            last_column: 0
+            last_column: 0,
+
+            range: (this.options.ranges ? [0, 0] : undefined)
         };
-        if (this.options.ranges) {
-            this.yylloc.range = [0, 0];
-        }
         this.offset = 0;
         return this;
     },
 
-    // consumes and returns one char from the input
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    push a new input into the lexer and activate it:
+    the old input position is stored and will be resumed
+    once this new input has been consumed.
+
+    Use this API to help implement C-preprocessor-like
+    `#include` statements.
+
+    Available options:
+
+    - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
+                          when the new input is consumed: use
+                          this to mark the end of the new input
+                          in the parser grammar. zero/falsey
+                          token value means no end marker token
+                          will be emitted before the lexer
+                          resumes reading from the previous input.
+
+    @public
+    @this {RegExpLexer}
+    */
+    pushInput: function lexer_pushInput(input, label, options) {
+        options = options || {};
+
+        this._input = input || '';
+        this.clear();
+        // this._signaled_error_token = false;
+        this.done = false;
+        this.yylineno = 0;
+        this.matched = '';
+        // this.conditionStack = ['INITIAL'];
+        // this.__currentRuleSet__ = null;
+        this.yylloc = {
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 0,
+
+            range: (this.options.ranges ? [0, 0] : undefined)
+        };
+        this.offset = 0;
+        return this;
+    },
+
+    /**
+    consumes and returns one char from the input
+
+    @public
+    @this {RegExpLexer}
     */
     input: function lexer_input() {
         if (!this._input) {
@@ -23115,6 +23935,7 @@ var lexer = {
         if (lines) {
             this.yylineno++;
             this.yylloc.last_line++;
+            this.yylloc.last_column = 0;
         } else {
             this.yylloc.last_column++;
         }
@@ -23126,10 +23947,11 @@ var lexer = {
         return ch;
     },
 
-    // unshifts one char (or a string) into the input
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    unshifts one char (or an entire string) into the input
+
+    @public
+    @this {RegExpLexer}
     */
     unput: function lexer_unput(ch) {
         var len = ch.length;
@@ -23137,44 +23959,49 @@ var lexer = {
 
         this._input = ch + this._input;
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
-        //this.yyleng -= len;
+        this.yyleng = this.yytext.length;
         this.offset -= len;
-        var oldLines = this.match.split(/(?:\r\n?|\n)/g);
         this.match = this.match.substr(0, this.match.length - len);
         this.matched = this.matched.substr(0, this.matched.length - len);
 
-        if (lines.length - 1) {
+        if (lines.length > 1) {
             this.yylineno -= lines.length - 1;
-        }
 
-        this.yylloc.last_line = this.yylineno + 1;
-        this.yylloc.last_column = (lines ?
-                (lines.length === oldLines.length ? this.yylloc.first_column : 0)
-                + oldLines[oldLines.length - lines.length].length - lines[0].length :
-                this.yylloc.first_column - len);
+            this.yylloc.last_line = this.yylineno + 1;
+            var pre = this.match;
+            var pre_lines = pre.split(/(?:\r\n?|\n)/g);
+            if (pre_lines.length === 1) {
+                pre = this.matched;
+                pre_lines = pre.split(/(?:\r\n?|\n)/g);
+            }
+            this.yylloc.last_column = pre_lines[pre_lines.length - 1].length;
+        } else {
+            this.yylloc.last_column -= len;
+        }
 
         if (this.options.ranges) {
-            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng - len;
+            this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng;
         }
-        this.yyleng = this.yytext.length;
         this.done = false;
         return this;
     },
 
-    // When called from action, caches matched text and appends it on next action
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    cache matched text and append it on next action
+
+    @public
+    @this {RegExpLexer}
     */
     more: function lexer_more() {
         this._more = true;
         return this;
     },
 
-    // When called from action, signals the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    signal the lexer that this rule fails to match the input, so the next matching rule (regex) should be tested instead.
+
+    @public
+    @this {RegExpLexer}
     */
     reject: function lexer_reject() {
         if (this.options.backtrack_lexer) {
@@ -23183,28 +24010,41 @@ var lexer = {
             // when the `parseError()` call returns, we MUST ensure that the error is registered.
             // We accomplish this by signaling an 'error' token to be produced for the current
             // `.lex()` run.
-            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).\n' + this.showPosition(), false);
+            var lineno_msg = '';
+            if (this.options.trackPosition) {
+                lineno_msg = ' on line ' + (this.yylineno + 1);
+            }
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
     },
 
-    // retain first n characters of the match
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    retain first n characters of the match
+
+    @public
+    @this {RegExpLexer}
     */
     less: function lexer_less(n) {
         return this.unput(this.match.slice(n));
     },
 
-    // return (part of the) already matched input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return (part of the) already matched input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
+    @public
+    @this {RegExpLexer}
     */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
         var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -23233,13 +24073,17 @@ var lexer = {
         return past;
     },
 
-    // return (part of the) upcoming input, i.e. for error messages.
-    // Limit the returned string length to `maxSize` (default: 20).
-    // Limit the returned string to the `maxLines` number of lines of input (default: 1).
-    // Negative limit values equal *unlimited*.
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return (part of the) upcoming input, i.e. for error messages.
+
+    Limit the returned string length to `maxSize` (default: 20).
+
+    Limit the returned string to the `maxLines` number of lines of input (default: 1).
+
+    Negative limit values equal *unlimited*.
+
+    @public
+    @this {RegExpLexer}
     */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
@@ -23270,10 +24114,11 @@ var lexer = {
         return next;
     },
 
-    // return a string which displays the character position where the lexing error occurred, i.e. for error messages
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return a string which displays the character position where the lexing error occurred, i.e. for error messages
+
+    @public
+    @this {RegExpLexer}
     */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
         var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -23281,25 +24126,27 @@ var lexer = {
         return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
     },
 
-    // helper function, used to produce a human readable description as a string, given
-    // the input `yylloc` location object.
-    // Set `display_range_too` to TRUE to include the string character index position(s)
-    // in the description if the `yylloc.range` is available.
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    helper function, used to produce a human readable description as a string, given
+    the input `yylloc` location object.
+
+    Set `display_range_too` to TRUE to include the string character index position(s)
+    in the description if the `yylloc.range` is available.
+
+    @public
+    @this {RegExpLexer}
     */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
         var o1 = yylloc.first_column;
-        var o2 = yylloc.last_column - 1;
+        var o2 = yylloc.last_column;
         var dl = l2 - l1;
-        var d_o = (dl === 0 ? o2 - o1 : 1000);
+        var d_o = o2 - o1;
         var rv;
         if (dl === 0) {
             rv = 'line ' + l1 + ', ';
-            if (d_o === 0) {
+            if (d_o === 1) {
                 rv += 'column ' + o1;
             } else {
                 rv += 'columns ' + o1 + ' .. ' + o2;
@@ -23320,21 +24167,23 @@ var lexer = {
         // return JSON.stringify(yylloc);
     },
 
-    // test the lexed token: return FALSE when not a match, otherwise return token.
-    //
-    // `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
-    // contains the actually matched text string.
-    //
-    // Also move the input cursor forward and update the match collectors:
-    // - yytext
-    // - yyleng
-    // - match
-    // - matches
-    // - yylloc
-    // - offset
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    test the lexed token: return FALSE when not a match, otherwise return token.
+
+    `match` is supposed to be an array coming out of a regex match, i.e. `match[0]`
+    contains the actually matched text string.
+
+    Also move the input cursor forward and update the match collectors:
+
+    - `yytext`
+    - `yyleng`
+    - `match`
+    - `matches`
+    - `yylloc`
+    - `offset`
+
+    @public
+    @this {RegExpLexer}
     */
     test_match: function lexer_test_match(match, indexed_rule) {
         var token,
@@ -23349,9 +24198,11 @@ var lexer = {
                 yylineno: this.yylineno,
                 yylloc: {
                     first_line: this.yylloc.first_line,
-                    last_line: this.last_line,
+                    last_line: this.yylloc.last_line,
                     first_column: this.yylloc.first_column,
-                    last_column: this.yylloc.last_column
+                    last_column: this.yylloc.last_column,
+
+                    range: (this.options.ranges ? this.yylloc.range.slice(0) :  undefined)
                 },
                 yytext: this.yytext,
                 match: this.match,
@@ -23361,37 +24212,32 @@ var lexer = {
                 offset: this.offset,
                 _more: this._more,
                 _input: this._input,
+                //_signaled_error_token: this._signaled_error_token,
                 yy: this.yy,
                 conditionStack: this.conditionStack.slice(0),
                 done: this.done
             };
-            if (this.options.ranges) {
-                backup.yylloc.range = this.yylloc.range.slice(0);
-            }
         }
 
         match_str = match[0];
         match_str_len = match_str.length;
         // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-            lines = match_str.match(/(?:\r\n?|\n).*/g);
-            if (lines) {
-                this.yylineno += lines.length;
+            lines = match_str.split(/(?:\r\n?|\n)/g);
+            if (lines.length > 1) {
+                this.yylineno += lines.length - 1;
+
+                this.yylloc.last_line = this.yylineno + 1,
+                this.yylloc.last_column = lines[lines.length - 1].length;
+            } else {
+                this.yylloc.last_column += match_str_len;
             }
         // }
-        this.yylloc = {
-            first_line: this.yylloc.last_line,
-            last_line: this.yylineno + 1,
-            first_column: this.yylloc.last_column,
-            last_column: lines ?
-                         lines[lines.length - 1].length - lines[lines.length - 1].match(/^\r?\n?/)[0].length :
-                         this.yylloc.last_column + match_str_len
-        };
         this.yytext += match_str;
         this.match += match_str;
         this.matches = match;
         this.yyleng = this.yytext.length;
         if (this.options.ranges) {
-            this.yylloc.range = [this.offset, this.offset + this.yyleng];
+            this.yylloc.range[1] += match_str_len;
         }
         // previous lex rules MAY have invoked the `more()` API rather than producing a token:
         // those rules will already have moved this `offset` forward matching their match lengths,
@@ -23430,10 +24276,11 @@ var lexer = {
         return false;
     },
 
-    // return next match in input
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return next match in input
+
+    @public
+    @this {RegExpLexer}
     */
     next: function lexer_next() {
         if (this.done) {
@@ -23461,7 +24308,15 @@ var lexer = {
             // Check whether a *sane* condition has been pushed before: this makes the lexer robust against
             // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
             if (!spec || !spec.rules) {
-                var p = this.constructLexErrorInfo('Internal lexer engine error on line ' + (this.yylineno + 1) + '. The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!\n', false);
+                var lineno_msg = '';
+                if (this.options.trackPosition) {
+                    lineno_msg = ' on line ' + (this.yylineno + 1);
+                }
+                var pos_str = this.showPosition();
+                if (pos_str && pos_str[0] !== '\n') {
+                    pos_str = '\n' + pos_str;
+                }
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -23472,21 +24327,9 @@ var lexer = {
         var regexes = spec.__rule_regexes;
         var len = spec.__rule_count;
 
-        //var c0 = this._input[0];
-
         // Note: the arrays are 1-based, while `len` itself is a valid index,
         // hence the non-standard less-or-equal check in the next loop condition!
-        //
-        // `dispatch` is a lookup table which lists the *first* rule which matches the 1-char *prefix* of the rule-to-match.
-        // By using that array as a jumpstart, we can cut down on the otherwise O(n*m) behaviour of this lexer, down to
-        // O(n) ideally, where:
-        //
-        // - N is the number of input particles -- which is not precisely characters
-        //   as we progress on a per-regex-match basis rather than on a per-character basis
-        //
-        // - M is the number of rules (regexes) to test in the active condition state.
-        //
-        for (var i = 1 /* (dispatch[c0] || 1) */ ; i <= len; i++) {
+        for (var i = 1; i <= len; i++) {
             tempMatch = this._input.match(regexes[i]);
             if (tempMatch && (!match || tempMatch[0].length > match[0].length)) {
                 match = tempMatch;
@@ -23515,11 +24358,20 @@ var lexer = {
             // else: this is a lexer rule which consumes input without producing a token (e.g. whitespace)
             return false;
         }
-        if (this._input === '') {
+        if (!this._input) {
             this.done = true;
+            this.clear();
             return this.EOF;
         } else {
-            var p = this.constructLexErrorInfo('Lexical error on line ' + (this.yylineno + 1) + '. Unrecognized text.\n' + this.showPosition(), this.options.lexer_errors_are_recoverable);
+            var lineno_msg = '';
+            if (this.options.trackPosition) {
+                lineno_msg = ' on line ' + (this.yylineno + 1);
+            }
+            var pos_str = this.showPosition();
+            if (pos_str && pos_str[0] !== '\n') {
+                pos_str = '\n' + pos_str;
+            }
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
@@ -23532,10 +24384,11 @@ var lexer = {
         }
     },
 
-    // return next match that has a token
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return next match that has a token
+
+    @public
+    @this {RegExpLexer}
     */
     lex: function lexer_lex() {
         var r;
@@ -23553,21 +24406,23 @@ var lexer = {
         return r;
     },
 
-    // backwards compatible alias for `pushState()`;
-    // the latter is symmetrical with `popState()` and we advise to use
-    // those APIs in any modern lexer code, rather than `begin()`.
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    backwards compatible alias for `pushState()`;
+    the latter is symmetrical with `popState()` and we advise to use
+    those APIs in any modern lexer code, rather than `begin()`.
+
+    @public
+    @this {RegExpLexer}
     */
     begin: function lexer_begin(condition) {
         return this.pushState(condition);
     },
 
-    // activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    activates a new lexer condition state (pushes the new lexer condition state onto the condition stack)
+
+    @public
+    @this {RegExpLexer}
     */
     pushState: function lexer_pushState(condition) {
         this.conditionStack.push(condition);
@@ -23575,10 +24430,11 @@ var lexer = {
         return this;
     },
 
-    // pop the previously active lexer condition state off the condition stack
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    pop the previously active lexer condition state off the condition stack
+
+    @public
+    @this {RegExpLexer}
     */
     popState: function lexer_popState() {
         var n = this.conditionStack.length - 1;
@@ -23590,10 +24446,11 @@ var lexer = {
         }
     },
 
-    // return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return the currently active lexer condition state; when an index argument is provided it produces the N-th previous condition state, if available
+
+    @public
+    @this {RegExpLexer}
     */
     topState: function lexer_topState(n) {
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -23604,10 +24461,11 @@ var lexer = {
         }
     },
 
-    // (internal) determine the lexer rule set which is active for the currently active lexer condition state
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    (internal) determine the lexer rule set which is active for the currently active lexer condition state
+
+    @public
+    @this {RegExpLexer}
     */
     _currentRules: function lexer__currentRules() {
         if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -23617,18 +24475,20 @@ var lexer = {
         }
     },
 
-    // return the number of states currently on the stack
-    /** 
-    @public 
-    @this {RegExpLexer} 
+    /**
+    return the number of states currently on the stack
+
+    @public
+    @this {RegExpLexer}
     */
     stateStackSize: function lexer_stateStackSize() {
         return this.conditionStack.length;
     },
     options: {
   xregexp: true,
-  easy_keyword_rules: true,
-  ranges: true
+  ranges: true,
+  trackPosition: true,
+  easy_keyword_rules: true
 },
     JisonLexerError: JisonLexerError,
     performAction: function lexer__performAction(yy, yy_, $avoiding_name_collisions, YY_START) {
@@ -23710,7 +24570,7 @@ default:
    20 : 1
 },
     rules: [
-/^(?:\s+)/,
+        /^(?:\s+)/,
 new XRegExp("^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))", ""),
 /^(?:\$end\b)/,
 /^(?:\$eof\b)/,
@@ -23731,7 +24591,7 @@ new XRegExp("^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])",
 /^(?:\|)/,
 /^(?:\+)/,
 /^(?:$)/
-],
+    ],
     conditions: {
   "INITIAL": {
     rules: [
@@ -31042,7 +31902,7 @@ module.exports={
   },
   "name": "jison-gho",
   "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
-  "version": "0.4.18-181",
+  "version": "0.4.18-184",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -31085,7 +31945,7 @@ module.exports={
   "devDependencies": {
     "browserify": "14.4.0",
     "glob": "7.1.2",
-    "uglify-js": "3.0.25",
+    "uglify-js": "3.0.27",
     "chai": "4.1.0",
     "mocha": "3.4.2"
   },

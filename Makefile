@@ -47,7 +47,7 @@ deploy: site
 	git checkout gh-pages
 	cp -r web/output/jison/* ./
 	#git add . --all
-	git commit -m 'Deploy site updates'
+	git commit -a -m 'Deploy site updates'
 	git checkout master
 
 test:
@@ -256,6 +256,9 @@ examples/issue-344-2: build
 examples/issue-348: build
 	cd examples/ && make issue-348
 
+examples/issue-357-url-lexing: build
+	cd examples/ && make issue-357-url-lexing
+
 examples/jscore: build
 	cd examples/ && make jscore
 
@@ -291,6 +294,9 @@ examples/mfcalc: build
 
 examples/no-prec-hack-needed: build
 	cd examples/ && make no-prec-hack-needed
+
+examples/codegen-feature-tester: build
+	cd examples/ && make codegen-feature-tester
 
 examples/nv_classy_ast: build
 	cd examples/ && make nv_classy_ast
@@ -484,6 +490,7 @@ clean: clean-site
 	-rm -f $(JISON_DEPS)
 	-rm -f lib/util/parser.js lib/util/lex-parser.js
 	-rm -rf node_modules/
+	-rm -f package-lock.json
 
 #
 # When you've run `make superclean` you must run `make prep`, `make` and `make deploy` to regenerate all content again.
