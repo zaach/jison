@@ -43,15 +43,16 @@
     "ast-util": "github:GerHobbelt/ast-util#master",
     "jscodeshift": "github:GerHobbelt/jscodeshift#master",
     "json5": "github:GerHobbelt/json5#master",
-    "nomnom": "github:GerHobbelt/nomnom#master",
+    "@gerhobbelt/nomnom": "1.8.4-16",
     "xregexp": "github:GerHobbelt/xregexp#master"
   },
   "devDependencies": {
     "browserify": "14.4.0",
+    "chai": "4.1.1",
     "glob": "7.1.2",
-    "uglify-js": "3.0.27",
-    "chai": "4.1.0",
-    "mocha": "3.5.0"
+    "mocha": "3.5.0",
+    "prettier": "1.5.3",
+    "uglify-js": "3.0.28"
   },
   "scripts": {
     "test": "make test"
