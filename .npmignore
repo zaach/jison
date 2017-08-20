@@ -26,3 +26,19 @@ Makefile
 # `npm install jison` doesn't need any submodules: ignore them!
 .gitmodules
 
+# misc files which are used during development
+Vagrantfile
+
+# extra documentation (WIP)
+book-using-jison-beyond-the-basics/
+book.json
+
+# no examples wanted
+/examples/
+
+# test set & test rig
+/tests/
+
+# jscs et al config files:
+.js*
+.travis*
