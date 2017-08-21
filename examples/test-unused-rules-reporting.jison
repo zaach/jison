@@ -81,10 +81,10 @@ parser.main = function () {
     // *lack* of action code for the `e: WORD` grammar rule, *that* rule's
     // result `$$` will be UNDETERMINED, i.e. up for grabs, random, chaos.
     //
-    // In *this particular example and input being parsed* this 
-    // translates to the *previous* `$$` being picked up, which happens to
-    // be known as it comes out of the epsilon rule: `"ε"`, hence
-    // the 'expected output' IS NOT `"εεaε"` but `"εεεε"`! 
+    // Since JISON commit 5f8e197e44b5d2526e7641c8511402c6675d25db this 
+    // translates to any rule *without any action* to produce the
+    // `undefined` value via the injected `$$ = undefined` action code, hence
+    // the 'expected output' IS NOT `"εεaε"` but `"εεundefinedε"`! 
     //
     // Yes, *functionally* that's an ERROR/BUG for certain, but the
     // technicalities mentioned above make this the 'correct' output
@@ -108,7 +108,7 @@ parser.main = function () {
 
     console.log("(reduce epsilon rules as early as possible)\n\n  a ==> ", rv);
 
-    assert.equal(rv, "εεεε");
+    assert.equal(rv, "εεundefinedε");
 
     // if you get past the assert(), you're good.
     console.log("tested OK");
