@@ -37,6 +37,36 @@ GITHUB_ISSUE_TARGETS =                                          \
 			issue-357-url-lexing
 
 
+CODEGEN_TARGETS = 												\
+		codegen-feature-tester-base                             \
+		codegen-feature-tester-base-debug                       \
+		codegen-feature-tester-base-try-catch                   \
+		codegen-feature-tester-base-no-try-catch                \
+		codegen-feature-tester-base-no-default-action           \
+		codegen-feature-tester-base-error-recovery-10           \
+		codegen-feature-tester-all-default-action               \
+		codegen-feature-tester-no-err-api-usage                 \
+		codegen-feature-tester-no-error-recovery                \
+		codegen-feature-tester-no-location-assignment           \
+		codegen-feature-tester-no-location-info                 \
+		codegen-feature-tester-no-location-tracking             \
+		codegen-feature-tester-no-parseerror                    \
+		codegen-feature-tester-no-value-assignment              \
+		codegen-feature-tester-no-value-tracking                \
+		codegen-feature-tester-no-value-work                    \
+		codegen-feature-tester-no-yyclearin                     \
+		codegen-feature-tester-no-yyerrok                       \
+		codegen-feature-tester-no-yyerror                       \
+		codegen-feature-tester-no-yyleng                        \
+		codegen-feature-tester-no-yylineo                       \
+		codegen-feature-tester-no-yyloc                         \
+		codegen-feature-tester-no-yyrecovering                  \
+		codegen-feature-tester-no-yysp                          \
+		codegen-feature-tester-no-yysstack                      \
+		codegen-feature-tester-no-yystack                       \
+		codegen-feature-tester-no-yytext                                    
+
+
 
 BASIC_TARGETS =                                                 \
 			basic                                               \
@@ -51,6 +81,7 @@ BASIC_TARGETS =                                                 \
 			ccalc                                               \
 			classy                                              \
 			classy_ast                                          \
+			codegen-feature-tester                              \
 			comments                                            \
 			compiled_calc                                       \
 			dism                                                \
@@ -74,7 +105,6 @@ BASIC_TARGETS =                                                 \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
 			no-prec-hack-needed                                 \
-			codegen-feature-tester 								\
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -90,6 +120,8 @@ BASIC_TARGETS =                                                 \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
 			test-propagation-rules-reduction-1                  \
+			test-unused-rules-reporting                         \
+			test-unused-rules-reporting-alt                     \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -98,7 +130,7 @@ BASIC_TARGETS =                                                 \
 
 
 
-MISC_TARGETS =                                                   \
+MISC_TARGETS =                                                  \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
@@ -136,7 +168,7 @@ MISC_TARGETS =                                                   \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
 			no-prec-hack-needed                                 \
-			codegen-feature-tester 								\
+			codegen-feature-tester                              \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
@@ -152,6 +184,8 @@ MISC_TARGETS =                                                   \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
 			test-propagation-rules-reduction-1                  \
+			test-unused-rules-reporting                         \
+			test-unused-rules-reporting-alt                     \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -162,9 +196,10 @@ MISC_TARGETS =                                                   \
 
 ALL_TARGETS =                                                   \
 			$(BASIC_TARGETS)                                    \
-			$(GITHUB+ISSUE_TARGETS)                             \
+			$(GITHUB_ISSUE_TARGETS)                             \
 			$(MISC_TARGETS)                                     \
 			$(ERROR_HANDLING_TARGETS)                           \
+			$(CODEGEN_TARGETS) 									\
 			ansic                                               \
 			btyacc-ansiC                                        \
 			btyacc-ansiC2                                       \
@@ -569,6 +604,15 @@ test-propagation-rules-reduction-1:
 	node ./output/$@/$@.js
 	node ./output/$@/test-propagation-rules-reduction-2.js
 
+test-unused-rules-reporting:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+test-unused-rules-reporting-alt:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+
 
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
@@ -607,34 +651,8 @@ compiled_calc:
 
 CGT=codegen-feature-tester
 
-codegen-feature-tester: 													\
-		codegen-feature-tester-base 										\
-		codegen-feature-tester-base-debug									\
-		codegen-feature-tester-base-try-catch								\
-		codegen-feature-tester-base-no-try-catch							\
-		codegen-feature-tester-base-no-default-action 						\
-		codegen-feature-tester-base-error-recovery-10						\
-		codegen-feature-tester-all-default-action 							\
-		codegen-feature-tester-no-err-api-usage 							\
-		codegen-feature-tester-no-error-recovery 							\
-		codegen-feature-tester-no-location-assignment 						\
-		codegen-feature-tester-no-location-info 							\
-		codegen-feature-tester-no-location-tracking 						\
-		codegen-feature-tester-no-parseerror 								\
-		codegen-feature-tester-no-value-assignment 							\
-		codegen-feature-tester-no-value-tracking 							\
-		codegen-feature-tester-no-value-work 								\
-		codegen-feature-tester-no-yyclearin 								\
-		codegen-feature-tester-no-yyerrok 									\
-		codegen-feature-tester-no-yyerror 									\
-		codegen-feature-tester-no-yyleng 									\
-		codegen-feature-tester-no-yylineo 									\
-		codegen-feature-tester-no-yyloc 									\
-		codegen-feature-tester-no-yyrecovering 								\
-		codegen-feature-tester-no-yysp 										\
-		codegen-feature-tester-no-yysstack 									\
-		codegen-feature-tester-no-yystack 									\
-		codegen-feature-tester-no-yytext 									\
+codegen-feature-tester:                                                     \
+		$(CODEGEN_TARGETS)                                                  \
 		reference-output/README.md
 	# only run a DIFF once we have generated all outputs: 
 	# that way we get to see all diffs at once and probably have a 
