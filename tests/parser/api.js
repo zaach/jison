@@ -369,7 +369,7 @@ describe("JISON API", function () {
         startSymbol: "A",
         bnf: {
             "A" :[ 'x A',
-                  ['y', 'return @$'],
+                  ['y', 'return @y'],     // TODO: should return `@$` and jison should analyze the action code and insert the default action before the userland action code here
             ''      ]
         }
     };
@@ -381,7 +381,7 @@ describe("JISON API", function () {
            ["y", "return 'y';"]
         ]
     };
-    var gen = new Jison.Generator(grammar);
+    var gen = new Jison.Generator(grammar /* , { debug: 1, exportAllTables: true } */ );
     var parser = gen.createParser();
     parser.lexer = new Lexer(lexData);
     var loc = parser.parse('xx\nxy');
@@ -1100,8 +1100,8 @@ describe("JISON API", function () {
 
     var rv2 = parser2.parse('xyxyx');
 
-    assert.equal(rv, 'eyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
+    assert.equal(rv, true, "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default action");
 
     rv = parser.parse('yyyyx');
     //console.log('rv: ', rv);
@@ -1109,8 +1109,8 @@ describe("JISON API", function () {
     rv2 = parser2.parse('yyyyx');
     //console.log('rv2: ', rv2);
 
-    assert.equal(rv, 'eyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'xyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
+    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default action");
 
 
     rv = parser.parse('yyyyyy');
