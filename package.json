@@ -5,8 +5,8 @@
     "url": "http://zaa.ch"
   },
   "name": "jison-gho",
-  "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
-  "version": "0.4.18-186",
+  "description": "A parser generator with a Bison/YACC-similar API (derived off zaach/jison repo)",
+  "version": "0.6.0-186",
   "license": "MIT",
   "keywords": [
     "jison",

@@ -165,7 +165,14 @@ const test_list = [
     }
   },
   {
-    name: 'test-unused-rules-reporting.jison',
+    name: 'test-unused-rules-reporting',
+    reportStats: true,
+    __check__: function (p, spec) {
+      assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
+    }
+  },
+  {
+    name: 'test-unused-rules-reporting-alt',
     reportStats: true,
     __check__: function (p, spec) {
       assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
