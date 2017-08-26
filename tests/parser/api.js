@@ -422,6 +422,46 @@ describe("JISON API", function () {
     assert.equal(loc.last_column, 2, 'last column correct');
   });
 
+  it("test default location tracking across grammar", function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ [ 'B', '$$ = { value: $B, loc: @B, yytext: yytext, yylloc: yyloc, yystate: yystate, yysp: yysp, yyvstack: yyvstack, yylstack: yylstack, yystack: yystack, yysstack: yysstack }' ],
+                   [ 'error', '$$ = { value: $error, loc: @error, yytext: yytext, yylloc: yyloc, yystate: yystate, yysp: yysp, yyvstack: yyvstack, yylstack: yylstack, yystack: yystack, yysstack: yysstack }' ] 
+                 ],
+            "B" :[   'x B',
+                     'y',
+                     '' ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           [".", "return 'UFO';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var loc = parser.parse('xx\nxy');
+
+    console.log('loctrack test: ', loc);
+    assert(loc);
+    // assert.equal(loc[0].first_line, 2, 'first line correct');
+    // assert.equal(loc[0].last_line, 2, 'second line correct');
+    // assert.equal(loc[0].first_column, 0, 'first column correct');
+    // assert.equal(loc[0].last_column, 1, 'second column correct');
+
+    // assert.equal(loc[1].first_line, 2, 'third line correct');
+    // assert.equal(loc[1].last_line, 2, 'fourth line correct');
+    // assert.equal(loc[1].first_column, 1, 'third column correct');
+    // assert.equal(loc[1].last_column, 2, 'fourth column correct');
+  });
+
   it("test lexer with no location support", function () {
     var grammar = {
         tokens: [ 'x', 'y' ],
