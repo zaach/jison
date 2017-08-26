@@ -342,7 +342,7 @@ parser.main = function () {
         const formulas_and_expectations =  [
             basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
             basenum + '+2*0.7%^PI^2+4+5',                              9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
-            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     49 + basenum, // with error recovery and all it gives you a value...
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     55 + basenum, // with error recovery and all it gives you a value...
             basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
         ];
 
