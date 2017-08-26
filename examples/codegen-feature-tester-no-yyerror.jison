@@ -3,80 +3,85 @@
  * description: Parses and executes mathematical expressions. 
  * Self-contained example which runs a series of tests in a performance benchmark: 
  * see main() at the bottom 
- *
- * At the same time the grammar exhibits error recovery rules which cause 
- * conflicts, despite of which we get a working grammar (because we don't
- * worry when a conflict occurs where only error rules are involved...)
- *
- *   $ ./lib/cli.js -c 0 --main examples/no-prec-hack-needed.jison
- *       Conflict in grammar: multiple actions possible when lookahead token is EOF in state 3
- *       - reduce by rule: v -> error
- *       - shift token (then go to state 17)
- *         (Resolved S/R conflict: shift by default.)
- *       Conflict in grammar: multiple actions possible when lookahead token is ) in state 27
- *       - reduce by rule: v -> error
- *       - shift token (then go to state 34)
- *         (Resolved S/R conflict: shift by default.)
- *
- *       States with conflicts:
- *
- *       State 3    (EOF @ v -> error .)
- *
- *         expressions -> error .EOF              #lookaheads= [$end]
- *         v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [EOF]  [+]  [-]  [^]
- * 
- *       State 27    () @ v -> error .)
- *
- *         u -> ( error .)                        #lookaheads= [^]  [-]  [+]  [EOF]  [*]  [/]  [!]  [%]  [)]
- *         v -> error .                           #lookaheads= [%]  [!]  [/]  [*]  [)]  [+]  [-]  [^]
- *
- *
- *       JISON output for module [noPrecHackNeeded] has been written to file: no-prec-hack-needed.js
- *
- *   $ node no-prec-hack-needed.js
- *       Time: total:  4995ms , sample_count: 177 , # runs: 35400 , average: 0.1411ms , deviation: 2.96% , peak_de
- *       viation: 31.28%
- *
- *   $ node -v
- *       v6.1.0
- *
  */
 
 
 
 /* lexical grammar */
 %lex
+
+// %options backtrack_lexer
+
+%s PERCENT_ALLOWED
+
 %%
 
+// `%`: the grammar is not LALR(1) unless we make the lexer smarter and have 
+// it disambiguate the `%` between `percent` and `modulo` functionality by 
+// additional look-ahead:
+// we introduce a lexical predicate here to disambiguate the `%` and thus 
+// keep the grammar LALR(1)!
+//      https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions
+// we also use an (inclusive) lexical scope which turns this rule on only 
+// immediately after a number was lexed previously.
+
+<PERCENT_ALLOWED>"%"(?=\s*(?:[^0-9)]|E\b|PI\b|$))
+                      // followed by another operator, i.e. anything that's 
+                      // not a number, or The End: then this is a unary 
+                      // `percent` operator.
+                      //
+                      // `1%-2` would be ambiguous but isn't: the `-` is 
+                      // considered as a unary minus and thus `%` is a 
+                      // `modulo` operator.
+                      //
+                      // `1%*5` thus is treated the same: any operator 
+                      // following the `%` is assumed to be a *binary* 
+                      // operator. Hence `1% times 5` which brings us to 
+                      // operators which only exist in unary form: `!`, and 
+                      // values which are not numbers, e.g. `PI` and `E`:
+                      // how about
+                      // - `1%E` -> modulo E,
+                      // - `1%!0` -> modulo 1 (as !0 -> 1)
+                      //
+                      // Of course, the easier way to handle this would be to 
+                      // keep the lexer itself dumb and put this additional 
+                      // logic inside a post_lex handler which should then be 
+                      // able to obtain additional look-ahead tokens and queue 
+                      // them for later, while using those to inspect and 
+                      // adjust the lexer output now -- a trick which is used 
+                      // in the cockroachDB SQL parser code, for example.
+                      //
+                      // The above regex solution however is a more local 
+                      // extra-lookahead solution and thus should cost us less 
+                      // overhead than the suggested post_lex alternative, but 
+                      // it comes at a cost itself: complex regex and 
+                      // duplication of language knowledge in the lexer itself, 
+                      // plus inclusion of *grammar* (syntactic) knowledge in 
+                      // the lexer too, where it doesn't belong in an ideal 
+                      // world...
+                      console.log('percent: ', yytext);
+                      return '%';
+
+<PERCENT_ALLOWED>.                     
+                      this.popState(); 
+                      this.unput(yytext); 
+                      // this.unput(yytext); can be used here instead of 
+                      // this.reject(); which would only work when we set the 
+                      // backtrack_lexer option
+
+
 \s+                   /* skip whitespace */
-[0-9]+("."[0-9]+)?\b  return 'NUMBER';
+
+[0-9]+("."[0-9]+)?\b  
+                      this.pushState('PERCENT_ALLOWED'); 
+                      return 'NUMBER';
+
 "*"                   return '*';
 "/"                   return '/';
 "-"                   return '-';
 "+"                   return '+';
 "^"                   return '^';
 "!"                   return '!';
-// `%`: the grammar is not LALR(1) unless we make the lexer smarter and have it disambiguate the `%` between `percent` and `modulo` functionality by additional look-ahead:
-// we introduce a lexical predicate here to disambiguate the `%` and thus keep the grammar LALR(1)!
-//      https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions
-"%"(?=\s*(?:[^0-9!]|E\b|PI\b|$))
-                      // followed by another operator, i.e. anything that's not a number, or The End: then this is a unary `percent` operator.
-                      // `1%-2` would be ambiguous but isn't: the `-` is considered as a unary minus and thus `%` is a `modulo` operator.
-                      // `1%*5` thus is treated the same: any operator following the `%` is assumed to be a *binary* operator. Hence `1% times 5`
-                      // which brings us to operators which only exist in unary form: `!`, and values which are not numbers, e.g. `PI` and `E`:
-                      // how about 
-                      // - `1%E` -> modulo E, 
-                      // - `1%!0` -> modulo 1 (as !0 -> 1) 
-                      //
-                      // Of course, the easier way to handle this would be to keep the lexer itself dumb and put this additional logic inside
-                      // a post_lex handler which should then be able to obtain additional look-ahead tokens and queue them for later, while
-                      // using those to inspect and adjust the lexer output now -- a trick which is used in the cockroachDB SQL parser code, for example.
-                      //
-                      // The above regex solution however is a more local extra-lookahead solution and thus should cost us less overhead than
-                      // the suggested post_lex alternative, but it comes at a cost itself: complex regex and duplication of language knowledge
-                      // in the lexer itself, plus inclusion of *grammar* (syntactic) knowledge in the lexer too, where it doesn't belong in an ideal world...
-                      console.log('percent: ', yytext);
-                      return '%';
 "%"                   return 'MOD';
 "("                   return '(';
 ")"                   return ')';
@@ -86,6 +91,10 @@
 .                     return 'INVALID';
 
 /lex
+
+
+
+
 
 /* operator associations and precedence */
 
@@ -97,7 +106,13 @@
 
 %token INVALID
 
+
+
 %start expressions
+
+%options parser-errors-are-recoverable lexer-errors-are-recoverable
+
+
 
 %% /* language grammar */
 
@@ -119,7 +134,11 @@ expressions
             print('~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': $2, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error)}, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
-            $$ = $e + 1;
+            $$ = $e + 3;
+            // ^-- every error recovery rule in this grammar adds a different value 
+            // so we can track which error rule(s) were executed during the parse
+            // of (intentionally) erroneous test expressions.
+            print($1, $2, $3, '==>', $$);
         }
     ;
 
@@ -167,20 +186,26 @@ p
 
 u
     :  u '!'                                    // 'factorial'
-        {{
+        {
             $$ = (function fact(n) {
-                return n == 0 ? 1 : fact(n - 1) * n;
+                n = Math.max(0, n | 0);
+                var rv = 1;
+                for (var i = 2; i <= n; i++) {
+                    rv *= i;
+                }
+                return rv;
             })($u);
             print($1, $2, '==>', $$);
-        }}
+        }
     | '!' u                                     // 'not'
         {
             $$ = ($u ? 0 : 1);
             print($1, $2, '==>', $$);
         }
-    | u '%'                                     // 'percent'
+    // the PERCENT `%` operator only accepts direct values with optional sign:
+    | NUMBER '%'
         {
-            $$ = $u / 100;
+            $$ = $NUMBER / 100;
             print($1, $2, '==>', $$);
         }
     | '-' u     // doesn't need the `%prec UMINUS` tweak as the grammar ruleset enforces the precedence implicitly
@@ -223,7 +248,11 @@ v
             print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
             //yyclearin;
-            $$ = 1;
+            $$ = 5;         
+            // ^-- every error recovery rule in this grammar adds a different value 
+            // so we can track which error rule(s) were executed during the parse
+            // of (intentionally) erroneous test expressions.
+            print($1, '==>', $$);
         }
     ;
 
@@ -273,9 +302,11 @@ parser.pre_parse = function (yy) {
 
 
 
-//parser.trace = function () {
-//    print.apply(null, ['TRACE: '].concat(Array.prototype.slice.call(arguments, 0)));
-//};
+if (0) {
+    parser.trace = function () {
+        print.apply(null, ['TRACE: '].concat(Array.prototype.slice.call(arguments, 0)));
+    };
+}
 
 
 
@@ -310,8 +341,8 @@ parser.main = function () {
     function test() {
         const formulas_and_expectations =  [
             basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
-            basenum + '+2*E%^PI^2+4+5',                              9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
-            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     41 + basenum, // with error recovery and all it gives you a value...
+            basenum + '+2*0.7%^PI^2+4+5',                              9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     49 + basenum, // with error recovery and all it gives you a value...
             basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
         ];
 
@@ -336,7 +367,7 @@ parser.main = function () {
     } else {
         bench(test);
     }
-    
+
     // if you get past the assert(), you're good.
     print("tested OK @", r(perf.mark(), 2), " ms");
 };

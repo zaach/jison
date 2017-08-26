@@ -135,6 +135,10 @@ expressions
             yyerrok;
             yyclearin;
             $$ = $e + 3;
+            // ^-- every error recovery rule in this grammar adds a different value 
+            // so we can track which error rule(s) were executed during the parse
+            // of (intentionally) erroneous test expressions.
+            print($1, $2, $3, '==>', $$);
         }
     ;
 
@@ -198,9 +202,10 @@ u
             $$ = ($u ? 0 : 1);
             print($1, $2, '==>', $$);
         }
-    | u '%'                                     // 'percent'
+    // the PERCENT `%` operator only accepts direct values with optional sign:
+    | NUMBER '%'
         {
-            $$ = $u / 100;
+            $$ = $NUMBER / 100;
             print($1, $2, '==>', $$);
         }
     | '-' u     // doesn't need the `%prec UMINUS` tweak as the grammar ruleset enforces the precedence implicitly
@@ -243,7 +248,11 @@ v
             print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
             //yyclearin;
-            $$ = 3;
+            $$ = 5;         
+            // ^-- every error recovery rule in this grammar adds a different value 
+            // so we can track which error rule(s) were executed during the parse
+            // of (intentionally) erroneous test expressions.
+            print($1, '==>', $$);
         }
     ;
 
