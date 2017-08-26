@@ -368,9 +368,9 @@ describe("JISON API", function () {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
         bnf: {
-            "A" :[ 'x A',
-                  ['y', 'return @y'],     // TODO: should return `@$` and jison should analyze the action code and insert the default action before the userland action code here
-            ''      ]
+            "A" :[ [ 'x A', 'return [@1, @A]'],    // TODO: should return `@$` and jison should analyze the action code and insert the default action before the userland action code here
+                   'y',     
+                   '' ]
         }
     };
 
@@ -386,10 +386,15 @@ describe("JISON API", function () {
     parser.lexer = new Lexer(lexData);
     var loc = parser.parse('xx\nxy');
 
-    assert.equal(loc.first_line, 2, 'first line correct');
-    assert.equal(loc.last_line, 2, 'last line correct');
-    assert.equal(loc.first_column, 1, 'first column correct');
-    assert.equal(loc.last_column, 2, 'last column correct');
+    assert.equal(loc[0].first_line, 2, 'first line correct');
+    assert.equal(loc[0].last_line, 2, 'second line correct');
+    assert.equal(loc[0].first_column, 0, 'first column correct');
+    assert.equal(loc[0].last_column, 1, 'second column correct');
+
+    assert.equal(loc[1].first_line, 2, 'third line correct');
+    assert.equal(loc[1].last_line, 2, 'fourth line correct');
+    assert.equal(loc[1].first_column, 1, 'third column correct');
+    assert.equal(loc[1].last_column, 2, 'fourth column correct');
   });
 
   it("test locations by term name in action", function () {
