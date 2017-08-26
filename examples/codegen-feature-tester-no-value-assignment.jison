@@ -314,7 +314,7 @@ parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
     assert(hash.yy);
     assert(this);
     assert(this !== parser.yy);
-    assert(this === hash.yy);
+    assert(this === hash.yy.parser || this === hash.yy.lexer);
     if (hash.recoverable) {
         hash.yy.parser.trace(str);
         hash.yy.lastErrorMessage = str;

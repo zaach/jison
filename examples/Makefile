@@ -42,7 +42,7 @@ CODEGEN_TARGETS = 												\
 		codegen-feature-tester-base-debug                       \
 		codegen-feature-tester-base-try-catch                   \
 		codegen-feature-tester-base-no-try-catch                \
-		codegen-feature-tester-base-no-default-action           \
+		codegen-feature-tester-no-default-action                \
 		codegen-feature-tester-base-error-recovery-10           \
 		codegen-feature-tester-all-default-action               \
 		codegen-feature-tester-no-err-api-usage                 \
@@ -682,9 +682,9 @@ codegen-feature-tester-base-error-recovery-10:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-error-recovery-10.js -Q=10
 	node ./output/$(CGT)/$(CGT)-base-error-recovery-10.js
 
-codegen-feature-tester-base-no-default-action:
-	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-no-default-action.js --no-default-action
-	node ./output/$(CGT)/$(CGT)-base-no-default-action.js
+codegen-feature-tester-no-default-action:
+	$(JISON) --main ./$(CGT)-no-default-action.jison -o ./output/$(CGT)/$(CGT)-no-default-action.js --no-default-action
+	node ./output/$(CGT)/$(CGT)-no-default-action.js
 
 codegen-feature-tester-all-default-action:
 	$(JISON) --main ./$(CGT)-all-default-action.jison -o ./output/$(CGT)/$(CGT)-all-default-action.js

@@ -314,7 +314,7 @@ parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
     assert(hash.yy);
     assert(this);
     assert(this !== parser.yy);
-    assert(this === hash.yy);
+    assert(this === hash.yy.parser || this === hash.yy.lexer);
     if (hash.recoverable) {
         hash.yy.parser.trace(str);
         hash.yy.lastErrorMessage = str;
@@ -354,7 +354,11 @@ parser.main = function () {
 
             var rv = parser.parse(formula);
             print("'" + formula + "' ==> ", rv, "\n");
-            assert.equal(rv, expectation);
+            if (isNaN(rv) && isNaN(expectation)) {
+              assert(1);
+            } else {
+              assert.equal(rv, expectation);
+            }
         }
         return formulas_and_expectations.length / 2;
     }
