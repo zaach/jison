@@ -44,9 +44,9 @@
     "@gerhobbelt/xregexp": "3.2.0-21"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-186.2",
-    "@gerhobbelt/jison-lex": "0.6.0-186",
-    "@gerhobbelt/lex-parser": "0.6.0-186",
+    "@gerhobbelt/ebnf-parser": "0.6.0-188",
+    "@gerhobbelt/jison-lex": "0.6.0-188",
+    "@gerhobbelt/lex-parser": "0.6.0-188",
     "browserify": "14.4.0",
     "chai": "4.1.1",
     "get-stdin": "5.0.1",
