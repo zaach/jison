@@ -173,9 +173,6 @@ parser.main = function compiledRunner(args) {
         var logcount = 0;
         parser.post_parse = function (tok) {
             logcount++;
-            if (logcount % 65000 === 0) {
-                console.log('run #', logcount);
-            }
         };
 
         bench(execute, 0, 10e3, null, function () {

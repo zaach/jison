@@ -245,12 +245,7 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
     var fmultiplier = 250 / sample1;
     var multiplier = Math.max(1, (fmultiplier + 0.5) | 0);
     run = Math.max(run, multiplier);
-    console.log({
-      fmultiplier,
-      multiplier,
-      sample1,
-      run
-    });    
+    console.log("run multiplier: ", run);
 
     // get the number of tests internal to the test function: 1 or more
     var internal_cnt = f();
@@ -324,7 +319,7 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
         //console.log('consumed', consumed, ts[ts.length - 1], i);
         if (last_report <= consumed) {
             console.log('#' + (ts.length * factor));
-            last_report = consumed + 500;
+            last_report = consumed + 1000;
         }
         if (consumed < minimum_run_time || ts.length < 10) {
             // stay in the loop until 5 seconds have expired or at least 10 rounds have been executed!
