@@ -138,7 +138,10 @@ if !        make git-tag                ; then break; fi;           # GOTO END o
 
 if ! are_we_okay ; then break; fi;          # GOTO END on failure
 
-if !        npm publish                 ; then break; fi;           # GOTO END on failure
+if !        make publish                ; then break; fi;           # GOTO END on failure
+
+if ! are_we_okay ; then break; fi;          # GOTO END on failure
+
 
 
 
@@ -147,7 +150,7 @@ if !        npm publish                 ; then break; fi;           # GOTO END o
 # ---------------------------------------------------------------------------
 
 
-if !        make bump                       ; then break; fi;           # GOTO END on failure
+if !        make bump                   ; then break; fi;           # GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi;          # GOTO END on failure

@@ -484,6 +484,17 @@ git:
 	-git pull --all; git push --all
 
 
+submodules-publish:
+	cd modules/ebnf-parser && make publish
+	cd modules/jison-lex && make publish
+	cd modules/jison2json && make publish
+	cd modules/json2jison && make publish
+	cd modules/lex-parser && make publish
+
+publish: submodules-publish
+	npm run pub 
+
+
 clean: clean-site
 	cd examples/ && make clean
 	cd modules/ebnf-parser && make clean
@@ -516,5 +527,5 @@ superclean: clean clean-site
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
 

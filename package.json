@@ -56,7 +56,8 @@
     "uglify-js": "3.0.28"
   },
   "scripts": {
-    "test": "make test"
+    "test": "make test",
+    "pub": "npm publish --access public"
   },
   "homepage": "http://jison.org"
 }
