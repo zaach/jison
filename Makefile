@@ -398,12 +398,16 @@ build_bnf: lib/util/parser.js
 lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
 					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	cat $@ | node __patch_require.js > $@-tmp.js
+	mv -f $@-tmp.js $@.js
 
 build_lex: lib/util/lex-parser.js
 
 lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
+	cat $@ | node __patch_require.js > $@-tmp.js
+	mv -f $@-tmp.js $@.js
 
 prep_util_dir:
 	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
@@ -414,22 +418,22 @@ prep_util_dir:
 
 
 lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/safe-code-exec-and-diag.js: modules/jison-lex/safe-code-exec-and-diag.js
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 
 submodules:
