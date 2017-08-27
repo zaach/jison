@@ -399,7 +399,7 @@ lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
 					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	cat $@ | node __patch_require.js > $@-tmp.js
-	mv -f $@-tmp.js $@.js
+	mv -f $@-tmp.js $@
 
 build_lex: lib/util/lex-parser.js
 
@@ -407,7 +407,7 @@ lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 	cat $@ | node __patch_require.js > $@-tmp.js
-	mv -f $@-tmp.js $@.js
+	mv -f $@-tmp.js $@
 
 prep_util_dir:
 	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
