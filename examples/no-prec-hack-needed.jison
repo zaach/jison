@@ -10,10 +10,6 @@
 /* lexical grammar */
 %lex
 
-// %options backtrack_lexer
-
-%s PERCENT_ALLOWED
-
 %%
 
 // `%`: the grammar is not LALR(1) unless we make the lexer smarter and have 
@@ -24,8 +20,12 @@
 //      https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions
 // we also use an (inclusive) lexical scope which turns this rule on only 
 // immediately after a number was lexed previously.
+//
+// As we only a percentage operator IMMEDIATELY FOLLOWING a NUMBER, we
+// merge the two into a single lex state and forego the cost of inclusive/exclusive 
+// lexer states:
 
-<PERCENT_ALLOWED>"%"(?=\s*(?:[^0-9)]|E\b|PI\b|$))
+([0-9]+("."[0-9]+)?)"%"(?=\s*(?:[^0-9a-zA-Z_)]|$))
                       // followed by another operator, i.e. anything that's 
                       // not a number, or The End: then this is a unary 
                       // `percent` operator.
@@ -59,21 +59,12 @@
                       // plus inclusion of *grammar* (syntactic) knowledge in 
                       // the lexer too, where it doesn't belong in an ideal 
                       // world...
-                      console.log('percent: ', yytext);
-                      return '%';
-
-<PERCENT_ALLOWED>.                     
-                      this.popState(); 
-                      this.unput(yytext); 
-                      // this.unput(yytext); can be used here instead of 
-                      // this.reject(); which would only work when we set the 
-                      // backtrack_lexer option
-
+                      yytext = this.matches[1];
+                      return 'PERCENT';
 
 \s+                   /* skip whitespace */
 
 [0-9]+("."[0-9]+)?\b  
-                      this.pushState('PERCENT_ALLOWED'); 
                       return 'NUMBER';
 
 "*"                   return '*';
@@ -82,7 +73,7 @@
 "+"                   return '+';
 "^"                   return '^';
 "!"                   return '!';
-"%"                   return 'MOD';
+"%"                   return '%';
 "("                   return '(';
 ")"                   return ')';
 "PI"                  return 'PI';
@@ -99,10 +90,9 @@
 /* operator associations and precedence */
 
 %left '+' '-'
-%left MOD '*' '/'
+%left '%' '*' '/'
 %right '^'                  // it really doesn't matter, but we ASSUME most expressions with chained power expressions, e.g. `10^3^2`, have the nearer-to-one(1) integer? values, which makes us guess it's slightly better, given the restrictions of floating point accuracy, to calculate the uppermost power part first, i.e. `3^2` instead of `10^3` in the given example.
 %right '!'
-%right '%'
 
 %token INVALID
 
@@ -110,7 +100,7 @@
 
 %start expressions
 
-%options parser-errors-are-recoverable lexer-errors-are-recoverable
+// %options parser-errors-are-recoverable lexer-errors-are-recoverable
 
 
 
@@ -157,7 +147,7 @@ e
     ;
 
 m
-    : m MOD m
+    : m '%' m
         {
             $$ = $1 % $3;
             print($1, $2, $3, '==>', $$);
@@ -203,10 +193,11 @@ u
             print($1, $2, '==>', $$);
         }
     // the PERCENT `%` operator only accepts direct values with optional sign:
-    | NUMBER '%'
+    | PERCENT
         {
-            $$ = $NUMBER / 100;
-            print($1, $2, '==>', $$);
+            var n = Number($PERCENT);
+            $$ = n / 100;
+            print($1, '==>', $$);
         }
     | '-' u     // doesn't need the `%prec UMINUS` tweak as the grammar ruleset enforces the precedence implicitly
         {
@@ -363,12 +354,13 @@ parser.main = function () {
         return formulas_and_expectations.length / 2;
     }
 
-    if (0) {
-        print = function dummy() {};
-    }
-    if (01) {
+    var do_bench = 1;
+
+    if (!do_bench) {
         test();
     } else {
+        print = function dummy() {};
+
         bench(test);
     }
 
