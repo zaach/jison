@@ -14,9 +14,12 @@ function puts(error, stdout, stderr) {
     util.puts(stdout);
 }
 
-console.log("Executing: " + "jison " + process.argv[2]);
+var fileName = path.join(path.dirname(process.argv[2]), path.basename(process.argv[2], '.jison')),
+    command = 'jison -o ' + fileName + '.js ' + process.argv[2];
 
-exec("jison " + process.argv[2], function (error) {
+console.log("Executing: " + command);
+
+exec(command, function (error) {
     if (error) {
         console.log(error);
         return;
@@ -24,13 +27,11 @@ exec("jison " + process.argv[2], function (error) {
 
     String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g, '');};
 
-    var fileName = process.argv[2].replace('.jison', ''),
-        comments = require(path.resolve(__dirname, '../comments.js')),
-        requirePath = path.resolve(process.argv[2]).replace('.jison', '') + '.js';
+    var comments = require(path.resolve(__dirname, '../comments.js'));
     
     console.log("Opening newly created jison js file: " + fileName + '.js');
 
-    var Parser = require(requirePath),
+    var Parser = require(path.resolve(fileName + '.js')),
         symbols = Parser.parser.symbols_,
         terminals = Parser.parser.terminals_,
         productions = Parser.parser.productions_,
@@ -93,7 +94,7 @@ exec("jison " + process.argv[2], function (error) {
 	
 	var option = {
         'namespace': 'Jison',
-        'class': fileName,
+        'class': path.basename(fileName),
         'fileName': fileName + '.php',
         'extends': '',
         'use': '',
