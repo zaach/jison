@@ -32,7 +32,8 @@ WHITESPACE      \s
 %%
 
 {WHITESPACE}+   {/* skip whitespace */}
-[{DIGITS}]+     %include "with-includes.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+[{DIGITS}]+     /* leading comment */  
+                %include "with-includes.returnNAT.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
 [{DIGITS}{ALPHA}]+     
                 %{ console.log("buggerit millenium hands and shrimp!"); %}
 
@@ -55,7 +56,9 @@ WHITESPACE      \s
 
 %%
 
+        // leading comment
 %include with-includes.prelude4.js
+        // trailing comment
 
 S
     : e EOF
@@ -74,7 +77,9 @@ e
     | '-' e                     %prec UNARY_MINUS 
         {$$ = ['-', $2];}
     | NAT
+        // leading comment
         %include "with-includes.parseInt.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+    | error
     ;
 
 

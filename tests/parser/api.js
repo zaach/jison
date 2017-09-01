@@ -292,7 +292,11 @@ describe("JISON API", function () {
     parser.lexer = new Lexer(lexData);
     parser.lexer.showPosition = null; // needed for "Unexpected" message
     parser.yy.parseError = function (str, hash) {
-        assert.ok(str.match("end of input"));
+        console.log("!!!!!!!!!!", {
+          str,
+          hash
+        });
+        assert.ok(str.match("end of input"), "expected 'end of input' but got: " + str);
         // as we override the default parseError(),
         // the default behaviour of throwing an exception is not available now;
         // instead the parser will return our return value:

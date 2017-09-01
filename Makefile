@@ -51,7 +51,7 @@ deploy: site
 	git checkout master
 
 test:
-	node_modules/.bin/mocha --timeout 8000 --recursive tests/
+	node_modules/.bin/mocha --timeout 18000 --recursive tests/
 
 web-examples: web/content/assets/js/calculator.js
 
