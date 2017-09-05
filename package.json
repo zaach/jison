@@ -41,6 +41,7 @@
     "jscodeshift": "github:GerHobbelt/jscodeshift#master",
     "@gerhobbelt/json5": "0.5.1-19",
     "@gerhobbelt/nomnom": "1.8.4-16",
+    "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
     "@gerhobbelt/xregexp": "3.2.0-21"
   },
   "devDependencies": {
@@ -48,11 +49,10 @@
     "@gerhobbelt/jison-lex": "0.6.0-188",
     "@gerhobbelt/lex-parser": "0.6.0-188",
     "browserify": "14.4.0",
-    "chai": "4.1.1",
+    "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "glob": "7.1.2",
     "mocha": "3.5.0",
-    "prettier": "1.5.3",
     "uglify-js": "3.0.28"
   },
   "scripts": {

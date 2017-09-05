@@ -14,7 +14,7 @@ B                     return 'SUFFIX2';
 /lex
 
 
-%options no-default-action no-try-catch
+%options default-action-mode=none,none no-try-catch
 
 
 %token PREFIX1 PREFIX2 SUFFIX1 SUFFIX2

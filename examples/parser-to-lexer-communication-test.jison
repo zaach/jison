@@ -9,10 +9,10 @@
  * delay there too?
  */
 
-//%debug                                           // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
+//%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 //%options output-debug-tables
-%options no-default-action                         // cost is within noise band. Seems ~0.5-1%
-%options no-try-catch                              // cost is within noise band. Seems ~1-2%
+%options default-action-mode=none,none              // cost is within noise band. Seems ~0.5-1%
+%options no-try-catch                               // cost is within noise band. Seems ~1-2%
 
 
 %lex
