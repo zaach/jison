@@ -36,13 +36,13 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "@gerhobbelt/recast": "0.12.7-7",
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "jscodeshift": "github:GerHobbelt/jscodeshift#master",
     "@gerhobbelt/json5": "0.5.1-19",
-    "@gerhobbelt/nomnom": "1.8.4-16",
+    "@gerhobbelt/nomnom": "1.8.4-17",
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
-    "@gerhobbelt/xregexp": "3.2.0-21"
+    "@gerhobbelt/recast": "0.12.7-7",
+    "@gerhobbelt/xregexp": "3.2.0-21",
+    "jscodeshift": "github:GerHobbelt/jscodeshift#master"
   },
   "devDependencies": {
     "@gerhobbelt/ebnf-parser": "0.6.0-188",
