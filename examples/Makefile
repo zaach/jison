@@ -683,7 +683,7 @@ codegen-feature-tester-base-error-recovery-10:
 	node ./output/$(CGT)/$(CGT)-base-error-recovery-10.js
 
 codegen-feature-tester-no-default-action:
-	$(JISON) --main ./$(CGT)-no-default-action.jison -o ./output/$(CGT)/$(CGT)-no-default-action.js --default-action-mode=none,none
+	$(JISON) --main ./$(CGT)-no-default-action.jison -o ./output/$(CGT)/$(CGT)-no-default-action.js --default-action=none,none
 	node ./output/$(CGT)/$(CGT)-no-default-action.js
 
 codegen-feature-tester-all-default-action:

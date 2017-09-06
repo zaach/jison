@@ -106,7 +106,7 @@ Output extra parser tables \(rules list + look-ahead analysis\) in generated mod
 :   -X, --no-default-resolve
 Act another way when a conflict is found in the grammar  \[false\]
 
-:   --default-action-mode=[for-values,for-locations]
+:   --default-action=[for-values,for-locations]
 Generate a parser which does NOT include the default "$$ = $1" action for every rule. This produces a slightly faster parser but now you are solely reponsible for propagating rule action "$$" results.  \[false\]
 
 :   --no-try-catch
