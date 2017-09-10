@@ -722,7 +722,7 @@ describe("JISON API", function () {
     var rv = parser.parse('xyx');
     //console.log('shared state = ', parser.yy, shared_state_base, work_state);
     assert.equal(rv, 'exyx', "parse xyx");
-    assert.equal(shared_state_base.step1, 0, "object to initialize shared state should not be modified");
+    assert  .equal(shared_state_base.step1, 0, "object to initialize shared state should not be modified");
     assert.equal(shared_state_base.step2, 0, "object to initialize shared state should not be modified");
     assert.equal(shared_state_base.step3, 0, "object to initialize shared state should not be modified");
 
@@ -812,10 +812,10 @@ describe("JISON API", function () {
           // 'value_stack',
           'yy' 
         ];
-        assert.equal(kl.length, kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.equal(kl.length, kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
 
         assert.strictEqual(typeof rv.hash.exception, "undefined", "lexer exceptions don't contain inner exceptions in their `hash` property");
     }
@@ -831,7 +831,7 @@ describe("JISON API", function () {
         rv = ex;
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
-        // the `hash` object is supposed to carry all these members:
+        // the parser `hash` object is supposed to carry all these members:
         const kl_sollwert3 = [ 
           'action',
           'destroy',
@@ -841,6 +841,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           'loc',
+          'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -855,10 +856,10 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
     assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
     assert.strictEqual(post_count, 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
@@ -940,10 +941,10 @@ describe("JISON API", function () {
           //'value_stack',
           'yy' 
         ];
-        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
     }
     assert.strictEqual(pre_count, 2, "pre_parse is invoked at the start of every parse");
     assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
@@ -967,6 +968,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           'loc',
+          'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -981,10 +983,10 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
     assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
     assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
@@ -1065,10 +1067,10 @@ describe("JISON API", function () {
           //'value_stack',
           'yy' 
         ];
-        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
     }
     assert.strictEqual(pre_count, 2, "pre_parse is invoked at the start of every parse");
     assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
@@ -1092,6 +1094,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           'loc',
+          'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -1106,10 +1109,10 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
     assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
     assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
@@ -1125,51 +1128,12 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "/* %options no-default-action */\n" +
-        "%%\n" +
-        "A :\n" +
-        "  x A   /* --- should have been default action --- */ \n" +
-        "| y A   %{ $$ = $A + $y; %}\n" +
-        "|       %{ $$ = 'e'; %}\n" +
-        ";\n" +
-        " %% ";
-
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
-
-    // since the no-default-action is set for this grammar, the return value is really 
-    // UNDETERMINED, but we happen to know just how the kernel and state stack work
-    // internally, hence we can at least state that the 'unexpected/undetermined'
-    // result of the `x A` rule will be at least reproducible, hence we can test for 
-    // the (weird) return value!
-    var rv = parser.parse('xyxyx');
-
-    var rv2 = parser2.parse('xyxyx');
-
-    assert.equal(rv, true, "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default action");
-
-    rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
-
-    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default action");
-
-
-    rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
-
-    assert.equal(rv, 'eyyyyyy', "parse xyxyx with no-default-action");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with default-action enabled (the default)");
+    assert.throws(function () {
+      parser.parse('xyxyx');
+    }, Error, "has been OBSOLETED");
   });
 
   it("test %options default-action-mode=skip", function () {
@@ -1182,20 +1146,8 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "\n" +
-        "%%\n" +
-        "A :\n" +
-        "  x A   /* --- should have been default action --- */ \n" +
-        "| y A   %{ $$ = $A + $y; %}\n" +
-        "|       %{ $$ = 'e'; %}\n" +
-        ";\n" +
-        " %% ";
-
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
-
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
 
     // since the default-action-mode is set to "skip" for this grammar, the return value is really 
     // UNDETERMINED, but we happen to know just how the kernel and state stack work
@@ -1204,29 +1156,15 @@ describe("JISON API", function () {
     // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    var rv2 = parser2.parse('xyxyx');
-
-    assert.equal(rv, true, "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
+    assert.equal(rv, 'x', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
-
 
     rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=skip,skip");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
   });
 
   it("test %options default-action-mode=none", function () {
@@ -1239,51 +1177,20 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "\n" +
-        "%%\n" +
-        "A :\n" +
-        "  x A   /* --- should have been default action --- */ \n" +
-        "| y A   %{ $$ = $A + $y; %}\n" +
-        "|       %{ $$ = 'e'; %}\n" +
-        ";\n" +
-        " %% ";
-
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
-
-    // since the default-action-mode is set to "skip" for this grammar, the return value is really 
-    // UNDETERMINED, but we happen to know just how the kernel and state stack work
-    // internally, hence we can at least state that the 'unexpected/undetermined'
-    // result of the `x A` rule will be at least reproducible, hence we can test for 
-    // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    var rv2 = parser2.parse('xyxyx');
-
     assert.equal(rv, true, "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
 
     rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
-
 
     rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=classic");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
   });
 
   it("test %options default-action-mode=classic", function () {
@@ -1296,51 +1203,20 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "\n" +
-        "%%\n" +
-        "A :\n" +
-        "  x A   /* --- should have been default action --- */ \n" +
-        "| y A   %{ $$ = $A + $y; %}\n" +
-        "|       %{ $$ = 'e'; %}\n" +
-        ";\n" +
-        " %% ";
-
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
-
-    // since the default-action-mode is set to "skip" for this grammar, the return value is really 
-    // UNDETERMINED, but we happen to know just how the kernel and state stack work
-    // internally, hence we can at least state that the 'unexpected/undetermined'
-    // result of the `x A` rule will be at least reproducible, hence we can test for 
-    // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    var rv2 = parser2.parse('xyxyx');
-
-    assert.equal(rv, true, "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
+    assert.equal(rv, 'x', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
-
 
     rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=classic");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
   });
 
   it("test %options default-action-mode=ast", function () {
@@ -1353,51 +1229,20 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "\n" +
-        "%%\n" +
-        "A :\n" +
-        "  x A   /* --- should have been default action --- */ \n" +
-        "| y A   %{ $$ = $A + $y; %}\n" +
-        "|       %{ $$ = 'e'; %}\n" +
-        ";\n" +
-        " %% ";
-
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
-
-    // since the default-action-mode is set to "skip" for this grammar, the return value is really 
-    // UNDETERMINED, but we happen to know just how the kernel and state stack work
-    // internally, hence we can at least state that the 'unexpected/undetermined'
-    // result of the `x A` rule will be at least reproducible, hence we can test for 
-    // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    var rv2 = parser2.parse('xyxyx');
-
     assert.equal(rv, true, "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.deepEqual(rv2, [ 'x', 'x,x,eyy' ], "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
 
     rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x,eyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
-
 
     rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
-
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
 
     assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=ast");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with the default default-action-mode=ast,merge produces a minimum kind of AST");
   });
 });
 
