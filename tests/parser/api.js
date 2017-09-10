@@ -784,7 +784,7 @@ describe("JISON API", function () {
     } catch (ex) {
         // exception is supposed to be a LEXER exception:
         rv = ex;
-        assert.ok(ex instanceof JisonLexerError, "parse failure is expected to originate from the lexer this time");
+        assert.instanceOf(ex, JisonLexerError, "parse failure is expected to originate from the lexer this time");
 
         assert.ok(rv.hash, "exception is supposed to be a parser/lexer exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
@@ -829,6 +829,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the parser `hash` object is supposed to carry all these members:
@@ -840,8 +844,8 @@ describe("JISON API", function () {
           'expected',
           'lexer',
           'line',
-          'loc',
-          'location_stack',
+          //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -913,6 +917,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.instanceOf(rv, parser.lexer.JisonLexerError, "exception is supposed to be a lexer exception");
+        assert.notInstanceOf(rv, parser.JisonParserError, "exception is not supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
 
         assert.strictEqual(rv.hash.exception, undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
@@ -956,6 +964,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -967,8 +979,8 @@ describe("JISON API", function () {
           'expected',
           'lexer',
           'line',
-          'loc',
-          'location_stack',
+          //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -1039,6 +1051,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.instanceOf(rv, parser.lexer.JisonLexerError, "exception is supposed to be a lexer exception");
+        assert.notInstanceOf(rv, parser.JisonParserError, "exception is not supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
 
         assert.strictEqual(rv.hash.exception, undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
@@ -1082,6 +1098,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -1093,8 +1113,8 @@ describe("JISON API", function () {
           'expected',
           'lexer',
           'line',
-          'loc',
-          'location_stack',
+          //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -1128,12 +1148,12 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var parser = new Jison.Parser(grammar);
-    parser.lexer = new Lexer(lexData);
-
+    var parser;
     assert.throws(function () {
-      parser.parse('xyxyx');
+      parser = new Jison.Parser(grammar);
     }, Error, "has been OBSOLETED");
+    //parser.lexer = new Lexer(lexData);
+    //parser.parse('xyxyx');
   });
 
   it("test %options default-action-mode=skip", function () {
@@ -1156,11 +1176,11 @@ describe("JISON API", function () {
     // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    assert.equal(rv, 'x', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv, 'eyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyx');
 
-    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv, 'eyyyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyyy');
 
@@ -1212,7 +1232,7 @@ describe("JISON API", function () {
 
     rv = parser.parse('yyyyx');
 
-    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv, 'xyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyyy');
 
@@ -1234,11 +1254,11 @@ describe("JISON API", function () {
 
     var rv = parser.parse('xyxyx');
 
-    assert.equal(rv, true, "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.deepEqual(rv, ['x', 'x,x,eyy'], "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyx');
 
-    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+    assert.equal(rv, 'x,eyyyy', "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyyy');
 
