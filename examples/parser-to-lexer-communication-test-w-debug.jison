@@ -9,9 +9,9 @@
  * delay there too?
  */
 
-%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
+//%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 //%options output-debug-tables
-%options default-action-mode=skip                   // cost is within noise band. Seems ~0.5-1%
+%options default-action-mode=none,none              // cost is within noise band. Seems ~0.5-1%
 %options no-try-catch                               // cost is within noise band. Seems ~1-2%
 
 
@@ -44,54 +44,54 @@
 
 
 S
-    : init x x e                -> $e;
+    : init x x e                -> parser.trace('S:complete = ', $e);
     ;
 
 init
-    : %epsilon                  
+    : %epsilon                  -> parser.trace('init:epsilon');
     ;
 
 x
-    : %epsilon                  -> '<X-epsilon>';
+    : %epsilon                  -> parser.trace('X:epsilon');                    $$ = '<X-epsilon>';
     ;
 
 e
-    : cmd e                     -> $cmd + ' | ' + $e;
-    | %epsilon                  -> '<E-epsilon>';
+    : cmd e                     -> parser.trace('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e;
+    | %epsilon                  -> parser.trace('e:epsilon');                    $$ = '<E-epsilon>';
     ;
 
 cmd
-    : a                         -> $a;
-    | f_a                       -> $f_a;
-    | b                         -> $b;
-    | f_b                       -> $f_b;
-    | error                     { yyerrok; yyclearin; $$ = 'ERROR'; }
+    : a                         -> parser.trace('cmd:a');                        $$ = $a;
+    | f_a                       -> parser.trace('cmd:function a()');             $$ = $f_a;
+    | b                         -> parser.trace('cmd:b');                        $$ = $b;
+    | f_b                       -> parser.trace('cmd:function b()');             $$ = $f_b;
+    | error                     -> parser.trace('cmd:error', get_reduced_error_info_obj($error) || $error);            yyerrok; yyclearin; $$ = 'ERROR';
     ;
 
 a
-    : A                         -> 'A[' + $A + ']';
+    : A                         -> parser.trace('a:A');                          $$ = 'A[' + $A + ']';
     ;
 
 f_a
-    : A lb e rb                 -> 'A' + $lb + $e + $rb;
+    : A lb e rb                 -> parser.trace('function a:', $e);              $$ = 'A' + $lb + $e + $rb;
     ;
 
 b
-    : B                         -> 'B[' + $B + ']';
+    : B                         -> parser.trace('b:B');                          $$ = 'B[' + $B + ']';
     ;
 
 f_b
-    : B lb e rb                 -> 'B' + $lb + $e + $rb;
+    : B lb e rb                 -> parser.trace('function b:', $e);              $$ = 'B' + $lb + $e + $rb;
     ;
 
 lb
-    : '('                       { yylexer.pushState('alt'); $$ = '('; }
-    | BEGIN                     -> '{';
+    : '('                       -> parser.trace('lb+PUSH:[(] ');                 yy.lexer.pushState('alt'); $$ = '(';
+    | BEGIN                     -> parser.trace('lb:[alt-(] ');                  $$ = '{';
     ;
 
 rb
-    : ')'                       -> ')';
-    | END                       { yylexer.popState(); $$ = '}'; }
+    : ')'                       -> parser.trace('lb:[)] ');                      $$ = ')';
+    | END                       -> parser.trace('lb+POP:[alt-)] ');              yy.lexer.popState(); $$ = '}';
     ;
 
 %%
@@ -167,7 +167,7 @@ parser.main = function compiledRunner(args) {
         // nuke the console output via trace() and output minimal progress while we run the benchmark:
         parser.trace = function nada_trace() {};
         // make sure to disable debug output at all, so we only get the conditional check as cost when `%debug` is enabled for this grammar
-        //parser.options.debug = false;     
+        parser.options.debug = false;     
 
         // track number of calls for minimal/FAST status update while benchmarking... 
         var logcount = 0;
@@ -175,7 +175,7 @@ parser.main = function compiledRunner(args) {
             logcount++;
         };
 
-        bench(execute, 0, 60e3, null, function () {
+        bench(execute, 0, 10e3, null, function () {
             console.log('run #', logcount);
         });
     }

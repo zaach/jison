@@ -108,6 +108,8 @@ BASIC_TARGETS =                                                 \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
+			parser-to-lexer-communication-test-w-debug          \
+			parser-to-lexer-communication-test--profiling       \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -172,6 +174,8 @@ MISC_TARGETS =                                                  \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
+			parser-to-lexer-communication-test-w-debug          \
+			parser-to-lexer-communication-test--profiling       \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -227,7 +231,7 @@ ALL_TARGETS =                                                   \
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean error-handling-tests basic-tests github-issue-tests misc-tests $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
+.PHONY: all clean superclean error-handling-tests basic-tests github-issue-tests misc-tests $(ALL_TARGETS) 
 
 
 clean:
@@ -538,6 +542,10 @@ parser-to-lexer-communication-test--profiling:
 	cat ./output/$@/profile.$@.txt > ./output/$@/profile.$@.$$( date +%s%N ).txt
 
 parser-to-lexer-communication-test:
+	$(JISON) --main -p lr ./$@.jison
+	node ./output/$@/$@.js
+
+parser-to-lexer-communication-test-w-debug:
 	$(JISON) --main -p lr ./$@.jison
 	node ./output/$@/$@.js
 
