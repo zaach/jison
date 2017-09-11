@@ -128,17 +128,18 @@ expressions
           // to be a recognizer, but that is not the case here!)
           $$ = $1;
         }
-    | e error EOF
+    | error EOF
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': $2, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error)}, yy.lastErrorMessage);
+
+            print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { '$1': typeof $1, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
-            $$ = $e + 3;
+            $$ = 17;
             // ^-- every error recovery rule in this grammar adds a different value 
             // so we can track which error rule(s) were executed during the parse
             // of (intentionally) erroneous test expressions.
-            print($1, $2, $3, '==>', $$);
+            print('ERROR', #1, $2, '==>', $$);
         }
     ;
 
@@ -152,6 +153,17 @@ e
         {
             $$ = $1 - $3;
             print($1, $2, $3, '==>', $$);
+        }
+    | e error e
+        {
+            print('~~~EXPR-OPERATOR~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': typeof $2, '$3': $3, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
+            yyerrok;
+            yyclearin;
+            $$ = $e1 + 13 + $e2;
+            // ^-- every error recovery rule in this grammar adds a different value 
+            // so we can track which error rule(s) were executed during the parse
+            // of (intentionally) erroneous test expressions.
+            print($1, 'ERROR', #2, $3, '==>', $$);
         }
     | m
     ;
@@ -245,14 +257,15 @@ v
     | error
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
+
+            print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, '@$': @$, token: parser.describeSymbol(#$), msg: $error.errStr }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
-            //yyclearin;
+            yyclearin;
             $$ = 5;         
             // ^-- every error recovery rule in this grammar adds a different value 
             // so we can track which error rule(s) were executed during the parse
             // of (intentionally) erroneous test expressions.
-            print($1, '==>', $$);
+            print('ERROR', #1, '==>', $$);
         }
     ;
 

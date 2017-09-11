@@ -131,7 +131,7 @@ expressions
     | e error EOF
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': $2, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error)}, yy.lastErrorMessage);
+            print('~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': typeof $2, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error)}, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
             $$ = $e + 3;
@@ -245,7 +245,7 @@ v
     | error
         {
             //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
+            print('~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, yytext: yytext, '@$': @$, token: parser.describeSymbol(#$), 'yyvstack': yyvstack }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
             //yyclearin;
             $$ = 5;         
