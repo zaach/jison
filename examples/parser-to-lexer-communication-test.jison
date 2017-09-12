@@ -9,7 +9,7 @@
  * delay there too?
  */
 
-%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
+//%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 //%options output-debug-tables
 %options default-action-mode=skip                   // cost is within noise band. Seems ~0.5-1%
 %options no-try-catch                               // cost is within noise band. Seems ~1-2%
@@ -167,7 +167,7 @@ parser.main = function compiledRunner(args) {
         // nuke the console output via trace() and output minimal progress while we run the benchmark:
         parser.trace = function nada_trace() {};
         // make sure to disable debug output at all, so we only get the conditional check as cost when `%debug` is enabled for this grammar
-        //parser.options.debug = false;     
+        parser.options.debug = false;     
 
         // track number of calls for minimal/FAST status update while benchmarking... 
         var logcount = 0;
@@ -175,7 +175,7 @@ parser.main = function compiledRunner(args) {
             logcount++;
         };
 
-        bench(execute, 0, 60e3, null, function () {
+        bench(execute, 0, 20e3, null, function () {
             console.log('run #', logcount);
         });
     }
