@@ -45,15 +45,15 @@
     "jscodeshift": "github:GerHobbelt/jscodeshift#master"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-188",
-    "@gerhobbelt/jison-lex": "0.6.0-188",
-    "@gerhobbelt/lex-parser": "0.6.0-188",
+    "@gerhobbelt/ebnf-parser": "0.6.0-190",
+    "@gerhobbelt/jison-lex": "0.6.0-190",
+    "@gerhobbelt/lex-parser": "0.6.0-190",
     "browserify": "14.4.0",
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "glob": "7.1.2",
-    "mocha": "3.5.0",
-    "uglify-js": "3.0.28"
+    "mocha": "3.5.3",
+    "uglify-js": "3.1.0"
   },
   "scripts": {
     "test": "make test",

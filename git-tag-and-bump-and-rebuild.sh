@@ -60,6 +60,17 @@ while true; do
 #          Commit.
 # ---------------------------------------------------------------------------
 
+
+# discard the package-lock files as these keep us stuck on specific versions while we WANT to upgrade all around now!
+find . -iname package-lock.json -delete
+
+
+if !        make npm-update                 ; then break; fi;           # GOTO END on failure
+
+
+# make sure we regenerate the package-lock.json files BEFORE we run another git-commit:
+
+
 if !        make superclean                 ; then break; fi;           # GOTO END on failure
 if !        make prep                       ; then break; fi;           # GOTO END on failure
 if !        make site                       ; then break; fi;           # GOTO END on failure
@@ -72,28 +83,29 @@ if ! are_we_okay ; then break; fi;          # GOTO END on failure
 # ^-- one or more subrepo's may fail as there'ld be nothing to commit,
 #     which would abort the `git submodule foreach` command!
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
+
 
 
 # ---------------------------------------------------------------------------
