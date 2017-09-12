@@ -259,6 +259,9 @@ examples/issue-348: build
 examples/issue-357-url-lexing: build
 	cd examples/ && make issue-357-url-lexing
 
+examples/issue-360: build
+	cd examples/ && make issue-360
+
 examples/jscore: build
 	cd examples/ && make jscore
 

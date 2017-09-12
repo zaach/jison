@@ -34,7 +34,8 @@ GITHUB_ISSUE_TARGETS =                                          \
 			issue-344-BAD                                       \
 			issue-344-2-BAD                                     \
 			issue-348                                           \
-			issue-357-url-lexing
+			issue-357-url-lexing								\
+			issue-360                                           
 
 
 CODEGEN_TARGETS = 												\
@@ -380,6 +381,11 @@ issue-348:
 # build *AND* run the test:
 issue-357-url-lexing:
 	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test (JSON input!):
+issue-360:
+	$(JISON) --main ./$@.json
 	node ./output/$@/$@.js
 
 jscore:
