@@ -45,9 +45,9 @@
     "jscodeshift": "github:GerHobbelt/jscodeshift#master"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-190",
-    "@gerhobbelt/jison-lex": "0.6.0-190",
-    "@gerhobbelt/lex-parser": "0.6.0-190",
+    "@gerhobbelt/ebnf-parser": "0.6.0-191",
+    "@gerhobbelt/jison-lex": "0.6.0-191",
+    "@gerhobbelt/lex-parser": "0.6.0-191",
     "browserify": "14.4.0",
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
