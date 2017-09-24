@@ -45,9 +45,9 @@
     "jscodeshift": "github:GerHobbelt/jscodeshift#master"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-191",
-    "@gerhobbelt/jison-lex": "0.6.0-191",
-    "@gerhobbelt/lex-parser": "0.6.0-191",
+    "@gerhobbelt/ebnf-parser": "0.6.0-192",
+    "@gerhobbelt/jison-lex": "0.6.0-192",
+    "@gerhobbelt/lex-parser": "0.6.0-192",
     "babel-cli": "6.26.0",
     "babel-plugin-transform-es2015-function-name": "6.24.1",
     "babel-plugin-transform-es2015-template-literals": "6.22.0",
