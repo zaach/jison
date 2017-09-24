@@ -547,7 +547,7 @@ var parser = {
     //   no try..catch: ................... false
     //   no default resolve on conflict:    false
     //   on-demand look-ahead: ............ false
-    //   error recovery token skip maximum: 3
+    //   error recovery token skip maximum: 10
     //   yyerror in parse actions is: ..... recoverable,
     //   yyerror in lexer actions and other non-fatal lexer are:
     //   .................................. recoverable,
@@ -596,7 +596,7 @@ yy: {},
 options: {
   type: "lalr",
   hasPartialLrUpgradeOnConflict: true,
-  errorRecoveryTokenDiscardCount: 3,
+  errorRecoveryTokenDiscardCount: 10,
   parserErrorsAreRecoverable: true
 },
 symbols_: {
