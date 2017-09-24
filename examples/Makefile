@@ -385,7 +385,7 @@ issue-357-url-lexing:
 
 # build *AND* run the test (JSON input!):
 issue-360:
-	$(JISON) --main --export-ast ./$@.json
+	$(JISON) --main --export-ast+ ./$@.json
 	node ./output/$@/$@.js $@.test-input-1.txt
 
 jscore:
