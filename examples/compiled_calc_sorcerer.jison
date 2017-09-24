@@ -159,9 +159,9 @@
 
 
 
-%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+%options default-action-mode=none,merge     // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
 
-%parse-param globalSpace        // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
+%parse-param globalSpace                    // extra function parameter for the generated parse() API; we use this one to pass in a reference to our workspace for the functions to play with.
 
 
 

@@ -1,5 +1,13 @@
+
+## Dependency directory
+## Commenting this out is preferred by some people, see
+## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
+node_modules/
+
+
+# Apple Crap
 .DS_Store
-node_modules
+
 
 # Editor backup files
 *.bak
@@ -8,5 +16,10 @@ node_modules
 web/
 modules/
 
-examples/output/
-tmp/
+# ignore the compiler output for any examples:            
+/examples/output
+
+# scratch space
+/tmp/
+/book-using-jison-beyond-the-basics/base-materials/
+

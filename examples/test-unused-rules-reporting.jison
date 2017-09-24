@@ -4,7 +4,7 @@
 //
 
 // build options:
-%options no-try-catch no-default-action main
+%options no-try-catch default-action-mode=none,none main
 
 
 %lex
@@ -77,23 +77,23 @@ parser.main = function () {
     //
     // BIG FAT WARNING:
     //
-    // Due to `%options no-try-catch no-default-action`, combined with the
+    // Due to `%options no-try-catch default-action-mode=none,none`, combined with the
     // *lack* of action code for the `e: WORD` grammar rule, *that* rule's
     // result `$$` will be UNDETERMINED, i.e. up for grabs, random, chaos.
     //
-    // In *this particular example and input being parsed* this 
-    // translates to the *previous* `$$` being picked up, which happens to
-    // be known as it comes out of the epsilon rule: `"ε"`, hence
-    // the 'expected output' IS NOT `"εεaε"` but `"εεεε"`! 
+    // Since JISON commit 5f8e197e44b5d2526e7641c8511402c6675d25db this 
+    // translates to any rule *without any action* to produce the
+    // `undefined` value via the injected `$$ = undefined` action code, hence
+    // the 'expected output' IS NOT `"εεaε"` but `"εεundefinedε"`! 
     //
     // Yes, *functionally* that's an ERROR/BUG for certain, but the
     // technicalities mentioned above make this the 'correct' output
     // anyway. The ACTUAL BUG in this grammar example is the `e: WORD` rule
     // **not having any action code assigning a value to `$$`** since that
     // is the only sane activity *everywhere* when you choose to compile
-    // with `%options no-default-action`.
+    // with `%options default-action-mode=none,none`.
     //
-    // Aside: note that `%options no-try-catch no-default-action` does
+    // Aside: note that `%options no-try-catch default-action-mode=none,none` does
     // remove additional safeguards in the parser kernel code: this option
     // combo also causes code to be removed with sets `$0` and `$$` to
     // `undefined` *before* any rule's action code is executed so any
@@ -102,13 +102,13 @@ parser.main = function () {
     //
     //     %{ $$ = Math.sin($$ /* BUG! NOT SANE TO USE `$$` or `$0` AS INPUT! */); %}
     //
-    // *Caveat Emptor* i.e. when ou choose Speed, you are expected to
+    // *Caveat Emptor* i.e. when you choose Speed, you are expected to
     // be fully aware that Safety is Not An Option Any More(tm)!
     //
 
     console.log("(reduce epsilon rules as early as possible)\n\n  a ==> ", rv);
 
-    assert.equal(rv, "εεεε");
+    assert.equal(rv, "εεundefinedε");
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

@@ -265,7 +265,7 @@ end mc
 
     var rv = parser.parse(input);
     console.log("test #1: ==> ", rv);
-    assert.equal(rv, 'define');
+    assert.equal(rv, "define", "test returns TRUE because the start rule has an action block, so no default action inserted and $$ has been set to $1 === 'DEFINE' then");
 
     // if you get past the assert(), you're good.
     console.log("tested OK");

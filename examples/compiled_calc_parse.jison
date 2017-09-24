@@ -291,9 +291,9 @@
 %ebnf
 
 
-//%options on-demand-lookahead    // camelCased: option.onDemandLookahead -- WARNING: using this has a negative effect on your error reports: a lot of 'expected' symbols are reported which are not in the real FOLLOW set!
-%options no-default-action      // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
-%options no-try-catch           // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
+//%options on-demand-lookahead            // camelCased: option.onDemandLookahead -- WARNING: using this has a negative effect on your error reports: a lot of 'expected' symbols are reported which are not in the real FOLLOW set!
+%options default-action-mode=none,merge   // JISON shouldn't bother injecting the default `$$ = $1` action anywhere!
+%options no-try-catch                     // we assume this parser won't ever crash and we want the fastest Animal possible! So get rid of the try/catch/finally in the kernel!
 
 // allow the parser to eat up to 42 tokens while it's trying to recover from a parse error 
 // (jison/yacc default = 3, but you get much less parseError calls when the sh*t really hits the fan 

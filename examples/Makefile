@@ -22,7 +22,7 @@ ERROR_HANDLING_TARGETS =                                        \
 
 
 
-GITHUB_ISSUE_TARGETS =                                    \
+GITHUB_ISSUE_TARGETS =                                          \
 			issue-205                                           \
 			issue-205-2                                         \
 			issue-205-3                                         \
@@ -33,11 +33,43 @@ GITHUB_ISSUE_TARGETS =                                    \
 			issue-342                                           \
 			issue-344-BAD                                       \
 			issue-344-2-BAD                                     \
-			issue-348                                           
+			issue-348                                           \
+			issue-357-url-lexing								\
+			issue-360                                           
+
+
+CODEGEN_TARGETS = 												\
+		codegen-feature-tester-base                             \
+		codegen-feature-tester-base-debug                       \
+		codegen-feature-tester-base-try-catch                   \
+		codegen-feature-tester-base-no-try-catch                \
+		codegen-feature-tester-no-default-action                \
+		codegen-feature-tester-base-error-recovery-10           \
+		codegen-feature-tester-all-default-action               \
+		codegen-feature-tester-no-err-api-usage                 \
+		codegen-feature-tester-no-error-recovery                \
+		codegen-feature-tester-no-location-assignment           \
+		codegen-feature-tester-no-location-info                 \
+		codegen-feature-tester-no-location-tracking             \
+		codegen-feature-tester-no-parseerror                    \
+		codegen-feature-tester-no-value-assignment              \
+		codegen-feature-tester-no-value-tracking                \
+		codegen-feature-tester-no-value-work                    \
+		codegen-feature-tester-no-yyclearin                     \
+		codegen-feature-tester-no-yyerrok                       \
+		codegen-feature-tester-no-yyerror                       \
+		codegen-feature-tester-no-yyleng                        \
+		codegen-feature-tester-no-yylineo                       \
+		codegen-feature-tester-no-yyloc                         \
+		codegen-feature-tester-no-yyrecovering                  \
+		codegen-feature-tester-no-yysp                          \
+		codegen-feature-tester-no-yysstack                      \
+		codegen-feature-tester-no-yystack                       \
+		codegen-feature-tester-no-yytext                                    
 
 
 
-BASIC_TARGETS =                                           \
+BASIC_TARGETS =                                                 \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
@@ -50,6 +82,7 @@ BASIC_TARGETS =                                           \
 			ccalc                                               \
 			classy                                              \
 			classy_ast                                          \
+			codegen-feature-tester                              \
 			comments                                            \
 			compiled_calc                                       \
 			dism                                                \
@@ -76,6 +109,8 @@ BASIC_TARGETS =                                           \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
+			parser-to-lexer-communication-test-w-debug          \
+			parser-to-lexer-communication-test--profiling       \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -88,6 +123,8 @@ BASIC_TARGETS =                                           \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
 			test-propagation-rules-reduction-1                  \
+			test-unused-rules-reporting                         \
+			test-unused-rules-reporting-alt                     \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -96,7 +133,7 @@ BASIC_TARGETS =                                           \
 
 
 
-MISC_TARGETS =                                                   \
+MISC_TARGETS =                                                  \
 			basic                                               \
 			basic2                                              \
 			basic2_lex                                          \
@@ -134,9 +171,12 @@ MISC_TARGETS =                                                   \
 			lr-but-not-lalr                                     \
 			mfcalc                                              \
 			no-prec-hack-needed                                 \
+			codegen-feature-tester                              \
 			nv_classy_ast                                       \
 			olmenu-proto2                                       \
 			parser-to-lexer-communication-test                  \
+			parser-to-lexer-communication-test-w-debug          \
+			parser-to-lexer-communication-test--profiling       \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -149,6 +189,8 @@ MISC_TARGETS =                                                   \
 			test-nonassociative-operator-1                      \
 			test-nonassociative-operator-2                      \
 			test-propagation-rules-reduction-1                  \
+			test-unused-rules-reporting                         \
+			test-unused-rules-reporting-alt                     \
 			theory-left-recurs-01                               \
 			unicode                                             \
 			unicode2                                            \
@@ -159,9 +201,10 @@ MISC_TARGETS =                                                   \
 
 ALL_TARGETS =                                                   \
 			$(BASIC_TARGETS)                                    \
-			$(GITHUB+ISSUE_TARGETS)                             \
+			$(GITHUB_ISSUE_TARGETS)                             \
 			$(MISC_TARGETS)                                     \
 			$(ERROR_HANDLING_TARGETS)                           \
+			$(CODEGEN_TARGETS) 									\
 			ansic                                               \
 			btyacc-ansiC                                        \
 			btyacc-ansiC2                                       \
@@ -189,7 +232,7 @@ ALL_TARGETS =                                                   \
 
 all: $(ALL_TARGETS)
 
-.PHONY: all clean superclean error-handling-tests basic-tests github-issue-tests misc-tests $(ALL_TARGETS) parser-to-lexer-communication-test--profiling
+.PHONY: all clean superclean error-handling-tests basic-tests github-issue-tests misc-tests $(ALL_TARGETS) 
 
 
 clean:
@@ -334,6 +377,16 @@ issue-344-2:
 issue-348:
 	$(JISON) --main ./$@.jison
 	node ./output/$@/$@.js
+
+# build *AND* run the test:
+issue-357-url-lexing:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+# build *AND* run the test (JSON input!):
+issue-360:
+	$(JISON) --main --export-ast+ ./$@.json
+	node ./output/$@/$@.js $@.test-input-1.txt
 
 jscore:
 	$(JISON) --main ./$@.jison
@@ -498,6 +551,10 @@ parser-to-lexer-communication-test:
 	$(JISON) --main -p lr ./$@.jison
 	node ./output/$@/$@.js
 
+parser-to-lexer-communication-test-w-debug:
+	$(JISON) --main -p lr ./$@.jison
+	node ./output/$@/$@.js
+
 faking-multiple-start-rules:
 	$(JISON) --main ./$@.jison
 
@@ -561,6 +618,15 @@ test-propagation-rules-reduction-1:
 	node ./output/$@/$@.js
 	node ./output/$@/test-propagation-rules-reduction-2.js
 
+test-unused-rules-reporting:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+test-unused-rules-reporting-alt:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+
 
 
 # example of the use of the `%import symbols ...` statement: multi-phase engines
@@ -592,6 +658,142 @@ compiled_calc:
 	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
 	# and run it!
 	node output/$@/$@_exec.js $@_input.txt
+
+
+
+
+
+CGT=codegen-feature-tester
+
+codegen-feature-tester:                                                     \
+		$(CODEGEN_TARGETS)                                                  \
+		reference-output/README.md
+	# only run a DIFF once we have generated all outputs: 
+	# that way we get to see all diffs at once and probably have a 
+	# faster turn-around cycle when we go and fix any diffs observed
+	# here.
+	-diff -C 1 -t --tabsize=4 -a -I ' generated by ' -B -E -Z -w ./reference-output/codegen-feature-tester/ ./output/codegen-feature-tester/    > ./codegen-feature-tester.diff-report.patch
+	diff -q    -t --tabsize=4 -a -I ' generated by ' -B -E -Z -w ./reference-output/codegen-feature-tester/ ./output/codegen-feature-tester/    
+
+
+codegen-feature-tester-base:
+	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base.js
+	node ./output/$(CGT)/$(CGT)-base.js
+
+codegen-feature-tester-base-debug:
+	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-debug.js --debug
+	node ./output/$(CGT)/$(CGT)-base-debug.js
+
+codegen-feature-tester-base-try-catch:
+	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-try-catch.js --try-catch
+	node ./output/$(CGT)/$(CGT)-base-try-catch.js
+
+codegen-feature-tester-base-no-try-catch:
+	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-no-try-catch.js --no-try-catch
+	node ./output/$(CGT)/$(CGT)-base-no-try-catch.js
+
+codegen-feature-tester-base-error-recovery-10:
+	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-error-recovery-10.js -Q=10
+	node ./output/$(CGT)/$(CGT)-base-error-recovery-10.js
+
+codegen-feature-tester-no-default-action:
+	$(JISON) --main ./$(CGT)-no-default-action.jison -o ./output/$(CGT)/$(CGT)-no-default-action.js --default-action=none,none
+	node ./output/$(CGT)/$(CGT)-no-default-action.js
+
+codegen-feature-tester-all-default-action:
+	$(JISON) --main ./$(CGT)-all-default-action.jison -o ./output/$(CGT)/$(CGT)-all-default-action.js
+	node ./output/$(CGT)/$(CGT)-all-default-action.js
+
+codegen-feature-tester-no-yyleng:
+	$(JISON) --main ./$(CGT)-no-yyleng.jison -o ./output/$(CGT)/$(CGT)-no-yyleng.js
+	node ./output/$(CGT)/$(CGT)-no-yyleng.js
+
+codegen-feature-tester-no-yylineo:
+	$(JISON) --main ./$(CGT)-no-yylineo.jison -o ./output/$(CGT)/$(CGT)-no-yylineo.js
+	node ./output/$(CGT)/$(CGT)-no-yylineo.js
+
+codegen-feature-tester-no-yytext:
+	$(JISON) --main ./$(CGT)-no-yytext.jison -o ./output/$(CGT)/$(CGT)-no-yytext.js
+	node ./output/$(CGT)/$(CGT)-no-yytext.js
+
+codegen-feature-tester-no-yyloc:
+	$(JISON) --main ./$(CGT)-no-yyloc.jison -o ./output/$(CGT)/$(CGT)-no-yyloc.js
+	node ./output/$(CGT)/$(CGT)-no-yyloc.js
+
+codegen-feature-tester-no-parseerror:
+	$(JISON) --main ./$(CGT)-no-parseerror.jison -o ./output/$(CGT)/$(CGT)-no-parseerror.js
+	node ./output/$(CGT)/$(CGT)-no-parseerror.js
+
+codegen-feature-tester-no-yyerror:
+	$(JISON) --main ./$(CGT)-no-yyerror.jison -o ./output/$(CGT)/$(CGT)-no-yyerror.js
+	node ./output/$(CGT)/$(CGT)-no-yyerror.js
+
+codegen-feature-tester-no-yyrecovering:
+	$(JISON) --main ./$(CGT)-no-yyrecovering.jison -o ./output/$(CGT)/$(CGT)-no-yyrecovering.js
+	node ./output/$(CGT)/$(CGT)-no-yyrecovering.js
+
+codegen-feature-tester-no-yyerrok:
+	$(JISON) --main ./$(CGT)-no-yyerrok.jison -o ./output/$(CGT)/$(CGT)-no-yyerrok.js
+	node ./output/$(CGT)/$(CGT)-no-yyerrok.js
+
+codegen-feature-tester-no-yyclearin:
+	$(JISON) --main ./$(CGT)-no-yyclearin.jison -o ./output/$(CGT)/$(CGT)-no-yyclearin.js
+	node ./output/$(CGT)/$(CGT)-no-yyclearin.js
+
+codegen-feature-tester-no-value-tracking:
+	$(JISON) --main ./$(CGT)-no-value-tracking.jison -o ./output/$(CGT)/$(CGT)-no-value-tracking.js
+	node ./output/$(CGT)/$(CGT)-no-value-tracking.js
+
+codegen-feature-tester-no-value-assignment:
+	$(JISON) --main ./$(CGT)-no-value-assignment.jison -o ./output/$(CGT)/$(CGT)-no-value-assignment.js
+	node ./output/$(CGT)/$(CGT)-no-value-assignment.js
+
+codegen-feature-tester-no-location-tracking:
+	$(JISON) --main ./$(CGT)-no-location-tracking.jison -o ./output/$(CGT)/$(CGT)-no-location-tracking.js
+	node ./output/$(CGT)/$(CGT)-no-location-tracking.js
+
+codegen-feature-tester-no-location-assignment:
+	$(JISON) --main ./$(CGT)-no-location-assignment.jison -o ./output/$(CGT)/$(CGT)-no-location-assignment.js
+	node ./output/$(CGT)/$(CGT)-no-location-assignment.js
+
+codegen-feature-tester-no-yystack:
+	$(JISON) --main ./$(CGT)-no-yystack.jison -o ./output/$(CGT)/$(CGT)-no-yystack.js
+	node ./output/$(CGT)/$(CGT)-no-yystack.js
+
+codegen-feature-tester-no-yysstack:
+	$(JISON) --main ./$(CGT)-no-yysstack.jison -o ./output/$(CGT)/$(CGT)-no-yysstack.js
+	node ./output/$(CGT)/$(CGT)-no-yysstack.js
+
+codegen-feature-tester-no-yysp:
+	$(JISON) --main ./$(CGT)-no-yysp.jison -o ./output/$(CGT)/$(CGT)-no-yysp.js
+	node ./output/$(CGT)/$(CGT)-no-yysp.js
+
+codegen-feature-tester-no-error-recovery:
+	$(JISON) --main ./$(CGT)-no-error-recovery.jison -o ./output/$(CGT)/$(CGT)-no-error-recovery.js
+	node ./output/$(CGT)/$(CGT)-no-error-recovery.js
+
+# (!info.actionsUseYYLOC && !info.actionsUseLocationTracking && !info.actionsUseLocationAssignment)
+codegen-feature-tester-no-location-info:
+	$(JISON) --main ./$(CGT)-no-location-info.jison -o ./output/$(CGT)/$(CGT)-no-location-info.js
+	node ./output/$(CGT)/$(CGT)-no-location-info.js
+
+# (!info.actionsUseValueTracking && !info.actionsUseValueAssignment) {
+codegen-feature-tester-no-value-work:
+	$(JISON) --main ./$(CGT)-no-value-work.jison -o ./output/$(CGT)/$(CGT)-no-value-work.js
+	node ./output/$(CGT)/$(CGT)-no-value-work.js
+
+# (!info.actionsUseYYERROK && !info.actionsUseYYRECOVERING && !info.actionsUseYYCLEARIN && !info.actionsUseYYERROR) {
+codegen-feature-tester-no-err-api-usage:
+	$(JISON) --main ./$(CGT)-no-err-api-usage.jison -o ./output/$(CGT)/$(CGT)-no-err-api-usage.js
+	node ./output/$(CGT)/$(CGT)-no-err-api-usage.js
+
+
+
+
+
+
+
+
 
 
 

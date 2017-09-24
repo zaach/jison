@@ -39,7 +39,7 @@ zz          return 'ZZ';
 
 %options debug=0
          output-debug-tables=0
-         no-default-action=1
+         default-action-mode=none,none
 
 
 %%

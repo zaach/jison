@@ -3,6 +3,7 @@
 *.php           text eol=lf
 *.inc           text eol=lf
 *.html          text eol=lf
+*.json          text eol=lf
 *.js            text eol=lf
 *.css           text eol=lf
 *.less          text eol=lf
@@ -12,6 +13,7 @@
 *.xml           text eol=lf
 *.md            text eol=lf
 *.markdown      text eol=lf
+*.json5         text eol=lf
 
 *.pdf			binary
 *.psd			binary
