@@ -17,8 +17,8 @@
 * [First Principles: Parsing Theory](gitbook-is-buggered.md#Theory)
   * [Parsing a Language: CFGs a.k.a. Context Free Grammars, and why they're such a bother](gitbook-is-buggered.md#Methods)
   * [Parsing Methods: Bottom-up and Top-down](gitbook-is-buggered.md#Methods)
-  * [Bottom-up: SLR, LR\(0\), LR\(1\), LALR\(1\), LR\(k\), why do we care?](gitbook-is-buggered.md#Methods)
-  * [Top-down: LL\(1\), LL\(k\), LL\(\*\), why do we care?](gitbook-is-buggered.md#Methods)
+  * [Bottom-up: SLR, LR(0), LR(1), LALR(1), LR(k), why do we care?](gitbook-is-buggered.md#Methods)
+  * [Top-down: LL(1), LL(k), LL(*), why do we care?](gitbook-is-buggered.md#Methods)
   * [More from Top-down News Desk: PEG](gitbook-is-buggered.md#PEG)
   * [... and when you truly wish to travel The Light Fantastic, here's a little taste for ya](gitbook-is-buggered.md#beyond_the_pale)
 * [Parser Engineering: practice vs. theory](gitbook-is-buggered.md#Engineering)
@@ -34,7 +34,7 @@
 * [Anticipating the devil waiting in the details: JISON vs. YACC, BISON, BTYACC, ...](gitbook-is-buggered.md#comparing_JISON)
 * [Performance Considerations](gitbook-is-buggered.md#optimizing_grammars)
   * [What does reducing the number of parse states do?](gitbook-is-buggered.md#optimizing)
-  * \[What is the bother about Left Recursive vs. Right Recursive grammar rules?\]
+  * [What is the bother about Left Recursive vs. Right Recursive grammar rules?]
     * [... when you use LR type parsers](gitbook-is-buggered.md#dummy)
     * [... when you use LL type parsers](gitbook-is-buggered.md#dummy)
     * [... when you use PEG type parsers](gitbook-is-buggered.md#dummy)
@@ -42,7 +42,7 @@
 ## Diving Into JISON
 
 * [Simply Invoking JISON](gitbook-is-buggered.md#Basic_Invoke)
-  * [The CLI \(Command Line Interface\)](gitbook-is-buggered.md#CLI)
+  * [The CLI (Command Line Interface)](gitbook-is-buggered.md#CLI)
   * [The API: invoking JISON programmatically](gitbook-is-buggered.md#JISON_API)
 * [Simply Using JISON](gitbook-is-buggered.md#Basic_Usage)
   * [Writing Your First Grammar](gitbook-is-buggered.md#first_grammar)
