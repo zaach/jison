@@ -473,7 +473,7 @@ describe("Parser Actions", function () {
     };
     var grammar = {
         bnf: {
-            "E"   :[ ["E y", "return first + second;"],
+            "E"   :[ ["E y", "return yy.first + yy.second;"],
                      "" ]
         },
         parseParams: ["first", "second"]

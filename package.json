@@ -5,8 +5,8 @@
     "url": "http://zaa.ch"
   },
   "name": "jison-gho",
-  "description": "A parser generator with Bison's API (derived off zaach/jison repo)",
-  "version": "0.4.18-186",
+  "description": "A parser generator with a Bison/YACC-similar API (derived off zaach/jison repo)",
+  "version": "0.6.0-194",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -36,26 +36,31 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "ebnf-parser": "github:GerHobbelt/ebnf-parser#master",
-    "jison-lex": "github:GerHobbelt/jison-lex#master",
-    "lex-parser": "github:GerHobbelt/lex-parser#master",
-    "recast": "github:GerHobbelt/recast#master",
-    "ast-util": "github:GerHobbelt/ast-util#master",
-    "jscodeshift": "github:GerHobbelt/jscodeshift#master",
-    "json5": "github:GerHobbelt/json5#master",
-    "@gerhobbelt/nomnom": "1.8.4-16",
-    "xregexp": "github:GerHobbelt/xregexp#master"
+    "@gerhobbelt/ast-util": "0.6.1-4",
+    "@gerhobbelt/json5": "0.5.1-19",
+    "@gerhobbelt/nomnom": "1.8.4-21",
+    "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
+    "@gerhobbelt/recast": "0.12.7-7",
+    "@gerhobbelt/xregexp": "3.2.0-21",
+    "jscodeshift": "github:GerHobbelt/jscodeshift#master"
   },
   "devDependencies": {
+    "@gerhobbelt/ebnf-parser": "0.6.0-193",
+    "@gerhobbelt/jison-lex": "0.6.0-193",
+    "@gerhobbelt/lex-parser": "0.6.0-193",
+    "babel-cli": "6.26.0",
+    "babel-plugin-transform-es2015-function-name": "6.24.1",
+    "babel-plugin-transform-es2015-template-literals": "6.22.0",
     "browserify": "14.4.0",
-    "chai": "4.1.1",
+    "chai": "4.1.2",
+    "get-stdin": "5.0.1",
     "glob": "7.1.2",
-    "mocha": "3.5.0",
-    "prettier": "1.5.3",
-    "uglify-js": "3.0.28"
+    "mocha": "3.5.3",
+    "uglify-js": "3.1.2"
   },
   "scripts": {
-    "test": "make test"
+    "test": "make test",
+    "pub": "npm publish --access public"
   },
   "homepage": "http://jison.org"
 }

@@ -164,7 +164,7 @@ function r(v, n) {
 // run the benchmark on function `f` for at least 5 seconds.
 function bench(f, n, minimum_run_time, setup_f, destroy_f) {
     var factor = 50;
-    const run = 1;         // factor of 50 !  
+    var run = 1;         // factor of 50 !  
     n |= 0;
     n /= run;
     n |= 0;
@@ -172,7 +172,8 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
     
     minimum_run_time |= 0;
     if (!minimum_run_time) {
-        minimum_run_time = 5000;     // default: 5 seconds minimum run time!
+        // default: 5 seconds minimum run time:
+        minimum_run_time = 5000 * 1.01 /* overhead compensation */;     
     }
     minimum_run_time = Math.max(minimum_run_time, 1000);    // absolute minimum run time: 1 second
 
@@ -182,12 +183,77 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
         setup_f(f, n, minimum_run_time);
     }
 
+    // measure a short run and determine the run count based on this result:
+    perf.mark('bench');
+    // 50 x f(): that seems a sort of 'sweet spot' for NodeJS v5, at least for some benchmarks...
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+    f();
+
+    var sample1 = perf.mark('bench');
+    var fmultiplier = 250 / sample1;
+    var multiplier = Math.max(1, (fmultiplier + 0.5) | 0);
+    run = Math.max(run, multiplier);
+    console.log("run multiplier: ", run);
+
     // get the number of tests internal to the test function: 1 or more
     var internal_cnt = f();
     if (typeof internal_cnt === 'number' && (internal_cnt | 0) === internal_cnt) {
         factor *= internal_cnt;
     }
 
+    var last_report = 500;
     var ts = [];
     for (var i = 0; i < n; i++) {
         perf.mark('bench');
@@ -251,8 +317,12 @@ function bench(f, n, minimum_run_time, setup_f, destroy_f) {
         ts.push(perf.mark('bench'));
         var consumed = perf.mark_sample_and_hold('monitor');
         //console.log('consumed', consumed, ts[ts.length - 1], i);
-        if (consumed < minimum_run_time) {
-            // stay in the loop until 5 seconds have expired!:
+        if (last_report <= consumed) {
+            console.log('#' + (ts.length * factor));
+            last_report = consumed + 1000;
+        }
+        if (consumed < minimum_run_time || ts.length < 10) {
+            // stay in the loop until 5 seconds have expired or at least 10 rounds have been executed!
             i = Math.min(i, n - 2);
         }
     }

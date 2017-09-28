@@ -9,10 +9,10 @@
  * delay there too?
  */
 
-//%debug                                           // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
+//%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 //%options output-debug-tables
-%options no-default-action                         // cost is within noise band. Seems ~0.5-1%
-%options no-try-catch                              // cost is within noise band. Seems ~1-2%
+%options default-action-mode=skip                   // cost is within noise band. Seems ~0.5-1%
+%options no-try-catch                               // cost is within noise band. Seems ~1-2%
 
 
 %lex
@@ -44,54 +44,54 @@
 
 
 S
-    : init x x e                -> parser.trace('S:complete = ', $e);
+    : init x x e                -> $e;
     ;
 
 init
-    : %epsilon                  -> parser.trace('init:epsilon');
+    : %epsilon                  
     ;
 
 x
-    : %epsilon                  -> parser.trace('X:epsilon');                    $$ = '<X-epsilon>';
+    : %epsilon                  -> '<X-epsilon>';
     ;
 
 e
-    : cmd e                     -> parser.trace('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e;
-    | %epsilon                  -> parser.trace('e:epsilon');                    $$ = '<E-epsilon>';
+    : cmd e                     -> $cmd + ' | ' + $e;
+    | %epsilon                  -> '<E-epsilon>';
     ;
 
 cmd
-    : a                         -> parser.trace('cmd:a');                        $$ = $a;
-    | f_a                       -> parser.trace('cmd:function a()');             $$ = $f_a;
-    | b                         -> parser.trace('cmd:b');                        $$ = $b;
-    | f_b                       -> parser.trace('cmd:function b()');             $$ = $f_b;
-    | error                     -> parser.trace('cmd:error', get_reduced_error_info_obj($error) || $error);            yyerrok; yyclearin; $$ = 'ERROR';
+    : a                         -> $a;
+    | f_a                       -> $f_a;
+    | b                         -> $b;
+    | f_b                       -> $f_b;
+    | error                     { yyerrok; yyclearin; $$ = 'ERROR'; }
     ;
 
 a
-    : A                         -> parser.trace('a:A');                          $$ = 'A[' + $A + ']';
+    : A                         -> 'A[' + $A + ']';
     ;
 
 f_a
-    : A lb e rb                 -> parser.trace('function a:', $e);              $$ = 'A' + $lb + $e + $rb;
+    : A lb e rb                 -> 'A' + $lb + $e + $rb;
     ;
 
 b
-    : B                         -> parser.trace('b:B');                          $$ = 'B[' + $B + ']';
+    : B                         -> 'B[' + $B + ']';
     ;
 
 f_b
-    : B lb e rb                 -> parser.trace('function b:', $e);              $$ = 'B' + $lb + $e + $rb;
+    : B lb e rb                 -> 'B' + $lb + $e + $rb;
     ;
 
 lb
-    : '('                       -> parser.trace('lb+PUSH:[(] ');                 yy.lexer.pushState('alt'); $$ = '(';
-    | BEGIN                     -> parser.trace('lb:[alt-(] ');                  $$ = '{';
+    : '('                       { yylexer.pushState('alt'); $$ = '('; }
+    | BEGIN                     -> '{';
     ;
 
 rb
-    : ')'                       -> parser.trace('lb:[)] ');                      $$ = ')';
-    | END                       -> parser.trace('lb+POP:[alt-)] ');              yy.lexer.popState(); $$ = '}';
+    : ')'                       -> ')';
+    | END                       { yylexer.popState(); $$ = '}'; }
     ;
 
 %%
@@ -173,12 +173,9 @@ parser.main = function compiledRunner(args) {
         var logcount = 0;
         parser.post_parse = function (tok) {
             logcount++;
-            if (logcount % 65000 === 0) {
-                console.log('run #', logcount);
-            }
         };
 
-        bench(execute, 0, 10e3, null, function () {
+        bench(execute, 0, 20e3, null, function () {
             console.log('run #', logcount);
         });
     }

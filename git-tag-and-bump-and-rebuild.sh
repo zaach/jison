@@ -60,6 +60,17 @@ while true; do
 #          Commit.
 # ---------------------------------------------------------------------------
 
+
+# discard the package-lock files as these keep us stuck on specific versions while we WANT to upgrade all around now!
+find . -iname package-lock.json -delete
+
+
+if !        make npm-update                 ; then break; fi;           # GOTO END on failure
+
+
+# make sure we regenerate the package-lock.json files BEFORE we run another git-commit:
+
+
 if !        make superclean                 ; then break; fi;           # GOTO END on failure
 if !        make prep                       ; then break; fi;           # GOTO END on failure
 if !        make site                       ; then break; fi;           # GOTO END on failure
@@ -72,29 +83,36 @@ if ! are_we_okay ; then break; fi;          # GOTO END on failure
 # ^-- one or more subrepo's may fail as there'ld be nothing to commit,
 #     which would abort the `git submodule foreach` command!
 pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 popd                                                                                                           2> /dev/null  > /dev/null
 
-git commit -a -m 'rebuilt library files'
+git commit -a -m 'updated NPM packages'
 git push --all
 
+
+
+# ---------------------------------------------------------------------------
+# stage 2: repeat step 1 for good measure: now JISON at least has freshly 
+#          regenerated files in lib/util/ hence expect the results to be 
+#          ever so slightly different from the previous run!
+# ---------------------------------------------------------------------------
 
 if !        make superclean                 ; then break; fi;           # GOTO END on failure
 if !        make prep                       ; then break; fi;           # GOTO END on failure
@@ -130,7 +148,7 @@ git push --all
 
 
 # ---------------------------------------------------------------------------
-# stage 2: Tag and Publish.
+# stage 3: Tag and Publish.
 # ---------------------------------------------------------------------------
 
 
@@ -138,16 +156,19 @@ if !        make git-tag                ; then break; fi;           # GOTO END o
 
 if ! are_we_okay ; then break; fi;          # GOTO END on failure
 
-if !        npm publish                 ; then break; fi;           # GOTO END on failure
+if !        make publish                ; then break; fi;           # GOTO END on failure
+
+if ! are_we_okay ; then break; fi;          # GOTO END on failure
+
 
 
 
 # ---------------------------------------------------------------------------
-# stage 3: Bump build revision for future work, commit & push.
+# stage 4: Bump build revision for future work, commit & push.
 # ---------------------------------------------------------------------------
 
 
-if !        make bump                       ; then break; fi;           # GOTO END on failure
+if !        make bump                   ; then break; fi;           # GOTO END on failure
 
 
 if ! are_we_okay ; then break; fi;          # GOTO END on failure
@@ -188,7 +209,7 @@ git push --tags
 
 
 # ---------------------------------------------------------------------------
-# stage 4: update NPM packages, if any; rebuild & commit
+# stage 5: update NPM packages, if any; rebuild & commit
 # ---------------------------------------------------------------------------
 
 
@@ -202,23 +223,7 @@ git push --tags
 find . -iname package-lock.json -delete
 
 
-pushd modules/ebnf-parser/                                                                                     2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
-popd                                                                                                           2> /dev/null  > /dev/null
-pushd modules/jison2json/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
-popd                                                                                                           2> /dev/null  > /dev/null
-pushd modules/jison-lex/                                                                                       2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
-popd                                                                                                           2> /dev/null  > /dev/null
-pushd modules/json2jison/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
-popd                                                                                                           2> /dev/null  > /dev/null
-pushd modules/lex-parser/                                                                                      2> /dev/null  > /dev/null
-ncu -a --packageFile package.json 
-popd                                                                                                           2> /dev/null  > /dev/null
-
-ncu -a --packageFile package.json 
+if !        make npm-update                 ; then break; fi;           # GOTO END on failure
 
 
 # make sure we regenerate the package-lock.json files BEFORE we run another git-commit:

@@ -40,9 +40,9 @@ e
     | WORD
         { $$ = parser.pop_all_markers() + $WORD; }
     | e error e
-        { $$ = parser.pop_all_markers() + $e1 + ' ERR2: ' + $error + ' CONT: ' + $e2; }
+        { $$ = parser.pop_all_markers() + $e1 + ' ERR2: ' + $error.value + ' CONT: ' + $e2; }
     | error
-        { $$ = parser.pop_all_markers() + ' ERR1: ' + $error; }
+        { $$ = parser.pop_all_markers() + ' ERR1: ' + $error.value; }
     ;
 
 epsilon:

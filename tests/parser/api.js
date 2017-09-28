@@ -89,7 +89,7 @@ describe("JISON API", function () {
     var parser = gen.createParser();
     assert.ok(gen.nonterminals['A'], 'A must be identified as a non-terminal');
     assert.ok(gen.startSymbol, 'A default startsymbol must be picked by Jison');
-    assert.ok(gen.startSymbol === 'A', 'The default startsymbol must match the first rule');
+    assert.strictEqual(gen.startSymbol, 'A', 'The default startsymbol must match the first rule');
   });
 
   it("test start symbol should be nonterminal", function () {
@@ -138,7 +138,7 @@ describe("JISON API", function () {
     assert.ok(gen);
     assert.ok(gen.options);
     assert.ok(gen.options.type);
-    assert.ok(gen.options.type === 'slr');
+    assert.strictEqual(gen.options.type, 'slr');
   });
 
   it("test overwrite grammar options", function () {
@@ -158,7 +158,7 @@ describe("JISON API", function () {
     assert.ok(gen);
     assert.ok(gen.options);
     assert.ok(gen.options.type);
-    assert.ok(gen.options.type === 'lr0');
+    assert.strictEqual(gen.options.type, 'lr0');
     assert.equal(gen.constructor, Jison.LR0Generator);
   });
 
@@ -271,8 +271,8 @@ describe("JISON API", function () {
     var JisonLexerError = parser.lexer.JisonLexerError; 
     assert(JisonLexerError);
 
-    assert.ok(gen.table.length === 4, "table has 4 states");
-    assert.ok(gen.conflicts === 2, "encountered 2 conflicts");
+    assert.strictEqual(gen.table.length, 4, "table has 4 states");
+    assert.strictEqual(gen.conflicts, 2, "encountered 2 conflicts");
 
     assert.throws(function () { 
       parser.parse("xx"); 
@@ -292,7 +292,11 @@ describe("JISON API", function () {
     parser.lexer = new Lexer(lexData);
     parser.lexer.showPosition = null; // needed for "Unexpected" message
     parser.yy.parseError = function (str, hash) {
-        assert.ok(str.match("end of input"));
+        console.log("!!!!!!!!!!", {
+          str,
+          hash
+        });
+        assert.ok(str.match("end of input"), "expected 'end of input' but got: " + str);
         // as we override the default parseError(),
         // the default behaviour of throwing an exception is not available now;
         // instead the parser will return our return value:
@@ -303,7 +307,7 @@ describe("JISON API", function () {
         }
     };
 
-    assert.ok(parser.parse("xx") === 666, "on error, the parseError return value is the parse result");
+    assert.strictEqual(parser.parse("xx"), 666, "on error, the parseError return value is the parse result");
   });
 
   it("test whether default parser error handling throws an exception", function () {
@@ -368,9 +372,9 @@ describe("JISON API", function () {
         tokens: [ 'x', 'y' ],
         startSymbol: "A",
         bnf: {
-            "A" :[ 'x A',
-                  ['y', 'return @$'],
-            ''      ]
+            "A" :[ [ 'x A', 'return [@1, @A]'],    // TODO: should return `@$` and jison should analyze the action code and insert the default action before the userland action code here
+                   'y',     
+                   '' ]
         }
     };
 
@@ -381,15 +385,20 @@ describe("JISON API", function () {
            ["y", "return 'y';"]
         ]
     };
-    var gen = new Jison.Generator(grammar);
+    var gen = new Jison.Generator(grammar /* , { debug: 1, exportAllTables: true } */ );
     var parser = gen.createParser();
     parser.lexer = new Lexer(lexData);
     var loc = parser.parse('xx\nxy');
 
-    assert.equal(loc.first_line, 2, 'first line correct');
-    assert.equal(loc.last_line, 2, 'last line correct');
-    assert.equal(loc.first_column, 1, 'first column correct');
-    assert.equal(loc.last_column, 2, 'last column correct');
+    assert.equal(loc[0].first_line, 2, 'first line correct');
+    assert.equal(loc[0].last_line, 2, 'second line correct');
+    assert.equal(loc[0].first_column, 0, 'first column correct');
+    assert.equal(loc[0].last_column, 1, 'second column correct');
+
+    assert.equal(loc[1].first_line, 2, 'third line correct');
+    assert.equal(loc[1].last_line, 2, 'fourth line correct');
+    assert.equal(loc[1].first_column, 1, 'third column correct');
+    assert.equal(loc[1].last_column, 2, 'fourth column correct');
   });
 
   it("test locations by term name in action", function () {
@@ -420,6 +429,46 @@ describe("JISON API", function () {
     assert.equal(loc.last_line, 2, 'last line correct');
     assert.equal(loc.first_column, 1, 'first column correct');
     assert.equal(loc.last_column, 2, 'last column correct');
+  });
+
+  it("test default location tracking across grammar", function () {
+    var grammar = {
+        tokens: [ 'x', 'y' ],
+        startSymbol: "A",
+        bnf: {
+            "A" :[ [ 'B', '$$ = { value: $B, loc: @B, yytext: yytext, yylloc: yyloc, yystate: yystate, yysp: yysp, yyvstack: yyvstack, yylstack: yylstack, yystack: yystack, yysstack: yysstack }' ],
+                   [ 'error', '$$ = { value: $error, loc: @error, yytext: yytext, yylloc: yyloc, yystate: yystate, yysp: yysp, yyvstack: yyvstack, yylstack: yylstack, yystack: yystack, yysstack: yysstack }' ] 
+                 ],
+            "B" :[   'x B',
+                     'y',
+                     '' ]
+        }
+    };
+
+    var lexData = {
+        rules: [
+           ["\\s", "/*ignore*/"],
+           ["x", "return 'x';"],
+           ["y", "return 'y';"],
+           [".", "return 'UFO';"]
+        ]
+    };
+    var gen = new Jison.Generator(grammar);
+    var parser = gen.createParser();
+    parser.lexer = new Lexer(lexData);
+    var loc = parser.parse('xx\nxy');
+
+    console.log('loctrack test: ', loc);
+    assert(loc);
+    // assert.equal(loc[0].first_line, 2, 'first line correct');
+    // assert.equal(loc[0].last_line, 2, 'second line correct');
+    // assert.equal(loc[0].first_column, 0, 'first column correct');
+    // assert.equal(loc[0].last_column, 1, 'second column correct');
+
+    // assert.equal(loc[1].first_line, 2, 'third line correct');
+    // assert.equal(loc[1].last_line, 2, 'fourth line correct');
+    // assert.equal(loc[1].first_column, 1, 'third column correct');
+    // assert.equal(loc[1].last_column, 2, 'fourth column correct');
   });
 
   it("test lexer with no location support", function () {
@@ -579,8 +628,8 @@ describe("JISON API", function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
     assert.ok(parser.parse('xyx'), "parse xyx");
-    assert.ok(typeof parser.dummy === 'function');
-    assert.ok(parser.dummy() === 42);
+    assert.strictEqual(typeof parser.dummy, 'function');
+    assert.strictEqual(parser.dummy(), 42);
   });
 
   it("test consistent behaviour across many invocations of the parse() API", function () {
@@ -673,7 +722,7 @@ describe("JISON API", function () {
     var rv = parser.parse('xyx');
     //console.log('shared state = ', parser.yy, shared_state_base, work_state);
     assert.equal(rv, 'exyx', "parse xyx");
-    assert.equal(shared_state_base.step1, 0, "object to initialize shared state should not be modified");
+    assert  .equal(shared_state_base.step1, 0, "object to initialize shared state should not be modified");
     assert.equal(shared_state_base.step2, 0, "object to initialize shared state should not be modified");
     assert.equal(shared_state_base.step3, 0, "object to initialize shared state should not be modified");
 
@@ -735,7 +784,7 @@ describe("JISON API", function () {
     } catch (ex) {
         // exception is supposed to be a LEXER exception:
         rv = ex;
-        assert.ok(ex instanceof JisonLexerError, "parse failure is expected to originate from the lexer this time");
+        assert.instanceOf(ex, JisonLexerError, "parse failure is expected to originate from the lexer this time");
 
         assert.ok(rv.hash, "exception is supposed to be a parser/lexer exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
@@ -763,12 +812,12 @@ describe("JISON API", function () {
           // 'value_stack',
           'yy' 
         ];
-        assert.equal(kl.length, kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
             assert.strictEqual(kl[i], kl_sollwert[i], "the parser/lexer `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.equal(kl.length, kl_sollwert.length, "the parser/lexer `hash` object is supposed to carry a specific member set, no more, no less");
 
-        assert.ok(typeof rv.hash.exception === "undefined", "lexer exceptions don't contain inner exceptions in their `hash` property");
+        assert.strictEqual(typeof rv.hash.exception, "undefined", "lexer exceptions don't contain inner exceptions in their `hash` property");
     }
     assert.equal(pre_count, 2, "pre_parse is invoked at the start of every parse");
     assert.equal(post_count, 2, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
@@ -780,9 +829,13 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
-        // the `hash` object is supposed to carry all these members:
+        // the parser `hash` object is supposed to carry all these members:
         const kl_sollwert3 = [ 
           'action',
           'destroy',
@@ -792,6 +845,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -806,13 +860,13 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
-    assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
+    assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
+    assert.strictEqual(post_count, 3, "post_parse is invoked at the end of every parse, even the ones which throw an exception");
   });
 
   // a side-effect of a crash/exception thrown in a no-try-catch grammar is that the cleanup is NOT executed then,
@@ -847,9 +901,9 @@ describe("JISON API", function () {
     // a good run: no errors:
     var rv = parser.parse('xyx');
 
-    assert.ok(rv === 'exy:x', "parse xyx");
-    assert.ok(pre_count === 1, "# invocations of pre_parse");
-    assert.ok(post_count === 1, "# invocations of post_parse");
+    assert.strictEqual(rv, 'exy:x', "parse xyx");
+    assert.strictEqual(pre_count, 1, "# invocations of pre_parse");
+    assert.strictEqual(post_count, 1, "# invocations of post_parse");
 
     // a bad run: a LEXER exception will be thrown:
     //
@@ -863,9 +917,13 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.instanceOf(rv, parser.lexer.JisonLexerError, "exception is supposed to be a lexer exception");
+        assert.notInstanceOf(rv, parser.JisonParserError, "exception is not supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
 
-        assert(rv.hash.exception === undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
+        assert.strictEqual(rv.hash.exception, undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
 
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -891,13 +949,13 @@ describe("JISON API", function () {
           //'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
     }
-    assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+    assert.strictEqual(pre_count, 2, "pre_parse is invoked at the start of every parse");
+    assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
 
     // a bad run: a PARSER exception will be thrown:
     rv = false;
@@ -906,6 +964,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -918,6 +980,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -932,13 +995,13 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
-    assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+    assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
+    assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
   });
 
   it("test %options on-demand-lookahead", function () {
@@ -970,9 +1033,9 @@ describe("JISON API", function () {
     // a good run: no errors:
     var rv = parser.parse('xyx');
 
-    assert.ok(rv === 'exy:x', "parse xyx");
-    assert.ok(pre_count === 1);
-    assert.ok(post_count === 1);
+    assert.strictEqual(rv, 'exy:x', "parse xyx");
+    assert.strictEqual(pre_count, 1);
+    assert.strictEqual(post_count, 1);
 
     // a bad run: a LEXER exception will be thrown:
     //
@@ -988,9 +1051,13 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.instanceOf(rv, parser.lexer.JisonLexerError, "exception is supposed to be a lexer exception");
+        assert.notInstanceOf(rv, parser.JisonParserError, "exception is not supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a lexer exception, hence it should have a hash member");
 
-        assert(rv.hash.exception === undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
+        assert.strictEqual(rv.hash.exception, undefined, "exception is NOT supposed to be nested, i.e. contain a LEXER exception");
 
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -1016,13 +1083,13 @@ describe("JISON API", function () {
           //'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert2[i], "the LEXER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert2.length, "the LEXER `hash` object is supposed to carry a specific member set, no more, no less");
     }
-    assert.ok(pre_count === 2, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+    assert.strictEqual(pre_count, 2, "pre_parse is invoked at the start of every parse");
+    assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
 
     // a bad run: a PARSER exception will be thrown:
     rv = false;
@@ -1031,6 +1098,10 @@ describe("JISON API", function () {
         assert.ok(false, "parser run is expected to FAIL");
     } catch (ex) {
         rv = ex;
+        assert.instanceOf(rv, Error, "exception is supposed to be an Error subclass");
+        assert.notInstanceOf(rv, parser.lexer.JisonLexerError, "exception is not supposed to be a lexer exception");
+        assert.instanceOf(rv, parser.JisonParserError, "exception is supposed to be a parser exception");
+
         assert.ok(rv.hash, "exception is supposed to be a parser exception, hence it should have a hash member");
         var kl = Object.keys(rv.hash).sort();
         // the `hash` object is supposed to carry all these members:
@@ -1043,6 +1114,7 @@ describe("JISON API", function () {
           'lexer',
           'line',
           //'loc',
+          //'location_stack',
           'new_state',
           'parser',
           'recoverable',
@@ -1057,13 +1129,13 @@ describe("JISON API", function () {
           'value_stack',
           'yy' 
         ];
-        assert.ok(kl.length === kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
         for (var i = 0, l = kl.length; i < l; i++) {
-            assert.ok(kl[i] === kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
+            assert.strictEqual(kl[i], kl_sollwert3[i], "the PARSER `hash` object is supposed to carry specific members, but not " + kl[i]);
         }
+        assert.strictEqual(kl.length, kl_sollwert3.length, "the PARSER `hash` object is supposed to carry a specific member set, no more, no less");
     }
-    assert.ok(pre_count === 3, "pre_parse is invoked at the start of every parse");
-    assert.ok(post_count === 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
+    assert.strictEqual(pre_count, 3, "pre_parse is invoked at the start of every parse");
+    assert.strictEqual(post_count, 1, "post_parse is invoked at the end of every parse, but ONLY when the parse did not fail");
   });
 
   it("test %options no-default-action", function () {
@@ -1076,7 +1148,16 @@ describe("JISON API", function () {
         ";\n" +
         " %% ";
 
-    var grammar2 = "/* %options no-default-action */\n" +
+    var parser;
+    assert.throws(function () {
+      parser = new Jison.Parser(grammar);
+    }, Error, "has been OBSOLETED");
+    //parser.lexer = new Lexer(lexData);
+    //parser.parse('xyxyx');
+  });
+
+  it("test %options default-action-mode=skip", function () {
+    var grammar = "%options default-action-mode=skip,skip\n" +
         "%%\n" +
         "A :\n" +
         "  x A   /* --- should have been default action --- */ \n" +
@@ -1088,39 +1169,100 @@ describe("JISON API", function () {
     var parser = new Jison.Parser(grammar);
     parser.lexer = new Lexer(lexData);
 
-    var parser2 = new Jison.Parser(grammar2);
-    parser2.lexer = new Lexer(lexData);
-
-    // since the no-default-action is set for this grammar, the return value is really 
+    // since the default-action-mode is set to "skip" for this grammar, the return value is really 
     // UNDETERMINED, but we happen to know just how the kernel and state stack work
     // internally, hence we can at least state that the 'unexpected/undetermined'
     // result of the `x A` rule will be at least reproducible, hence we can test for 
     // the (weird) return value!
     var rv = parser.parse('xyxyx');
 
-    var rv2 = parser2.parse('xyxyx');
-
-    assert.equal(rv, 'eyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'x', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
+    assert.equal(rv, 'eyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyx');
-    //console.log('rv: ', rv);
 
-    rv2 = parser2.parse('yyyyx');
-    //console.log('rv2: ', rv2);
-
-    assert.equal(rv, 'eyyyy', "parse xyxyx with no-default-action may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
-    assert.equal(rv2, 'xyyyy', "parse xyxyx with default-action enabled may produce other insensible results when you're not careful to provide your own $$ assignment actions for every rule which is not served well by the default `$$=$1` action");
-
+    assert.equal(rv, 'eyyyy', "parse xyxyx with default-action-mode=skip,skip may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
 
     rv = parser.parse('yyyyyy');
-    //console.log('rv: ', rv);
 
-    rv2 = parser2.parse('yyyyyy');
-    //console.log('rv2: ', rv2);
+    assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=skip,skip");
+  });
 
-    assert.equal(rv, 'eyyyyyy', "parse xyxyx with no-default-action");
-    assert.equal(rv2, 'eyyyyyy', "parse xyxyx with default-action enabled (the default)");
+  it("test %options default-action-mode=none", function () {
+    var grammar = "%options default-action-mode=none,none\n" +
+        "%%\n" +
+        "A :\n" +
+        "  x A   /* --- should have been default action --- */ \n" +
+        "| y A   %{ $$ = $A + $y; %}\n" +
+        "|       %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+
+    var rv = parser.parse('xyxyx');
+
+    assert.equal(rv, true, "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyx');
+
+    assert.equal(rv, 'undefinedyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyyy');
+
+    assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=classic");
+  });
+
+  it("test %options default-action-mode=classic", function () {
+    var grammar = "%options default-action-mode=classic\n" +
+        "%%\n" +
+        "A :\n" +
+        "  x A   /* --- should have been default action --- */ \n" +
+        "| y A   %{ $$ = $A + $y; %}\n" +
+        "|       %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+
+    var rv = parser.parse('xyxyx');
+
+    assert.equal(rv, 'x', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyx');
+
+    assert.equal(rv, 'xyyyy', "parse xyxyx with default-action-mode=classic may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyyy');
+
+    assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=classic");
+  });
+
+  it("test %options default-action-mode=ast", function () {
+    var grammar = "%options default-action-mode=ast\n" +
+        "%%\n" +
+        "A :\n" +
+        "  x A   /* --- should have been default action --- */ \n" +
+        "| y A   %{ $$ = $A + $y; %}\n" +
+        "|       %{ $$ = 'e'; %}\n" +
+        ";\n" +
+        " %% ";
+
+    var parser = new Jison.Parser(grammar);
+    parser.lexer = new Lexer(lexData);
+
+    var rv = parser.parse('xyxyx');
+
+    assert.deepEqual(rv, ['x', 'x,x,eyy'], "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyx');
+
+    assert.equal(rv, 'x,eyyyy', "parse xyxyx with default-action-mode=ast may produce insensible results when you're not careful to provide your own $$ assignment actions for every rule");
+
+    rv = parser.parse('yyyyyy');
+
+    assert.equal(rv, 'eyyyyyy', "parse xyxyx with default-action-mode=ast");
   });
 });
 

@@ -4,6 +4,7 @@ var Lexer = require('../setup').Lexer;
 var glob = require('glob');
 var fs = require('fs');
 var path = require('path');
+var code_exec = require('../../lib/util/safe-code-exec-and-diag.js').exec;
 
 
 var lexData = {
@@ -165,7 +166,14 @@ const test_list = [
     }
   },
   {
-    name: 'test-unused-rules-reporting.jison',
+    name: 'test-unused-rules-reporting',
+    reportStats: true,
+    __check__: function (p, spec) {
+      assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
+    }
+  },
+  {
+    name: 'test-unused-rules-reporting-alt',
     reportStats: true,
     __check__: function (p, spec) {
       assert.equal(p.unused_productions.length, 3, 'grammar must report it found 3 unused rules');
@@ -225,6 +233,8 @@ describe("Example/Test Grammars", function () {
           options.exportAllTables = {};
         }
       }
+      //options.exportSourceCode = {};
+      options.inputFilename = filespec.path;
       var parser = new Jison.Parser(grammar, options);
       var rv;
 
@@ -235,19 +245,25 @@ describe("Example/Test Grammars", function () {
         return;
       }
 
-      if (typeof parser.main === 'function') {
-        assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
-      } else if (filespec.inputs) {
-        for (var i = 0, l = filespec.inputs.length; i < l; i++) {
-          rv = parser.parse(filespec.inputs[i]);
-          console.log('parse A: ', filespec.inputs[i], rv);
+      code_exec(String(parser.parse), function test_exec() {
+        if (typeof parser.main === 'function') {
+          assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
+        } else if (filespec.inputs) {
+          for (var i = 0, l = filespec.inputs.length; i < l; i++) {
+            rv = parser.parse(filespec.inputs[i]);
+            console.log('parse A: ', filespec.inputs[i], rv);
+            assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
+          }
+        } else {
+          rv = parser.parse('zz; yy; zz;zz ;');
+          console.log('parse B: ', path.basename(filespec.path), rv);
           assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
         }
-      } else {
-        rv = parser.parse('zz; yy; zz;zz ;');
-        console.log('parse B: ', path.basename(filespec.path), rv);
-        assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
-      }
+      }, {
+        dumpSourceCodeOnFailure: true,
+        throwErrorOnCompileFailure: true,
+        inputFilename: options.inputFilename
+      }, "test");
 
       if (filespec.__check__) {
         filespec.__check__(parser, filespec, rv, options.exportAllTables);

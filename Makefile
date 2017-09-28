@@ -51,7 +51,7 @@ deploy: site
 	git checkout master
 
 test:
-	node_modules/.bin/mocha --timeout 8000 --recursive tests/
+	node_modules/.bin/mocha --timeout 18000 --recursive tests/
 
 web-examples: web/content/assets/js/calculator.js
 
@@ -259,6 +259,9 @@ examples/issue-348: build
 examples/issue-357-url-lexing: build
 	cd examples/ && make issue-357-url-lexing
 
+examples/issue-360: build
+	cd examples/ && make issue-360
+
 examples/jscore: build
 	cd examples/ && make jscore
 
@@ -384,6 +387,9 @@ build: build_bnf build_lex
 npm-install: submodules-npm-install
 	npm install
 
+npm-update: submodules-npm-update
+	ncu -a --packageFile=package.json
+
 JISON_DEPS = \
 	lib/util/regexp-set-management.js \
 	lib/util/safe-code-exec-and-diag.js \
@@ -396,14 +402,20 @@ JISON_DEPS = \
 build_bnf: lib/util/parser.js
 
 lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
+					lib/util/lex-parser.js \
+					lib/util/regexp-lexer.js \
 					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	cat $@ | node __patch_require.js > $@-tmp.js
+	mv -f $@-tmp.js $@
 
 build_lex: lib/util/lex-parser.js
 
 lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
 						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
 	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
+	cat $@ | node __patch_require.js > $@-tmp.js
+	mv -f $@-tmp.js $@
 
 prep_util_dir:
 	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
@@ -414,38 +426,46 @@ prep_util_dir:
 
 
 lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/safe-code-exec-and-diag.js: modules/jison-lex/safe-code-exec-and-diag.js
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
-	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat $< | sed -e 's/require("lex-parser")/require(".\/lex-parser")/' -e "s/require('lex-parser')/require('.\/lex-parser')/" > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
-	cat $< > $@
+	cat $< | node __patch_require.js > $@
 
 
 submodules:
-	cd modules/ebnf-parser && make
-	cd modules/jison-lex && make
-	cd modules/jison2json && make
-	cd modules/json2jison && make
 	cd modules/lex-parser && make
+	cd modules/jison-lex && make
+	cd modules/ebnf-parser && make
+	cd modules/json2jison && make
+	cd modules/jison2json && make
 
 
 submodules-npm-install:
-	cd modules/ebnf-parser && make npm-install
+	cd modules/lex-parser && make npm-install
 	cd modules/jison-lex && make npm-install
+	cd modules/ebnf-parser && make npm-install
 	cd modules/jison2json && make npm-install
 	cd modules/json2jison && make npm-install
-	cd modules/lex-parser && make npm-install
+
+
+submodules-npm-update:
+	cd modules/lex-parser && make npm-update
+	cd modules/jison-lex && make npm-update
+	cd modules/ebnf-parser && make npm-update
+	cd modules/jison2json && make npm-update
+	cd modules/json2jison && make npm-update
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
@@ -457,21 +477,21 @@ bump: submodules-bump
 	npm version --no-git-tag-version prerelease
 
 submodules-bump:
-	cd modules/ebnf-parser && make bump
+	cd modules/lex-parser && make bump
 	cd modules/jison-lex && make bump
+	cd modules/ebnf-parser && make bump
 	cd modules/jison2json && make bump
 	cd modules/json2jison && make bump
-	cd modules/lex-parser && make bump
 
 git-tag: submodules-git-tag
 	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
 
 submodules-git-tag:
-	cd modules/ebnf-parser && make git-tag
+	cd modules/lex-parser && make git-tag
 	cd modules/jison-lex && make git-tag
+	cd modules/ebnf-parser && make git-tag
 	cd modules/jison2json && make git-tag
 	cd modules/json2jison && make git-tag
-	cd modules/lex-parser && make git-tag
 
 
 git:
@@ -480,13 +500,24 @@ git:
 	-git pull --all; git push --all
 
 
+submodules-publish:
+	cd modules/lex-parser && make publish
+	cd modules/jison-lex && make publish
+	cd modules/ebnf-parser && make publish
+	cd modules/jison2json && make publish
+	cd modules/json2jison && make publish
+
+publish: submodules-publish
+	npm run pub 
+
+
 clean: clean-site
 	cd examples/ && make clean
-	cd modules/ebnf-parser && make clean
+	cd modules/lex-parser && make clean
 	cd modules/jison-lex && make clean
+	cd modules/ebnf-parser && make clean
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
-	cd modules/lex-parser && make clean
 	-rm -f $(JISON_DEPS)
 	-rm -f lib/util/parser.js lib/util/lex-parser.js
 	-rm -rf node_modules/
@@ -502,15 +533,15 @@ clean: clean-site
 #
 superclean: clean clean-site
 	cd examples/ && make superclean
-	cd modules/ebnf-parser && make superclean
+	cd modules/lex-parser && make superclean
 	cd modules/jison-lex && make superclean
+	cd modules/ebnf-parser && make superclean
 	cd modules/jison2json && make superclean
 	cd modules/json2jison && make superclean
-	cd modules/lex-parser && make superclean
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
 

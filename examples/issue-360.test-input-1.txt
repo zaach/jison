@@ -1,0 +1,10 @@
+
+  type User {
+    name: String = "Ignatz"
+    loggedIn: Boolean = false
+  }
+
+  type Task {
+    done: Boolean = true
+    priority: Number = 54
+  }
