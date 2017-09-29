@@ -1,5 +1,14 @@
-.DS_Store
+
+## Dependency directory
+## Commenting this out is preferred by some people, see
+## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
 node_modules/
+
+
+# Apple Crap
+.DS_Store
+
+# more npm dung
 npm-debug.log
 
 # Editor backup files
@@ -28,16 +37,20 @@ Makefile
 
 # misc files which are used during development
 Vagrantfile
+__patch_require.js
+/modules/
 
 # extra documentation (WIP)
 book-using-jison-beyond-the-basics/
 book.json
+.bookignore
 
 # no examples wanted
 /examples/
 
 # test set & test rig
 /tests/
+/test-npm-install/
 
 # jscs et al config files:
 .js*
