@@ -46,6 +46,7 @@ CODEGEN_TARGETS = 												\
 		codegen-feature-tester-no-default-action                \
 		codegen-feature-tester-base-error-recovery-10           \
 		codegen-feature-tester-all-default-action               \
+		codegen-feature-tester-yylineno                         \
 		codegen-feature-tester-no-err-api-usage                 \
 		codegen-feature-tester-no-error-recovery                \
 		codegen-feature-tester-no-location-assignment           \
@@ -59,7 +60,7 @@ CODEGEN_TARGETS = 												\
 		codegen-feature-tester-no-yyerrok                       \
 		codegen-feature-tester-no-yyerror                       \
 		codegen-feature-tester-no-yyleng                        \
-		codegen-feature-tester-no-yylineo                       \
+		codegen-feature-tester-no-yylineno                      \
 		codegen-feature-tester-no-yyloc                         \
 		codegen-feature-tester-no-yyrecovering                  \
 		codegen-feature-tester-no-yysp                          \
@@ -708,9 +709,13 @@ codegen-feature-tester-no-yyleng:
 	$(JISON) --main ./$(CGT)-no-yyleng.jison -o ./output/$(CGT)/$(CGT)-no-yyleng.js
 	node ./output/$(CGT)/$(CGT)-no-yyleng.js
 
-codegen-feature-tester-no-yylineo:
-	$(JISON) --main ./$(CGT)-no-yylineo.jison -o ./output/$(CGT)/$(CGT)-no-yylineo.js
-	node ./output/$(CGT)/$(CGT)-no-yylineo.js
+codegen-feature-tester-no-yylineno:
+	$(JISON) --main ./$(CGT)-no-yylineno.jison -o ./output/$(CGT)/$(CGT)-no-yylineno.js
+	node ./output/$(CGT)/$(CGT)-no-yylineno.js
+
+codegen-feature-tester-yylineno:
+	$(JISON) --main ./$(CGT)-yylineno.jison -o ./output/$(CGT)/$(CGT)-yylineno.js
+	node ./output/$(CGT)/$(CGT)-yylineno.js
 
 codegen-feature-tester-no-yytext:
 	$(JISON) --main ./$(CGT)-no-yytext.jison -o ./output/$(CGT)/$(CGT)-no-yytext.js
