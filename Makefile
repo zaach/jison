@@ -445,6 +445,7 @@ lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
 
 
 submodules:
+	cd modules/helpers-lib && make
 	cd modules/lex-parser && make
 	cd modules/jison-lex && make
 	cd modules/ebnf-parser && make
@@ -453,6 +454,7 @@ submodules:
 
 
 submodules-npm-install:
+	cd modules/helpers-lib && make npm-install
 	cd modules/lex-parser && make npm-install
 	cd modules/jison-lex && make npm-install
 	cd modules/ebnf-parser && make npm-install
@@ -461,6 +463,7 @@ submodules-npm-install:
 
 
 submodules-npm-update:
+	cd modules/helpers-lib && make npm-update
 	cd modules/lex-parser && make npm-update
 	cd modules/jison-lex && make npm-update
 	cd modules/ebnf-parser && make npm-update
@@ -477,6 +480,7 @@ bump: submodules-bump
 	npm version --no-git-tag-version prerelease
 
 submodules-bump:
+	cd modules/helpers-lib && make bump
 	cd modules/lex-parser && make bump
 	cd modules/jison-lex && make bump
 	cd modules/ebnf-parser && make bump
@@ -487,6 +491,7 @@ git-tag: submodules-git-tag
 	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
 
 submodules-git-tag:
+	cd modules/helpers-lib && make git-tag
 	cd modules/lex-parser && make git-tag
 	cd modules/jison-lex && make git-tag
 	cd modules/ebnf-parser && make git-tag
@@ -501,6 +506,7 @@ git:
 
 
 submodules-publish:
+	cd modules/helpers-lib && make publish
 	cd modules/lex-parser && make publish
 	cd modules/jison-lex && make publish
 	cd modules/ebnf-parser && make publish
@@ -513,6 +519,7 @@ publish: submodules-publish
 
 clean: clean-site
 	cd examples/ && make clean
+	cd modules/helpers-lib && make clean
 	cd modules/lex-parser && make clean
 	cd modules/jison-lex && make clean
 	cd modules/ebnf-parser && make clean
@@ -533,6 +540,7 @@ clean: clean-site
 #
 superclean: clean clean-site
 	cd examples/ && make superclean
+	cd modules/helpers-lib && make superclean
 	cd modules/lex-parser && make superclean
 	cd modules/jison-lex && make superclean
 	cd modules/ebnf-parser && make superclean

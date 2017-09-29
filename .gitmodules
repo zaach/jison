@@ -13,3 +13,6 @@
 [submodule "modules/json2jison"]
 	path = modules/json2jison
 	url = git@github.com:GerHobbelt/json2jison.git
+[submodule "modules/helpers-lib"]
+	path = modules/helpers-lib
+	url = git@github.com:GerHobbelt/jison-helpers-lib.git
