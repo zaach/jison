@@ -4,7 +4,8 @@ var Lexer = require('../setup').Lexer;
 var glob = require('glob');
 var fs = require('fs');
 var path = require('path');
-var code_exec = require('../../lib/util/safe-code-exec-and-diag.js').exec;
+var helpers     = require('../../modules/helpers-lib');
+var code_exec   = helpers.exec;
 
 
 var lexData = {

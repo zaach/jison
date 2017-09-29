@@ -5,7 +5,7 @@
 const getStdin = require('get-stdin');
  
 getStdin().then(str => {
-	const modules = "regexp-set-management safe-code-exec-and-diag regexp-lexer ebnf-parser ebnf-transform transform-parser lex-parser".split(' ');
+	const modules = "regexp-set-management regexp-lexer ebnf-parser ebnf-transform transform-parser lex-parser".split(' ');
 
 	modules.forEach(function repl_module(name) {
 		var re = new RegExp(`require\\([^)]*?${name}['"]\\)`, 'g');

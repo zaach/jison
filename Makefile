@@ -392,7 +392,7 @@ npm-update: submodules-npm-update
 
 JISON_DEPS = \
 	lib/util/regexp-set-management.js \
-	lib/util/safe-code-exec-and-diag.js \
+	lib/util/helpers-lib.js \
 	lib/util/regexp-lexer.js \
 	lib/util/ebnf-parser.js \
 	lib/util/ebnf-transform.js \
@@ -425,13 +425,13 @@ prep_util_dir:
 	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 
-lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js
+lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js submodules
 	cat $< | node __patch_require.js > $@
 
-lib/util/safe-code-exec-and-diag.js: modules/jison-lex/safe-code-exec-and-diag.js
+lib/util/helpers-lib.js: modules/helpers-lib/dist/helpers-lib-cjs.js submodules
 	cat $< | node __patch_require.js > $@
 
-lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js
+lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js submodules
 	cat $< | node __patch_require.js > $@
 
 lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
