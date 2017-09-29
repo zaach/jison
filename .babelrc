@@ -1,0 +1,15 @@
+{
+  "ignore": [
+    "node_modules/**/*.js"
+  ],
+  "compact": false,
+  "retainLines": false,
+  "presets": [
+    ["env", {
+      "targets": {
+        "browsers": ["last 2 versions", "safari >= 7"],
+        "node": "4.0"
+      }
+    }]
+  ]
+}

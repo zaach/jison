@@ -28,7 +28,7 @@
     "email": "jison@librelist.com",
     "url": "http://github.com/GerHobbelt/jison/issues"
   },
-  "main": "lib/jison",
+  "main": "lib/jison.js",
   "bin": {
     "jison": "lib/cli.js"
   },
@@ -61,6 +61,7 @@
   },
   "scripts": {
     "test": "make test",
+    "build": "make",
     "pub": "npm publish --access public"
   },
   "homepage": "http://jison.org"
