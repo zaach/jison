@@ -2505,7 +2505,7 @@ parse: function parse(input) {
         yy: sharedState_yy
     };
     var p;
-
+    var yyrulelen;
     var this_production;
     var newState;
     var retval = false;
