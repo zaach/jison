@@ -42,20 +42,21 @@
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
     "@gerhobbelt/recast": "0.12.7-7",
     "@gerhobbelt/xregexp": "3.2.0-21",
-    "jscodeshift": "github:GerHobbelt/jscodeshift#master"
+    "babel-core": "6.26.0",
+    "babel-preset-env": "1.6.0",
+    "babel-preset-modern-browsers": "9.0.2"
   },
   "devDependencies": {
     "@gerhobbelt/ebnf-parser": "0.6.0-193",
     "@gerhobbelt/jison-lex": "0.6.0-193",
     "@gerhobbelt/lex-parser": "0.6.0-193",
     "babel-cli": "6.26.0",
-    "babel-plugin-transform-es2015-function-name": "6.24.1",
-    "babel-plugin-transform-es2015-template-literals": "6.22.0",
     "browserify": "14.4.0",
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "glob": "7.1.2",
     "mocha": "3.5.3",
+    "rollup": "0.50.0",
     "uglify-js": "3.1.2"
   },
   "scripts": {

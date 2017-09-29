@@ -235,7 +235,7 @@ describe("Example/Test Grammars", function () {
         }
       }
       //options.exportSourceCode = {};
-      options.inputFilename = filespec.path;
+      options.file = filespec.path;
       var parser = new Jison.Parser(grammar, options);
       var rv;
 
@@ -263,7 +263,8 @@ describe("Example/Test Grammars", function () {
       }, {
         dumpSourceCodeOnFailure: true,
         throwErrorOnCompileFailure: true,
-        inputFilename: options.inputFilename
+        inputFilename: parser.options.inputFilename,
+        inputPath: parser.options.inputPath,
       }, "test");
 
       if (filespec.__check__) {

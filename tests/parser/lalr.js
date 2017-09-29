@@ -128,7 +128,7 @@ describe("LALR(1)", function () {
 
     assert.throws(function () {
       parser.parse("+");
-    }, JisonParserError, /Parse error on line \d+[^]*?Expecting "ZERO", E, T, got unexpected "PLUS"/);
+    }, JisonParserError, /Parse error on line \d+[^]*?Expecting "ZERO", "E", "T", got unexpected "PLUS"/);
   });
 
   it("test LALR algorithm from Bermudez, Logothetis", function () {
