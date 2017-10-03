@@ -26,6 +26,6 @@
     "test": "make"
   },
   "dependencies": {
-    "jison-gho": "file:.."
+    "jison-gho": "0.6.0-193"
   }
 }
