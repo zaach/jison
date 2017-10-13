@@ -4,6 +4,8 @@
 ## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
 node_modules/
 
+# Ignore the monorepo subpackages directory as the dist/ files do not need them and those should be published separately
+packages/
 
 # Apple Crap
 .DS_Store
@@ -37,7 +39,7 @@ Makefile
 
 # misc files which are used during development
 Vagrantfile
-__patch_require.js
+__patch_*.js
 /modules/
 
 # extra documentation (WIP)
