@@ -1,6 +1,6 @@
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject2 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
@@ -36,58 +36,65 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
     _templateObject32 = _taggedTemplateLiteral(['\n            export {\n                lexer,\n                yylex as lex\n            };\n        '], ['\n            export {\n                lexer,\n                yylex as lex\n            };\n        ']),
     _templateObject33 = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate trailing code from the grammar rule set with a \'%%\' marker on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Maybe you did not correctly separate trailing code from the grammar rule set with a \'%%\' marker on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    ']),
     _templateObject34 = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate the parse \'header section\' (token definitions, options, lexer spec, etc.) from the grammar rule set with a \'%%\' on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Maybe you did not correctly separate the parse \'header section\' (token definitions, options, lexer spec, etc.) from the grammar rule set with a \'%%\' on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject35 = _taggedTemplateLiteral(['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject36 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject37 = _taggedTemplateLiteral(['\n        Each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject38 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n    \n            %code qualifier_name {action code}\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n    \n            %code qualifier_name {action code}\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject39 = _taggedTemplateLiteral(['\n        %start token error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %start token error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject40 = _taggedTemplateLiteral(['\n        %token definition list error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %token definition list error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject41 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject42 = _taggedTemplateLiteral(['\n        %options ill defined / error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %options ill defined / error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject43 = _taggedTemplateLiteral(['\n        %options don\'t seem terminated?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %options don\'t seem terminated?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject44 = _taggedTemplateLiteral(['\n        named %option value error for ', '?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        named %option value error for ', '?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject45 = _taggedTemplateLiteral(['\n        named %option value assignment error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        named %option value assignment error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject46 = _taggedTemplateLiteral(['\n        %parse-params declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %parse-params declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject47 = _taggedTemplateLiteral(['\n        %parser-type declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %parser-type declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject48 = _taggedTemplateLiteral(['\n        operator token list error in an associativity statement?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        operator token list error in an associativity statement?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject49 = _taggedTemplateLiteral(['\n        rule production declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule production declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject50 = _taggedTemplateLiteral(['\n        rule production declaration error: did you terminate the rule production set with a semicolon?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule production declaration error: did you terminate the rule production set with a semicolon?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject51 = _taggedTemplateLiteral(['\n        rule id should be followed by a colon, but that one seems missing?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule id should be followed by a colon, but that one seems missing?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject52 = _taggedTemplateLiteral(['\n        rule alternative production declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule alternative production declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject53 = _taggedTemplateLiteral(['\n        multiple alternative rule productions should be separated by a \'|\' pipe character, not a \':\' colon!\n    \n          Erroneous area:\n        ', '\n    '], ['\n        multiple alternative rule productions should be separated by a \'|\' pipe character, not a \':\' colon!\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject54 = _taggedTemplateLiteral(['\n                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!\n    \n                  Erroneous area:\n                ', '\n            ']),
-    _templateObject55 = _taggedTemplateLiteral(['\n        %epsilon rule action declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %epsilon rule action declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject56 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a grammar rule sublist in \'( ... )\' brackets.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a grammar rule sublist in \'( ... )\' brackets.\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject57 = _taggedTemplateLiteral(['\n        %prec precedence override declaration error?\n    \n          Erroneous precedence declaration:\n        ', '\n    '], ['\n        %prec precedence override declaration error?\n    \n          Erroneous precedence declaration:\n        ', '\n    ']),
-    _templateObject58 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a parser rule action block in curly braces: \'{ ... }\'.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a parser rule action block in curly braces: \'{ ... }\'.\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject59 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a parser rule action block.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a parser rule action block.\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject60 = _taggedTemplateLiteral(['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    '], ['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    ']),
-    _templateObject61 = _taggedTemplateLiteral(['\n        module code declaration error?\n    \n          Erroneous area:\n        '], ['\n        module code declaration error?\n    \n          Erroneous area:\n        ']),
-    _templateObject62 = _taggedTemplateLiteral(['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject63 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                ']),
-    _templateObject64 = _taggedTemplateLiteral(['\n                // macros:\n            '], ['\n                // macros:\n            ']),
-    _templateObject65 = _taggedTemplateLiteral(['\n                // END of the lexer macros.\n            '], ['\n                // END of the lexer macros.\n            ']),
-    _templateObject66 = _taggedTemplateLiteral(['\n                // unknown declarations:\n            '], ['\n                // unknown declarations:\n            ']),
-    _templateObject67 = _taggedTemplateLiteral(['\n                // END of unknown declarations.\n            '], ['\n                // END of unknown declarations.\n            ']),
-    _templateObject68 = _taggedTemplateLiteral(['\n                // options:\n            '], ['\n                // options:\n            ']),
-    _templateObject69 = _taggedTemplateLiteral(['\n                /*\n                 * Lexer stuff that\'s unknown to the JISON prettyPrint service:\n                 *\n                 * ', '\n                 */\n                \n            '], ['\n                /*\n                 * Lexer stuff that\'s unknown to the JISON prettyPrint service:\n                 *\n                 * ', '\n                 */\n                \n            ']),
-    _templateObject70 = _taggedTemplateLiteral(['\n\n            %%\n\n        '], ['\n\n            %%\n\n        ']),
-    _templateObject71 = _taggedTemplateLiteral(['\n\n                %%\n\n            '], ['\n\n                %%\n\n            ']),
-    _templateObject72 = _taggedTemplateLiteral(['\n            // unknown declarations:\n        '], ['\n            // unknown declarations:\n        ']),
-    _templateObject73 = _taggedTemplateLiteral(['\n            // END of unknown declarations.\n        '], ['\n            // END of unknown declarations.\n        ']),
-    _templateObject74 = _taggedTemplateLiteral(['\n            // ============================== START lexer section =========================== \n            \n            %lex\n            \n            ', '\n\n            /lex\n\n            // ============================== END lexer section =============================\n\n        '], ['\n            // ============================== START lexer section =========================== \n            \n            %lex\n            \n            ', '\n\n            /lex\n\n            // ============================== END lexer section =============================\n\n        ']),
-    _templateObject75 = _taggedTemplateLiteral(['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        '], ['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        ']),
-    _templateObject76 = _taggedTemplateLiteral(['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                '], ['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                ']),
-    _templateObject77 = _taggedTemplateLiteral(['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        '], ['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        ']),
-    _templateObject78 = _taggedTemplateLiteral(['\n            var yymain = ', ';\n            \n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        '], ['\n            var yymain = ', ';\n            \n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        ']),
-    _templateObject79 = _taggedTemplateLiteral(['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export {\n            parser,\n            Parser,\n            yyparse as parse,\n            ', '\n        };\n    '], ['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export {\n            parser,\n            Parser,\n            yyparse as parse,\n            ', '\n        };\n    ']),
-    _templateObject80 = _taggedTemplateLiteral(['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }'], ['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }']),
-    _templateObject81 = _taggedTemplateLiteral(['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        '], ['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        ']);
+    _templateObject35 = _taggedTemplateLiteral(['\n            The extra parser module code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra parser module code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject36 = _taggedTemplateLiteral(['\n            action header code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            action header code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject37 = _taggedTemplateLiteral(['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject38 = _taggedTemplateLiteral(['\n            action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject39 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject40 = _taggedTemplateLiteral(['\n        Each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n    \n            %import qualifier_name file_path\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject41 = _taggedTemplateLiteral(['\n            %code "', '" initialization section action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            %code "', '" initialization section action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject42 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n    \n            %code qualifier_name {action code}\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n    \n            %code qualifier_name {action code}\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject43 = _taggedTemplateLiteral(['\n        %start token error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %start token error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject44 = _taggedTemplateLiteral(['\n        %token definition list error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %token definition list error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject45 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject46 = _taggedTemplateLiteral(['\n        %options ill defined / error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %options ill defined / error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject47 = _taggedTemplateLiteral(['\n        %options don\'t seem terminated?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %options don\'t seem terminated?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject48 = _taggedTemplateLiteral(['\n        named %option value error for ', '?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        named %option value error for ', '?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject49 = _taggedTemplateLiteral(['\n        named %option value assignment error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        named %option value assignment error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject50 = _taggedTemplateLiteral(['\n        %parse-params declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %parse-params declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject51 = _taggedTemplateLiteral(['\n        %parser-type declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %parser-type declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject52 = _taggedTemplateLiteral(['\n        operator token list error in an associativity statement?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        operator token list error in an associativity statement?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject53 = _taggedTemplateLiteral(['\n        rule production declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule production declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject54 = _taggedTemplateLiteral(['\n        rule production declaration error: did you terminate the rule production set with a semicolon?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule production declaration error: did you terminate the rule production set with a semicolon?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject55 = _taggedTemplateLiteral(['\n        rule id should be followed by a colon, but that one seems missing?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule id should be followed by a colon, but that one seems missing?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject56 = _taggedTemplateLiteral(['\n        rule alternative production declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        rule alternative production declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject57 = _taggedTemplateLiteral(['\n        multiple alternative rule productions should be separated by a \'|\' pipe character, not a \':\' colon!\n    \n          Erroneous area:\n        ', '\n    '], ['\n        multiple alternative rule productions should be separated by a \'|\' pipe character, not a \':\' colon!\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject58 = _taggedTemplateLiteral(['\n                production rule action code block does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                production rule action code block does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            ']),
+    _templateObject59 = _taggedTemplateLiteral(['\n                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!\n    \n                  Erroneous area:\n                ', '\n            ']),
+    _templateObject60 = _taggedTemplateLiteral(['\n                epsilon production rule action code block does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                epsilon production rule action code block does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            ']),
+    _templateObject61 = _taggedTemplateLiteral(['\n        %epsilon rule action declaration error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        %epsilon rule action declaration error?\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject62 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a grammar rule sublist in \'( ... )\' brackets.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a grammar rule sublist in \'( ... )\' brackets.\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject63 = _taggedTemplateLiteral(['\n        %prec precedence override declaration error?\n    \n          Erroneous precedence declaration:\n        ', '\n    '], ['\n        %prec precedence override declaration error?\n    \n          Erroneous precedence declaration:\n        ', '\n    ']),
+    _templateObject64 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a parser rule action block in curly braces: \'{ ... }\'.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a parser rule action block in curly braces: \'{ ... }\'.\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject65 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a parser rule action block.\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a parser rule action block.\n    \n          Erroneous area:\n        ', '\n    ']),
+    _templateObject66 = _taggedTemplateLiteral(['\n            included action code file "', '" does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            included action code file "', '" does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject67 = _taggedTemplateLiteral(['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    '], ['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    ']),
+    _templateObject68 = _taggedTemplateLiteral(['\n        module code declaration error?\n    \n          Erroneous area:\n        '], ['\n        module code declaration error?\n    \n          Erroneous area:\n        ']),
+    _templateObject69 = _taggedTemplateLiteral(['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject70 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                ']),
+    _templateObject71 = _taggedTemplateLiteral(['\n                // macros:\n            '], ['\n                // macros:\n            ']),
+    _templateObject72 = _taggedTemplateLiteral(['\n                // END of the lexer macros.\n            '], ['\n                // END of the lexer macros.\n            ']),
+    _templateObject73 = _taggedTemplateLiteral(['\n                // unknown declarations:\n            '], ['\n                // unknown declarations:\n            ']),
+    _templateObject74 = _taggedTemplateLiteral(['\n                // END of unknown declarations.\n            '], ['\n                // END of unknown declarations.\n            ']),
+    _templateObject75 = _taggedTemplateLiteral(['\n                // options:\n            '], ['\n                // options:\n            ']),
+    _templateObject76 = _taggedTemplateLiteral(['\n                /*\n                 * Lexer stuff that\'s unknown to the JISON prettyPrint service:\n                 *\n                 * ', '\n                 */\n                \n            '], ['\n                /*\n                 * Lexer stuff that\'s unknown to the JISON prettyPrint service:\n                 *\n                 * ', '\n                 */\n                \n            ']),
+    _templateObject77 = _taggedTemplateLiteral(['\n\n            %%\n\n        '], ['\n\n            %%\n\n        ']),
+    _templateObject78 = _taggedTemplateLiteral(['\n\n                %%\n\n            '], ['\n\n                %%\n\n            ']),
+    _templateObject79 = _taggedTemplateLiteral(['\n            // unknown declarations:\n        '], ['\n            // unknown declarations:\n        ']),
+    _templateObject80 = _taggedTemplateLiteral(['\n            // END of unknown declarations.\n        '], ['\n            // END of unknown declarations.\n        ']),
+    _templateObject81 = _taggedTemplateLiteral(['\n            // ============================== START lexer section =========================== \n            \n            %lex\n            \n            ', '\n\n            /lex\n\n            // ============================== END lexer section =============================\n\n        '], ['\n            // ============================== START lexer section =========================== \n            \n            %lex\n            \n            ', '\n\n            /lex\n\n            // ============================== END lexer section =============================\n\n        ']),
+    _templateObject82 = _taggedTemplateLiteral(['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        '], ['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        ']),
+    _templateObject83 = _taggedTemplateLiteral(['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                '], ['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                ']),
+    _templateObject84 = _taggedTemplateLiteral(['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        '], ['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        ']),
+    _templateObject85 = _taggedTemplateLiteral(['\n            var yymain = ', ';\n            \n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        '], ['\n            var yymain = ', ';\n            \n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        ']),
+    _templateObject86 = _taggedTemplateLiteral(['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export {\n            parser,\n            Parser,\n            yyparse as parse,\n            ', '\n        };\n    '], ['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export {\n            parser,\n            Parser,\n            yyparse as parse,\n            ', '\n        };\n    ']),
+    _templateObject87 = _taggedTemplateLiteral(['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }'], ['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }']),
+    _templateObject88 = _taggedTemplateLiteral(['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        '], ['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 function _interopDefault(ex) {
-    return ex && (typeof ex === 'undefined' ? 'undefined' : _typeof(ex)) === 'object' && 'default' in ex ? ex['default'] : ex;
+    return ex && (typeof ex === 'undefined' ? 'undefined' : _typeof2(ex)) === 'object' && 'default' in ex ? ex['default'] : ex;
 }
 
 var assert = _interopDefault(require('assert'));
@@ -2660,7 +2667,7 @@ var parser$1 = {
         // e.g. `lexer.yytext` MAY be a complex value object, 
         // rather than a simple string/value.
         function shallow_copy(src) {
-            if ((typeof src === 'undefined' ? 'undefined' : _typeof(src)) === 'object') {
+            if ((typeof src === 'undefined' ? 'undefined' : _typeof2(src)) === 'object') {
                 var dst = {};
                 for (var k in src) {
                     if (Object.prototype.hasOwnProperty.call(src, k)) {
@@ -3019,7 +3026,7 @@ var parser$1 = {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -4214,7 +4221,7 @@ var lexer = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -7401,7 +7408,7 @@ function prepExportStructures$1(options) {
     // set up the 'option' `exportSourceCode` as a hash object for returning
     // all generated source code chunks to the caller
     var exportSourceCode = options.exportSourceCode;
-    if (!exportSourceCode || (typeof exportSourceCode === 'undefined' ? 'undefined' : _typeof(exportSourceCode)) !== 'object') {
+    if (!exportSourceCode || (typeof exportSourceCode === 'undefined' ? 'undefined' : _typeof2(exportSourceCode)) !== 'object') {
         exportSourceCode = {
             enabled: !!exportSourceCode
         };
@@ -8313,7 +8320,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
             if (!lexer) {
                 throw new Error('no lexer defined *at all*?!');
             }
-            if (_typeof(lexer.options) !== 'object' || lexer.options == null) {
+            if (_typeof2(lexer.options) !== 'object' || lexer.options == null) {
                 throw new Error('your lexer class MUST have an .options member object or it won\'t fly!');
             }
             if (typeof lexer.setInput !== 'function') {
@@ -8548,7 +8555,7 @@ function getRegExpLexerPrototype() {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -10236,7 +10243,6 @@ var helpers$1 = {
 
 // end of prelude
 
-
 /* parser generated by jison 0.6.0-194 */
 
 /*
@@ -11109,7 +11115,7 @@ var parser$3 = {
             pre_parse: undefined,
             post_parse: undefined,
             pre_lex: undefined,
-            post_lex: undefined
+            post_lex: undefined // WARNING: must be written this way for the code expanders to work correctly in both ES5 and ES6 modes!
         };
 
         this.yyGetSharedState = function yyGetSharedState() {
@@ -11269,7 +11275,7 @@ var parser$3 = {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -11556,7 +11562,7 @@ var parser$3 = {
 parser$3.originalParseError = parser$3.parseError;
 parser$3.originalQuoteName = parser$3.quoteName;
 
-/* lexer generated by jison-lex 0.6.0-194*/
+/* lexer generated by jison-lex 0.6.0-196*/
 
 /*
  * Returns a Lexer object of the following structure:
@@ -12015,6 +12021,7 @@ var lexer$2 = function () {
          * @this {RegExpLexer}
          */
         cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+            // prevent lingering circular references from causing memory leaks:
             this.setInput('', {});
 
             // nuke the error hash info instances created during this run.
@@ -13442,7 +13449,7 @@ function deepClone(from, sub) {
         sub = 'root';
     }
     if (typeof from === 'function') return from;
-    if (from == null || (typeof from === 'undefined' ? 'undefined' : _typeof(from)) !== 'object') return from;
+    if (from == null || (typeof from === 'undefined' ? 'undefined' : _typeof2(from)) !== 'object') return from;
     if (from.constructor !== Object && from.constructor !== Array) {
         return from;
     }
@@ -13485,7 +13492,6 @@ function transform(ebnf) {
 var assert$2;
 
 // end of prelude
-
 
 /* parser generated by jison 0.6.0-194 */
 
@@ -14408,17 +14414,17 @@ var parser$2 = {
                 break;
 
             case 5:
-            /*! Production::    optional_end_block : "%%" extra_parser_module_code */
-            case 50:
-            /*! Production::    parse_params : PARSE_PARAM token_list */
-            case 52:
-                /*! Production::    parser_type : PARSER_TYPE symbol */
+                /*! Production::    optional_end_block : "%%" extra_parser_module_code */
 
                 // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
                 this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
+                var rv = checkActionBlock(yyvstack[yysp]);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject35, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                }
                 this.$ = yyvstack[yysp];
                 break;
 
@@ -14446,6 +14452,10 @@ var parser$2 = {
 
 
                 this.$ = yyvstack[yysp - 1];
+                var rv = checkActionBlock(yyvstack[yysp]);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject36, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                }
                 yy.addDeclaration(this.$, { actionInclude: yyvstack[yysp] });
                 break;
 
@@ -14470,7 +14480,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject35, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject37, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 12:
@@ -14518,7 +14528,20 @@ var parser$2 = {
                 break;
 
             case 16:
-            /*! Production::    declaration : ACTION */
+                /*! Production::    declaration : ACTION */
+
+                // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                this._$ = yylstack[yysp];
+                // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+
+
+                var rv = checkActionBlock(yyvstack[yysp]);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject38, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                }
+                this.$ = { include: yyvstack[yysp] };
+                break;
+
             case 17:
                 /*! Production::    declaration : include_macro_code */
 
@@ -14527,6 +14550,10 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
+                var rv = checkActionBlock(yyvstack[yysp]);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject36, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                }
                 this.$ = { include: yyvstack[yysp] };
                 break;
 
@@ -14617,7 +14644,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject36, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject39, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 26:
@@ -14629,7 +14656,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject37, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject40, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
                 break;
 
             case 27:
@@ -14640,6 +14667,10 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
+                var rv = checkActionBlock(yyvstack[yysp]);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject41, $init_code_name, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                }
                 this.$ = {
                     initCode: {
                         qualifier: yyvstack[yysp - 1],
@@ -14657,7 +14688,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject38, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
+                yyparser.yyError(rmCommonWS$4(_templateObject42, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
                 break;
 
             case 29:
@@ -14670,7 +14701,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject39, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject43, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 30:
@@ -14683,7 +14714,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject40, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject44, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 31:
@@ -14696,7 +14727,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject41, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject45, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 32:
@@ -14783,7 +14814,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject42, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
+                yyparser.yyError(rmCommonWS$4(_templateObject46, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
                 break;
 
             case 41:
@@ -14796,7 +14827,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject43, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject47, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 42:
@@ -14876,7 +14907,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject44, yyvstack[yysp - 2], yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject48, yyvstack[yysp - 2], yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 49:
@@ -14889,7 +14920,20 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject45, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject49, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                break;
+
+            case 50:
+            /*! Production::    parse_params : PARSE_PARAM token_list */
+            case 52:
+                /*! Production::    parser_type : PARSER_TYPE symbol */
+
+                // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
+                // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+
+
+                this.$ = yyvstack[yysp];
                 break;
 
             case 51:
@@ -14902,7 +14946,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject46, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject50, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 53:
@@ -14915,7 +14959,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject47, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject51, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 54:
@@ -14939,7 +14983,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject48, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject52, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 56:
@@ -15125,7 +15169,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject49, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject53, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
                 break;
 
             case 77:
@@ -15138,7 +15182,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject50, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject54, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 78:
@@ -15164,7 +15208,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject51, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject55, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 81:
@@ -15198,7 +15242,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject52, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject56, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 85:
@@ -15211,7 +15255,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject53, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject57, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 86:
@@ -15224,11 +15268,15 @@ var parser$2 = {
 
                 this.$ = [yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : ''];
                 if (yyvstack[yysp]) {
+                    var rv = checkActionBlock(yyvstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$4(_templateObject58, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    }
                     this.$.push(yyvstack[yysp]);
                 }
                 if (yyvstack[yysp - 1]) {
                     if (yyvstack[yysp - 2].length === 0) {
-                        yyparser.yyError(rmCommonWS$4(_templateObject54, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 2])));
+                        yyparser.yyError(rmCommonWS$4(_templateObject59, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 2])));
                     }
                     this.$.push(yyvstack[yysp - 1]);
                 }
@@ -15247,6 +15295,10 @@ var parser$2 = {
 
                 this.$ = [''];
                 if (yyvstack[yysp]) {
+                    var rv = checkActionBlock(yyvstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$4(_templateObject60, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    }
                     this.$.push(yyvstack[yysp]);
                 }
                 if (this.$.length === 1) {
@@ -15264,7 +15316,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject55, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject61, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 89:
@@ -15385,7 +15437,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject56, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject62, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 100:
@@ -15426,7 +15478,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject57, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                yyparser.yyError(rmCommonWS$4(_templateObject63, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
                 break;
 
             case 106:
@@ -15449,7 +15501,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject58, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject64, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 115:
@@ -15494,7 +15546,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject59, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                yyparser.yyError(rmCommonWS$4(_templateObject65, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
                 break;
 
             case 125:
@@ -15517,6 +15569,10 @@ var parser$2 = {
 
 
                 var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
+                var rv = checkActionBlock(fileContent);
+                if (rv) {
+                    yyparser.yyError(rmCommonWS$4(_templateObject66, $PATH, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                }
                 // And no, we don't support nested '%include':
                 this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
                 break;
@@ -15530,7 +15586,7 @@ var parser$2 = {
                 // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                yyparser.yyError(rmCommonWS$4(_templateObject60) + yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]));
+                yyparser.yyError(rmCommonWS$4(_templateObject67) + yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]));
                 break;
 
             case 130:
@@ -15543,7 +15599,7 @@ var parser$2 = {
 
 
                 // TODO ...
-                yyparser.yyError(rmCommonWS$4(_templateObject61) + yylexer.prettyPrintRange(yylexer, yylstack[yysp]));
+                yyparser.yyError(rmCommonWS$4(_templateObject68) + yylexer.prettyPrintRange(yylexer, yylstack[yysp]));
                 break;
 
             case 164:
@@ -15616,15 +15672,18 @@ var parser$2 = {
             pre_parse: undefined,
             post_parse: undefined,
             pre_lex: undefined,
-            post_lex: undefined
+            post_lex: undefined // WARNING: must be written this way for the code expanders to work correctly in both ES5 and ES6 modes!
         };
 
+        var ASSERT;
         if (typeof assert$2 !== 'function') {
-            assert$2 = function JisonAssert(cond, msg) {
+            ASSERT = function JisonAssert(cond, msg) {
                 if (!cond) {
                     throw new Error('assertion failed: ' + (msg || '***'));
                 }
             };
+        } else {
+            ASSERT = assert$2;
         }
 
         this.yyGetSharedState = function yyGetSharedState() {
@@ -15639,7 +15698,7 @@ var parser$2 = {
         // e.g. `lexer.yytext` MAY be a complex value object, 
         // rather than a simple string/value.
         function shallow_copy(src) {
-            if ((typeof src === 'undefined' ? 'undefined' : _typeof(src)) === 'object') {
+            if ((typeof src === 'undefined' ? 'undefined' : _typeof2(src)) === 'object') {
                 var dst = {};
                 for (var k in src) {
                     if (Object.prototype.hasOwnProperty.call(src, k)) {
@@ -15998,7 +16057,7 @@ var parser$2 = {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -16299,7 +16358,7 @@ var parser$2 = {
 
                         // try to recover from error
                         if (error_rule_depth < 0) {
-                            assert$2(recovering > 0);
+                            ASSERT(recovering > 0);
                             recoveringErrorInfo.info_stack_pointer = esp;
 
                             // barf a fatal hairball when we're out of look-ahead symbols and none hit a match
@@ -16398,8 +16457,8 @@ var parser$2 = {
                         // *or* we execute a `reduce` action which outputs a final parse
                         // result (yes, that MAY happen!)...
 
-                        assert$2(recoveringErrorInfo);
-                        assert$2(symbol === TERROR);
+                        ASSERT(recoveringErrorInfo);
+                        ASSERT(symbol === TERROR);
                         while (symbol) {
                             // retrieve state number from top of stack
                             state = newState; // sstack[sp - 1];
@@ -16445,7 +16504,7 @@ var parser$2 = {
                                 case 1:
                                     stack[sp] = symbol;
                                     //vstack[sp] = lexer.yytext;
-                                    assert$2(recoveringErrorInfo);
+                                    ASSERT(recoveringErrorInfo);
                                     vstack[sp] = recoveringErrorInfo;
                                     //lstack[sp] = copy_yylloc(lexer.yylloc);
                                     lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
@@ -16598,7 +16657,7 @@ var parser$2 = {
 
                         ++sp;
                         symbol = 0;
-                        assert$2(preErrorSymbol === 0);
+                        ASSERT(preErrorSymbol === 0);
                         if (!preErrorSymbol) {
                             // normal execution / no error
                             // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
@@ -16760,6 +16819,25 @@ var ebnf = false;
 
 var rmCommonWS$4 = helpers$1.rmCommonWS;
 var dquote$2 = helpers$1.dquote;
+var parse2AST = helpers$1.parseCodeChunkToAST;
+
+// validate the given JavaScript snippet: does it compile?
+function checkActionBlock(src) {
+    src = src.trim();
+    if (!src) {
+        return false;
+    }
+    try {
+        parse2AST(src);
+        return false;
+    } catch (ex) {
+        console.error("parse2AST error: ", {
+            src: src,
+            ex: ex
+        });
+        return ex.message || "code snippet cannot be parsed";
+    }
+}
 
 // transform ebnf to bnf if necessary
 function extend(json, grammar) {
@@ -16803,7 +16881,7 @@ parser$2.warn = function p_warn() {
 parser$2.log = function p_log() {
     console.log.apply(console, arguments);
 };
-/* lexer generated by jison-lex 0.6.0-194*/
+/* lexer generated by jison-lex 0.6.0-196*/
 
 /*
  * Returns a Lexer object of the following structure:
@@ -17262,6 +17340,7 @@ var lexer$1 = function () {
          * @this {RegExpLexer}
          */
         cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+            // prevent lingering circular references from causing memory leaks:
             this.setInput('', {});
 
             // nuke the error hash info instances created during this run.
@@ -18472,7 +18551,7 @@ var lexer$1 = function () {
                     /*! Conditions:: token bnf ebnf INITIAL */
                     /*! Rule::       %{NAME}([^\r\n]*) */
                     /* ignore unrecognized decl */
-                    this.warn(rmCommonWS(_templateObject62, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                    this.warn(rmCommonWS(_templateObject69, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
 
                     yy_.yytext = [this.matches[1], // {NAME}  
                     this.matches[2].trim() // optional value/parameters 
@@ -18675,7 +18754,7 @@ var lexer$1 = function () {
                     /*! Conditions:: * */
                     /*! Rule::       . */
                     /* b0rk on bad characters */
-                    yy_.yyerror(rmCommonWS(_templateObject63, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                    yy_.yyerror(rmCommonWS(_templateObject70, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
 
                     break;
 
@@ -21043,7 +21122,7 @@ var parser$4 = {
         // e.g. `lexer.yytext` MAY be a complex value object, 
         // rather than a simple string/value.
         function shallow_copy(src) {
-            if ((typeof src === 'undefined' ? 'undefined' : _typeof(src)) === 'object') {
+            if ((typeof src === 'undefined' ? 'undefined' : _typeof2(src)) === 'object') {
                 var dst = {};
                 for (var k in src) {
                     if (Object.prototype.hasOwnProperty.call(src, k)) {
@@ -21402,7 +21481,7 @@ var parser$4 = {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -22597,7 +22676,7 @@ var lexer$3 = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -24681,7 +24760,7 @@ var jisonlex = {
     parse: yyparse$3
 };
 
-var version$2 = '0.6.0-194'; // require('./package.json').version;
+var version$2 = '0.6.0-195'; // require('./package.json').version;
 
 function parse(grammar) {
     return parser$2.parse(grammar);
@@ -27063,15 +27142,18 @@ var parser$5 = {
             pre_parse: undefined,
             post_parse: undefined,
             pre_lex: undefined,
-            post_lex: undefined
+            post_lex: undefined // WARNING: must be written this way for the code expanders to work correctly in both ES5 and ES6 modes!
         };
 
+        var ASSERT;
         if (typeof assert$5 !== 'function') {
-            assert$5 = function JisonAssert(cond, msg) {
+            ASSERT = function JisonAssert(cond, msg) {
                 if (!cond) {
                     throw new Error('assertion failed: ' + (msg || '***'));
                 }
             };
+        } else {
+            ASSERT = assert$5;
         }
 
         this.yyGetSharedState = function yyGetSharedState() {
@@ -27086,7 +27168,7 @@ var parser$5 = {
         // e.g. `lexer.yytext` MAY be a complex value object, 
         // rather than a simple string/value.
         function shallow_copy(src) {
-            if ((typeof src === 'undefined' ? 'undefined' : _typeof(src)) === 'object') {
+            if ((typeof src === 'undefined' ? 'undefined' : _typeof2(src)) === 'object') {
                 var dst = {};
                 for (var k in src) {
                     if (Object.prototype.hasOwnProperty.call(src, k)) {
@@ -27445,7 +27527,7 @@ var parser$5 = {
                     // ...
                     var rec = !!this.recoverable;
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -27746,7 +27828,7 @@ var parser$5 = {
 
                         // try to recover from error
                         if (error_rule_depth < 0) {
-                            assert$5(recovering > 0);
+                            ASSERT(recovering > 0);
                             recoveringErrorInfo.info_stack_pointer = esp;
 
                             // barf a fatal hairball when we're out of look-ahead symbols and none hit a match
@@ -27845,8 +27927,8 @@ var parser$5 = {
                         // *or* we execute a `reduce` action which outputs a final parse
                         // result (yes, that MAY happen!)...
 
-                        assert$5(recoveringErrorInfo);
-                        assert$5(symbol === TERROR);
+                        ASSERT(recoveringErrorInfo);
+                        ASSERT(symbol === TERROR);
                         while (symbol) {
                             // retrieve state number from top of stack
                             state = newState; // sstack[sp - 1];
@@ -27892,7 +27974,7 @@ var parser$5 = {
                                 case 1:
                                     stack[sp] = symbol;
                                     //vstack[sp] = lexer.yytext;
-                                    assert$5(recoveringErrorInfo);
+                                    ASSERT(recoveringErrorInfo);
                                     vstack[sp] = recoveringErrorInfo;
                                     //lstack[sp] = copy_yylloc(lexer.yylloc);
                                     lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
@@ -28045,7 +28127,7 @@ var parser$5 = {
 
                         ++sp;
                         symbol = 0;
-                        assert$5(preErrorSymbol === 0);
+                        ASSERT(preErrorSymbol === 0);
                         if (!preErrorSymbol) {
                             // normal execution / no error
                             // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
@@ -28256,7 +28338,7 @@ parser$5.yy.pre_parse = function p_lex() {
 parser$5.yy.post_lex = function p_lex() {
     if (parser$5.yydebug) parser$5.log('post_lex:', arguments);
 };
-/* lexer generated by jison-lex 0.6.0-194*/
+/* lexer generated by jison-lex 0.6.0-196*/
 
 /*
  * Returns a Lexer object of the following structure:
@@ -28715,6 +28797,7 @@ var lexer$4 = function () {
          * @this {RegExpLexer}
          */
         cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+            // prevent lingering circular references from causing memory leaks:
             this.setInput('', {});
 
             // nuke the error hash info instances created during this run.
@@ -31034,7 +31117,7 @@ var rmCommonWS$9 = helpers$3.rmCommonWS;
  * @public
  */
 function grammarPrinter(raw, options) {
-    if ((typeof raw === 'undefined' ? 'undefined' : _typeof(raw)) !== 'object') {
+    if ((typeof raw === 'undefined' ? 'undefined' : _typeof2(raw)) !== 'object') {
         raw = json5.parse(raw);
     }
     options = options || {};
@@ -31101,7 +31184,7 @@ function grammarPrinter(raw, options) {
     }
 
     function isEmptyObj(obj) {
-        var keys = obj && (typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object' && Object.keys(obj);
+        var keys = obj && (typeof obj === 'undefined' ? 'undefined' : _typeof2(obj)) === 'object' && Object.keys(obj);
         return keys && keys.length === 0;
     }
 
@@ -31156,7 +31239,7 @@ function grammarPrinter(raw, options) {
             sub = 'root';
         }
         if (typeof from === 'function') return '[Function]';
-        if (from == null || (typeof from === 'undefined' ? 'undefined' : _typeof(from)) !== 'object') return from;
+        if (from == null || (typeof from === 'undefined' ? 'undefined' : _typeof2(from)) !== 'object') return from;
         if (from.constructor !== Object && from.constructor !== Array) {
             return from;
         }
@@ -31190,7 +31273,7 @@ function grammarPrinter(raw, options) {
         src = raw.lex.macros;
         delete raw.lex.macros;
         if (src && !isEmptyObj(src)) {
-            lex_pre.push(rmCommonWS$9(_templateObject64));
+            lex_pre.push(rmCommonWS$9(_templateObject71));
 
             var keylen = 0;
             for (key in src) {
@@ -31203,13 +31286,13 @@ function grammarPrinter(raw, options) {
                 lex_pre.push(padRight(key, keylen) + src[key]);
             }
 
-            lex_pre.push(rmCommonWS$9(_templateObject65));
+            lex_pre.push(rmCommonWS$9(_templateObject72));
         }
 
         src = raw.lex.unknownDecls;
         delete raw.lex.unknownDecls;
         if (src && !isEmptyObj(src)) {
-            lex_pre.push(rmCommonWS$9(_templateObject66));
+            lex_pre.push(rmCommonWS$9(_templateObject73));
 
             for (var i = 0, len = src.length; i < len; i++) {
                 var entry = src[i];
@@ -31219,13 +31302,13 @@ function grammarPrinter(raw, options) {
                 lex_pre.push('%' + key + ' ' + value);
             }
 
-            lex_pre.push(rmCommonWS$9(_templateObject67));
+            lex_pre.push(rmCommonWS$9(_templateObject74));
         }
 
         src = raw.lex.options;
         delete raw.lex.options;
         if (src && !isEmptyObj(src)) {
-            lex_pre.push(rmCommonWS$9(_templateObject68));
+            lex_pre.push(rmCommonWS$9(_templateObject75));
 
             for (key in src) {
                 var value = src[key];
@@ -31294,14 +31377,14 @@ function grammarPrinter(raw, options) {
         if (!isEmptyObj(raw.lex)) {
             // dump the remainder as a comment:
             var rem = json5.stringify(raw.lex, null, 2);
-            out += rmCommonWS$9(_templateObject69, rem.replace(/\*\//g, '*\\/'));
+            out += rmCommonWS$9(_templateObject76, rem.replace(/\*\//g, '*\\/'));
         }
         delete raw.lex;
 
         out += lex_pre.join('\n') + '\n\n';
-        out += rmCommonWS$9(_templateObject70) + lex_rules.join('\n') + '\n\n';
+        out += rmCommonWS$9(_templateObject77) + lex_rules.join('\n') + '\n\n';
         if (lex_post.length > 0) {
-            out += rmCommonWS$9(_templateObject71) + lex_post.join('\n') + '\n\n';
+            out += rmCommonWS$9(_templateObject78) + lex_post.join('\n') + '\n\n';
         }
         lex_out_str = out;
     }
@@ -31321,7 +31404,7 @@ function grammarPrinter(raw, options) {
         var lead = rule.split(/\r\n\|\n|\r/).pop();
         delete prodset[0];
 
-        if (prodset.length === 3 && _typeof(prodset[2]) === 'object') {
+        if (prodset.length === 3 && _typeof2(prodset[2]) === 'object') {
             prec = '%prec ' + prodset[2].prec;
             if (lead.length < 12) {
                 rule += makeIndent(12 - lead.length);
@@ -31332,7 +31415,7 @@ function grammarPrinter(raw, options) {
             if (isEmptyObj(prodset[2])) {
                 delete prodset[2];
             }
-        } else if (prodset.length === 2 && _typeof(prodset[1]) === 'object') {
+        } else if (prodset.length === 2 && _typeof2(prodset[1]) === 'object') {
             prec = '%prec ' + prodset[1].prec;
             if (lead.length < 12) {
                 rule += makeIndent(12 - lead.length);
@@ -31453,7 +31536,7 @@ function grammarPrinter(raw, options) {
     src = raw.unknownDecls;
     delete raw.unknownDecls;
     if (src && !isEmptyObj(src)) {
-        lex_pre.push(rmCommonWS$9(_templateObject72));
+        lex_pre.push(rmCommonWS$9(_templateObject79));
 
         for (var i = 0, len = src.length; i < len; i++) {
             var entry = src[i];
@@ -31463,14 +31546,14 @@ function grammarPrinter(raw, options) {
             lex_pre.push('%' + key + ' ' + value);
         }
 
-        lex_pre.push(rmCommonWS$9(_templateObject73));
+        lex_pre.push(rmCommonWS$9(_templateObject80));
     }
 
     //src = raw.lex;
     //delete raw.lex;
     //if (src) {
     if (lex_out_str.trim() && options.showLexer) {
-        grammar_pre.push(rmCommonWS$9(_templateObject74, lex_out_str));
+        grammar_pre.push(rmCommonWS$9(_templateObject81, lex_out_str));
     }
 
     src = raw.options;
@@ -31650,7 +31733,7 @@ function grammarPrinter(raw, options) {
     if (!isEmptyObj(raw)) {
         // dump the remainder as a comment:
         var rem = json5.stringify(raw, null, 2);
-        out += rmCommonWS$9(_templateObject75, rem.replace(/\*\//g, '*\\/'));
+        out += rmCommonWS$9(_templateObject82, rem.replace(/\*\//g, '*\\/'));
         // delete raw;
     }
 
@@ -31658,7 +31741,7 @@ function grammarPrinter(raw, options) {
         out += lex_out_str;
     } else {
         out += grammar_pre.join('\n') + '\n\n';
-        out += rmCommonWS$9(_templateObject70);
+        out += rmCommonWS$9(_templateObject77);
         if (grammar_mid.length > 0) {
             out += grammar_mid.join('\n') + '\n\n';
         }
@@ -31670,7 +31753,7 @@ function grammarPrinter(raw, options) {
                     return '// ' + line;
                 });
 
-                out += rmCommonWS$9(_templateObject76, a.join('\n'));
+                out += rmCommonWS$9(_templateObject83, a.join('\n'));
             }
             out += ebnf_rules.join('\n\n') + '\n\n';
         } else if (bnf_rules.length > 0) {
@@ -31678,7 +31761,7 @@ function grammarPrinter(raw, options) {
         }
 
         if (grammar_post.length > 0) {
-            out += rmCommonWS$9(_templateObject71) + grammar_post.join('\n') + '\n\n';
+            out += rmCommonWS$9(_templateObject78) + grammar_post.join('\n') + '\n\n';
         }
     }
 
@@ -31687,7 +31770,7 @@ function grammarPrinter(raw, options) {
             return '// ' + line;
         });
 
-        out = rmCommonWS$9(_templateObject77, options.showParser ? 'grammar' : 'lexer', a.join('\n'));
+        out = rmCommonWS$9(_templateObject84, options.showParser ? 'grammar' : 'lexer', a.join('\n'));
 
         // process the original input once again: this time via JSON5
         raw = deepClone(originalInput);
@@ -31968,6 +32051,7 @@ function exec_and_diagnose_this_stuff$4(sourcecode, code_execution_rig, options,
 
 
 function parseCodeChunkToAST$4(src, options) {
+    src = src.replace(/@/g, '$').replace(/#/g, '$');
     var ast = recast.parse(src);
     return ast;
 }
@@ -32156,7 +32240,7 @@ function mkStdOptions() {
         if (typeof o2.hasDefaultResolve !== 'undefined') {
             o2.noDefaultResolve = !o2.hasDefaultResolve;
         }
-        switch (_typeof(o2.defaultActionMode)) {
+        switch (_typeof2(o2.defaultActionMode)) {
             case 'undefined':
                 break;
 
@@ -32215,7 +32299,7 @@ function mkStdOptions() {
 
         if (o2.errorRecoveryTokenDiscardCount != null) {
             if (typeof o2.errorRecoveryTokenDiscardCount !== 'number') {
-                throw new Error('options.errorRecoveryTokenDiscardCount should be a number or undefined; instead it has type: ' + _typeof(o2.errorRecoveryTokenDiscardCount));
+                throw new Error('options.errorRecoveryTokenDiscardCount should be a number or undefined; instead it has type: ' + _typeof2(o2.errorRecoveryTokenDiscardCount));
             }
         }
 
@@ -32253,7 +32337,7 @@ function prepExportStructures(options) {
     // set up the 'option' `exportAllTables` as a hash object for returning
     // all generated tables to the caller
     var exportDest = options.exportAllTables;
-    if (!exportDest || (typeof exportDest === 'undefined' ? 'undefined' : _typeof(exportDest)) !== 'object') {
+    if (!exportDest || (typeof exportDest === 'undefined' ? 'undefined' : _typeof2(exportDest)) !== 'object') {
         exportDest = {
             enabled: !!exportDest
         };
@@ -32265,7 +32349,7 @@ function prepExportStructures(options) {
     // set up the 'option' `exportSourceCode` as a hash object for returning
     // all generated source code chunks to the caller
     var exportSourceCode = options.exportSourceCode;
-    if (!exportSourceCode || (typeof exportSourceCode === 'undefined' ? 'undefined' : _typeof(exportSourceCode)) !== 'object') {
+    if (!exportSourceCode || (typeof exportSourceCode === 'undefined' ? 'undefined' : _typeof2(exportSourceCode)) !== 'object') {
         exportSourceCode = {
             enabled: !!exportSourceCode
         };
@@ -32848,7 +32932,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
                 }
             }
 
-            if (!predefined_symbols || (typeof predefined_symbols === 'undefined' ? 'undefined' : _typeof(predefined_symbols)) !== 'object') {
+            if (!predefined_symbols || (typeof predefined_symbols === 'undefined' ? 'undefined' : _typeof2(predefined_symbols)) !== 'object') {
                 throw new Error('Error: `%import symbols <path>` must point to either a JSON file containing a symbol table (hash table) or a previously generated JISON JavaScript file, which contains such a symbol table.');
             }
 
@@ -35543,10 +35627,10 @@ lrGeneratorMixin.generateESModule = function generateESModule(opt) {
     if (!opt.noMain) {
         var moduleNameAsCode = String(opt.moduleMain || commonjsMain);
 
-        out.push(rmCommonWS(_templateObject78, moduleNameAsCode.trim()));
+        out.push(rmCommonWS(_templateObject85, moduleNameAsCode.trim()));
         exportMain = 'yyExecMain as main,';
     }
-    out.push(rmCommonWS(_templateObject79, exportMain));
+    out.push(rmCommonWS(_templateObject86, exportMain));
 
     var src = out.join('\n') + '\n';
     opt.exportSourceCode.all = src;
@@ -35561,9 +35645,9 @@ generatorMixin.generateCommonJSModule = function generateCommonJSModule(opt) {
     if (!opt.noMain) {
         var moduleNameAsCode = String(opt.moduleMain || commonjsMain);
 
-        main = rmCommonWS(_templateObject80, moduleNameAsCode.trim());
+        main = rmCommonWS(_templateObject87, moduleNameAsCode.trim());
     }
-    var out = this.generateModule(opt) + rmCommonWS(_templateObject81, moduleName, moduleName, moduleName, moduleName, main);
+    var out = this.generateModule(opt) + rmCommonWS(_templateObject88, moduleName, moduleName, moduleName, moduleName, main);
 
     opt.exportSourceCode.all = out;
     return out;
@@ -36973,7 +37057,7 @@ lrGeneratorMixin.generateTableCode2 = function (table, defaultActions, productio
                 } else {
                     assert(0);
                     type_col.push(666);
-                    state_col.push((typeof slot === 'undefined' ? 'undefined' : _typeof(slot)) + state + '/' + symbol);
+                    state_col.push((typeof slot === 'undefined' ? 'undefined' : _typeof2(slot)) + state + '/' + symbol);
                     //next_col.push((typeof slot) + state + '/' + symbol);
                 }
                 count++;

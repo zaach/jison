@@ -39,5 +39,17 @@ export default {
       // ES2015 modules
       modulesOnly: true, // Default: false
     })
+  ],
+  external: [
+    '@gerhobbelt/ast-util',
+    '@gerhobbelt/json5',
+    '@gerhobbelt/nomnom',
+    '@gerhobbelt/prettier-miscellaneous',
+    '@gerhobbelt/recast',
+    '@gerhobbelt/xregexp',
+    'assert',
+    'fs',
+    'path',
+    'process',
   ]
 };
