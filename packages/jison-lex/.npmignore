@@ -11,3 +11,6 @@ npm-debug.log
 
 # Ignore build/publish scripts, etc.
 Makefile
+
+# misc files which are used during development
+__patch_*.js

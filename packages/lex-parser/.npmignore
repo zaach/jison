@@ -15,3 +15,6 @@ Makefile
 # Sources which are compiled through jison
 lex.y
 lex.l
+
+# misc files which are used during development
+__patch_*.js

@@ -16,3 +16,6 @@ Makefile
 ebnf.y
 bnf.y
 bnf.l
+
+# misc files which are used during development
+__patch_*.js
