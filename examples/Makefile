@@ -517,7 +517,7 @@ lex:
 	$(JISON) --main ./$@.jison lex_grammar.jisonlex
 
 ccalc:
-	$(JISON) --main ./$@-parse.y ./$@-lex.l
+	#$(JISON) --main ./$@-parse.y ./$@-lex.l
 
 c99:
 	$(JISON) --main ./$@.y ./$@.l
