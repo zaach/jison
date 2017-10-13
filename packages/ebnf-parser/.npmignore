@@ -1,0 +1,18 @@
+.DS_Store
+node_modules/
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~
+
+# scratch space
+/tmp/
+
+# Ignore build/publish scripts, etc.
+Makefile
+
+# Sources which are compiled through jison
+ebnf.y
+bnf.y
+bnf.l

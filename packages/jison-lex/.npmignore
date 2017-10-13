@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+npm-debug.log
+
+# Editor backup files
+*.bak
+*~
+
+# scratch space
+/tmp/
+
+# Ignore build/publish scripts, etc.
+Makefile

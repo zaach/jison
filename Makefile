@@ -399,24 +399,24 @@ npm-update: submodules-npm-update
 
 build_bnf: lib/util/parser.js
 
-lib/util/parser.js: submodules prep_util_dir \
+lib/util/parser.js: subpackages prep_util_dir \
 					dist/cli-cjs-es5.js \
-					modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	NODE_PATH=lib/util  $(JISON) -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+					packages/ebnf-parser/bnf.y packages/ebnf-parser/bnf.l
+	NODE_PATH=lib/util  $(JISON) -o $@ packages/ebnf-parser/bnf.y packages/ebnf-parser/bnf.l
 
 build_lex: lib/util/lex-parser.js
 
-lib/util/lex-parser.js: submodules prep_util_dir \
+lib/util/lex-parser.js: subpackages prep_util_dir \
 						dist/cli-cjs-es5.js \
-						modules/lex-parser/lex.y modules/lex-parser/lex.l
-	NODE_PATH=lib/util  $(JISON) -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
+						packages/lex-parser/lex.y packages/lex-parser/lex.l
+	NODE_PATH=lib/util  $(JISON) -o $@ packages/lex-parser/lex.y packages/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	@[ -d  node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  node_modules/jison-gho/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	@[ -f  node_modules/jison-gho/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
+	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
 dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js
 	node __patch_version_in_js.js
@@ -438,13 +438,22 @@ dist/jison.js: rollup.config.js
 
 
 
+subpackages:
+	cd packages/helpers-lib && make
+	cd packages/lex-parser && make
+	cd packages/jison-lex && make
+	cd packages/ebnf-parser && make
+	cd packages/json2jison && make
+	cd packages/jison2json && make
+
+
 submodules:
-	#cd modules/helpers-lib && make
-	#cd modules/lex-parser && make
-	#cd modules/jison-lex && make
-	#cd modules/ebnf-parser && make
-	#cd modules/json2jison && make
-	#cd modules/jison2json && make
+	cd modules/helpers-lib && make
+	cd modules/lex-parser && make
+	cd modules/jison-lex && make
+	cd modules/ebnf-parser && make
+	cd modules/json2jison && make
+	cd modules/jison2json && make
 
 
 submodules-npm-install:
@@ -544,5 +553,5 @@ superclean: clean clean-site
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex subpackages submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
 
