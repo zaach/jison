@@ -1,4 +1,4 @@
-import * as parser from './transform-parser.js';
+import parser from './transform-parser.js';
 import XRegExp from '@gerhobbelt/xregexp';
 
 //import assert from 'assert';

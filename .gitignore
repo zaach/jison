@@ -34,6 +34,7 @@ web/crash.log
 
 # ignore the compiler output for any examples:            
 /examples/output
+/packages/jison-lex/examples/output
 
 # scratch space
 /tmp/

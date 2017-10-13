@@ -25,7 +25,7 @@ npm-update:
 	ncu -a --packageFile=package.json
 
 build:
-ifeq ($(wildcard ./node_modules/.bin/jison),)
+ifeq ($(wildcard ../../node_modules/.bin/jison),)
 	$(error "### FAILURE: Make sure you have run 'make prep' before as the jison compiler is unavailable! ###")
 endif
 	$(JISON) -m es -o lex-parser.js lex.y lex.l

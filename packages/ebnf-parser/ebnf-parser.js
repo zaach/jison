@@ -1,5 +1,5 @@
 
-import * as bnf from "./parser";
+import bnf from "./parser";
 import transform from "./ebnf-transform";
 import jisonlex from "../lex-parser";
 
