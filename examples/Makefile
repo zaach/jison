@@ -2,7 +2,7 @@
 # You can build each example to its own directory in ./output/<example>
 #
 
-JISON = node ../lib/cli.js -o ./output/$@/
+JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
 
 
 ERROR_HANDLING_TARGETS =                                        \

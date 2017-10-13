@@ -405,23 +405,10 @@ npm-install: submodules-npm-install
 npm-update: submodules-npm-update
 	ncu -a --packageFile=package.json
 
-build_bnf: lib/util/parser.js
-
-lib/util/parser.js: subpackages prep_util_dir \
-					dist/cli-cjs-es5.js \
-					packages/ebnf-parser/bnf.y packages/ebnf-parser/bnf.l
-	NODE_PATH=lib/util  $(JISON) -o $@ packages/ebnf-parser/bnf.y packages/ebnf-parser/bnf.l
-
-build_lex: lib/util/lex-parser.js
-
-lib/util/lex-parser.js: subpackages prep_util_dir \
-						dist/cli-cjs-es5.js \
-						packages/lex-parser/lex.y packages/lex-parser/lex.l
-	NODE_PATH=lib/util  $(JISON) -o $@ packages/lex-parser/lex.y packages/lex-parser/lex.l
-
 prep_util_dir:
 	#@[ -d  node_modules/jison-gho/dist ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
 	#@[ -f  node_modules/jison-gho/dist/cli-cjs-es5.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	-mkdir -p dist
 	#+[ -f dist/cli-cjs-es5.js     ] || ( cp node_modules/jison-gho/dist/cli-cjs-es5.js      dist/cli-cjs-es5.js      && touch -d 1970/1/1  dist/cli-cjs-es5.js     )
 
 dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js
@@ -511,7 +498,8 @@ submodules-git-tag:
 git:
 	#-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
 	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
-	-git pull --all; git push --all
+	-git pull --all
+	-git push --all
 
 
 submodules-publish:
@@ -534,7 +522,6 @@ clean: clean-site
 	cd modules/ebnf-parser && make clean
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
-	-rm -f lib/util/parser.js lib/util/lex-parser.js
 	-rm -rf node_modules/
 	-rm -f package-lock.json
 
@@ -554,10 +541,11 @@ superclean: clean clean-site
 	cd modules/ebnf-parser && make superclean
 	cd modules/jison2json && make superclean
 	cd modules/json2jison && make superclean
+	-rm -rf dist
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
 
 
 
-.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install build_bnf build_lex subpackages submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
+.PHONY: all prep site preview deploy test web-examples examples examples-test error-handling-tests basic-tests github-issue-tests misc-tests build npm-install subpackages submodules submodules-npm-install clean superclean git prep_util_dir bump submodules-bump git-tag submodules-git-tag compile-site clean-site publish submodules-publish
 
