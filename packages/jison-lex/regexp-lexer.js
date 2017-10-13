@@ -2320,12 +2320,6 @@ return `{
         return this.conditionStack.length;
     }
 }`;
-
-
-
-
-
-
     // --- END lexer kernel ---
 }
 

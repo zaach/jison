@@ -8,7 +8,8 @@ kernel = kernel
 .replace(/`/g, '\\`')
 // strip header comment too:
 .replace(/^[^{]*/, '')
-.trim();
+.replace(/[\s\r\n]+$/, '')          // rtrim()
+;
  
 globby(['regexp-lexer.js']).then(paths => {
 	var count = 0;
@@ -20,10 +21,10 @@ globby(['regexp-lexer.js']).then(paths => {
     	//console.log('path: ', path);
 
     	var src = fs.readFileSync(path, 'utf8');
-    	src = src.replace(/(\/\/ --- START lexer kernel ---)[^]+?(\s*\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
+    	src = src.replace(/(\/\/ --- START lexer kernel ---)[^]+?(\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
             return p1 + `
 return \`${kernel}\`;
-` + p2;
+    ` + p2;
         });
 		updated = true;
 
