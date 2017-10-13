@@ -405,10 +405,11 @@ function JisonParserError(msg, hash) {
         stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+        if (Error.hasOwnProperty('captureStackTrace')) {
+            // V8
             Error.captureStackTrace(this, this.constructor);
         } else {
-            stacktrace = (new Error(msg)).stack;
+            stacktrace = new Error(msg).stack;
         }
     }
     if (stacktrace) {
@@ -431,111 +432,111 @@ JisonParserError.prototype.name = 'JisonParserError';
 
 
 
-// helper: reconstruct the productions[] table
-function bp(s) {
-    var rv = [];
-    var p = s.pop;
-    var r = s.rule;
-    for (var i = 0, l = p.length; i < l; i++) {
-        rv.push([
-            p[i],
-            r[i]
-        ]);
-    }
-    return rv;
-}
+        // helper: reconstruct the productions[] table
+        function bp(s) {
+            var rv = [];
+            var p = s.pop;
+            var r = s.rule;
+            for (var i = 0, l = p.length; i < l; i++) {
+                rv.push([
+                    p[i],
+                    r[i]
+                ]);
+            }
+            return rv;
+        }
+    
 
 
+        // helper: reconstruct the defaultActions[] table
+        function bda(s) {
+            var rv = {};
+            var d = s.idx;
+            var g = s.goto;
+            for (var i = 0, l = d.length; i < l; i++) {
+                var j = d[i];
+                rv[j] = g[i];
+            }
+            return rv;
+        }
+    
 
-// helper: reconstruct the defaultActions[] table
-function bda(s) {
-    var rv = {};
-    var d = s.idx;
-    var g = s.goto;
-    for (var i = 0, l = d.length; i < l; i++) {
-        var j = d[i];
-        rv[j] = g[i];
-    }
-    return rv;
-}
+
+        // helper: reconstruct the 'goto' table
+        function bt(s) {
+            var rv = [];
+            var d = s.len;
+            var y = s.symbol;
+            var t = s.type;
+            var a = s.state;
+            var m = s.mode;
+            var g = s.goto;
+            for (var i = 0, l = d.length; i < l; i++) {
+                var n = d[i];
+                var q = {};
+                for (var j = 0; j < n; j++) {
+                    var z = y.shift();
+                    switch (t.shift()) {
+                    case 2:
+                        q[z] = [
+                            m.shift(),
+                            g.shift()
+                        ];
+                        break;
+
+                    case 0:
+                        q[z] = a.shift();
+                        break;
+
+                    default:
+                        // type === 1: accept
+                        q[z] = [
+                            3
+                        ];
+                    }
+                }
+                rv.push(q);
+            }
+            return rv;
+        }
+    
 
 
-
-// helper: reconstruct the 'goto' table
-function bt(s) {
-    var rv = [];
-    var d = s.len;
-    var y = s.symbol;
-    var t = s.type;
-    var a = s.state;
-    var m = s.mode;
-    var g = s.goto;
-    for (var i = 0, l = d.length; i < l; i++) {
-        var n = d[i];
-        var q = {};
-        for (var j = 0; j < n; j++) {
-            var z = y.shift();
-            switch (t.shift()) {
-            case 2:
-                q[z] = [
-                    m.shift(),
-                    g.shift()
-                ];
-                break;
-
-            case 0:
-                q[z] = a.shift();
-                break;
-
-            default:
-                // type === 1: accept
-                q[z] = [
-                    3
-                ];
+        // helper: runlength encoding with increment step: code, length: step (default step = 0)
+        // `this` references an array
+        function s(c, l, a) {
+            a = a || 0;
+            for (var i = 0; i < l; i++) {
+                this.push(c);
+                c += a;
             }
         }
-        rv.push(q);
-    }
-    return rv;
-}
 
-
-
-// helper: runlength encoding with increment step: code, length: step (default step = 0)
-// `this` references an array
-function s(c, l, a) {
-    a = a || 0;
-    for (var i = 0; i < l; i++) {
-        this.push(c);
-        c += a;
-    }
-}
-
-// helper: duplicate sequence from *relative* offset and length.
-// `this` references an array
-function c(i, l) {
-    i = this.length - i;
-    for (l += i; i < l; i++) {
-        this.push(this[i]);
-    }
-}
-
-// helper: unpack an array using helpers and data, all passed in an array argument 'a'.
-function u(a) {
-    var rv = [];
-    for (var i = 0, l = a.length; i < l; i++) {
-        var e = a[i];
-        // Is this entry a helper function?
-        if (typeof e === 'function') {
-            i++;
-            e.apply(rv, a[i]);
-        } else {
-            rv.push(e);
+        // helper: duplicate sequence from *relative* offset and length.
+        // `this` references an array
+        function c(i, l) {
+            i = this.length - i;
+            for (l += i; i < l; i++) {
+                this.push(this[i]);
+            }
         }
-    }
-    return rv;
-}
 
+        // helper: unpack an array using helpers and data, all passed in an array argument 'a'.
+        function u(a) {
+            var rv = [];
+            for (var i = 0, l = a.length; i < l; i++) {
+                var e = a[i];
+                // Is this entry a helper function?
+                if (typeof e === 'function') {
+                    i++;
+                    e.apply(rv, a[i]);
+                } else {
+                    rv.push(e);
+                }
+            }
+            return rv;
+        }
+    
 
 var parser = {
     // Code Generator Information Report
@@ -590,7 +591,7 @@ var parser = {
     //
     // --------- END OF REPORT -----------
 
-trace: function no_op_trace() { },
+trace: function no_op_trace() {},
 JisonParserError: JisonParserError,
 yy: {},
 options: {
@@ -645,9 +646,9 @@ cleanupAfterParse: null,
 constructParseErrorInfo: null,
 yyMergeLocationInfo: null,
 
-__reentrant_call_depth: 0,      // INTERNAL USE ONLY
-__error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
-__error_recovery_infos: [],     // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+__reentrant_call_depth: 0, // INTERNAL USE ONLY
+__error_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+__error_recovery_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
 // APIs which will be set up depending on user action code analysis:
 //yyRecovering: 0,
@@ -670,7 +671,7 @@ getSymbolName: function parser_getSymbolName(symbol) {
     if (this.terminals_[symbol]) {
         return this.terminals_[symbol];
     }
-    
+
     // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
     //
     // An example of this may be where a rule's action code contains a call like this:
@@ -694,8 +695,7 @@ getSymbolName: function parser_getSymbolName(symbol) {
 describeSymbol: function parser_describeSymbol(symbol) {
     if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
         return this.terminal_descriptions_[symbol];
-    }
-    else if (symbol === this.EOF) {
+    } else if (symbol === this.EOF) {
         return 'end of input';
     }
     var id = this.getSymbolName(symbol);
@@ -720,9 +720,7 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
     // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
     // If so, use that one instead of the less palatable token set.
     if (!do_not_describe && this.state_descriptions_ && this.state_descriptions_[state]) {
-        return [
-            this.state_descriptions_[state]
-        ];
+        return [this.state_descriptions_[state]];
     }
     for (var p in this.table[state]) {
         p = +p;
@@ -730,7 +728,7 @@ collect_expected_token_set: function parser_collect_expected_token_set(state, do
             var d = do_not_describe ? p : this.describeSymbol(p);
             if (d && !check[d]) {
                 tokenset.push(d);
-                check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
+                check[d] = true; // Mark this token description as already mentioned to prevent outputting duplicate entries.
             }
         }
     }
@@ -999,7 +997,7 @@ defaultActions: bda({
 parseError: function parseError(str, hash, ExceptionClass) {
     if (hash.recoverable && typeof this.trace === 'function') {
         this.trace(str);
-        hash.destroy();             // destroy... well, *almost*!
+        hash.destroy(); // destroy... well, *almost*!
     } else {
         if (!ExceptionClass) {
             ExceptionClass = this.JisonParserError;
@@ -1045,15 +1043,18 @@ parse: function parse(input) {
         pre_parse: undefined,
         post_parse: undefined,
         pre_lex: undefined,
-        post_lex: undefined
+        post_lex: undefined      // WARNING: must be written this way for the code expanders to work correctly in both ES5 and ES6 modes!
     };
 
+    var ASSERT;
     if (typeof assert !== 'function') {
-        assert = function JisonAssert(cond, msg) {
+        ASSERT = function JisonAssert(cond, msg) {
             if (!cond) {
                 throw new Error('assertion failed: ' + (msg || '***'));
             }
         };
+    } else {
+        ASSERT = assert;
     }
     
     this.yyGetSharedState = function yyGetSharedState() {
@@ -1723,7 +1724,7 @@ parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
 
 
-/* lexer generated by jison-lex 0.6.0-194*/
+/* lexer generated by jison-lex 0.6.0-196*/
 
 /*
  * Returns a Lexer object of the following structure:
@@ -2041,9 +2042,7 @@ var lexer = function() {
        //
        // --------- END OF REPORT -----------
 
-
-    EOF: 1,
-
+EOF: 1,
     ERROR: 2,
 
     // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -2052,7 +2051,7 @@ var lexer = function() {
 
     // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null,                   /// <-- internal rule set cache for the current lexer state  
+    __currentRuleSet__: null,                   /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
 
     __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
     __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
@@ -2187,8 +2186,6 @@ var lexer = function() {
      * @this {RegExpLexer}
      */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
-      var rv;
-
       // prevent lingering circular references from causing memory leaks:
       this.setInput('', {});
 
@@ -2220,7 +2217,10 @@ var lexer = function() {
       this.yytext = '';
       this.yyleng = 0;
       this.match = '';
+
+      // - DO NOT reset `this.matched`
       this.matches = false;
+
       this._more = false;
       this._backtrack = false;
       var col = (this.yylloc ? this.yylloc.last_column : 0);
@@ -2306,48 +2306,61 @@ var lexer = function() {
     },
 
     /**
-     * push a new input into the lexer and activate it:
-     * the old input position is stored and will be resumed
-     * once this new input has been consumed.
+     * edit the remaining input via user-specified callback.
+     * This can be used to forward-adjust the input-to-parse, 
+     * e.g. inserting macro expansions and alike in the
+     * input which has yet to be lexed.
+     * The behaviour of this API contrasts the `unput()` et al
+     * APIs as those act on the *consumed* input, while this
+     * one allows one to manipulate the future, without impacting
+     * the current `yyloc` cursor location or any history. 
      * 
      * Use this API to help implement C-preprocessor-like
-     * `#include` statements.
+     * `#include` statements, etc.
      * 
-     * Available options:
+     * The provided callback must be synchronous and is
+     * expected to return the edited input (string).
+     *
+     * The `cpsArg` argument value is passed to the callback
+     * as-is.
+     *
+     * `callback` interface: 
+     * `function callback(input, cpsArg)`
      * 
-     * - `emit_EOF_at_end` : {int} the `EOF`-like token to emit
-     *                       when the new input is consumed: use
-     *                       this to mark the end of the new input
-     *                       in the parser grammar. zero/falsey
-     *                       token value means no end marker token
-     *                       will be emitted before the lexer
-     *                       resumes reading from the previous input.
+     * - `input` will carry the remaining-input-to-lex string
+     *   from the lexer.
+     * - `cpsArg` is `cpsArg` passed into this API.
+     * 
+     * The `this` reference for the callback will be set to
+     * reference this lexer instance so that userland code
+     * in the callback can easily and quickly access any lexer
+     * API. 
+     *
+     * When the callback returns a non-string-type falsey value,
+     * we assume the callback did not edit the input and we
+     * will using the input as-is.
+     *
+     * When the callback returns a non-string-type value, it
+     * is converted to a string for lexing via the `"" + retval`
+     * operation. (See also why: http://2ality.com/2012/03/converting-to-string.html 
+     * -- that way any returned object's `toValue()` and `toString()`
+     * methods will be invoked in a proper/desirable order.)
      * 
      * @public
      * @this {RegExpLexer}
      */
-    pushInput: function lexer_pushInput(input, label, options) {
-      options = options || {};
-      this._input = input || '';
-      this.clear();
+    editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
+      var rv = callback.call(this, this._input, cpsArg);
 
-      // this._signaled_error_token = false;
-      this.done = false;
+      if (typeof rv !== 'string') {
+        if (rv) {
+          this._input = '' + rv;
+        } 
+        // else: keep `this._input` as is.  
+      } else {
+        this._input = rv;
+      }
 
-      this.yylineno = 0;
-      this.matched = '';
-
-      // this.conditionStack = ['INITIAL'];
-      // this.__currentRuleSet__ = null;
-      this.yylloc = {
-        first_line: 1,
-        first_column: 0,
-        last_line: 1,
-        last_column: 0,
-        range: [0, 0]
-      };
-
-      this.offset = 0;
       return this;
     },
 
@@ -2564,6 +2577,16 @@ var lexer = function() {
      * Limit the returned string to the `maxLines` number of lines of input (default: 1).
      * 
      * Negative limit values equal *unlimited*.
+     *
+     * > ### NOTE ###
+     * >
+     * > *"upcoming input"* is defined as the whole of the both
+     * > the *currently lexed* input, together with any remaining input
+     * > following that. *"currently lexed"* input is the input 
+     * > already recognized by the lexer but not yet returned with
+     * > the lexer token. This happens when you are invoking this API
+     * > from inside any lexer rule action code block. 
+     * >
      * 
      * @public
      * @this {RegExpLexer}
@@ -2861,6 +2884,7 @@ var lexer = function() {
       this.yytext += match_str;
 
       this.match += match_str;
+      this.matched += match_str;
       this.matches = match;
       this.yyleng = this.yytext.length;
       this.yylloc.range[1] += match_str_len;
@@ -2873,7 +2897,6 @@ var lexer = function() {
       this._more = false;
       this._backtrack = false;
       this._input = this._input.slice(match_str_len);
-      this.matched += match_str;
 
       // calling this method:
       //
@@ -2975,10 +2998,7 @@ var lexer = function() {
       }
 
       var rule_ids = spec.rules;
-
-      //var dispatch = spec.__dispatch_lut;
       var regexes = spec.__rule_regexes;
-
       var len = spec.__rule_count;
 
       // Note: the arrays are 1-based, while `len` itself is a valid index,
@@ -3075,16 +3095,6 @@ var lexer = function() {
 
       while (!r) {
         r = this.next();
-      }
-
-      if (0) {
-        console.log('@@@@@@@@@ lex: ', {
-          token: r,
-          sym: this.yy.parser && typeof this.yy.parser.describeSymbol === 'function' && this.yy.parser.describeSymbol(r),
-          describeTypeFunc: this.yy.parser && typeof this.yy.parser.describeSymbol,
-          condition: this.conditionStack,
-          text: this.yytext
-        }, '\n' + ((this.showPosition ? this.showPosition() : '???')));
       }
 
       if (typeof this.options.post_lex === 'function') {
