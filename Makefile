@@ -389,7 +389,15 @@ examples/yacc-error-recovery: build
 
 
 
-build: build_bnf build_lex
+build: 																	\
+		subpackages 													\
+		prep_util_dir 													\
+		dist/cli-cjs-es5.js 											\
+		packages/ebnf-parser/ebnf.y 									\
+		packages/ebnf-parser/bnf.y 										\
+		packages/ebnf-parser/bnf.l 										\
+		packages/lex-parser/lex.y 										\
+		packages/lex-parser/lex.l
 
 npm-install: submodules-npm-install
 	npm install
@@ -412,11 +420,9 @@ lib/util/lex-parser.js: subpackages prep_util_dir \
 	NODE_PATH=lib/util  $(JISON) -o $@ packages/lex-parser/lex.y packages/lex-parser/lex.l
 
 prep_util_dir:
-	@[ -d  node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  node_modules/jison-gho/lib/util/parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	@[ -f  node_modules/jison-gho/lib/util/lex-parser.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
-	+[ -f lib/util/parser.js     ] || ( cp node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
-	+[ -f lib/util/lex-parser.js ] || ( cp node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
+	#@[ -d  node_modules/jison-gho/dist ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	#@[ -f  node_modules/jison-gho/dist/cli-cjs-es5.js ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
+	#+[ -f dist/cli-cjs-es5.js     ] || ( cp node_modules/jison-gho/dist/cli-cjs-es5.js      dist/cli-cjs-es5.js      && touch -d 1970/1/1  dist/cli-cjs-es5.js     )
 
 dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js
 	node __patch_version_in_js.js
@@ -439,12 +445,12 @@ dist/jison.js: rollup.config.js
 
 
 subpackages:
-	cd packages/helpers-lib && make
-	cd packages/lex-parser && make
-	cd packages/jison-lex && make
-	cd packages/ebnf-parser && make
-	cd packages/json2jison && make
-	cd packages/jison2json && make
+	#cd packages/helpers-lib && make
+	#cd packages/lex-parser && make
+	#cd packages/jison-lex && make
+	#cd packages/ebnf-parser && make
+	#cd packages/json2jison && make
+	#cd packages/jison2json && make
 
 
 submodules:

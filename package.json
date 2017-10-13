@@ -42,13 +42,9 @@
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
     "@gerhobbelt/recast": "0.12.7-11",
-    "@gerhobbelt/xregexp": "3.2.0-21",
-    "jison-helpers-lib": "0.1.0-194"
+    "@gerhobbelt/xregexp": "3.2.0-21"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-194",
-    "@gerhobbelt/jison-lex": "0.6.0-196",
-    "@gerhobbelt/lex-parser": "0.6.0-194",
     "babel-cli": "6.26.0",
     "babel-core": "6.26.0",
     "babel-preset-env": "1.6.0",
