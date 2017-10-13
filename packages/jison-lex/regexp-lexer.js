@@ -15,7 +15,7 @@ import astUtils from '@gerhobbelt/ast-util';
 import prettier from '@gerhobbelt/prettier-miscellaneous';
 import assert from 'assert';
 
-var version = '0.6.0-196';                              // require('./package.json').version;
+var version = '0.6.1-200';                              // require('./package.json').version;
 
 
 

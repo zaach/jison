@@ -3,8 +3,9 @@
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
-var recast = _interopDefault(require('@gerhobbelt/recast'));
 var fs = _interopDefault(require('fs'));
+var path = _interopDefault(require('path'));
+var recast = _interopDefault(require('@gerhobbelt/recast'));
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -129,13 +130,6 @@ function dquote$1(s) {
 // 
 
 
-var fs$1 = require('fs');
-var path = require('path');
-
-
-
-
-
 // Helper function: pad number with leading zeroes
 function pad(n, p) {
     p = p || 2;
@@ -177,7 +171,7 @@ function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
 
             try {
                 dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
-                fs$1.writeFileSync(dumpfile, sourcecode, 'utf8');
+                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
                 console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
                 break;          // abort loop once a dump action was successful!
             } catch (ex3) {
@@ -263,6 +257,16 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     return p;
 }
 
+
+
+
+
+
+var code_exec = {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
+};
+
 //
 // Parse a given chunk of code to an AST.
 //
@@ -323,16 +327,27 @@ function prettyPrintAST(ast, options) {
     return new_src;
 }
 
+
+
+
+
+
+
+var parse2AST$1 = {
+    parseCodeChunkToAST,
+    prettyPrintAST
+};
+
 var helpers = {
     rmCommonWS: rmCommonWS$1,
     camelCase,
     dquote: dquote$1,
 
-    exec: exec_and_diagnose_this_stuff,
-    dump: dumpSourceToFile,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST,
-    prettyPrintAST,
+    parseCodeChunkToAST: parse2AST$1.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST$1.prettyPrintAST,
 };
 
 // end of prelude
@@ -2376,9 +2391,7 @@ var lexer$1 = function() {
        //
        // --------- END OF REPORT -----------
 
-
-    EOF: 1,
-
+EOF: 1,
     ERROR: 2,
 
     // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -2387,24 +2400,24 @@ var lexer$1 = function() {
 
     // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null, /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
+    __currentRuleSet__: null,                   /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
 
-    __error_infos: [], /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
-    __decompressed: false, /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
-    done: false, /// INTERNAL USE ONLY  
-    _backtrack: false, /// INTERNAL USE ONLY  
-    _input: '', /// INTERNAL USE ONLY  
-    _more: false, /// INTERNAL USE ONLY  
-    _signaled_error_token: false, /// INTERNAL USE ONLY  
-    conditionStack: [], /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
-    match: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
-    matched: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
-    matches: false, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
-    yytext: '', /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
-    offset: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
-    yyleng: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
-    yylineno: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
-    yylloc: null, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
+    done: false,                                /// INTERNAL USE ONLY  
+    _backtrack: false,                          /// INTERNAL USE ONLY  
+    _input: '',                                 /// INTERNAL USE ONLY  
+    _more: false,                               /// INTERNAL USE ONLY  
+    _signaled_error_token: false,               /// INTERNAL USE ONLY  
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
 
     /**
      * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
@@ -2417,7 +2430,7 @@ var lexer$1 = function() {
       var pei = {
         errStr: msg,
         recoverable: !!recoverable,
-        text: this.match, // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
+        text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
         token: null,
         line: this.yylineno,
         loc: this.yylloc,
@@ -2444,7 +2457,7 @@ var lexer$1 = function() {
           var rec = !!this.recoverable;
 
           for (var key in this) {
-            if (this.hasOwnProperty(key) && ((typeof key === 'undefined' ? 'undefined' : _typeof2(key))) === 'object') {
+            if (this.hasOwnProperty(key) && typeof key === 'object') {
               this[key] = undefined;
             }
           }
@@ -2602,7 +2615,7 @@ var lexer$1 = function() {
           var spec = conditions[k];
           var rule_ids = spec.rules;
           var len = rule_ids.length;
-          var rule_regexes = new Array(len + 1);  // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
+          var rule_regexes = new Array(len + 1);             // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
           var rule_new_ids = new Array(len + 1);
 
           for (var i = 0; i < len; i++) {
@@ -2880,7 +2893,7 @@ var lexer$1 = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = past.length;  // can't ever have more input lines than this! 
+        maxLines = past.length;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -2936,7 +2949,7 @@ var lexer$1 = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = maxSize;  // can't ever have more input lines than this! 
+        maxLines = maxSize;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -2944,7 +2957,7 @@ var lexer$1 = function() {
       // more than necessary so that we can still properly check against maxSize
       // after we've transformed and limited the newLines in here:
       if (next.length < maxSize * 2 + 2) {
-        next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8 
+        next += this._input.substring(0, maxSize * 2 + 2);   // substring is faster on Chrome/V8 
       }
 
       // now that we have a significantly reduced string to process, transform the newlines
@@ -3022,9 +3035,9 @@ var lexer$1 = function() {
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
-      var CONTEXT = 3;
-      var CONTEXT_TAIL = 1;
-      var MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
+      const CONTEXT = 3;
+      const CONTEXT_TAIL = 1;
+      const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
       var input = this.matched + this._input;
       var lines = input.split('\n');
 
@@ -3094,7 +3107,7 @@ var lexer$1 = function() {
           end: clip_end,
           len: clip_end - clip_start + 1,
           arr: nonempty_line_indexes,
-          rv: rv
+          rv
         });
 
         var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
@@ -9751,9 +9764,7 @@ var lexer = function() {
        //
        // --------- END OF REPORT -----------
 
-
-    EOF: 1,
-
+EOF: 1,
     ERROR: 2,
 
     // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -9762,24 +9773,24 @@ var lexer = function() {
 
     // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null, /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
+    __currentRuleSet__: null,                   /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
 
-    __error_infos: [], /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
-    __decompressed: false, /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
-    done: false, /// INTERNAL USE ONLY  
-    _backtrack: false, /// INTERNAL USE ONLY  
-    _input: '', /// INTERNAL USE ONLY  
-    _more: false, /// INTERNAL USE ONLY  
-    _signaled_error_token: false, /// INTERNAL USE ONLY  
-    conditionStack: [], /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
-    match: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
-    matched: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
-    matches: false, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
-    yytext: '', /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
-    offset: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
-    yyleng: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
-    yylineno: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
-    yylloc: null, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
+    done: false,                                /// INTERNAL USE ONLY  
+    _backtrack: false,                          /// INTERNAL USE ONLY  
+    _input: '',                                 /// INTERNAL USE ONLY  
+    _more: false,                               /// INTERNAL USE ONLY  
+    _signaled_error_token: false,               /// INTERNAL USE ONLY  
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
 
     /**
      * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
@@ -9792,7 +9803,7 @@ var lexer = function() {
       var pei = {
         errStr: msg,
         recoverable: !!recoverable,
-        text: this.match, // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
+        text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
         token: null,
         line: this.yylineno,
         loc: this.yylloc,
@@ -9819,7 +9830,7 @@ var lexer = function() {
           var rec = !!this.recoverable;
 
           for (var key in this) {
-            if (this.hasOwnProperty(key) && ((typeof key === 'undefined' ? 'undefined' : _typeof2(key))) === 'object') {
+            if (this.hasOwnProperty(key) && typeof key === 'object') {
               this[key] = undefined;
             }
           }
@@ -9977,7 +9988,7 @@ var lexer = function() {
           var spec = conditions[k];
           var rule_ids = spec.rules;
           var len = rule_ids.length;
-          var rule_regexes = new Array(len + 1);  // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
+          var rule_regexes = new Array(len + 1);             // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
           var rule_new_ids = new Array(len + 1);
 
           for (var i = 0; i < len; i++) {
@@ -10255,7 +10266,7 @@ var lexer = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = past.length;  // can't ever have more input lines than this! 
+        maxLines = past.length;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -10311,7 +10322,7 @@ var lexer = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = maxSize;  // can't ever have more input lines than this! 
+        maxLines = maxSize;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -10319,7 +10330,7 @@ var lexer = function() {
       // more than necessary so that we can still properly check against maxSize
       // after we've transformed and limited the newLines in here:
       if (next.length < maxSize * 2 + 2) {
-        next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8 
+        next += this._input.substring(0, maxSize * 2 + 2);   // substring is faster on Chrome/V8 
       }
 
       // now that we have a significantly reduced string to process, transform the newlines
@@ -10397,9 +10408,9 @@ var lexer = function() {
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
-      var CONTEXT = 3;
-      var CONTEXT_TAIL = 1;
-      var MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
+      const CONTEXT = 3;
+      const CONTEXT_TAIL = 1;
+      const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
       var input = this.matched + this._input;
       var lines = input.split('\n');
 
@@ -10469,7 +10480,7 @@ var lexer = function() {
           end: clip_end,
           len: clip_end - clip_start + 1,
           arr: nonempty_line_indexes,
-          rv: rv
+          rv
         });
 
         var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
@@ -17259,9 +17270,7 @@ var lexer$2 = function() {
        //
        // --------- END OF REPORT -----------
 
-
-    EOF: 1,
-
+EOF: 1,
     ERROR: 2,
 
     // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -17270,24 +17279,24 @@ var lexer$2 = function() {
 
     // yy: ...,                                 /// <-- injected by setInput()
 
-    __currentRuleSet__: null, /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
+    __currentRuleSet__: null,                   /// INTERNAL USE ONLY: internal rule set cache for the current lexer state  
 
-    __error_infos: [], /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
-    __decompressed: false, /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
-    done: false, /// INTERNAL USE ONLY  
-    _backtrack: false, /// INTERNAL USE ONLY  
-    _input: '', /// INTERNAL USE ONLY  
-    _more: false, /// INTERNAL USE ONLY  
-    _signaled_error_token: false, /// INTERNAL USE ONLY  
-    conditionStack: [], /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
-    match: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
-    matched: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
-    matches: false, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
-    yytext: '', /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
-    offset: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
-    yyleng: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
-    yylineno: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
-    yylloc: null, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
+    __error_infos: [],                          /// INTERNAL USE ONLY: the set of lexErrorInfo objects created since the last cleanup  
+    __decompressed: false,                      /// INTERNAL USE ONLY: mark whether the lexer instance has been 'unfolded' completely and is now ready for use  
+    done: false,                                /// INTERNAL USE ONLY  
+    _backtrack: false,                          /// INTERNAL USE ONLY  
+    _input: '',                                 /// INTERNAL USE ONLY  
+    _more: false,                               /// INTERNAL USE ONLY  
+    _signaled_error_token: false,               /// INTERNAL USE ONLY  
+    conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`  
+    match: '',                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction. `match` is identical to `yytext` except that this one still contains the matched input string after `lexer.performAction()` has been invoked, where userland code MAY have changed/replaced the `yytext` value entirely!  
+    matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
+    matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
+    yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
+    yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
+    yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
+    yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
 
     /**
      * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
@@ -17300,7 +17309,7 @@ var lexer$2 = function() {
       var pei = {
         errStr: msg,
         recoverable: !!recoverable,
-        text: this.match, // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
+        text: this.match,           // This one MAY be empty; userland code should use the `upcomingInput` API to obtain more text which follows the 'lexer cursor position'...  
         token: null,
         line: this.yylineno,
         loc: this.yylloc,
@@ -17327,7 +17336,7 @@ var lexer$2 = function() {
           var rec = !!this.recoverable;
 
           for (var key in this) {
-            if (this.hasOwnProperty(key) && ((typeof key === 'undefined' ? 'undefined' : _typeof2(key))) === 'object') {
+            if (this.hasOwnProperty(key) && typeof key === 'object') {
               this[key] = undefined;
             }
           }
@@ -17485,7 +17494,7 @@ var lexer$2 = function() {
           var spec = conditions[k];
           var rule_ids = spec.rules;
           var len = rule_ids.length;
-          var rule_regexes = new Array(len + 1);  // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
+          var rule_regexes = new Array(len + 1);             // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple! 
           var rule_new_ids = new Array(len + 1);
 
           for (var i = 0; i < len; i++) {
@@ -17763,7 +17772,7 @@ var lexer$2 = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = past.length;  // can't ever have more input lines than this! 
+        maxLines = past.length;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -17819,7 +17828,7 @@ var lexer$2 = function() {
         maxSize = 20;
 
       if (maxLines < 0)
-        maxLines = maxSize;  // can't ever have more input lines than this! 
+        maxLines = maxSize;          // can't ever have more input lines than this! 
       else if (!maxLines)
         maxLines = 1;
 
@@ -17827,7 +17836,7 @@ var lexer$2 = function() {
       // more than necessary so that we can still properly check against maxSize
       // after we've transformed and limited the newLines in here:
       if (next.length < maxSize * 2 + 2) {
-        next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8 
+        next += this._input.substring(0, maxSize * 2 + 2);   // substring is faster on Chrome/V8 
       }
 
       // now that we have a significantly reduced string to process, transform the newlines
@@ -17905,9 +17914,9 @@ var lexer$2 = function() {
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
-      var CONTEXT = 3;
-      var CONTEXT_TAIL = 1;
-      var MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
+      const CONTEXT = 3;
+      const CONTEXT_TAIL = 1;
+      const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
       var input = this.matched + this._input;
       var lines = input.split('\n');
 
@@ -17977,7 +17986,7 @@ var lexer$2 = function() {
           end: clip_end,
           len: clip_end - clip_start + 1,
           arr: nonempty_line_indexes,
-          rv: rv
+          rv
         });
 
         var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
@@ -19767,7 +19776,7 @@ var jisonlex = {
     
 };
 
-var version = '0.6.0-195';                              // require('./package.json').version;
+var version = '0.6.1-200';                              // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);

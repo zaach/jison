@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import recast from '@gerhobbelt/recast';
 
 // Return TRUE if `src` starts with `searchString`. 
@@ -121,13 +123,6 @@ function dquote(s) {
 // the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
 // we can test the code in a different environment so that we can see what precisely is causing the failure.
 // 
-
-
-var fs = require('fs');
-var path = require('path');
-
-
-
 
 
 // Helper function: pad number with leading zeroes
@@ -257,6 +252,16 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     return p;
 }
 
+
+
+
+
+
+var code_exec = {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
+};
+
 //
 // Parse a given chunk of code to an AST.
 //
@@ -317,16 +322,27 @@ function prettyPrintAST(ast, options) {
     return new_src;
 }
 
+
+
+
+
+
+
+var parse2AST = {
+    parseCodeChunkToAST,
+    prettyPrintAST
+};
+
 var index = {
     rmCommonWS,
     camelCase,
     dquote,
 
-    exec: exec_and_diagnose_this_stuff,
-    dump: dumpSourceToFile,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST,
-    prettyPrintAST,
+    parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST.prettyPrintAST,
 };
 
 export default index;

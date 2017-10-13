@@ -70,13 +70,14 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('@gerhobbelt/recast'), require('fs')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', '@gerhobbelt/recast', 'fs'], factory) : global['ebnf-parser'] = factory(global.XRegExp, global.recast, global.fs);
-})(undefined, function (XRegExp, recast, fs) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('fs'), require('path'), require('@gerhobbelt/recast')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', 'fs', 'path', '@gerhobbelt/recast'], factory) : global['ebnf-parser'] = factory(global.XRegExp, global.fs, global.path, global.recast);
+})(undefined, function (XRegExp, fs, path, recast) {
     'use strict';
 
     XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
-    recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
+    path = path && path.hasOwnProperty('default') ? path['default'] : path;
+    recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -202,9 +203,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // 
 
 
-    var fs$1 = require('fs');
-    var path = require('path');
-
     // Helper function: pad number with leading zeroes
     function pad(n, p) {
         p = p || 2;
@@ -237,7 +235,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                 try {
                     dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
-                    fs$1.writeFileSync(dumpfile, sourcecode, 'utf8');
+                    fs.writeFileSync(dumpfile, sourcecode, 'utf8');
                     console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
                     break; // abort loop once a dump action was successful!
                 } catch (ex3) {
@@ -316,6 +314,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return p;
     }
 
+    var code_exec = {
+        exec: exec_and_diagnose_this_stuff,
+        dump: dumpSourceToFile
+    };
+
     //
     // Parse a given chunk of code to an AST.
     //
@@ -368,16 +371,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return new_src;
     }
 
+    var parse2AST$1 = {
+        parseCodeChunkToAST: parseCodeChunkToAST,
+        prettyPrintAST: prettyPrintAST
+    };
+
     var helpers = {
         rmCommonWS: rmCommonWS$1,
         camelCase: camelCase,
         dquote: dquote$1,
 
-        exec: exec_and_diagnose_this_stuff,
-        dump: dumpSourceToFile,
+        exec: code_exec.exec,
+        dump: code_exec.dump,
 
-        parseCodeChunkToAST: parseCodeChunkToAST,
-        prettyPrintAST: prettyPrintAST
+        parseCodeChunkToAST: parse2AST$1.parseCodeChunkToAST,
+        prettyPrintAST: parse2AST$1.prettyPrintAST
     };
 
     // end of prelude
@@ -2017,9 +2025,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             //
             // --------- END OF REPORT -----------
 
-
             EOF: 1,
-
             ERROR: 2,
 
             // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -2085,7 +2091,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         var rec = !!this.recoverable;
 
                         for (var key in this) {
-                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                                 this[key] = undefined;
                             }
                         }
@@ -7343,9 +7349,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             //
             // --------- END OF REPORT -----------
 
-
             EOF: 1,
-
             ERROR: 2,
 
             // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -7411,7 +7415,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         var rec = !!this.recoverable;
 
                         for (var key in this) {
-                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                                 this[key] = undefined;
                             }
                         }
@@ -12758,9 +12762,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             //
             // --------- END OF REPORT -----------
 
-
             EOF: 1,
-
             ERROR: 2,
 
             // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -12826,7 +12828,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         var rec = !!this.recoverable;
 
                         for (var key in this) {
-                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                            if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                                 this[key] = undefined;
                             }
                         }
@@ -14912,7 +14914,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     };
 
-    var version = '0.6.0-195'; // require('./package.json').version;
+    var version = '0.6.1-200'; // require('./package.json').version;
 
     function parse(grammar) {
         return bnf.parser.parse(grammar);

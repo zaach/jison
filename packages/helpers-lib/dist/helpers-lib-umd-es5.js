@@ -3,10 +3,12 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/recast')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/recast'], factory) : global['jison-helpers-lib'] = factory(global.recast);
-})(undefined, function (recast) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast'], factory) : global['jison-helpers-lib'] = factory(global.fs, global.path, global.recast);
+})(undefined, function (fs, path, recast) {
     'use strict';
 
+    fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
+    path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
 
     // Return TRUE if `src` starts with `searchString`. 
@@ -133,9 +135,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     // 
 
 
-    var fs = require('fs');
-    var path = require('path');
-
     // Helper function: pad number with leading zeroes
     function pad(n, p) {
         p = p || 2;
@@ -247,6 +246,11 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         return p;
     }
 
+    var code_exec = {
+        exec: exec_and_diagnose_this_stuff,
+        dump: dumpSourceToFile
+    };
+
     //
     // Parse a given chunk of code to an AST.
     //
@@ -299,16 +303,21 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         return new_src;
     }
 
+    var parse2AST = {
+        parseCodeChunkToAST: parseCodeChunkToAST,
+        prettyPrintAST: prettyPrintAST
+    };
+
     var index = {
         rmCommonWS: rmCommonWS,
         camelCase: camelCase,
         dquote: dquote,
 
-        exec: exec_and_diagnose_this_stuff,
-        dump: dumpSourceToFile,
+        exec: code_exec.exec,
+        dump: code_exec.dump,
 
-        parseCodeChunkToAST: parseCodeChunkToAST,
-        prettyPrintAST: prettyPrintAST
+        parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+        prettyPrintAST: parse2AST.prettyPrintAST
     };
 
     return index;

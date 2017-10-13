@@ -6,6 +6,8 @@ function _interopDefault(ex) {
     return ex && (typeof ex === 'undefined' ? 'undefined' : _typeof(ex)) === 'object' && 'default' in ex ? ex['default'] : ex;
 }
 
+var fs = _interopDefault(require('fs'));
+var path = _interopDefault(require('path'));
 var recast = _interopDefault(require('@gerhobbelt/recast'));
 
 // Return TRUE if `src` starts with `searchString`. 
@@ -132,9 +134,6 @@ function dquote(s) {
 // 
 
 
-var fs = require('fs');
-var path = require('path');
-
 // Helper function: pad number with leading zeroes
 function pad(n, p) {
     p = p || 2;
@@ -246,6 +245,11 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     return p;
 }
 
+var code_exec = {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
+};
+
 //
 // Parse a given chunk of code to an AST.
 //
@@ -298,16 +302,21 @@ function prettyPrintAST(ast, options) {
     return new_src;
 }
 
+var parse2AST = {
+    parseCodeChunkToAST: parseCodeChunkToAST,
+    prettyPrintAST: prettyPrintAST
+};
+
 var index = {
     rmCommonWS: rmCommonWS,
     camelCase: camelCase,
     dquote: dquote,
 
-    exec: exec_and_diagnose_this_stuff,
-    dump: dumpSourceToFile,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST: parseCodeChunkToAST,
-    prettyPrintAST: prettyPrintAST
+    parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST.prettyPrintAST
 };
 
 module.exports = index;

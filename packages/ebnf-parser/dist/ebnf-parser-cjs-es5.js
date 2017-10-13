@@ -74,8 +74,9 @@ function _interopDefault(ex) {
 }
 
 var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
-var recast = _interopDefault(require('@gerhobbelt/recast'));
 var fs = _interopDefault(require('fs'));
+var path = _interopDefault(require('path'));
+var recast = _interopDefault(require('@gerhobbelt/recast'));
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -201,9 +202,6 @@ function dquote$1(s) {
 // 
 
 
-var fs$1 = require('fs');
-var path = require('path');
-
 // Helper function: pad number with leading zeroes
 function pad(n, p) {
     p = p || 2;
@@ -236,7 +234,7 @@ function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
 
             try {
                 dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
-                fs$1.writeFileSync(dumpfile, sourcecode, 'utf8');
+                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
                 console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
                 break; // abort loop once a dump action was successful!
             } catch (ex3) {
@@ -315,6 +313,11 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     return p;
 }
 
+var code_exec = {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
+};
+
 //
 // Parse a given chunk of code to an AST.
 //
@@ -367,16 +370,21 @@ function prettyPrintAST(ast, options) {
     return new_src;
 }
 
+var parse2AST$1 = {
+    parseCodeChunkToAST: parseCodeChunkToAST,
+    prettyPrintAST: prettyPrintAST
+};
+
 var helpers = {
     rmCommonWS: rmCommonWS$1,
     camelCase: camelCase,
     dquote: dquote$1,
 
-    exec: exec_and_diagnose_this_stuff,
-    dump: dumpSourceToFile,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST: parseCodeChunkToAST,
-    prettyPrintAST: prettyPrintAST
+    parseCodeChunkToAST: parse2AST$1.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST$1.prettyPrintAST
 };
 
 // end of prelude
@@ -2016,9 +2024,7 @@ var lexer$1 = function () {
         //
         // --------- END OF REPORT -----------
 
-
         EOF: 1,
-
         ERROR: 2,
 
         // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -2084,7 +2090,7 @@ var lexer$1 = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -7342,9 +7348,7 @@ var lexer = function () {
         //
         // --------- END OF REPORT -----------
 
-
         EOF: 1,
-
         ERROR: 2,
 
         // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -7410,7 +7414,7 @@ var lexer = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -12757,9 +12761,7 @@ var lexer$2 = function () {
         //
         // --------- END OF REPORT -----------
 
-
         EOF: 1,
-
         ERROR: 2,
 
         // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -12825,7 +12827,7 @@ var lexer$2 = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
@@ -14911,7 +14913,7 @@ var jisonlex = {
 
 };
 
-var version = '0.6.0-195'; // require('./package.json').version;
+var version = '0.6.1-200'; // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);

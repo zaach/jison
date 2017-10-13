@@ -37,6 +37,7 @@ function _interopDefault(ex) {
 
 var fs = _interopDefault(require('fs'));
 var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
+var path = _interopDefault(require('path'));
 var recast = _interopDefault(require('@gerhobbelt/recast'));
 
 // Return TRUE if `src` starts with `searchString`. 
@@ -163,9 +164,6 @@ function dquote(s) {
 // 
 
 
-var fs$1 = require('fs');
-var path = require('path');
-
 // Helper function: pad number with leading zeroes
 function pad(n, p) {
     p = p || 2;
@@ -198,7 +196,7 @@ function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
 
             try {
                 dumpfile = path.normalize(dumpPaths[i] + '/' + dumpName);
-                fs$1.writeFileSync(dumpfile, sourcecode, 'utf8');
+                fs.writeFileSync(dumpfile, sourcecode, 'utf8');
                 console.error("****** offending generated " + errname + " source code dumped into file: ", dumpfile);
                 break; // abort loop once a dump action was successful!
             } catch (ex3) {
@@ -277,6 +275,11 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     return p;
 }
 
+var code_exec = {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
+};
+
 //
 // Parse a given chunk of code to an AST.
 //
@@ -329,16 +332,21 @@ function prettyPrintAST(ast, options) {
     return new_src;
 }
 
+var parse2AST = {
+    parseCodeChunkToAST: parseCodeChunkToAST,
+    prettyPrintAST: prettyPrintAST
+};
+
 var helpers = {
     rmCommonWS: rmCommonWS$1,
     camelCase: camelCase,
     dquote: dquote,
 
-    exec: exec_and_diagnose_this_stuff,
-    dump: dumpSourceToFile,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST: parseCodeChunkToAST,
-    prettyPrintAST: prettyPrintAST
+    parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST.prettyPrintAST
 };
 
 // hack:
@@ -3839,9 +3847,7 @@ var lexer = function () {
         //
         // --------- END OF REPORT -----------
 
-
         EOF: 1,
-
         ERROR: 2,
 
         // JisonLexerError: JisonLexerError,        /// <-- injected by the code generator
@@ -3907,7 +3913,7 @@ var lexer = function () {
                     var rec = !!this.recoverable;
 
                     for (var key in this) {
-                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof2(key)) === 'object') {
+                        if (this.hasOwnProperty(key) && (typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
                             this[key] = undefined;
                         }
                     }
