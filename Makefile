@@ -432,12 +432,12 @@ dist/jison.js: rollup.config.js
 
 
 subpackages:
-	#cd packages/helpers-lib && make
-	#cd packages/lex-parser && make
-	#cd packages/jison-lex && make
-	#cd packages/ebnf-parser && make
-	#cd packages/json2jison && make
-	#cd packages/jison2json && make
+	cd packages/helpers-lib && make
+	cd packages/lex-parser && make
+	cd packages/jison-lex && make
+	cd packages/ebnf-parser && make
+	cd packages/json2jison && make
+	cd packages/jison2json && make
 
 
 submodules:
