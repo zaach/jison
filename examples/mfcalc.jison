@@ -64,9 +64,9 @@ line:
 ;
 
 exp:      NUM                { $$ = $1;                         }
-        | VAR                { $$ = $1->value.var;              }
-        | VAR '=' exp        { $$ = $3; $1->value.var = $3;     }
-        | FNCT '(' exp ')'   { $$ = (*($1->value.fnctptr))($3); }
+        | VAR                { $$ = $1.value.var;               }
+        | VAR '=' exp        { $$ = $3; $1.value.var = $3;      }
+        | FNCT '(' exp ')'   { $$ = ($1.value.fnctptr)($3);    }
         | exp '+' exp        { $$ = $1 + $3;                    }
         | exp '-' exp        { $$ = $1 - $3;                    }
         | exp '*' exp        { $$ = $1 * $3;                    }
