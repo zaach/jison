@@ -4,7 +4,7 @@
  *********************************************************************
  * a simple calculator with variables
  *
- * sample-files for a artikel in developerworks.ibm.com
+ * sample-files for an article in developerworks.ibm.com
  * Author: Christian Hagen, chagen@de.ibm.com
  * 
  * @par parse.l & parse.c
@@ -22,7 +22,7 @@
  * global variables
  * 
  *------------------------------------------------------------------*/
-static Variable *var;
+// static Variable *var;
 %}
 
 /*--------------------------------------------------------------------
@@ -90,12 +90,12 @@ program
     ;
 statement
     : IDENTIFIER 
-//      { 
+      { 
 //        var = VarGet($1, &@1);
-//      }
+      }
       ASSIGN expression
       {
-        VarSetValue(var, $3);
+//        VarSetValue(var, $3);
       }
     | expression
     ;
