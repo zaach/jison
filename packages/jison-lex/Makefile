@@ -20,6 +20,7 @@ npm-update:
 
 build:
 	node __patch_version_in_js.js
+	node __patch_lexer_kernel_in_js.js
 	-mkdir -p dist
 	$(ROLLUP) -c
 	$(BABEL) dist/regexp-lexer-cjs.js -o dist/regexp-lexer-cjs-es5.js
