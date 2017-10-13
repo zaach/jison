@@ -1,4 +1,6 @@
 var assert = require("chai").assert;
+var Jison = require("../setup");
+
 var Jison = require("../setup").Jison;
 var RegExpLexer = require("../setup").RegExpLexer;
 
