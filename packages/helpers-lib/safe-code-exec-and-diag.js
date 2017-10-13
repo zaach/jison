@@ -13,8 +13,8 @@
 // 
 
 
-var fs = require('fs');
-var path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 
 
@@ -152,7 +152,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
 
 
 
-export {
-    exec_and_diagnose_this_stuff as exec,
-    dumpSourceToFile as dump
+export default {
+    exec: exec_and_diagnose_this_stuff,
+    dump: dumpSourceToFile
 };

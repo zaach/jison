@@ -67,7 +67,7 @@ function prettyPrintAST(ast, options) {
 
 
 
-export {
+export default {
     parseCodeChunkToAST,
     prettyPrintAST
 };

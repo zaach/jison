@@ -1,13 +1,9 @@
 
-
 import rmCommonWS from './rmCommonWS';
 import camelCase from './camelCase';
 import dquote from './dquote';
-import { exec, dump } from './safe-code-exec-and-diag';
-import {
-    parseCodeChunkToAST,
-    prettyPrintAST
-} from './parse-code-chunk-to-AST';
+import code_exec from './safe-code-exec-and-diag';
+import parse2AST from './parse-code-chunk-to-AST';
 
 
 
@@ -16,9 +12,9 @@ export default {
     camelCase,
     dquote,
 
-    exec,
-    dump,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
-    parseCodeChunkToAST,
-    prettyPrintAST,
+    parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    prettyPrintAST: parse2AST.prettyPrintAST,
 };

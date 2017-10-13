@@ -47,11 +47,11 @@ describe("helpers API", function () {
   });
 
   it("exec: **TBD**", function () {
-    assert.ok(true);
+    assert.ok(typeof helpers.exec === 'function');
   });
 
   it("dump: **TBD**", function () {
-    assert.ok(true);
+    assert.ok(typeof helpers.dump === 'function');
   });
 });
 
