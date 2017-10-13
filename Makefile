@@ -1,6 +1,13 @@
 
 NANOC := $(shell command -v nanoc 2> /dev/null)
 
+ROLLUP = node_modules/.bin/rollup
+BABEL = node_modules/.bin/babel
+MOCHA = node_modules/.bin/mocha
+
+JISON = node dist/cli-cjs-es5.js
+
+
 
 all: build test examples-test
 
@@ -51,14 +58,14 @@ deploy: site
 	git checkout master
 
 test:
-	node_modules/.bin/mocha --timeout 18000 --check-leaks --globals assert --recursive tests/
+	$(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
 
 web-examples: web/content/assets/js/calculator.js
 
 examples: examples_directory
 
 web/content/assets/js/calculator.js: examples/calculator.jison build
-	node lib/cli.js examples/calculator.jison -o $@
+	$(JISON) examples/calculator.jison -o $@
 
 
 examples_directory: build
@@ -390,32 +397,19 @@ npm-install: submodules-npm-install
 npm-update: submodules-npm-update
 	ncu -a --packageFile=package.json
 
-JISON_DEPS = \
-	lib/util/regexp-set-management.js \
-	lib/util/helpers-lib.js \
-	lib/util/regexp-lexer.js \
-	lib/util/ebnf-parser.js \
-	lib/util/ebnf-transform.js \
-	lib/util/transform-parser.js
-
-
 build_bnf: lib/util/parser.js
 
-lib/util/parser.js: $(JISON_DEPS) submodules prep_util_dir \
-					lib/util/lex-parser.js \
-					lib/util/regexp-lexer.js \
-					lib/cli.js lib/jison.js modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
-	cat $@ | node __patch_require.js > $@-tmp.js
-	mv -f $@-tmp.js $@
+lib/util/parser.js: submodules prep_util_dir \
+					dist/cli-cjs-es5.js \
+					modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
+	NODE_PATH=lib/util  $(JISON) -o $@ modules/ebnf-parser/bnf.y modules/ebnf-parser/bnf.l
 
 build_lex: lib/util/lex-parser.js
 
-lib/util/lex-parser.js: $(JISON_DEPS) submodules prep_util_dir \
-						lib/cli.js lib/jison.js modules/lex-parser/lex.y modules/lex-parser/lex.l
-	NODE_PATH=lib/util  node lib/cli.js -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
-	cat $@ | node __patch_require.js > $@-tmp.js
-	mv -f $@-tmp.js $@
+lib/util/lex-parser.js: submodules prep_util_dir \
+						dist/cli-cjs-es5.js \
+						modules/lex-parser/lex.y modules/lex-parser/lex.l
+	NODE_PATH=lib/util  $(JISON) -o $@ modules/lex-parser/lex.y modules/lex-parser/lex.l
 
 prep_util_dir:
 	@[ -d  modules/ebnf-parser/node_modules/jison-gho/lib/util ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
@@ -424,33 +418,33 @@ prep_util_dir:
 	+[ -f lib/util/parser.js     ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/parser.js      lib/util/parser.js      && touch -d 1970/1/1  lib/util/parser.js     )
 	+[ -f lib/util/lex-parser.js ] || ( cp modules/ebnf-parser/node_modules/jison-gho/lib/util/lex-parser.js  lib/util/lex-parser.js  && touch -d 1970/1/1  lib/util/lex-parser.js )
 
+dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js
+	node __patch_version_in_js.js
+	-mkdir -p dist
+	$(ROLLUP) -c rollup.config-cli.js
+	$(BABEL) dist/cli-cjs.js -o dist/cli-cjs-es5.js
+	$(BABEL) dist/cli-umd.js -o dist/cli-umd-es5.js
+	node __patch_nodebang_in_js.js
 
-lib/util/regexp-set-management.js: modules/jison-lex/regexp-set-management.js submodules
-	cat $< | node __patch_require.js > $@
+dist/jison.js: rollup.config.js
+	node __patch_version_in_js.js
+	node __patch_parser_kernel_in_js.js
+	-mkdir -p dist
+	$(ROLLUP) -c
+	$(BABEL) dist/jison-cjs.js -o dist/jison-cjs-es5.js
+	$(BABEL) dist/jison-umd.js -o dist/jison-umd-es5.js
 
-lib/util/helpers-lib.js: modules/helpers-lib/dist/helpers-lib-cjs.js submodules
-	cat $< | node __patch_require.js > $@
 
-lib/util/regexp-lexer.js: modules/jison-lex/regexp-lexer.js submodules
-	cat $< | node __patch_require.js > $@
 
-lib/util/ebnf-parser.js: modules/ebnf-parser/ebnf-parser.js submodules
-	cat $< | node __patch_require.js > $@
-
-lib/util/ebnf-transform.js: modules/ebnf-parser/ebnf-transform.js submodules
-	cat $< | node __patch_require.js > $@
-
-lib/util/transform-parser.js: modules/ebnf-parser/transform-parser.js submodules
-	cat $< | node __patch_require.js > $@
 
 
 submodules:
-	cd modules/helpers-lib && make
-	cd modules/lex-parser && make
-	cd modules/jison-lex && make
-	cd modules/ebnf-parser && make
-	cd modules/json2jison && make
-	cd modules/jison2json && make
+	#cd modules/helpers-lib && make
+	#cd modules/lex-parser && make
+	#cd modules/jison-lex && make
+	#cd modules/ebnf-parser && make
+	#cd modules/json2jison && make
+	#cd modules/jison2json && make
 
 
 submodules-npm-install:
@@ -525,7 +519,6 @@ clean: clean-site
 	cd modules/ebnf-parser && make clean
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
-	-rm -f $(JISON_DEPS)
 	-rm -f lib/util/parser.js lib/util/lex-parser.js
 	-rm -rf node_modules/
 	-rm -f package-lock.json

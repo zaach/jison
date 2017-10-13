@@ -28,9 +28,10 @@
     "email": "jison@librelist.com",
     "url": "http://github.com/GerHobbelt/jison/issues"
   },
-  "main": "lib/jison.js",
+  "main": "dist/jison-cjs-es5.js",
+  "module": "lib/jison.js",
   "bin": {
-    "jison": "lib/cli.js"
+    "jison": "dist/cli-cjs-es5.js"
   },
   "engines": {
     "node": ">=4.0"
@@ -42,21 +43,24 @@
     "@gerhobbelt/prettier-miscellaneous": "1.6.2-5",
     "@gerhobbelt/recast": "0.12.7-11",
     "@gerhobbelt/xregexp": "3.2.0-21",
-    "babel-core": "6.26.0",
-    "babel-preset-env": "1.6.0",
-    "babel-preset-modern-browsers": "9.0.2"
+    "jison-helpers-lib": "0.1.0-194"
   },
   "devDependencies": {
-    "@gerhobbelt/ebnf-parser": "0.6.0-193",
-    "@gerhobbelt/jison-lex": "0.6.0-193",
-    "@gerhobbelt/lex-parser": "0.6.0-193",
+    "@gerhobbelt/ebnf-parser": "0.6.0-194",
+    "@gerhobbelt/jison-lex": "0.6.0-196",
+    "@gerhobbelt/lex-parser": "0.6.0-194",
     "babel-cli": "6.26.0",
+    "babel-core": "6.26.0",
+    "babel-preset-env": "1.6.0",
+    "babel-preset-modern-browsers": "9.0.2",
     "browserify": "14.4.0",
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "glob": "7.1.2",
-    "mocha": "4.0.0",
-    "rollup": "^0.50.0",
+    "globby": "6.1.0",
+    "mocha": "4.0.1",
+    "rollup": "0.50.0",
+    "rollup-plugin-node-resolve": "^3.0.0",
     "uglify-js": "3.1.3"
   },
   "scripts": {
