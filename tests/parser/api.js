@@ -457,8 +457,6 @@ describe("JISON API", function () {
     var parser = gen.createParser();
     parser.lexer = new Lexer(lexData);
     var loc = parser.parse('xx\nxy');
-
-    console.log('loctrack test: ', loc);
     assert(loc);
     // assert.equal(loc[0].first_line, 2, 'first line correct');
     // assert.equal(loc[0].last_line, 2, 'second line correct');
