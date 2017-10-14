@@ -27,6 +27,37 @@ describe("helpers API", function () {
     assert.strictEqual(rmCommonWS`
         abc
     `, "\nabc\n");
+
+    function rep_da_di_da_da(s) {
+      return s;
+    }
+    function dquote(s) {
+      return '"' + s + '"';
+    }
+    function topState() {
+      return 'TOPSTATE';
+    }
+    function prettyPrintRange() {
+      return 'PRETTY RANGE';
+    }
+
+    var yy_ = {
+      yytext: 'YYTEXT'
+    };
+
+    var rv = rep_da_di_da_da(rmCommonWS`
+                                                EBNF: ignoring unsupported parser option ${dquote(yy_.yytext)}
+                                                while lexing in ${dquote(topState())} state.
+
+                                                  Erroneous area:
+                                                ` + prettyPrintRange());
+
+    assert.strictEqual(rv, '\n' +
+      'EBNF: ignoring unsupported parser option "YYTEXT"\n' +
+      'while lexing in "TOPSTATE" state.\n' +
+      '\n' +
+      '  Erroneous area:\n' +
+      'PRETTY RANGE');
   });
 
   it("parseCodeChunkToAST + prettyPrintAST", function () {
