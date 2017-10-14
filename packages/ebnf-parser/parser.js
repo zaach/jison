@@ -437,24 +437,6 @@ JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
 
-// Note:
-    //
-    // This code section is specifically targetting error recovery handling in the
-    // generated parser when the error recovery is unwinding the parse stack to arrive
-    // at the targeted error handling production rule.
-    //
-    // This code is treated like any production rule action code chunk:
-    // Special variables `$$`, `$@`, etc. are recognized, while the 'rule terms' can be
-    // addressed via `$n` macros as in usual rule actions, only here we DO NOT validate
-    // their usefulness as the 'error reduce action' accepts a variable number of
-    // production terms (available in `yyrulelength` in case you wish to address the
-    // input terms directly in the `yyvstack` and `yylstack` arrays, for instance).
-    //
-    // This example recovery rule simply collects all parse info stored in the parse
-    // stacks and which would otherwise be discarded immediately after this call, thus
-    // keeping all parse info details up to the point of actual error RECOVERY available
-    // to userland code in the handling 'error rule' in this grammar.;
-
 
         // helper: reconstruct the productions[] table
         function bp(s) {

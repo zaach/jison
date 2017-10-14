@@ -287,14 +287,17 @@ function rmCommonWS$3(strings, ...values) {
     var src = strings.map(function splitIntoLines(s) {
         var a = s.split('\n');
         
-        indent_str = a.reduce(function analyzeLine(indent_str, line) {
-            var m = /^(\s*)\S/gm.exec(line);
-            // only non-empty ~ content-carrying lines matter re common indent calculus:
-            if (m) {
-                if (!indent_str) {
-                    indent_str = m[1];
-                } else if (m[1].length < indent_str.length) {
-                    indent_str = m[1];
+        indent_str = a.reduce(function analyzeLine(indent_str, line, index) {
+            // only check indentation of parts which follow a NEWLINE:
+            if (index !== 0) {
+                var m = /^(\s*)\S/.exec(line);
+                // only non-empty ~ content-carrying lines matter re common indent calculus:
+                if (m) {
+                    if (!indent_str) {
+                        indent_str = m[1];
+                    } else if (m[1].length < indent_str.length) {
+                        indent_str = m[1];
+                    }
                 }
             }
             return indent_str;
@@ -316,7 +319,9 @@ function rmCommonWS$3(strings, ...values) {
     if (indent_str) {
         for (var i = 0, len = src.length; i < len; i++) {
             var a = src[i];
-            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+            // only correct indentation at start of line, i.e. only check for
+            // the indent after every NEWLINE ==> start at j=1 rather than j=0
+            for (var j = 1, linecnt = a.length; j < linecnt; j++) {
                 if (startsWith(a[j], indent_str)) {
                     a[j] = a[j].substr(indent_str.length);
                 }
