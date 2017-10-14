@@ -191,11 +191,11 @@ var assert;
  *
  *               WARNING:
  *               Parser's additional `args...` parameters (via `%parse-param`) MAY conflict with
- *               any attributes already added to `yy` by the jison run-time; 
- *               when such a collision is detected an exception is thrown to prevent the generated run-time 
+ *               any attributes already added to `yy` by the jison run-time;
+ *               when such a collision is detected an exception is thrown to prevent the generated run-time
  *               from silently accepting this confusing and potentially hazardous situation!
  *
- *               The lexer MAY add its own set of additional parameters (via the `%parse-param` line in 
+ *               The lexer MAY add its own set of additional parameters (via the `%parse-param` line in
  *               the lexer section of the grammar spec): these will be inserted in the `yy` shared state
  *               object and any collision with those will be reported by the lexer via a thrown exception.
  *
@@ -566,7 +566,7 @@ var parser = {
     //
     // Parser Analysis flags:
     //
-    //   no significant actions (parser is a language matcher only): 
+    //   no significant actions (parser is a language matcher only):
     //   .................................. false
     //   uses yyleng: ..................... false
     //   uses yylineno: ................... false
@@ -1084,7 +1084,7 @@ parse: function parse(input) {
     } else {
         ASSERT = assert;
     }
-    
+
     this.yyGetSharedState = function yyGetSharedState() {
         return sharedState_yy;
     };
@@ -1712,7 +1712,7 @@ parse: function parse(input) {
                     });
                     console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
                 }
-                
+
                 break;
             }
 
