@@ -394,11 +394,11 @@ jscore:
 
 json_js:
 	-mkdir -p ./output/$@
-	node ./json.js > ./output/$@/$@.js
+	#node ./json.js > ./output/$@/$@.js
 
 json_ast_js:
 	-mkdir -p ./output/$@
-	node ./json_ast.js > ./output/$@/$@.js
+	#node ./json_ast.js > ./output/$@/$@.js
 
 lambdacalc:
 	$(JISON) --main ./$@.jison
