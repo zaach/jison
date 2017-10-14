@@ -28,7 +28,10 @@
   "engines": {
     "node": ">=4.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@gerhobbelt/ast-util": "0.6.1-4",
+    "@gerhobbelt/recast": "0.12.7-11"
+  },
   "devDependencies": {
     "babel-cli": "6.26.0",
     "babel-preset-env": "1.6.0",
