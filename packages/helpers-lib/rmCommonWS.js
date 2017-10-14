@@ -56,12 +56,15 @@ export default function rmCommonWS(strings, ...values) {
 
     // Done removing common indentation.
     // 
-    // Process template string partials now:
-    for (var i = 0, len = src.length; i < len; i++) {
-        var a = src[i];
-        for (var j = 0, linecnt = a.length; j < linecnt; j++) {
-            if (startsWith(a[j], indent_str)) {
-                a[j] = a[j].substr(indent_str.length);
+    // Process template string partials now, but only when there's
+    // some actual UNindenting to do:
+    if (indent_str) {
+        for (var i = 0, len = src.length; i < len; i++) {
+            var a = src[i];
+            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+                if (startsWith(a[j], indent_str)) {
+                    a[j] = a[j].substr(indent_str.length);
+                }
             }
         }
     }
