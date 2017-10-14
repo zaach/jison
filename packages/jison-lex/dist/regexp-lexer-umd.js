@@ -1,8 +1,8 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/ast-util'), require('@gerhobbelt/prettier-miscellaneous')) :
-	typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', '@gerhobbelt/json5', 'fs', 'path', '@gerhobbelt/recast', 'assert', '@gerhobbelt/ast-util', '@gerhobbelt/prettier-miscellaneous'], factory) :
-	(global['regexp-lexer'] = factory(global.XRegExp,global.json5,global.fs,global.path,global.recast,global.assert,global.astUtils,global.prettierMiscellaneous));
-}(this, (function (XRegExp,json5,fs,path,recast,assert,astUtils,prettierMiscellaneous) { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert')) :
+	typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', '@gerhobbelt/json5', 'fs', 'path', '@gerhobbelt/recast', 'assert'], factory) :
+	(global['regexp-lexer'] = factory(global.XRegExp,global.json5,global.fs,global.path,global.recast,global.assert));
+}(this, (function (XRegExp,json5,fs,path,recast,assert) { 'use strict';
 
 XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
 json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
@@ -10,8 +10,6 @@ fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
 path = path && path.hasOwnProperty('default') ? path['default'] : path;
 recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
 assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
-astUtils = astUtils && astUtils.hasOwnProperty('default') ? astUtils['default'] : astUtils;
-prettierMiscellaneous = prettierMiscellaneous && prettierMiscellaneous.hasOwnProperty('default') ? prettierMiscellaneous['default'] : prettierMiscellaneous;
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -69,12 +67,15 @@ function rmCommonWS$2(strings, ...values) {
 
     // Done removing common indentation.
     // 
-    // Process template string partials now:
-    for (var i = 0, len = src.length; i < len; i++) {
-        var a = src[i];
-        for (var j = 0, linecnt = a.length; j < linecnt; j++) {
-            if (startsWith(a[j], indent_str)) {
-                a[j] = a[j].substr(indent_str.length);
+    // Process template string partials now, but only when there's
+    // some actual UNindenting to do:
+    if (indent_str) {
+        for (var i = 0, len = src.length; i < len; i++) {
+            var a = src[i];
+            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+                if (startsWith(a[j], indent_str)) {
+                    a[j] = a[j].substr(indent_str.length);
+                }
             }
         }
     }
@@ -286,16 +287,13 @@ var code_exec$1 = {
 
 
 //import astUtils from '@gerhobbelt/ast-util';
-//import prettier from '@gerhobbelt/prettier-miscellaneous';
-//import assert from 'assert';
-
-// assert(recast);
-// var types = recast.types;
-// assert(types);
-// var namedTypes = types.namedTypes;
-// assert(namedTypes);
-// var b = types.builders;
-// assert(b);
+assert(recast);
+var types = recast.types;
+assert(types);
+var namedTypes = types.namedTypes;
+assert(namedTypes);
+var b = types.builders;
+assert(b);
 // //assert(astUtils);
 
 
@@ -315,19 +313,16 @@ function parseCodeChunkToAST(src, options) {
 
 function prettyPrintAST(ast, options) {
     var new_src;
+    var s = recast.prettyPrint(ast, { 
+        tabWidth: 2,
+        quote: 'single',
+        arrowParensAlways: true,
 
-    {
-        var s = recast.prettyPrint(ast, { 
-            tabWidth: 2,
-            quote: 'single',
-            arrowParensAlways: true,
-
-            // Do not reuse whitespace (or anything else, for that matter)
-            // when printing generically.
-            reuseWhitespace: false
-        });
-        new_src = s.code;
-    }
+        // Do not reuse whitespace (or anything else, for that matter)
+        // when printing generically.
+        reuseWhitespace: false
+    });
+    new_src = s.code;
 
     new_src = new_src.replace(/\r\n|\n|\r/g, '\n');    // platform dependent EOL fixup
     return new_src;
@@ -344,6 +339,25 @@ var parse2AST = {
     prettyPrintAST
 };
 
+/// HELPER FUNCTION: print the function in source code form, properly indented.
+/** @public */
+function printFunctionSourceCode(f) {
+    return String(f);
+}
+
+/// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+/** @public */
+function printFunctionSourceCodeContainer(f) {
+    return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+}
+
+
+
+var stringifier = {
+	printFunctionSourceCode,
+	printFunctionSourceCodeContainer,
+};
+
 var helpers = {
     rmCommonWS: rmCommonWS$2,
     camelCase: camelCase$1,
@@ -354,11 +368,13 @@ var helpers = {
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
+
+	printFunctionSourceCode: stringifier.printFunctionSourceCode,
+	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
 };
 
 // hack:
 var assert$1;
-
 
 /* parser generated by jison 0.6.1-200 */
 
@@ -738,7 +754,6 @@ var assert$1;
  */
 
 
-
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
 // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
@@ -767,11 +782,10 @@ function JisonParserError(msg, hash) {
         stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-        if (Error.hasOwnProperty('captureStackTrace')) {
-            // V8
+        if (Error.hasOwnProperty('captureStackTrace')) {        // V8/Chrome engine
             Error.captureStackTrace(this, this.constructor);
         } else {
-            stacktrace = new Error(msg).stack;
+            stacktrace = (new Error(msg)).stack;
         }
     }
     if (stacktrace) {
@@ -791,10 +805,6 @@ if (typeof Object.setPrototypeOf === 'function') {
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
 
-
-//  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer
-//  import helpers from '../helpers-lib';            // jison-helpers-lib
-//  import fs from 'fs';
 
 
         // helper: reconstruct the productions[] table
@@ -926,6 +936,9 @@ var parser = {
     //   module type: ..................... es
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
+    //   has user-specified main(): ....... false
+    //   has user-specified require()/import modules for main(): 
+    //   .................................. false
     //   number of expected conflicts: .... 0
     //
     //
@@ -5555,10 +5568,16 @@ parser.yy.post_lex = function p_lex() {
 
 
 var lexer = function() {
-  // See also:
-  // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-  // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-  // with userland code which might access the derived class in a 'classic' way.
+  /**
+   * See also:
+   * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+   * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+   * with userland code which might access the derived class in a 'classic' way.
+   *
+   * $public
+   * $constructor
+   * $nocollapse
+   */
   function JisonLexerError(msg, hash) {
     Object.defineProperty(this, 'name', {
       enumerable: false,
@@ -5684,11 +5703,11 @@ EOF: 1,
     /**
      * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-      /** @constructor */
+      /** $constructor */
       var pei = {
         errStr: msg,
         recoverable: !!recoverable,
@@ -5708,8 +5727,8 @@ EOF: 1,
          * constitute the set of elements which can produce a cyclic ref.
          * The rest of the members is kept intact as they are harmless.
          * 
-         * @public
-         * @this {LexErrorInfo}
+         * $public
+         * $this {LexErrorInfo}
          */
         destroy: function destructLexErrorInfo() {
           // remove cyclic references added to error info:
@@ -5737,8 +5756,8 @@ EOF: 1,
     /**
      * handler which is invoked when a lexer error occurs.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
       if (!ExceptionClass) {
@@ -5759,8 +5778,8 @@ EOF: 1,
     /**
      * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     yyerror: function yyError(str /*, ...args */) {
       var lineno_msg = '';
@@ -5793,8 +5812,8 @@ EOF: 1,
      * otherwise prevent the instances from being properly and timely
      * garbage-collected, i.e. this function helps prevent memory leaks!
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
       // prevent lingering circular references from causing memory leaks:
@@ -5821,8 +5840,8 @@ EOF: 1,
     /**
      * clear the lexer token context; intended for internal use only
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     clear: function lexer_clear() {
       this.yytext = '';
@@ -5848,8 +5867,8 @@ EOF: 1,
     /**
      * resets the lexer, sets new input
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     setInput: function lexer_setInput(input, yy) {
       this.yy = yy || this.yy || {};
@@ -5927,7 +5946,7 @@ EOF: 1,
      * the current `yyloc` cursor location or any history. 
      * 
      * Use this API to help implement C-preprocessor-like
-     * `#include` statements, etc.
+     * `$include` statements, etc.
      * 
      * The provided callback must be synchronous and is
      * expected to return the edited input (string).
@@ -5957,8 +5976,8 @@ EOF: 1,
      * -- that way any returned object's `toValue()` and `toString()`
      * methods will be invoked in a proper/desirable order.)
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
       var rv = callback.call(this, this._input, cpsArg);
@@ -5978,8 +5997,8 @@ EOF: 1,
     /**
      * consumes and returns one char from the input
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     input: function lexer_input() {
       if (!this._input) {
@@ -6036,8 +6055,8 @@ EOF: 1,
     /**
      * unshifts one char (or an entire string) into the input
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     unput: function lexer_unput(ch) {
       var len = ch.length;
@@ -6073,8 +6092,8 @@ EOF: 1,
     /**
      * cache matched text and append it on next action
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     more: function lexer_more() {
       this._more = true;
@@ -6085,8 +6104,8 @@ EOF: 1,
      * signal the lexer that this rule fails to match the input, so the
      * next matching rule (regex) should be tested instead.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     reject: function lexer_reject() {
       if (this.options.backtrack_lexer) {
@@ -6125,8 +6144,8 @@ EOF: 1,
     /**
      * retain first n characters of the match
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     less: function lexer_less(n) {
       return this.unput(this.match.slice(n));
@@ -6143,8 +6162,8 @@ EOF: 1,
      * 
      * Negative limit values equal *unlimited*.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
       var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -6189,7 +6208,7 @@ EOF: 1,
      * 
      * Negative limit values equal *unlimited*.
      *
-     * > ### NOTE ###
+     * > $$$ NOTE $$$
      * >
      * > *"upcoming input"* is defined as the whole of the both
      * > the *currently lexed* input, together with any remaining input
@@ -6199,8 +6218,8 @@ EOF: 1,
      * > from inside any lexer rule action code block. 
      * >
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
       var next = this.match;
@@ -6242,8 +6261,8 @@ EOF: 1,
      * return a string which displays the character position where the
      * lexing error occurred, i.e. for error messages
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
       var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -6293,8 +6312,8 @@ EOF: 1,
      * - this function can display lines of input which whave not yet been lexed.
      *   `prettyPrintRange()` can access the entire input!
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
       const CONTEXT = 3;
@@ -6387,8 +6406,8 @@ EOF: 1,
      * Set `display_range_too` to TRUE to include the string character index position(s)
      * in the description if the `yylloc.range` is available.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
       var l1 = yylloc.first_line;
@@ -6440,8 +6459,8 @@ EOF: 1,
      * - `yylloc`
      * - `offset`
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     test_match: function lexer_test_match(match, indexed_rule) {
       var token, lines, backup, match_str, match_str_len;
@@ -6550,8 +6569,8 @@ EOF: 1,
     /**
      * return next match in input
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     next: function lexer_next() {
       if (this.done) {
@@ -6692,8 +6711,8 @@ EOF: 1,
     /**
      * return next match that has a token
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     lex: function lexer_lex() {
       var r;
@@ -6720,8 +6739,8 @@ EOF: 1,
      * the latter is symmetrical with `popState()` and we advise to use
      * those APIs in any modern lexer code, rather than `begin()`.
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     begin: function lexer_begin(condition) {
       return this.pushState(condition);
@@ -6731,8 +6750,8 @@ EOF: 1,
      * activates a new lexer condition state (pushes the new lexer
      * condition state onto the condition stack)
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     pushState: function lexer_pushState(condition) {
       this.conditionStack.push(condition);
@@ -6744,8 +6763,8 @@ EOF: 1,
      * pop the previously active lexer condition state off the condition
      * stack
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     popState: function lexer_popState() {
       var n = this.conditionStack.length - 1;
@@ -6763,8 +6782,8 @@ EOF: 1,
      * argument is provided it produces the N-th previous condition state,
      * if available
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     topState: function lexer_topState(n) {
       n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -6780,8 +6799,8 @@ EOF: 1,
      * (internal) determine the lexer rule set which is active for the
      * currently active lexer condition state
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     _currentRules: function lexer__currentRules() {
       if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -6794,8 +6813,8 @@ EOF: 1,
     /**
      * return the number of states currently on the stack
      * 
-     * @public
-     * @this {RegExpLexer}
+     * $public
+     * $this {RegExpLexer}
      */
     stateStackSize: function lexer_stateStackSize() {
       return this.conditionStack.length;
@@ -8152,6 +8171,8 @@ function yyparse() {
     return parser.parse.apply(parser, arguments);
 }
 
+
+
 var lexParser = {
     parser,
     Parser,
@@ -9159,6 +9180,8 @@ var setmgmt = {
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
+// import recast from '@gerhobbelt/recast';
+// import astUtils from '@gerhobbelt/ast-util';
 var version = '0.6.1-200';                              // require('./package.json').version;
 
 
@@ -9348,26 +9371,6 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 
   return chk_l;
 }
-
-
-
-
-
-// HELPER FUNCTION: print the function in source code form, properly indented.
-/** @public */
-function printFunctionSourceCode(f) {
-    return String(f).replace(/^    /gm, '');
-}
-/** @public */
-function printFunctionSourceCodeContainer(f, depth) {
-    var s = String(f);
-    for (var d = (depth || 2); d > 0; d--) {
-        s = s.replace(/^    /gm, '');
-    }
-    s = s.replace(/^\s*function\b[^\{]+\{/, '').replace(/\}\s*$/, '');
-    return s;
-}
-
 
 
 // expand macros and convert matchers to RegExp's
@@ -10099,83 +10102,72 @@ function buildActions(dict, tokens, opts) {
 //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
 //
 function generateErrorClass() {
-    /**
-     * See also:
-     * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-     * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-     * with userland code which might access the derived class in a 'classic' way.
-     *
-     * @public
-     * @constructor
-     * @nocollapse
-     */
-    function JisonLexerError(msg, hash) {
-        Object.defineProperty(this, 'name', {
+    // --- START lexer error class ---
+
+var prelude = `/**
+ * See also:
+ * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+ * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+ * with userland code which might access the derived class in a 'classic' way.
+ *
+ * @public
+ * @constructor
+ * @nocollapse
+ */
+function JisonLexerError(msg, hash) {
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
+    this.hash = hash;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
+    if (stacktrace) {
+        Object.defineProperty(this, 'stack', {
             enumerable: false,
             writable: false,
-            value: 'JisonLexerError'
+            value: stacktrace
         });
-
-        if (msg == null) msg = '???';
-
-        Object.defineProperty(this, 'message', {
-            enumerable: false,
-            writable: true,
-            value: msg
-        });
-
-        this.hash = hash;
-
-        var stacktrace;
-        if (hash && hash.exception instanceof Error) {
-            var ex2 = hash.exception;
-            this.message = ex2.message || msg;
-            stacktrace = ex2.stack;
-        }
-        if (!stacktrace) {
-            if (Error.hasOwnProperty('captureStackTrace')) { // V8
-                Error.captureStackTrace(this, this.constructor);
-            } else {
-                stacktrace = (new Error(msg)).stack;
-            }
-        }
-        if (stacktrace) {
-            Object.defineProperty(this, 'stack', {
-                enumerable: false,
-                writable: false,
-                value: stacktrace
-            });
-        }
     }
+}
 
-    // wrap this init code in a function so we can String(function)-dump it into the generated
-    // output: that way we only have to write this code *once*!
-    function __extra_code__() {
-        if (typeof Object.setPrototypeOf === 'function') {
-            Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
-        } else {
-            JisonLexerError.prototype = Object.create(Error.prototype);
-        }
-        JisonLexerError.prototype.constructor = JisonLexerError;
-        JisonLexerError.prototype.name = 'JisonLexerError';
-    }
-    __extra_code__();
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+} else {
+    JisonLexerError.prototype = Object.create(Error.prototype);
+}
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';`;
 
-    var prelude = [
-        '// See also:',
-        '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
-        '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
-        '// with userland code which might access the derived class in a \'classic\' way.',
-        printFunctionSourceCode(JisonLexerError),
-        printFunctionSourceCodeContainer(__extra_code__),
-        '',
-    ];
+    // --- END lexer error class ---
 
-    return prelude.join('\n');
+    return prelude;
 }
 
 
-var jisonLexerErrorDefinition = generateErrorClass();
+const jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
@@ -11466,15 +11458,6 @@ RegExpLexer.prototype = (new Function(rmCommonWS`
 // The lexer code stripper, driven by optimization analysis settings and
 // lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, opt) {
-    assert(recast);
-    var types = recast.types;
-    assert(types);
-    var namedTypes = types.namedTypes;
-    assert(namedTypes);
-    var b = types.builders;
-    assert(b);
-    assert(astUtils);
-
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
     //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
     //   uses yytext: ..................... ${opt.lexerActionsUseYYTEXT}
@@ -11489,22 +11472,10 @@ function stripUnusedLexerCode(src, opt) {
     //        ............................. ${opt.lexerActionsUseDisplayAPIs}
     //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
 
-var new_src;
+    var ast = helpers.parseCodeChunkToAST(src, opt);
+    var new_src = helpers.prettyPrintAST(ast, opt);
 
-{
-    var ast = recast.parse(src);
-    var new_src = recast.prettyPrint(ast, { 
-        tabWidth: 2,
-        quote: 'single',
-        arrowParensAlways: true,
-
-        // Do not reuse whitespace (or anything else, for that matter)
-        // when printing generically.
-        reuseWhitespace: false
-    }).code;
-}
-
-new_src = new_src.replace(/\/\*JISON-LEX-ANALYTICS-REPORT\*\//g, rmCommonWS`
+new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS`
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -12232,8 +12203,6 @@ RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
-RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
-RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 return RegExpLexer;

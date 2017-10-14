@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import recast from '@gerhobbelt/recast';
+import assert from 'assert';
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -58,12 +59,15 @@ function rmCommonWS(strings, ...values) {
 
     // Done removing common indentation.
     // 
-    // Process template string partials now:
-    for (var i = 0, len = src.length; i < len; i++) {
-        var a = src[i];
-        for (var j = 0, linecnt = a.length; j < linecnt; j++) {
-            if (startsWith(a[j], indent_str)) {
-                a[j] = a[j].substr(indent_str.length);
+    // Process template string partials now, but only when there's
+    // some actual UNindenting to do:
+    if (indent_str) {
+        for (var i = 0, len = src.length; i < len; i++) {
+            var a = src[i];
+            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+                if (startsWith(a[j], indent_str)) {
+                    a[j] = a[j].substr(indent_str.length);
+                }
             }
         }
     }
@@ -275,16 +279,13 @@ var code_exec = {
 
 
 //import astUtils from '@gerhobbelt/ast-util';
-//import prettier from '@gerhobbelt/prettier-miscellaneous';
-//import assert from 'assert';
-
-// assert(recast);
-// var types = recast.types;
-// assert(types);
-// var namedTypes = types.namedTypes;
-// assert(namedTypes);
-// var b = types.builders;
-// assert(b);
+assert(recast);
+var types = recast.types;
+assert(types);
+var namedTypes = types.namedTypes;
+assert(namedTypes);
+var b = types.builders;
+assert(b);
 // //assert(astUtils);
 
 
@@ -304,19 +305,16 @@ function parseCodeChunkToAST(src, options) {
 
 function prettyPrintAST(ast, options) {
     var new_src;
+    var s = recast.prettyPrint(ast, { 
+        tabWidth: 2,
+        quote: 'single',
+        arrowParensAlways: true,
 
-    {
-        var s = recast.prettyPrint(ast, { 
-            tabWidth: 2,
-            quote: 'single',
-            arrowParensAlways: true,
-
-            // Do not reuse whitespace (or anything else, for that matter)
-            // when printing generically.
-            reuseWhitespace: false
-        });
-        new_src = s.code;
-    }
+        // Do not reuse whitespace (or anything else, for that matter)
+        // when printing generically.
+        reuseWhitespace: false
+    });
+    new_src = s.code;
 
     new_src = new_src.replace(/\r\n|\n|\r/g, '\n');    // platform dependent EOL fixup
     return new_src;
@@ -333,6 +331,25 @@ var parse2AST = {
     prettyPrintAST
 };
 
+/// HELPER FUNCTION: print the function in source code form, properly indented.
+/** @public */
+function printFunctionSourceCode(f) {
+    return String(f);
+}
+
+/// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+/** @public */
+function printFunctionSourceCodeContainer(f) {
+    return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+}
+
+
+
+var stringifier = {
+	printFunctionSourceCode,
+	printFunctionSourceCodeContainer,
+};
+
 var index = {
     rmCommonWS,
     camelCase,
@@ -343,6 +360,9 @@ var index = {
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
+
+	printFunctionSourceCode: stringifier.printFunctionSourceCode,
+	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
 };
 
 export default index;

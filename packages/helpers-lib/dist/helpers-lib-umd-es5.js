@@ -3,13 +3,14 @@
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast'], factory) : global['jison-helpers-lib'] = factory(global.fs, global.path, global.recast);
-})(undefined, function (fs, path, recast) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', 'assert'], factory) : global['jison-helpers-lib'] = factory(global.fs, global.path, global.recast, global.assert);
+})(undefined, function (fs, path, recast, assert) {
     'use strict';
 
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
+    assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -65,12 +66,15 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
         // Done removing common indentation.
         // 
-        // Process template string partials now:
-        for (var i = 0, len = src.length; i < len; i++) {
-            var a = src[i];
-            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
-                if (startsWith(a[j], indent_str)) {
-                    a[j] = a[j].substr(indent_str.length);
+        // Process template string partials now, but only when there's
+        // some actual UNindenting to do:
+        if (indent_str) {
+            for (var i = 0, len = src.length; i < len; i++) {
+                var a = src[i];
+                for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+                    if (startsWith(a[j], indent_str)) {
+                        a[j] = a[j].substr(indent_str.length);
+                    }
                 }
             }
         }
@@ -264,16 +268,13 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 
     //import astUtils from '@gerhobbelt/ast-util';
-    //import prettier from '@gerhobbelt/prettier-miscellaneous';
-    //import assert from 'assert';
-
-    // assert(recast);
-    // var types = recast.types;
-    // assert(types);
-    // var namedTypes = types.namedTypes;
-    // assert(namedTypes);
-    // var b = types.builders;
-    // assert(b);
+    assert(recast);
+    var types = recast.types;
+    assert(types);
+    var namedTypes = types.namedTypes;
+    assert(namedTypes);
+    var b = types.builders;
+    assert(b);
     // //assert(astUtils);
 
 
@@ -285,19 +286,16 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
     function prettyPrintAST(ast, options) {
         var new_src;
+        var s = recast.prettyPrint(ast, {
+            tabWidth: 2,
+            quote: 'single',
+            arrowParensAlways: true,
 
-        {
-            var s = recast.prettyPrint(ast, {
-                tabWidth: 2,
-                quote: 'single',
-                arrowParensAlways: true,
-
-                // Do not reuse whitespace (or anything else, for that matter)
-                // when printing generically.
-                reuseWhitespace: false
-            });
-            new_src = s.code;
-        }
+            // Do not reuse whitespace (or anything else, for that matter)
+            // when printing generically.
+            reuseWhitespace: false
+        });
+        new_src = s.code;
 
         new_src = new_src.replace(/\r\n|\n|\r/g, '\n'); // platform dependent EOL fixup
         return new_src;
@@ -306,6 +304,23 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     var parse2AST = {
         parseCodeChunkToAST: parseCodeChunkToAST,
         prettyPrintAST: prettyPrintAST
+    };
+
+    /// HELPER FUNCTION: print the function in source code form, properly indented.
+    /** @public */
+    function printFunctionSourceCode(f) {
+        return String(f);
+    }
+
+    /// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+    /** @public */
+    function printFunctionSourceCodeContainer(f) {
+        return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+    }
+
+    var stringifier = {
+        printFunctionSourceCode: printFunctionSourceCode,
+        printFunctionSourceCodeContainer: printFunctionSourceCodeContainer
     };
 
     var index = {
@@ -317,7 +332,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         dump: code_exec.dump,
 
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
-        prettyPrintAST: parse2AST.prettyPrintAST
+        prettyPrintAST: parse2AST.prettyPrintAST,
+
+        printFunctionSourceCode: stringifier.printFunctionSourceCode,
+        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
     };
 
     return index;

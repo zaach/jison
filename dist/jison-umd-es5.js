@@ -87,10 +87,15 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
     _templateObject83 = _taggedTemplateLiteral(['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        '], ['\n            /*\n             * Parser stuff that\'s unknown to the JISON prettyPrint service:\n             *\n             * ', '\n             */\n            \n        ']),
     _templateObject84 = _taggedTemplateLiteral(['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                '], ['\n                    //\n                    // JISON says:\n                    //\n                    // This is a EBNF grammar. The resulting **BNF** grammar has been\n                    // reproduced here for your convenience:\n                    //\n                    // ---------------------------- START ---------------------------\n                    ', '\n                    // ---------------------------- END OF BNF grammar --------------\n                    //\n\n\n                ']),
     _templateObject85 = _taggedTemplateLiteral(['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        '], ['\n            //\n            // JISON says:\n            //\n            // The JISON ', ' has been\n            // reproduced here for your convenience:\n            //\n            // ---------------------------- START ---------------------------\n            ', '\n            // ---------------------------- END -----------------------------\n            //\n\n        ']),
-    _templateObject86 = _taggedTemplateLiteral(['\n            var yymain = ', ';\n\n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        '], ['\n            var yymain = ', ';\n\n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        ']),
-    _templateObject87 = _taggedTemplateLiteral(['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    '], ['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    ']),
-    _templateObject88 = _taggedTemplateLiteral(['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }'], ['\n            exports.main = ', ';\n\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }']),
-    _templateObject89 = _taggedTemplateLiteral(['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        '], ['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        ']);
+    _templateObject86 = _taggedTemplateLiteral(['\n\n                    // START code section "', '"\n                    ', '\n                    // END code section "', '"\n                    \n                '], ['\n\n                    // START code section "', '"\n                    ', '\n                    // END code section "', '"\n                    \n                ']),
+    _templateObject87 = _taggedTemplateLiteral(['\n\n            ', '\n\n            var yymain = ', ';\n\n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        '], ['\n\n            ', '\n\n            var yymain = ', ';\n\n            function yyExecMain() {\n              yymain(process.argv.slice(1));\n            }\n        ']),
+    _templateObject88 = _taggedTemplateLiteral(['\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              yyExecMain();\n            }\n        '], ['\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              yyExecMain();\n            }\n        ']),
+    _templateObject89 = _taggedTemplateLiteral(['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        ', '\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    '], ['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        ', '\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    ']),
+    _templateObject90 = _taggedTemplateLiteral(['\n\n            ', '\n\n            exports.main = ', ';\n\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }\n        '], ['\n\n            ', '\n\n            exports.main = ', ';\n\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }\n        ']),
+    _templateObject91 = _taggedTemplateLiteral(['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        '], ['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        ']),
+    _templateObject92 = _taggedTemplateLiteral(['\n        ', '\n    '], ['\n        ', '\n    ']),
+    _templateObject93 = _taggedTemplateLiteral(['\n            ', ' = ', '\n        '], ['\n            ', ' = ', '\n        ']),
+    _templateObject94 = _taggedTemplateLiteral(['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the `eval()` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    '], ['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the \\`eval()\\` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -413,12 +418,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
         // Done removing common indentation.
         // 
-        // Process template string partials now:
-        for (var i = 0, len = src.length; i < len; i++) {
-            var a = src[i];
-            for (var j = 0, linecnt = a.length; j < linecnt; j++) {
-                if (startsWith(a[j], indent_str)) {
-                    a[j] = a[j].substr(indent_str.length);
+        // Process template string partials now, but only when there's
+        // some actual UNindenting to do:
+        if (indent_str) {
+            for (var i = 0, len = src.length; i < len; i++) {
+                var a = src[i];
+                for (var j = 0, linecnt = a.length; j < linecnt; j++) {
+                    if (startsWith(a[j], indent_str)) {
+                        a[j] = a[j].substr(indent_str.length);
+                    }
                 }
             }
         }
@@ -612,16 +620,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
     //import astUtils from '@gerhobbelt/ast-util';
-    //import prettier from '@gerhobbelt/prettier-miscellaneous';
-    //import assert from 'assert';
-
-    // assert(recast);
-    // var types = recast.types;
-    // assert(types);
-    // var namedTypes = types.namedTypes;
-    // assert(namedTypes);
-    // var b = types.builders;
-    // assert(b);
+    assert(recast);
+    var types = recast.types;
+    assert(types);
+    var namedTypes = types.namedTypes;
+    assert(namedTypes);
+    var b = types.builders;
+    assert(b);
     // //assert(astUtils);
 
 
@@ -633,19 +638,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     function prettyPrintAST(ast, options) {
         var new_src;
+        var s = recast.prettyPrint(ast, {
+            tabWidth: 2,
+            quote: 'single',
+            arrowParensAlways: true,
 
-        {
-            var s = recast.prettyPrint(ast, {
-                tabWidth: 2,
-                quote: 'single',
-                arrowParensAlways: true,
-
-                // Do not reuse whitespace (or anything else, for that matter)
-                // when printing generically.
-                reuseWhitespace: false
-            });
-            new_src = s.code;
-        }
+            // Do not reuse whitespace (or anything else, for that matter)
+            // when printing generically.
+            reuseWhitespace: false
+        });
+        new_src = s.code;
 
         new_src = new_src.replace(/\r\n|\n|\r/g, '\n'); // platform dependent EOL fixup
         return new_src;
@@ -654,6 +656,23 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var parse2AST = {
         parseCodeChunkToAST: parseCodeChunkToAST,
         prettyPrintAST: prettyPrintAST
+    };
+
+    /// HELPER FUNCTION: print the function in source code form, properly indented.
+    /** @public */
+    function printFunctionSourceCode(f) {
+        return String(f);
+    }
+
+    /// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+    /** @public */
+    function printFunctionSourceCodeContainer(f) {
+        return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+    }
+
+    var stringifier = {
+        printFunctionSourceCode: printFunctionSourceCode,
+        printFunctionSourceCodeContainer: printFunctionSourceCodeContainer
     };
 
     var helpers = {
@@ -665,7 +684,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         dump: code_exec$2.dump,
 
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
-        prettyPrintAST: parse2AST.prettyPrintAST
+        prettyPrintAST: parse2AST.prettyPrintAST,
+
+        printFunctionSourceCode: stringifier.printFunctionSourceCode,
+        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
     };
 
     // hack:
@@ -1077,7 +1099,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
         if (!stacktrace) {
             if (Error.hasOwnProperty('captureStackTrace')) {
-                // V8
+                // V8/Chrome engine
                 Error.captureStackTrace(this, this.constructor);
             } else {
                 stacktrace = new Error(msg).stack;
@@ -1099,11 +1121,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }
     JisonParserError.prototype.constructor = JisonParserError;
     JisonParserError.prototype.name = 'JisonParserError';
-
-    //  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer
-    //  import helpers from '../helpers-lib';            // jison-helpers-lib
-    //  import fs from 'fs';
-
 
     // helper: reconstruct the productions[] table
     function bp(s) {
@@ -1219,6 +1236,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //   module type: ..................... es
         //   parser engine type: .............. lalr
         //   output main() in the module: ..... true
+        //   has user-specified main(): ....... false
+        //   has user-specified require()/import modules for main(): 
+        //   .................................. false
         //   number of expected conflicts: .... 0
         //
         //
@@ -4069,10 +4089,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
      */
 
     var lexer = function () {
-        // See also:
-        // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-        // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-        // with userland code which might access the derived class in a 'classic' way.
+        /**
+         * See also:
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+         * with userland code which might access the derived class in a 'classic' way.
+         *
+         * $public
+         * $constructor
+         * $nocollapse
+         */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
                 enumerable: false,
@@ -4197,11 +4223,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** @constructor */
+                /** $constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -4221,8 +4247,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * @public
-                     * @this {LexErrorInfo}
+                     * $public
+                     * $this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -4250,8 +4276,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -4272,8 +4298,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -4303,8 +4329,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -4331,8 +4357,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -4358,8 +4384,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -4437,7 +4463,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `#include` statements, etc.
+             * `$include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -4467,8 +4493,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -4488,8 +4514,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -4546,8 +4572,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -4583,8 +4609,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -4595,8 +4621,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -4632,8 +4658,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -4650,8 +4676,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -4691,7 +4717,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > ### NOTE ###
+             * > $$$ NOTE $$$
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -4701,8 +4727,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -4739,8 +4765,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -4790,8 +4816,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -4881,8 +4907,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -4934,8 +4960,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -5040,8 +5066,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -5176,8 +5202,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -5204,8 +5230,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -5215,8 +5241,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -5228,8 +5254,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -5247,8 +5273,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -5264,8 +5290,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -5278,8 +5304,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -7301,6 +7327,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var rmCommonWS$1 = helpers.rmCommonWS;
     var camelCase$1 = helpers.camelCase;
     var code_exec$1 = helpers.exec;
+    // import recast from '@gerhobbelt/recast';
+    // import astUtils from '@gerhobbelt/ast-util';
     var version$1 = '0.6.1-200'; // require('./package.json').version;
 
 
@@ -7483,21 +7511,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         // Save time! Don't reparse the entire lexer spec *again* inside the code generators when that's not necessary:
 
         return chk_l;
-    }
-
-    // HELPER FUNCTION: print the function in source code form, properly indented.
-    /** @public */
-    function printFunctionSourceCode$1(f) {
-        return String(f).replace(/^    /gm, '');
-    }
-    /** @public */
-    function printFunctionSourceCodeContainer$1(f, depth) {
-        var s = String(f);
-        for (var d = depth || 2; d > 0; d--) {
-            s = s.replace(/^    /gm, '');
-        }
-        s = s.replace(/^\s*function\b[^\{]+\{/, '').replace(/\}\s*$/, '');
-        return s;
     }
 
     // expand macros and convert matchers to RegExp's
@@ -8219,72 +8232,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
     //
     function generateErrorClass() {
-        /**
-         * See also:
-         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-         * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-         * with userland code which might access the derived class in a 'classic' way.
-         *
-         * @public
-         * @constructor
-         * @nocollapse
-         */
-        function JisonLexerError(msg, hash) {
-            Object.defineProperty(this, 'name', {
-                enumerable: false,
-                writable: false,
-                value: 'JisonLexerError'
-            });
+        // --- START lexer error class ---
 
-            if (msg == null) msg = '???';
+        var prelude = '/**\n * See also:\n * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508\n * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility\n * with userland code which might access the derived class in a \'classic\' way.\n *\n * @public\n * @constructor\n * @nocollapse\n */\nfunction JisonLexerError(msg, hash) {\n    Object.defineProperty(this, \'name\', {\n        enumerable: false,\n        writable: false,\n        value: \'JisonLexerError\'\n    });\n\n    if (msg == null) msg = \'???\';\n\n    Object.defineProperty(this, \'message\', {\n        enumerable: false,\n        writable: true,\n        value: msg\n    });\n\n    this.hash = hash;\n\n    var stacktrace;\n    if (hash && hash.exception instanceof Error) {\n        var ex2 = hash.exception;\n        this.message = ex2.message || msg;\n        stacktrace = ex2.stack;\n    }\n    if (!stacktrace) {\n        if (Error.hasOwnProperty(\'captureStackTrace\')) { // V8\n            Error.captureStackTrace(this, this.constructor);\n        } else {\n            stacktrace = (new Error(msg)).stack;\n        }\n    }\n    if (stacktrace) {\n        Object.defineProperty(this, \'stack\', {\n            enumerable: false,\n            writable: false,\n            value: stacktrace\n        });\n    }\n}\n\nif (typeof Object.setPrototypeOf === \'function\') {\n    Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);\n} else {\n    JisonLexerError.prototype = Object.create(Error.prototype);\n}\nJisonLexerError.prototype.constructor = JisonLexerError;\nJisonLexerError.prototype.name = \'JisonLexerError\';';
 
-            Object.defineProperty(this, 'message', {
-                enumerable: false,
-                writable: true,
-                value: msg
-            });
+        // --- END lexer error class ---
 
-            this.hash = hash;
-
-            var stacktrace;
-            if (hash && hash.exception instanceof Error) {
-                var ex2 = hash.exception;
-                this.message = ex2.message || msg;
-                stacktrace = ex2.stack;
-            }
-            if (!stacktrace) {
-                if (Error.hasOwnProperty('captureStackTrace')) {
-                    // V8
-                    Error.captureStackTrace(this, this.constructor);
-                } else {
-                    stacktrace = new Error(msg).stack;
-                }
-            }
-            if (stacktrace) {
-                Object.defineProperty(this, 'stack', {
-                    enumerable: false,
-                    writable: false,
-                    value: stacktrace
-                });
-            }
-        }
-
-        // wrap this init code in a function so we can String(function)-dump it into the generated
-        // output: that way we only have to write this code *once*!
-        function __extra_code__() {
-            if (typeof Object.setPrototypeOf === 'function') {
-                Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
-            } else {
-                JisonLexerError.prototype = Object.create(Error.prototype);
-            }
-            JisonLexerError.prototype.constructor = JisonLexerError;
-            JisonLexerError.prototype.name = 'JisonLexerError';
-        }
-        __extra_code__();
-
-        var prelude = ['// See also:', '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508', '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility', '// with userland code which might access the derived class in a \'classic\' way.', printFunctionSourceCode$1(JisonLexerError), printFunctionSourceCodeContainer$1(__extra_code__), ''];
-
-        return prelude.join('\n');
+        return prelude;
     }
 
     var jisonLexerErrorDefinition = generateErrorClass();
@@ -8508,15 +8462,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // The lexer code stripper, driven by optimization analysis settings and
     // lexer options, which cannot be changed at run-time.
     function stripUnusedLexerCode(src, opt) {
-        assert(recast);
-        var types = recast.types;
-        assert(types);
-        var namedTypes = types.namedTypes;
-        assert(namedTypes);
-        var b = types.builders;
-        assert(b);
-        assert(astUtils);
-
         //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
         //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
         //   uses yytext: ..................... ${opt.lexerActionsUseYYTEXT}
@@ -8531,22 +8476,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //        ............................. ${opt.lexerActionsUseDisplayAPIs}
         //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
 
-        var new_src;
+        var ast = helpers.parseCodeChunkToAST(src, opt);
+        var new_src = helpers.prettyPrintAST(ast, opt);
 
-        {
-            var ast = recast.parse(src);
-            var new_src = recast.prettyPrint(ast, {
-                tabWidth: 2,
-                quote: 'single',
-                arrowParensAlways: true,
-
-                // Do not reuse whitespace (or anything else, for that matter)
-                // when printing generically.
-                reuseWhitespace: false
-            }).code;
-        }
-
-        new_src = new_src.replace(/\/\*JISON-LEX-ANALYTICS-REPORT\*\//g, rmCommonWS$1(_templateObject29, opt.options.backtrack_lexer, opt.options.ranges, opt.options.trackPosition, opt.parseActionsUseYYLENG, opt.parseActionsUseYYLINENO, opt.parseActionsUseYYTEXT, opt.parseActionsUseYYLOC, opt.parseActionsUseValueTracking, opt.parseActionsUseValueAssignment, opt.parseActionsUseLocationTracking, opt.parseActionsUseLocationAssignment, opt.lexerActionsUseYYLENG, opt.lexerActionsUseYYLINENO, opt.lexerActionsUseYYTEXT, opt.lexerActionsUseYYLOC, opt.lexerActionsUseParseError, opt.lexerActionsUseYYERROR, opt.lexerActionsUseLocationTracking, opt.lexerActionsUseMore, opt.lexerActionsUseUnput, opt.lexerActionsUseReject, opt.lexerActionsUseLess, opt.lexerActionsUseDisplayAPIs, opt.lexerActionsUseDescribeYYLOC));
+        new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS$1(_templateObject29, opt.options.backtrack_lexer, opt.options.ranges, opt.options.trackPosition, opt.parseActionsUseYYLENG, opt.parseActionsUseYYLINENO, opt.parseActionsUseYYTEXT, opt.parseActionsUseYYLOC, opt.parseActionsUseValueTracking, opt.parseActionsUseValueAssignment, opt.parseActionsUseLocationTracking, opt.parseActionsUseLocationAssignment, opt.lexerActionsUseYYLENG, opt.lexerActionsUseYYLINENO, opt.lexerActionsUseYYTEXT, opt.lexerActionsUseYYLOC, opt.lexerActionsUseParseError, opt.lexerActionsUseYYERROR, opt.lexerActionsUseLocationTracking, opt.lexerActionsUseMore, opt.lexerActionsUseUnput, opt.lexerActionsUseReject, opt.lexerActionsUseLess, opt.lexerActionsUseDisplayAPIs, opt.lexerActionsUseDescribeYYLOC));
 
         return new_src;
     }
@@ -8931,11 +8864,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
     RegExpLexer.mkStdOptions = mkStdOptions$1;
     RegExpLexer.camelCase = camelCase$1;
-    RegExpLexer.printFunctionSourceCode = printFunctionSourceCode$1;
-    RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer$1;
     RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat$1;
-
-    // end of prelude
 
     /* parser generated by jison 0.6.1-200 */
 
@@ -9343,7 +9272,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
         if (!stacktrace) {
             if (Error.hasOwnProperty('captureStackTrace')) {
-                // V8
+                // V8/Chrome engine
                 Error.captureStackTrace(this, this.constructor);
             } else {
                 stacktrace = new Error(msg).stack;
@@ -9365,9 +9294,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }
     JisonParserError$2.prototype.constructor = JisonParserError$2;
     JisonParserError$2.prototype.name = 'JisonParserError';
-
-    //  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer;
-
 
     // helper: reconstruct the productions[] table
     function bp$2(s) {
@@ -9471,6 +9397,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //   module type: ..................... es
         //   parser engine type: .............. lalr
         //   output main() in the module: ..... true
+        //   has user-specified main(): ....... false
+        //   has user-specified require()/import modules for main(): 
+        //   .................................. false
         //   number of expected conflicts: .... 0
         //
         //
@@ -10475,10 +10404,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
      */
 
     var lexer$2 = function () {
-        // See also:
-        // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-        // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-        // with userland code which might access the derived class in a 'classic' way.
+        /**
+         * See also:
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+         * with userland code which might access the derived class in a 'classic' way.
+         *
+         * $public
+         * $constructor
+         * $nocollapse
+         */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
                 enumerable: false,
@@ -10603,11 +10538,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** @constructor */
+                /** $constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -10627,8 +10562,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * @public
-                     * @this {LexErrorInfo}
+                     * $public
+                     * $this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -10656,8 +10591,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -10678,8 +10613,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -10709,8 +10644,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -10737,8 +10672,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -10764,8 +10699,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -10843,7 +10778,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `#include` statements, etc.
+             * `$include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -10873,8 +10808,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -10894,8 +10829,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -10952,8 +10887,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -10989,8 +10924,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -11001,8 +10936,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -11038,8 +10973,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -11056,8 +10991,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -11097,7 +11032,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > ### NOTE ###
+             * > $$$ NOTE $$$
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -11107,8 +11042,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -11145,8 +11080,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -11196,8 +11131,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -11287,8 +11222,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -11340,8 +11275,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -11446,8 +11381,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -11582,8 +11517,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -11610,8 +11545,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -11621,8 +11556,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -11634,8 +11569,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -11653,8 +11588,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -11670,8 +11605,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -11684,8 +11619,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -12190,8 +12125,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // hack:
     var assert$2;
 
-    // end of prelude
-
     /* parser generated by jison 0.6.1-200 */
 
     /*
@@ -12598,7 +12531,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
         if (!stacktrace) {
             if (Error.hasOwnProperty('captureStackTrace')) {
-                // V8
+                // V8/Chrome engine
                 Error.captureStackTrace(this, this.constructor);
             } else {
                 stacktrace = new Error(msg).stack;
@@ -12620,30 +12553,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }
     JisonParserError$1.prototype.constructor = JisonParserError$1;
     JisonParserError$1.prototype.name = 'JisonParserError';
-
-    //  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer
-    //  import helpers from '../helpers-lib';            // jison-helpers-lib
-    //  import fs from 'fs';
-    //  import ebnfModule from './ebnf-transform';
-    //  var transform = ebnfModule.transform;
-    // Note:
-    //
-    // This code section is specifically targetting error recovery handling in the
-    // generated parser when the error recovery is unwinding the parse stack to arrive
-    // at the targeted error handling production rule.
-    //
-    // This code is treated like any production rule action code chunk:
-    // Special variables `$$`, `$@`, etc. are recognized, while the 'rule terms' can be
-    // addressed via `$n` macros as in usual rule actions, only here we DO NOT validate
-    // their usefulness as the 'error reduce action' accepts a variable number of
-    // production terms (available in `yyrulelength` in case you wish to address the
-    // input terms directly in the `yyvstack` and `yylstack` arrays, for instance).
-    //
-    // This example recovery rule simply collects all parse info stored in the parse
-    // stacks and which would otherwise be discarded immediately after this call, thus
-    // keeping all parse info details up to the point of actual error RECOVERY available
-    // to userland code in the handling 'error rule' in this grammar.;
-
 
     // helper: reconstruct the productions[] table
     function bp$1(s) {
@@ -12759,6 +12668,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //   module type: ..................... es
         //   parser engine type: .............. lalr
         //   output main() in the module: ..... true
+        //   has user-specified main(): ....... false
+        //   has user-specified require()/import modules for main(): 
+        //   .................................. false
         //   number of expected conflicts: .... 0
         //
         //
@@ -15799,10 +15711,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
      */
 
     var lexer$1 = function () {
-        // See also:
-        // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-        // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-        // with userland code which might access the derived class in a 'classic' way.
+        /**
+         * See also:
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+         * with userland code which might access the derived class in a 'classic' way.
+         *
+         * $public
+         * $constructor
+         * $nocollapse
+         */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
                 enumerable: false,
@@ -15927,11 +15845,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** @constructor */
+                /** $constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -15951,8 +15869,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * @public
-                     * @this {LexErrorInfo}
+                     * $public
+                     * $this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -15980,8 +15898,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -16002,8 +15920,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -16033,8 +15951,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -16061,8 +15979,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -16088,8 +16006,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -16167,7 +16085,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `#include` statements, etc.
+             * `$include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -16197,8 +16115,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -16218,8 +16136,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -16276,8 +16194,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -16313,8 +16231,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -16325,8 +16243,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -16362,8 +16280,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -16380,8 +16298,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -16421,7 +16339,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > ### NOTE ###
+             * > $$$ NOTE $$$
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -16431,8 +16349,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -16469,8 +16387,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -16520,8 +16438,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -16611,8 +16529,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -16664,8 +16582,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -16770,8 +16688,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -16906,8 +16824,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -16934,8 +16852,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -16945,8 +16863,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -16958,8 +16876,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -16977,8 +16895,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -16994,8 +16912,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -17008,8 +16926,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * @public
-             * @this {RegExpLexer}
+             * $public
+             * $this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -18622,6 +18540,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         exportAllTables: false,
         exportSourceCode: false,
         noMain: true, // CLI: not:(--main option)
+        moduleMain: null, // `main()` function source code if `!noMain` is true
+        moduleMainImports: null, // require()/import statements required by the `moduleMain` function source code if `!noMain` is true
         tokenStack: false,
         dumpSourceCodeOnFailure: true,
         throwErrorOnCompileFailure: true,
@@ -18641,7 +18561,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         ranges: undefined,
         showSource: false,
         reportStats: false,
-        exportAST: false, // output grammar in JSON / JSON5 format
+        exportAST: false, // output grammar in JSON / JSON5 format (CLI version of JISON only)
         prettyCfg: true, // use `prettier` (or not) to (re)format the generated parser code.
 
         // internal analysis flags which MAY be forced by special %options
@@ -19052,14 +18972,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             a = a.concat(bn);
         }
         return a;
-    }
-
-    // HELPER FUNCTION: print the function in source code form, properly indented.
-    function printFunctionSourceCode(f) {
-        return String(f).replace(/^    /gm, '');
-    }
-    function printFunctionSourceCodeContainer(f) {
-        return String(f).replace(/^    /gm, '').replace(/^    /gm, '').replace(/function [^\{]+\{/, '').replace(/\}$/, '');
     }
 
     var Nonterminal = typal.construct({
@@ -20149,7 +20061,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         .replace(/^\s+/, '').replace(/\s+$/, '')
         // unify CR/LF combo's:
         .replace(/\r\n|\r/g, '\n')
-        // replace any '$', '@' and '#' in any C++-style comment line to prevent them from being expanded as if they were part of the action code proper:
+        // replace any '$', '@' and '#' in any C++-style comment line to prevent 
+        // them from being expanded as if they were part of the action code proper:
         .replace(/^\s*\/\/.+$/mg, replace_markers)
         // also process any //-comments trailing a line of code:
         // (we need to ensure these are real and not a bit of string,
@@ -20274,7 +20187,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     function mkParserFeatureHash(self) {
         assert(self.options.exportAllTables); // check that this function isn't called too early in the process or the hash will be bogus
         assert(self.options.exportSourceCode);
-        var h = [self.actionsAreAllDefault, self.actionsUseLocationAssignment, self.actionsUseLocationTracking, self.actionsUseParseError, self.actionsUseValueAssignment, self.actionsUseValueTracking, self.actionsUseYYCLEARIN, self.actionsUseYYERROK, self.actionsUseYYERROR, self.actionsUseYYLENG, self.actionsUseYYLINENO, self.actionsUseYYLOC, self.actionsUseYYRECOVERING, self.actionsUseYYRULELENGTH, self.actionsUseYYMERGELOCATIONINFO, self.actionsUseYYSSTACK, self.actionsUseYYSTACK, self.actionsUseYYSTACKPOINTER, self.actionsUseYYTEXT, self.hasErrorRecovery, self.hasErrorReporting, self.onDemandLookahead, self.options.compressTables, self.options.debug, self.options.errorRecoveryTokenDiscardCount, self.options.exportAllTables.enabled, self.options.exportSourceCode.enabled, self.options.hasPartialLrUpgradeOnConflict, self.options.lexerErrorsAreRecoverable, self.options.moduleType, self.options.defaultActionMode.join(','), self.options.noDefaultResolve, self.options.noMain, self.options.noTryCatch, self.options.numExpectedConflictStates, self.options.outputDebugTables, self.options.parserErrorsAreRecoverable, self.options.tokenStack, self.options.type, '======================================', self.performAction, '======================================'];
+        var h = [self.actionsAreAllDefault, self.actionsUseLocationAssignment, self.actionsUseLocationTracking, self.actionsUseParseError, self.actionsUseValueAssignment, self.actionsUseValueTracking, self.actionsUseYYCLEARIN, self.actionsUseYYERROK, self.actionsUseYYERROR, self.actionsUseYYLENG, self.actionsUseYYLINENO, self.actionsUseYYLOC, self.actionsUseYYRECOVERING, self.actionsUseYYRULELENGTH, self.actionsUseYYMERGELOCATIONINFO, self.actionsUseYYSSTACK, self.actionsUseYYSTACK, self.actionsUseYYSTACKPOINTER, self.actionsUseYYTEXT, self.hasErrorRecovery, self.hasErrorReporting, self.onDemandLookahead, self.options.compressTables, self.options.debug, self.options.errorRecoveryTokenDiscardCount, self.options.exportAllTables.enabled, self.options.exportSourceCode.enabled, self.options.hasPartialLrUpgradeOnConflict, self.options.lexerErrorsAreRecoverable, self.options.moduleType, self.options.defaultActionMode.join(','), self.options.noDefaultResolve, self.options.noMain, self.options.moduleMain, self.options.moduleMainImports, self.options.noTryCatch, self.options.numExpectedConflictStates, self.options.outputDebugTables, self.options.parserErrorsAreRecoverable, self.options.tokenStack, self.options.type, '======================================', self.performAction, '======================================'];
         return h.join(',');
     }
 
@@ -20312,7 +20225,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 })
             };
         });
-        assert(moduleInit instanceof Array);
+        assert(Array.isArray(moduleInit));
 
         // We potentially need multiple (2+) rounds to produce the correct actions
         // as userland action code determines whether the default actions should
@@ -20603,7 +20516,37 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             chunk.include = postprocessActionCode(chunk.include);
             return chunk;
         });
-        assert(this.moduleInit instanceof Array);
+        assert(Array.isArray(this.moduleInit));
+
+        // add helper methods to `this.moduleInit` for later use by our code generator:
+        moduleInit = this.moduleInit;
+        moduleInit.__consumedInitCodeSlots__ = [];
+
+        moduleInit.getInitCodeSection = function getInitCodeSection(section) {
+            var rv = [];
+            for (var i = 0, len = this.length; i < len; i++) {
+                var m = this[i];
+                if (m.qualifier === section) {
+                    if (m.include.trim()) {
+                        rv.push(m.include);
+                    }
+                    this.__consumedInitCodeSlots__[i] = true;
+                }
+            }
+            return rv;
+        };
+
+        moduleInit.getRemainingInitCodeSections = function getRemainingInitCodeSections() {
+            var rv = [];
+            for (var i = 0, len = this.length; i < len; i++) {
+                var m = this[i];
+                if (!this.__consumedInitCodeSlots__[i]) {
+                    rv.push(rmCommonWS(_templateObject86, m.qualifier, m.include, m.qualifier));
+                    this.__consumedInitCodeSlots__[i] = true;
+                }
+            }
+            return rv;
+        };
 
         // make sure a comment does not contain any embedded '*/' end-of-comment marker
         // as that would break the generated code
@@ -22092,7 +22035,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         opt = this.__prepareOptions(opt);
 
         var module = this.generateModule_();
-        var out = [this.generateGenericHeaderComment(), '', 'define(function (require) {', module.commonCode, '', 'var parser = ' + module.moduleCode, module.modulePostlude, '', module.moduleInclude];
+        var out = [this.generateGenericHeaderComment(), '', 'define(function (require) {', module.initCode, module.commonCode, '', 'var parser = ' + module.moduleCode, module.modulePostlude, '', module.moduleInclude];
         if (this.lexer && this.lexer.generateModule) {
             var lexSrc = this.lexer.generateModule();
             opt.exportSourceCode.lexer = lexSrc;
@@ -22111,7 +22054,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         opt = this.__prepareOptions(opt);
 
         var module = this.generateModule_();
-        var out = [this.generateGenericHeaderComment(), '', module.commonCode, '', 'var parser = ' + module.moduleCode, module.modulePostlude, '', module.moduleInclude];
+        var out = [this.generateGenericHeaderComment(), '', module.initCode, module.commonCode, '', 'var parser = ' + module.moduleCode, module.modulePostlude, '', module.moduleInclude];
         if (this.lexer && this.lexer.generateModule) {
             var lexSrc = this.lexer.generateModule();
             opt.exportSourceCode.lexer = lexSrc;
@@ -22120,13 +22063,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
 
         var exportMain = '';
+        var invokeMain = '';
         if (!opt.noMain) {
             var moduleNameAsCode = String(opt.moduleMain || commonjsMain);
+            var moduleImportsAsCode = String(opt.moduleMainImports || commonjsMainImports);
 
-            out.push(rmCommonWS(_templateObject86, moduleNameAsCode.trim()));
+            out.push(rmCommonWS(_templateObject87, moduleImportsAsCode, moduleNameAsCode.trim()));
             exportMain = 'main: yyExecMain,';
+            invokeMain = rmCommonWS(_templateObject88);
         }
-        out.push(rmCommonWS(_templateObject87, exportMain));
+        out.push(rmCommonWS(_templateObject89, invokeMain, exportMain));
 
         var src = out.join('\n') + '\n';
         opt.exportSourceCode.all = src;
@@ -22140,10 +22086,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         var main = '';
         if (!opt.noMain) {
             var moduleNameAsCode = String(opt.moduleMain || commonjsMain);
+            var moduleImportsAsCode = String(opt.moduleMainImports || commonjsMainImports);
 
-            main = rmCommonWS(_templateObject88, moduleNameAsCode.trim());
+            main = rmCommonWS(_templateObject90, moduleImportsAsCode, moduleNameAsCode.trim());
         }
-        var out = this.generateModule(opt) + rmCommonWS(_templateObject89, moduleName, moduleName, moduleName, moduleName, main);
+        var out = this.generateModule(opt) + rmCommonWS(_templateObject91, moduleName, moduleName, moduleName, moduleName, main);
 
         opt.exportSourceCode.all = out;
         return out;
@@ -22156,7 +22103,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         var out = this.generateGenericHeaderComment();
 
         var self = this;
-        var _generateNamespace = function _generateNamespace(namespaces, previousNamespace, callback) {
+        function _generateNamespace(namespaces, previousNamespace, callback) {
             var subModuleName = namespaces.shift();
             if (subModuleName != null) {
                 var moduleName = previousNamespace == null ? subModuleName : previousNamespace + '.' + subModuleName;
@@ -22166,10 +22113,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 return callback(moduleName);
             }
             return '';
-        };
+        }
+
+        var sourceCodeDef = self.generateModuleExpr();
+
+        out += rmCommonWS(_templateObject92, sourceCodeDef.init);
 
         out += _generateNamespace(moduleName.split('.'), null, function _generateNamespace_cb(moduleName) {
-            return (moduleName.match(/\./) ? moduleName : 'var ' + moduleName) + ' = ' + self.generateModuleExpr() + '\n';
+            return rmCommonWS(_templateObject93, moduleName.match(/\./) ? moduleName : 'var ' + moduleName, sourceCodeDef.src);
         });
 
         opt.exportSourceCode.all = out;
@@ -22192,7 +22143,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
         var src = out.join('\n') + '\n';
         opt.exportSourceCode.all = src;
-        return src;
+
+        return {
+            src: src,
+            init: module.initCode
+        };
     };
 
     function removeUnusedKernelFeatures(parseFn, info) {
@@ -22552,7 +22507,12 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     function expandConstantsInGeneratedCode(src, self) {
         // expand the error recovery 'combine rule' action constant in the generated code
-        return src.replace(/\bYY_ERROR_RECOVERY_COMBINE_ID\b/g, '' + self.table.length);
+        src = src.replace(/\bYY_ERROR_RECOVERY_COMBINE_ID\b/g, '' + self.table.length)
+        // the next 'constant' has explicit `\n` newlines included for protection:
+        // it should only occur in *one* place in the *entire* code stream.
+        .replace(/\nYY_REMAINING_INIT_CODE_SECTIONS_GO_HERE\n/g, self.moduleInit.getRemainingInitCodeSections().join('\n'));
+
+        return src;
     }
 
     function pickOneOfTwoCodeAlternatives(parseFn, pick_A_not_B, A_start_marker, B_start_marker, end_marker) {
@@ -22702,22 +22662,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
 
         // Generate the initialization code
-        var initCode = this.moduleInit.slice(0);
 
-        function popInitCodeSection(section) {
-            var rv = [];
-            for (var i = 0, len = initCode.length; i < len; i++) {
-                var m = initCode[i];
-                if (!m) continue;
-                if (m.qualifier === section || !section) {
-                    rv.push(m.include);
-                    delete initCode[i];
-                }
-            }
-            return rv;
-        }
+        var initCode = [].concat(this.moduleInit.getInitCodeSection('imports'), this.moduleInit.getInitCodeSection('init'));
 
-        var commonCode = [].concat(popInitCodeSection('required'), errorClassCode.commonCode, errorClassCode.moduleCode, popInitCodeSection(), tableCode.commonCode);
+        var commonCode = [].concat(this.moduleInit.getInitCodeSection('required'), errorClassCode.commonCode, errorClassCode.moduleCode, ['\nYY_REMAINING_INIT_CODE_SECTIONS_GO_HERE\n'], tableCode.commonCode);
 
         // sort hash table by key to produce a nicer output:
         function produceSymbolTable(tbl) {
@@ -23035,6 +22983,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 json: 1,
                 _: 1,
                 noMain: 1,
+                moduleMain: 1,
+                moduleMainImports: 1,
                 noDefaultResolve: 1,
                 defaultActionMode: 1,
                 noTryCatch: 1,
@@ -23129,13 +23079,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         // produce a hash lookup table from the terminal set
         exportDest.terminalTable = produceTerminalTable(this.terminals_);
 
-        var moduleCode = '{\n    // Code Generator Information Report\n    // ---------------------------------\n    //\n    // Options:\n    //\n    //   default action mode: ............. ' + this.options.defaultActionMode.join(',') + '\n    //   no try..catch: ................... ' + this.options.noTryCatch + '\n    //   no default resolve on conflict:    ' + this.options.noDefaultResolve + '\n    //   on-demand look-ahead: ............ ' + this.onDemandLookahead + '\n    //   error recovery token skip maximum: ' + this.options.errorRecoveryTokenDiscardCount + '\n    //   yyerror in parse actions is: ..... ' + (this.options.parserErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   yyerror in lexer actions and other non-fatal lexer are:\n    //   .................................. ' + (this.options.lexerErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   debug grammar/output: ............ ' + this.options.debug + '\n    //   has partial LR conflict upgrade:   ' + this.options.hasPartialLrUpgradeOnConflict + '\n    //   rudimentary token-stack support:   ' + this.options.tokenStack + '\n    //   parser table compression mode: ... ' + this.options.compressTables + '\n    //   export debug tables: ............. ' + this.options.outputDebugTables + '\n    //   export *all* tables: ............. ' + this.options.exportAllTables.enabled + '\n    //   module type: ..................... ' + this.options.moduleType + '\n    //   parser engine type: .............. ' + this.options.type + '\n    //   output main() in the module: ..... ' + this.options.noMain + '\n    //   number of expected conflicts: .... ' + this.options.numExpectedConflictStates + '\n    //\n    //\n    // Parser Analysis flags:\n    //\n    //   no significant actions (parser is a language matcher only):\n    //   .................................. ' + this.actionsAreAllDefault + '\n    //   uses yyleng: ..................... ' + this.actionsUseYYLENG + '\n    //   uses yylineno: ................... ' + this.actionsUseYYLINENO + '\n    //   uses yytext: ..................... ' + this.actionsUseYYTEXT + '\n    //   uses yylloc: ..................... ' + this.actionsUseYYLOC + '\n    //   uses ParseError API: ............. ' + this.actionsUseParseError + '\n    //   uses YYERROR: .................... ' + this.actionsUseYYERROR + '\n    //   uses YYRECOVERING: ............... ' + this.actionsUseYYRECOVERING + '\n    //   uses YYERROK: .................... ' + this.actionsUseYYERROK + '\n    //   uses YYCLEARIN: .................. ' + this.actionsUseYYCLEARIN + '\n    //   tracks rule values: .............. ' + this.actionsUseValueTracking + '\n    //   assigns rule values: ............. ' + this.actionsUseValueAssignment + '\n    //   uses location tracking: .......... ' + this.actionsUseLocationTracking + '\n    //   assigns location: ................ ' + this.actionsUseLocationAssignment + '\n    //   uses yystack: .................... ' + this.actionsUseYYSTACK + '\n    //   uses yysstack: ................... ' + this.actionsUseYYSSTACK + '\n    //   uses yysp: ....................... ' + this.actionsUseYYSTACKPOINTER + '\n    //   uses yyrulelength: ............... ' + this.actionsUseYYRULELENGTH + '\n    //   uses yyMergeLocationInfo API: .... ' + this.actionsUseYYMERGELOCATIONINFO + '\n    //   has error recovery: .............. ' + this.hasErrorRecovery + '\n    //   has error reporting: ............. ' + this.hasErrorReporting + '\n    //\n    // --------- END OF REPORT -----------\n\n';
+        var moduleCode = '{\n    // Code Generator Information Report\n    // ---------------------------------\n    //\n    // Options:\n    //\n    //   default action mode: ............. ' + this.options.defaultActionMode.join(',') + '\n    //   no try..catch: ................... ' + this.options.noTryCatch + '\n    //   no default resolve on conflict:    ' + this.options.noDefaultResolve + '\n    //   on-demand look-ahead: ............ ' + this.onDemandLookahead + '\n    //   error recovery token skip maximum: ' + this.options.errorRecoveryTokenDiscardCount + '\n    //   yyerror in parse actions is: ..... ' + (this.options.parserErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   yyerror in lexer actions and other non-fatal lexer are:\n    //   .................................. ' + (this.options.lexerErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   debug grammar/output: ............ ' + this.options.debug + '\n    //   has partial LR conflict upgrade:   ' + this.options.hasPartialLrUpgradeOnConflict + '\n    //   rudimentary token-stack support:   ' + this.options.tokenStack + '\n    //   parser table compression mode: ... ' + this.options.compressTables + '\n    //   export debug tables: ............. ' + this.options.outputDebugTables + '\n    //   export *all* tables: ............. ' + this.options.exportAllTables.enabled + '\n    //   module type: ..................... ' + this.options.moduleType + '\n    //   parser engine type: .............. ' + this.options.type + '\n    //   output main() in the module: ..... ' + this.options.noMain + '\n    //   has user-specified main(): ....... ' + !!this.options.moduleMain + '\n    //   has user-specified require()/import modules for main(): \n    //   .................................. ' + !!this.options.moduleMainImports + '\n    //   number of expected conflicts: .... ' + this.options.numExpectedConflictStates + '\n    //\n    //\n    // Parser Analysis flags:\n    //\n    //   no significant actions (parser is a language matcher only):\n    //   .................................. ' + this.actionsAreAllDefault + '\n    //   uses yyleng: ..................... ' + this.actionsUseYYLENG + '\n    //   uses yylineno: ................... ' + this.actionsUseYYLINENO + '\n    //   uses yytext: ..................... ' + this.actionsUseYYTEXT + '\n    //   uses yylloc: ..................... ' + this.actionsUseYYLOC + '\n    //   uses ParseError API: ............. ' + this.actionsUseParseError + '\n    //   uses YYERROR: .................... ' + this.actionsUseYYERROR + '\n    //   uses YYRECOVERING: ............... ' + this.actionsUseYYRECOVERING + '\n    //   uses YYERROK: .................... ' + this.actionsUseYYERROK + '\n    //   uses YYCLEARIN: .................. ' + this.actionsUseYYCLEARIN + '\n    //   tracks rule values: .............. ' + this.actionsUseValueTracking + '\n    //   assigns rule values: ............. ' + this.actionsUseValueAssignment + '\n    //   uses location tracking: .......... ' + this.actionsUseLocationTracking + '\n    //   assigns location: ................ ' + this.actionsUseLocationAssignment + '\n    //   uses yystack: .................... ' + this.actionsUseYYSTACK + '\n    //   uses yysstack: ................... ' + this.actionsUseYYSSTACK + '\n    //   uses yysp: ....................... ' + this.actionsUseYYSTACKPOINTER + '\n    //   uses yyrulelength: ............... ' + this.actionsUseYYRULELENGTH + '\n    //   uses yyMergeLocationInfo API: .... ' + this.actionsUseYYMERGELOCATIONINFO + '\n    //   has error recovery: .............. ' + this.hasErrorRecovery + '\n    //   has error reporting: ............. ' + this.hasErrorReporting + '\n    //\n    // --------- END OF REPORT -----------\n\n';
         moduleCode += ['trace: ' + String(this.trace || parser.trace), 'JisonParserError: JisonParserError', 'yy: {}', 'options: ' + produceOptions(this.options), 'symbols_: ' + JSON.stringify(symbolTable, null, 2), 'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:')].concat(rulesLst ? 'nonterminals_: ' + rulesLst : []).concat(descrLst ? 'terminal_descriptions_: ' + descrLst : []).concat([String(define_parser_APIs_1).replace(/^[\s\S]+?return \{/, '').replace(/\};[s\r\n]+\}\s*$/, '').replace(/^        /mg, '').trim(), 'productions_: ' + tableCode.productionsCode]).concat(String(this.performAction).trim() !== '' ? 'performAction: ' + String(this.performAction) : []).concat(['table: ' + tableCode.tableCode, 'defaultActions: ' + tableCode.defaultActionsCode, 'parseError: ' + String(this.parseError || parser.parseError), 'parse: ' + parseFn]).concat(this.actionsUseYYERROR ? 'yyError: 1' : []).concat(this.actionsUseYYRECOVERING ? 'yyRecovering: 1' : []).concat(this.actionsUseYYERROK ? 'yyErrOk: 1' : []).concat(this.actionsUseYYCLEARIN ? 'yyClearIn: 1' : []).join(',\n');
         moduleCode += '\n};';
 
         var exportSourceCode = this.options.exportSourceCode;
         assert(exportSourceCode);
         exportSourceCode.parserChunks = {
+            initCode: expandConstantsInGeneratedCode(initCode.join('\n'), this),
             commonCode: expandConstantsInGeneratedCode(commonCode.join('\n'), this),
             moduleCode: expandConstantsInGeneratedCode(moduleCode, this),
             modulePostlude: ['parser.originalParseError = parser.parseError;', 'parser.originalQuoteName = parser.quoteName;'].join('\n'),
@@ -23145,68 +23096,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
 
     lrGeneratorMixin.generateErrorClass = function () {
-        // See also:
-        // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-        // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-        // with userland code which might access the derived class in a 'classic' way.
-        function JisonParserError(msg, hash) {
-            Object.defineProperty(this, 'name', {
-                enumerable: false,
-                writable: false,
-                value: 'JisonParserError'
-            });
+        // --- START parser error class ---
 
-            if (msg == null) msg = '???';
+        var prelude = '// See also:\n// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508\n// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility\n// with userland code which might access the derived class in a \'classic\' way.\nfunction JisonParserError(msg, hash) {\n    Object.defineProperty(this, \'name\', {\n        enumerable: false,\n        writable: false,\n        value: \'JisonParserError\'\n    });\n\n    if (msg == null) msg = \'???\';\n\n    Object.defineProperty(this, \'message\', {\n        enumerable: false,\n        writable: true,\n        value: msg\n    });\n\n    this.hash = hash;\n\n    var stacktrace;\n    if (hash && hash.exception instanceof Error) {\n        var ex2 = hash.exception;\n        this.message = ex2.message || msg;\n        stacktrace = ex2.stack;\n    }\n    if (!stacktrace) {\n        if (Error.hasOwnProperty(\'captureStackTrace\')) {        // V8/Chrome engine\n            Error.captureStackTrace(this, this.constructor);\n        } else {\n            stacktrace = (new Error(msg)).stack;\n        }\n    }\n    if (stacktrace) {\n        Object.defineProperty(this, \'stack\', {\n            enumerable: false,\n            writable: false,\n            value: stacktrace\n        });\n    }\n}\n\nif (typeof Object.setPrototypeOf === \'function\') {\n    Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);\n} else {\n    JisonParserError.prototype = Object.create(Error.prototype);\n}\nJisonParserError.prototype.constructor = JisonParserError;\nJisonParserError.prototype.name = \'JisonParserError\';';
 
-            Object.defineProperty(this, 'message', {
-                enumerable: false,
-                writable: true,
-                value: msg
-            });
-
-            this.hash = hash;
-
-            var stacktrace;
-            if (hash && hash.exception instanceof Error) {
-                var ex2 = hash.exception;
-                this.message = ex2.message || msg;
-                stacktrace = ex2.stack;
-            }
-            if (!stacktrace) {
-                if (Error.hasOwnProperty('captureStackTrace')) {
-                    // V8
-                    Error.captureStackTrace(this, this.constructor);
-                } else {
-                    stacktrace = new Error(msg).stack;
-                }
-            }
-            if (stacktrace) {
-                Object.defineProperty(this, 'stack', {
-                    enumerable: false,
-                    writable: false,
-                    value: stacktrace
-                });
-            }
-        }
-
-        // wrap this init code in a function so we can String(function)-dump it into the generated
-        // output: that way we only have to write this code *once*!
-        function __extra_code__() {
-            if (typeof Object.setPrototypeOf === 'function') {
-                Object.setPrototypeOf(JisonParserError.prototype, Error.prototype);
-            } else {
-                JisonParserError.prototype = Object.create(Error.prototype);
-            }
-            JisonParserError.prototype.constructor = JisonParserError;
-            JisonParserError.prototype.name = 'JisonParserError';
-        }
-        __extra_code__();
-
-        var prelude = ['// See also:', '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508', '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility', '// with userland code which might access the derived class in a \'classic\' way.', printFunctionSourceCode(JisonParserError), printFunctionSourceCodeContainer(__extra_code__), ''];
+        // --- END parser error class ---
 
         return {
             commonCode: '',
-            moduleCode: prelude.join('\n')
+            moduleCode: prelude
         };
     };
 
@@ -23720,7 +23618,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
 
     // default main method for generated commonjs modules
-    var commonjsMain = '\nfunction (args) {\n    // When the parser comes with its own `main` function, then use that one:\n    if (typeof exports.parser.main === \'function\') {\n      return exports.parser.main(args);\n    }\n\n    var fs = require(\'fs\');\n    var path = require(\'path\');\n\n    if (!args[1]) {\n        console.log(\'Usage:\', path.basename(args[0]) + \' FILE\');\n        process.exit(1);\n    }\n    var source = fs.readFileSync(path.normalize(args[1]), \'utf8\');\n    var dst = exports.parser.parse(source);\n    console.log(\'parser output:\\n\\n\', {\n        type: typeof dst,\n        value: dst\n    });\n    try {\n        console.log("\\n\\nor as JSON:\\n", JSON.stringify(dst, null, 2));\n    } catch (e) { /* ignore crashes; output MAY not be serializable! We are a generic bit of code, after all... */ }\n    var rv = 0;\n    if (typeof dst === \'number\' || typeof dst === \'boolean\') {\n        rv = dst;\n    }\n    return dst;\n}';
+    var commonjsMain = '\nfunction (args) {\n    // When the parser comes with its own `main` function, then use that one:\n    if (typeof exports.parser.main === \'function\') {\n      return exports.parser.main(args);\n    }\n\n    if (!args[1]) {\n        console.log(\'Usage:\', path.basename(args[0]) + \' FILE\');\n        process.exit(1);\n    }\n    var source = fs.readFileSync(path.normalize(args[1]), \'utf8\');\n    var dst = exports.parser.parse(source);\n    console.log(\'parser output:\\n\\n\', {\n        type: typeof dst,\n        value: dst\n    });\n    try {\n        console.log("\\n\\nor as JSON:\\n", JSON.stringify(dst, null, 2));\n    } catch (e) { /* ignore crashes; output MAY not be serializable! We are a generic bit of code, after all... */ }\n    var rv = 0;\n    if (typeof dst === \'number\' || typeof dst === \'boolean\') {\n        rv = dst;\n    }\n    return dst;\n}';
+
+    var commonjsMainImports = '\nvar fs = require(\'fs\');\nvar path = require(\'path\');\n';
 
     // debug mixin for LR parser generators
 
@@ -23765,8 +23665,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var parser = typal.beget();
 
     generatorMixin.createParser = function createParser() {
-        var sourcecode = this.generateModuleExpr();
+        var sourceCodeDef = this.generateModuleExpr();
 
+        // produce a chunk of sourcecode that's suitable for evaluation through `eval()`:
+        var sourcecode = rmCommonWS(_templateObject94, sourceCodeDef.init, sourceCodeDef.src);
         var p = code_exec(sourcecode, function generated_code_exec_wrapper_jison(sourcecode) {
             //console.log("===============================PARSER TEST CODE\n", sourcecode, "\n=====================END====================\n");
             var rv = eval(sourcecode);
@@ -23775,6 +23677,38 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             dumpSourceCodeOnFailure: this.DEBUG,
             throwErrorOnCompileFailure: true
         }), "parser");
+
+        assert((typeof p === 'undefined' ? 'undefined' : _typeof(p)) === 'object');
+        assert(typeof p.parse === 'function');
+        assert(typeof p.parser === 'undefined');
+        assert(typeof p.Parser === 'function');
+        assert(_typeof(p.yy) === 'object');
+        assert(typeof p.EOF === 'number');
+        assert(typeof p.TERROR === 'number');
+        // assert(typeof p.trace === 'function');
+        assert(typeof p.JisonParserError === 'function');
+        assert(typeof p.quoteName === 'function');
+        assert(typeof p.originalQuoteName === 'function');
+        assert(typeof p.describeSymbol === 'function');
+        assert(_typeof(p.symbols_) === 'object');
+        assert(_typeof(p.terminals_) === 'object');
+        // assert(typeof p.nonterminals === 'undefined');
+        // assert(typeof p.terminal_descriptions_ === 'undefined');
+        // assert(typeof p.productions_ === 'object');
+        assert(typeof p.performAction === 'function');
+        assert(_typeof(p.table) === 'object');
+        // assert(typeof p.defaultActions === 'object');
+        assert(typeof p.parseError === 'function');
+        // assert(typeof p.yyError === 'undefined');
+        // assert(typeof p.yyRecovering === 'undefined');
+        // assert(typeof p.yyErrOk === 'undefined');
+        // assert(typeof p.yyClearIn === 'undefined');
+        assert(_typeof(p.constructParseErrorInfo) === 'object');
+        assert(typeof p.originalParseError === 'function');
+        assert(_typeof(p.options) === 'object');
+        assert(_typeof(p.cleanupAfterParse) === 'object');
+        assert(_typeof(p.yyMergeLocationInfo) === 'object');
+        assert(_typeof(p.lexer) === 'object' || typeof p.lexer === 'undefined');
 
         // for debugging
         p.productions = this.productions;
@@ -23785,6 +23719,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             p.conflict_productions_LU = this.conflict_productions_LU;
             p.conflict_states_LU = this.conflict_states_LU;
         }
+        p.sourceCode = sourceCodeDef;
 
         var self = this;
         function bind(method) {
