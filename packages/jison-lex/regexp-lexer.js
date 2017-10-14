@@ -10,9 +10,8 @@ import helpers from '../helpers-lib';                   // jison-helpers-lib
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
-import recast from '@gerhobbelt/recast';
-import astUtils from '@gerhobbelt/ast-util';
-import prettier from '@gerhobbelt/prettier-miscellaneous';
+// import recast from '@gerhobbelt/recast';
+// import astUtils from '@gerhobbelt/ast-util';
 import assert from 'assert';
 
 var version = '0.6.1-200';                              // require('./package.json').version;
@@ -2331,15 +2330,6 @@ RegExpLexer.prototype = (new Function(rmCommonWS`
 // The lexer code stripper, driven by optimization analysis settings and
 // lexer options, which cannot be changed at run-time.
 function stripUnusedLexerCode(src, opt) {
-    assert(recast);
-    var types = recast.types;
-    assert(types);
-    var namedTypes = types.namedTypes;
-    assert(namedTypes);
-    var b = types.builders;
-    assert(b);
-    assert(astUtils);
-
     //   uses yyleng: ..................... ${opt.lexerActionsUseYYLENG}
     //   uses yylineno: ................... ${opt.lexerActionsUseYYLINENO}
     //   uses yytext: ..................... ${opt.lexerActionsUseYYTEXT}
@@ -2354,20 +2344,8 @@ function stripUnusedLexerCode(src, opt) {
     //        ............................. ${opt.lexerActionsUseDisplayAPIs}
     //   uses describeYYLLOC() API: ....... ${opt.lexerActionsUseDescribeYYLOC}
 
-if (1) {
-    var ast = recast.parse(src);
-    var new_src = recast.prettyPrint(ast, { 
-        tabWidth: 2,
-        quote: 'single',
-        arrowParensAlways: true,
-
-        // Do not reuse whitespace (or anything else, for that matter)
-        // when printing generically.
-        reuseWhitespace: false
-    }).code;
-} else {
-    var new_src = prettier.format(src);
-}
+    var ast = helpers.parseCodeChunkToAST(src, opt);
+    var new_src = helpers.prettyPrintAST(ast, opt);
 
 if (0) {
     this.actionsUseYYLENG = analyzeFeatureUsage(this.performAction, /\byyleng\b/g, 1);
@@ -2427,7 +2405,7 @@ if (0) {
 
 
     // inject analysis report now:
-    new_src = new_src.replace(/\/\*JISON-LEX-ANALYTICS-REPORT\*\//g, rmCommonWS`
+    new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS`
         // Code Generator Information Report
         // ---------------------------------
         //
