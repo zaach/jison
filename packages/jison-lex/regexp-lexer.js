@@ -214,26 +214,6 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 }
 
 
-
-
-
-// HELPER FUNCTION: print the function in source code form, properly indented.
-/** @public */
-function printFunctionSourceCode(f) {
-    return String(f).replace(/^    /gm, '');
-}
-/** @public */
-function printFunctionSourceCodeContainer(f, depth) {
-    var s = String(f);
-    for (var d = (depth || 2); d > 0; d--) {
-        s = s.replace(/^    /gm, '');
-    }
-    s = s.replace(/^\s*function\b[^\{]+\{/, '').replace(/\}\s*$/, '');
-    return s;
-}
-
-
-
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
     var m, i, k, rule, action, conditions,
@@ -963,83 +943,72 @@ function buildActions(dict, tokens, opts) {
 //       jison/lib/jison.js @ line 2304:lrGeneratorMixin.generateErrorClass
 //
 function generateErrorClass() {
-    /**
-     * See also:
-     * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-     * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-     * with userland code which might access the derived class in a 'classic' way.
-     *
-     * @public
-     * @constructor
-     * @nocollapse
-     */
-    function JisonLexerError(msg, hash) {
-        Object.defineProperty(this, 'name', {
+    // --- START lexer error class ---
+
+var prelude = `/**
+ * See also:
+ * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+ * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+ * with userland code which might access the derived class in a 'classic' way.
+ *
+ * @public
+ * @constructor
+ * @nocollapse
+ */
+function JisonLexerError(msg, hash) {
+    Object.defineProperty(this, 'name', {
+        enumerable: false,
+        writable: false,
+        value: 'JisonLexerError'
+    });
+
+    if (msg == null) msg = '???';
+
+    Object.defineProperty(this, 'message', {
+        enumerable: false,
+        writable: true,
+        value: msg
+    });
+
+    this.hash = hash;
+
+    var stacktrace;
+    if (hash && hash.exception instanceof Error) {
+        var ex2 = hash.exception;
+        this.message = ex2.message || msg;
+        stacktrace = ex2.stack;
+    }
+    if (!stacktrace) {
+        if (Error.hasOwnProperty('captureStackTrace')) { // V8
+            Error.captureStackTrace(this, this.constructor);
+        } else {
+            stacktrace = (new Error(msg)).stack;
+        }
+    }
+    if (stacktrace) {
+        Object.defineProperty(this, 'stack', {
             enumerable: false,
             writable: false,
-            value: 'JisonLexerError'
+            value: stacktrace
         });
-
-        if (msg == null) msg = '???';
-
-        Object.defineProperty(this, 'message', {
-            enumerable: false,
-            writable: true,
-            value: msg
-        });
-
-        this.hash = hash;
-
-        var stacktrace;
-        if (hash && hash.exception instanceof Error) {
-            var ex2 = hash.exception;
-            this.message = ex2.message || msg;
-            stacktrace = ex2.stack;
-        }
-        if (!stacktrace) {
-            if (Error.hasOwnProperty('captureStackTrace')) { // V8
-                Error.captureStackTrace(this, this.constructor);
-            } else {
-                stacktrace = (new Error(msg)).stack;
-            }
-        }
-        if (stacktrace) {
-            Object.defineProperty(this, 'stack', {
-                enumerable: false,
-                writable: false,
-                value: stacktrace
-            });
-        }
     }
+}
 
-    // wrap this init code in a function so we can String(function)-dump it into the generated
-    // output: that way we only have to write this code *once*!
-    function __extra_code__() {
-        if (typeof Object.setPrototypeOf === 'function') {
-            Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
-        } else {
-            JisonLexerError.prototype = Object.create(Error.prototype);
-        }
-        JisonLexerError.prototype.constructor = JisonLexerError;
-        JisonLexerError.prototype.name = 'JisonLexerError';
-    }
-    __extra_code__();
+if (typeof Object.setPrototypeOf === 'function') {
+    Object.setPrototypeOf(JisonLexerError.prototype, Error.prototype);
+} else {
+    JisonLexerError.prototype = Object.create(Error.prototype);
+}
+JisonLexerError.prototype.constructor = JisonLexerError;
+JisonLexerError.prototype.name = 'JisonLexerError';`;
 
-    var prelude = [
-        '// See also:',
-        '// http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508',
-        '// but we keep the prototype.constructor and prototype.name assignment lines too for compatibility',
-        '// with userland code which might access the derived class in a \'classic\' way.',
-        printFunctionSourceCode(JisonLexerError),
-        printFunctionSourceCodeContainer(__extra_code__),
-        '',
-    ];
+    // --- END lexer error class ---
 
-    return prelude.join('\n');
+    return prelude;
 }
 
 
-var jisonLexerErrorDefinition = generateErrorClass();
+const jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
@@ -3133,8 +3102,6 @@ RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
-RegExpLexer.printFunctionSourceCode = printFunctionSourceCode;
-RegExpLexer.printFunctionSourceCodeContainer = printFunctionSourceCodeContainer;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 

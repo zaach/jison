@@ -11,6 +11,12 @@ kernel = kernel
 .replace(/[\s\r\n]+$/, '')          // rtrim()
 ;
  
+var errorClassCode = fs.readFileSync('jison-lexer-error-code.js', 'utf8');
+errorClassCode = errorClassCode
+.replace(/\\/g, '\\\\')
+.replace(/`/g, '\\`')
+.trim();
+
 globby(['regexp-lexer.js']).then(paths => {
 	var count = 0;
 
@@ -21,9 +27,17 @@ globby(['regexp-lexer.js']).then(paths => {
     	//console.log('path: ', path);
 
     	var src = fs.readFileSync(path, 'utf8');
-    	src = src.replace(/(\/\/ --- START lexer kernel ---)[^]+?(\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
+    	src = src
+      .replace(/(\/\/ --- START lexer kernel ---)[^]+?(\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
             return p1 + `
 return \`${kernel}\`;
+    ` + p2;
+        })
+        .replace(/(\/\/ --- START lexer error class ---)[^]+?(\/\/ --- END lexer error class ---)/, function f(m, p1, p2) {
+            return p1 + `
+
+var prelude = \`${errorClassCode}\`;
+
     ` + p2;
         });
 		updated = true;
