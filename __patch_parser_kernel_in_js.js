@@ -8,6 +8,12 @@ kernel = kernel
 .replace(/`/g, '\\`')
 .trim();
  
+var errorClassCode = fs.readFileSync('lib/jison-parser-error-code.js', 'utf8');
+errorClassCode = errorClassCode
+.replace(/\\/g, '\\\\')
+.replace(/`/g, '\\`')
+.trim();
+ 
 globby(['lib/jison.js']).then(paths => {
 	var count = 0;
 
@@ -18,10 +24,18 @@ globby(['lib/jison.js']).then(paths => {
     	//console.log('path: ', path);
 
     	var src = fs.readFileSync(path, 'utf8');
-    	src = src.replace(/(\/\/ --- START parser kernel ---)[^]+?(\/\/ --- END parser kernel ---)/, function f(m, p1, p2) {
+    	src = src
+        .replace(/(\/\/ --- START parser kernel ---)[^]+?(\/\/ --- END parser kernel ---)/, function f(m, p1, p2) {
             return p1 + `
 parser.parse = \`${kernel}\`;
 ` + p2;
+        })
+        .replace(/(\/\/ --- START parser error class ---)[^]+?(\/\/ --- END parser error class ---)/, function f(m, p1, p2) {
+            return p1 + `
+
+var prelude = \`${errorClassCode}\`;
+
+    ` + p2;
         });
 		updated = true;
 
