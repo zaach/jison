@@ -375,7 +375,10 @@
  *                 rule regexes have been written as standard JavaScript RegExp expressions.
  *  }
  */
-var codegenFeatureTesterNoLocationInfo = (function () {
+
+        
+    
+            var codegenFeatureTesterNoLocationInfo = (function () {
 
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
@@ -405,11 +408,10 @@ function JisonParserError(msg, hash) {
         stacktrace = ex2.stack;
     }
     if (!stacktrace) {
-        if (Error.hasOwnProperty('captureStackTrace')) {
-            // V8
+        if (Error.hasOwnProperty('captureStackTrace')) {        // V8/Chrome engine
             Error.captureStackTrace(this, this.constructor);
         } else {
-            stacktrace = new Error(msg).stack;
+            stacktrace = (new Error(msg)).stack;
         }
     }
     if (stacktrace) {
@@ -428,7 +430,6 @@ if (typeof Object.setPrototypeOf === 'function') {
 }
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
-
 
 
 
@@ -561,6 +562,9 @@ var parser = {
     //   module type: ..................... commonjs
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... false
+    //   has user-specified main(): ....... false
+    //   has user-specified require()/import modules for main(): 
+    //   .................................. false
     //   number of expected conflicts: .... 0
     //
     //
@@ -3547,10 +3551,16 @@ parser.main = function () {
 
 
 var lexer = function() {
-  // See also:
-  // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
-  // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
-  // with userland code which might access the derived class in a 'classic' way.
+  /**
+   * See also:
+   * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
+   * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
+   * with userland code which might access the derived class in a 'classic' way.
+   *
+   * @public
+   * @constructor
+   * @nocollapse
+   */
   function JisonLexerError(msg, hash) {
     Object.defineProperty(this, 'name', {
       enumerable: false,
@@ -4979,7 +4989,7 @@ parser.Parser = Parser;
 return new Parser();
 })();
 
-
+        
 
 
 if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
@@ -4989,14 +4999,17 @@ if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
     return codegenFeatureTesterNoLocationInfo.parse.apply(codegenFeatureTesterNoLocationInfo, arguments);
   };
   
+
+
+var fs = require('fs');
+var path = require('path');
+
+
 exports.main = function (args) {
     // When the parser comes with its own `main` function, then use that one:
     if (typeof exports.parser.main === 'function') {
       return exports.parser.main(args);
     }
-
-    var fs = require('fs');
-    var path = require('path');
 
     if (!args[1]) {
         console.log('Usage:', path.basename(args[0]) + ' FILE');
@@ -5018,7 +5031,10 @@ exports.main = function (args) {
     return dst;
 };
 
+// IFF this is the main module executed by NodeJS,
+// then run 'main()' immediately:
 if (typeof module !== 'undefined' && require.main === module) {
   exports.main(process.argv.slice(1));
 }
+
 }

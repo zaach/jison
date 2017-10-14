@@ -96,16 +96,14 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
     _templateObject89 = _taggedTemplateLiteral(['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        ', '\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    '], ['\n        function Parser() {\n            this.yy = {};\n        }\n        Parser.prototype = parser;\n        parser.Parser = Parser;\n\n        function yyparse() {\n            return parser.parse.apply(parser, arguments);\n        }\n\n        ', '\n\n        export default {\n            parser,\n            Parser,\n            parse: yyparse,\n            ', '\n        };\n    ']),
     _templateObject90 = _taggedTemplateLiteral(['\n\n            ', '\n\n            exports.main = ', ';\n\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }\n        '], ['\n\n            ', '\n\n            exports.main = ', ';\n\n            // IFF this is the main module executed by NodeJS,\n            // then run \'main()\' immediately:\n            if (typeof module !== \'undefined\' && require.main === module) {\n              exports.main(process.argv.slice(1));\n            }\n        ']),
     _templateObject91 = _taggedTemplateLiteral(['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        '], ['\n\n\n        if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {\n          exports.parser = ', ';\n          exports.Parser = ', '.Parser;\n          exports.parse = function () {\n            return ', '.parse.apply(', ', arguments);\n          };\n          ', '\n        }\n        ']),
-    _templateObject92 = _taggedTemplateLiteral(['\n        ', '\n    '], ['\n        ', '\n    ']),
-    _templateObject93 = _taggedTemplateLiteral(['\n            ', ' = ', '\n        '], ['\n            ', ' = ', '\n        ']),
-    _templateObject94 = _taggedTemplateLiteral(['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the `eval()` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    '], ['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the \\`eval()\\` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    ']),
-    _templateObject95 = _taggedTemplateLiteral(['\n                    Specify the kind of default action that jison should include for every parser rule.\n\n                    You can specify a mode for *value handling* ("$$") and one for *location tracking* ("@$"), separated by a comma, e.g.:\n                        --default-action=ast,none\n\n                    Supported value modes:\n                    - classic : generate a parser which includes the default\n                                    $$ = $1;\n                                action for every rule.\n                    - ast     : generate a parser which produces a simple AST-like tree-of-arrays structure: every rule produces an array of its production terms\' values. Otherwise it is dentical to "classic" mode.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "$$" results. The default rule value is still deterministic though as it is set to "undefined": "$$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default value action ANYWHERE, hence rule results are not deterministic when you do not properly manage the "$$" value yourself!\n\n                    Supported location modes:\n                    - merge   : generate a parser which includes the default "@$ = merged(@1..@n);" location tracking action for every rule, i.e. the rule\'s production \'location\' is the range spanning its terms.\n                    - classic : same as "merge" mode.\n                    - ast     : ditto.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "@$" location results. The default rule location is still deterministic though, as it is set to "undefined": "@$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default location action ANYWHERE, hence rule location results are not deterministic when you do not properly manage the "@$" value yourself!\n\n                    Notes:\n                    - when you do specify a value default mode, but DO NOT specify a location value mode, the latter is assumed to be the same as the former. Hence:\n                          --default-action=ast\n                      equals:\n                          --default-action=ast,ast\n                    - when you do not specify an explicit default mode or only a "true"/"1" value, the default is assumed: "ast,merge".\n                    - when you specify "false"/"0" as an explicit default mode, "none,none" is assumed. This produces the fastest deterministic parser.\n                '], ['\n                    Specify the kind of default action that jison should include for every parser rule.\n\n                    You can specify a mode for *value handling* ("$$") and one for *location tracking* ("@$"), separated by a comma, e.g.:\n                        --default-action=ast,none\n\n                    Supported value modes:\n                    - classic : generate a parser which includes the default\n                                    $$ = $1;\n                                action for every rule.\n                    - ast     : generate a parser which produces a simple AST-like tree-of-arrays structure: every rule produces an array of its production terms\' values. Otherwise it is dentical to "classic" mode.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "$$" results. The default rule value is still deterministic though as it is set to "undefined": "$$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default value action ANYWHERE, hence rule results are not deterministic when you do not properly manage the "$$" value yourself!\n\n                    Supported location modes:\n                    - merge   : generate a parser which includes the default "@$ = merged(@1..@n);" location tracking action for every rule, i.e. the rule\\\'s production \\\'location\\\' is the range spanning its terms.\n                    - classic : same as "merge" mode.\n                    - ast     : ditto.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "@$" location results. The default rule location is still deterministic though, as it is set to "undefined": "@$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default location action ANYWHERE, hence rule location results are not deterministic when you do not properly manage the "@$" value yourself!\n\n                    Notes:\n                    - when you do specify a value default mode, but DO NOT specify a location value mode, the latter is assumed to be the same as the former. Hence:\n                          --default-action=ast\n                      equals:\n                          --default-action=ast,ast\n                    - when you do not specify an explicit default mode or only a "true"/"1" value, the default is assumed: "ast,merge".\n                    - when you specify "false"/"0" as an explicit default mode, "none,none" is assumed. This produces the fastest deterministic parser.\n                ']);
+    _templateObject92 = _taggedTemplateLiteral(['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the `eval()` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    '], ['\n        ', '\n\n        var yy__parser = ', ';\n\n        // produce the generated parser function/class as the last value\n        // in this chunk of code so that we can be sure to produce *that*\n        // one as the \'return value\' of the \\`eval()\\` call we\'ll submit\n        // this code to.\n        //\n        // See also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval\n\n        yy__parser;\n    ']),
+    _templateObject93 = _taggedTemplateLiteral(['\n                    Specify the kind of default action that jison should include for every parser rule.\n\n                    You can specify a mode for *value handling* ("$$") and one for *location tracking* ("@$"), separated by a comma, e.g.:\n                        --default-action=ast,none\n\n                    Supported value modes:\n                    - classic : generate a parser which includes the default\n                                    $$ = $1;\n                                action for every rule.\n                    - ast     : generate a parser which produces a simple AST-like tree-of-arrays structure: every rule produces an array of its production terms\' values. Otherwise it is dentical to "classic" mode.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "$$" results. The default rule value is still deterministic though as it is set to "undefined": "$$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default value action ANYWHERE, hence rule results are not deterministic when you do not properly manage the "$$" value yourself!\n\n                    Supported location modes:\n                    - merge   : generate a parser which includes the default "@$ = merged(@1..@n);" location tracking action for every rule, i.e. the rule\'s production \'location\' is the range spanning its terms.\n                    - classic : same as "merge" mode.\n                    - ast     : ditto.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "@$" location results. The default rule location is still deterministic though, as it is set to "undefined": "@$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default location action ANYWHERE, hence rule location results are not deterministic when you do not properly manage the "@$" value yourself!\n\n                    Notes:\n                    - when you do specify a value default mode, but DO NOT specify a location value mode, the latter is assumed to be the same as the former. Hence:\n                          --default-action=ast\n                      equals:\n                          --default-action=ast,ast\n                    - when you do not specify an explicit default mode or only a "true"/"1" value, the default is assumed: "ast,merge".\n                    - when you specify "false"/"0" as an explicit default mode, "none,none" is assumed. This produces the fastest deterministic parser.\n                '], ['\n                    Specify the kind of default action that jison should include for every parser rule.\n\n                    You can specify a mode for *value handling* ("$$") and one for *location tracking* ("@$"), separated by a comma, e.g.:\n                        --default-action=ast,none\n\n                    Supported value modes:\n                    - classic : generate a parser which includes the default\n                                    $$ = $1;\n                                action for every rule.\n                    - ast     : generate a parser which produces a simple AST-like tree-of-arrays structure: every rule produces an array of its production terms\' values. Otherwise it is dentical to "classic" mode.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "$$" results. The default rule value is still deterministic though as it is set to "undefined": "$$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default value action ANYWHERE, hence rule results are not deterministic when you do not properly manage the "$$" value yourself!\n\n                    Supported location modes:\n                    - merge   : generate a parser which includes the default "@$ = merged(@1..@n);" location tracking action for every rule, i.e. the rule\\\'s production \\\'location\\\' is the range spanning its terms.\n                    - classic : same as "merge" mode.\n                    - ast     : ditto.\n                    - none    : JISON will produce a slightly faster parser but then you are solely responsible for propagating rule action "@$" location results. The default rule location is still deterministic though, as it is set to "undefined": "@$ = undefined;"\n                    - skip    : same as "none" mode, except JISON does NOT INJECT a default location action ANYWHERE, hence rule location results are not deterministic when you do not properly manage the "@$" value yourself!\n\n                    Notes:\n                    - when you do specify a value default mode, but DO NOT specify a location value mode, the latter is assumed to be the same as the former. Hence:\n                          --default-action=ast\n                      equals:\n                          --default-action=ast,ast\n                    - when you do not specify an explicit default mode or only a "true"/"1" value, the default is assumed: "ast,merge".\n                    - when you specify "false"/"0" as an explicit default mode, "none,none" is assumed. This produces the fastest deterministic parser.\n                ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('@gerhobbelt/ast-util'), require('@gerhobbelt/prettier-miscellaneous'), require('process'), require('@gerhobbelt/nomnom')) : typeof define === 'function' && define.amd ? define(['assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5', 'fs', 'path', '@gerhobbelt/recast', '@gerhobbelt/ast-util', '@gerhobbelt/prettier-miscellaneous', 'process', '@gerhobbelt/nomnom'], factory) : global['jison-cli'] = factory(global.assert, global.XRegExp, global.json5, global.fs, global.path, global.recast, global.astUtils, global.prettier, global.process$1, global.nomnom);
-})(undefined, function (assert, XRegExp, json5, fs, path, recast, astUtils, prettier, process$1, nomnom) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('@gerhobbelt/ast-util'), require('process'), require('@gerhobbelt/nomnom')) : typeof define === 'function' && define.amd ? define(['assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5', 'fs', 'path', '@gerhobbelt/recast', '@gerhobbelt/ast-util', 'process', '@gerhobbelt/nomnom'], factory) : global['jison-cli'] = factory(global.assert, global.XRegExp, global.json5, global.fs, global.path, global.recast, global.astUtils, global.process$1, global.nomnom);
+})(undefined, function (assert, XRegExp, json5, fs, path, recast, astUtils, process$1, nomnom) {
     'use strict';
 
     assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
@@ -115,7 +113,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
     astUtils = astUtils && astUtils.hasOwnProperty('default') ? astUtils['default'] : astUtils;
-    prettier = prettier && prettier.hasOwnProperty('default') ? prettier['default'] : prettier;
     process$1 = process$1 && process$1.hasOwnProperty('default') ? process$1['default'] : process$1;
     nomnom = nomnom && nomnom.hasOwnProperty('default') ? nomnom['default'] : nomnom;
 
@@ -637,7 +634,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
     function parseCodeChunkToAST(src, options) {
-        src = src.replace(/@/g, '$').replace(/#/g, '$');
+        src = src.replace(/@/g, '\uFFDA').replace(/#/g, '\uFFDB');
         var ast = recast.parse(src);
         return ast;
     }
@@ -655,7 +652,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         });
         new_src = s.code;
 
-        new_src = new_src.replace(/\r\n|\n|\r/g, '\n'); // platform dependent EOL fixup
+        new_src = new_src.replace(/\r\n|\n|\r/g, '\n') // platform dependent EOL fixup
+        // backpatch possible jison variables extant in the prettified code:
+        .replace(/\uFFDA/g, '@').replace(/\uFFDB/g, '#');
+
         return new_src;
     }
 
@@ -4097,13 +4097,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var lexer = function () {
         /**
          * See also:
-         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
          * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
          * with userland code which might access the derived class in a 'classic' way.
          *
-         * $public
-         * $constructor
-         * $nocollapse
+         * @public
+         * @constructor
+         * @nocollapse
          */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
@@ -4229,11 +4229,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** $constructor */
+                /** @constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -4253,8 +4253,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * $public
-                     * $this {LexErrorInfo}
+                     * @public
+                     * @this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -4282,8 +4282,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -4304,8 +4304,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -4335,8 +4335,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -4363,8 +4363,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -4390,8 +4390,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -4469,7 +4469,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `$include` statements, etc.
+             * `#include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -4499,8 +4499,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -4520,8 +4520,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -4578,8 +4578,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -4615,8 +4615,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -4627,8 +4627,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -4664,8 +4664,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -4682,8 +4682,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -4723,7 +4723,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > $$$ NOTE $$$
+             * > ### NOTE ###
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -4733,8 +4733,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -4771,8 +4771,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -4822,8 +4822,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -4913,8 +4913,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -4966,8 +4966,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -5072,8 +5072,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -5208,8 +5208,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -5236,8 +5236,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -5247,8 +5247,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -5260,8 +5260,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -5279,8 +5279,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -5296,8 +5296,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -5310,8 +5310,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -10412,13 +10412,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var lexer$2 = function () {
         /**
          * See also:
-         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
          * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
          * with userland code which might access the derived class in a 'classic' way.
          *
-         * $public
-         * $constructor
-         * $nocollapse
+         * @public
+         * @constructor
+         * @nocollapse
          */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
@@ -10544,11 +10544,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** $constructor */
+                /** @constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -10568,8 +10568,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * $public
-                     * $this {LexErrorInfo}
+                     * @public
+                     * @this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -10597,8 +10597,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -10619,8 +10619,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -10650,8 +10650,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -10678,8 +10678,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -10705,8 +10705,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -10784,7 +10784,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `$include` statements, etc.
+             * `#include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -10814,8 +10814,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -10835,8 +10835,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -10893,8 +10893,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -10930,8 +10930,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -10942,8 +10942,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -10979,8 +10979,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -10997,8 +10997,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -11038,7 +11038,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > $$$ NOTE $$$
+             * > ### NOTE ###
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -11048,8 +11048,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -11086,8 +11086,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -11137,8 +11137,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -11228,8 +11228,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -11281,8 +11281,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -11387,8 +11387,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -11523,8 +11523,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -11551,8 +11551,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -11562,8 +11562,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -11575,8 +11575,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -11594,8 +11594,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -11611,8 +11611,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -11625,8 +11625,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -15719,13 +15719,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var lexer$1 = function () {
         /**
          * See also:
-         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/$35881508
+         * http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
          * but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
          * with userland code which might access the derived class in a 'classic' way.
          *
-         * $public
-         * $constructor
-         * $nocollapse
+         * @public
+         * @constructor
+         * @nocollapse
          */
         function JisonLexerError(msg, hash) {
             Object.defineProperty(this, 'name', {
@@ -15851,11 +15851,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
-                /** $constructor */
+                /** @constructor */
                 var pei = {
                     errStr: msg,
                     recoverable: !!recoverable,
@@ -15875,8 +15875,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                      * constitute the set of elements which can produce a cyclic ref.
                      * The rest of the members is kept intact as they are harmless.
                      * 
-                     * $public
-                     * $this {LexErrorInfo}
+                     * @public
+                     * @this {LexErrorInfo}
                      */
                     destroy: function destructLexErrorInfo() {
                         // remove cyclic references added to error info:
@@ -15904,8 +15904,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * handler which is invoked when a lexer error occurs.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             parseError: function lexer_parseError(str, hash, ExceptionClass) {
                 if (!ExceptionClass) {
@@ -15926,8 +15926,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * method which implements `yyerror(str, ...args)` functionality for use inside lexer actions.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             yyerror: function yyError(str /*, ...args */) {
                 var lineno_msg = '';
@@ -15957,8 +15957,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * otherwise prevent the instances from being properly and timely
              * garbage-collected, i.e. this function helps prevent memory leaks!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
                 // prevent lingering circular references from causing memory leaks:
@@ -15985,8 +15985,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * clear the lexer token context; intended for internal use only
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             clear: function lexer_clear() {
                 this.yytext = '';
@@ -16012,8 +16012,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * resets the lexer, sets new input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             setInput: function lexer_setInput(input, yy) {
                 this.yy = yy || this.yy || {};
@@ -16091,7 +16091,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the current `yyloc` cursor location or any history. 
              * 
              * Use this API to help implement C-preprocessor-like
-             * `$include` statements, etc.
+             * `#include` statements, etc.
              * 
              * The provided callback must be synchronous and is
              * expected to return the edited input (string).
@@ -16121,8 +16121,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * -- that way any returned object's `toValue()` and `toString()`
              * methods will be invoked in a proper/desirable order.)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
                 var rv = callback.call(this, this._input, cpsArg);
@@ -16142,8 +16142,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * consumes and returns one char from the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             input: function lexer_input() {
                 if (!this._input) {
@@ -16200,8 +16200,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * unshifts one char (or an entire string) into the input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
@@ -16237,8 +16237,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * cache matched text and append it on next action
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             more: function lexer_more() {
                 this._more = true;
@@ -16249,8 +16249,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * signal the lexer that this rule fails to match the input, so the
              * next matching rule (regex) should be tested instead.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             reject: function lexer_reject() {
                 if (this.options.backtrack_lexer) {
@@ -16286,8 +16286,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * retain first n characters of the match
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             less: function lexer_less(n) {
                 return this.unput(this.match.slice(n));
@@ -16304,8 +16304,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pastInput: function lexer_pastInput(maxSize, maxLines) {
                 var past = this.matched.substring(0, this.matched.length - this.match.length);
@@ -16345,7 +16345,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * 
              * Negative limit values equal *unlimited*.
              *
-             * > $$$ NOTE $$$
+             * > ### NOTE ###
              * >
              * > *"upcoming input"* is defined as the whole of the both
              * > the *currently lexed* input, together with any remaining input
@@ -16355,8 +16355,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > from inside any lexer rule action code block. 
              * >
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
@@ -16393,8 +16393,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * return a string which displays the character position where the
              * lexing error occurred, i.e. for error messages
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
                 var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
@@ -16444,8 +16444,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - this function can display lines of input which whave not yet been lexed.
              *   `prettyPrintRange()` can access the entire input!
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
                 var CONTEXT = 3;
@@ -16535,8 +16535,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Set `display_range_too` to TRUE to include the string character index position(s)
              * in the description if the `yylloc.range` is available.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
                 var l1 = yylloc.first_line;
@@ -16588,8 +16588,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * - `yylloc`
              * - `offset`
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             test_match: function lexer_test_match(match, indexed_rule) {
                 var token, lines, backup, match_str, match_str_len;
@@ -16694,8 +16694,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match in input
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             next: function lexer_next() {
                 if (this.done) {
@@ -16830,8 +16830,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return next match that has a token
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             lex: function lexer_lex() {
                 var r;
@@ -16858,8 +16858,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * the latter is symmetrical with `popState()` and we advise to use
              * those APIs in any modern lexer code, rather than `begin()`.
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             begin: function lexer_begin(condition) {
                 return this.pushState(condition);
@@ -16869,8 +16869,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * activates a new lexer condition state (pushes the new lexer
              * condition state onto the condition stack)
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             pushState: function lexer_pushState(condition) {
                 this.conditionStack.push(condition);
@@ -16882,8 +16882,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * pop the previously active lexer condition state off the condition
              * stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             popState: function lexer_popState() {
                 var n = this.conditionStack.length - 1;
@@ -16901,8 +16901,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * argument is provided it produces the N-th previous condition state,
              * if available
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             topState: function lexer_topState(n) {
                 n = this.conditionStack.length - 1 - Math.abs(n || 0);
@@ -16918,8 +16918,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * (internal) determine the lexer rule set which is active for the
              * currently active lexer condition state
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
                 if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
@@ -16932,8 +16932,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /**
              * return the number of states currently on the stack
              * 
-             * $public
-             * $this {RegExpLexer}
+             * @public
+             * @this {RegExpLexer}
              */
             stateStackSize: function lexer_stateStackSize() {
                 return this.conditionStack.length;
@@ -17830,6 +17830,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         version: version$3
     };
 
+    // import Lexer from '../../packages/jison-lex';
+    // import ebnfParser from '../../packages/ebnf-parser';
+    // import lexParser from '../../packages/lex-parser';
+    // import XRegExp from '@gerhobbelt/xregexp';
+    // import recast from '@gerhobbelt/recast';
+    // import astUtils from '@gerhobbelt/ast-util';
+    // import prettier from '@gerhobbelt/prettier-miscellaneous';
     var rmCommonWS$6 = helpers.rmCommonWS;
     /**
      * Output the `raw` input (JSON format or plain STRING containing JSON-formatted data)
@@ -17892,11 +17899,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             }
             src = '\n' + pre + '\n' + src + '\n' + post + '\n';
 
-            var new_src;
-
-            {
-                var new_src = prettier.format(src);
-            }
+            var ast = helpers.parseCodeChunkToAST(src);
+            var new_src = helpers.prettyPrintAST(ast);
 
             var start = new_src.indexOf('// **PRE**');
             var end = new_src.lastIndexOf('// **POST**');
@@ -18916,7 +18920,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     Jison$1.XRegExp = XRegExp;
     Jison$1.recast = recast;
     Jison$1.astUtils = astUtils;
-    Jison$1.prettier = prettier;
+    //Jison.prettier = prettier;
     //Jison.codeShift = codeshift;
     Jison$1.JSON5 = json5;
     Jison$1.prettyPrint = grammarPrinter;
@@ -22123,10 +22127,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
         var sourceCodeDef = self.generateModuleExpr();
 
-        out += rmCommonWS$1(_templateObject92, sourceCodeDef.init);
+        out += '\n        ' + sourceCodeDef.init + '\n    ';
 
         out += _generateNamespace(moduleName.split('.'), null, function _generateNamespace_cb(moduleName) {
-            return rmCommonWS$1(_templateObject93, moduleName.match(/\./) ? moduleName : 'var ' + moduleName, sourceCodeDef.src);
+            var name = moduleName.match(/\./) ? moduleName : 'var ' + moduleName;
+            return '\n            ' + name + ' = ' + sourceCodeDef.src + '\n        ';
         });
 
         opt.exportSourceCode.all = out;
@@ -23674,7 +23679,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         var sourceCodeDef = this.generateModuleExpr();
 
         // produce a chunk of sourcecode that's suitable for evaluation through `eval()`:
-        var sourcecode = rmCommonWS$1(_templateObject94, sourceCodeDef.init, sourceCodeDef.src);
+        var sourcecode = rmCommonWS$1(_templateObject92, sourceCodeDef.init, sourceCodeDef.src);
         var p = code_exec(sourcecode, function generated_code_exec_wrapper_jison(sourcecode) {
             //console.log("===============================PARSER TEST CODE\n", sourcecode, "\n=====================END====================\n");
             var rv = eval(sourcecode);
@@ -24593,7 +24598,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     }
                     return v;
                 },
-                help: rmCommonWS(_templateObject95)
+                help: rmCommonWS(_templateObject93)
             },
             hasTryCatch: {
                 full: 'try-catch',

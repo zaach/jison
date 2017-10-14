@@ -297,8 +297,8 @@ assert(b);
 
 function parseCodeChunkToAST(src, options) {
     src = src
-    .replace(/@/g, '$')
-    .replace(/#/g, '$')
+    .replace(/@/g, '\uFFDA')
+    .replace(/#/g, '\uFFDB')
     ;
     var ast = recast.parse(src);
     return ast;
@@ -320,7 +320,13 @@ function prettyPrintAST(ast, options) {
     });
     new_src = s.code;
 
-    new_src = new_src.replace(/\r\n|\n|\r/g, '\n');    // platform dependent EOL fixup
+    new_src = new_src
+    .replace(/\r\n|\n|\r/g, '\n')    // platform dependent EOL fixup
+    // backpatch possible jison variables extant in the prettified code:
+    .replace(/\uFFDA/g, '@')
+    .replace(/\uFFDB/g, '#')
+    ;
+
     return new_src;
 }
 
