@@ -7,29 +7,23 @@
 A parser for lexical grammars used by [jison](http://jison.org) and jison-lex.
 
 
-## install
+## install / build
 
-    npm install lex-parser
-
-
-## build
-
-To build the parser yourself, clone the git repo then run:
-
-    make prep
+Follow the install & build directions of the monorepo.
     
-to install required packages and then run:
-
+You can also only build this particular subpackage by `cd`-ing into this directory
+and then invoking the local make:
+    
+    cd packages/lex-parser
     make
-    
-to run the unit tests.
 
-This will generate `lex-parser.js`.
+This will generate `lex-parser.js` and the rollup/babel-postprocessed ES6 and ES5 
+compatible libraries in the local `dist/` directory.
 
 
 ## usage
 
-    var lexParser = require("lex-parser");
+    var lexParser = require("@gerhobbelt/lex-parser");
 
     // parse a lexical grammar and return JSON
     lexParser.parse("%% ... ");
@@ -40,10 +34,15 @@ This will generate `lex-parser.js`.
 The parser can parse its own lexical grammar, shown below:
 
 ```
+%code imports %{
+  import helpers from 'jison-helpers-lib';
+%}
+
+
 
 ASCII_LETTER                            [a-zA-z]
-// \p{Alphabetic} already includes [a-zA-z], hence we don't need to merge 
-// with {UNICODE_LETTER} (though jison has code to optimize if you *did* 
+// \p{Alphabetic} already includes [a-zA-z], hence we don't need to merge
+// with {UNICODE_LETTER} (though jison has code to optimize if you *did*
 // include the `[a-zA-Z]` anyway):
 UNICODE_LETTER                          [\p{Alphabetic}]
 ALPHA                                   [{UNICODE_LETTER}_]
@@ -61,15 +60,17 @@ BR                                      \r\n|\n|\r
 WS                                      [^\S\r\n]
 
 // Quoted string content: support *escaped* quotes inside strings:
-QUOTED_STRING_CONTENT                   (?:\\\'|\\[^\']|[^\\\'])*
-DOUBLEQUOTED_STRING_CONTENT             (?:\\\"|\\[^\"]|[^\\\"])*
+QUOTED_STRING_CONTENT                   (?:\\\'|\\[^\']|[^\\\'\r\n])*
+DOUBLEQUOTED_STRING_CONTENT             (?:\\\"|\\[^\"]|[^\\\"\r\n])*
+// backquoted ES6/ES2017 string templates MAY span multiple lines:
+ES2017_STRING_CONTENT                   (?:\\\`|\\[^\`]|[^\\\`])*
 
-// Accept any non-regex-special character as a direct literal without 
+// Accept any non-regex-special character as a direct literal without
 // the need to put quotes around it:
 ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 
-%s indented trail rules macro
+%s rules macro named_chunk
 %x code start_condition options conditions action path set
 
 
@@ -89,23 +90,136 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 %%
 
-<action>"/*"(.|\n|\r)*?"*/"             return 'ACTION_BODY';
-<action>"//".*                          return 'ACTION_BODY';
-// regexp with braces or quotes (and no spaces, so we don't mistake 
+"%{"                                    yy.dept = 0;
+                                        yy.include_command_allowed = false;
+                                        this.pushState('action'); 
+                                        this.unput(yytext);
+                                        yytext = '';
+                                        return 'ACTION_START';
+<action>"%{"([^]*?)"%}"                 yytext = this.matches[1]; 
+                                        yy.include_command_allowed = true;
+                                        return 'ACTION';
+<action>"%include"                      %{
+                                            if (yy.include_command_allowed) {
+                                                // This is an include instruction in place of an action:
+                                                //
+                                                // - one %include per action chunk
+                                                // - one %include replaces an entire action chunk
+                                                this.pushState('path');
+                                                return 'INCLUDE';
+                                            } else {
+                                                // TODO
+                                                yyerror('oops!');
+                                                return 'INCLUDE_PLACEMENT_ERROR';
+                                            }
+                                        %}
+<action>{WS}*"/*"[^]*?"*/"              //yy.include_command_allowed = false; -- doesn't impact include-allowed state 
+                                        return 'ACTION_BODY_C_COMMENT';
+<action>{WS}*"//".*                     yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY_CPP_COMMENT';
+<action>{WS}+                           return 'ACTION_BODY_WHITESPACE';
+
+// make sure to terminate on linefeed before the next rule alternative,
+// which is announced by `|`:                                        
+<action>"|"                             if (yy.include_command_allowed) {
+                                            this.popState();
+                                            this.unput(yytext);
+                                            yytext = '';
+                                            return 'ACTION_END';
+                                        } else {
+                                            return 'ACTION_BODY';    
+                                        }
+
+// make sure to terminate on linefeed before the rule section ends,
+// which is announced by `%%`:                                        
+<action>"%%"                            if (yy.include_command_allowed) {
+                                            this.popState();
+                                            this.unput(yytext);
+                                            yytext = '';
+                                            return 'ACTION_END';
+                                        } else {
+                                            return 'ACTION_BODY';    
+                                        }
+
+<action>"%"                             return 'ACTION_BODY';    
+
+// regexp with braces or quotes (and no spaces, so we don't mistake
 // a *division operator* `/` for a regex delimiter here in most circumstances):
-<action>"/"[^ /]*?['"{}][^ ]*?"/"       return 'ACTION_BODY'; 
-<action>\"("\\\\"|'\"'|[^"])*\"         return 'ACTION_BODY';
-<action>"'"("\\\\"|"\'"|[^'])*"'"       return 'ACTION_BODY';
-<action>[/"'][^{}/"']+                  return 'ACTION_BODY';
-<action>[^{}/"']+                       return 'ACTION_BODY';
-<action>"{"                             yy.depth++; return '{';
+<action>"/"[^\s/]*?(?:['"`{}][^\s/]*?)*"/"
+                                        yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+// hack to cope with slashes which MAY be divide operators OR are regex starters:
+// we simply gobble the entire line until the end or until we hit a closing brace,
+// as we MUST keep track of the curly brace pairs inside an action body.
+<action>"/"[^}{BR}]*
+                                        yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+<action>\"{DOUBLEQUOTED_STRING_CONTENT}\"
+                                        yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+<action>\'{QUOTED_STRING_CONTENT}\'     yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+<action>\`{ES2017_STRING_CONTENT}\`     yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+<action>[^{}/"'`|%\{\}{BR}{WS}]+        yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
+<action>"{"                             yy.depth++; 
+                                        yy.include_command_allowed = false; 
+                                        return 'ACTION_BODY';
 <action>"}"                             %{
-                                            if (yy.depth == 0) { 
-                                                this.pushState('trail'); 
-                                            } else { 
-                                                yy.depth--; 
-                                            } 
-                                            return '}';
+                                            yy.include_command_allowed = false; 
+                                            if (yy.depth <= 0) {
+                                                yyerror(rmCommonWS`
+                                                    too many closing curly braces in lexer rule action block.
+
+                                                    Note: the action code chunk may be too complex for jison to parse
+                                                    easily; we suggest you wrap the action code chunk in '%{...%\}'
+                                                    to help jison grok more or less complex action code chunks.
+
+                                                      Erroneous area:
+                                                    ` + this.prettyPrintRange(this, yylloc));
+                                                return 'BRACKETS_SURPLUS';
+                                            } else {
+                                                yy.depth--;
+                                            }
+                                            return 'ACTION_BODY';
+                                        %}
+// make sure to terminate on linefeed before the next rule alternative,
+// which is announced by `|`.
+// Note that lexer options & commands should be at the start-of-line, i.e.
+// without leading whitespace. The only lexer command which we do accept
+// here after the last indent is `%include`, which is considered (part
+// of) the rule's action code block.
+<action>(?:{BR}{WS}+)+/[^{WS}{BR}|]     yy.include_command_allowed = true; 
+                                        return 'ACTION_BODY_WHITESPACE';           // keep empty lines as-is inside action code blocks.
+<action>{BR}                            if (yy.depth > 0) {
+                                            yy.include_command_allowed = true; 
+                                            return 'ACTION_BODY_WHITESPACE';       // keep empty lines as-is inside action code blocks.
+                                        } else {
+                                            // end of action code chunk
+                                            this.popState();
+                                            this.unput(yytext);
+                                            yytext = '';
+                                            return 'ACTION_END';
+                                        }
+<action><<EOF>>                         %{
+                                            yy.include_command_allowed = false; 
+                                            if (yy.depth !== 0) {
+                                                yyerror(rmCommonWS`
+                                                    missing ${yy.depth} closing curly braces in lexer rule action block.
+
+                                                    Note: the action code chunk may be too complex for jison to parse
+                                                    easily; we suggest you wrap the action code chunk in '%{...%\}'
+                                                    to help jison grok more or less complex action code chunks.
+
+                                                      Erroneous area:
+                                                    ` + this.prettyPrintRange(this, yylloc));
+                                                yytext = '';
+                                                return 'BRACKETS_MISSING';
+                                            }
+                                            this.popState();
+                                            yytext = '';
+                                            return 'ACTION_END';
                                         %}
 
 <conditions>{NAME}                      return 'NAME';
@@ -113,11 +227,32 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 <conditions>","                         return ',';
 <conditions>"*"                         return '*';
 
+// Comments should be gobbled and discarded anywhere
+// *except* the code/action blocks:
+<INITIAL,start_condition,macro,path,options>{WS}*"//"[^\r\n]*
+                                        /* skip single-line comment */
+<INITIAL,start_condition,macro,path,options>{WS}*"/*"[^]*?"*/"
+                                        /* skip multi-line comment */
+
 <rules>{BR}+                            /* empty */
 <rules>{WS}+{BR}+                       /* empty */
-<rules>{WS}+                            this.pushState('indented');
-<rules>"%%"                             this.pushState('code'); return '%%';
-// Accept any non-regex-special character as a direct literal without 
+<rules>"//"[^\r\n]*
+                                        /* skip single-line comment */
+<rules>"/*"[^]*?"*/"
+                                        /* skip multi-line comment */
+// ACTION code chunks follow rules and are generally indented, but
+// never start with characters special to the lex language itself:
+// - `%` can start options, commands, etc., e.g. `%include` or `%options`
+// - `|` starts a rule alternative, never a chunk of action code.
+// -  					
+<rules>{WS}+/[^{WS}{BR}|%]              yy.depth = 0; 
+                                        yy.include_command_allowed = true; 
+                                        this.pushState('action'); 
+                                        return 'ACTION_START';
+<rules>"%%"                             this.popState(); 
+                                        this.pushState('code'); 
+                                        return '%%';
+// Accept any non-regex-special character as a direct literal without
 // the need to put quotes around it:
 <rules>{ANY_LITERAL_CHAR}+
                                         %{
@@ -128,53 +263,28 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 <options>{NAME}                         return 'NAME';
 <options>"="                            return '=';
 <options>\"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yytext = yytext.substr(1, yyleng - 2); return 'OPTION_VALUE';
+                                        yytext = unescQuote(this.matches[1], /\\"/g); return 'OPTION_STRING_VALUE';   // value is always a string type
 <options>\'{QUOTED_STRING_CONTENT}\'
-                                        yytext = yytext.substr(1, yyleng - 2); return 'OPTION_VALUE';
+                                        yytext = unescQuote(this.matches[1], /\\'/g); return 'OPTION_STRING_VALUE';   // value is always a string type
+<options>\`{ES2017_STRING_CONTENT}\`
+                                        yytext = unescQuote(this.matches[1], /\\`/g); return 'OPTION_STRING_VALUE';   // value is always a string type
+
 <options>[^\s\r\n]+                     return 'OPTION_VALUE';
-<options>{BR}+                          this.popState(); return 'OPTIONS_END';
+<options>{BR}{WS}+(?=\S)                /* skip leading whitespace on the next line of input, when followed by more options */
+<options>{BR}                           this.popState(); return 'OPTIONS_END';
 <options>{WS}+                          /* skip whitespace */
 
 <start_condition>{ID}                   return 'START_COND';
 <start_condition>{BR}+                  this.popState();
 <start_condition>{WS}+                  /* empty */
 
-<trail>{WS}*{BR}+                       this.pushState('rules');
-
-<indented>"{"                           yy.depth = 0; this.pushState('action'); return '{';
-<indented>"%{"(.|{BR})*?"%}"            this.pushState('trail'); yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-"%{"(.|{BR})*?"%}"                      yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-<indented>"%include"                    %{
-                                            // This is an include instruction in place of an action:
-                                            // thanks to the `<indented>.+` rule immediately below we need to semi-duplicate
-                                            // the `%include` token recognition here vs. the almost-identical rule for the same
-                                            // further below.
-                                            // There's no real harm as we need to do something special in this case anyway:
-                                            // push 2 (two!) conditions.
-                                            //
-                                            // (Anecdotal: to find that we needed to place this almost-copy here to make the test grammar
-                                            // parse correctly took several hours as the debug facilities were - and are - too meager to
-                                            // quickly diagnose the problem while we hadn't. So the code got littered with debug prints
-                                            // and finally it hit me what the *F* went wrong, after which I saw I needed to add *this* rule!)
-
-                                            // first push the 'trail' condition which will be the follow-up after we're done parsing the path parameter...
-                                            this.pushState('trail');
-                                            // then push the immediate need: the 'path' condition.
-                                            this.pushState('path');
-                                            return 'INCLUDE';
-                                        %}
-<indented>.*                            this.popState(); return 'ACTION';
-
-"/*"(.|\n|\r)*?"*/"                     /* ignore */
-"//"[^\r\n]*                            /* ignore */
-
+<named_chunk>{ID}                       return 'NAME';
 <INITIAL>{ID}                           this.pushState('macro'); return 'NAME';
-<macro>{BR}+                            this.popState('macro');
+<macro,named_chunk>{BR}+                this.popState();
 
-// Accept any non-regex-special character as a direct literal without 
+// Accept any non-regex-special character as a direct literal without
 // the need to put quotes around it:
-<macro>{ANY_LITERAL_CHAR}+
-                                        %{
+<macro>{ANY_LITERAL_CHAR}+              %{
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
                                             return 'CHARACTER_LIT';
@@ -183,10 +293,14 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 {BR}+                                   /* empty */
 \s+                                     /* empty */
 
-\"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yytext = yytext.replace(/\\"/g,'"'); return 'STRING_LIT';
-\'{QUOTED_STRING_CONTENT}\'
-                                        yytext = yytext.replace(/\\'/g,"'"); return 'STRING_LIT';
+\"{DOUBLEQUOTED_STRING_CONTENT}\"       %{
+                                            yytext = unescQuote(this.matches[1], /\\"/g);
+                                            return 'STRING_LIT';
+                                        %}
+\'{QUOTED_STRING_CONTENT}\'             %{
+                                            yytext = unescQuote(this.matches[1], /\\'/g);
+                                            return 'STRING_LIT';
+                                        %}
 "["                                     this.pushState('set'); return 'REGEX_SET_START';
 "|"                                     return '|';
 "(?:"                                   return 'SPECIAL_GROUP';
@@ -211,20 +325,38 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 "%options"                              this.pushState('options'); return 'OPTIONS';
 "%s"                                    this.pushState('start_condition'); return 'START_INC';
 "%x"                                    this.pushState('start_condition'); return 'START_EXC';
-<INITIAL,trail,code>"%include"          this.pushState('path'); return 'INCLUDE';
-<INITIAL,rules,trail,code>"%"{NAME}([^\r\n]*)
+
+"%code"                                 this.pushState('named_chunk'); return 'INIT_CODE';
+"%import"                               this.pushState('named_chunk'); return 'IMPORT';
+
+"%include"                              yy.depth = 0;
+                                        yy.include_command_allowed = true; 
+                                        this.pushState('action'); 
+                                        this.unput(yytext);
+                                        yytext = '';
+                                        return 'ACTION_START';
+
+<code>"%include"                        this.pushState('path'); 
+                                        return 'INCLUDE';
+
+<INITIAL,rules,code>"%"{NAME}([^\r\n]*)
                                         %{
                                             /* ignore unrecognized decl */
-                                            console.warn('LEX: ignoring unsupported lexer option: ', yytext + ' while lexing in ' + this.topState() + ' state:', this._input, ' /////// ', this.matched);
-                                            // this.pushState('options');
+                                            this.warn(rmCommonWS`
+                                                LEX: ignoring unsupported lexer option ${dquote(yytext)}
+                                                while lexing in ${dquote(this.topState())} state.
+
+                                                  Erroneous area:
+                                                ` + this.prettyPrintRange(this, yylloc));
                                             yytext = [
                                                 this.matches[1],            // {NAME}
                                                 this.matches[2].trim()      // optional value/parameters
                                             ];
                                             return 'UNKNOWN_DECL';
                                         %}
-"%%"                                    this.pushState('rules'); return '%%';
-"{"\d+(","\s?\d+|",")?"}"               return 'RANGE_REGEX';
+"%%"                                    this.pushState('rules');
+                                        return '%%';
+"{"\d+(","\s*\d+|",")?"}"               return 'RANGE_REGEX';
 "{"{ID}"}"                              return 'NAME_BRACE';
 <set,options>"{"{ID}"}"                 return 'NAME_BRACE';
 "{"                                     return '{';
@@ -233,44 +365,177 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 <set>(?:"\\\\"|"\\]"|[^\]{])+           return 'REGEX_SET';
 <set>"{"                                return 'REGEX_SET';
-<set>"]"                                this.popState('set'); return 'REGEX_SET_END';
+<set>"]"                                this.popState();
+                                        return 'REGEX_SET_END';
 
 
-// in the trailing CODE block, only accept these `%include` macros when 
-// they appear at the start of a line and make sure the rest of lexer 
+// in the trailing CODE block, only accept these `%include` macros when
+// they appear at the start of a line and make sure the rest of lexer
 // regexes account for this one so it'll match that way only:
 <code>[^\r\n]*(\r|\n)+                  return 'CODE';
 <code>[^\r\n]+                          return 'CODE';      // the bit of CODE just before EOF...
 
 
 <path>{BR}                              this.popState(); this.unput(yytext);
+
 <path>\"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yytext = yytext.substr(1, yyleng - 2); this.popState(); return 'PATH';
+                                        yytext = unescQuote(this.matches[1]);
+                                        this.popState();
+                                        return 'PATH';
 <path>\'{QUOTED_STRING_CONTENT}\'
-                                        yytext = yytext.substr(1, yyleng - 2); this.popState(); return 'PATH';
+                                        yytext = unescQuote(this.matches[1]);
+                                        this.popState();
+                                        return 'PATH';
+
 <path>{WS}+                             // skip whitespace in the line
-<path>[^\s\r\n]+                        this.popState(); return 'PATH';
+<path>[^\s\r\n]+                        this.popState();
+                                        return 'PATH';
+
+
+// detect and report unterminated string constants ASAP
+// for 'action', 'options', but also for other lexer conditions:
+//
+// these error catching rules fix https://github.com/GerHobbelt/jison/issues/13
+<action>\"                              yyerror(rmCommonWS`
+                                            unterminated string constant in lexer rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<action>\'                              yyerror(rmCommonWS`
+                                            unterminated string constant in lexer rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<action>\`                              yyerror(rmCommonWS`
+                                            unterminated string constant in lexer rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+
+<options>\"                             yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<options>\'                             yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<options>\`                             yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+
+<*>\"                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+                                        yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<*>\'                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+                                        yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+<*>\`                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+                                        yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(this, yylloc));
+                                        return 'error';
+
+
+<macro,rules>.                          %{
+                                            /* b0rk on bad characters */
+                                            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+                                            yyerror(rmCommonWS`
+                                                unsupported lexer input encountered while lexing
+                                                ${rules} (i.e. jison lex regexes).
+
+                                                    NOTE: When you want this input to be interpreted as a LITERAL part
+                                                          of a lex rule regex, you MUST enclose it in double or
+                                                          single quotes.
+
+                                                          If not, then know that this input is not accepted as a valid
+                                                          regex expression here in jison-lex ${rules}.
+
+                                                  Erroneous area:
+                                                ` + this.prettyPrintRange(this, yylloc));
+                                        %}
 
 <*>.                                    %{
-                                            /* b0rk on bad characters */
-                                            var l0 = Math.max(0, yylloc.last_column - yylloc.first_column);
-                                            var l2 = 3;
-                                            var l1 = Math.min(79 - 4 - l0 - l2, yylloc.first_column, 0);
-                                            throw new Error('unsupported lexer input: ', yytext, ' @ ' + this.describeYYLLOC(yylloc) + ' while lexing in ' + this.topState() + ' state:\n', indent(this.showPosition(l1, l2), 4));
+                                            yyerror(rmCommonWS`
+                                                unsupported lexer input: ${dquote(yytext)} 
+						while lexing in ${dquote(this.topState())} state.
+
+                                                  Erroneous area:
+                                                ` + this.prettyPrintRange(this, yylloc));
                                         %}
 
 <*><<EOF>>                              return 'EOF';
 
 %%
 
+
+var rmCommonWS = helpers.rmCommonWS;
+var dquote     = helpers.dquote;
+
+
 function indent(s, i) {
     var a = s.split('\n');
     var pf = (new Array(i + 1)).join(' ');
     return pf + a.join('\n' + pf);
 }
+
+// unescape a string value which is wrapped in quotes/doublequotes
+function unescQuote(str) {
+    str = '' + str;
+    var a = str.split('\\\\');
+    a = a.map(function (s) {
+        return s.replace(/\\'/g, "'").replace(/\\"/g, '"');
+    });
+    str = a.join('\\\\');
+    return str;
+}
 ```
+
 
 
 ## license
 
 MIT
+
+
+
+## related repositories
+
+- [jison / jison-gho](https://github.com/GerHobbelt/jison) @ [NPM](https://www.npmjs.com/package/jison-gho)
+- [jison-lex](https://github.com/GerHobbelt/jison/master/packages/jison-lex) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/jison-lex)
+- [lex-parser](https://github.com/GerHobbelt/jison/master/packages/lex-parser) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/lex-parser)
+- [ebnf-parser](https://github.com/GerHobbelt/jison/master/packages/ebnf-parser) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/ebnf-parser)
+- [jison2json](https://github.com/GerHobbelt/jison/master/packages/jison2json) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/jison2json)
+- [json2jison](https://github.com/GerHobbelt/jison/master/packages/json2jison) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/json2jison)
+- [jison-helpers-lib](https://github.com/GerHobbelt/jison/master/packages/helpers-lib) @ [NPM](https://www.npmjs.com/package/jison-helpers-lib)
+- ### secondary source repositories
+  + [jison-lex](https://github.com/GerHobbelt/jison-lex)
+  + [lex-parser](https://github.com/GerHobbelt/lex-parser)
+  + [ebnf-parser](https://github.com/GerHobbelt/ebnf-parser)
+  + [jison2json](https://github.com/GerHobbelt/jison2json)
+  + [json2jison](https://github.com/GerHobbelt/json2jison)
+  + [jison-helpers-lib](https://github.com/GerHobbelt/jison-helpers-lib)
+
