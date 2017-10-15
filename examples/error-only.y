@@ -1,4 +1,4 @@
 %%
 S: error;
 %%
-yylex(){return-1;}
+function yylex(){return-1;}

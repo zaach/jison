@@ -2,7 +2,7 @@
 # You can build each example to its own directory in ./output/<example>
 #
 
-JISON = node ../lib/cli.js -o ./output/$@/
+JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
 
 
 ERROR_HANDLING_TARGETS =                                        \
@@ -46,6 +46,7 @@ CODEGEN_TARGETS = 												\
 		codegen-feature-tester-no-default-action                \
 		codegen-feature-tester-base-error-recovery-10           \
 		codegen-feature-tester-all-default-action               \
+		codegen-feature-tester-yylineno                         \
 		codegen-feature-tester-no-err-api-usage                 \
 		codegen-feature-tester-no-error-recovery                \
 		codegen-feature-tester-no-location-assignment           \
@@ -59,7 +60,7 @@ CODEGEN_TARGETS = 												\
 		codegen-feature-tester-no-yyerrok                       \
 		codegen-feature-tester-no-yyerror                       \
 		codegen-feature-tester-no-yyleng                        \
-		codegen-feature-tester-no-yylineo                       \
+		codegen-feature-tester-no-yylineno                      \
 		codegen-feature-tester-no-yyloc                         \
 		codegen-feature-tester-no-yyrecovering                  \
 		codegen-feature-tester-no-yysp                          \
@@ -393,11 +394,11 @@ jscore:
 
 json_js:
 	-mkdir -p ./output/$@
-	node ./json.js > ./output/$@/$@.js
+	#node ./json.js > ./output/$@/$@.js
 
 json_ast_js:
 	-mkdir -p ./output/$@
-	node ./json_ast.js > ./output/$@/$@.js
+	#node ./json_ast.js > ./output/$@/$@.js
 
 lambdacalc:
 	$(JISON) --main ./$@.jison
@@ -516,7 +517,7 @@ lex:
 	$(JISON) --main ./$@.jison lex_grammar.jisonlex
 
 ccalc:
-	$(JISON) --main ./$@-parse.y ./$@-lex.l
+	#$(JISON) --main ./$@-parse.y ./$@-lex.l
 
 c99:
 	$(JISON) --main ./$@.y ./$@.l
@@ -708,9 +709,13 @@ codegen-feature-tester-no-yyleng:
 	$(JISON) --main ./$(CGT)-no-yyleng.jison -o ./output/$(CGT)/$(CGT)-no-yyleng.js
 	node ./output/$(CGT)/$(CGT)-no-yyleng.js
 
-codegen-feature-tester-no-yylineo:
-	$(JISON) --main ./$(CGT)-no-yylineo.jison -o ./output/$(CGT)/$(CGT)-no-yylineo.js
-	node ./output/$(CGT)/$(CGT)-no-yylineo.js
+codegen-feature-tester-no-yylineno:
+	$(JISON) --main ./$(CGT)-no-yylineno.jison -o ./output/$(CGT)/$(CGT)-no-yylineno.js
+	node ./output/$(CGT)/$(CGT)-no-yylineno.js
+
+codegen-feature-tester-yylineno:
+	$(JISON) --main ./$(CGT)-yylineno.jison -o ./output/$(CGT)/$(CGT)-yylineno.js
+	node ./output/$(CGT)/$(CGT)-yylineno.js
 
 codegen-feature-tester-no-yytext:
 	$(JISON) --main ./$(CGT)-no-yytext.jison -o ./output/$(CGT)/$(CGT)-no-yytext.js
