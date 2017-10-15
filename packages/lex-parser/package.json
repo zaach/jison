@@ -28,15 +28,15 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "@gerhobbelt/xregexp": "3.2.0-21",
-    "jison-helpers-lib": "0.1.1-201"
+    "@gerhobbelt/xregexp": "3.2.0-22",
+    "jison-helpers-lib": "0.6.1-202"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
     "babel-preset-env": "1.6.0",
     "babel-preset-modern-browsers": "9.0.2",
     "chai": "4.1.2",
-    "jison-gho": "0.6.0-193",
+    "jison-gho": "0.6.1-202",
     "mocha": "4.0.1",
     "rollup-plugin-node-resolve": "3.0.0",
     "rollup": "0.50.0"
