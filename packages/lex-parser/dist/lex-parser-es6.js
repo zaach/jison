@@ -4424,33 +4424,11 @@ parse: function parse(input) {
         return rv;
     };
 
-    function getNonTerminalFromCode(symbol) {
-        var tokenName = self.getSymbolName(symbol);
-        if (!tokenName) {
-            tokenName = symbol;
-        }
-        return tokenName;
-    }
-
-
     function lex() {
         var token = lexer.lex();
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
-        }
-
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
         }
 
         return token || EOF;
@@ -5081,20 +5059,6 @@ parse: function parse(input) {
                 lstack[sp] = copy_yylloc(lexer.yylloc);
                 sstack[sp] = newState; // push state
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var tokenName = self.getSymbolName(symbol || EOF);
-                    if (!tokenName) {
-                        tokenName = symbol;
-                    }
-
-                    Jison.parserDebugger.push({
-                        action: 'shift',
-                        text: lexer.yytext,
-                        terminal: tokenName,
-                        terminal_id: symbol
-                    });
-                }
-
                 ++sp;
                 symbol = 0;
                 ASSERT(preErrorSymbol === 0);
@@ -5172,28 +5136,6 @@ parse: function parse(input) {
 
                 r = this.performAction.call(yyval, yyloc, newState, sp - 1, vstack, lstack);
 
-                if (yyrulelen && typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var prereduceValue = vstack.slice(sp - yyrulelen, sp);
-                    var debuggableProductions = [];
-                    for (var debugIdx = yyrulelen - 1; debugIdx >= 0; debugIdx--) {
-                        var debuggableProduction = getNonTerminalFromCode(stack[sp - debugIdx]);
-                        debuggableProductions.push(debuggableProduction);
-                    }
-                    // find the current nonterminal name (- nolan)
-                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
-                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode);
-
-                    Jison.parserDebugger.push({
-                        action: 'reduce',
-                        nonterminal: currentNonterminal,
-                        nonterminal_id: currentNonterminalCode,
-                        prereduce: prereduceValue,
-                        result: r,
-                        productions: debuggableProductions,
-                        text: yyval.$
-                    });
-                }
-
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -5251,14 +5193,6 @@ parse: function parse(input) {
                     retval = vstack[sp];
                 }
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: retval
-                    });
-                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
-
                 break;
             }
 
@@ -5281,14 +5215,6 @@ parse: function parse(input) {
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
-
-        if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-            Jison.parserDebugger.push({
-                action: 'return',
-                text: retval
-            });
-            console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-        }
     }   // /finally
 
     return retval;

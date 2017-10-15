@@ -4675,33 +4675,11 @@ parse: function parse(input) {
         return rv;
     };
 
-    function getNonTerminalFromCode(symbol) {
-        var tokenName = self.getSymbolName(symbol);
-        if (!tokenName) {
-            tokenName = symbol;
-        }
-        return tokenName;
-    }
-
-
     function lex() {
         var token = lexer.lex();
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
-        }
-
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
         }
 
         return token || EOF;
@@ -5332,20 +5310,6 @@ parse: function parse(input) {
                 lstack[sp] = copy_yylloc(lexer.yylloc);
                 sstack[sp] = newState; // push state
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var tokenName = self.getSymbolName(symbol || EOF);
-                    if (!tokenName) {
-                        tokenName = symbol;
-                    }
-
-                    Jison.parserDebugger.push({
-                        action: 'shift',
-                        text: lexer.yytext,
-                        terminal: tokenName,
-                        terminal_id: symbol
-                    });
-                }
-
                 ++sp;
                 symbol = 0;
                 ASSERT(preErrorSymbol === 0);
@@ -5423,28 +5387,6 @@ parse: function parse(input) {
 
                 r = this.performAction.call(yyval, yyloc, newState, sp - 1, vstack, lstack);
 
-                if (yyrulelen && typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var prereduceValue = vstack.slice(sp - yyrulelen, sp);
-                    var debuggableProductions = [];
-                    for (var debugIdx = yyrulelen - 1; debugIdx >= 0; debugIdx--) {
-                        var debuggableProduction = getNonTerminalFromCode(stack[sp - debugIdx]);
-                        debuggableProductions.push(debuggableProduction);
-                    }
-                    // find the current nonterminal name (- nolan)
-                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
-                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode);
-
-                    Jison.parserDebugger.push({
-                        action: 'reduce',
-                        nonterminal: currentNonterminal,
-                        nonterminal_id: currentNonterminalCode,
-                        prereduce: prereduceValue,
-                        result: r,
-                        productions: debuggableProductions,
-                        text: yyval.$
-                    });
-                }
-
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -5502,14 +5444,6 @@ parse: function parse(input) {
                     retval = vstack[sp];
                 }
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: retval
-                    });
-                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
-
                 break;
             }
 
@@ -5532,14 +5466,6 @@ parse: function parse(input) {
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
-
-        if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-            Jison.parserDebugger.push({
-                action: 'return',
-                text: retval
-            });
-            console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-        }
     }   // /finally
 
     return retval;
@@ -13841,33 +13767,11 @@ parse: function parse(input) {
 
 
 
-    function getNonTerminalFromCode(symbol) {
-        var tokenName = self.getSymbolName(symbol);
-        if (!tokenName) {
-            tokenName = symbol;
-        }
-        return tokenName;
-    }
-
-
     function lex() {
         var token = lexer.lex();
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
-        }
-
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
         }
 
         return token || EOF;
@@ -14002,20 +13906,6 @@ parse: function parse(input) {
 
                 sstack[sp] = newState; // push state
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var tokenName = self.getSymbolName(symbol || EOF);
-                    if (!tokenName) {
-                        tokenName = symbol;
-                    }
-
-                    Jison.parserDebugger.push({
-                        action: 'shift',
-                        text: lexer.yytext,
-                        terminal: tokenName,
-                        terminal_id: symbol
-                    });
-                }
-
                 ++sp;
                 symbol = 0;
 
@@ -14053,28 +13943,6 @@ parse: function parse(input) {
 
 
                 r = this.performAction.call(yyval, newState, sp - 1, vstack);
-
-                if (yyrulelen && typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var prereduceValue = vstack.slice(sp - yyrulelen, sp);
-                    var debuggableProductions = [];
-                    for (var debugIdx = yyrulelen - 1; debugIdx >= 0; debugIdx--) {
-                        var debuggableProduction = getNonTerminalFromCode(stack[sp - debugIdx]);
-                        debuggableProductions.push(debuggableProduction);
-                    }
-                    // find the current nonterminal name (- nolan)
-                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
-                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode);
-
-                    Jison.parserDebugger.push({
-                        action: 'reduce',
-                        nonterminal: currentNonterminal,
-                        nonterminal_id: currentNonterminalCode,
-                        prereduce: prereduceValue,
-                        result: r,
-                        productions: debuggableProductions,
-                        text: yyval.$
-                    });
-                }
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -14133,14 +14001,6 @@ parse: function parse(input) {
                     retval = vstack[sp];
                 }
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: retval
-                    });
-                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
-
                 break;
             }
 
@@ -14163,14 +14023,6 @@ parse: function parse(input) {
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
-
-        if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-            Jison.parserDebugger.push({
-                action: 'return',
-                text: retval
-            });
-            console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-        }
     }   // /finally
 
     return retval;
@@ -20592,33 +20444,11 @@ parse: function parse(input) {
         return rv;
     };
 
-    function getNonTerminalFromCode(symbol) {
-        var tokenName = self.getSymbolName(symbol);
-        if (!tokenName) {
-            tokenName = symbol;
-        }
-        return tokenName;
-    }
-
-
     function lex() {
         var token = lexer.lex();
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
             token = self.symbols_[token] || token;
-        }
-
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
         }
 
         return token || EOF;
@@ -21249,20 +21079,6 @@ parse: function parse(input) {
                 lstack[sp] = copy_yylloc(lexer.yylloc);
                 sstack[sp] = newState; // push state
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var tokenName = self.getSymbolName(symbol || EOF);
-                    if (!tokenName) {
-                        tokenName = symbol;
-                    }
-
-                    Jison.parserDebugger.push({
-                        action: 'shift',
-                        text: lexer.yytext,
-                        terminal: tokenName,
-                        terminal_id: symbol
-                    });
-                }
-
                 ++sp;
                 symbol = 0;
                 ASSERT(preErrorSymbol === 0);
@@ -21340,28 +21156,6 @@ parse: function parse(input) {
 
                 r = this.performAction.call(yyval, yyloc, newState, sp - 1, vstack, lstack);
 
-                if (yyrulelen && typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var prereduceValue = vstack.slice(sp - yyrulelen, sp);
-                    var debuggableProductions = [];
-                    for (var debugIdx = yyrulelen - 1; debugIdx >= 0; debugIdx--) {
-                        var debuggableProduction = getNonTerminalFromCode(stack[sp - debugIdx]);
-                        debuggableProductions.push(debuggableProduction);
-                    }
-                    // find the current nonterminal name (- nolan)
-                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
-                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode);
-
-                    Jison.parserDebugger.push({
-                        action: 'reduce',
-                        nonterminal: currentNonterminal,
-                        nonterminal_id: currentNonterminalCode,
-                        prereduce: prereduceValue,
-                        result: r,
-                        productions: debuggableProductions,
-                        text: yyval.$
-                    });
-                }
-
                 if (typeof r !== 'undefined') {
                     retval = r;
                     break;
@@ -21419,14 +21213,6 @@ parse: function parse(input) {
                     retval = vstack[sp];
                 }
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: retval
-                    });
-                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
-
                 break;
             }
 
@@ -21449,14 +21235,6 @@ parse: function parse(input) {
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
-
-        if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-            Jison.parserDebugger.push({
-                action: 'return',
-                text: retval
-            });
-            console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-        }
     }   // /finally
 
     return retval;
@@ -24975,7 +24753,7 @@ var devDebug = 0;
 // This is the base XRegExp ID regex used in many places; this should match the ID macro definition in the EBNF/BNF parser et al as well!
 const ID_REGEX_BASE = '[\\p{Alphabetic}_][\\p{Alphabetic}_\\p{Number}]*';
 
-var Jison$1 = {
+var Jison = {
     version: version
 };
 
@@ -25051,7 +24829,7 @@ const defaultJisonOptions = {
     hasErrorReporting: false,
 };
 
-Jison$1.defaultJisonOptions = defaultJisonOptions;
+Jison.defaultJisonOptions = defaultJisonOptions;
 
 
 
@@ -25072,14 +24850,14 @@ function mkStdOptions(...args) {
     var h = Object.prototype.hasOwnProperty;
 
     if (devDebug > 3) {
-        Jison$1.print('mkStdOptions:\n', args);
+        Jison.print('mkStdOptions:\n', args);
     }
 
     var opts = {};
     //var args = Array.prototype.concat.apply([], args);
     // clone defaults, so we do not modify those constants?
     if (args[0] !== "NODEFAULT") {
-        args.unshift(Jison$1.defaultJisonOptions);
+        args.unshift(Jison.defaultJisonOptions);
     } else {
         args.shift();
     }
@@ -25197,7 +24975,7 @@ function mkStdOptions(...args) {
     }
 
     if (devDebug > 3) {
-        Jison$1.print('GENERATE::OPTIONS: RESULTING OPTIONS SET\n', opts);
+        Jison.print('GENERATE::OPTIONS: RESULTING OPTIONS SET\n', opts);
     }
 
     return opts;
@@ -25330,45 +25108,45 @@ function autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options
     return chk_g;
 }
 
-Jison$1.rmCommonWS = rmCommonWS;
-Jison$1.mkStdOptions = mkStdOptions;
-Jison$1.camelCase = camelCase;
-Jison$1.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
+Jison.rmCommonWS = rmCommonWS;
+Jison.mkStdOptions = mkStdOptions;
+Jison.camelCase = camelCase;
+Jison.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 // detect print
 if (typeof console !== 'undefined' && console.log) {
     // wrap console.log to prevent 'Illegal Invocation' exceptions when Jison.print() is used, e.g.
     // in the web tryout pages where this code is employed.
-    Jison$1.print = function console_log(/* ... */) {
+    Jison.print = function console_log(/* ... */) {
         var args = Array.prototype.slice.call(arguments, 0);
         args.unshift('');           // prevent `%.` printf-style expansions; see https://nodejs.org/api/console.html#console_console_log_data_args
         console.log.apply(console, args);
     };
 } else if (typeof puts !== 'undefined') {
-    Jison$1.print = function puts_print() {
+    Jison.print = function puts_print() {
         puts([].join.call(arguments, ' '));
     };
 } else if (typeof print !== 'undefined') {
-    Jison$1.print = print;
+    Jison.print = print;
 } else {
-    Jison$1.print = function no_op_print() {};
+    Jison.print = function no_op_print() {};
 }
 
 // Also export other APIs: the JISON module should act as a 'facade' for the others,
 // so applications using the JISON compiler itself can rely on it providing everything
 // in a guaranteed compatible version as it allows userland code to use the precise
 // same APIs as JISON will be using itself:
-Jison$1.Lexer = RegExpLexer;
-Jison$1.ebnfParser = ebnfParser;
-Jison$1.lexParser = jisonlex;
-Jison$1.codeExec = code_exec;
-Jison$1.XRegExp = XRegExp;
-Jison$1.recast = recast;
-Jison$1.astUtils = astUtils;
+Jison.Lexer = RegExpLexer;
+Jison.ebnfParser = ebnfParser;
+Jison.lexParser = jisonlex;
+Jison.codeExec = code_exec;
+Jison.XRegExp = XRegExp;
+Jison.recast = recast;
+Jison.astUtils = astUtils;
 //Jison.prettier = prettier;
 //Jison.codeShift = codeshift;
-Jison$1.JSON5 = json5;
-Jison$1.prettyPrint = grammarPrinter;
+Jison.JSON5 = json5;
+Jison.prettyPrint = grammarPrinter;
 
 
 // iterator utility
@@ -25666,7 +25444,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
     if (this.DEBUG) {
         this.mix(generatorDebug); // mixin debug methods
 
-        Jison$1.print('Grammar::OPTIONS:\n', this.options);
+        Jison.print('Grammar::OPTIONS:\n', this.options);
     }
 
     this.processGrammar(grammar);
@@ -25744,7 +25522,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
         bnf = grammar.bnf = ebnfParser.transform(grammar.ebnf);
     }
     if (devDebug) {
-        Jison$1.print('processGrammar: ', JSON.stringify({
+        Jison.print('processGrammar: ', JSON.stringify({
             bnf: bnf,
             tokens: tokens,
             productions: productions
@@ -25850,7 +25628,7 @@ generator.processGrammar = function processGrammarDef(grammar) {
     this.buildProductions(bnf, productions, nonterminals, symbols, operators, predefined_symbols, grammar.extra_tokens);
 
     if (devDebug > 1) {
-        Jison$1.print('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals,
+        Jison.print('terminals vs tokens: ', this.terminals.length, (tokens && tokens.length), this.terminals,
                     '\n###################################### TOKENS\n', tokens,
                     '\n###################################### EXTRA TOKENS\n', grammar.extra_tokens,
                     '\n###################################### LEX\n', grammar.lex,
@@ -25970,7 +25748,7 @@ generator.signalUnusedProductions = function () {
             assert(p.handle);
             var rhs = p.handle;
             if (devDebug > 0) {
-                Jison$1.print('traverse / mark: ', nt.symbol, ' --> ', rhs);
+                Jison.print('traverse / mark: ', nt.symbol, ' --> ', rhs);
             }
 
             for (var j = 0, len = rhs.length; j < len; j++) {
@@ -26186,7 +25964,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
     function collectLiteralTokensInProduction(handle) {
         var r, rhs, i, sym;
 
-        if (devDebug) Jison$1.print('\ncollectLiteralTokensInProduction: ', symbol, ':', JSON.stringify(handle, null, 2), ' @ options: ', this);
+        if (devDebug) Jison.print('\ncollectLiteralTokensInProduction: ', symbol, ':', JSON.stringify(handle, null, 2), ' @ options: ', this);
 
         var maxlen = this.maxTokenLength || Infinity;
 
@@ -26235,7 +26013,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
         } else {
             prods = bnf[symbol].slice(0);
         }
-        if (devDebug) Jison$1.print('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
+        if (devDebug) Jison.print('\ngenerator.buildProductions: ', symbol, JSON.stringify(prods, null, 2));
 
         prodsLUT[symbol] = prods;
     }
@@ -26402,7 +26180,7 @@ generator.buildProductions = function buildProductions(bnf, productions, nonterm
             aliased = [],
             action = null;
 
-        if (devDebug) Jison$1.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\nbuildProduction: ', symbol, ':', JSON.stringify(handle, null, 2));
 
         if (handle.constructor === Array) {
             var rhs_i;
@@ -27078,7 +26856,7 @@ generator.buildProductionActions = function buildProductionActions() {
         var new_hash = mkParserFeatureHash(this);
 
         if (devDebug || this.DEBUG) {
-            Jison$1.print('Optimization analysis:\n', {
+            Jison.print('Optimization analysis:\n', {
                 cycle: gen_level,
                 SAME: prev_gen_hash === new_hash,
                 actionsAreAllDefault: this.actionsAreAllDefault,
@@ -27222,7 +27000,7 @@ generator.buildProductionActions = function buildProductionActions() {
     function buildProductionAction(handle) {
         var r, i;
 
-        if (devDebug) Jison$1.print('\nbuildProductionAction: ', handle.symbol, ':', JSON.stringify(handle, null, 2));
+        if (devDebug) Jison.print('\nbuildProductionAction: ', handle.symbol, ':', JSON.stringify(handle, null, 2));
 
         var aliased = handle.aliases,
             rhs_i;
@@ -27740,7 +27518,7 @@ generator.trace = function no_op_trace() { };
 
 generator.warn = function warn() {
     var args = Array.prototype.slice.call(arguments, 0);
-    Jison$1.print.call(null, args.join(''));
+    Jison.print.call(null, args.join(''));
 };
 
 generator.error = function error(msg) {
@@ -27813,7 +27591,7 @@ generator.reportGrammarInformation = function reportGrammarInformation() {
         ntc++;
     }
 
-    if (devDebug > 3) Jison$1.print('LALR parse table: ', {
+    if (devDebug > 3) Jison.print('LALR parse table: ', {
       table: this.table,
       defaultActions: this.defaultActions
     });
@@ -27834,8 +27612,8 @@ generator.reportGrammarInformation = function reportGrammarInformation() {
 
 var generatorDebug = {
     trace: function debug_trace() {
-        if (typeof Jison$1 !== 'undefined' && Jison$1.print) {
-            Jison$1.print.apply(null, arguments);
+        if (typeof Jison !== 'undefined' && Jison.print) {
+            Jison.print.apply(null, arguments);
         } else if (typeof print !== 'undefined') {
             print.apply(null, arguments);
         } else if (typeof console !== 'undefined' && console.log) {
@@ -27914,7 +27692,7 @@ lookaheadMixin.followSets = function followSets() {
         count++;
 
         productions.forEach(function Follow_prod_forEach(production, k) {
-            if (devDebug > 3) Jison$1.print('Symbol/Follows: ', 'round:' + count, 'prod:' + k, ':', production.symbol, ' --> ', nonterminals[production.symbol].follows.join(', '));
+            if (devDebug > 3) Jison.print('Symbol/Follows: ', 'round:' + count, 'prod:' + k, ':', production.symbol, ' --> ', nonterminals[production.symbol].follows.join(', '));
 
             // q is used in Simple LALR algorithm determine follows in context
             var q;
@@ -28119,17 +27897,17 @@ lrGeneratorMixin.buildTable = function buildTable() {
     this.states = this.canonicalCollection();
 
     if (devDebug || this.DEBUG) {
-        Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
+        Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
         this.displayFollowSets();
-        Jison$1.print('\n');
+        Jison.print('\n');
     }
 
     this.table = this.parseTable(this.states);
 
     if (devDebug || this.DEBUG) {
-        Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
+        Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
         this.displayFollowSets();
-        Jison$1.print('\n');
+        Jison.print('\n');
     }
 
     this.defaultActions = findDefaults(this.table, this.hasErrorRecovery);
@@ -28281,7 +28059,7 @@ lrGeneratorMixin.canonicalCollection = function canonicalCollection() {
     states.has = {};
     states.has[firstStateNoClosure.valueOf()] = 0;
 
-    if (devDebug > 0) Jison$1.print('canonicalCollection: ', states.has);
+    if (devDebug > 0) Jison.print('canonicalCollection: ', states.has);
 
     while (marked !== states.size()) {
         itemSet = states.item(marked);
@@ -28398,7 +28176,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
                             self.conflict_productions_LU[item.production.id] = true;
                             self.conflict_states_LU[k] = true;
 
-                            if (devDebug > 4) Jison$1.print('Registering conflict: ', {
+                            if (devDebug > 4) Jison.print('Registering conflict: ', {
                                 prod_id: item.production.id,
                                 stateNum: k,
                                 state: state,
@@ -28609,7 +28387,7 @@ generatorMixin.__prepareOptions = function parser___prepare_Options(opt) {
     this.options = opt;
     this.DEBUG = !!opt.debug;
     if (devDebug > 3) {
-        Jison$1.print('GENERATE::OPTIONS:\n', this.options);
+        Jison.print('GENERATE::OPTIONS:\n', this.options);
     }
 
     // check for illegal identifier
@@ -28619,7 +28397,7 @@ generatorMixin.__prepareOptions = function parser___prepare_Options(opt) {
             if (typeof opt.warn_cb === 'function') {
                 opt.warn_cb(msg);
             } else if (opt.warn_cb) {
-                Jison$1.print(msg);
+                Jison.print(msg);
             } else {
                 // do not treat as warning; barf hairball instead so that this oddity gets noticed right away!
                 throw new Error(msg);
@@ -32098,19 +31876,6 @@ parser.parse = `function parse(input, parseParams) {
             token = self.symbols_[token] || token;
         }
 
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
-        }
-
         return token || EOF;
     }
 
@@ -32130,19 +31895,6 @@ parser.parse = `function parse(input, parseParams) {
             if (typeof token !== 'number') {
                 token = self.symbols_[token] || token;
             }
-        }
-
-        if (typeof Jison !== 'undefined' && Jison.lexDebugger) {
-            var tokenName = self.getSymbolName(token || EOF);
-            if (!tokenName) {
-                tokenName = token;
-            }
-
-            Jison.lexDebugger.push({
-                tokenName: tokenName,
-                tokenText: lexer.match,
-                tokenValue: lexer.yytext
-            });
         }
 
         return token || EOF;
@@ -32688,20 +32440,6 @@ parser.parse = `function parse(input, parseParams) {
                 lstack[sp] = copy_yylloc(lexer.yylloc);
                 sstack[sp] = newState; // push state
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var tokenName = self.getSymbolName(symbol || EOF);
-                    if (!tokenName) {
-                        tokenName = symbol;
-                    }
-
-                    Jison.parserDebugger.push({
-                        action: 'shift',
-                        text: lexer.yytext,
-                        terminal: tokenName,
-                        terminal_id: symbol
-                    });
-                }
-
                 ++sp;
                 symbol = 0;
                 ASSERT(preErrorSymbol === 0);
@@ -32747,28 +32485,6 @@ parser.parse = `function parse(input, parseParams) {
                 if (yydebug) yydebug('~~~ REDUCE: ', { pop_size: yyrulelen, newState: newState, recovering: recovering, symbol: symbol });
 
                 r = this.performAction.call(yyval, yytext, yyleng, yylineno, yyloc, newState, sp - 1, yyrulelen, vstack, lstack, stack, sstack);
-
-                if (yyrulelen && typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    var prereduceValue = vstack.slice(sp - yyrulelen, sp);
-                    var debuggableProductions = [];
-                    for (var debugIdx = yyrulelen - 1; debugIdx >= 0; debugIdx--) {
-                        var debuggableProduction = getNonTerminalFromCode(stack[sp - debugIdx]);
-                        debuggableProductions.push(debuggableProduction);
-                    }
-                    // find the current nonterminal name (- nolan)
-                    var currentNonterminalCode = this_production[0];     // WARNING: nolan's original code takes this one instead:   this.productions_[newState][0];
-                    var currentNonterminal = getNonTerminalFromCode(currentNonterminalCode);
-
-                    Jison.parserDebugger.push({
-                        action: 'reduce',
-                        nonterminal: currentNonterminal,
-                        nonterminal_id: currentNonterminalCode,
-                        prereduce: prereduceValue,
-                        result: r,
-                        productions: debuggableProductions,
-                        text: yyval.$
-                    });
-                }
 
                 if (typeof r !== 'undefined') {
                     retval = r;
@@ -32819,14 +32535,6 @@ parser.parse = `function parse(input, parseParams) {
                     retval = vstack[sp];
                 }
 
-                if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-                    Jison.parserDebugger.push({
-                        action: 'accept',
-                        text: retval
-                    });
-                    console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-                }
-
                 break;
             }
 
@@ -32849,14 +32557,6 @@ parser.parse = `function parse(input, parseParams) {
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
         this.__reentrant_call_depth--;
-
-        if (typeof Jison !== 'undefined' && Jison.parserDebugger) {
-            Jison.parserDebugger.push({
-                action: 'return',
-                text: retval
-            });
-            console.log(Jison.parserDebugger[Jison.parserDebugger.length - 1]);
-        }
     }   // /finally
 
     return retval;
@@ -32875,7 +32575,7 @@ var lr0 = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     }
 });
 
-var LR0Generator = Jison$1.LR0Generator = lr0.construct();
+var LR0Generator = Jison.LR0Generator = lr0.construct();
 
 /*
  * Simple LALR(1)
@@ -32895,9 +32595,9 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             this.states = this.canonicalCollection();
 
             if (this.DEBUG || devDebug) {
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER canonicalCollection:');
                 this.displayFollowSets();
-                Jison$1.print('\n');
+                Jison.print('\n');
             }
 
             this.terms_ = {};
@@ -32929,14 +32629,14 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             //          a lot of 'expected' symbols are reported which are not in the real FOLLOW set,
             //          resulting in 'illogical' error messages!
             this.onDemandLookahead = !!this.options.onDemandLookahead;
-            if (devDebug || this.DEBUG) Jison$1.print('LALR: using on-demand look-ahead: ', (this.onDemandLookahead ? 'yes' : 'no'));
+            if (devDebug || this.DEBUG) Jison.print('LALR: using on-demand look-ahead: ', (this.onDemandLookahead ? 'yes' : 'no'));
 
             this.buildNewGrammar();
 
             if (devDebug || this.DEBUG) {
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: NEW GRAMMAR');
                 newg.displayFollowSets();
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER buildNewGrammar: ORIGINAL GRAMMAR');
                 this.displayFollowSets();
             }
 
@@ -32961,27 +32661,27 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             });
 
             if (devDebug || this.DEBUG) {
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: NEW GRAMMAR');
                 newg.displayFollowSets();
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads: ORIGINAL GRAMMAR');
                 this.displayFollowSets();
             }
 
             this.unionLookaheads();
 
             if (devDebug || this.DEBUG) {
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: NEW GRAMMAR');
                 newg.displayFollowSets();
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER unionLookaheads: ORIGINAL GRAMMAR');
                 this.displayFollowSets();
             }
 
             this.table = this.parseTable(this.states);
 
             if (devDebug || this.DEBUG) {
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: NEW GRAMMAR');
                 newg.displayFollowSets();
-                Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR');
+                Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable: ORIGINAL GRAMMAR');
                 this.displayFollowSets();
             }
 
@@ -32994,14 +32694,14 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             }
 
             if (devDebug > 4) {
-                Jison$1.print('\n-------------------------------------------\nNew round to fix conflicts? Completed round:', {
+                Jison.print('\n-------------------------------------------\nNew round to fix conflicts? Completed round:', {
                     round: round,
                     conflict_fixing_round: this.conflict_fixing_round,
                     states: this.conflict_states_LU,
                     productions: this.conflict_productions_LU
                 });
             } else {
-                Jison$1.print('\n'
+                Jison.print('\n'
                     + '----------------------------------- NOTICE -------------------------------\n'
                     + 'Attempting to resolve the unresolved conflicts in partial LR mode...\n\n'
                     + 'When no conflicts are reported in the next round below, your grammar is\n'
@@ -33035,7 +32735,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             endStateNum = this.states.item(endStateNum).edges[productionHandle[i]] || endStateNum;
         }
         if (devDebug > 0) {
-            Jison$1.print('GO: ', {
+            Jison.print('GO: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 endState: endStateNum
@@ -33060,7 +32760,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
             this.terms_[t] = productionHandle[i];
         }
         if (devDebug > 0) {
-            Jison$1.print('GOPATH: ', {
+            Jison.print('GOPATH: ', {
                 stateNum: stateNum,
                 symbol: productionSymbol,
                 path: path$$1,
@@ -33107,7 +32807,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                     }
                     goes[handle].push(symbol);
 
-                    if (devDebug > 2) Jison$1.print('new production:', {
+                    if (devDebug > 2) Jison.print('new production:', {
                         prod_id: item.production.id,
                         new_prod_id: p.id,
                         state: state,
@@ -33151,7 +32851,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                         state.goes[handle] = [];
                     }
 
-                    if (devDebug > 2) Jison$1.print('not-yet-unioned item', {
+                    if (devDebug > 2) Jison.print('not-yet-unioned item', {
                         handle: handle,
                         item: item,
                         follows: follows,
@@ -33166,7 +32866,7 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                             if (!follows[terminal]) {
                                 follows[terminal] = true;
 
-                                if (devDebug > 2) Jison$1.print('adding to FOLLOW set (union)', {
+                                if (devDebug > 2) Jison.print('adding to FOLLOW set (union)', {
                                     terminal: terminal,
                                     nonterminal: symbol,
                                     in_follows: newg.nonterminals[symbol],
@@ -33178,14 +32878,14 @@ var lalr = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
                         });
                     });
 
-                    if (devDebug > 2) Jison$1.print('unioned item', item);
+                    if (devDebug > 2) Jison.print('unioned item', item);
                 });
             }
         });
     }
 });
 
-var LALRGenerator = Jison$1.LALRGenerator = lalr.construct();
+var LALRGenerator = Jison.LALRGenerator = lalr.construct();
 
 // LALR generator debug mixin
 
@@ -33221,9 +32921,9 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
         this.computeLookaheads();
 
         if (devDebug || this.DEBUG) {
-            Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
-            Jison$1.print('\n');
+            Jison.print('\n');
         }
 
         this.buildTable();
@@ -33233,7 +32933,7 @@ var lrLookaheadGenerator = generator.beget(lookaheadMixin, generatorMixin, lrGen
 /*
  * SLR Parser
  */
-var SLRGenerator = Jison$1.SLRGenerator = lrLookaheadGenerator.construct({
+var SLRGenerator = Jison.SLRGenerator = lrLookaheadGenerator.construct({
     type: 'SLR(1)',
 
     lookAheads: function SLR_lookAhead(state, item) {
@@ -33301,7 +33001,7 @@ var lr1 = lrLookaheadGenerator.beget({
     }
 });
 
-var LR1Generator = Jison$1.LR1Generator = lr1.construct();
+var LR1Generator = Jison.LR1Generator = lr1.construct();
 
 /*
  * LL Parser
@@ -33313,14 +33013,14 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
         this.computeLookaheads();
 
         if (devDebug || this.DEBUG) {
-            Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER computeLookaheads:');
             this.displayFollowSets();
         }
 
         this.table = this.parseTable(this.productions);
 
         if (devDebug || this.DEBUG) {
-            Jison$1.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
+            Jison.print('\n-------------------------------------------\nSymbol/Follow sets AFTER parseTable:');
             this.displayFollowSets();
         }
 
@@ -33355,9 +33055,9 @@ var ll = generator.beget(lookaheadMixin, generatorMixin, lrGeneratorMixin, {
     }
 });
 
-var LLGenerator = Jison$1.LLGenerator = ll.construct();
+var LLGenerator = Jison.LLGenerator = ll.construct();
 
-Jison$1.Generator = function Jison_Generator(grammar, optionalLexerSection, options) {
+Jison.Generator = function Jison_Generator(grammar, optionalLexerSection, options) {
     // pick the correct argument for the `options` for this call:
     if (!options && optionalLexerSection && typeof optionalLexerSection !== 'string') {
       options = optionalLexerSection;
@@ -33387,7 +33087,7 @@ Jison$1.Generator = function Jison_Generator(grammar, optionalLexerSection, opti
     // Anyway, API/CLI options **override** options coming in from the grammar spec.
     //
     options = mkStdOptions("NODEFAULT", grammar.options, options);
-    switch (options.type || Jison$1.defaultJisonOptions.type) {
+    switch (options.type || Jison.defaultJisonOptions.type) {
     case 'lr0':
         options.hasPartialLrUpgradeOnConflict = false;        // kill this unsupported option
         return new LR0Generator(grammar, null, options);
@@ -33412,10 +33112,10 @@ Jison$1.Generator = function Jison_Generator(grammar, optionalLexerSection, opti
 };
 
 function Parser(g, l, options) {
-    var gen = Jison$1.Generator(g, l, options);
+    var gen = Jison.Generator(g, l, options);
     return gen.createParser();
 }
 
-Jison$1.Parser = Parser;
+Jison.Parser = Parser;
 
-export default Jison$1;
+export default Jison;
