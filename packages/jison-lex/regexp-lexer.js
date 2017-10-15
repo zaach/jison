@@ -14,7 +14,7 @@ var code_exec   = helpers.exec;
 // import astUtils from '@gerhobbelt/ast-util';
 import assert from 'assert';
 
-var version = '0.6.1-200';                              // require('./package.json').version;
+var version = '0.6.1-204';                              // require('./package.json').version;
 
 
 

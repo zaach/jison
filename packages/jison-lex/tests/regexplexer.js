@@ -2382,5 +2382,91 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex(), lexer.EOF);
     assert.equal(lexer.lex(), lexer.EOF);
   });
+
+  // related to https://github.com/GerHobbelt/jison/issues/9
+  it("test multiple independent lexer instances", function() {
+    var dict1 = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var dict2 = {
+        rules: [
+           ["a", "return 'A';" ],
+           ["b", "return 'B';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input1 = "xxyx";
+    var input2 = "aaba";
+
+    var lexer1 = new RegExpLexer(dict1, input1);
+    var lexer2 = new RegExpLexer(dict2, input2);
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "A");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "A");
+    assert.equal(lexer1.lex(), "Y");
+    assert.equal(lexer2.lex(), "B");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "A");
+    assert.equal(lexer1.lex(), "EOF");
+    assert.equal(lexer2.lex(), "EOF");
+  });
+
+  // related to https://github.com/GerHobbelt/jison/issues/9
+  it("test cloned yet independent lexer instances", function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input1 = "xxyx";
+    var input2 = "yyx";
+
+    var lexerBase = new RegExpLexer(dict /*, input1 */);
+    function MyLexerClass() {
+        this.yy = {};
+    }
+    MyLexerClass.prototype = lexerBase;
+
+    function mkLexer() {
+        return new MyLexerClass();
+    }
+
+    var lexer1 = mkLexer();
+    lexer1.setInput(input1, {
+      one: true
+    });
+
+    var lexer2 = mkLexer();
+    lexer2.setInput(input2, {
+      two: true
+    });
+
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "Y");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "Y");
+    assert.equal(lexer1.lex(), "Y");
+    assert.equal(lexer2.lex(), "X");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "EOF");
+    assert.equal(lexer1.lex(), "EOF");
+    // once you've gone 'past' EOF, you get the EOF **ID** returned, rather than your custom EOF token.
+    // 
+    // The `EOF` attribute is just a handy constant defined in the lexer prototype...
+    assert.equal(lexer2.lex(), lexerBase.EOF);
+    assert.equal(lexer1.lex(), lexerBase.EOF);
+    assert.equal(lexer1.EOF, lexerBase.EOF);
+    assert.equal(lexer2.EOF, lexerBase.EOF);
+  });
 });
 

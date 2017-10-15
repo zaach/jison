@@ -4,18 +4,18 @@
 
   + we use the jison tool to precalc look-ahead sets; where these can be determined and are max depth 1, we can use the look-ahead set to help the generated parser (LL(1) alike)
 
-[ ] add lexer state multiline support a la bison: `<state> { ...rules... }`
+[x] add lexer state multiline support a la bison: `<state> { ...rules... }`
 
 [ ] inline performAction when none of the action code uses variable names which clash with the core. `this._$` and `this.$` then have to become `yyval._$` and `yyval.$` and inlining then has to take it from there (some parameters in the call to `performAction` change names at the interface,
 so there's more renaming to do there...)
 
 ---
 
-[*] add %parser-type support in parallel to commandline `-p`
+[x] add %parser-type support in parallel to commandline `-p`
 
-[*] check where the 'main' has gone; --no-main ???
+[x] check where the 'main' has gone; --no-main ???
 
   + ==> CLI option `--main`: positive logic. Without `--main` (the default) it's `no-main` output for all...
 
-[*] report unused grammar rules (which are not referenced by %start nor by any other rule nor are the very first if there's no %start)
+[x] report unused grammar rules (which are not referenced by %start nor by any other rule nor are the very first if there's no %start)
 
