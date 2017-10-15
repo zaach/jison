@@ -49,7 +49,7 @@ globby(['packages/**/package*.json']).then(paths => {
         var src = fs.readFileSync(path, 'utf8');
         // line looks like:  "version": "0.6.1-200",
         src = src.replace(/^(\s*"version":\s*")([^"\s]+)(",)/gm, function repl(s, m1, m2, m3) {
-            if (m2 !== '"' + version + '"') {
+            if (m2 !== version) {
                 updated = true;
             }
             return m1 + version + m3;
