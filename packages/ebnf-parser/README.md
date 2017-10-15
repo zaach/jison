@@ -9,29 +9,29 @@ A parser for BNF and EBNF grammars used by jison.
 
 ## install
 
-    npm install ebnf-parser
+    npm install @gerhobbelt/ebnf-parser
 
 
 ## build
 
-To build the parser yourself, clone the git repo then run:
-
-    make prep
+Follow the install & build directions of the monorepo.
     
-to install required packages and then run:
-
+You can also only build this particular subpackage by `cd`-ing into this directory
+and then invoking the local make:
+    
+    cd packages/ebnf-parser
     make
-    
-to build the lib and run the unit tests.
 
-This will generate `parser.js`, which is required by `ebnf-parser.js`.
+This will generate `parser.js`, `transform-parser.js` and the rollup/babel-postprocessed ES6 and ES5 
+compatible libraries in the local `dist/` directory.
+
 
 
 ## usage
 
 The parser translates a string grammar or JSON grammar into a JSON grammar that jison can use (ENBF is transformed into BNF).
 
-    var ebnfParser = require('ebnf-parser');
+    var ebnfParser = require('@gerhobbelt/ebnf-parser');
 
     // parse a bnf or ebnf string grammar
     ebnfParser.parse("%start ... %");

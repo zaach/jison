@@ -47,6 +47,7 @@ export default {
     '@gerhobbelt/prettier-miscellaneous',
     '@gerhobbelt/recast',
     '@gerhobbelt/xregexp',
+    'jison-helpers-lib',
     'assert',
     'fs',
     'path',

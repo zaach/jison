@@ -9,20 +9,39 @@ A lexical analyzer generator used by [jison](http://jison.org). It takes a lexic
 
 ## install
 
-npm install jison-lex
+npm install @gerhobbelt/jison-lex
 
 
 ## build
 
-To build the lexer generator yourself, clone the git repo then run:
-
-    make prep
+Follow the install & build directions of the monorepo.
     
-to install required packages and then run:
-
+You can also only build this particular subpackage by `cd`-ing into this directory
+and then invoking the local make:
+    
+    cd packages/jison-lex
     make
-    
-to run the unit tests.
+
+This will generate the rollup/babel-postprocessed ES6 and ES5 
+compatible libraries and CLI in the local `dist/` directory.
+
+>
+> ### Note about ES6/rollup usage vs. ES5
+>
+> All `dist/` library files are 'self-contained': they include all 'local imports' 
+> from within this jison monorepo in order to deliver a choice of source files
+> for your perusal where you only need to worry about importing **external dependencies**
+> (such as `recast`).
+>
+> As such, these `dist/` files **should** be easier to minify and/or use in older
+> (ES5) environments.
+>
+> #### rollup
+>
+> Iff you use `rollup` or similar tools in an ES6/ES2015/ES2017 setting, then the
+> [`package.json::module`](https://github.com/rollup/rollup/wiki/pkg.module) has
+> already been set up for you to use the *original sources* instead!
+> 
 
 
 ## usage
@@ -42,7 +61,7 @@ Options:
 ## programmatic usage
 
 ```
-var JisonLex = require('jison-lex');
+var JisonLex = require('@gerhobbelt/jison-lex');
 
 var grammar = {
   rules: [
@@ -70,3 +89,23 @@ lexer.lex();
 ## license
 
 MIT
+
+
+
+## related repositories
+
+- [jison / jison-gho](https://github.com/GerHobbelt/jison) @ [NPM](https://www.npmjs.com/package/jison-gho)
+- [jison-lex](https://github.com/GerHobbelt/jison/master/packages/jison-lex) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/jison-lex)
+- [lex-parser](https://github.com/GerHobbelt/jison/master/packages/lex-parser) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/lex-parser)
+- [ebnf-parser](https://github.com/GerHobbelt/jison/master/packages/ebnf-parser) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/ebnf-parser)
+- [jison2json](https://github.com/GerHobbelt/jison/master/packages/jison2json) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/jison2json)
+- [json2jison](https://github.com/GerHobbelt/jison/master/packages/json2jison) @ [NPM](https://www.npmjs.com/package/@gerhobbelt/json2jison)
+- [jison-helpers-lib](https://github.com/GerHobbelt/jison/master/packages/helpers-lib) @ [NPM](https://www.npmjs.com/package/jison-helpers-lib)
+- ### secondary source repositories
+  + [jison-lex](https://github.com/GerHobbelt/jison-lex)
+  + [lex-parser](https://github.com/GerHobbelt/lex-parser)
+  + [ebnf-parser](https://github.com/GerHobbelt/ebnf-parser)
+  + [jison2json](https://github.com/GerHobbelt/jison2json)
+  + [json2jison](https://github.com/GerHobbelt/json2jison)
+  + [jison-helpers-lib](https://github.com/GerHobbelt/jison-helpers-lib)
+

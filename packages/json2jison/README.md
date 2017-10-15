@@ -9,7 +9,23 @@
 
 ## install
 
-    npm install json2jison -g
+    npm install @gerhobbelt/json2jison -g
+
+
+
+## build
+
+Follow the install & build directions of the monorepo.
+    
+You can also only build this particular subpackage by `cd`-ing into this directory
+and then invoking the local make:
+    
+    cd packages/json2jison
+    make
+
+This will generate the rollup/babel-postprocessed ES6 and ES5 
+compatible libraries in the local `dist/` directory.
+
 
 
 ## license

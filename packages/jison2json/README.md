@@ -9,7 +9,23 @@
 
 ## install
 
-    npm install jison2json -g
+    npm install @gerhobbelt/jison2json -g
+
+
+
+## build
+
+Follow the install & build directions of the monorepo.
+    
+You can also only build this particular subpackage by `cd`-ing into this directory
+and then invoking the local make:
+    
+    cd packages/jison2json
+    make
+
+This will generate the rollup/babel-postprocessed ES6 and ES5 
+compatible libraries in the local `dist/` directory.
+
 
 
 ## usage
@@ -22,7 +38,7 @@
 
 Or require it and convert programatically:
 
-    var jison2json = require('jison2json');
+    var jison2json = require('@gerhobbelt/jison2json');
     var grammar = "%% foo: bar { return true; };";
 
     var json = jison2json.convert(grammar);

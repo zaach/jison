@@ -29,9 +29,9 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "@gerhobbelt/lex-parser": "0.6.0-195",
+    "@gerhobbelt/lex-parser": "0.6.1-201",
     "@gerhobbelt/xregexp": "3.2.0-21",
-    "jison-helpers-lib": "0.1.0-194"
+    "jison-helpers-lib": "0.1.1-201"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",

@@ -10,7 +10,7 @@ MOCHA = ../../node_modules/.bin/mocha
 
 all: build test examples
 
-prep: npm-install
+prep:
 
 npm-install:
 	npm install
@@ -142,10 +142,9 @@ examples_with_custom_lexer:
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
 bump:
-	npm version --no-git-tag-version prerelease
+	cd ../../ && node __patch_version_in_js.js
 
 git-tag:
-	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
 
 publish:
 	npm run pub
