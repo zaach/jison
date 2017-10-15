@@ -5,7 +5,7 @@
     "url": "http://zaa.ch"
   },
   "name": "@gerhobbelt/lex-parser",
-  "version": "0.6.1-202",
+  "version": "0.6.1-203",
   "description": "A parser for lexical grammars used by jison",
   "main": "dist/lex-parser-cjs-es5.js",
   "module": "lex-parser.js",

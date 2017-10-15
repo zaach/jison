@@ -11,6 +11,16 @@ JISON = node dist/cli-cjs-es5.js
 
 all: build test examples-test
 
+everything:                         \
+		clean                       \
+		npm-update                  \
+		submodules-npm-update       \
+		prep                        \
+		submodules-prep             \
+		all                         \
+		submodules                  \
+		site
+
 
 prep: subpackages-prep npm-install
 
@@ -457,6 +467,13 @@ subpackages-prep:
 	cd packages/jison2json && make prep
 	cd packages/json2jison && make prep
 
+submodules-prep:
+	cd modules/helpers-lib && make prep
+	cd modules/lex-parser && make prep
+	cd modules/jison-lex && make prep
+	cd modules/ebnf-parser && make prep
+	cd modules/jison2json && make prep
+	cd modules/json2jison && make prep
 
 submodules-npm-install:
 	cd modules/helpers-lib && make npm-install
@@ -514,7 +531,7 @@ subpackages-publish:
 	cd packages/json2jison && make publish
 
 publish: subpackages-publish
-	npm run pub 
+	npm run pub
 
 
 clean: clean-site
@@ -526,14 +543,14 @@ clean: clean-site
 	cd packages/ebnf-parser && make clean
 	cd packages/jison2json && make clean
 	cd packages/json2jison && make clean
-	
+
 	cd modules/helpers-lib && make clean
 	cd modules/lex-parser && make clean
 	cd modules/jison-lex && make clean
 	cd modules/ebnf-parser && make clean
 	cd modules/jison2json && make clean
 	cd modules/json2jison && make clean
-	
+
 	-rm -rf node_modules/
 	-rm -f package-lock.json
 
@@ -568,8 +585,8 @@ superclean: clean clean-site
 
 
 
-.PHONY: all                                                                         \
-		prep subpackages-prep                                                       \
+.PHONY: all everything                                                              \
+		prep subpackages-prep submodules-prep                                       \
 		site preview deploy test web-examples examples examples-test                \
 		error-handling-tests basic-tests github-issue-tests misc-tests              \
 		build npm-install                                                           \
