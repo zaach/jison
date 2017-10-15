@@ -9369,7 +9369,7 @@ var camelCase$1   = helpers.camelCase;
 var code_exec$1   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-201';                              // require('./package.json').version;
+var version$1 = '0.6.1-202';                              // require('./package.json').version;
 
 
 
@@ -23856,7 +23856,7 @@ var bnf = {
     
 };
 
-var version$2 = '0.6.1-201';                              // require('./package.json').version;
+var version$2 = '0.6.1-202';                              // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);
@@ -24750,7 +24750,7 @@ function grammarPrinter(raw, options) {
 var rmCommonWS = helpers.rmCommonWS;
 var camelCase  = helpers.camelCase;
 var code_exec  = helpers.exec;
-var version = '0.6.1-201';
+var version = '0.6.1-202';
 
 var devDebug = 0;
 

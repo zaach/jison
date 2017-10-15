@@ -6950,7 +6950,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var code_exec = helpers.exec;
     // import recast from '@gerhobbelt/recast';
     // import astUtils from '@gerhobbelt/ast-util';
-    var version = '0.6.1-201'; // require('./package.json').version;
+    var version = '0.6.1-202'; // require('./package.json').version;
 
 
     var XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE; // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
