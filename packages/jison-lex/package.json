@@ -33,7 +33,7 @@
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "0.5.1-19",
-    "@gerhobbelt/lex-parser": "0.6.0-194",
+    "@gerhobbelt/lex-parser": "0.6.0-195",
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/recast": "0.12.7-11",
     "@gerhobbelt/xregexp": "3.2.0-21",
