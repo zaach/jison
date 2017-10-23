@@ -3,7 +3,7 @@
 //
 // Supported options:
 // - stripActions
-function json2jison (grammar, options) {
+function json2jison(grammar, options) {
     options = options || {};
     var s = "";
 
@@ -13,7 +13,7 @@ function json2jison (grammar, options) {
     return s;
 }
 
-function genDecls (grammar, options) {
+function genDecls(grammar, options) {
     var s = "",
         key;
 
@@ -43,7 +43,7 @@ function genDecls (grammar, options) {
     return s;
 }
 
-function genBNF (bnf, options) {
+function genBNF(bnf, options) {
     var s = "%%\n",
         sym;
 
@@ -56,7 +56,7 @@ function genBNF (bnf, options) {
     return s;
 }
 
-function genHandles (handle, options) {
+function genHandles(handle, options) {
     if (typeof handle === 'string') {
         return handle;
     } else { //array
@@ -85,7 +85,7 @@ function genHandles (handle, options) {
     }
 }
 
-function quoteSymbols (rhs) {
+function quoteSymbols(rhs) {
     rhs = rhs.split(' ');
 
     for (var i = 0; i < rhs.length; i++) {
@@ -94,7 +94,7 @@ function quoteSymbols (rhs) {
     return rhs.join(' ');
 }
 
-function quoteSymbol (sym) {
+function quoteSymbol(sym) {
     if (!/[a-zA-Z_][a-zA-Z0-9_]*/.test(sym)) {
         var quote = /'/.test(sym) ? '"' : "'";
         sym = quote + sym + quote;
@@ -105,7 +105,7 @@ function quoteSymbol (sym) {
 
 // Generate lex format from lex JSON
 
-function genLex (lex) {
+function genLex(lex) {
     var s = [];
     var indent = 28;
 
@@ -153,14 +153,14 @@ function genLex (lex) {
     return s.join('');
 }
 
-function genLexRegex (regex) {
+function genLexRegex(regex) {
     var matcher = regex.replace(/^([a-zA-Z0-9_]+)$/, "\"$1\"")
                        .replace(/\\([.*+?^${}()|\[\]\/\\])/g, "$1")
                        .replace(/^\$$/, "<<EOF>>")
                        .replace(/^([.*+?^${}()|\[\]\/\\\-;=,><!@#%&]+)$/, "\"$1\"");
     return matcher;
 }
-function genLexRule (rule) {
+function genLexRule(rule) {
     return rule.match(/\n/) ? '%{' + rule + '%}' : rule;
 }
 

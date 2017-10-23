@@ -1,7 +1,7 @@
 var bnfParser = require('../ebnf-parser');
 var lexParser = require('../lex-parser');
 
-function processGrammar (rawGrammar, lex) {
+function processGrammar(rawGrammar, lex) {
     var grammar = bnfParser.parse(rawGrammar);
     if (lex) {
         grammar.lex = lexParser.parse(lex);
