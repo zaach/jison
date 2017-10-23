@@ -35,8 +35,8 @@
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
-    "babel-preset-env": "1.6.0",
-    "babel-preset-modern-browsers": "9.0.2",
+    "babel-preset-env": "1.6.1",
+    "babel-preset-modern-browsers": "10.0.1",
     "chai": "4.1.2",
     "globby": "6.1.0",
     "jison-gho": "0.6.1-203",
