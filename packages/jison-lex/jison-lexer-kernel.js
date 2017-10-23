@@ -186,7 +186,7 @@
         this._more = false;
         this._backtrack = false;
 
-        var col = this.yylloc ? this.yylloc.last_column : 0;
+        var col = (this.yylloc ? this.yylloc.last_column : 0);
         this.yylloc = {
             first_line: this.yylineno + 1,
             first_column: col,
@@ -631,49 +631,42 @@
             var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
             var rv = lno_pfx + ': ' + line;
             var errpfx = (new Array(lineno_display_width + 1)).join('^');
+            var offset = 2 + 1;
+            var len = 0;
+
             if (lno === loc.first_line) {
-                var offset = loc.first_column + 2;
-                var len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              offset += loc.first_column;
+
+              len = Math.max(
+                2,
+                ((lno === loc.last_line ? loc.last_column : line.length)) - loc.first_column + 1
+              );
             } else if (lno === loc.last_line) {
-                var offset = 2 + 1;
-                var len = Math.max(2, loc.last_column + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              len = Math.max(2, loc.last_column + 1);
             } else if (lno > loc.first_line && lno < loc.last_line) {
-                var offset = 2 + 1;
-                var len = Math.max(2, line.length + 1);
-                var lead = (new Array(offset)).join('.');
-                var mark = (new Array(len)).join('^');
-                rv += '\n' + errpfx + lead + mark;
-                if (line.trim().length > 0) {
-                    nonempty_line_indexes.push(index);
-                }
+              len = Math.max(2, line.length + 1);
             }
+
+            if (len) {
+              var lead = new Array(offset).join('.');
+              var mark = new Array(len).join('^');
+              rv += '\n' + errpfx + lead + mark;
+
+              if (line.trim().length > 0) {
+                nonempty_line_indexes.push(index);
+              }
+            }
+
             rv = rv.replace(/\t/g, ' ');
             return rv;
         });
+
         // now make sure we don't print an overly large amount of error area: limit it 
         // to the top and bottom line count:
         if (nonempty_line_indexes.length > 2 * MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT) {
             var clip_start = nonempty_line_indexes[MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT - 1] + 1;
             var clip_end = nonempty_line_indexes[nonempty_line_indexes.length - MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT] - 1;
-            console.log("clip off: ", {
-                start: clip_start, 
-                end: clip_end,
-                len: clip_end - clip_start + 1,
-                arr: nonempty_line_indexes,
-                rv
-            });
+
             var intermediate_line = (new Array(lineno_display_width + 1)).join(' ') +     '  (...continued...)';
             intermediate_line += '\n' + (new Array(lineno_display_width + 1)).join('-') + '  (---------------)';
             rv.splice(clip_start, clip_end - clip_start + 1, intermediate_line);
