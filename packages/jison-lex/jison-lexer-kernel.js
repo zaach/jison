@@ -41,7 +41,20 @@
      * @public
      * @this {RegExpLexer}
      */
-    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        msg = '' + msg;
+        if (this.yylloc) {
+            if (typeof this.showPosition === 'function') {
+                var pos_str = this.showPosition();
+                if (pos_str) {
+                    if (msg.length && msg[msg.length - 1] !== '\n' && pos_str[0] !== '\n') {
+                        msg += '\n' + pos_str;
+                    } else {
+                        msg += pos_str;
+                    }
+                }
+            }
+        }
         /** @constructor */
         var pei = {
             errStr: msg,
@@ -112,7 +125,7 @@
      */
     yyerror: function yyError(str /*, ...args */) {
         var lineno_msg = '';
-        if (this.options.trackPosition) {
+        if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
         }
         var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
@@ -384,6 +397,10 @@
             this.yylineno -= lines.length - 1;
 
             this.yylloc.last_line = this.yylineno + 1;
+
+            // Get last entirely matched line into the `pre_lines[]` array's
+            // last index slot; we don't mind when other previously 
+            // matched lines end up in the array too. 
             var pre = this.match;
             var pre_lines = pre.split(/(?:\r\n?|\n)/g);
             if (pre_lines.length === 1) {
@@ -427,17 +444,10 @@
             // We accomplish this by signaling an 'error' token to be produced for the current
             // `.lex()` run.
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\n') {
-                    pos_str = '\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).', false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
@@ -856,14 +866,7 @@
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var pos_str = '';
-                if (typeof this.showPosition === 'function') {
-                    pos_str = this.showPosition();
-                    if (pos_str && pos_str[0] !== '\n') {
-                        pos_str = '\n' + pos_str;
-                    }
-                }
-                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -913,19 +916,25 @@
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\n') {
-                    pos_str = '\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
+
+            var pendingInput = this._input;
+            var activeCondition = this.topState();
+            var conditionStackDepth = this.conditionStack.length;
+
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that `parseError()` did not 'recover' for us
-                // by moving forward at least one character at a time:
-                if (!this.match.length) {
+                // by moving forward at least one character at a time IFF the (user-specified?) `parseError()`
+                // has not consumed/modified any pending input or changed state in the error handler:
+                if (!this.matches && 
+                    // and make sure the input has been modified/consumed ...
+                    pendingInput === this._input &&
+                    // ...or the lexer state has been modified significantly enough
+                    // to merit a non-consuming error handling action right now.
+                    activeCondition === this.topState() && 
+                    conditionStackDepth === this.conditionStack.length
+                ) {
                     this.input();
                 }
             }
