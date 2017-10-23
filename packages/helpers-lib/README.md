@@ -1,7 +1,12 @@
 # jison-helpers-lib
 
 
-[![build status](https://secure.travis-ci.org/GerHobbelt/jison-helpers-lib.png)](http://travis-ci.org/GerHobbelt/jison-helpers-lib)
+[![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Build Status](https://travis-ci.org/GerHobbelt/jison-helpers-lib.svg?branch=master)](https://travis-ci.org/GerHobbelt/jison-helpers-lib)
+[![NPM version](https://badge.fury.io/js/jison-helpers-lib.svg)](http://badge.fury.io/js/jison-helpers-lib)
+[![Dependency Status](https://img.shields.io/david/GerHobbelt/jison-helpers-lib.svg)](https://david-dm.org/GerHobbelt/jison-helpers-lib)
+[![npm](https://img.shields.io/npm/dm/jison-helpers-lib.svg?maxAge=2592000)]()
+
 
 
 Helper functions shared among the jison repositories (jison, ebnf-parser, lex-parser, jison-lex)

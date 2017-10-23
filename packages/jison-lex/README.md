@@ -1,7 +1,13 @@
 # jison-lex
 
 
-[![build status](https://secure.travis-ci.org/GerHobbelt/jison-lex.png)](http://travis-ci.org/GerHobbelt/jison-lex)
+[![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Build Status](https://travis-ci.org/GerHobbelt/jison-lex.svg?branch=master)](https://travis-ci.org/GerHobbelt/jison-lex)
+[![NPM version](https://badge.fury.io/js/@gerhobbelt/jison-lex.svg)](http://badge.fury.io/js/@gerhobbelt/jison-lex)
+[![Dependency Status](https://img.shields.io/david/GerHobbelt/jison-lex.svg)](https://david-dm.org/GerHobbelt/jison-lex)
+[![npm](https://img.shields.io/npm/dm/@gerhobbelt/jison-lex.svg?maxAge=2592000)]()
+
+
 
 
 A lexical analyzer generator used by [jison](http://jison.org). It takes a lexical grammar definition (either in JSON or Bison's lexical grammar format) and outputs a JavaScript lexer.
