@@ -6,7 +6,7 @@ import XRegExp from '@gerhobbelt/xregexp';
 import json5 from '@gerhobbelt/json5';
 import lexParser from '../lex-parser';
 import setmgmt from './regexp-set-management.js';
-import helpers from '../helpers-lib';                   // jison-helpers-lib
+import helpers from '../helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
 var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
@@ -218,7 +218,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
     var m, i, k, rule, action, conditions,
         active_conditions,
-        rules = dict.rules,
+        rules = dict.rules || [],
         newRules = [],
         macros = {},
         regular_rule_count = 0,
@@ -910,7 +910,7 @@ function buildActions(dict, tokens, opts) {
         }
     }
 
-    if (opts.options.flex) {
+    if (opts.options.flex && dict.rules) {
         dict.rules.push(['.', 'console.log("", yytext); /* `flex` lexing mode: the last resort rule! */']);
     }
 
@@ -1150,7 +1150,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
                 opts.conditions = [];
                 opts.showSource = false;
-            }, (dict.rules.length > 0 ?
+            }, ((dict.rules && dict.rules.length > 0) ?
                 'One or more of your lexer state names are possibly botched?' :
                 'Your custom lexer is somehow botched.'), ex, null)) {
                 if (!test_me(function () {
@@ -1161,7 +1161,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
                     // kill each rule action block, one at a time and test again after each 'edit':
                     var rv = false;
-                    for (var i = 0, len = dict.rules.length; i < len; i++) {
+                    for (var i = 0, len = (dict.rules ? dict.rules.length : 0); i < len; i++) {
                         dict.rules[i][1] = '{ /* nada */ }';
                         rv = test_me(function () {
                             // opts.conditions = [];
@@ -1288,7 +1288,20 @@ return `{
      * @public
      * @this {RegExpLexer}
      */
-    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable) {
+    constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        msg = '' + msg;
+        if (this.yylloc) {
+            if (typeof this.showPosition === 'function') {
+                var pos_str = this.showPosition();
+                if (pos_str) {
+                    if (msg.length && msg[msg.length - 1] !== '\\n' && pos_str[0] !== '\\n') {
+                        msg += '\\n' + pos_str;
+                    } else {
+                        msg += pos_str;
+                    }
+                }
+            }
+        }
         /** @constructor */
         var pei = {
             errStr: msg,
@@ -1359,7 +1372,7 @@ return `{
      */
     yyerror: function yyError(str /*, ...args */) {
         var lineno_msg = '';
-        if (this.options.trackPosition) {
+        if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
         }
         var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': ' + str, this.options.lexerErrorsAreRecoverable);
@@ -1631,6 +1644,10 @@ return `{
             this.yylineno -= lines.length - 1;
 
             this.yylloc.last_line = this.yylineno + 1;
+
+            // Get last entirely matched line into the \`pre_lines[]\` array's
+            // last index slot; we don't mind when other previously 
+            // matched lines end up in the array too. 
             var pre = this.match;
             var pre_lines = pre.split(/(?:\\r\\n?|\\n)/g);
             if (pre_lines.length === 1) {
@@ -1674,17 +1691,10 @@ return `{
             // We accomplish this by signaling an 'error' token to be produced for the current
             // \`.lex()\` run.
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\\n') {
-                    pos_str = '\\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).' + pos_str, false);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': You can only invoke reject() in the lexer when the lexer is of the backtracking persuasion (options.backtrack_lexer = true).', false);
             this._signaled_error_token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
         }
         return this;
@@ -2103,14 +2113,7 @@ return `{
                 if (this.options.trackPosition) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
-                var pos_str = '';
-                if (typeof this.showPosition === 'function') {
-                    pos_str = this.showPosition();
-                    if (pos_str && pos_str[0] !== '\\n') {
-                        pos_str = '\\n' + pos_str;
-                    }
-                }
-                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!' + pos_str, false);
+                var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
                 // produce one 'error' token until this situation has been resolved, most probably by parse termination!
                 return (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             }
@@ -2160,19 +2163,25 @@ return `{
             if (this.options.trackPosition) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
-            var pos_str = '';
-            if (typeof this.showPosition === 'function') {
-                pos_str = this.showPosition();
-                if (pos_str && pos_str[0] !== '\\n') {
-                    pos_str = '\\n' + pos_str;
-                }
-            }
-            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.' + pos_str, this.options.lexerErrorsAreRecoverable);
+            var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
+
+            var pendingInput = this._input;
+            var activeCondition = this.topState();
+            var conditionStackDepth = this.conditionStack.length;
+
             token = (this.parseError(p.errStr, p, this.JisonLexerError) || this.ERROR);
             if (token === this.ERROR) {
                 // we can try to recover from a lexer error that \`parseError()\` did not 'recover' for us
-                // by moving forward at least one character at a time:
-                if (!this.match.length) {
+                // by moving forward at least one character at a time IFF the (user-specified?) \`parseError()\`
+                // has not consumed/modified any pending input or changed state in the error handler:
+                if (!this.matches && 
+                    // and make sure the input has been modified/consumed ...
+                    pendingInput === this._input &&
+                    // ...or the lexer state has been modified significantly enough
+                    // to merit a non-consuming error handling action right now.
+                    activeCondition === this.topState() && 
+                    conditionStackDepth === this.conditionStack.length
+                ) {
                     this.input();
                 }
             }
