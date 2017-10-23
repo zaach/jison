@@ -74,7 +74,7 @@ lex
 rules_and_epilogue
     : '%%' rules '%%' extra_lexer_module_code
       {
-        if ($extra_lexer_module_code && $extra_lexer_module_code.trim() !== '') {
+        if ($extra_lexer_module_code.trim() !== '') {
           $$ = { rules: $rules, moduleInclude: $extra_lexer_module_code };
         } else {
           $$ = { rules: $rules };
@@ -83,7 +83,7 @@ rules_and_epilogue
     | '%%' error rules '%%' extra_lexer_module_code
       {
         yyerror(rmCommonWS`
-            There's an error in one or more of your lexer regex rules.
+            There's probably an error in one or more of your lexer regex rules.
             The lexer rule spec should have this structure:
 
                     regex  action_code
@@ -114,9 +114,27 @@ rules_and_epilogue
             ${$error.errStr}
         `);
       }
-    | '%%' error
+    | '%%' error rules
       {
-        $$ = { rules: $rules };
+        yyerror(rmCommonWS`
+            There's probably an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded 
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
       }
     | '%%' rules
       /* Note: an empty rules set is allowed when you are setting up an `%options custom_lexer` */
@@ -174,7 +192,19 @@ definition
     | START_EXC names_exclusive
         { $$ = $names_exclusive; }
     | action
-        { yy.actionInclude.push($action); $$ = null; }
+        { 
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '%{...%}' lexer setup action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action)}
+                `);
+            }
+            yy.actionInclude.push($action); 
+            $$ = null; 
+        }
     | options
         { $$ = null; }
     | UNKNOWN_DECL
@@ -211,8 +241,17 @@ definition
         }
     | INIT_CODE init_code_name action
         {
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '%code ${$init_code_name}' action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action, @INIT_CODE)}
+                `);
+            }
             $$ = {
-	    	type: 'codesection',
+                type: 'codesection',
                 qualifier: $init_code_name,
                 include: $action
             };
@@ -333,6 +372,15 @@ rule_block
 rule
     : regex action
         {
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The rule's action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action)}
+                `);
+            }
             $$ = [$regex, $action]; 
         }
     | regex error
@@ -714,9 +762,44 @@ option
 
 extra_lexer_module_code
     : optional_module_code_chunk
-        { $$ = $optional_module_code_chunk; }
+        { 
+            var rv = checkActionBlock($optional_module_code_chunk, @optional_module_code_chunk);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
+                `);
+            }
+            $$ = $optional_module_code_chunk; 
+        }
     | extra_lexer_module_code include_macro_code optional_module_code_chunk
-        { $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk; }
+        { 
+            // Each of the 3 chunks should be parse-able as a JS snippet on its own.
+            //
+            // Note: we have already checked the first section in a previous reduction 
+            // of this rule, so we don't need to check that one again!
+            var rv = checkActionBlock($include_macro_code, @include_macro_code);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The source code %include-d into the extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@include_macro_code)}
+                `);
+            }
+            rv = checkActionBlock($optional_module_code_chunk, @optional_module_code_chunk);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
+                `);
+            }
+            $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk; 
+        }
     ;
 
 include_macro_code
@@ -771,6 +854,8 @@ optional_module_code_chunk
 
 
 var rmCommonWS = helpers.rmCommonWS;
+var checkActionBlock = helpers.checkActionBlock;
+
 
 function encodeRE(s) {
     return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');

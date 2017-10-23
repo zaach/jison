@@ -47,7 +47,7 @@ spec
     : declaration_list '%%' grammar optional_end_block EOF
         {
             $$ = $declaration_list;
-            if ($optional_end_block && $optional_end_block.trim() !== '') {
+            if ($optional_end_block.trim() !== '') {
                 yy.addDeclaration($$, { include: $optional_end_block });
             }
             return extend($$, $grammar);
@@ -74,13 +74,13 @@ spec
 
 optional_end_block
     : %empty
-        { $$ = undefined; }
+        { $$ = ''; }
     | '%%' extra_parser_module_code
         { 
             var rv = checkActionBlock($extra_parser_module_code, @extra_parser_module_code);
             if (rv) {
                 yyerror(rmCommonWS`
-                    The extra parser module code section does not compile: ${rv}
+                    The extra parser module code section (a.k.a. 'epilogue') does not compile: ${rv}
 
                       Erroneous area:
                     ${yylexer.prettyPrintRange(@extra_parser_module_code)}
@@ -841,9 +841,13 @@ action_comments_body
 
 extra_parser_module_code
     : optional_module_code_chunk
-        { $$ = $optional_module_code_chunk; }
+        { 
+            $$ = $optional_module_code_chunk; 
+        }
     | optional_module_code_chunk include_macro_code extra_parser_module_code
-        { $$ = $optional_module_code_chunk + $include_macro_code + $extra_parser_module_code; }
+        { 
+            $$ = $optional_module_code_chunk + $include_macro_code + $extra_parser_module_code; 
+        }
     ;
 
 include_macro_code
@@ -899,33 +903,9 @@ optional_module_code_chunk
 
 
 var rmCommonWS = helpers.rmCommonWS;
-var dquote     = helpers.dquote;
-var parse2AST  = helpers.parseCodeChunkToAST;
+var dquote = helpers.dquote;
+var checkActionBlock = helpers.checkActionBlock;
 
-
-// validate the given JavaScript snippet: does it compile?
-function checkActionBlock(src, loc) {
-    // make sure reasonable line numbers, etc. are reported in any
-    // potential parse errors by pushing the source code down:
-    if (loc && loc.first_line > 0) {
-        var cnt = loc.first_line + 1;
-        var lines = new Array(cnt);
-        src = lines.join('\n') + src;
-    } 
-    if (!src.trim()) {
-        return false;
-    }
-    try {
-        parse2AST(src);
-        return false;
-    } catch (ex) {
-        console.error("parse2AST error: ", {
-            src,
-            ex
-        });
-        return ex.message || "code snippet cannot be parsed";
-    }
-}
 
 // transform ebnf to bnf if necessary
 function extend(json, grammar) {

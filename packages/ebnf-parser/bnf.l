@@ -186,12 +186,20 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ];
                                             return 'UNKNOWN_DECL';
                                         %}
-"<"{ID}">"                              yytext = this.matches[1]; return 'TOKEN_TYPE';
-"{{"[^]*?"}}"                           yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-"%{"[^]*?"%}"                           yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-"{"                                     yy.depth = 0; this.pushState('action'); return '{';
-"->".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); return 'ARROW_ACTION';
-"→".*                                   yytext = yytext.substr(1, yyleng - 1).trim(); return 'ARROW_ACTION';
+"<"{ID}">"                              yytext = this.matches[1]; 
+                                        return 'TOKEN_TYPE';
+"{{"([^]*?)"}}"                         yytext = this.matches[1].replace(/\}\\\}/g, '}}');  // unescape any literal '}\}' that exists within the action code block
+                                        return 'ACTION';
+"%{"([^]*?)"%}"                         yytext = this.matches[1].replace(/%\\\}/g, '%}');   // unescape any literal '%\}' that exists within the action code block
+                                        return 'ACTION';
+"{"                                     yy.depth = 0; this.pushState('action'); 
+                                        return '{';
+"->".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+                                        return 'ARROW_ACTION';
+"→".*                                   yytext = yytext.substr(1, yyleng - 1).trim(); 
+                                        return 'ARROW_ACTION';
+"=>".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+                                        return 'ARROW_ACTION';
 {HEX_NUMBER}                            yytext = parseInt(yytext, 16); return 'INTEGER';
 {DECIMAL_NUMBER}(?![xX0-9a-fA-F])       yytext = parseInt(yytext, 10); return 'INTEGER';
 

@@ -17,6 +17,7 @@ export default {
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
+    checkActionBlock: parse2AST.checkActionBlock,
 
 	printFunctionSourceCode: stringifier.printFunctionSourceCode,
 	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
