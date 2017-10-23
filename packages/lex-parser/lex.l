@@ -53,7 +53,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                         this.unput(yytext);
                                         yytext = '';
                                         return 'ACTION_START';
-<action>"%{"([^]*?)"%}"                 yytext = this.matches[1]; 
+<action>"%{"([^]*?)"%}"                 yytext = this.matches[1].replace(/%\\\}/g, '%}');   // unescape any literal '%\}' that exists within the action code block
                                         yy.include_command_allowed = true;
                                         return 'ACTION';
 <action>"%include"                      %{
@@ -135,7 +135,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
                                                       Erroneous area:
                                                     ` + this.prettyPrintRange(yylloc));
-                                                return 'BRACKETS_SURPLUS';
+                                                return 'BRACKET_SURPLUS';
                                             } else {
                                                 yy.depth--;
                                             }
@@ -172,7 +172,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                       Erroneous area:
                                                     ` + this.prettyPrintRange(yylloc));
                                                 yytext = '';
-                                                return 'BRACKETS_MISSING';
+                                                return 'BRACKET_MISSING';
                                             }
                                             this.popState();
                                             yytext = '';
@@ -193,10 +193,10 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 <rules>{BR}+                            /* empty */
 <rules>{WS}+{BR}+                       /* empty */
-<rules>"//"[^\r\n]*
-                                        /* skip single-line comment */
-<rules>"/*"[^]*?"*/"
-                                        /* skip multi-line comment */
+
+<rules>"//"[^\r\n]*                     /* skip single-line comment */
+<rules>"/*"[^]*?"*/"                    /* skip multi-line comment */
+
 // ACTION code chunks follow rules and are generally indented, but
 // never start with characters special to the lex language itself:
 // - `%` can start options, commands, etc., e.g. `%include` or `%options`
@@ -206,13 +206,14 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                         yy.include_command_allowed = true; 
                                         this.pushState('action'); 
                                         return 'ACTION_START';
+
 <rules>"%%"                             this.popState(); 
                                         this.pushState('code'); 
                                         return '%%';
+
 // Accept any non-regex-special character as a direct literal without
 // the need to put quotes around it:
-<rules>{ANY_LITERAL_CHAR}+
-                                        %{
+<rules>{ANY_LITERAL_CHAR}+              %{
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
                                             return 'CHARACTER_LIT';
