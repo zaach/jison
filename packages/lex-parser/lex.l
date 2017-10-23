@@ -47,7 +47,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 %%
 
-"%{"                                    yy.dept = 0;
+"%{"                                    yy.depth = 0;
                                         yy.include_command_allowed = false;
                                         this.pushState('action'); 
                                         this.unput(yytext);
