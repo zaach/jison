@@ -1290,8 +1290,21 @@ return `{
      */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
         msg = '' + msg;
-        if (this.yylloc) {
-            if (typeof this.showPosition === 'function') {
+
+        // heuristic to determine if the error message already contains a (partial) source code dump
+        // as produced by either \`showPosition()\` or \`prettyPrintRange()\`:
+        if (show_input_position == undefined) {
+            show_input_position = !(msg.indexOf('\\n') > 0 && msg.indexOf('^') > 0);
+        }
+        if (this.yylloc && show_input_position) {
+            if (typeof this.prettyPrintRange === 'function') {
+                var pretty_src = this.prettyPrintRange(this.yylloc);
+
+                if (!/\\n\\s*$/.test(msg)) {
+                    msg += '\\n';
+                }
+                msg += '\\n  Erroneous area:\\n' + this.prettyPrintRange(this.yylloc);          
+            } else if (typeof this.showPosition === 'function') {
                 var pos_str = this.showPosition();
                 if (pos_str) {
                     if (msg.length && msg[msg.length - 1] !== '\\n' && pos_str[0] !== '\\n') {
