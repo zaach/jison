@@ -179,7 +179,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                                 while lexing in ${dquote(this.topState())} state.
 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                             yytext = [
                                                 this.matches[1],            // {NAME}
                                                 this.matches[2].trim()      // optional value/parameters
@@ -227,38 +227,38 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\'                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\`                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <option_values>\"                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <option_values>\'                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <option_values>\`                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <*>\"                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -267,7 +267,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\'                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -275,7 +275,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\`                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -283,7 +283,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 
@@ -294,7 +294,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                                 while lexing in ${dquote(this.topState())} state.
                                                 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                         %}
 
 <*><<EOF>>                              return 'EOF';
