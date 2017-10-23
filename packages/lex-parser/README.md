@@ -1,7 +1,13 @@
 # lex-parser
 
 
-[![build status](https://secure.travis-ci.org/GerHobbelt/lex-parser.png)](http://travis-ci.org/GerHobbelt/lex-parser)
+[![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Build Status](https://travis-ci.org/GerHobbelt/lex-parser.svg?branch=master)](https://travis-ci.org/GerHobbelt/lex-parser)
+[![NPM version](https://badge.fury.io/js/@gerhobbelt/lex-parser.svg)](http://badge.fury.io/js/@gerhobbelt/lex-parser)
+[![Dependency Status](https://img.shields.io/david/GerHobbelt/lex-parser.svg)](https://david-dm.org/GerHobbelt/lex-parser)
+[![npm](https://img.shields.io/npm/dm/@gerhobbelt/lex-parser.svg?maxAge=2592000)]()
+
+
 
 
 A parser for lexical grammars used by [jison](http://jison.org) and jison-lex.

@@ -441,12 +441,24 @@ dist/jison.js: rollup.config.js
 
 
 
-subpackages:
+subpackages: helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json
+
+helpers-lib:
 	cd packages/helpers-lib && make
+
+lex-parser:
 	cd packages/lex-parser && make
+
+jison-lex:
 	cd packages/jison-lex && make
+
+ebnf-parser:
 	cd packages/ebnf-parser && make
+
+json2jison:
 	cd packages/json2jison && make
+
+jison2json:
 	cd packages/jison2json && make
 
 
@@ -587,6 +599,7 @@ superclean: clean clean-site
 
 .PHONY: all everything                                                              \
 		prep subpackages-prep submodules-prep                                       \
+		helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json          \
 		site preview deploy test web-examples examples examples-test                \
 		error-handling-tests basic-tests github-issue-tests misc-tests              \
 		build npm-install                                                           \

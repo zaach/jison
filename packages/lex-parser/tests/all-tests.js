@@ -244,10 +244,10 @@ describe("LEX Parser", function () {
   });
 
   it("test include", function () {
-    var lexgrammar = '\nRULE [0-9]\n\n%{\n hi <stuff> \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
+    var lexgrammar = '\nRULE [0-9]\n\n%{\n hi; {stuff;} \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
     var expected = {
         macros: {"RULE": "[0-9]"},
-        actionInclude: "hi <stuff>",
+        actionInclude: "hi; {stuff;}",
         rules: [
             ["\\[[^\\]]\\]", "return true;"]
         ],

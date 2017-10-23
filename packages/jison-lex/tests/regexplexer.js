@@ -2770,3 +2770,120 @@ describe("Lexer Kernel", function () {
   });
 });
 
+
+// prettyPrintRange() API
+describe("prettyPrintRange() API", function () {
+  it("baseline - not invoking the API via ny error report", function () {
+    var dict = [
+        '%%',
+        '"a" %{ return true; %}',
+        '"b" %{ return 1; %}',
+    ].join('\n');
+    var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    var input = "abab";
+
+    lexer.setInput(input);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+
+    assert.strictEqual(lexer.lex(), lexer.EOF);
+  });
+
+  it("fails when lexer cannot parse the spec due to faulty indentation", function () {
+    var dict = [
+        '%%',
+        // rule regex MUST start the line; indentation (incorrectly) indicates this is all 'action code':
+        ' "a" %{ return true; %}',
+        ' "b" %{ return 1; %}',
+    ].join('\n');
+
+    assert.throws(function () { 
+        var lexer = new RegExpLexer(dict);
+      }, 
+      Error,
+      /an error in one or more of your lexer regex rules/
+    );
+  });
+
+  it("fails when lexer cannot find the end of a rule's action code block (alt 1)", function () {
+    var dict = [
+        '%%',
+        // %{...%} action code blocks can contain ANYTHING, so 
+        // we won't find this error until we validate-parse-as-JS
+        // the collected first action's source code.
+        '"a" %{ return true; ',
+        '"b" %{ return 1; %}',
+    ].join('\n');
+
+    assert.throws(function () { 
+        var lexer = new RegExpLexer(dict, null, null, {
+          dumpSourceCodeOnFailure: false
+        });
+      }, 
+      Error,
+      /The rule\'s action code section does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; \n\^\.\.\.\.\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n3: "b" %\{ return 1; %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+    );
+  });
+
+  it("fails when lexer cannot find the end of a rule's action code block (alt 2)", function () {
+    var dict = [
+        '%%',
+        // %{...%} action code blocks can contain ANYTHING.
+        // Hence we won't find this error until we validate-parse-as-JS
+        // the entire generated lexer source code.
+        '"a" %{ return true; %}',
+        '"b" %{ return 1; ',
+    ].join('\n');
+
+    assert.throws(function () { 
+        var lexer = new RegExpLexer(dict, null, null, {
+          dumpSourceCodeOnFailure: false
+        });
+      }, 
+      Error,
+      /Error: Lexical error on line 3:[^]*?missing 1 closing curly braces in lexer rule action block.[^]*?help jison grok more or less complex action code chunks.\n\n  Erroneous area:\n1: %%\n2: "a" %{ return true; %}\n3: "b" %{ return 1;\s*\n\^\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\^/
+    );
+  });
+
+  it("fails when lexer finds an epilogue that's not parsable as JavaScript", function () {
+    var dict = [
+        '%%',
+        '"a" %{ return true; %}',
+        '"b" %{ return 1; %}',
+        '%%',
+        '**This is gibberish!**',
+    ].join('\n');
+
+    assert.throws(function () { 
+        var lexer = new RegExpLexer(dict, null, null, {
+          dumpSourceCodeOnFailure: false
+        });
+      }, 
+      Error,
+      /The extra lexer module code section \(a\.k\.a\. 'epilogue'\) does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %%\n\^\.\.\.\.\^\n5: \*\*This is gibberish!\*\*\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+    );
+  });
+
+  it("fails when lexer finds a %code section that's not parsable as JavaScript", function () {
+    var dict = [
+        '%%',
+        '"a" %{ return true; %}',
+        '"b" %{ return 1; %}',
+        '%code bugger %{ **This is gibberish!** %}',
+    ].join('\n');
+
+    assert.throws(function () { 
+        var lexer = new RegExpLexer(dict, null, null, {
+          dumpSourceCodeOnFailure: false
+        });
+      }, 
+      Error,
+      /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "INIT_CODE"/
+    );
+  });
+});

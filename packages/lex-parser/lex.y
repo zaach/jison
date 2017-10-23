@@ -51,6 +51,7 @@ lex
     | init definitions error EOF
         {
             yyerror(rmCommonWS`
+                There's an error in your lexer regex rules or epilogue.
                 Maybe you did not correctly separate the lexer sections with a '%%'
                 on an otherwise empty line?
                 The lexer spec file should have this structure:
@@ -59,10 +60,10 @@ lex
                         %%
                         rules
                         %%                  // <-- optional!
-                        extra_module_code   // <-- optional!
+                        extra_module_code   // <-- optional epilogue!
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -73,11 +74,67 @@ lex
 rules_and_epilogue
     : '%%' rules '%%' extra_lexer_module_code
       {
-        if ($extra_lexer_module_code && $extra_lexer_module_code.trim() !== '') {
+        if ($extra_lexer_module_code.trim() !== '') {
           $$ = { rules: $rules, moduleInclude: $extra_lexer_module_code };
         } else {
           $$ = { rules: $rules };
         }
+      }
+    | '%%' error rules '%%' extra_lexer_module_code
+      {
+        yyerror(rmCommonWS`
+            There's probably an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded 
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+      }
+    | '%%' rules '%%' error
+      {
+        yyerror(rmCommonWS`
+            There's an error in your lexer epilogue a.k.a. 'extra_module_code' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+      }
+    | '%%' error rules
+      {
+        yyerror(rmCommonWS`
+            There's probably an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded 
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
       }
     | '%%' rules
       /* Note: an empty rules set is allowed when you are setting up an `%options custom_lexer` */
@@ -135,7 +192,19 @@ definition
     | START_EXC names_exclusive
         { $$ = $names_exclusive; }
     | action
-        { yy.actionInclude.push($action); $$ = null; }
+        { 
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '%{...%}' lexer setup action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action)}
+                `);
+            }
+            yy.actionInclude.push($action); 
+            $$ = null; 
+        }
     | options
         { $$ = null; }
     | UNKNOWN_DECL
@@ -149,7 +218,7 @@ definition
                     %import qualifier_name file_path
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @IMPORT)}
+                ${yylexer.prettyPrintRange(@error, @IMPORT)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -164,7 +233,7 @@ definition
                     %import qualifier_name file_path
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @IMPORT)}
+                ${yylexer.prettyPrintRange(@error, @IMPORT)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -172,8 +241,17 @@ definition
         }
     | INIT_CODE init_code_name action
         {
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '%code ${$init_code_name}' action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action, @INIT_CODE)}
+                `);
+            }
             $$ = {
-	    	type: 'codesection',
+                type: 'codesection',
                 qualifier: $init_code_name,
                 include: $action
             };
@@ -185,7 +263,7 @@ definition
                     %code qualifier_name {action code}
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @INIT_CODE, @action)}
+                ${yylexer.prettyPrintRange(@error, @INIT_CODE, @action)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -261,7 +339,7 @@ rules_collective
                 block.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, yylexer.mergeLocationInfo(##start_conditions, ##4), @start_conditions)}
+                ${yylexer.prettyPrintRange(yylexer.mergeLocationInfo(##start_conditions, ##4), @start_conditions)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -276,7 +354,7 @@ rules_collective
                 as a terminating curly brace '}' could not be found.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error, @start_conditions)}
+                ${yylexer.prettyPrintRange(@error, @start_conditions)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -294,6 +372,15 @@ rule_block
 rule
     : regex action
         {
+            var rv = checkActionBlock($action, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The rule's action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action)}
+                `);
+            }
             $$ = [$regex, $action]; 
         }
     | regex error
@@ -303,7 +390,7 @@ rule
                 Lexer rule regex action code declaration error?
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @regex)}
+                ${yylexer.prettyPrintRange(@error, @regex)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -318,7 +405,7 @@ action
                 Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
 
                   Offending action body:
-                ${yylexer.prettyPrintRange(yylexer, @BRACKET_MISSING, @1)}
+                ${yylexer.prettyPrintRange(@BRACKET_MISSING, @1)}
             `);
         }
     | ACTION_START action_body BRACKET_SURPLUS
@@ -327,7 +414,7 @@ action
                 Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
 
                   Offending action body:
-                ${yylexer.prettyPrintRange(yylexer, @BRACKET_SURPLUS, @1)}
+                ${yylexer.prettyPrintRange(@BRACKET_SURPLUS, @1)}
             `);
         }
     | ACTION_START action_body ACTION_END 
@@ -370,7 +457,7 @@ action_body
                 You may place the '%include' instruction only at the start/front of a line.
 
                   It's use is not permitted at this position:
-                ${yylexer.prettyPrintRange(yylexer, @INCLUDE_PLACEMENT_ERROR, @action_body)}
+                ${yylexer.prettyPrintRange(@INCLUDE_PLACEMENT_ERROR, @action_body)}
             `);
         }
     | action_body error
@@ -379,7 +466,7 @@ action_body
                 Seems you did not correctly match curly braces '{ ... }' in a lexer rule action block.
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @action_body)}
+                ${yylexer.prettyPrintRange(@error, @action_body)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -398,7 +485,7 @@ start_conditions
                 Seems you did not correctly terminate the start condition set <${$name_list.join(',')},???> with a terminating '>'
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @1)}
+                ${yylexer.prettyPrintRange(@error, @1)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -523,7 +610,7 @@ regex_base
                 Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
 
                   Unterminated regex part:
-                ${yylexer.prettyPrintRange(yylexer, @error, @1)}
+                ${yylexer.prettyPrintRange(@error, @1)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -535,7 +622,7 @@ regex_base
                 Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
 
                   Unterminated regex part:
-                ${yylexer.prettyPrintRange(yylexer, @error, @SPECIAL_GROUP)}
+                ${yylexer.prettyPrintRange(@error, @SPECIAL_GROUP)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -578,7 +665,7 @@ any_group_regex
                 Seems you did not correctly bracket a lex rule regex set in '[...]' brackets.
 
                   Unterminated regex set:
-                ${yylexer.prettyPrintRange(yylexer, @error, @REGEX_SET_START)}
+                ${yylexer.prettyPrintRange(@error, @REGEX_SET_START)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -652,7 +739,7 @@ option
                 Internal error: option "${$option}" value assignment failure.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error, @option)}
+                ${yylexer.prettyPrintRange(@error, @option)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -665,7 +752,7 @@ option
                 Expected a valid option name (with optional value assignment).
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -675,9 +762,44 @@ option
 
 extra_lexer_module_code
     : optional_module_code_chunk
-        { $$ = $optional_module_code_chunk; }
+        { 
+            var rv = checkActionBlock($optional_module_code_chunk, @optional_module_code_chunk);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
+                `);
+            }
+            $$ = $optional_module_code_chunk; 
+        }
     | extra_lexer_module_code include_macro_code optional_module_code_chunk
-        { $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk; }
+        { 
+            // Each of the 3 chunks should be parse-able as a JS snippet on its own.
+            //
+            // Note: we have already checked the first section in a previous reduction 
+            // of this rule, so we don't need to check that one again!
+            var rv = checkActionBlock($include_macro_code, @include_macro_code);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The source code %include-d into the extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@include_macro_code)}
+                `);
+            }
+            rv = checkActionBlock($optional_module_code_chunk, @optional_module_code_chunk);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
+                `);
+            }
+            $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk; 
+        }
     ;
 
 include_macro_code
@@ -693,7 +815,7 @@ include_macro_code
                 %include MUST be followed by a valid file path.
 
                   Erroneous path:
-                ${yylexer.prettyPrintRange(yylexer, @error, @INCLUDE)}
+                ${yylexer.prettyPrintRange(@error, @INCLUDE)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -706,14 +828,14 @@ module_code_chunk
         { $$ = $CODE; }
     | module_code_chunk CODE
         { $$ = $module_code_chunk + $CODE; }
-    | error
+    | error CODE
         {
             // TODO ...
             yyerror(rmCommonWS`
                 Module code declaration error?
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -732,6 +854,8 @@ optional_module_code_chunk
 
 
 var rmCommonWS = helpers.rmCommonWS;
+var checkActionBlock = helpers.checkActionBlock;
+
 
 function encodeRE(s) {
     return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');

@@ -47,13 +47,13 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 %%
 
-"%{"                                    yy.dept = 0;
+"%{"                                    yy.depth = 0;
                                         yy.include_command_allowed = false;
                                         this.pushState('action'); 
                                         this.unput(yytext);
                                         yytext = '';
                                         return 'ACTION_START';
-<action>"%{"([^]*?)"%}"                 yytext = this.matches[1]; 
+<action>"%{"([^]*?)"%}"                 yytext = this.matches[1].replace(/%\\\}/g, '%}');   // unescape any literal '%\}' that exists within the action code block
                                         yy.include_command_allowed = true;
                                         return 'ACTION';
 <action>"%include"                      %{
@@ -134,8 +134,8 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                     to help jison grok more or less complex action code chunks.
 
                                                       Erroneous area:
-                                                    ` + this.prettyPrintRange(this, yylloc));
-                                                return 'BRACKETS_SURPLUS';
+                                                    ` + this.prettyPrintRange(yylloc));
+                                                return 'BRACKET_SURPLUS';
                                             } else {
                                                 yy.depth--;
                                             }
@@ -170,9 +170,9 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                     to help jison grok more or less complex action code chunks.
 
                                                       Erroneous area:
-                                                    ` + this.prettyPrintRange(this, yylloc));
+                                                    ` + this.prettyPrintRange(yylloc));
                                                 yytext = '';
-                                                return 'BRACKETS_MISSING';
+                                                return 'BRACKET_MISSING';
                                             }
                                             this.popState();
                                             yytext = '';
@@ -193,10 +193,10 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 <rules>{BR}+                            /* empty */
 <rules>{WS}+{BR}+                       /* empty */
-<rules>"//"[^\r\n]*
-                                        /* skip single-line comment */
-<rules>"/*"[^]*?"*/"
-                                        /* skip multi-line comment */
+
+<rules>"//"[^\r\n]*                     /* skip single-line comment */
+<rules>"/*"[^]*?"*/"                    /* skip multi-line comment */
+
 // ACTION code chunks follow rules and are generally indented, but
 // never start with characters special to the lex language itself:
 // - `%` can start options, commands, etc., e.g. `%include` or `%options`
@@ -206,13 +206,14 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                         yy.include_command_allowed = true; 
                                         this.pushState('action'); 
                                         return 'ACTION_START';
+
 <rules>"%%"                             this.popState(); 
                                         this.pushState('code'); 
                                         return '%%';
+
 // Accept any non-regex-special character as a direct literal without
 // the need to put quotes around it:
-<rules>{ANY_LITERAL_CHAR}+
-                                        %{
+<rules>{ANY_LITERAL_CHAR}+              %{
                                             // accept any non-regex, non-lex, non-string-delim,
                                             // non-escape-starter, non-space character as-is
                                             return 'CHARACTER_LIT';
@@ -304,7 +305,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                 while lexing in ${dquote(this.topState())} state.
 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                             yytext = [
                                                 this.matches[1],            // {NAME}
                                                 this.matches[2].trim()      // optional value/parameters
@@ -357,38 +358,38 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\'                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\`                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <options>\"                             yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <options>\'                             yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <options>\`                             yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <*>\"                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -397,7 +398,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\'                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -405,7 +406,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\`                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -413,7 +414,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 
@@ -432,7 +433,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                           regex expression here in jison-lex ${rules}.
 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                         %}
 
 <*>.                                    %{
@@ -441,7 +442,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 						while lexing in ${dquote(this.topState())} state.
 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                         %}
 
 <*><<EOF>>                              return 'EOF';

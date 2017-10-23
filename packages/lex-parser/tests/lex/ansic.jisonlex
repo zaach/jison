@@ -6,8 +6,8 @@ FS			[fFlL]
 IS			[uUlL]*
 
 %{
-#include <stdio.h>
-#include "y.tab.h"
+//#include <stdio.h>
+//#include "y.tab.h"
 
 void count();
 %}

@@ -3,8 +3,8 @@ var path = require("path");
 var assert = require("chai").assert;
 var Jison = require('../setup').Jison;
 var Lexer = require('../setup').Lexer;
-var helpers     = require('../../modules/helpers-lib');
-var code_exec   = helpers.exec;
+var helpers = require('../../modules/helpers-lib');
+var code_exec = helpers.exec;
 
 
 var original_cwd = process.cwd();
@@ -88,6 +88,57 @@ describe("Github issues", function () {
   });
 
   it("GerHobbelt/jison#9:: test cloned yet independent lexer instances", function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input1 = "xxyx";
+    var input2 = "yyx";
+
+    var lexerBase = new RegExpLexer(dict /*, input1 */);
+    function MyLexerClass() {
+        this.yy = {};
+    }
+    MyLexerClass.prototype = lexerBase;
+
+    function mkLexer() {
+        return new MyLexerClass();
+    }
+
+    var lexer1 = mkLexer();
+    lexer1.setInput(input1, {
+      one: true
+    });
+
+    var lexer2 = mkLexer();
+    lexer2.setInput(input2, {
+      two: true
+    });
+
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "Y");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "Y");
+    assert.equal(lexer1.lex(), "Y");
+    assert.equal(lexer2.lex(), "X");
+    assert.equal(lexer1.lex(), "X");
+    assert.equal(lexer2.lex(), "EOF");
+    assert.equal(lexer1.lex(), "EOF");
+    // once you've gone 'past' EOF, you get the EOF **ID** returned, rather than your custom EOF token.
+    // 
+    // The `EOF` attribute is just a handy constant defined in the lexer prototype...
+    assert.equal(lexer2.lex(), lexerBase.EOF);
+    assert.equal(lexer1.lex(), lexerBase.EOF);
+    assert.equal(lexer1.EOF, lexerBase.EOF);
+    assert.equal(lexer2.EOF, lexerBase.EOF);
+  });
+
+  xit("https://github.com/zaach/jison-lex/issues/23:: ES6 arrow functions", function() {
+    //TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     var dict = {
         rules: [
            ["x", "return 'X';" ],

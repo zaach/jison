@@ -179,19 +179,27 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                                 while lexing in ${dquote(this.topState())} state.
 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                             yytext = [
                                                 this.matches[1],            // {NAME}
                                                 this.matches[2].trim()      // optional value/parameters
                                             ];
                                             return 'UNKNOWN_DECL';
                                         %}
-"<"{ID}">"                              yytext = this.matches[1]; return 'TOKEN_TYPE';
-"{{"[^]*?"}}"                           yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-"%{"[^]*?"%}"                           yytext = yytext.substr(2, yyleng - 4); return 'ACTION';
-"{"                                     yy.depth = 0; this.pushState('action'); return '{';
-"->".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); return 'ARROW_ACTION';
-"→".*                                   yytext = yytext.substr(1, yyleng - 1).trim(); return 'ARROW_ACTION';
+"<"{ID}">"                              yytext = this.matches[1]; 
+                                        return 'TOKEN_TYPE';
+"{{"([^]*?)"}}"                         yytext = this.matches[1].replace(/\}\\\}/g, '}}');  // unescape any literal '}\}' that exists within the action code block
+                                        return 'ACTION';
+"%{"([^]*?)"%}"                         yytext = this.matches[1].replace(/%\\\}/g, '%}');   // unescape any literal '%\}' that exists within the action code block
+                                        return 'ACTION';
+"{"                                     yy.depth = 0; this.pushState('action'); 
+                                        return '{';
+"->".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+                                        return 'ARROW_ACTION';
+"→".*                                   yytext = yytext.substr(1, yyleng - 1).trim(); 
+                                        return 'ARROW_ACTION';
+"=>".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+                                        return 'ARROW_ACTION';
 {HEX_NUMBER}                            yytext = parseInt(yytext, 16); return 'INTEGER';
 {DECIMAL_NUMBER}(?![xX0-9a-fA-F])       yytext = parseInt(yytext, 10); return 'INTEGER';
 
@@ -227,38 +235,38 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\'                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <action>\`                              yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <option_values>\"                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <option_values>\'                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <option_values>\`                       yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 <*>\"                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -267,7 +275,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\'                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -275,7 +283,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 <*>\`                                   var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
                                         yyerror(rmCommonWS`
@@ -283,7 +291,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             ${rules}.
 
                                               Erroneous area:
-                                            ` + this.prettyPrintRange(this, yylloc));
+                                            ` + this.prettyPrintRange(yylloc));
                                         return 'error';
 
 
@@ -294,7 +302,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                                 while lexing in ${dquote(this.topState())} state.
                                                 
                                                   Erroneous area:
-                                                ` + this.prettyPrintRange(this, yylloc));
+                                                ` + this.prettyPrintRange(yylloc));
                                         %}
 
 <*><<EOF>>                              return 'EOF';

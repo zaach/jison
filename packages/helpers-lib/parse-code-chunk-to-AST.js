@@ -80,10 +80,35 @@ function prettyPrintAST(ast, options) {
 
 
 
+// validate the given JavaScript snippet: does it compile?
+function checkActionBlock(src, yylloc) {
+    // make sure reasonable line numbers, etc. are reported in any
+    // potential parse errors by pushing the source code down:
+    if (yylloc && yylloc.first_line > 0) {
+        var cnt = yylloc.first_line + 1;
+        var lines = new Array(cnt);
+        src = lines.join('\n') + src;
+    } 
+    if (!src.trim()) {
+        return false;
+    }
+
+    try {
+        parseCodeChunkToAST(src);
+        return false;
+    } catch (ex) {
+        return ex.message || "code snippet cannot be parsed";
+    }
+}
+
+
+
+
 
 
 
 export default {
     parseCodeChunkToAST,
-    prettyPrintAST
+    prettyPrintAST,
+    checkActionBlock,
 };

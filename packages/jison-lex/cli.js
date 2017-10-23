@@ -5,7 +5,7 @@ import nomnom from '@gerhobbelt/nomnom';
 
 import RegExpLexer from './regexp-lexer.js';
 
-var version = '0.6.1-204';                              // require('./package.json').version;
+var version = '0.6.1-205';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {
