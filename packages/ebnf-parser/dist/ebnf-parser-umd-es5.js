@@ -4,7 +4,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate trailing code from the grammar rule set with a \'%%\' marker on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Maybe you did not correctly separate trailing code from the grammar rule set with a \'%%\' marker on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    ']),
     _templateObject2 = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate the parse \'header section\' (token definitions, options, lexer spec, etc.) from the grammar rule set with a \'%%\' on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        Maybe you did not correctly separate the parse \'header section\' (token definitions, options, lexer spec, etc.) from the grammar rule set with a \'%%\' on an otherwise empty line?\n    \n          Erroneous area:\n        ', '\n    ']),
-    _templateObject3 = _taggedTemplateLiteral(['\n            The extra parser module code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra parser module code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject3 = _taggedTemplateLiteral(['\n            The extra parser module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra parser module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject4 = _taggedTemplateLiteral(['\n            action header code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            action header code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject5 = _taggedTemplateLiteral(['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    '], ['\n        declaration list error?\n    \n          Erroneous area:\n        ', '\n    ']),
     _templateObject6 = _taggedTemplateLiteral(['\n            action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            action code block does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
@@ -43,29 +43,36 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
     _templateObject39 = _taggedTemplateLiteral(['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject40 = _taggedTemplateLiteral(['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject41 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                ']),
-    _templateObject42 = _taggedTemplateLiteral(['\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject43 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject44 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject45 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject46 = _taggedTemplateLiteral(['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject47 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject48 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject49 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject50 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject51 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    ']),
-    _templateObject52 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject53 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject54 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject55 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject56 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject57 = _taggedTemplateLiteral(['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject58 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject59 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject60 = _taggedTemplateLiteral(['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%\\}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
-    _templateObject61 = _taggedTemplateLiteral(['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%\\}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
-    _templateObject62 = _taggedTemplateLiteral(['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject63 = _taggedTemplateLiteral(['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject64 = _taggedTemplateLiteral(['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']);
+    _templateObject42 = _taggedTemplateLiteral(['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject43 = _taggedTemplateLiteral(['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded \n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded \n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject44 = _taggedTemplateLiteral(['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject45 = _taggedTemplateLiteral(['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject46 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject47 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject48 = _taggedTemplateLiteral(['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject49 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject50 = _taggedTemplateLiteral(['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject51 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject52 = _taggedTemplateLiteral(['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject53 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject54 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject55 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject56 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    ']),
+    _templateObject57 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject58 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject59 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject60 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject61 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject62 = _taggedTemplateLiteral(['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject63 = _taggedTemplateLiteral(['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject64 = _taggedTemplateLiteral(['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject65 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject66 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject67 = _taggedTemplateLiteral(['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject68 = _taggedTemplateLiteral(['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject69 = _taggedTemplateLiteral(['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject70 = _taggedTemplateLiteral(['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject71 = _taggedTemplateLiteral(['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -377,9 +384,31 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return new_src;
     }
 
-    var parse2AST$1 = {
+    // validate the given JavaScript snippet: does it compile?
+    function checkActionBlock$1(src, yylloc) {
+        // make sure reasonable line numbers, etc. are reported in any
+        // potential parse errors by pushing the source code down:
+        if (yylloc && yylloc.first_line > 0) {
+            var cnt = yylloc.first_line + 1;
+            var lines = new Array(cnt);
+            src = lines.join('\n') + src;
+        }
+        if (!src.trim()) {
+            return false;
+        }
+
+        try {
+            parseCodeChunkToAST(src);
+            return false;
+        } catch (ex) {
+            return ex.message || "code snippet cannot be parsed";
+        }
+    }
+
+    var parse2AST = {
         parseCodeChunkToAST: parseCodeChunkToAST,
-        prettyPrintAST: prettyPrintAST
+        prettyPrintAST: prettyPrintAST,
+        checkActionBlock: checkActionBlock$1
     };
 
     /// HELPER FUNCTION: print the function in source code form, properly indented.
@@ -407,8 +436,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         exec: code_exec.exec,
         dump: code_exec.dump,
 
-        parseCodeChunkToAST: parse2AST$1.parseCodeChunkToAST,
-        prettyPrintAST: parse2AST$1.prettyPrintAST,
+        parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+        prettyPrintAST: parse2AST.prettyPrintAST,
+        checkActionBlock: parse2AST.checkActionBlock,
 
         printFunctionSourceCode: stringifier.printFunctionSourceCode,
         printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
@@ -2019,8 +2049,22 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
                 msg = '' + msg;
 
-                if (this.yylloc) {
-                    if (typeof this.showPosition === 'function') {
+                // heuristic to determine if the error message already contains a (partial) source code dump
+                // as produced by either `showPosition()` or `prettyPrintRange()`:
+                if (show_input_position == undefined) {
+                    show_input_position = !(msg.indexOf('\n') > 0 && msg.indexOf('^') > 0);
+                }
+
+                if (this.yylloc && show_input_position) {
+                    if (typeof this.prettyPrintRange === 'function') {
+                        var pretty_src = this.prettyPrintRange(this.yylloc);
+
+                        if (!/\n\s*$/.test(msg)) {
+                            msg += '\n';
+                        }
+
+                        msg += '\n  Erroneous area:\n' + this.prettyPrintRange(this.yylloc);
+                    } else if (typeof this.showPosition === 'function') {
                         var pos_str = this.showPosition();
 
                         if (pos_str) {
@@ -2640,32 +2684,20 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
                     var rv = lno_pfx + ': ' + line;
                     var errpfx = new Array(lineno_display_width + 1).join('^');
+                    var offset = 2 + 1;
+                    var len = 0;
 
                     if (lno === loc.first_line) {
-                        var offset = loc.first_column + 2;
+                        offset += loc.first_column;
 
-                        var len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
-
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
                     } else if (lno === loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, loc.last_column + 1);
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, loc.last_column + 1);
                     } else if (lno > loc.first_line && lno < loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, line.length + 1);
+                        len = Math.max(2, line.length + 1);
+                    }
+
+                    if (len) {
                         var lead = new Array(offset).join('.');
                         var mark = new Array(len).join('^');
                         rv += '\n' + errpfx + lead + mark;
@@ -2684,15 +2716,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 if (nonempty_line_indexes.length > 2 * MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT) {
                     var clip_start = nonempty_line_indexes[MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT - 1] + 1;
                     var clip_end = nonempty_line_indexes[nonempty_line_indexes.length - MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT] - 1;
-
-                    console.log('clip off: ', {
-                        start: clip_start,
-                        end: clip_end,
-                        len: clip_end - clip_start + 1,
-                        arr: nonempty_line_indexes,
-                        rv: rv
-                    });
-
                     var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
                     intermediate_line += '\n' + new Array(lineno_display_width + 1).join('-') + '  (---------------)';
                     rv.splice(clip_start, clip_end - clip_start + 1, intermediate_line);
@@ -4456,7 +4479,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     this.$ = yyvstack[yysp - 4];
-                    if (yyvstack[yysp - 1] && yyvstack[yysp - 1].trim() !== '') {
+                    if (yyvstack[yysp - 1].trim() !== '') {
                         yy.addDeclaration(this.$, { include: yyvstack[yysp - 1] });
                     }
                     return extend(this.$, yyvstack[yysp - 2]);
@@ -4471,7 +4494,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
                     break;
 
                 case 3:
@@ -4483,18 +4506,26 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject2, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
                     break;
 
                 case 4:
-                    /*! Production::    optional_end_block : %epsilon */
+                /*! Production::    optional_end_block : %epsilon */
+                case 100:
+                /*! Production::    suffix : %epsilon */
+                case 116:
+                /*! Production::    action : %epsilon */
+                case 117:
+                /*! Production::    action_body : %epsilon */
+                case 132:
+                    /*! Production::    optional_module_code_chunk : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    this.$ = undefined;
+                    this.$ = '';
                     break;
 
                 case 5:
@@ -4505,9 +4536,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp]);
+                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject3, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS(_templateObject3, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = yyvstack[yysp];
                     break;
@@ -4536,9 +4567,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     this.$ = yyvstack[yysp - 1];
-                    var rv = checkActionBlock(yyvstack[yysp]);
+                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject4, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS(_templateObject4, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     yy.addDeclaration(this.$, { actionInclude: yyvstack[yysp] });
                     break;
@@ -4564,7 +4595,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject5, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject5, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 12:
@@ -4619,9 +4650,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp]);
+                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject6, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS(_templateObject6, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = { include: yyvstack[yysp] };
                     break;
@@ -4634,9 +4665,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp]);
+                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject4, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS(_templateObject4, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = { include: yyvstack[yysp] };
                     break;
@@ -4728,7 +4759,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject7, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject7, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 26:
@@ -4740,7 +4771,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject8, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject8, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
                     break;
 
                 case 27:
@@ -4751,9 +4782,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp]);
+                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject9, $init_code_name, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                        yyparser.yyError(rmCommonWS(_templateObject9, $init_code_name, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     }
                     this.$ = {
                         initCode: {
@@ -4772,7 +4803,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject10, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
+                    yyparser.yyError(rmCommonWS(_templateObject10, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
                     break;
 
                 case 29:
@@ -4785,7 +4816,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject11, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject11, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 30:
@@ -4798,7 +4829,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject12, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject12, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 31:
@@ -4811,7 +4842,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject13, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject13, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 32:
@@ -4898,7 +4929,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject14, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
+                    yyparser.yyError(rmCommonWS(_templateObject14, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
                     break;
 
                 case 41:
@@ -4911,7 +4942,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject15, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject15, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 42:
@@ -4991,7 +5022,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject16, yyvstack[yysp - 2], yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject16, yyvstack[yysp - 2], yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 49:
@@ -5004,7 +5035,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject17, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject17, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 50:
@@ -5030,7 +5061,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject18, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject18, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 53:
@@ -5043,7 +5074,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject19, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject19, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 54:
@@ -5067,7 +5098,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject20, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject20, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 56:
@@ -5253,7 +5284,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject21, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject21, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
                     break;
 
                 case 77:
@@ -5266,7 +5297,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject22, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject22, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 78:
@@ -5292,7 +5323,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject23, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject23, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 81:
@@ -5326,7 +5357,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject24, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject24, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 85:
@@ -5339,7 +5370,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject25, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject25, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 86:
@@ -5352,15 +5383,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     this.$ = [yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : ''];
                     if (yyvstack[yysp]) {
-                        var rv = checkActionBlock(yyvstack[yysp]);
+                        var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                         if (rv) {
-                            yyparser.yyError(rmCommonWS(_templateObject26, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                            yyparser.yyError(rmCommonWS(_templateObject26, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                         }
                         this.$.push(yyvstack[yysp]);
                     }
                     if (yyvstack[yysp - 1]) {
                         if (yyvstack[yysp - 2].length === 0) {
-                            yyparser.yyError(rmCommonWS(_templateObject27, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 2])));
+                            yyparser.yyError(rmCommonWS(_templateObject27, yylexer.prettyPrintRange(yylstack[yysp - 2])));
                         }
                         this.$.push(yyvstack[yysp - 1]);
                     }
@@ -5379,9 +5410,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     this.$ = [''];
                     if (yyvstack[yysp]) {
-                        var rv = checkActionBlock(yyvstack[yysp]);
+                        var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
                         if (rv) {
-                            yyparser.yyError(rmCommonWS(_templateObject28, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                            yyparser.yyError(rmCommonWS(_templateObject28, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                         }
                         this.$.push(yyvstack[yysp]);
                     }
@@ -5400,7 +5431,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject29, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject29, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 89:
@@ -5521,24 +5552,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject30, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
-                    break;
-
-                case 100:
-                /*! Production::    suffix : %epsilon */
-                case 116:
-                /*! Production::    action : %epsilon */
-                case 117:
-                /*! Production::    action_body : %epsilon */
-                case 132:
-                    /*! Production::    optional_module_code_chunk : %epsilon */
-
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
-                    this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
-
-
-                    this.$ = '';
+                    yyparser.yyError(rmCommonWS(_templateObject30, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 104:
@@ -5562,7 +5576,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject31, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS(_templateObject31, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 106:
@@ -5585,7 +5599,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject32, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject32, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 115:
@@ -5630,7 +5644,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject33, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS(_templateObject33, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 125:
@@ -5655,7 +5669,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
                     var rv = checkActionBlock(fileContent);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS(_templateObject34, $PATH, rv, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                        yyparser.yyError(rmCommonWS(_templateObject34, $PATH, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     }
                     // And no, we don't support nested '%include':
                     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
@@ -5670,7 +5684,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS(_templateObject35) + yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]));
+                    yyparser.yyError(rmCommonWS(_templateObject35) + yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]));
                     break;
 
                 case 130:
@@ -5683,7 +5697,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS(_templateObject36) + yylexer.prettyPrintRange(yylexer, yylstack[yysp]));
+                    yyparser.yyError(rmCommonWS(_templateObject36) + yylexer.prettyPrintRange(yylstack[yysp]));
                     break;
 
                 case 164:
@@ -6830,25 +6844,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     var rmCommonWS = helpers.rmCommonWS;
     var dquote = helpers.dquote;
-    var parse2AST = helpers.parseCodeChunkToAST;
-
-    // validate the given JavaScript snippet: does it compile?
-    function checkActionBlock(src) {
-        src = src.trim();
-        if (!src) {
-            return false;
-        }
-        try {
-            parse2AST(src);
-            return false;
-        } catch (ex) {
-            console.error("parse2AST error: ", {
-                src: src,
-                ex: ex
-            });
-            return ex.message || "code snippet cannot be parsed";
-        }
-    }
+    var checkActionBlock = helpers.checkActionBlock;
 
     // transform ebnf to bnf if necessary
     function extend(json, grammar) {
@@ -7251,8 +7247,22 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
                 msg = '' + msg;
 
-                if (this.yylloc) {
-                    if (typeof this.showPosition === 'function') {
+                // heuristic to determine if the error message already contains a (partial) source code dump
+                // as produced by either `showPosition()` or `prettyPrintRange()`:
+                if (show_input_position == undefined) {
+                    show_input_position = !(msg.indexOf('\n') > 0 && msg.indexOf('^') > 0);
+                }
+
+                if (this.yylloc && show_input_position) {
+                    if (typeof this.prettyPrintRange === 'function') {
+                        var pretty_src = this.prettyPrintRange(this.yylloc);
+
+                        if (!/\n\s*$/.test(msg)) {
+                            msg += '\n';
+                        }
+
+                        msg += '\n  Erroneous area:\n' + this.prettyPrintRange(this.yylloc);
+                    } else if (typeof this.showPosition === 'function') {
                         var pos_str = this.showPosition();
 
                         if (pos_str) {
@@ -7872,32 +7882,20 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
                     var rv = lno_pfx + ': ' + line;
                     var errpfx = new Array(lineno_display_width + 1).join('^');
+                    var offset = 2 + 1;
+                    var len = 0;
 
                     if (lno === loc.first_line) {
-                        var offset = loc.first_column + 2;
+                        offset += loc.first_column;
 
-                        var len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
-
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
                     } else if (lno === loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, loc.last_column + 1);
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, loc.last_column + 1);
                     } else if (lno > loc.first_line && lno < loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, line.length + 1);
+                        len = Math.max(2, line.length + 1);
+                    }
+
+                    if (len) {
                         var lead = new Array(offset).join('.');
                         var mark = new Array(len).join('^');
                         rv += '\n' + errpfx + lead + mark;
@@ -7916,15 +7914,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 if (nonempty_line_indexes.length > 2 * MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT) {
                     var clip_start = nonempty_line_indexes[MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT - 1] + 1;
                     var clip_end = nonempty_line_indexes[nonempty_line_indexes.length - MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT] - 1;
-
-                    console.log('clip off: ', {
-                        start: clip_start,
-                        end: clip_end,
-                        len: clip_end - clip_start + 1,
-                        arr: nonempty_line_indexes,
-                        rv: rv
-                    });
-
                     var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
                     intermediate_line += '\n' + new Array(lineno_display_width + 1).join('-') + '  (---------------)';
                     rv.splice(clip_start, clip_end - clip_start + 1, intermediate_line);
@@ -8564,7 +8553,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Conditions:: token bnf ebnf INITIAL */
                         /*! Rule::       %{NAME}([^\r\n]*) */
                         /* ignore unrecognized decl */
-                        this.warn(rmCommonWS(_templateObject37, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                        this.warn(rmCommonWS(_templateObject37, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         yy_.yytext = [this.matches[1], // {NAME}  
                         this.matches[2].trim() // optional value/parameters 
@@ -8583,16 +8572,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 66:
                         /*! Conditions:: token bnf ebnf INITIAL */
-                        /*! Rule::       \{\{[^]*?\}\} */
-                        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4);
+                        /*! Rule::       \{\{([^]*?)\}\} */
+                        yy_.yytext = this.matches[1].replace(/\}\\\}/g, '}}'); // unescape any literal '}\}' that exists within the action code block 
 
                         return 15;
                         break;
 
                     case 67:
                         /*! Conditions:: token bnf ebnf INITIAL */
-                        /*! Rule::       %\{[^]*?%\} */
-                        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 4);
+                        /*! Rule::       %\{([^]*?)%\} */
+                        yy_.yytext = this.matches[1].replace(/%\\\}/g, '%}'); // unescape any literal '%\}' that exists within the action code block 
 
                         return 15;
                         break;
@@ -8624,13 +8613,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 71:
                         /*! Conditions:: token bnf ebnf INITIAL */
+                        /*! Rule::       =>.* */
+                        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim();
+
+                        return 42;
+                        break;
+
+                    case 72:
+                        /*! Conditions:: token bnf ebnf INITIAL */
                         /*! Rule::       {HEX_NUMBER} */
                         yy_.yytext = parseInt(yy_.yytext, 16);
 
                         return 37;
                         break;
 
-                    case 72:
+                    case 73:
                         /*! Conditions:: token bnf ebnf INITIAL */
                         /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */
                         yy_.yytext = parseInt(yy_.yytext, 10);
@@ -8638,14 +8635,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 37;
                         break;
 
-                    case 74:
+                    case 75:
                         /*! Conditions:: code */
                         /*! Rule::       [^\r\n]+ */
                         return 46; // the bit of CODE just before EOF...  
 
                         break;
 
-                    case 75:
+                    case 76:
                         /*! Conditions:: path */
                         /*! Rule::       {BR} */
                         this.popState();
@@ -8653,7 +8650,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         this.unput(yy_.yytext);
                         break;
 
-                    case 76:
+                    case 77:
                         /*! Conditions:: path */
                         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
                         yy_.yytext = unescQuote(this.matches[1]);
@@ -8662,7 +8659,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 45;
                         break;
 
-                    case 77:
+                    case 78:
                         /*! Conditions:: path */
                         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
                         yy_.yytext = unescQuote(this.matches[1]);
@@ -8671,13 +8668,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 45;
                         break;
 
-                    case 78:
+                    case 79:
                         /*! Conditions:: path */
                         /*! Rule::       {WS}+ */
                         // skip whitespace in the line 
                         break;
 
-                    case 79:
+                    case 80:
                         /*! Conditions:: path */
                         /*! Rule::       [^\s\r\n]+ */
                         this.popState();
@@ -8685,89 +8682,89 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 45;
                         break;
 
-                    case 80:
-                        /*! Conditions:: action */
-                        /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
-
-                        return 2;
-                        break;
-
                     case 81:
                         /*! Conditions:: action */
-                        /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Rule::       " */
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 82:
                         /*! Conditions:: action */
-                        /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Rule::       ' */
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 83:
-                        /*! Conditions:: option_values */
-                        /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Conditions:: action */
+                        /*! Rule::       ` */
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 84:
                         /*! Conditions:: option_values */
-                        /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Rule::       " */
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 85:
                         /*! Conditions:: option_values */
-                        /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Rule::       ' */
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 86:
-                        /*! Conditions:: * */
-                        /*! Rule::       " */
-                        var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        /*! Conditions:: option_values */
+                        /*! Rule::       ` */
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 87:
                         /*! Conditions:: * */
-                        /*! Rule::       ' */
+                        /*! Rule::       " */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 88:
                         /*! Conditions:: * */
-                        /*! Rule::       ` */
+                        /*! Rule::       ' */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
 
                     case 89:
                         /*! Conditions:: * */
+                        /*! Rule::       ` */
+                        var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
+
+                        return 2;
+                        break;
+
+                    case 90:
+                        /*! Conditions:: * */
                         /*! Rule::       . */
                         /* b0rk on bad characters */
-                        yy_.yyerror(rmCommonWS(_templateObject41, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject41, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         break;
 
@@ -8923,11 +8920,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                 /*! Conditions:: code */
                 /*! Rule::       [^\r\n]*(\r|\n)+ */
-                73: 46,
+                74: 46,
 
                 /*! Conditions:: * */
                 /*! Rule::       $ */
-                90: 1
+                91: 1
             },
 
             rules: [
@@ -8997,78 +8994,79 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /* 63: *//^(?:%include\b)/,
             /* 64: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
             /* 65: */new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
-            /* 66: */new XRegExp('^(?:\\{\\{[^]*?\\}\\})', ''),
-            /* 67: */new XRegExp('^(?:%\\{[^]*?%\\})', ''),
+            /* 66: */new XRegExp('^(?:\\{\\{([^]*?)\\}\\})', ''),
+            /* 67: */new XRegExp('^(?:%\\{([^]*?)%\\})', ''),
             /* 68: *//^(?:\{)/,
             /* 69: *//^(?:->.*)/,
             /* 70: *//^(?:→.*)/,
-            /* 71: *//^(?:(0[Xx][\dA-Fa-f]+))/,
-            /* 72: *//^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
-            /* 73: *//^(?:[^\r\n]*(\r|\n)+)/,
-            /* 74: *//^(?:[^\r\n]+)/,
-            /* 75: *//^(?:(\r\n|\n|\r))/,
-            /* 76: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-            /* 77: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-            /* 78: *//^(?:([^\S\n\r])+)/,
-            /* 79: *//^(?:\S+)/,
-            /* 80: *//^(?:")/,
-            /* 81: *//^(?:')/,
-            /* 82: *//^(?:`)/,
-            /* 83: *//^(?:")/,
-            /* 84: *//^(?:')/,
-            /* 85: *//^(?:`)/,
-            /* 86: *//^(?:")/,
-            /* 87: *//^(?:')/,
-            /* 88: *//^(?:`)/,
-            /* 89: *//^(?:.)/,
-            /* 90: *//^(?:$)/],
+            /* 71: *//^(?:=>.*)/,
+            /* 72: *//^(?:(0[Xx][\dA-Fa-f]+))/,
+            /* 73: *//^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
+            /* 74: *//^(?:[^\r\n]*(\r|\n)+)/,
+            /* 75: *//^(?:[^\r\n]+)/,
+            /* 76: *//^(?:(\r\n|\n|\r))/,
+            /* 77: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+            /* 78: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+            /* 79: *//^(?:([^\S\n\r])+)/,
+            /* 80: *//^(?:\S+)/,
+            /* 81: *//^(?:")/,
+            /* 82: *//^(?:')/,
+            /* 83: *//^(?:`)/,
+            /* 84: *//^(?:")/,
+            /* 85: *//^(?:')/,
+            /* 86: *//^(?:`)/,
+            /* 87: *//^(?:")/,
+            /* 88: *//^(?:')/,
+            /* 89: *//^(?:`)/,
+            /* 90: *//^(?:.)/,
+            /* 91: *//^(?:$)/],
 
             conditions: {
                 'action': {
-                    rules: [0, 1, 2, 3, 4, 5, 6, 7, 8, 80, 81, 82, 86, 87, 88, 89, 90],
+                    rules: [0, 1, 2, 3, 4, 5, 6, 7, 8, 81, 82, 83, 87, 88, 89, 90, 91],
                     inclusive: false
                 },
 
                 'code': {
-                    rules: [63, 73, 74, 86, 87, 88, 89, 90],
+                    rules: [63, 74, 75, 87, 88, 89, 90, 91],
                     inclusive: false
                 },
 
                 'path': {
-                    rules: [29, 30, 75, 76, 77, 78, 79, 86, 87, 88, 89, 90],
+                    rules: [29, 30, 76, 77, 78, 79, 80, 87, 88, 89, 90, 91],
                     inclusive: false
                 },
 
                 'options': {
-                    rules: [24, 25, 29, 30, 32, 33, 34, 86, 87, 88, 89, 90],
+                    rules: [24, 25, 29, 30, 32, 33, 34, 87, 88, 89, 90, 91],
                     inclusive: false
                 },
 
                 'option_values': {
-                    rules: [26, 27, 28, 29, 30, 31, 34, 83, 84, 85, 86, 87, 88, 89, 90],
+                    rules: [26, 27, 28, 29, 30, 31, 34, 84, 85, 86, 87, 88, 89, 90, 91],
                     inclusive: false
                 },
 
                 'token': {
-                    rules: [9, 10, 11, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 64, 65, 66, 67, 68, 69, 70, 71, 72, 86, 87, 88, 89, 90],
+                    rules: [9, 10, 11, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 87, 88, 89, 90, 91],
 
                     inclusive: true
                 },
 
                 'bnf': {
-                    rules: [12, 13, 14, 15, 16, 17, 18, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 86, 87, 88, 89, 90],
+                    rules: [12, 13, 14, 15, 16, 17, 18, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 87, 88, 89, 90, 91],
 
                     inclusive: true
                 },
 
                 'ebnf': {
-                    rules: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 86, 87, 88, 89, 90],
+                    rules: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 87, 88, 89, 90, 91],
 
                     inclusive: true
                 },
 
                 'INITIAL': {
-                    rules: [29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 86, 87, 88, 89, 90],
+                    rules: [29, 30, 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 87, 88, 89, 90, 91],
 
                     inclusive: true
                 }
@@ -9963,8 +9961,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             return tokenset;
         },
         productions_: bp$2({
-            pop: u$2([54, 54, s$2, [55, 3], 56, 57, 57, s$2, [58, 11], 59, 59, 60, 60, 61, 61, 62, 62, 63, 63, 64, 64, s$2, [65, 4], 66, 66, 67, 67, s$2, [68, 3], s$2, [69, 9], s$2, [70, 4], 71, 71, 72, s$2, [73, 4], s$2, [74, 4], 75, 75, s$2, [76, 17], 77, 78, 78, 79, 79, 80, s$2, [80, 4, 1], 83, 84, 85, 85, s$2, [86, 6], 87, 87, 88, 88, s$2, [89, 3], 90, 90]),
-            rule: u$2([s$2, [4, 3], 2, 0, 0, 2, 0, s$2, [2, 3], s$2, [1, 3], 3, 3, 2, 3, 3, s$2, [1, 7], 2, 1, 2, c$2, [23, 3], 4, 4, 3, c$2, [29, 4], s$2, [3, 3], s$2, [2, 8], 0, s$2, [3, 3], 0, 1, 3, 1, s$2, [3, 4, -1], c$2, [21, 3], c$2, [40, 3], s$2, [3, 4], s$2, [2, 5], c$2, [12, 3], s$2, [1, 6], c$2, [16, 3], c$2, [10, 8], c$2, [9, 3], s$2, [3, 4], c$2, [10, 4], c$2, [32, 5], 0])
+            pop: u$2([54, 54, s$2, [55, 6], 56, 57, 57, s$2, [58, 11], 59, 59, 60, 60, 61, 61, 62, 62, 63, 63, 64, 64, s$2, [65, 4], 66, 66, 67, 67, s$2, [68, 3], s$2, [69, 9], s$2, [70, 4], 71, 71, 72, s$2, [73, 4], s$2, [74, 4], 75, 75, s$2, [76, 17], 77, 78, 78, 79, 79, 80, s$2, [80, 4, 1], 83, 84, 85, 85, s$2, [86, 6], 87, 87, 88, 88, s$2, [89, 3], 90, 90]),
+            rule: u$2([s$2, [4, 3], s$2, [5, 4, -1], 0, 0, 2, 0, s$2, [2, 3], s$2, [1, 3], 3, 3, 2, 3, 3, s$2, [1, 7], 2, 1, 2, c$2, [23, 3], 4, c$2, [32, 4], 2, c$2, [22, 3], 3, s$2, [2, 8], 0, s$2, [3, 3], 0, 1, 3, 1, s$2, [3, 4, -1], c$2, [21, 3], c$2, [40, 3], s$2, [3, 4], s$2, [2, 5], c$2, [12, 3], s$2, [1, 6], c$2, [16, 3], c$2, [10, 8], c$2, [9, 3], s$2, [3, 4], c$2, [10, 4], c$2, [82, 4], 1, 0])
         }),
         performAction: function parser__PerformAction(yyloc, yystate /* action[1] */, yysp, yyvstack, yylstack) {
 
@@ -10027,7 +10025,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject42, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject42, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 3:
@@ -10038,7 +10036,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    if (yyvstack[yysp] && yyvstack[yysp].trim() !== '') {
+                    if (yyvstack[yysp].trim() !== '') {
                         this.$ = { rules: yyvstack[yysp - 2], moduleInclude: yyvstack[yysp] };
                     } else {
                         this.$ = { rules: yyvstack[yysp - 2] };
@@ -10046,6 +10044,42 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     break;
 
                 case 4:
+                    /*! Production::    rules_and_epilogue : "%%" error rules "%%" extra_lexer_module_code */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    this.$ = yyvstack[yysp - 4];
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 4, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+
+
+                    yyparser.yyError(rmCommonWS$2(_templateObject43, yylexer.prettyPrintRange(yylstack[yysp - 3]), yyvstack[yysp - 3].errStr));
+                    break;
+
+                case 5:
+                    /*! Production::    rules_and_epilogue : "%%" rules "%%" error */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    this.$ = yyvstack[yysp - 3];
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+
+
+                    yyparser.yyError(rmCommonWS$2(_templateObject44, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
+                    break;
+
+                case 6:
+                    /*! Production::    rules_and_epilogue : "%%" error rules */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    this.$ = yyvstack[yysp - 2];
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+
+
+                    yyparser.yyError(rmCommonWS$2(_templateObject43, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    break;
+
+                case 7:
                     /*! Production::    rules_and_epilogue : "%%" rules */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10056,7 +10090,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { rules: yyvstack[yysp] };
                     break;
 
-                case 5:
+                case 8:
                     /*! Production::    rules_and_epilogue : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10067,7 +10101,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { rules: [] };
                     break;
 
-                case 6:
+                case 9:
                     /*! Production::    init : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10080,7 +10114,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     if (!yy.options) yy.options = {};
                     break;
 
-                case 7:
+                case 10:
                     /*! Production::    definitions : definitions definition */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10102,7 +10136,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     }
                     break;
 
-                case 8:
+                case 11:
                     /*! Production::    definitions : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10117,10 +10151,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     };
                     break;
 
-                case 9:
-                /*! Production::    definition : NAME regex */
-                case 38:
-                    /*! Production::    rule : regex action */
+                case 12:
+                    /*! Production::    definition : NAME regex */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
@@ -10130,9 +10162,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
                     break;
 
-                case 10:
+                case 13:
                 /*! Production::    definition : START_INC names_inclusive */
-                case 11:
+                case 14:
                     /*! Production::    definition : START_EXC names_exclusive */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10143,7 +10175,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp];
                     break;
 
-                case 12:
+                case 15:
                     /*! Production::    definition : action */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10151,12 +10183,17 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
-                    yy.actionInclude.push(yyvstack[yysp]);this.$ = null;
+                    var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject45, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                    }
+                    yy.actionInclude.push(yyvstack[yysp]);
+                    this.$ = null;
                     break;
 
-                case 13:
+                case 16:
                 /*! Production::    definition : options */
-                case 99:
+                case 102:
                     /*! Production::    option_list : option */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10167,7 +10204,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = null;
                     break;
 
-                case 14:
+                case 17:
                     /*! Production::    definition : UNKNOWN_DECL */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10178,7 +10215,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { type: 'unknown', body: yyvstack[yysp] };
                     break;
 
-                case 15:
+                case 18:
                     /*! Production::    definition : IMPORT import_name import_path */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10189,7 +10226,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { type: 'imports', name: yyvstack[yysp - 1], path: yyvstack[yysp] };
                     break;
 
-                case 16:
+                case 19:
                     /*! Production::    definition : IMPORT import_name error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10198,10 +10235,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject43, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject46, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 17:
+                case 20:
                     /*! Production::    definition : IMPORT error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10210,10 +10247,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject44, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject47, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
-                case 18:
+                case 21:
                     /*! Production::    definition : INIT_CODE init_code_name action */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10221,6 +10258,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
 
 
+                    var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject48, $init_code_name, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                    }
                     this.$ = {
                         type: 'codesection',
                         qualifier: yyvstack[yysp - 1],
@@ -10228,7 +10269,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     };
                     break;
 
-                case 19:
+                case 22:
                     /*! Production::    definition : INIT_CODE error action */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10237,36 +10278,34 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject45, yylexer.prettyPrintRange(yylexer, yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject49, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
                     break;
 
-                case 20:
-                /*! Production::    init_code_name : NAME */
-                case 21:
-                /*! Production::    init_code_name : STRING_LIT */
-                case 22:
-                /*! Production::    import_name : NAME */
                 case 23:
-                /*! Production::    import_name : STRING_LIT */
+                /*! Production::    init_code_name : NAME */
                 case 24:
-                /*! Production::    import_path : NAME */
+                /*! Production::    init_code_name : STRING_LIT */
                 case 25:
+                /*! Production::    import_name : NAME */
+                case 26:
+                /*! Production::    import_name : STRING_LIT */
+                case 27:
+                /*! Production::    import_path : NAME */
+                case 28:
                 /*! Production::    import_path : STRING_LIT */
-                case 61:
+                case 64:
                 /*! Production::    regex_list : regex_concat */
-                case 66:
+                case 69:
                 /*! Production::    nonempty_regex_list : regex_concat */
-                case 68:
+                case 71:
                 /*! Production::    regex_concat : regex_base */
-                case 93:
+                case 96:
                 /*! Production::    escape_char : ESCAPE_CHAR */
-                case 94:
+                case 97:
                 /*! Production::    range_regex : RANGE_REGEX */
-                case 106:
-                /*! Production::    extra_lexer_module_code : optional_module_code_chunk */
-                case 110:
-                /*! Production::    module_code_chunk : CODE */
                 case 113:
+                /*! Production::    module_code_chunk : CODE */
+                case 116:
                     /*! Production::    optional_module_code_chunk : module_code_chunk */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10277,7 +10316,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp];
                     break;
 
-                case 26:
+                case 29:
                     /*! Production::    names_inclusive : START_COND */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10288,7 +10327,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { type: 'names', names: {} };this.$.names[yyvstack[yysp]] = 0;
                     break;
 
-                case 27:
+                case 30:
                     /*! Production::    names_inclusive : names_inclusive START_COND */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10299,7 +10338,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1];this.$.names[yyvstack[yysp]] = 0;
                     break;
 
-                case 28:
+                case 31:
                     /*! Production::    names_exclusive : START_COND */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10310,7 +10349,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = { type: 'names', names: {} };this.$.names[yyvstack[yysp]] = 1;
                     break;
 
-                case 29:
+                case 32:
                     /*! Production::    names_exclusive : names_exclusive START_COND */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10321,7 +10360,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1];this.$.names[yyvstack[yysp]] = 1;
                     break;
 
-                case 30:
+                case 33:
                     /*! Production::    rules : rules rules_collective */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10332,9 +10371,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1].concat(yyvstack[yysp]);
                     break;
 
-                case 31:
+                case 34:
                 /*! Production::    rules : %epsilon */
-                case 37:
+                case 40:
                     /*! Production::    rule_block : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10345,7 +10384,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = [];
                     break;
 
-                case 32:
+                case 35:
                     /*! Production::    rules_collective : start_conditions rule */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10359,7 +10398,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = [yyvstack[yysp]];
                     break;
 
-                case 33:
+                case 36:
                     /*! Production::    rules_collective : start_conditions "{" rule_block "}" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10375,7 +10414,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1];
                     break;
 
-                case 34:
+                case 37:
                     /*! Production::    rules_collective : start_conditions "{" error "}" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10384,10 +10423,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject46, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer, yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject50, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
                     break;
 
-                case 35:
+                case 38:
                     /*! Production::    rules_collective : start_conditions "{" error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10396,10 +10435,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject47, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject51, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 36:
+                case 39:
                     /*! Production::    rule_block : rule_block rule */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10410,7 +10449,22 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1];this.$.push(yyvstack[yysp]);
                     break;
 
-                case 39:
+                case 41:
+                    /*! Production::    rule : regex action */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+
+
+                    var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject52, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                    }
+                    this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
+                    break;
+
+                case 42:
                     /*! Production::    rule : regex error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10419,10 +10473,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-                    yyparser.yyError(rmCommonWS$2(_templateObject48, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject53, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
-                case 40:
+                case 43:
                     /*! Production::    action : ACTION_START action_body BRACKET_MISSING */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10431,10 +10485,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject49, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject54, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
-                case 41:
+                case 44:
                     /*! Production::    action : ACTION_START action_body BRACKET_SURPLUS */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10443,10 +10497,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject50, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject55, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
-                case 42:
+                case 45:
                     /*! Production::    action : ACTION_START action_body ACTION_END */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10472,9 +10526,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     }
                     break;
 
-                case 43:
+                case 46:
                 /*! Production::    action_body : action_body ACTION */
-                case 48:
+                case 51:
                     /*! Production::    action_body : action_body include_macro_code */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10485,21 +10539,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + '\n\n' + yyvstack[yysp] + '\n\n';
                     break;
 
-                case 44:
-                /*! Production::    action_body : action_body ACTION_BODY */
-                case 45:
-                /*! Production::    action_body : action_body ACTION_BODY_C_COMMENT */
-                case 46:
-                /*! Production::    action_body : action_body ACTION_BODY_CPP_COMMENT */
                 case 47:
+                /*! Production::    action_body : action_body ACTION_BODY */
+                case 48:
+                /*! Production::    action_body : action_body ACTION_BODY_C_COMMENT */
+                case 49:
+                /*! Production::    action_body : action_body ACTION_BODY_CPP_COMMENT */
+                case 50:
                 /*! Production::    action_body : action_body ACTION_BODY_WHITESPACE */
-                case 67:
+                case 70:
                 /*! Production::    regex_concat : regex_concat regex_base */
-                case 79:
+                case 82:
                 /*! Production::    regex_base : regex_base range_regex */
-                case 89:
+                case 92:
                 /*! Production::    regex_set : regex_set regex_set_atom */
-                case 111:
+                case 114:
                     /*! Production::    module_code_chunk : module_code_chunk CODE */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10510,7 +10564,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
                     break;
 
-                case 49:
+                case 52:
                     /*! Production::    action_body : action_body INCLUDE_PLACEMENT_ERROR */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10519,10 +10573,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject51, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject56, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
-                case 50:
+                case 53:
                     /*! Production::    action_body : action_body error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10531,14 +10585,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject52, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject57, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
-                case 51:
+                case 54:
                 /*! Production::    action_body : %epsilon */
-                case 62:
+                case 65:
                 /*! Production::    regex_list : %epsilon */
-                case 114:
+                case 117:
                     /*! Production::    optional_module_code_chunk : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10549,7 +10603,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '';
                     break;
 
-                case 52:
+                case 55:
                     /*! Production::    start_conditions : "<" name_list ">" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10560,7 +10614,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1];
                     break;
 
-                case 53:
+                case 56:
                     /*! Production::    start_conditions : "<" name_list error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10569,10 +10623,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject53, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject58, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 54:
+                case 57:
                     /*! Production::    start_conditions : "<" "*" ">" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10583,7 +10637,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = ['*'];
                     break;
 
-                case 55:
+                case 58:
                     /*! Production::    start_conditions : %epsilon */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10592,7 +10646,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
                     break;
 
-                case 56:
+                case 59:
                     /*! Production::    name_list : NAME */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10603,7 +10657,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = [yyvstack[yysp]];
                     break;
 
-                case 57:
+                case 60:
                     /*! Production::    name_list : name_list "," NAME */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10614,7 +10668,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 2];this.$.push(yyvstack[yysp]);
                     break;
 
-                case 58:
+                case 61:
                     /*! Production::    regex : nonempty_regex_list */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10680,9 +10734,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     }
                     break;
 
-                case 59:
+                case 62:
                 /*! Production::    regex_list : regex_list "|" regex_concat */
-                case 63:
+                case 66:
                     /*! Production::    nonempty_regex_list : nonempty_regex_list "|" regex_concat */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10693,9 +10747,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 2] + '|' + yyvstack[yysp];
                     break;
 
-                case 60:
+                case 63:
                 /*! Production::    regex_list : regex_list "|" */
-                case 64:
+                case 67:
                     /*! Production::    nonempty_regex_list : nonempty_regex_list "|" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10706,7 +10760,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + '|';
                     break;
 
-                case 65:
+                case 68:
                     /*! Production::    nonempty_regex_list : "|" regex_concat */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10717,7 +10771,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '|' + yyvstack[yysp];
                     break;
 
-                case 69:
+                case 72:
                     /*! Production::    regex_base : "(" regex_list ")" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10728,7 +10782,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '(' + yyvstack[yysp - 1] + ')';
                     break;
 
-                case 70:
+                case 73:
                     /*! Production::    regex_base : SPECIAL_GROUP regex_list ")" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10739,9 +10793,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + ')';
                     break;
 
-                case 71:
+                case 74:
                 /*! Production::    regex_base : "(" regex_list error */
-                case 72:
+                case 75:
                     /*! Production::    regex_base : SPECIAL_GROUP regex_list error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10750,10 +10804,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject54, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject59, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 73:
+                case 76:
                     /*! Production::    regex_base : regex_base "+" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10764,7 +10818,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + '+';
                     break;
 
-                case 74:
+                case 77:
                     /*! Production::    regex_base : regex_base "*" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10775,7 +10829,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + '*';
                     break;
 
-                case 75:
+                case 78:
                     /*! Production::    regex_base : regex_base "?" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10786,7 +10840,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 1] + '?';
                     break;
 
-                case 76:
+                case 79:
                     /*! Production::    regex_base : "/" regex_base */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10797,7 +10851,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '(?=' + yyvstack[yysp] + ')';
                     break;
 
-                case 77:
+                case 80:
                     /*! Production::    regex_base : "/!" regex_base */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10808,21 +10862,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '(?!' + yyvstack[yysp] + ')';
                     break;
 
-                case 78:
+                case 81:
                 /*! Production::    regex_base : name_expansion */
-                case 80:
+                case 83:
                 /*! Production::    regex_base : any_group_regex */
-                case 84:
+                case 87:
                 /*! Production::    regex_base : string */
-                case 85:
+                case 88:
                 /*! Production::    regex_base : escape_char */
-                case 86:
+                case 89:
                 /*! Production::    name_expansion : NAME_BRACE */
-                case 90:
+                case 93:
                 /*! Production::    regex_set : regex_set_atom */
-                case 91:
+                case 94:
                 /*! Production::    regex_set_atom : REGEX_SET */
-                case 96:
+                case 99:
                     /*! Production::    string : CHARACTER_LIT */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10831,7 +10885,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
                     break;
 
-                case 81:
+                case 84:
                     /*! Production::    regex_base : "." */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10842,7 +10896,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '.';
                     break;
 
-                case 82:
+                case 85:
                     /*! Production::    regex_base : "^" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10853,7 +10907,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '^';
                     break;
 
-                case 83:
+                case 86:
                     /*! Production::    regex_base : "$" */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10864,10 +10918,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '$';
                     break;
 
-                case 87:
-                /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
-                case 107:
-                    /*! Production::    extra_lexer_module_code : extra_lexer_module_code include_macro_code optional_module_code_chunk */
+                case 90:
+                    /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
@@ -10877,7 +10929,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
                     break;
 
-                case 88:
+                case 91:
                     /*! Production::    any_group_regex : REGEX_SET_START regex_set error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10886,10 +10938,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject55, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject60, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 92:
+                case 95:
                     /*! Production::    regex_set_atom : name_expansion */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10906,7 +10958,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     //yyparser.log("name expansion for: ", { name: $name_expansion, redux: $name_expansion.replace(/[{}]/g, ''), output: $$ });
                     break;
 
-                case 95:
+                case 98:
                     /*! Production::    string : STRING_LIT */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10917,7 +10969,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = prepareString(yyvstack[yysp]);
                     break;
 
-                case 97:
+                case 100:
                     /*! Production::    options : OPTIONS option_list OPTIONS_END */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10928,7 +10980,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = null;
                     break;
 
-                case 98:
+                case 101:
                     /*! Production::    option_list : option option_list */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -10939,7 +10991,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = null;
                     break;
 
-                case 100:
+                case 103:
                     /*! Production::    option : NAME */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10951,7 +11003,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     yy.options[yyvstack[yysp]] = true;
                     break;
 
-                case 101:
+                case 104:
                     /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10963,9 +11015,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     yy.options[yyvstack[yysp - 2]] = yyvstack[yysp];
                     break;
 
-                case 102:
+                case 105:
                 /*! Production::    option : NAME "=" OPTION_VALUE */
-                case 103:
+                case 106:
                     /*! Production::    option : NAME "=" NAME */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10977,7 +11029,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     yy.options[yyvstack[yysp - 2]] = parseValue$1(yyvstack[yysp]);
                     break;
 
-                case 104:
+                case 107:
                     /*! Production::    option : NAME "=" error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -10987,10 +11039,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject56, $option, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject61, $option, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
-                case 105:
+                case 108:
                     /*! Production::    option : error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -11000,10 +11052,48 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject57, yylexer.prettyPrintRange(yylexer, yylstack[yysp]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject62, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
                     break;
 
-                case 108:
+                case 109:
+                    /*! Production::    extra_lexer_module_code : optional_module_code_chunk */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    this._$ = yylstack[yysp];
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+
+
+                    var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject63, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                    }
+                    this.$ = yyvstack[yysp];
+                    break;
+
+                case 110:
+                    /*! Production::    extra_lexer_module_code : extra_lexer_module_code include_macro_code optional_module_code_chunk */
+
+                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+
+
+                    // Each of the 3 chunks should be parse-able as a JS snippet on its own.
+                    //
+                    // Note: we have already checked the first section in a previous reduction 
+                    // of this rule, so we don't need to check that one again!
+                    var rv = checkActionBlock$2(yyvstack[yysp - 1], yylstack[yysp - 1]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject64, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
+                    }
+                    rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$2(_templateObject63, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                    }
+                    this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
+                    break;
+
+                case 111:
                     /*! Production::    include_macro_code : INCLUDE PATH */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
@@ -11016,7 +11106,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
                     break;
 
-                case 109:
+                case 112:
                     /*! Production::    include_macro_code : INCLUDE error */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
@@ -11025,23 +11115,23 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject58, yylexer.prettyPrintRange(yylexer, yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject65, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
-                case 112:
-                    /*! Production::    module_code_chunk : error */
+                case 115:
+                    /*! Production::    module_code_chunk : error CODE */
 
                     // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
-                    this.$ = yyvstack[yysp];
-                    this._$ = yylstack[yysp];
+                    this.$ = yyvstack[yysp - 1];
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
                     // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject59, yylexer.prettyPrintRange(yylexer, yylstack[yysp]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject66, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
-                case 145:
+                case 151:
                     // === NO_ACTION[1] :: ensures that anyone (but us) using this new state will fail dramatically!
                     // error recovery reduction action (action generated by jison,
                     // using the user-specified `%code error_recovery_reduction` %{...%}
@@ -11053,16 +11143,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             }
         },
         table: bt$2({
-            len: u$2([13, 1, 12, 15, 1, 1, 11, 18, 21, 2, 2, s$2, [11, 3], 4, 4, 12, 4, 1, 1, 19, 11, 12, 18, 29, 30, 22, 22, 17, 17, s$2, [29, 7], 31, 5, s$2, [29, 3], s$2, [12, 4], 4, 11, 3, 3, 2, 2, 1, 1, 12, 1, 5, 4, 3, 7, 17, 23, 3, 30, 29, 30, s$2, [29, 5], 3, 20, 3, 30, 30, 6, s$2, [4, 3], 12, 12, s$2, [11, 6], s$2, [27, 3], s$2, [11, 8], 2, 11, 1, 4, 3, 2, s$2, [3, 3], 17, 16, 3, 3, 1, 3, s$2, [29, 3], 21, s$2, [29, 4], 4, 13, 13, s$2, [3, 4], 6, 3, 23, s$2, [18, 3], 14, 14, 1, 14, 20, 2, 17, 14, 17, 3]),
-            symbol: u$2([1, 2, s$2, [19, 7, 1], 28, 47, 54, 56, 1, c$2, [14, 11], 57, c$2, [12, 11], 55, 58, 68, 84, s$2, [1, 3], c$2, [17, 10], 1, 3, 5, 9, 10, s$2, [14, 4, 1], 19, 26, s$2, [38, 4, 1], 44, 46, 64, c$2, [15, 6], c$2, [14, 7], 72, s$2, [74, 5, 1], 81, 83, 27, 62, 27, 63, c$2, [54, 12], c$2, [11, 21], 2, 20, 26, 60, c$2, [4, 3], 59, 2, s$2, [29, 9, 1], 51, 69, 2, 20, 85, 86, s$2, [1, 3], c$2, [102, 16], 65, 70, c$2, [67, 13], 9, c$2, [12, 9], c$2, [125, 12], c$2, [123, 6], c$2, [30, 3], c$2, [59, 6], s$2, [20, 7, 1], 28, c$2, [29, 6], 47, c$2, [29, 7], 7, s$2, [9, 9, 1], c$2, [33, 14], 45, 46, 47, 82, c$2, [58, 3], 11, c$2, [80, 11], 73, c$2, [81, 6], c$2, [22, 22], c$2, [121, 12], c$2, [17, 22], c$2, [108, 29], c$2, [29, 199], s$2, [42, 6, 1], 40, 43, 77, 79, 80, c$2, [123, 89], c$2, [19, 7], 27, c$2, [572, 11], c$2, [12, 27], c$2, [593, 3], 61, c$2, [612, 14], c$2, [3, 3], 28, 68, 28, 68, 28, 28, c$2, [616, 11], 88, 48, 2, 20, 48, 85, 86, 2, 18, 20, c$2, [9, 4], 1, 2, 51, 53, 87, 89, 90, c$2, [630, 17], 3, c$2, [732, 13], 67, c$2, [733, 8], 7, 20, 71, c$2, [613, 24], c$2, [643, 65], c$2, [507, 145], 2, 9, 11, c$2, [769, 15], c$2, [789, 7], 11, c$2, [201, 59], 82, 2, 40, 42, 43, 77, 80, c$2, [6, 4], c$2, [4, 8], c$2, [476, 33], c$2, [11, 59], 3, 4, c$2, [473, 8], c$2, [401, 15], c$2, [27, 54], c$2, [584, 11], c$2, [11, 78], 52, c$2, [182, 11], c$2, [664, 3], 49, 50, 1, 51, 88, 1, 51, 1, 51, 53, c$2, [3, 7], c$2, [672, 16], 2, 4, c$2, [673, 13], 66, 2, 28, 68, 2, 6, 8, 6, c$2, [4, 3], c$2, [642, 58], c$2, [525, 31], c$2, [522, 13], c$2, [750, 8], c$2, [662, 115], c$2, [562, 5], c$2, [315, 10], 53, c$2, [13, 13], c$2, [979, 3], c$2, [3, 9], c$2, [988, 4], c$2, [987, 3], 51, 53, c$2, [300, 14], c$2, [973, 9], 1, c$2, [487, 10], c$2, [27, 7], c$2, [18, 36], c$2, [1050, 14], c$2, [14, 14], 20, c$2, [15, 14], c$2, [830, 20], c$2, [469, 3], c$2, [460, 16], c$2, [159, 14], c$2, [491, 18], 6, 8]),
-            type: u$2([s$2, [2, 11], 0, 0, 1, c$2, [14, 12], c$2, [26, 13], 0, c$2, [15, 12], s$2, [2, 19], c$2, [31, 14], s$2, [0, 8], c$2, [23, 3], c$2, [56, 31], c$2, [62, 10], c$2, [112, 13], c$2, [67, 4], c$2, [40, 20], c$2, [78, 36], c$2, [123, 7], c$2, [30, 28], c$2, [203, 43], c$2, [205, 9], c$2, [22, 34], c$2, [17, 34], s$2, [2, 224], c$2, [239, 141], c$2, [139, 19], c$2, [655, 16], c$2, [14, 5], c$2, [180, 13], c$2, [194, 34], s$2, [0, 9], c$2, [98, 21], c$2, [643, 86], c$2, [492, 151], c$2, [494, 34], c$2, [231, 35], c$2, [802, 238], c$2, [716, 74], c$2, [44, 28], c$2, [708, 37], c$2, [522, 78], c$2, [454, 163], c$2, [164, 19], c$2, [973, 11], c$2, [830, 147], s$2, [2, 21]]),
-            state: u$2([s$2, [1, 4, 1], 6, 11, 12, 20, 21, 22, 24, 25, 30, 31, 36, 35, 42, 44, 46, 50, 54, 55, 56, 60, 61, 64, c$2, [15, 5], 65, c$2, [5, 4], 69, 71, 72, c$2, [13, 5], 73, c$2, [7, 6], 74, c$2, [5, 4], 75, c$2, [5, 4], 79, 76, 77, 82, 86, 87, 96, 101, 56, 103, 105, 104, 108, 110, c$2, [66, 7], 111, 114, c$2, [58, 11], c$2, [6, 6], 69, 79, 122, 129, 131, 133, c$2, [12, 5], 139, c$2, [29, 5], 105, 140, 142, c$2, [47, 8], c$2, [22, 5]]),
-            mode: u$2([s$2, [2, 23], s$2, [1, 12], s$2, [2, 28], s$2, [1, 15], s$2, [2, 33], c$2, [39, 17], c$2, [13, 6], c$2, [18, 7], c$2, [64, 21], c$2, [21, 10], c$2, [106, 15], c$2, [75, 12], 1, c$2, [90, 10], c$2, [27, 6], c$2, [72, 23], c$2, [40, 8], c$2, [45, 7], c$2, [15, 13], s$2, [1, 24], s$2, [2, 234], c$2, [236, 98], c$2, [97, 24], c$2, [24, 15], c$2, [374, 20], c$2, [432, 5], c$2, [409, 15], c$2, [568, 9], c$2, [47, 20], c$2, [454, 17], c$2, [561, 23], c$2, [585, 53], c$2, [442, 145], c$2, [718, 19], c$2, [780, 33], c$2, [29, 25], c$2, [759, 238], c$2, [796, 51], c$2, [289, 5], c$2, [1211, 12], c$2, [722, 35], c$2, [340, 9], c$2, [648, 24], c$2, [854, 59], c$2, [1199, 170], c$2, [311, 6], c$2, [969, 23], c$2, [1128, 90], c$2, [291, 66]]),
-            goto: u$2([s$2, [6, 11], s$2, [8, 11], 5, 5, s$2, [7, 4, 1], s$2, [13, 7, 1], s$2, [7, 11], s$2, [31, 17], 23, 26, 28, 32, 33, 34, 39, 27, 29, 37, 38, 41, 40, 43, 45, s$2, [12, 11], s$2, [13, 11], s$2, [14, 11], 47, 48, 49, 51, 52, 53, s$2, [51, 11], 58, 57, 1, 2, 4, 55, 62, s$2, [55, 6], 59, s$2, [55, 7], s$2, [9, 11], 58, 58, 63, s$2, [58, 9], c$2, [108, 12], s$2, [66, 3], c$2, [15, 5], s$2, [66, 7], 39, 66, c$2, [23, 7], 68, 68, 67, s$2, [68, 3], c$2, [7, 3], s$2, [68, 17], 70, 68, 68, 62, 62, 26, 62, c$2, [68, 11], c$2, [15, 15], c$2, [95, 12], c$2, [12, 12], s$2, [78, 29], s$2, [80, 29], s$2, [81, 29], s$2, [82, 29], s$2, [83, 29], s$2, [84, 29], s$2, [85, 29], s$2, [86, 31], 37, 78, s$2, [95, 29], s$2, [96, 29], s$2, [93, 29], s$2, [10, 9], 80, 10, 10, s$2, [26, 12], s$2, [11, 9], 81, 11, 11, s$2, [28, 12], 83, 84, 85, s$2, [17, 11], s$2, [22, 3], s$2, [23, 3], 16, 16, 20, 21, 98, s$2, [88, 8, 1], 97, 99, 100, 58, 57, 99, 100, 102, 100, 100, s$2, [105, 3], 114, 107, 114, 106, s$2, [30, 17], 109, c$2, [667, 13], 112, 113, s$2, [64, 3], c$2, [17, 5], s$2, [64, 7], 39, 64, c$2, [25, 6], 64, s$2, [65, 3], c$2, [24, 5], s$2, [65, 7], 39, 65, c$2, [24, 6], 65, s$2, [67, 6], 66, 68, s$2, [67, 18], 70, 67, 67, s$2, [73, 29], s$2, [74, 29], s$2, [75, 29], s$2, [79, 29], s$2, [94, 29], 116, 117, 115, 61, 61, 26, 61, c$2, [242, 11], 119, 117, 118, 76, 76, 67, s$2, [76, 3], 66, 68, s$2, [76, 18], 70, 76, 76, 77, 77, 67, s$2, [77, 3], 66, 68, s$2, [77, 18], 70, 77, 77, 121, 37, 120, 78, s$2, [90, 4], s$2, [91, 4], s$2, [92, 4], s$2, [27, 12], s$2, [29, 12], s$2, [15, 11], s$2, [16, 11], s$2, [24, 11], s$2, [25, 11], s$2, [18, 11], s$2, [19, 11], s$2, [40, 27], s$2, [41, 27], s$2, [42, 27], s$2, [43, 11], s$2, [44, 11], s$2, [45, 11], s$2, [46, 11], s$2, [47, 11], s$2, [48, 11], s$2, [49, 11], s$2, [50, 11], 124, 123, s$2, [97, 11], 98, 128, 127, 125, 126, 3, 99, 106, 106, 113, 113, 130, s$2, [110, 3], s$2, [112, 3], s$2, [32, 17], 132, s$2, [37, 14], 134, 16, 136, 135, 137, 138, s$2, [56, 3], s$2, [63, 3], c$2, [624, 5], s$2, [63, 7], 39, 63, c$2, [431, 6], 63, s$2, [69, 29], s$2, [71, 29], 60, 60, 26, 60, c$2, [505, 11], s$2, [70, 29], s$2, [72, 29], s$2, [87, 29], s$2, [88, 29], s$2, [89, 4], s$2, [108, 13], s$2, [109, 13], s$2, [101, 3], s$2, [102, 3], s$2, [103, 3], s$2, [104, 3], c$2, [940, 4], s$2, [111, 3], 141, c$2, [926, 13], 35, 35, 143, s$2, [35, 15], s$2, [38, 18], s$2, [39, 18], s$2, [52, 14], s$2, [53, 14], 144, s$2, [54, 14], 59, 59, 26, 59, c$2, [112, 11], 107, 107, s$2, [33, 17], s$2, [36, 14], s$2, [34, 17], s$2, [57, 3]])
+            len: u$2([13, 1, 12, 15, 1, 1, 11, 19, 21, 2, 2, s$2, [11, 3], 4, 4, 12, 4, 1, 1, 19, 18, 11, 12, 18, 29, 30, 22, 22, 17, 17, s$2, [29, 7], 31, 5, s$2, [29, 3], s$2, [12, 4], 4, 11, 3, 3, 2, 2, 1, 1, 12, 1, 5, 4, 3, 7, 17, 23, 3, 19, 30, 29, 30, s$2, [29, 5], 3, 20, 3, 30, 30, 6, s$2, [4, 3], 12, 12, s$2, [11, 6], s$2, [27, 3], s$2, [11, 8], 2, 11, 1, 4, c$2, [55, 3], 3, 3, 17, 16, 3, 3, 1, 3, 7, s$2, [29, 3], 21, s$2, [29, 4], 4, 13, 13, s$2, [3, 4], 6, 3, 3, 23, s$2, [18, 3], 14, 14, 1, 14, 3, 1, 20, 2, 17, 14, 17, 3]),
+            symbol: u$2([1, 2, s$2, [19, 7, 1], 28, 47, 54, 56, 1, c$2, [14, 11], 57, c$2, [12, 11], 55, 58, 68, 84, s$2, [1, 3], c$2, [17, 10], 1, 2, 3, 5, 9, 10, s$2, [14, 4, 1], 19, 26, s$2, [38, 4, 1], 44, 46, 64, c$2, [15, 6], c$2, [14, 7], 72, s$2, [74, 5, 1], 81, 83, 27, 62, 27, 63, c$2, [55, 13], c$2, [11, 20], 2, 20, 26, 60, c$2, [4, 3], 59, 2, s$2, [29, 9, 1], 51, 69, 2, 20, 85, 86, s$2, [1, 3], c$2, [102, 16], 65, 70, c$2, [19, 17], 64, c$2, [85, 13], 9, c$2, [12, 9], c$2, [143, 12], c$2, [141, 6], c$2, [30, 3], c$2, [58, 6], s$2, [20, 7, 1], 28, c$2, [29, 6], 47, c$2, [29, 7], 7, s$2, [9, 9, 1], c$2, [33, 14], 45, 46, 47, 82, c$2, [58, 3], 11, c$2, [80, 11], 73, c$2, [81, 6], c$2, [22, 22], c$2, [121, 12], c$2, [17, 22], c$2, [108, 29], c$2, [29, 199], s$2, [42, 6, 1], 40, 43, 77, 79, 80, c$2, [123, 89], c$2, [19, 7], 27, c$2, [590, 11], c$2, [12, 27], c$2, [611, 3], 61, c$2, [630, 14], c$2, [3, 3], 28, 68, 28, 68, 28, 28, c$2, [634, 11], 88, 48, 2, 20, 48, 85, 86, 2, 18, 20, c$2, [9, 4], 1, 2, 51, 53, 87, 89, 90, c$2, [629, 17], 3, c$2, [750, 13], 67, c$2, [751, 8], 7, 20, 71, c$2, [691, 20], c$2, [632, 23], c$2, [662, 65], c$2, [526, 145], 2, 9, 11, c$2, [788, 15], c$2, [808, 7], 11, c$2, [201, 59], 82, 2, 40, 42, 43, 77, 80, c$2, [6, 4], c$2, [4, 8], c$2, [495, 33], c$2, [11, 59], 3, 4, c$2, [449, 8], c$2, [401, 15], c$2, [27, 54], c$2, [603, 11], c$2, [11, 78], 52, c$2, [182, 11], c$2, [683, 3], 49, 50, 1, 51, 88, 1, 53, 1, 51, 1, 51, c$2, [5, 3], 53, c$2, [647, 17], 2, 4, c$2, [691, 13], 66, 2, 28, 68, 2, 6, 8, 6, c$2, [4, 3], c$2, [740, 8], c$2, [648, 57], c$2, [531, 31], c$2, [528, 13], c$2, [756, 8], c$2, [668, 115], c$2, [568, 5], c$2, [321, 10], 53, c$2, [13, 13], c$2, [1004, 3], c$2, [3, 9], c$2, [273, 4], c$2, [272, 3], c$2, [328, 5], c$2, [310, 14], c$2, [1001, 9], 1, c$2, [496, 10], c$2, [27, 7], c$2, [18, 36], c$2, [1078, 14], c$2, [14, 14], 20, c$2, [15, 14], c$2, [461, 3], 53, c$2, [843, 20], c$2, [480, 3], c$2, [474, 16], c$2, [163, 14], c$2, [505, 18], 6, 8]),
+            type: u$2([s$2, [2, 11], 0, 0, 1, c$2, [14, 12], c$2, [26, 13], 0, c$2, [15, 12], s$2, [2, 20], c$2, [32, 14], s$2, [0, 8], c$2, [23, 3], c$2, [57, 32], c$2, [62, 9], c$2, [113, 13], c$2, [67, 4], c$2, [40, 20], c$2, [21, 18], c$2, [96, 36], c$2, [141, 7], c$2, [30, 28], c$2, [221, 43], c$2, [223, 9], c$2, [22, 34], c$2, [17, 34], s$2, [2, 224], c$2, [239, 141], c$2, [139, 19], c$2, [673, 16], c$2, [14, 5], c$2, [180, 13], c$2, [764, 35], c$2, [751, 9], c$2, [98, 19], c$2, [632, 31], c$2, [662, 75], c$2, [511, 151], c$2, [513, 34], c$2, [231, 35], c$2, [821, 238], c$2, [735, 74], c$2, [43, 27], c$2, [740, 39], c$2, [1202, 78], c$2, [756, 30], c$2, [696, 140], c$2, [1001, 31], c$2, [461, 114], c$2, [121, 58]]),
+            state: u$2([s$2, [1, 4, 1], 6, 11, 12, 20, 22, 23, 25, 26, 31, 32, 37, 36, 43, 45, 47, 51, 55, 56, 57, 61, 62, 64, 66, c$2, [16, 5], 67, c$2, [5, 4], 71, 73, 74, c$2, [13, 5], 75, c$2, [7, 6], 76, c$2, [5, 4], 77, c$2, [5, 4], 81, 78, 79, 84, 88, 89, 98, 103, 57, 105, 108, 107, 110, 112, c$2, [67, 7], 113, 61, 62, 117, c$2, [60, 11], c$2, [6, 6], 71, 81, 125, 132, 135, 137, 143, 108, 107, c$2, [15, 5], 145, c$2, [32, 5], 108, 146, 148, c$2, [52, 8], 132, c$2, [23, 5]]),
+            mode: u$2([s$2, [2, 23], s$2, [1, 12], c$2, [24, 13], c$2, [41, 28], c$2, [44, 15], c$2, [89, 27], c$2, [17, 13], c$2, [88, 11], c$2, [64, 34], c$2, [38, 14], c$2, [123, 15], c$2, [92, 12], 1, c$2, [107, 10], c$2, [27, 6], c$2, [72, 23], c$2, [40, 8], c$2, [45, 7], c$2, [15, 13], s$2, [1, 24], s$2, [2, 234], c$2, [236, 98], c$2, [97, 24], c$2, [24, 15], c$2, [374, 20], c$2, [432, 5], c$2, [409, 15], c$2, [585, 9], c$2, [47, 20], c$2, [45, 25], c$2, [36, 14], c$2, [578, 18], c$2, [602, 53], c$2, [459, 145], c$2, [735, 19], c$2, [797, 33], c$2, [29, 25], c$2, [776, 238], c$2, [813, 51], c$2, [289, 5], c$2, [648, 7], c$2, [298, 21], c$2, [738, 18], c$2, [621, 8], c$2, [376, 7], c$2, [651, 22], c$2, [874, 59], c$2, [1219, 170], c$2, [960, 9], c$2, [947, 23], c$2, [1151, 89], c$2, [805, 17], s$2, [2, 53]]),
+            goto: u$2([s$2, [9, 11], s$2, [11, 11], 8, 5, s$2, [7, 4, 1], s$2, [13, 7, 1], s$2, [10, 11], 34, 21, s$2, [34, 16], 24, 27, 29, 33, 34, 35, 40, 28, 30, 38, 39, 42, 41, 44, 46, s$2, [15, 11], s$2, [16, 11], s$2, [17, 11], 48, 49, 50, 52, 53, s$2, [54, 12], 59, 58, 1, 2, 7, 58, 63, s$2, [58, 6], 60, s$2, [58, 7], s$2, [34, 17], s$2, [12, 11], 61, 61, 65, s$2, [61, 9], c$2, [125, 12], s$2, [69, 3], c$2, [15, 5], s$2, [69, 7], 40, 69, c$2, [23, 7], 71, 71, c$2, [3, 3], 71, 68, 70, s$2, [71, 18], 72, 71, 71, 65, 65, 27, 65, c$2, [68, 11], c$2, [15, 15], c$2, [95, 12], c$2, [12, 12], s$2, [81, 29], s$2, [83, 29], s$2, [84, 29], s$2, [85, 29], s$2, [86, 29], s$2, [87, 29], s$2, [88, 29], s$2, [89, 31], 38, 80, s$2, [98, 29], s$2, [99, 29], s$2, [96, 29], s$2, [13, 9], 82, 13, 13, s$2, [29, 12], s$2, [14, 9], 83, 14, 14, s$2, [31, 12], 85, 86, 87, s$2, [20, 11], s$2, [25, 3], s$2, [26, 3], 16, 16, 23, 24, 100, s$2, [90, 8, 1], 99, 101, 102, 59, 58, 102, 103, 104, 103, 103, s$2, [108, 3], 117, 106, 117, 109, s$2, [33, 17], 111, c$2, [684, 13], 114, 115, 6, c$2, [630, 8], 116, s$2, [58, 7], s$2, [67, 3], c$2, [34, 5], s$2, [67, 7], 40, 67, c$2, [42, 6], 67, s$2, [68, 3], c$2, [24, 5], s$2, [68, 7], 40, 68, c$2, [24, 6], 68, 70, 70, 69, s$2, [70, 3], c$2, [7, 3], s$2, [70, 17], 72, 70, 70, s$2, [76, 29], s$2, [77, 29], s$2, [78, 29], s$2, [82, 29], s$2, [97, 29], 119, 120, 118, 64, 64, 27, 64, c$2, [259, 11], 122, 120, 121, 79, 79, 69, s$2, [79, 3], 68, 70, s$2, [79, 18], 72, 79, 79, 80, 80, 69, s$2, [80, 3], 68, 70, s$2, [80, 18], 72, 80, 80, 124, 38, 123, 80, s$2, [93, 4], s$2, [94, 4], s$2, [95, 4], s$2, [30, 12], s$2, [32, 12], s$2, [18, 11], s$2, [19, 11], s$2, [27, 11], s$2, [28, 11], s$2, [21, 11], s$2, [22, 11], s$2, [43, 27], s$2, [44, 27], s$2, [45, 27], s$2, [46, 11], s$2, [47, 11], s$2, [48, 11], s$2, [49, 11], s$2, [50, 11], s$2, [51, 11], s$2, [52, 11], s$2, [53, 11], 127, 126, s$2, [100, 11], 101, 131, 130, 128, 129, 3, 101, 5, 133, 109, 109, 116, 116, 134, s$2, [113, 3], s$2, [35, 17], 136, s$2, [40, 14], 138, 16, 140, 139, 141, 142, s$2, [59, 3], 117, 144, 117, 109, s$2, [66, 3], c$2, [627, 5], s$2, [66, 7], 40, 66, c$2, [434, 6], 66, s$2, [72, 29], s$2, [74, 29], 63, 63, 27, 63, c$2, [508, 11], s$2, [73, 29], s$2, [75, 29], s$2, [90, 29], s$2, [91, 29], s$2, [92, 4], s$2, [111, 13], s$2, [112, 13], s$2, [104, 3], s$2, [105, 3], s$2, [106, 3], s$2, [107, 3], c$2, [259, 4], s$2, [115, 3], s$2, [114, 3], 147, c$2, [949, 13], 38, 38, 149, s$2, [38, 15], s$2, [41, 18], s$2, [42, 18], s$2, [55, 14], s$2, [56, 14], 150, s$2, [57, 14], 4, 101, 133, 62, 62, 27, 62, c$2, [115, 11], 110, 110, s$2, [36, 17], s$2, [39, 14], s$2, [37, 17], s$2, [60, 3]])
         }),
         defaultActions: bda$1({
-            idx: u$2([0, 2, 6, 7, 11, 12, 13, 16, 18, 19, 21, s$2, [30, 8, 1], 39, 40, s$2, [41, 4, 2], 48, 49, 52, 53, 58, 60, s$2, [66, 5, 1], s$2, [77, 22, 1], 100, 101, 104, 106, 107, 108, 113, 115, 116, s$2, [118, 11, 1], 130, s$2, [133, 4, 1], 138, s$2, [140, 5, 1]]),
-            goto: u$2([6, 8, 7, 31, 12, 13, 14, 51, 1, 2, 9, 78, s$2, [80, 7, 1], 95, 96, 93, 26, 28, 17, 22, 23, 20, 21, 105, 30, 73, 74, 75, 79, 94, 90, 91, 92, 27, 29, 15, 16, 24, 25, 18, 19, s$2, [40, 11, 1], 97, 98, 106, 110, 112, 32, 56, 69, 71, 70, 72, 87, 88, 89, 108, 109, s$2, [101, 4, 1], 111, 38, 39, 52, 53, 54, 107, 33, 36, 34, 57])
+            idx: u$2([0, 2, 6, 11, 12, 13, 16, 18, 19, 21, 22, s$2, [31, 8, 1], 40, 41, s$2, [42, 4, 2], 49, 50, 53, 54, 59, 61, s$2, [68, 5, 1], s$2, [79, 22, 1], 102, 103, 107, 109, 110, 115, 118, 119, s$2, [121, 11, 1], 133, 134, s$2, [137, 4, 1], 142, s$2, [146, 5, 1]]),
+            goto: u$2([9, 11, 10, 15, 16, 17, 54, 1, 2, 34, 12, 81, s$2, [83, 7, 1], 98, 99, 96, 29, 31, 20, 25, 26, 23, 24, 108, 33, 76, 77, 78, 82, 97, 93, 94, 95, 30, 32, 18, 19, 27, 28, 21, 22, s$2, [43, 11, 1], 100, 101, 109, 113, 35, 59, 72, 74, 73, 75, 90, 91, 92, 111, 112, s$2, [104, 4, 1], 115, 114, 41, 42, 55, 56, 57, 110, 36, 39, 37, 60])
         }),
         parseError: function parseError(str, hash, ExceptionClass) {
             if (hash.recoverable && typeof this.trace === 'function') {
@@ -11094,7 +11184,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             var TERROR = this.TERROR;
             var EOF = this.EOF;
             var ERROR_RECOVERY_TOKEN_DISCARD_COUNT = this.options.errorRecoveryTokenDiscardCount | 0 || 3;
-            var NO_ACTION = [0, 145 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
+            var NO_ACTION = [0, 151 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
 
             var lexer;
             if (this.__lexer__) {
@@ -12182,6 +12272,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     parser$3.originalQuoteName = parser$3.quoteName;
 
     var rmCommonWS$2 = helpers.rmCommonWS;
+    var checkActionBlock$2 = helpers.checkActionBlock;
 
     function encodeRE(s) {
         return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
@@ -12593,8 +12684,22 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
                 msg = '' + msg;
 
-                if (this.yylloc) {
-                    if (typeof this.showPosition === 'function') {
+                // heuristic to determine if the error message already contains a (partial) source code dump
+                // as produced by either `showPosition()` or `prettyPrintRange()`:
+                if (show_input_position == undefined) {
+                    show_input_position = !(msg.indexOf('\n') > 0 && msg.indexOf('^') > 0);
+                }
+
+                if (this.yylloc && show_input_position) {
+                    if (typeof this.prettyPrintRange === 'function') {
+                        var pretty_src = this.prettyPrintRange(this.yylloc);
+
+                        if (!/\n\s*$/.test(msg)) {
+                            msg += '\n';
+                        }
+
+                        msg += '\n  Erroneous area:\n' + this.prettyPrintRange(this.yylloc);
+                    } else if (typeof this.showPosition === 'function') {
                         var pos_str = this.showPosition();
 
                         if (pos_str) {
@@ -13214,32 +13319,20 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
                     var rv = lno_pfx + ': ' + line;
                     var errpfx = new Array(lineno_display_width + 1).join('^');
+                    var offset = 2 + 1;
+                    var len = 0;
 
                     if (lno === loc.first_line) {
-                        var offset = loc.first_column + 2;
+                        offset += loc.first_column;
 
-                        var len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
-
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, (lno === loc.last_line ? loc.last_column : line.length) - loc.first_column + 1);
                     } else if (lno === loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, loc.last_column + 1);
-                        var lead = new Array(offset).join('.');
-                        var mark = new Array(len).join('^');
-                        rv += '\n' + errpfx + lead + mark;
-
-                        if (line.trim().length > 0) {
-                            nonempty_line_indexes.push(index);
-                        }
+                        len = Math.max(2, loc.last_column + 1);
                     } else if (lno > loc.first_line && lno < loc.last_line) {
-                        var offset = 2 + 1;
-                        var len = Math.max(2, line.length + 1);
+                        len = Math.max(2, line.length + 1);
+                    }
+
+                    if (len) {
                         var lead = new Array(offset).join('.');
                         var mark = new Array(len).join('^');
                         rv += '\n' + errpfx + lead + mark;
@@ -13258,15 +13351,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 if (nonempty_line_indexes.length > 2 * MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT) {
                     var clip_start = nonempty_line_indexes[MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT - 1] + 1;
                     var clip_end = nonempty_line_indexes[nonempty_line_indexes.length - MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT] - 1;
-
-                    console.log('clip off: ', {
-                        start: clip_start,
-                        end: clip_end,
-                        len: clip_end - clip_start + 1,
-                        arr: nonempty_line_indexes,
-                        rv: rv
-                    });
-
                     var intermediate_line = new Array(lineno_display_width + 1).join(' ') + '  (...continued...)';
                     intermediate_line += '\n' + new Array(lineno_display_width + 1).join('-') + '  (---------------)';
                     rv.splice(clip_start, clip_end - clip_start + 1, intermediate_line);
@@ -13689,7 +13773,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 0:
                         /*! Conditions:: rules macro named_chunk INITIAL */
                         /*! Rule::       %\{ */
-                        yy.dept = 0;
+                        yy.depth = 0;
 
                         yy.include_command_allowed = false;
                         this.pushState('action');
@@ -13701,7 +13785,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 1:
                         /*! Conditions:: action */
                         /*! Rule::       %\{([^]*?)%\} */
-                        yy_.yytext = this.matches[1];
+                        yy_.yytext = this.matches[1].replace(/%\\\}/g, '%}'); // unescape any literal '%\}' that exists within the action code block 
 
                         yy.include_command_allowed = true;
                         return 32;
@@ -13834,9 +13918,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth <= 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject60) + this.prettyPrintRange(this, yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject67) + this.prettyPrintRange(yy_.yylloc));
 
-                            return 'BRACKETS_SURPLUS';
+                            return 30;
                         } else {
                             yy.depth--;
                         }
@@ -13875,10 +13959,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth !== 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject61, yy.depth) + this.prettyPrintRange(this, yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject68, yy.depth) + this.prettyPrintRange(yy_.yylloc));
 
                             yy_.yytext = '';
-                            return 'BRACKETS_MISSING';
+                            return 29;
                         }
 
                         this.popState();
@@ -14169,7 +14253,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Conditions:: INITIAL rules code */
                         /*! Rule::       %{NAME}([^\r\n]*) */
                         /* ignore unrecognized decl */
-                        this.warn(rmCommonWS(_templateObject62, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                        this.warn(rmCommonWS(_templateObject69, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         yy_.yytext = [this.matches[1], // {NAME}  
                         this.matches[2].trim() // optional value/parameters 
@@ -14244,7 +14328,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 97:
                         /*! Conditions:: action */
                         /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14252,7 +14336,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 98:
                         /*! Conditions:: action */
                         /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14260,7 +14344,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 99:
                         /*! Conditions:: action */
                         /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject38) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14268,7 +14352,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 100:
                         /*! Conditions:: options */
                         /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14276,7 +14360,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 101:
                         /*! Conditions:: options */
                         /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14284,7 +14368,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 102:
                         /*! Conditions:: options */
                         /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject39) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14294,7 +14378,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       " */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14304,7 +14388,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       ' */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14314,7 +14398,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       ` */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject40, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -14325,14 +14409,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /* b0rk on bad characters */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject63, rules, rules) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject70, rules, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         break;
 
                     case 107:
                         /*! Conditions:: * */
                         /*! Rule::       . */
-                        yy_.yyerror(rmCommonWS(_templateObject64, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(this, yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject71, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         break;
 
