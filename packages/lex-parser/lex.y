@@ -51,6 +51,7 @@ lex
     | init definitions error EOF
         {
             yyerror(rmCommonWS`
+                There's an error in your lexer regex rules or epilogue.
                 Maybe you did not correctly separate the lexer sections with a '%%'
                 on an otherwise empty line?
                 The lexer spec file should have this structure:
@@ -59,10 +60,10 @@ lex
                         %%
                         rules
                         %%                  // <-- optional!
-                        extra_module_code   // <-- optional!
+                        extra_module_code   // <-- optional epilogue!
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -78,6 +79,44 @@ rules_and_epilogue
         } else {
           $$ = { rules: $rules };
         }
+      }
+    | '%%' error rules '%%' extra_lexer_module_code
+      {
+        yyerror(rmCommonWS`
+            There's an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded 
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+      }
+    | '%%' rules '%%' error
+      {
+        yyerror(rmCommonWS`
+            There's an error in your lexer epilogue a.k.a. 'extra_module_code' block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+      }
+    | '%%' error
+      {
+        $$ = { rules: $rules };
       }
     | '%%' rules
       /* Note: an empty rules set is allowed when you are setting up an `%options custom_lexer` */
@@ -149,7 +188,7 @@ definition
                     %import qualifier_name file_path
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @IMPORT)}
+                ${yylexer.prettyPrintRange(@error, @IMPORT)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -164,7 +203,7 @@ definition
                     %import qualifier_name file_path
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @IMPORT)}
+                ${yylexer.prettyPrintRange(@error, @IMPORT)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -185,7 +224,7 @@ definition
                     %code qualifier_name {action code}
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @INIT_CODE, @action)}
+                ${yylexer.prettyPrintRange(@error, @INIT_CODE, @action)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -261,7 +300,7 @@ rules_collective
                 block.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, yylexer.mergeLocationInfo(##start_conditions, ##4), @start_conditions)}
+                ${yylexer.prettyPrintRange(yylexer.mergeLocationInfo(##start_conditions, ##4), @start_conditions)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -276,7 +315,7 @@ rules_collective
                 as a terminating curly brace '}' could not be found.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error, @start_conditions)}
+                ${yylexer.prettyPrintRange(@error, @start_conditions)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -303,7 +342,7 @@ rule
                 Lexer rule regex action code declaration error?
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @regex)}
+                ${yylexer.prettyPrintRange(@error, @regex)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -318,7 +357,7 @@ action
                 Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
 
                   Offending action body:
-                ${yylexer.prettyPrintRange(yylexer, @BRACKET_MISSING, @1)}
+                ${yylexer.prettyPrintRange(@BRACKET_MISSING, @1)}
             `);
         }
     | ACTION_START action_body BRACKET_SURPLUS
@@ -327,7 +366,7 @@ action
                 Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
 
                   Offending action body:
-                ${yylexer.prettyPrintRange(yylexer, @BRACKET_SURPLUS, @1)}
+                ${yylexer.prettyPrintRange(@BRACKET_SURPLUS, @1)}
             `);
         }
     | ACTION_START action_body ACTION_END 
@@ -370,7 +409,7 @@ action_body
                 You may place the '%include' instruction only at the start/front of a line.
 
                   It's use is not permitted at this position:
-                ${yylexer.prettyPrintRange(yylexer, @INCLUDE_PLACEMENT_ERROR, @action_body)}
+                ${yylexer.prettyPrintRange(@INCLUDE_PLACEMENT_ERROR, @action_body)}
             `);
         }
     | action_body error
@@ -379,7 +418,7 @@ action_body
                 Seems you did not correctly match curly braces '{ ... }' in a lexer rule action block.
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @action_body)}
+                ${yylexer.prettyPrintRange(@error, @action_body)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -398,7 +437,7 @@ start_conditions
                 Seems you did not correctly terminate the start condition set <${$name_list.join(',')},???> with a terminating '>'
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error, @1)}
+                ${yylexer.prettyPrintRange(@error, @1)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -523,7 +562,7 @@ regex_base
                 Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
 
                   Unterminated regex part:
-                ${yylexer.prettyPrintRange(yylexer, @error, @1)}
+                ${yylexer.prettyPrintRange(@error, @1)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -535,7 +574,7 @@ regex_base
                 Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
 
                   Unterminated regex part:
-                ${yylexer.prettyPrintRange(yylexer, @error, @SPECIAL_GROUP)}
+                ${yylexer.prettyPrintRange(@error, @SPECIAL_GROUP)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -578,7 +617,7 @@ any_group_regex
                 Seems you did not correctly bracket a lex rule regex set in '[...]' brackets.
 
                   Unterminated regex set:
-                ${yylexer.prettyPrintRange(yylexer, @error, @REGEX_SET_START)}
+                ${yylexer.prettyPrintRange(@error, @REGEX_SET_START)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -652,7 +691,7 @@ option
                 Internal error: option "${$option}" value assignment failure.
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error, @option)}
+                ${yylexer.prettyPrintRange(@error, @option)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -665,7 +704,7 @@ option
                 Expected a valid option name (with optional value assignment).
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -693,7 +732,7 @@ include_macro_code
                 %include MUST be followed by a valid file path.
 
                   Erroneous path:
-                ${yylexer.prettyPrintRange(yylexer, @error, @INCLUDE)}
+                ${yylexer.prettyPrintRange(@error, @INCLUDE)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -706,14 +745,14 @@ module_code_chunk
         { $$ = $CODE; }
     | module_code_chunk CODE
         { $$ = $module_code_chunk + $CODE; }
-    | error
+    | error CODE
         {
             // TODO ...
             yyerror(rmCommonWS`
                 Module code declaration error?
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(yylexer, @error)}
+                ${yylexer.prettyPrintRange(@error)}
 
                   Technical error report:
                 ${$error.errStr}
