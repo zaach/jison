@@ -9307,7 +9307,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
   }
 
   // Save time! Don't reparse the entire lexer spec *again* inside the code generators when that's not necessary:
-console.error('lexer parse() --> rules:', chk_l);
+
   return chk_l;
 }
 

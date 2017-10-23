@@ -54,17 +54,11 @@ describe("Lexer Kernel", function () {
 
       var input = "x\nx\rx\vx\ax\fx\bx\x42x\u0043x xxx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\ ";
 
-      //console.error("lex() rules:", lexer.rules);
-
+      // help us monitor/debug lexer output:
       var old_lex_f = lexer.lex;
       lexer.lex = function () {
         try {
           var rv = old_lex_f.call(this);
-          //console.error("lex() --> ", {
-          //  rv, 
-          //  yytext: this.yytext,
-          //  yylloc: this.yylloc
-          //});
           return rv;
         } catch (ex) {
           //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -86,21 +80,22 @@ describe("Lexer Kernel", function () {
       assert.equal(lexer.lex(), 'X');
       assert.equal(lexer.lex(), lexer.ERROR);     // `\b` is a regex edge marker special, not string value '\b'!
       assert.equal(lexer.lex(), 'X');
+
       // As the `\b` rule comes before the 'C' rule, it will match at the start-of-word boundary...
       assert.equal(lexer.lex(), 'B');             
       // ...and since this lexer rule doesn't consume anything at all, it will match indefinitely... 
       for (var cnt = 42; cnt > 0; cnt--) {
         assert.equal(lexer.lex(), 'B');
       }
+
       // ...until we manually NUKE that rule:
-      //console.error("lex() rules:", lexer.rules);
       for (var i = 0, len = lexer.rules.length; i < len; i++) {
-        //console.error('rule', i, String(lexer.rules[i]), lexer.rules[i].test('k'));
         // find the lexer rule which matches the word boundary:
         if (lexer.rules[i].test('k') && String(lexer.rules[i]).indexOf('\\b') >= 0) {
           lexer.rules[i] = /MMMMMMMMM/;
         }
       }
+
       // and verify that our lexer decompression/ruleset-caching results 
       // in the above action not having any effect until we NUKE the
       // same regex in the condition cache:
@@ -108,16 +103,22 @@ describe("Lexer Kernel", function () {
         assert.equal(lexer.lex(), 'B');
       }
 
-      //console.error('CONDITION CACHE', lexer.__currentRuleSet__);
       var cond_rules = lexer.__currentRuleSet__.__rule_regexes;
       for (var i = 0, len = cond_rules.length; i < len; i++) {
-        //console.error('rule', i, String(cond_rules[i]), (cond_rules[i] && cond_rules[i].test('k')));
         // find the lexer rule which matches the word boundary:
         if (cond_rules[i] && cond_rules[i].test('k') && String(cond_rules[i]).indexOf('\\b') >= 0) {
           cond_rules[i] = /MMMMMMMMM/;
         }
       }
-      //console.error('CONDITION CACHE', lexer.__currentRuleSet__);
+
+      // **POSTSCRIPT**
+      // 
+      // Regrettably I don't know of a way to check for this type of lexer regex rule
+      // anomaly in a generic way: the lexer rule may be a compound one, hiding the 
+      // non-consuming `\b` in there, while there are other regex constructs 
+      // imaginable which share the same problem with this `\b` lexer rule: a rexexp
+      // match which matches a boundary, hence **an empty string** without the
+      // grammar designer **intentionally** doing this. 
 
       assert.equal(lexer.lex(), 'C');
       assert.equal(lexer.lex(), 'X');
@@ -196,17 +197,11 @@ describe("Lexer Kernel", function () {
 
       var input = "x\nx\rx\vx\ax\fx\bx\x42x\u0043x xxx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\ ";
 
-      //console.error("lex() rules:", lexer.rules);
-
+      // help us monitor/debug lexer output:
       var old_lex_f = lexer.lex;
       lexer.lex = function () {
         try {
           var rv = old_lex_f.call(this);
-          //console.error("lex() --> ", {
-          //  rv, 
-          //  yytext: this.yytext,
-          //  yylloc: this.yylloc
-          //});
           return rv;
         } catch (ex) {
           //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -385,17 +380,11 @@ describe("Lexer Kernel", function () {
 
     var input = "x\nx\nxyzx\nx\ny\nz";
 
-    //console.error("lex() rules:", lexer.rules);
-
+    // help us monitor/debug lexer output:
     var old_lex_f = lexer.lex;
     lexer.lex = function () {
       try {
         var rv = old_lex_f.call(this);
-        //console.error("lex() --> ", {
-         // rv, 
-        //  yytext: this.yytext,
-        //  yylloc: this.yylloc
-        //});
         return rv;
       } catch (ex) {
         //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -417,7 +406,8 @@ describe("Lexer Kernel", function () {
       assert.equal(this, lexer);
       lastErrorHash = hash;
       lastErrorMsg = str;
-      hash.lexer = null;     
+
+      //hash.lexer = null;                // nuke the lexer class in `yy` to keep the debug output leaner and cleaner     
       //console.error("error: fix?", {
       //  str, 
       //  hash, 
@@ -431,6 +421,7 @@ describe("Lexer Kernel", function () {
       if (!this.matches) {
         assert.strictEqual(this.yytext, '');
         this.input();
+        assert.ok(this.yytext.length > 0);
       } else {
         assert.ok(this.yytext.length > 0);
       }
@@ -1545,7 +1536,6 @@ describe("Lexer Kernel", function () {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    console.log(lexer.rules);
 
     assert.equal(lexer.next(), "X");
     assert.deepEqual(lexer.yylloc, {first_line: 1,
@@ -1589,7 +1579,6 @@ describe("Lexer Kernel", function () {
 
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
-    console.log(lexer.rules);
 
     assert.equal(lexer.next(), "X");
     assert.deepEqual(lexer.yylloc, {first_line: 1,
@@ -2175,8 +2164,6 @@ describe("Lexer Kernel", function () {
     var input = "πyαε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
 
     // ensure the XRegExp class is invoked for the unicode rules; see also the compilation validation test code
     // inside the regexp-lexer.js file for the counterpart of this nasty test:
@@ -2197,7 +2184,6 @@ describe("Lexer Kernel", function () {
     for (var i = 0; i < generated_ruleset.length; i++) {
       var rule = generated_ruleset[i];
       assert(rule);
-      //console.log("rule ", i, " = ", rule);
       if (rule.__hacky_backy__) {
         xregexp_count += rule.__hacky_backy__;
       }
@@ -2230,8 +2216,6 @@ describe("Lexer Kernel", function () {
     var input = "πyα1ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
 
     var generated_ruleset = lexer.rules;
     assert(generated_ruleset);
@@ -2239,7 +2223,6 @@ describe("Lexer Kernel", function () {
     for (var i = 0; i < generated_ruleset.length; i++) {
       var rule = generated_ruleset[i];
       assert(rule);
-      //console.log("rule ", i, " = ", rule);
       if (rule.__hacky_backy__) {
         xregexp_count += rule.__hacky_backy__;
       }
@@ -2275,8 +2258,6 @@ describe("Lexer Kernel", function () {
     var input = "πyα123ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
 
     lexer.setInput(input);
 
@@ -2307,8 +2288,6 @@ describe("Lexer Kernel", function () {
     var input = "πyα123ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
 
     lexer.setInput(input);
 
@@ -2341,8 +2320,7 @@ describe("Lexer Kernel", function () {
     var input = "πyα123ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
@@ -2374,8 +2352,7 @@ describe("Lexer Kernel", function () {
     var input = "πyα123ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     // assert.equal(expandedMacros.DIGIT.in_set, re2set('[\\p{Number}]'));
@@ -2412,8 +2389,7 @@ describe("Lexer Kernel", function () {
     var input = "πyα123εE";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
@@ -2454,8 +2430,7 @@ describe("Lexer Kernel", function () {
     var input = "πyα * +123.@_[]εE";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
@@ -2504,8 +2479,7 @@ describe("Lexer Kernel", function () {
     var input = "πyα * +123.@_[]εE";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     assert.equal(expandedMacros.DIGIT.in_set, '\\d');
@@ -2567,8 +2541,7 @@ describe("Lexer Kernel", function () {
     var input = "πXYZxyzα\u10000\u{0023}\u{1023}\u{10230}ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     
@@ -2635,8 +2608,7 @@ describe("Lexer Kernel", function () {
     var input = "πXYZxyzα\u10000\u{0023}\u{1023}\u{10230}ε";
 
     var lexer = new RegExpLexer(dict);
-    //console.log(lexer);
-    //console.log("RULES:::::::::::::::", lexer.rules);
+
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
     
