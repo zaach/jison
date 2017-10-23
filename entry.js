@@ -1,2 +1,2 @@
 
-Jison = require('./dist/jison-cjs.js');
+Jison = require('./dist/jison-cjs-es5.js');
