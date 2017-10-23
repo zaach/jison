@@ -2770,3 +2770,92 @@ describe("Lexer Kernel", function () {
   });
 });
 
+
+// prettyPrintRange() API
+describe("prettyPrintRange() API", function () {
+  it("baseline - not invoking the API via ny error report", function () {
+    var dict = [
+        '%%',
+        '"a" %{ return true; %}',
+        '"b" %{ return 1; %}',
+    ].join('\n');
+    var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    var input = "abab";
+
+    lexer.setInput(input);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+
+    assert.strictEqual(lexer.lex(), lexer.EOF);
+  });
+
+  it("when lexer cannot parse the spec due to faulty indentation", function () {
+    var dict = [
+        '%%',
+        // rule regex MUST start the line; indentation (incorrectly) indicates this is all 'action code':
+        ' "a" %{ return true; %}',
+        ' "b" %{ return 1; %}',
+    ].join('\n');
+    var lexer = new RegExpLexer(dict);
+    var JisonLexerError = lexer.JisonLexerError; 
+    assert(JisonLexerError);
+
+    var input = "abab";
+
+    // help us monitor/debug lexer output:
+    var old_lex_f = lexer.lex;
+    lexer.lex = function () {
+      try {
+        var rv = old_lex_f.call(this);
+        return rv;
+      } catch (ex) {
+        console.error("lex() ERROR EX:", ex.message, ex.stack);
+        throw ex;
+      }
+    };
+
+    lexer.setInput(input);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+    assert.strictEqual(lexer.lex(), true);
+    assert.strictEqual(lexer.lex(), 1);
+
+    var lastErrorMsg;
+    var lastErrorHash;
+    lexer.parseError = function (str, hash) {
+      assert(hash);
+      assert(str);
+      // and make sure the `this` reference points right back at the current *lexer* instance!
+      assert.equal(this, lexer);
+      lastErrorHash = hash;
+      lastErrorMsg = str;
+
+      //hash.lexer = null;                // nuke the lexer class in `yy` to keep the debug output leaner and cleaner     
+      //console.error("error: fix?", {
+      //  str, 
+      //  hash, 
+      //  matched: this.matched, 
+      //  match: this.match,
+      //  matches: this.matches,
+      //  yytext: this.yytext
+      //});
+
+      // consume at least one character of input as if everything was hunky-dory:
+      if (!this.matches) {
+        assert.strictEqual(this.yytext, '');
+        this.input();
+        assert.ok(this.yytext.length > 0);
+      } else {
+        assert.ok(this.yytext.length > 0);
+      }
+      return 'FIX_' + String(this.yytext).toUpperCase();
+    };
+
+    assert.strictEqual(lexer.lex(), lexer.EOF);
+  });
+});
