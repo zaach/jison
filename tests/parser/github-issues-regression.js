@@ -3,7 +3,7 @@ var path = require("path");
 var assert = require("chai").assert;
 var Jison = require('../setup').Jison;
 var Lexer = require('../setup').Lexer;
-var helpers = require('../../modules/helpers-lib');
+var helpers = require('../../packages/helpers-lib');
 var code_exec = helpers.exec;
 
 

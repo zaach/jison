@@ -4,8 +4,8 @@ var Lexer = require('../setup').Lexer;
 var glob = require('glob');
 var fs = require('fs');
 var path = require('path');
-var helpers     = require('../../modules/helpers-lib');
-var code_exec   = helpers.exec;
+var helpers = require('../../packages/helpers-lib');
+var code_exec = helpers.exec;
 
 
 var lexData = {
