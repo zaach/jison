@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Jison / Documentation</title>
+    <link rel="stylesheet" href="../assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+
+    <!-- you don't need to keep this, but it's cool for stats! -->
+    <meta name="generator" content="Nanoc 4.8.0">
+  </head>
+  <body>
+    <div id="header">
+        <h1><a href="../">Jison</a></h1>
+    </div>
+    <ul id="nav">
+      <li><a href="../docs/">docs</a></li>
+      <li><a href="../demos/">demos</a></li>
+      <li><a href="../try/">try</a></li>
+      <li><a href="../docs/#installation">install</a></li>
+      <li><a href="../community/">community</a></li>
+    </ul>
+    <div id="content">
+      <h1 id="documentation">Documentation</h1>
+
+<p>Jison takes a context-free grammar as input and outputs a JavaScript file capable of parsing the language described by that grammar. You can then use the generated script to parse inputs and accept, reject, or perform actions based on the input. If you’re familiar with Bison or Yacc, or other clones, you’re almost ready to roll.</p>
+
+<ul>
+  <li><a href="#installation">Installation</a></li>
+  <li><a href="#usage-from-the-command-line">Usage from the command line</a></li>
+  <li><a href="#usage-from-a-commonjs-module">Usage from a CommonJS Module</a></li>
+  <li><a href="#using-the-generated-parser">Using the Generated Parser</a></li>
+  <li><a href="#using-the-parser-from-the-web">Using the Parser from the Web</a></li>
+  <li><a href="#the-concepts-of-jison">The Concepts of Jison</a></li>
+  <li><a href="#specifying-a-language">Specifying a Language</a></li>
+  <li><a href="#lexical-analysis">Lexical Analysis</a></li>
+  <li><a href="#tracking-locations">Tracking Locations</a></li>
+  <li><a href="#custom-scanners">Custom Scanners</a></li>
+  <li><a href="#sharing-scope">Sharing Scope</a></li>
+  <li><a href="#parsing-algorithms">Parsing algorithms</a></li>
+  <li><a href="#projects-using-jison">Projects using Jison</a></li>
+  <li><a href="#contributors">Contributors</a></li>
+  <li><a href="#license">License</a></li>
+</ul>
+
+<h2 id="installation">Installation</h2>
+
+<p>Jison can be installed for <a href="http://nodejs.org">Node</a> using <a href="http://github.com/isaacs/npm/"><code>npm</code></a></p>
+
+<p>Using npm:</p>
+
+<pre><code>npm install jison -g
+</code></pre>
+
+<h2 id="usage-from-the-command-line">Usage from the command line</h2>
+
+<p>Clone the github repository for examples:</p>
+
+<pre><code>git clone git://github.com/zaach/jison.git
+cd jison/examples
+</code></pre>
+
+<p>Now you’re ready to generate some parsers:</p>
+
+<pre><code>jison calculator.jison
+</code></pre>
+
+<p>This will generate <code>calculator.js</code> in your current working directory. This script can be used to parse an input file, like so:</p>
+
+<pre><code>echo "2^32 / 1024" &gt; testcalc
+node calculator.js testcalc
+</code></pre>
+
+<p>This will print out <code>4194304</code>.</p>
+
+<h2 id="usage-from-a-commonjs-module">Usage from a CommonJS Module</h2>
+
+<p>You can generate parsers programmatically from JavaScript as well. Assuming Jison is in your CommonJS environment’s load path:</p>
+
+<pre><code>// mygenerator.js
+var Parser = require("jison").Parser;
+
+var grammar = {
+    "lex": {
+        "rules": [
+           ["\\s+", "/* skip whitespace */"],
+           ["[a-f0-9]+", "return 'HEX';"]
+        ]
+    },
+
+    "bnf": {
+        "hex_strings" :[ "hex_strings HEX",
+                         "HEX" ]
+    }
+};
+
+var parser = new Parser(grammar);
+
+// generate source, ready to be written to disk
+var parserSource = parser.generate();
+
+// you can also use the parser directly from memory
+
+parser.parse("adfe34bc e82a");
+// returns true
+
+parser.parse("adfe34bc zxg");
+// throws lexical error
+</code></pre>
+
+<p>Alternatively, if you want to use the Jison file format but not generate a static JavaScript file for it, you could use a snippet like this:</p>
+
+<pre><code>// myparser.js
+var fs = require("fs");
+var jison = require("jison");
+
+var bnf = fs.readFileSync("grammar.jison", "utf8");
+var parser = new jison.Parser(bnf);
+
+module.exports = parser;
+</code></pre>
+
+<h2 id="using-the-generated-parser">Using the Generated Parser</h2>
+
+<p>Once you have generated the parser and saved it, you no longer need Jison or any other dependencies.</p>
+
+<p>As demonstrated before, the parser can be used from the command line:</p>
+
+<pre><code>node calculator.js testcalc
+</code></pre>
+
+<p>Though, more ideally, the parser will be a dependency of another module. You can require it from another module like so:</p>
+
+<pre><code>// mymodule.js
+var parser = require("./calculator").parser;
+
+function exec (input) {
+    return parser.parse(input);
+}
+
+var twenty = exec("4 * 5");
+</code></pre>
+
+<p>Or more succinctly:</p>
+
+<pre><code>// mymodule.js
+function exec (input) {
+    return require("./calculator").parse(input);
+}
+
+var twenty = exec("4 * 5");
+</code></pre>
+
+<h2 id="using-the-parser-from-the-web">Using the Parser from the Web</h2>
+
+<p>The generated parser script may be included in a web page without any need for a CommonJS loading environment. It’s as simple as pointing to it via a script tag:</p>
+
+<pre><code>&lt;script src="calculator.js"&gt;&lt;/script&gt;
+</code></pre>
+
+<p>When you generate the parser, you can specify the variable name it will be declared as:</p>
+
+<pre><code>// mygenerator.js
+var parserSource = generator.generate({moduleName: "calc"});
+// then write parserSource to a file called, say, calc.js
+</code></pre>
+
+<p>Whatever <code>moduleName</code> you specified will be the the variable you can access the parser from in your web page:</p>
+
+<pre><code>&lt;script src="calc.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  calc.parse("42 / 0");
+&lt;/script&gt;
+</code></pre>
+
+<p>The moduleName you specify can also include a namespace, e.g:</p>
+
+<pre><code>// mygenerator.js
+var parserSource = parser.generate({moduleName: "myCalculator.parser"});
+</code></pre>
+
+<p>And could be used like so:</p>
+
+<pre><code>&lt;script&gt;
+  var myCalculator = {};
+&lt;/script&gt;
+
+&lt;script src="calc.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+  myCalculator.parser.parse("42 / 0");
+&lt;/script&gt;
+</code></pre>
+
+<p>Or something like that – you get the picture.</p>
+
+<p>A demo of the calculator script used in a web page is <a href="/jison/demos/calc/">here</a>.</p>
+
+<h2 id="the-concepts-of-jison">The Concepts of Jison</h2>
+
+<p>Until the <a href="http://dinosaur.compilertools.net/bison/bison_4.html#SEC7">Bison guide</a> is properly ported for Jison, you can refer to it for the major concepts, which are equivalent (except for the bits about static typing of semantic values, and other obvious C artifacts.)</p>
+
+<p>Other helpful sections:</p>
+
+<ul>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_6.html#SEC34">Bison Grammar Files</a></li>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_8.html#SEC68">The Bison Parser Algorithm</a></li>
+  <li><a href="http://dinosaur.compilertools.net/bison/bison_9.html#SEC81">Error Recovery</a> (alpha support, at this point)</li>
+</ul>
+
+<h2 id="specifying-a-language">Specifying a Language</h2>
+
+<p>The process of parsing a language involves two phases: <strong>lexical analysis</strong> (tokenizing) and <strong>parsing</strong>, which the Lex/Yacc and Flex/Bison combinations are famous for. Jison lets you specify a parser much like you would using Bison/Flex, with separate files for tokenization rules and for the language grammar, or with the tokenization rules embedded in the main grammar.</p>
+
+<p>For example, here is the grammar for the calculator parser:</p>
+
+<pre><code>/* description: Parses end executes mathematical expressions. */
+
+/* lexical grammar */
+%lex
+
+%%
+\s+                   /* skip whitespace */
+[0-9]+("."[0-9]+)?\b  return 'NUMBER';
+"*"                   return '*';
+"/"                   return '/';
+"-"                   return '-';
+"+"                   return '+';
+"^"                   return '^';
+"("                   return '(';
+")"                   return ')';
+"PI"                  return 'PI';
+"E"                   return 'E';
+&lt;&lt;EOF&gt;&gt;               return 'EOF';
+
+/lex
+
+/* operator associations and precedence */
+
+%left '+' '-'
+%left '*' '/'
+%left '^'
+%left UMINUS
+
+%start expressions
+
+%% /* language grammar */
+
+expressions
+    : e EOF
+        {print($1); return $1;}
+    ;
+
+e
+    : e '+' e
+        {$$ = $1+$3;}
+    | e '-' e
+        {$$ = $1-$3;}
+    | e '*' e
+        {$$ = $1*$3;}
+    | e '/' e
+        {$$ = $1/$3;}
+    | e '^' e
+        {$$ = Math.pow($1, $3);}
+    | '-' e %prec UMINUS
+        {$$ = -$2;}
+    | '(' e ')'
+        {$$ = $2;}
+    | NUMBER
+        {$$ = Number(yytext);}
+    | E
+        {$$ = Math.E;}
+    | PI
+        {$$ = Math.PI;}
+    ;
+</code></pre>
+
+<p>which compiles down to this JSON representation used directly by Jison:</p>
+
+<pre><code>{
+    "lex": {
+        "rules": [
+           ["\\s+",                    "/* skip whitespace */"],
+           ["[0-9]+(?:\\.[0-9]+)?\\b", "return 'NUMBER';"],
+           ["\\*",                     "return '*';"],
+           ["\\/",                     "return '/';"],
+           ["-",                       "return '-';"],
+           ["\\+",                     "return '+';"],
+           ["\\^",                     "return '^';"],
+           ["\\(",                     "return '(';"],
+           ["\\)",                     "return ')';"],
+           ["PI\\b",                   "return 'PI';"],
+           ["E\\b",                    "return 'E';"],
+           ["$",                       "return 'EOF';"]
+        ]
+    },
+
+    "operators": [
+        ["left", "+", "-"],
+        ["left", "*", "/"],
+        ["left", "^"],
+        ["left", "UMINUS"]
+    ],
+
+    "bnf": {
+        "expressions" :[[ "e EOF",   "print($1); return $1;"  ]],
+
+        "e" :[[ "e + e",   "$$ = $1 + $3;" ],
+              [ "e - e",   "$$ = $1 - $3;" ],
+              [ "e * e",   "$$ = $1 * $3;" ],
+              [ "e / e",   "$$ = $1 / $3;" ],
+              [ "e ^ e",   "$$ = Math.pow($1, $3);" ],
+              [ "- e",     "$$ = -$2;", {"prec": "UMINUS"} ],
+              [ "( e )",   "$$ = $2;" ],
+              [ "NUMBER",  "$$ = Number(yytext);" ],
+              [ "E",       "$$ = Math.E;" ],
+              [ "PI",      "$$ = Math.PI;" ]]
+    }
+}
+</code></pre>
+
+<p>Jison accepts both the Bison/Flex style format, or the raw JSON format, e.g:</p>
+
+<pre><code>node bin/jison examples/calculator.jison
+</code></pre>
+
+<p>or</p>
+
+<pre><code>node bin/jison examples/calculator.json
+</code></pre>
+
+<p>When the lexical grammar resides in its own (.jisonlex) file, use that as the second argument to Jison, e.g.:</p>
+
+<pre><code>node bin/jison examples/classy.jison examples/classy.jisonlex
+</code></pre>
+
+<p>More examples can be found in the <a href="http://github.com/zaach/jison/tree/master/examples/"><code>examples/</code></a> and <a href="http://github.com/zaach/jison/tree/master/tests/parser/"><code>tests/parser/</code></a> directories.</p>
+
+<h2 id="lexical-analysis">Lexical Analysis</h2>
+
+<p>Jison includes a rather rudimentary scanner generator, though <strong>any module that supports the basic scanner API could be used</strong> in its place.</p>
+
+<p>The format of the <a href="http://dinosaur.compilertools.net/flex/flex_6.html#SEC6">input file</a> (including macro support) and the style of the <a href="http://dinosaur.compilertools.net/flex/flex_7.html#SEC7">pattern matchers</a> are modeled after Flex. Several <a href="https://github.com/zaach/jison/wiki/Deviations-From-Flex-Bison">metacharacters have been added</a>, but there is also one minor inconvenience compared to Flex patterns, namely exact string patterns must be placed in quotes e.g.:</p>
+
+<p>Bad:</p>
+
+<pre><code>[0-9]+zomg    print(yytext)
+</code></pre>
+
+<p>Good:</p>
+
+<pre><code>[0-9]+"zomg"    print(yytext);
+</code></pre>
+
+<p>Actions that span multiple lines should be surrounded by braces:</p>
+
+<pre><code>[0-9]+"zomg"    %{ print(yytext);
+                   return 'ZOMG'; %}
+</code></pre>
+
+<p>A recently added feature are <strong><a href="http://dinosaur.compilertools.net/flex/flex_11.html">start conditions</a></strong>, which allow certain rules to only match in certain states. If the lexer is not in that state, then the rule is ignored. The lexer starts in the <code>INITIAL</code> state, but can move to new states specified by you. Read that link for the run-down. An example below shows where Jison differs, namely <code>this.begin('state')</code> instead of <code>BEGIN(STATE)</code> for changing states within an action:</p>
+
+<pre><code>%s expect
+
+%%
+expect-floats        this.begin('expect');
+
+&lt;expect&gt;[0-9]+"."[0-9]+      {
+            console.log( "found a float, = " + yytext );
+            }
+&lt;expect&gt;\n           %{
+            /* that's the end of the line, so
+             * we need another "expect-number"
+             * before we'll recognize any more
+             * numbers
+             */
+            this.begin('INITIAL');
+            %}
+
+[0-9]+      console.log( "found an integer, = " + yytext );
+
+"."         console.log( "found a dot" );
+</code></pre>
+
+<blockquote>
+
+  <h3 id="note-begin-api-is-old-use-pushstate-api-instead">Note: <code>begin()</code> API is old; use <code>pushState()</code> API instead.</h3>
+
+  <p>As Jison maintains a <strong>start condition <em>stack</em></strong> it is advised to use 
+the more recent lexer API methods <code>pushState('state')</code> and <code>popState()</code> rather than 
+the older <code>this.begin('state')</code> described just above as these <code>pushState()</code> and 
+<code>popState()</code> better describe of what the lexer does and what you can expect.</p>
+
+  <p>The old <code>this.begin('state')</code> lexer API call is identical to calling the new <code>this.pushState('state')</code> API.</p>
+
+</blockquote>
+
+<p>If you use <code>%x</code> instead of <code>%s</code> to declare your start condition then <em>only</em> rules that match the current start condition will be considered.</p>
+
+<p>Consider the following example of a scanner that simply scans all double-quote delimited strings in a text file but disallows newlines inside quotations:</p>
+
+<pre><code>%x string
+
+%%
+["]               this.begin("string");
+&lt;string&gt;[^"\n]*   return "STRING";
+&lt;string&gt;[\n]      return "NEWLINE_IN_STRING";
+&lt;string&gt;&lt;&lt;EOF&gt;&gt;   return "EOF_IN_STRING";
+&lt;string&gt;["]       this.popState();
+
+[.\n]+            /* skip over text not in quotes */
+&lt;&lt;EOF&gt;&gt;           return "EOF";
+</code></pre>
+
+<p>Additionally, use <code>this.popState()</code> within an action to revert to the previous state.</p>
+
+<p>Using the JSON format, start conditions are defined with an array before the rule’s matcher:</p>
+
+<pre><code>{
+  rules: [
+    [['expect'], '[0-9]+"."[0-9]+', 'console.log( "found a float, = " + yytext );']
+  ]
+}
+</code></pre>
+
+<p>The array contains the list of start conditions for the rule.</p>
+
+<h2 id="tracking-locations">Tracking Locations</h2>
+
+<p>Jison’s lexical analyzer will track line number and column number information for each token and make them available within parser actions.
+The API is identical to <a href="http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations">Bison’s</a>.</p>
+
+<h2 id="custom-scanners">Custom Scanners</h2>
+
+<p>You don’t have to use the builtin Jison lexical scanner. An object with a <code>lex</code> and a <code>setInput</code> function would suffice, e.g.:</p>
+
+<pre><code>parser.lexer = {
+	lex: function () { 
+		return 'NIL'; 
+	}, 
+	setInput: function (str) {} 
+};
+</code></pre>
+
+<p>This lexer would simply return <code>NIL</code> tokens <em>ad infinitum</em>.</p>
+
+<p>The following example demonstrates a scanner that looks for upper and lower case letters, ignoring all whitespace:</p>
+
+<pre><code>// myscanner.js
+function AlphabetScanner() {
+    var text = "";
+    this.yytext = "";
+    this.yyloc = {
+        first_column: 0,
+        first_line: 1,
+        last_line: 1,
+        last_column: 0
+    };
+    this.yylloc = this.yyloc;
+    this.setInput = function(text_) {
+        text = text_;
+    };
+    this.lex = function() {
+        // Return the EOF token when we run out of text.
+        if (text === "") {
+            return "EOF";
+        }
+
+        // Consume a single character and increment our column numbers.
+        var c = text.charAt(0);
+        text = text.substring(1);
+        this.yytext = c;
+        this.yyloc.first_column++;
+        this.yyloc.last_column++;
+
+        if (c === "\n") {
+            // Increment our line number when we hit newlines.
+            this.yyloc.first_line++;
+            this.yyloc.last_line++;
+            // Try to keep lexing because we aren't interested
+            // in newlines.
+            return this.lex();
+        } else if (/[a-z]/.test(c)) {
+            return "LOWER_CASE";
+        } else if (/[A-Z]/.test(c)) {
+            return "UPPER_CASE";
+        } else if (/\s/.test(c)) {
+            // Try to keep lexing because we aren't interested
+            // in whitespace.
+            return this.lex();
+        } else {
+            return "INVALID";
+        }
+    };
+}
+parser.lexer = new AlphabetScanner();
+</code></pre>
+
+<h2 id="sharing-scope">Sharing Scope</h2>
+
+<p>In Bison, code is expected to be lexically defined within the scope of the semantic actions. E.g., chunks of code may be included in the generated parser source, which are available from semantic actions.</p>
+
+<p>Jison supports inline code blocks like Bison, but also exposes state that can be accessed from other modules. Instead of pulling code into the generated module, the generated module can be required and used by other modules. The parser has a <code>yy</code> property which is exposed to actions as the <code>yy</code> free variable. Any functionality attached to this property is available in both lexical and semantic actions through the <code>yy</code> free variable.</p>
+
+<p>An example from orderly.js:</p>
+
+<pre><code>var parser = require("./orderly/parse").parser;
+
+// set parser's shared scope
+parser.yy = require("./orderly/scope");
+
+// returns the JSON object
+var parse = exports.parse = function (input) {
+    return parser.parse(input);
+};
+...
+</code></pre>
+
+<p>The <code>scope</code> module contains logic for building data structures, which is used within the semantic actions.</p>
+
+<h2 id="parsing-algorithms">Parsing algorithms</h2>
+
+<p>Like Bison, Jison can recognize languages described by LALR(1) grammars, though it also has modes for LR(0), SLR(1), and LR(1). It also has a special mode for generating LL(1) parse tables (requested by my professor,) and could be extended to generate a recursive descent parser for LL(k) languages in the future. But, for now, Jison is geared toward bottom-up parsing.</p>
+
+<p><strong>LR(1) mode is currently not practical for use with anything other than toy grammars, but that is entirely a consequence of the algorithm used, and may change in the future.</strong></p>
+
+<h2 id="deviations-from-flex--bison">Deviations from Flex / Bison</h2>
+
+<!-- #################################################### -->
+<!-- this bit is also available in the wiki at:  -->
+<!-- #################################################### -->
+
+<h2 id="lex-patterns">Lex Patterns</h2>
+
+<h3 id="literal-tokens">Literal tokens</h3>
+
+<blockquote>
+
+  <h4 id="warning-vanilla-zaachjison-has-easy-keyword-support-turned-on-all-the-time">WARNING: vanilla zaach/jison has ‘easy keyword’ support turned <em>on</em> all the time</h4>
+
+  <p>The section currently describes the GerHobbelt fork which has the</p>
+
+  <p><code>
+%options easy_keyword_rules
+</code></p>
+
+  <p>feature while vanilla jison has not (at least not a pullreq for this is posted by me (@GerHobbelt) and accepted.</p>
+
+  <p>Hence vanilla jison will work as if you <em>implicitly</em> specified <code>%options easy_keyword_rules</code> in every lexer of yours.</p>
+
+</blockquote>
+
+<p>When the lexer ‘easy keyword’ option has been turned on in your lexer file / section using</p>
+
+<p><code>
+%options easy_keyword_rules
+</code></p>
+
+<p>you will notice that token <code>"foo"</code> will match whole word only, while <code>("foo")</code> will match <code>foo</code> anywhere unless.</p>
+
+<p>See <a href="https://github.com/zaach/jison/issues/63">issue #63</a> and <a href="https://github.com/GerHobbelt/jison/commit/64759c4362af04f63e980764e322ddca279737a5">GHO commit 64759c43</a>.</p>
+
+<blockquote>
+
+  <h4 id="under-the-hood">Under The Hood</h4>
+
+  <p>Technically what happens is that <code>%options easy_keyword_rules</code> turns on lexer rule inspection and where it recognizes that
+a rule <em>ends</em> with a literal character, then the regex <em>word edge</em> <code>\\b</code> check is appended to the lexer regex for the given rule.</p>
+
+</blockquote>
+
+<h3 id="longest-rule-matching">Longest rule matching</h3>
+
+<p>The lexer will use the first rule that matches the input string unless you use <code>%options flex</code>, in which case it will use the rule with the longest match.</p>
+
+<h3 id="additions">Additions</h3>
+
+<p>Because Jison uses JavaScript’s regular expression engine, it is possible to use some metacharacters that are not present in Flex patterns.</p>
+
+<p>See for a full list of available regex metacharacters the MDN documentation: <a href="https://developer.mozilla.org/en/docs/Web/JavaScript/Guide/Regular_Expressions#Using_special_characters">Using Special Characters</a></p>
+
+<h4 id="negative-lookahead">Negative Lookahead</h4>
+
+<p>Flex patterns support lookahead using <code>/</code>, Jison adds negative lookahead using <code>/!</code>.</p>
+
+<blockquote>
+
+  <h5 id="under-the-hood-1">Under The Hood</h5>
+
+  <p>Technically what happens is that <code>/\&lt;atom&gt;</code> and <code>/!\&lt;atom&gt;</code> are 1:1 replaced by the regex expressions <code>(?=\&lt;atom&gt;)</code> and <code>(?!\&lt;atom&gt;)</code> respectively.</p>
+
+</blockquote>
+
+<h4 id="advanced-grouping-options">Advanced Grouping Options</h4>
+
+<p>Jison supports as advanced grouping options</p>
+
+<ul>
+  <li>non-grouping brackets <code>(?:PATTERN)</code>,</li>
+  <li>positive lookahead <code>(?=PATTERN)</code> and</li>
+  <li>negative lookahead <code>(?!PATTERN)</code>.</li>
+</ul>
+
+<h4 id="yymore-yyless-etc">yymore, yyless, etc…</h4>
+
+<p>The flex macros <code>yymore()</code> and <code>yyless</code> must be rewritten to use the Jison lexer’s JavaScript API calls:</p>
+
+<ul>
+  <li><code>yymore()</code> -&gt; <code>this.more()</code> 
+(See: <a href="http://flex.sourceforge.net/manual/Actions.html#index-g_t_007c_002c-use-of-114">flex manual</a> 
+and the Jison <a href="https://github.com/zaach/jison-lex/blob/master/tests/regexplexer.js#L288">example as “test more()”</a>)</li>
+  <li><code>yyless()</code> -&gt; <code>this.less()</code>
+(See <a href="http://flex.sourceforge.net/manual/Actions.html#index-yyless_0028_0029-119">flex manual</a>
+and the Jison <a href="https://github.com/zaach/jison-lex/blob/master/tests/regexplexer.js#L790">example as “test less()”</a>)</li>
+</ul>
+
+<h4 id="braces-in-actions">Braces in actions</h4>
+
+<p>Within <strong>lexer</strong> actions use <code>%{ ... %}</code> delimiters if you want to use block-style statements, e.g.:</p>
+
+<p><code>plain
+.*  %{
+  if (true) {
+    console.log('test');
+  }
+  // ...
+%}
+</code></p>
+
+<p>Within <strong>parser</strong> actions you may alternatively use <code>{{ .. }}</code> delimiters for the same purpose:</p>
+
+<dl>
+  <dt>``` plain</dt>
+  <dt>test</dt>
+  <dd>STRING EOF  {{
+if (true) {
+  console.log(‘test’);
+}
+// …
+return $1;
+  }}
+  ;
+```</dd>
+</dl>
+
+<p>though Jison also supports <code>%{ ... %}</code> multi-line action blocks in the <em>grammar</em> rules:</p>
+
+<dl>
+  <dt>``` plain</dt>
+  <dt>test</dt>
+  <dd>STRING EOF  %{
+if (true) {
+  console.log(‘test’);
+}
+// …
+return $1;
+  }%
+  ;
+```</dd>
+</dl>
+
+<p>See <a href="https://github.com/zaach/jison/issues/85">issue #85</a></p>
+
+<h2 id="semantic-actions">Semantic Actions</h2>
+
+<p>Actions should contain JavaScript instead of C, naturally.</p>
+
+<h3 id="braces">Braces</h3>
+
+<p>As of Jison v0.2.8, you no longer need to use double braces <code>{{...}}</code> around grammar rule
+action code blocks.</p>
+
+<p>From now on, single braces <code>{...}</code> suffice.</p>
+
+<h3 id="short-hand-syntax">Short-hand syntax</h3>
+
+<p>There is a short-hand arrow syntax:
+<code>
+ exp:    ...
+         | '(' exp ')' -&gt; $2
+         | exp '+' exp -&gt; $1 + $3
+</code></p>
+
+<h3 id="accessing-values-and-location-information">Accessing values and location information</h3>
+
+<p>Normally, you’ld have to use the position of the corresponding nonterminal or terminal in the production, prefixed by a dollar sign $, e.g.:</p>
+
+<p><code>
+ exp:    ...
+         | '(' exp ')'
+             { $$ = $2; }
+</code></p>
+
+<p>Now, you can also access the value by using the name of the nonterminal instead of its position, e.g.:</p>
+
+<p><code>
+ exp:    ...
+         | '(' exp ')'
+             { $$ = $exp; }
+</code></p>
+
+<p>If the rule is ambiguous (the nonterminal appears more than once,) append a number to the end of the nonterminal name to disambiguate the desired value:</p>
+
+<p><code>
+ exp:    ...
+         | exp '+' exp
+             { $$ = $exp1 + $exp2; }
+</code></p>
+
+<p>Association by name leads to a looser coupling (and is easier to grok.)</p>
+
+<p>This also works for accessing location information (compare with the <a href="http://www.gnu.org/software/bison/manual/html_node/Named-References.html#Named-References">Bison manual on Named references</a> and their <a href="http://www.gnu.org/software/bison/manual/html_node/Actions-and-Locations.html#Actions-and-Locations">Actions and Locations</a> section):</p>
+
+<p><code>
+ exp:    ...
+         | '(' exp ')'
+             { @$ = @exp; /* instead of @$ = $2 */ }
+</code></p>
+
+<p>Another way to resolve ambiguity would be to use <em>aliases</em> in square brackets, for example:</p>
+
+<p><code>
+ exp:    ...
+         | exp\[left] '+' exp\[right]
+             { $$ = $left + $right; }
+</code></p>
+
+<h4 id="auto-numbered-named-accessors">Auto-numbered named accessors</h4>
+
+<p>‘Auto-numbering’ means that the first occurrence of label (token name or alias) <code>nnn</code> will also be available as <code>nnn*1*</code>, and so on.</p>
+
+<p>In the section above you may have seen one example where the nonterminal <em>names</em> have been auto-numbered to provide unambiguous access to each:</p>
+
+<p><code>
+ exp:    ...
+         | exp '+' exp
+             { $$ = $exp1 + $exp2; }
+</code></p>
+
+<p>Note that in every Jison rule production, all the nonterminal names <em>and</em> all the <em>aliases</em> are always also available in ‘auto-numbered’ form, 
+that is: when the same nonterminal name or alias occurs multiple times in the same rule, the action block can uniquely address a particular 
+nonterminal or alias by using the auto-numbered form.</p>
+
+<p>An example:</p>
+
+<dl>
+  <dt>``` plain</dt>
+  <dt>test</dt>
+  <dd>subrule[alt] subrule[wicked_middle] subrule[alt] ‘?’[alt]
+%{
+  // These are all unambiguous and legal to address $1, $2, $3 and $4:
+  //
+  // $1 === $subrule1 === $alt1
+  // $1 === $alt  &lt;– first occurrence also registers the name itself!
+  // $2 === $subrule2 === $wicked_middle
+  // $3 === $subrule3 === $alt2
+  // $4 === $alt3
+  //
+  // @1 === @subrule1 === @alt1
+  // @1 === @alt  &lt;– first occurrence also registers the name itself!
+  // @2 === @subrule2 === @wicked_middle
+  // @3 === @subrule3 === @alt2
+  // @4 === @alt3
+%}
+```</dd>
+</dl>
+
+<blockquote>
+
+  <h5 id="caveat-emptor">Caveat Emptor</h5>
+
+  <p>It doesn’t say what’ll happen if you go and game the system by using aliases with the same name as the nonterminals, e.g.</p>
+
+  <p><code>
+exp:    ...
+         | exp\[exp] '+' exp\[exp]
+             { $$ = $exp1 + $exp3 /* 3? Are we sure about this? */; }
+</code></p>
+
+  <p>If you wonder, <a href="https://github.com/zaach/jison/blob/master/lib/jison.js#L279">RTFC: vanilla</a> vs. <a href="https://github.com/GerHobbelt/jison/blob/master/lib/jison.js#L385">RTFC: GerHobbelt</a></p>
+
+  <hr />
+
+  <h4 id="warning-vanilla-zaachjison-doesnt-behave-the-same-when-it-comes-to-mixing-aliases-and-nonterminal-names">WARNING: vanilla zaach/jison doesn’t behave the same when it comes to mixing aliases and nonterminal names.</h4>
+
+  <p>The section currently describes the GerHobbelt fork. With vanilla zaach/jison the safe rule of thumb here is that when you specify an <em>alias</em> for a nonterminal, then you SHOULD NOT USE the nonterminal name itself any more in your action code.</p>
+
+  <p>RTFC to compare and check each’s behaviour here: <a href="https://github.com/zaach/jison/blob/master/lib/jison.js#L279">vanilla</a> vs. <a href="https://github.com/GerHobbelt/jison/blob/master/lib/jison.js#L385">GerHobbelt</a></p>
+
+</blockquote>
+
+<h2 id="extended-bnf">Extended BNF</h2>
+
+<p>Jison now supports EBNF syntax, showcased <a href="https://gist.github.com/1659274">here</a>.</p>
+
+<h2 id="extended-bnf-how-it-works-and-what-to-keep-in-mind-when-using-this">Extended BNF: how it works and what to keep in mind when using this</h2>
+
+<p>EBNF is accepted by the jison grammar engine and transposed to a <em>BNF</em> grammar using equivalence transforms for each of the EBNF <code>*</code>, <code>+</code>, <code>?</code> and <code>(...)</code> operators.</p>
+
+<p>For these EBNF wildcards &amp; groups the following treatment must be kept in mind:</p>
+
+<ul>
+  <li>
+    <p>Only the outermost wild-carded group’s label or index is addressable in your action. That group
+is translated to a single nonterminal, e.g.</p>
+
+    <p><code>
+rule: A (B C D E)?
+</code></p>
+
+    <p>becomes</p>
+
+    <p>```
+rule: A subrule_option0</p>
+
+    <p>subrule_option0: /* nil */ | B C D E;
+```</p>
+
+    <p>hence your action block for rule <code>rule</code> will only have <code>$1</code> and <code>$2</code> (the <code>subrule_option0</code> nonterminal) to play with.</p>
+
+    <p>As jison allows labeling the wildcarded group, such an alias might keep things more readable:</p>
+
+    <p><code>
+rule: A (B C D E)?\[choice]
+</code></p>
+
+    <p>becomes</p>
+
+    <p>```
+rule: A subrule_option0[choice]</p>
+
+    <p>subrule_option0: /* nil */ | B C D E;
+```</p>
+
+    <p><strong>WARNING</strong>: it’s illegal to attempt to access <code>$B</code>, <code>$C</code> et al from your <code>rule</code>’s action code block and very bad things will happen you.</p>
+
+    <ul>
+      <li>
+        <p>vanilla zaach/jison will not translate those references and your code will be <em>TOAST</em>.</p>
+      </li>
+      <li>
+        <p>GerHobbelt/jison analyzes your action code chunk and attempts to locate all your <code>$whatever</code> and <code>@whatever</code> references in there and barfs a hairball (i.e. fails at jison compile time) with a big fat error message if you do.</p>
+
+        <blockquote>
+
+          <p>Do note that we are a little dumb scanner, so we <em>will</em> recognize those references even when they sit in a nice cozy <strong>comment</strong> in there!</p>
+
+        </blockquote>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <p><code>(...)*</code>, <code>(...)+</code> and <code>(...)?</code> are the wildcarded ones and will be rewritten to equivalent BNF rules.</p>
+
+    <p>You MAY nest these constructs.</p>
+  </li>
+  <li>
+    <p>The <code>(...)</code> group is also recognized (no wildcard operator there): it will be unrolled. Unless there’s a label attacked to it. In that case it’s rewritten.</p>
+
+    <p>Hence</p>
+
+    <p><code>
+rule: A (B C D E)
+</code></p>
+
+    <p>becomes</p>
+
+    <p><code>
+rule: A B C D E;
+</code></p>
+
+    <p>while</p>
+
+    <p><code>
+rule: A (B C D E)\[groupies]
+</code></p>
+
+    <p>becomes</p>
+
+    <p>```
+rule: A subrule[groupies]</p>
+
+    <p>subrule: B C D E;
+```</p>
+
+    <p>so be aware that a little change like that can play havoc on your (<em>action</em>) code: the former, unrolled, grouping gives you
+access to all it terms (nonterminals and terminals alike), while the labeled a.k.a. aliased version <em>hides</em> those inner terms from you.</p>
+  </li>
+  <li>
+    <p>In order to have something decent to work with in your action code, every <em>wildcard</em> or non-wilcarded group 
+which is not unrolled will collect all its terms’ values (<code>yytext</code>) as
+produced by the lexer and store it in an array, thus constructing a <em>Poor Man’s AST</em>:</p>
+
+    <p><code>
+rule: A (B C+ (D E)\[hoobahop])?\[choice]
+</code></p>
+
+    <p>becomes</p>
+
+    <p>```
+rule: A subrule_option0[choice]</p>
+
+    <table>
+      <tbody>
+        <tr>
+          <td>subrule_option0: /* nil */</td>
+          <td>subrule_option1;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>subrule_option1: B C+ (D E)[hoobahop];
+```</p>
+
+    <p>which becomes</p>
+
+    <p>```
+rule: A subrule_option0[choice]</p>
+
+    <table>
+      <tbody>
+        <tr>
+          <td>subrule_option0: /* nil */</td>
+          <td>subrule_option0;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>subrule_option1: B subrule_series1 hoobahop_group0;</p>
+
+    <table>
+      <tbody>
+        <tr>
+          <td>subrule_series1: subrule_series1 C</td>
+          <td>C;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>hoobahop_group0: D E;
+```</p>
+
+    <p>which will deliver in your <code>$choice</code> reference an array shaped like this 
+(comments show the origin of each bit):</p>
+
+    <p>```
+// subrule_option0
+[
+  // <strong>Note</strong>:
+  // as this is choice, you get only the value 
+  //
+  //     undefined
+  // 
+  // when you’ve hit the <strong>nil</strong> epsilon choice instead!</p>
+
+    <p>// subrule_option1: 
+  [
+    B,
+    // subrule_series1
+    [
+      // the EBNF rewriter is smart enough to see that there’s
+      // only 1(one) term in this one: <code>C</code> so no extra arrays-in-array
+      // for you here:
+      C,
+      C,
+      …
+    ], 
+    // hoobahop_group0
+    [
+      D,
+      E
+    ]
+  ]
+]
+```</p>
+  </li>
+</ul>
+
+<h3 id="big-fat-warning">BIG FAT WARNING:</h3>
+
+<p>The above is written for the GerHobbelt fork as currently EBNF support in vanilla zaach/jison is ever so slightly b0rked.</p>
+
+<p>But that’s not what this warning is about!</p>
+
+<p>As I (Gerhobbelt) write this, I wonder if this <strong>really</strong> <strong>really</strong> is the truth. It <em>may</em> be that the current bleeding edge
+(master branch) still has a few, ahh…, sub-optimalities in reality compared to the above.</p>
+
+<p><strong>To Be Checked</strong></p>
+
+<hr />
+
+<p>Some improvements have been made for parser and lexer grammars in Jison 0.3 (demonstrated in the FlooP/BlooP example below.)</p>
+
+<p>For lexers:</p>
+
+<ul>
+  <li>Patterns may use unquoted characters instead of strings</li>
+  <li>Two new options, <code>%options flex case-insensitive</code></li>
+  <li><code>flex</code>: the rule with the longest match is used, and no word boundary patterns are added</li>
+  <li><code>case-insensitive</code>: all patterns are case insensitive</li>
+  <li>User code section is included in the generated module</li>
+</ul>
+
+<p>For parsers:</p>
+
+<ul>
+  <li>Arrow syntax for semantic actions</li>
+  <li>EBNF syntax (enabled using the <code>%ebnf</code> declaration)</li>
+  <li>Operators include repetition (<code>*</code>), non-empty repetition (<code>+</code>), grouping (<code>()</code>), alternation within groups (<code>|</code>), and option (<code>?</code>)</li>
+  <li>User code section and code blocks are included in the generated module</li>
+</ul>
+
+<p>Also, Robert Plummer has created a <a href="https://github.com/zaach/jison/tree/master/ports/php">PHP port</a> of Jison’s parser.</p>
+
+<p>See the grammar below for more examples.</p>
+
+<hr />
+
+<!-- #################################################### -->
+<!-- end of the 'wiki::Deviations from Felx / Bison' part -->
+<!-- #################################################### -->
+
+<h2 id="projects-using-jison">Projects using Jison</h2>
+
+<p>View them on the <a href="https://github.com/zaach/jison/wiki/ProjectsUsingJison">wiki</a>, or add your own.</p>
+
+<h2 id="contributors">Contributors</h2>
+
+<p>via <a href="http://github.com/zaach/jison/contributors">github</a></p>
+
+<h2 id="license">License</h2>
+
+<blockquote>
+  <p>Copyright (c) 2009-2013 Zachary Carter</p>
+
+  <p>Permission is hereby granted, free of
+charge, to any person  obtaining a
+copy of this software and associated
+documentation  files (the “Software”),
+to deal in the Software without
+restriction, including without
+limitation the rights to use,  copy,
+modify, merge, publish, distribute,
+sublicense, and/or sell  copies of the
+Software, and to permit persons to
+whom the  Software is furnished to do
+so, subject to the following
+conditions:</p>
+
+  <p>The above copyright notice and this
+permission notice shall be  included
+in all copies or substantial portions
+of the Software.</p>
+
+  <p>THE SOFTWARE IS PROVIDED “AS IS”,
+WITHOUT WARRANTY OF ANY KIND,  EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES  OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT  HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY,  WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR  OTHER DEALINGS
+IN THE SOFTWARE.</p>
+</blockquote>
+
+
+    </div>
+    <p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2016. MIT Licensed.</p>
+
+    <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+  </body>
+</html>
