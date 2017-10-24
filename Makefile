@@ -14,11 +14,8 @@ all: build test examples-test
 everything:                         \
 		clean                       \
 		npm-update                  \
-		submodules-npm-update       \
 		prep                        \
-		submodules-prep             \
 		all                         \
-		submodules                  \
 		site
 
 
@@ -412,10 +409,10 @@ build:                                                                  \
 		packages/lex-parser/lex.y                                       \
 		packages/lex-parser/lex.l
 
-npm-install: submodules-npm-install
+npm-install:
 	npm install
 
-npm-update: subpackages-npm-update submodules-npm-update
+npm-update: subpackages-npm-update 
 	ncu -a --packageFile=package.json
 
 prep_util_dir:
@@ -465,15 +462,6 @@ jison2json:
 	cd packages/jison2json && make
 
 
-submodules:
-	cd modules/helpers-lib && make
-	cd modules/lex-parser && make
-	cd modules/jison-lex && make
-	cd modules/ebnf-parser && make
-	cd modules/json2jison && make
-	cd modules/jison2json && make
-
-
 subpackages-prep:
 	cd packages/helpers-lib && make prep
 	cd packages/lex-parser && make prep
@@ -481,22 +469,6 @@ subpackages-prep:
 	cd packages/ebnf-parser && make prep
 	cd packages/jison2json && make prep
 	cd packages/json2jison && make prep
-
-submodules-prep:
-	cd modules/helpers-lib && make prep
-	cd modules/lex-parser && make prep
-	cd modules/jison-lex && make prep
-	cd modules/ebnf-parser && make prep
-	cd modules/jison2json && make prep
-	cd modules/json2jison && make prep
-
-submodules-npm-install:
-	cd modules/helpers-lib && make npm-install
-	cd modules/lex-parser && make npm-install
-	cd modules/jison-lex && make npm-install
-	cd modules/ebnf-parser && make npm-install
-	cd modules/jison2json && make npm-install
-	cd modules/json2jison && make npm-install
 
 
 subpackages-npm-update:
@@ -507,20 +479,8 @@ subpackages-npm-update:
 	cd packages/jison2json && make npm-update
 	cd packages/json2jison && make npm-update
 
-submodules-npm-update:
-	cd modules/helpers-lib && make npm-update
-	cd modules/lex-parser && make npm-update
-	cd modules/jison-lex && make npm-update
-	cd modules/ebnf-parser && make npm-update
-	cd modules/jison2json && make npm-update
-	cd modules/json2jison && make npm-update
-
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
-#
-# Generally when I want to bump jison up one build number, then the submodules should also be bumped.
-# This is less relevant for the jison2json and json2jison tools as they probably won't have changed,
-# but hey, this way the build numbers stay nicely in sync!   :-)
 bump:
 	npm version --no-git-tag-version prerelease
 	node __patch_version_in_js.js
@@ -531,8 +491,6 @@ git-tag:
 
 
 git:
-	#-cd gh-pages; git reset --hard; git checkout master; git pull --all; git checkout gh-pages; git pull --all
-	-git submodule foreach 'git reset --hard; git pull --all; git push --all; true'
 	-git pull --all
 	-git push --all
 
@@ -559,13 +517,6 @@ clean: clean-site
 	cd packages/jison2json && make clean
 	cd packages/json2jison && make clean
 
-	cd modules/helpers-lib && make clean
-	cd modules/lex-parser && make clean
-	cd modules/jison-lex && make clean
-	cd modules/ebnf-parser && make clean
-	cd modules/jison2json && make clean
-	cd modules/json2jison && make clean
-
 	-rm -rf node_modules/
 	-rm -f package-lock.json
 
@@ -587,13 +538,6 @@ superclean: clean clean-site
 	cd packages/jison2json && make superclean
 	cd packages/json2jison && make superclean
 
-	cd modules/helpers-lib && make superclean
-	cd modules/lex-parser && make superclean
-	cd modules/jison-lex && make superclean
-	cd modules/ebnf-parser && make superclean
-	cd modules/jison2json && make superclean
-	cd modules/json2jison && make superclean
-
 	-rm -rf dist
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
@@ -601,17 +545,16 @@ superclean: clean clean-site
 
 
 .PHONY: all everything                                                              \
-		prep subpackages-prep submodules-prep                                       \
+		prep subpackages-prep                                                       \
 		helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json          \
 		site preview deploy test web-examples examples examples-test                \
 		error-handling-tests basic-tests github-issue-tests misc-tests              \
 		build npm-install                                                           \
-		subpackages submodules                                                      \
-		submodules-npm-install                                                      \
+		subpackages                                                                 \
 		clean superclean git prep_util_dir                                          \
 		bump                                                                        \
 		git-tag subpackages-git-tag                                                 \
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
-		npm-update subpackages-npm-update submodules-npm-update
+		npm-update subpackages-npm-update 
 
