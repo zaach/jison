@@ -36,7 +36,7 @@ clean-site:
 	-rm web/content/assets/js/calculator.js
 
 # `make compile-site` will perform a quick (re)build of the web pages
-compile-site: web-examples web/content/assets/js/jison.js
+compile-site: 
 	-@rm -rf web/tmp/
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
@@ -45,6 +45,9 @@ ifndef NANOC
 	$(warning "*** JISON website pages have NOT been updated!                  ***")
 else
 	cd web/ && nanoc compile
+	-@rm -rf docs/
+	-mkdir -p docs
+	cp -r web/output/jison/* docs/
 endif
 
 web/content/assets/js/jison.js: build
@@ -61,11 +64,11 @@ endif
 
 # `make deploy` is `make site` plus GIT checkin of the result into the gh-pages branch
 deploy: site
-	git checkout gh-pages
-	cp -r web/output/jison/* ./
+	#git checkout gh-pages
+	#cp -r web/output/jison/* ./
 	#git add . --all
-	git commit -a -m 'Deploy site updates'
-	git checkout master
+	#git commit -a -m 'Deploy site updates'
+	#git checkout master
 
 test:
 	$(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
