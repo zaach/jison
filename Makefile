@@ -67,7 +67,7 @@ deploy: site
 	#git checkout gh-pages
 	#cp -r web/output/jison/* ./
 	#git add . --all
-	#git commit -a -m 'Deploy site updates'
+	git commit -a -m 'Deploy site updates'
 	#git checkout master
 
 test:
