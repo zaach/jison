@@ -35,8 +35,15 @@ web/crash.log
 # ignore the compiler output for any examples:            
 /examples/output
 /packages/jison-lex/examples/output
+/docs/examples/output
+
+# Vagrant sandbox
+vagrant/
+Vagrantfile
 
 # scratch space
 /tmp/
 /book-using-jison-beyond-the-basics/base-materials/
+*.log
+*.patch
 

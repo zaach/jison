@@ -9368,7 +9368,7 @@ var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-207';                              // require('./package.json').version;
+var version$1 = '0.6.1-208';                              // require('./package.json').version;
 
 
 
@@ -12406,7 +12406,7 @@ RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-var version = '0.6.1-207';                              // require('./package.json').version;
+var version = '0.6.1-208';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {

@@ -5,7 +5,7 @@
     "url": "http://zaa.ch"
   },
   "name": "@gerhobbelt/ebnf-parser",
-  "version": "0.6.1-207",
+  "version": "0.6.1-208",
   "description": "A parser for BNF and EBNF grammars used by jison",
   "main": "dist/ebnf-parser-cjs-es5.js",
   "module": "ebnf-parser.js",
@@ -29,9 +29,9 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "@gerhobbelt/lex-parser": "0.6.1-207",
+    "@gerhobbelt/lex-parser": "0.6.1-208",
     "@gerhobbelt/xregexp": "3.2.0-22",
-    "jison-helpers-lib": "0.6.1-207"
+    "jison-helpers-lib": "0.6.1-208"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
