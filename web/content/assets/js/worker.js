@@ -17,7 +17,7 @@ self.addEventListener('message', function (e) {
       cfg = JSON.parse(grammar);
   } catch (ex) {
       // intentionally throw an error here if it fails to parse
-      cfg = bnf.parse(grammar);
+      cfg = Jison.ebnfParser.parse(grammar);
   }
   
   self.postMessage({result: {cfg: cfg, type: "lalr"}});

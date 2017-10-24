@@ -1,5 +1,5 @@
-var parser,
-    parser2;
+var parser;
+var parser2;
 
 // IE, mainly
 if (typeof console === 'undefined') {
@@ -45,7 +45,7 @@ function processGrammar() {
     cfg = JSON.parse(grammar);
   } catch(e) {
     try {
-      cfg = bnf.parse(grammar);
+      cfg = Jison.ebnfParser.parse(grammar);
     } catch (e) {
       return onError(e);
     }
