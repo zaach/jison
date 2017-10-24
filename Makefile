@@ -36,7 +36,7 @@ clean-site:
 	-rm web/content/assets/js/calculator.js
 
 # `make compile-site` will perform a quick (re)build of the web pages
-compile-site: 
+compile-site: web-examples web/content/assets/js/jison.js
 	-@rm -rf web/tmp/
 	-@rm -rf web/content/examples/
 	cp -r examples web/content/examples/
