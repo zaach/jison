@@ -301,10 +301,10 @@ assert(b);
 
 
 function parseCodeChunkToAST(src, options) {
-    src = src
-    .replace(/@/g, '\uFFDA')
-    .replace(/#/g, '\uFFDB')
-    ;
+    // src = src
+    // .replace(/@/g, '\uFFDA')
+    // .replace(/#/g, '\uFFDB')
+    // ;
     var ast = recast.parse(src);
     return ast;
 }
@@ -327,9 +327,9 @@ function prettyPrintAST(ast, options) {
 
     new_src = new_src
     .replace(/\r\n|\n|\r/g, '\n')    // platform dependent EOL fixup
-    // backpatch possible jison variables extant in the prettified code:
-    .replace(/\uFFDA/g, '@')
-    .replace(/\uFFDB/g, '#')
+    // // backpatch possible jison variables extant in the prettified code:
+    // .replace(/\uFFDA/g, '@')
+    // .replace(/\uFFDB/g, '#')
     ;
 
     return new_src;
@@ -339,6 +339,8 @@ function prettyPrintAST(ast, options) {
 
 
 // validate the given JavaScript snippet: does it compile?
+// 
+// Return either the parsed AST (object) or an error message (string). 
 function checkActionBlock(src, yylloc) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
@@ -352,7 +354,7 @@ function checkActionBlock(src, yylloc) {
     }
 
     try {
-        parseCodeChunkToAST(src);
+        var rv = parseCodeChunkToAST(src);
         return false;
     } catch (ex) {
         return ex.message || "code snippet cannot be parsed";

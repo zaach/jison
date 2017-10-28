@@ -44,35 +44,37 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
     _templateObject40 = _taggedTemplateLiteral(['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject41 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                ']),
     _templateObject42 = _taggedTemplateLiteral(['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with a \'%%\'\n        on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n                definitions\n                %%\n                rules\n                %%                  // <-- optional!\n                extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject43 = _taggedTemplateLiteral(['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded \n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded \n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject43 = _taggedTemplateLiteral(['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded\n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded\n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject44 = _taggedTemplateLiteral(['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject45 = _taggedTemplateLiteral(['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject46 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject47 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject48 = _taggedTemplateLiteral(['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject49 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject50 = _taggedTemplateLiteral(['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject51 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject52 = _taggedTemplateLiteral(['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject53 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject54 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject55 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject56 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          It\'s use is not permitted at this position:\n        ', '\n    ']),
-    _templateObject57 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject58 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject59 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject60 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject61 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject62 = _taggedTemplateLiteral(['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject63 = _taggedTemplateLiteral(['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject64 = _taggedTemplateLiteral(['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject65 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject66 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject67 = _taggedTemplateLiteral(['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
-    _templateObject68 = _taggedTemplateLiteral(['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
-    _templateObject69 = _taggedTemplateLiteral(['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject70 = _taggedTemplateLiteral(['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject71 = _taggedTemplateLiteral(['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input: ', ' \n                        while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']);
+    _templateObject45 = _taggedTemplateLiteral(['\n            Encountered an unsupported definition type: ', '.\n    \n              Erroneous area:\n            ', '\n          '], ['\n            Encountered an unsupported definition type: ', '.\n    \n              Erroneous area:\n            ', '\n          ']),
+    _templateObject46 = _taggedTemplateLiteral(['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject47 = _taggedTemplateLiteral(['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        You did not specify a legal file path for the \'%import\' initialization code statement, which must have the format:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject48 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\'-ed initialization code section must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject49 = _taggedTemplateLiteral(['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n            ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%code ', '\' action code section does not compile: ', '\n    \n            ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject50 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject51 = _taggedTemplateLiteral(['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject52 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject53 = _taggedTemplateLiteral(['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject54 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject55 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject56 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject57 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    ']),
+    _templateObject58 = _taggedTemplateLiteral(['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly match curly braces \'{ ... }\' in a lexer rule action block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject59 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set <', ',???> with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject60 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject61 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject62 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject63 = _taggedTemplateLiteral(['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name (with optional value assignment).\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject64 = _taggedTemplateLiteral(['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject65 = _taggedTemplateLiteral(['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject66 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject67 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject68 = _taggedTemplateLiteral(['\n                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                    Its use is not permitted at this position.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                    Its use is not permitted at this position.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject69 = _taggedTemplateLiteral(['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject70 = _taggedTemplateLiteral(['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject71 = _taggedTemplateLiteral(['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject72 = _taggedTemplateLiteral(['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject73 = _taggedTemplateLiteral(['\n                                                unsupported lexer input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -359,7 +361,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
     function parseCodeChunkToAST(src, options) {
-        src = src.replace(/@/g, '\uFFDA').replace(/#/g, '\uFFDB');
+        // src = src
+        // .replace(/@/g, '\uFFDA')
+        // .replace(/#/g, '\uFFDB')
+        // ;
         var ast = recast.parse(src);
         return ast;
     }
@@ -378,13 +383,17 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         new_src = s.code;
 
         new_src = new_src.replace(/\r\n|\n|\r/g, '\n') // platform dependent EOL fixup
-        // backpatch possible jison variables extant in the prettified code:
-        .replace(/\uFFDA/g, '@').replace(/\uFFDB/g, '#');
+        // // backpatch possible jison variables extant in the prettified code:
+        // .replace(/\uFFDA/g, '@')
+        // .replace(/\uFFDB/g, '#')
+        ;
 
         return new_src;
     }
 
     // validate the given JavaScript snippet: does it compile?
+    // 
+    // Return either the parsed AST (object) or an error message (string). 
     function checkActionBlock$1(src, yylloc) {
         // make sure reasonable line numbers, etc. are reported in any
         // potential parse errors by pushing the source code down:
@@ -398,7 +407,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
 
         try {
-            parseCodeChunkToAST(src);
+            var rv = parseCodeChunkToAST(src);
             return false;
         } catch (ex) {
             return ex.message || "code snippet cannot be parsed";
@@ -444,7 +453,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
     };
 
-    /* parser generated by jison 0.6.1-207 */
+    /* parser generated by jison 0.6.1-208 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -1161,17 +1170,17 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 0:
                     /*! Production::    $accept : production $end */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,-,-,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,-,-,-,-):
                     this.$ = yyvstack[yysp - 1];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,-,-,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,-,-,-,-)
                     break;
 
                 case 1:
                     /*! Production::    production : handle EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,-,-,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,-,-,-,-):
                     this.$ = yyvstack[yysp - 1];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,-,-,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,-,-,-,-)
 
 
                     return yyvstack[yysp - 1];
@@ -1275,10 +1284,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             19: 3
         },
         parseError: function parseError(str, hash, ExceptionClass) {
-            if (hash.recoverable && typeof this.trace === 'function') {
-                this.trace(str);
+            if (hash.recoverable) {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 hash.destroy(); // destroy... well, *almost*!
             } else {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 if (!ExceptionClass) {
                     ExceptionClass = this.JisonParserError;
                 }
@@ -1689,8 +1703,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser$1.originalParseError = parser$1.parseError;
     parser$1.originalQuoteName = parser$1.quoteName;
-
-    /* lexer generated by jison-lex 0.6.1-207 */
+    /* lexer generated by jison-lex 0.6.1-208 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -3621,7 +3634,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // hack:
     var assert$1;
 
-    /* parser generated by jison 0.6.1-207 */
+    /* parser generated by jison 0.6.1-208 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -4464,18 +4477,18 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 0:
                     /*! Production::    $accept : spec $end */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yylstack[yysp - 1];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
                     break;
 
                 case 1:
                     /*! Production::    spec : declaration_list "%%" grammar optional_end_block EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 4, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 4];
@@ -4488,10 +4501,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 2:
                     /*! Production::    spec : declaration_list "%%" grammar error EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 4];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 4, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
@@ -4500,10 +4513,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 3:
                     /*! Production::    spec : declaration_list error EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
@@ -4520,9 +4533,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 132:
                     /*! Production::    optional_module_code_chunk : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '';
@@ -4531,9 +4544,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 5:
                     /*! Production::    optional_end_block : "%%" extra_parser_module_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
@@ -4548,9 +4561,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 10:
                     /*! Production::    declaration_list : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {};
@@ -4561,9 +4574,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 8:
                     /*! Production::    optional_action_header_block : optional_action_header_block include_macro_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -4577,9 +4590,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 9:
                     /*! Production::    declaration_list : declaration_list declaration */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];yy.addDeclaration(this.$, yyvstack[yysp]);
@@ -4588,10 +4601,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 11:
                     /*! Production::    declaration_list : declaration_list error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4601,9 +4614,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 12:
                     /*! Production::    declaration : START id */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { start: yyvstack[yysp] };
@@ -4612,9 +4625,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 13:
                     /*! Production::    declaration : LEX_BLOCK */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { lex: { text: yyvstack[yysp], position: yylstack[yysp] } };
@@ -4623,9 +4636,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 14:
                     /*! Production::    declaration : operator */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { operator: yyvstack[yysp] };
@@ -4634,9 +4647,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 15:
                     /*! Production::    declaration : TOKEN full_token_definitions */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { token_list: yyvstack[yysp] };
@@ -4645,9 +4658,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 16:
                     /*! Production::    declaration : ACTION */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
@@ -4660,9 +4673,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 17:
                     /*! Production::    declaration : include_macro_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
@@ -4675,9 +4688,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 18:
                     /*! Production::    declaration : parse_params */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { parseParams: yyvstack[yysp] };
@@ -4686,9 +4699,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 19:
                     /*! Production::    declaration : parser_type */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { parserType: yyvstack[yysp] };
@@ -4697,9 +4710,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 20:
                     /*! Production::    declaration : options */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { options: yyvstack[yysp] };
@@ -4708,9 +4721,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 21:
                     /*! Production::    declaration : DEBUG */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { options: [['debug', true]] };
@@ -4719,9 +4732,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 22:
                     /*! Production::    declaration : EBNF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     ebnf = true;
@@ -4731,9 +4744,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 23:
                     /*! Production::    declaration : UNKNOWN_DECL */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { unknownDecl: yyvstack[yysp] };
@@ -4742,9 +4755,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 24:
                     /*! Production::    declaration : IMPORT import_name import_path */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { imports: { name: yyvstack[yysp - 1], path: yyvstack[yysp] } };
@@ -4753,10 +4766,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 25:
                     /*! Production::    declaration : IMPORT import_name error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject7, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
@@ -4765,10 +4778,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 26:
                     /*! Production::    declaration : IMPORT error import_path */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject8, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2])));
@@ -4777,9 +4790,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 27:
                     /*! Production::    declaration : INIT_CODE init_code_name action_ne */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
@@ -4797,10 +4810,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 28:
                     /*! Production::    declaration : INIT_CODE error action_ne */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject10, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp])));
@@ -4809,10 +4822,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 29:
                     /*! Production::    declaration : START error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4822,10 +4835,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 30:
                     /*! Production::    declaration : TOKEN error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4835,10 +4848,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 31:
                     /*! Production::    declaration : IMPORT error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4898,9 +4911,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 131:
                     /*! Production::    optional_module_code_chunk : module_code_chunk */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp];
@@ -4911,9 +4924,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 110:
                     /*! Production::    action_ne : "{" action_body "}" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -4922,10 +4935,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 40:
                     /*! Production::    options : OPTIONS error OPTIONS_END */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4935,10 +4948,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 41:
                     /*! Production::    options : OPTIONS error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -4952,9 +4965,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 70:
                     /*! Production::    id_list : id_list id */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];this.$.push(yyvstack[yysp]);
@@ -4969,9 +4982,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 83:
                     /*! Production::    handle_list : handle_action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp]];
@@ -4980,9 +4993,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 44:
                     /*! Production::    option : NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp], true];
@@ -4991,9 +5004,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 45:
                     /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
@@ -5004,9 +5017,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 47:
                     /*! Production::    option : NAME "=" NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 2], parseValue(yyvstack[yysp])];
@@ -5015,10 +5028,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 48:
                     /*! Production::    option : NAME "=" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5028,10 +5041,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 49:
                     /*! Production::    option : NAME error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5043,9 +5056,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 52:
                     /*! Production::    parser_type : PARSER_TYPE symbol */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp];
@@ -5054,10 +5067,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 51:
                     /*! Production::    parse_params : PARSE_PARAM error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5067,10 +5080,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 53:
                     /*! Production::    parser_type : PARSER_TYPE error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5080,9 +5093,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 54:
                     /*! Production::    operator : associativity token_list */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 1]];this.$.push.apply(this.$, yyvstack[yysp]);
@@ -5091,10 +5104,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 55:
                     /*! Production::    operator : associativity error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5104,9 +5117,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 56:
                     /*! Production::    associativity : LEFT */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = 'left';
@@ -5115,9 +5128,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 57:
                     /*! Production::    associativity : RIGHT */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = 'right';
@@ -5126,9 +5139,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 58:
                     /*! Production::    associativity : NONASSOC */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = 'nonassoc';
@@ -5137,9 +5150,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 61:
                     /*! Production::    full_token_definitions : optional_token_type id_list */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = [];
@@ -5158,9 +5171,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 62:
                     /*! Production::    full_token_definitions : optional_token_type one_full_token */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var m = yyvstack[yysp];
@@ -5173,9 +5186,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 63:
                     /*! Production::    one_full_token : id token_value token_description */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {
@@ -5188,9 +5201,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 64:
                     /*! Production::    one_full_token : id token_description */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {
@@ -5202,9 +5215,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 65:
                     /*! Production::    one_full_token : id token_value */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {
@@ -5216,9 +5229,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 66:
                     /*! Production::    optional_token_type : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = false;
@@ -5227,9 +5240,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 72:
                     /*! Production::    grammar : optional_action_header_block production_list */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -5239,9 +5252,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 73:
                     /*! Production::    production_list : production_list production */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -5255,9 +5268,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 74:
                     /*! Production::    production_list : production */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {};this.$[yyvstack[yysp][0]] = yyvstack[yysp][1];
@@ -5266,9 +5279,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 75:
                     /*! Production::    production : production_id handle_list ";" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 2], yyvstack[yysp - 1]];
@@ -5277,10 +5290,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 76:
                     /*! Production::    production : production_id error ";" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5290,10 +5303,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 77:
                     /*! Production::    production : production_id error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5303,9 +5316,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 78:
                     /*! Production::    production_id : id optional_production_description ":" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2];
@@ -5316,10 +5329,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 79:
                     /*! Production::    production_id : id optional_production_description error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5329,18 +5342,18 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 81:
                     /*! Production::    optional_production_description : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-):
                     this.$ = undefined;
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-)
                     break;
 
                 case 82:
                     /*! Production::    handle_list : handle_list "|" handle_action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2];
@@ -5350,10 +5363,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 84:
                     /*! Production::    handle_list : handle_list "|" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5363,10 +5376,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 85:
                     /*! Production::    handle_list : handle_list ":" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5376,9 +5389,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 86:
                     /*! Production::    handle_action : handle prec action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : ''];
@@ -5403,9 +5416,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 87:
                     /*! Production::    handle_action : EPSILON action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [''];
@@ -5424,10 +5437,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 88:
                     /*! Production::    handle_action : EPSILON error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5437,9 +5450,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 89:
                     /*! Production::    handle : handle suffixed_expression */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -5449,9 +5462,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 90:
                     /*! Production::    handle : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [];
@@ -5460,9 +5473,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 91:
                     /*! Production::    handle_sublist : handle_sublist "|" handle */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2];
@@ -5472,9 +5485,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 92:
                     /*! Production::    handle_sublist : handle */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp].join(' ')];
@@ -5483,9 +5496,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 93:
                     /*! Production::    suffixed_expression : expression suffix ALIAS */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + "[" + yyvstack[yysp] + "]";
@@ -5498,9 +5511,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 129:
                     /*! Production::    module_code_chunk : module_code_chunk CODE */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
@@ -5509,9 +5522,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 96:
                     /*! Production::    expression : EOF_ID */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '$end';
@@ -5520,9 +5533,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 97:
                     /*! Production::    expression : STRING */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     // Re-encode the string *anyway* as it will
@@ -5535,9 +5548,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 98:
                     /*! Production::    expression : "(" handle_sublist ")" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '(' + yyvstack[yysp - 1].join(' | ') + ')';
@@ -5546,10 +5559,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 99:
                     /*! Production::    expression : "(" handle_sublist error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject30, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
@@ -5558,9 +5571,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 104:
                     /*! Production::    prec : PREC symbol */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { prec: yyvstack[yysp] };
@@ -5569,10 +5582,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 105:
                     /*! Production::    prec : PREC error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5582,9 +5595,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 106:
                     /*! Production::    prec : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = null;
@@ -5593,10 +5606,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 111:
                     /*! Production::    action_ne : "{" action_body error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject32, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
@@ -5605,9 +5618,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 115:
                     /*! Production::    action : ARROW_ACTION */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '$$ = ' + yyvstack[yysp];
@@ -5616,9 +5629,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 119:
                     /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 4, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 4] + yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
@@ -5627,9 +5640,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 120:
                     /*! Production::    action_body : action_body "{" action_body "}" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
@@ -5638,10 +5651,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 121:
                     /*! Production::    action_body : action_body "{" action_body error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 3];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject33, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
@@ -5650,9 +5663,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 125:
                     /*! Production::    extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
@@ -5661,9 +5674,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 126:
                     /*! Production::    include_macro_code : INCLUDE PATH */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
@@ -5678,10 +5691,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 127:
                     /*! Production::    include_macro_code : INCLUDE error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS(_templateObject35) + yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]));
@@ -5690,10 +5703,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 130:
                     /*! Production::    module_code_chunk : error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp];
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
@@ -5724,10 +5737,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             goto: u([10, 6, 9, 13, 14, s, [16, 8, 1], 56, 57, 58, 3, 12, 29, 109, 15, 30, 67, 35, 36, 32, 33, 34, 55, 60, 107, 108, 126, 127, 51, 52, 53, 43, 7, 8, 74, 62, 24, 25, 37, 38, 26, 27, 112, 113, 28, 59, 39, 42, 40, 49, 1, 2, 5, 128, 130, 73, 83, 80, 70, 64, 68, 69, 122, s, [45, 4, 1], 129, 75, 76, 89, 95, 96, 97, 90, 87, 88, 114, 115, 78, 79, 63, 110, 111, 123, 125, 82, 84, 85, 86, 104, 105, 101, 102, 103, 93, 98, 99, 90, 121])
         }),
         parseError: function parseError(str, hash, ExceptionClass) {
-            if (hash.recoverable && typeof this.trace === 'function') {
-                this.trace(str);
+            if (hash.recoverable) {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 hash.destroy(); // destroy... well, *almost*!
             } else {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 if (!ExceptionClass) {
                     ExceptionClass = this.JisonParserError;
                 }
@@ -5747,7 +5765,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             var symbol = 0;
             var preErrorSymbol = 0;
-            var lastEofErrorStateDepth = 0;
+            var lastEofErrorStateDepth = -42;
             var recoveringErrorInfo = null;
             var recovering = 0; // (only used when the grammar contains error recovery rules)
             var TERROR = this.TERROR;
@@ -6282,7 +6300,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 var depth = 0;
 
                 // try to recover from error
-                for (;;) {
+                while (stack_probe >= 0) {
                     // check for error recovery rule in this state
 
 
@@ -6304,7 +6322,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                         if (symbol === EOF) {
-                            if (!lastEofErrorStateDepth) {
+                            if (lastEofErrorStateDepth === -42) {
                                 lastEofErrorStateDepth = sp - 1 - depth;
                             } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
 
@@ -6324,6 +6342,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     state = sstack[stack_probe];
                     ++depth;
                 }
+
+                return -1; // No suitable error recovery rule available.
             }
 
             try {
@@ -6839,56 +6859,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser.originalParseError = parser.parseError;
     parser.originalQuoteName = parser.quoteName;
-
-    var ebnf = false;
-
-    var rmCommonWS = helpers.rmCommonWS;
-    var dquote = helpers.dquote;
-    var checkActionBlock = helpers.checkActionBlock;
-
-    // transform ebnf to bnf if necessary
-    function extend(json, grammar) {
-        if (ebnf) {
-            json.ebnf = grammar.grammar; // keep the original source EBNF around for possible pretty-printing & AST exports.
-            json.bnf = transform(grammar.grammar);
-        } else {
-            json.bnf = grammar.grammar;
-        }
-        if (grammar.actionInclude) {
-            json.actionInclude = grammar.actionInclude;
-        }
-        return json;
-    }
-
-    // convert string value to number or boolean value, when possible
-    // (and when this is more or less obviously the intent)
-    // otherwise produce the string itself as value.
-    function parseValue(v) {
-        if (v === 'false') {
-            return false;
-        }
-        if (v === 'true') {
-            return true;
-        }
-        // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
-        // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
-        if (v && !isNaN(v)) {
-            var rv = +v;
-            if (isFinite(rv)) {
-                return rv;
-            }
-        }
-        return v;
-    }
-
-    parser.warn = function p_warn() {
-        console.warn.apply(console, arguments);
-    };
-
-    parser.log = function p_log() {
-        console.log.apply(console, arguments);
-    };
-    /* lexer generated by jison-lex 0.6.1-207 */
+    /* lexer generated by jison-lex 0.6.1-208 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -9108,6 +9079,55 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }();
     parser.lexer = lexer;
 
+    var ebnf = false;
+
+    var rmCommonWS = helpers.rmCommonWS;
+    var dquote = helpers.dquote;
+    var checkActionBlock = helpers.checkActionBlock;
+
+    // transform ebnf to bnf if necessary
+    function extend(json, grammar) {
+        if (ebnf) {
+            json.ebnf = grammar.grammar; // keep the original source EBNF around for possible pretty-printing & AST exports.
+            json.bnf = transform(grammar.grammar);
+        } else {
+            json.bnf = grammar.grammar;
+        }
+        if (grammar.actionInclude) {
+            json.actionInclude = grammar.actionInclude;
+        }
+        return json;
+    }
+
+    // convert string value to number or boolean value, when possible
+    // (and when this is more or less obviously the intent)
+    // otherwise produce the string itself as value.
+    function parseValue(v) {
+        if (v === 'false') {
+            return false;
+        }
+        if (v === 'true') {
+            return true;
+        }
+        // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+        // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
+        if (v && !isNaN(v)) {
+            var rv = +v;
+            if (isFinite(rv)) {
+                return rv;
+            }
+        }
+        return v;
+    }
+
+    parser.warn = function p_warn() {
+        console.warn.apply(console, arguments);
+    };
+
+    parser.log = function p_log() {
+        console.log.apply(console, arguments);
+    };
+
     function Parser() {
         this.yy = {};
     }
@@ -9128,7 +9148,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // hack:
     var assert$3;
 
-    /* parser generated by jison 0.6.1-207 */
+    /* parser generated by jison 0.6.1-208 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -9977,28 +9997,28 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 0:
                     /*! Production::    $accept : lex $end */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yylstack[yysp - 1];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
                     break;
 
                 case 1:
                     /*! Production::    lex : init definitions rules_and_epilogue EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
-                    this.$.macros = yyvstack[yysp - 2].macros;
-                    this.$.startConditions = yyvstack[yysp - 2].startConditions;
-                    this.$.unknownDecls = yyvstack[yysp - 2].unknownDecls;
+                    for (var key in yyvstack[yysp - 2]) {
+                        this.$[key] = yyvstack[yysp - 2][key];
+                    }
 
                     // if there are any options, add them all, otherwise set options to NULL:
                     // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
-                    for (var k in yy.options) {
+                    for (key in yy.options) {
                         this.$.options = yy.options;
                         break;
                     }
@@ -10019,10 +10039,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 2:
                     /*! Production::    lex : init definitions error EOF */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 3];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS$2(_templateObject42, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
@@ -10031,9 +10051,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 3:
                     /*! Production::    rules_and_epilogue : "%%" rules "%%" extra_lexer_module_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
                     if (yyvstack[yysp].trim() !== '') {
@@ -10046,10 +10066,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 4:
                     /*! Production::    rules_and_epilogue : "%%" error rules "%%" extra_lexer_module_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 4];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 4, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS$2(_templateObject43, yylexer.prettyPrintRange(yylstack[yysp - 3]), yyvstack[yysp - 3].errStr));
@@ -10058,10 +10078,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 5:
                     /*! Production::    rules_and_epilogue : "%%" rules "%%" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 3];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS$2(_templateObject44, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
@@ -10070,10 +10090,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 6:
                     /*! Production::    rules_and_epilogue : "%%" error rules */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS$2(_templateObject43, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
@@ -10082,9 +10102,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 7:
                     /*! Production::    rules_and_epilogue : "%%" rules */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { rules: yyvstack[yysp] };
@@ -10093,9 +10113,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 8:
                     /*! Production::    rules_and_epilogue : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { rules: [] };
@@ -10104,10 +10124,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 9:
                     /*! Production::    init : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-):
                     this.$ = undefined;
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-)
 
 
                     yy.actionInclude = [];
@@ -10117,21 +10137,39 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 10:
                     /*! Production::    definitions : definitions definition */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
                     if (yyvstack[yysp] != null) {
                         if ('length' in yyvstack[yysp]) {
                             this.$.macros[yyvstack[yysp][0]] = yyvstack[yysp][1];
-                        } else if (yyvstack[yysp].type === 'names') {
-                            for (var name in yyvstack[yysp].names) {
-                                this.$.startConditions[name] = yyvstack[yysp].names[name];
+                        } else {
+                            switch (yyvstack[yysp].type) {
+                                case 'names':
+                                    for (var name in yyvstack[yysp].names) {
+                                        this.$.startConditions[name] = yyvstack[yysp].names[name];
+                                    }
+                                    break;
+
+                                case 'unknown':
+                                    this.$.unknownDecls.push(yyvstack[yysp].body);
+                                    break;
+
+                                case 'imports':
+                                    this.$.importDecls.push(yyvstack[yysp].body);
+                                    break;
+
+                                case 'codeSection':
+                                    this.$.codeSections.push(yyvstack[yysp].body);
+                                    break;
+
+                                default:
+                                    yyparser.yyError(rmCommonWS$2(_templateObject45, yyvstack[yysp].type, yylexer.prettyPrintRange(yylstack[yysp])));
+                                    break;
                             }
-                        } else if (yyvstack[yysp].type === 'unknown') {
-                            this.$.unknownDecls.push(yyvstack[yysp].body);
                         }
                     }
                     break;
@@ -10139,24 +10177,26 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 11:
                     /*! Production::    definitions : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = {
                         macros: {}, // { hash table }
                         startConditions: {}, // { hash table }
-                        unknownDecls: [] // [ array of [key,value] pairs }
+                        codeSections: [], // [ array of {qualifier,include} pairs ]
+                        importDecls: [], // [ array of {name,path} pairs ]
+                        unknownDecls: [] // [ array of {name,value} pairs ]
                     };
                     break;
 
                 case 12:
                     /*! Production::    definition : NAME regex */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
@@ -10167,9 +10207,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 14:
                     /*! Production::    definition : START_EXC names_exclusive */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp];
@@ -10178,14 +10218,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 15:
                     /*! Production::    definition : action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject45, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject46, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     yy.actionInclude.push(yyvstack[yysp]);
                     this.$ = null;
@@ -10196,9 +10236,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 102:
                     /*! Production::    option_list : option */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = null;
@@ -10207,78 +10247,91 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 17:
                     /*! Production::    definition : UNKNOWN_DECL */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    this.$ = { type: 'unknown', body: yyvstack[yysp] };
+                    this.$ = {
+                        type: 'unknown',
+                        body: yyvstack[yysp]
+                    };
                     break;
 
                 case 18:
                     /*! Production::    definition : IMPORT import_name import_path */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    this.$ = { type: 'imports', name: yyvstack[yysp - 1], path: yyvstack[yysp] };
+                    this.$ = {
+                        type: 'imports',
+                        body: {
+                            name: yyvstack[yysp - 1],
+                            path: yyvstack[yysp]
+                        }
+                    };
                     break;
 
                 case 19:
                     /*! Production::    definition : IMPORT import_name error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject46, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject47, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 20:
                     /*! Production::    definition : IMPORT error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject47, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject48, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 21:
                     /*! Production::    definition : INIT_CODE init_code_name action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
+                    var name = yyvstack[yysp - 1];
+                    var code = yyvstack[yysp];
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject48, $init_code_name, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject49, name, rv, code, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     }
                     this.$ = {
-                        type: 'codesection',
-                        qualifier: yyvstack[yysp - 1],
-                        include: yyvstack[yysp]
+                        type: 'codeSection',
+                        body: {
+                            qualifier: yyvstack[yysp - 1],
+                            include: yyvstack[yysp]
+                        }
                     };
                     break;
 
                 case 22:
                     /*! Production::    definition : INIT_CODE error action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject49, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject50, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 23:
@@ -10308,9 +10361,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 116:
                     /*! Production::    optional_module_code_chunk : module_code_chunk */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp];
@@ -10319,9 +10372,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 29:
                     /*! Production::    names_inclusive : START_COND */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { type: 'names', names: {} };this.$.names[yyvstack[yysp]] = 0;
@@ -10330,9 +10383,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 30:
                     /*! Production::    names_inclusive : names_inclusive START_COND */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];this.$.names[yyvstack[yysp]] = 0;
@@ -10341,9 +10394,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 31:
                     /*! Production::    names_exclusive : START_COND */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = { type: 'names', names: {} };this.$.names[yyvstack[yysp]] = 1;
@@ -10352,9 +10405,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 32:
                     /*! Production::    names_exclusive : names_exclusive START_COND */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];this.$.names[yyvstack[yysp]] = 1;
@@ -10363,9 +10416,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 33:
                     /*! Production::    rules : rules rules_collective */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1].concat(yyvstack[yysp]);
@@ -10376,9 +10429,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 40:
                     /*! Production::    rule_block : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [];
@@ -10387,9 +10440,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 35:
                     /*! Production::    rules_collective : start_conditions rule */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     if (yyvstack[yysp - 1]) {
@@ -10401,9 +10454,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 36:
                     /*! Production::    rules_collective : start_conditions "{" rule_block "}" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
                     if (yyvstack[yysp - 3]) {
@@ -10417,33 +10470,33 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 37:
                     /*! Production::    rules_collective : start_conditions "{" error "}" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 3];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject50, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject51, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 38:
                     /*! Production::    rules_collective : start_conditions "{" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject51, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject52, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 39:
                     /*! Production::    rule_block : rule_block rule */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];this.$.push(yyvstack[yysp]);
@@ -10452,14 +10505,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 41:
                     /*! Production::    rule : regex action */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject52, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject53, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
                     break;
@@ -10467,49 +10520,49 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 42:
                     /*! Production::    rule : regex error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-                    yyparser.yyError(rmCommonWS$2(_templateObject53, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject54, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 43:
                     /*! Production::    action : ACTION_START action_body BRACKET_MISSING */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
-
-
-                    yyparser.yyError(rmCommonWS$2(_templateObject54, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
-                    break;
-
-                case 44:
-                    /*! Production::    action : ACTION_START action_body BRACKET_SURPLUS */
-
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
-                    this.$ = yyvstack[yysp - 2];
-                    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yyparser.yyError(rmCommonWS$2(_templateObject55, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
+                case 44:
+                    /*! Production::    action : ACTION_START action_body BRACKET_SURPLUS */
+
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
+                    this.$ = yyvstack[yysp - 2];
+                    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
+
+
+                    yyparser.yyError(rmCommonWS$2(_templateObject56, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                    break;
+
                 case 45:
                     /*! Production::    action : ACTION_START action_body ACTION_END */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var s = yyvstack[yysp - 1].trim();
-                    // remove outermost set of braces UNLESS there's 
+                    // remove outermost set of braces UNLESS there's
                     // a curly brace in there anywhere: in that case
                     // we should leave it up to the sophisticated
                     // code analyzer to simplify the code!
@@ -10531,9 +10584,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 51:
                     /*! Production::    action_body : action_body include_macro_code */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + '\n\n' + yyvstack[yysp] + '\n\n';
@@ -10556,9 +10609,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 114:
                     /*! Production::    module_code_chunk : module_code_chunk CODE */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
@@ -10567,25 +10620,25 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 52:
                     /*! Production::    action_body : action_body INCLUDE_PLACEMENT_ERROR */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject56, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject57, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 53:
                     /*! Production::    action_body : action_body error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject57, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject58, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 54:
@@ -10595,9 +10648,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 117:
                     /*! Production::    optional_module_code_chunk : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '';
@@ -10606,9 +10659,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 55:
                     /*! Production::    start_conditions : "<" name_list ">" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1];
@@ -10617,21 +10670,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 56:
                     /*! Production::    start_conditions : "<" name_list error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject58, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject59, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 57:
                     /*! Production::    start_conditions : "<" "*" ">" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = ['*'];
@@ -10640,18 +10693,18 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 58:
                     /*! Production::    start_conditions : %epsilon */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-):
                     this.$ = undefined;
                     this._$ = yyparser.yyMergeLocationInfo(null, null, null, null, true);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-)
                     break;
 
                 case 59:
                     /*! Production::    name_list : NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = [yyvstack[yysp]];
@@ -10660,9 +10713,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 60:
                     /*! Production::    name_list : name_list "," NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2];this.$.push(yyvstack[yysp]);
@@ -10671,9 +10724,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 61:
                     /*! Production::    regex : nonempty_regex_list */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     // Detect if the regex ends with a pure (Unicode) word;
@@ -10739,9 +10792,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 66:
                     /*! Production::    nonempty_regex_list : nonempty_regex_list "|" regex_concat */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2] + '|' + yyvstack[yysp];
@@ -10752,9 +10805,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 67:
                     /*! Production::    nonempty_regex_list : nonempty_regex_list "|" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + '|';
@@ -10763,9 +10816,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 68:
                     /*! Production::    nonempty_regex_list : "|" regex_concat */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '|' + yyvstack[yysp];
@@ -10774,9 +10827,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 72:
                     /*! Production::    regex_base : "(" regex_list ")" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '(' + yyvstack[yysp - 1] + ')';
@@ -10785,9 +10838,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 73:
                     /*! Production::    regex_base : SPECIAL_GROUP regex_list ")" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + ')';
@@ -10798,21 +10851,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 75:
                     /*! Production::    regex_base : SPECIAL_GROUP regex_list error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject59, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject60, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 76:
                     /*! Production::    regex_base : regex_base "+" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + '+';
@@ -10821,9 +10874,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 77:
                     /*! Production::    regex_base : regex_base "*" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + '*';
@@ -10832,9 +10885,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 78:
                     /*! Production::    regex_base : regex_base "?" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 1] + '?';
@@ -10843,9 +10896,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 79:
                     /*! Production::    regex_base : "/" regex_base */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '(?=' + yyvstack[yysp] + ')';
@@ -10854,9 +10907,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 80:
                     /*! Production::    regex_base : "/!" regex_base */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '(?!' + yyvstack[yysp] + ')';
@@ -10879,18 +10932,18 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 99:
                     /*! Production::    string : CHARACTER_LIT */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp];
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
                     break;
 
                 case 84:
                     /*! Production::    regex_base : "." */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '.';
@@ -10899,9 +10952,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 85:
                     /*! Production::    regex_base : "^" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '^';
@@ -10910,9 +10963,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 86:
                     /*! Production::    regex_base : "$" */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = '$';
@@ -10921,9 +10974,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 90:
                     /*! Production::    any_group_regex : REGEX_SET_START regex_set REGEX_SET_END */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
@@ -10932,21 +10985,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 91:
                     /*! Production::    any_group_regex : REGEX_SET_START regex_set error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject60, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject61, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 95:
                     /*! Production::    regex_set_atom : name_expansion */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     if (XRegExp._getUnicodeProperty(yyvstack[yysp].replace(/[{}]/g, '')) && yyvstack[yysp].toUpperCase() !== yyvstack[yysp]) {
@@ -10961,9 +11014,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 98:
                     /*! Production::    string : STRING_LIT */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = prepareString(yyvstack[yysp]);
@@ -10972,9 +11025,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 100:
                     /*! Production::    options : OPTIONS option_list OPTIONS_END */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = null;
@@ -10983,9 +11036,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 101:
                     /*! Production::    option_list : option option_list */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     this.$ = null;
@@ -10994,10 +11047,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 103:
                     /*! Production::    option : NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp];
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
 
 
                     yy.options[yyvstack[yysp]] = true;
@@ -11006,10 +11059,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 104:
                     /*! Production::    option : NAME "=" OPTION_STRING_VALUE */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yy.options[yyvstack[yysp - 2]] = yyvstack[yysp];
@@ -11020,10 +11073,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 106:
                     /*! Production::    option : NAME "=" NAME */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     yy.options[yyvstack[yysp - 2]] = parseValue$1(yyvstack[yysp]);
@@ -11032,40 +11085,40 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 107:
                     /*! Production::    option : NAME "=" error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 2];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject61, $option, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject62, $option, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 108:
                     /*! Production::    option : error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp];
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject62, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject63, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
                     break;
 
                 case 109:
                     /*! Production::    extra_lexer_module_code : optional_module_code_chunk */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yylstack[yysp];
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject63, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject64, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = yyvstack[yysp];
                     break;
@@ -11073,22 +11126,22 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 110:
                     /*! Production::    extra_lexer_module_code : extra_lexer_module_code include_macro_code optional_module_code_chunk */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
                     // Each of the 3 chunks should be parse-able as a JS snippet on its own.
                     //
-                    // Note: we have already checked the first section in a previous reduction 
+                    // Note: we have already checked the first section in a previous reduction
                     // of this rule, so we don't need to check that one again!
                     var rv = checkActionBlock$2(yyvstack[yysp - 1], yylstack[yysp - 1]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject64, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject65, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
                     }
                     rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$2(_templateObject63, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject64, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
                     break;
@@ -11096,9 +11149,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 111:
                     /*! Production::    include_macro_code : INCLUDE PATH */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,VU,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
                     var fileContent = fs.readFileSync(yyvstack[yysp], { encoding: 'utf-8' });
@@ -11109,26 +11162,26 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 case 112:
                     /*! Production::    include_macro_code : INCLUDE error */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$2(_templateObject65, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject66, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 115:
                     /*! Production::    module_code_chunk : error CODE */
 
-                    // default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-):
+                    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
                     this.$ = yyvstack[yysp - 1];
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
-                    // END of default action (generated by JISON mode classic/merge :: VT,VA,-,-,LT,LA,-,-)
+                    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$2(_templateObject66, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject67, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 151:
@@ -11155,10 +11208,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             goto: u$2([9, 11, 10, 15, 16, 17, 54, 1, 2, 34, 12, 81, s$2, [83, 7, 1], 98, 99, 96, 29, 31, 20, 25, 26, 23, 24, 108, 33, 76, 77, 78, 82, 97, 93, 94, 95, 30, 32, 18, 19, 27, 28, 21, 22, s$2, [43, 11, 1], 100, 101, 109, 113, 35, 59, 72, 74, 73, 75, 90, 91, 92, 111, 112, s$2, [104, 4, 1], 115, 114, 41, 42, 55, 56, 57, 110, 36, 39, 37, 60])
         }),
         parseError: function parseError(str, hash, ExceptionClass) {
-            if (hash.recoverable && typeof this.trace === 'function') {
-                this.trace(str);
+            if (hash.recoverable) {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 hash.destroy(); // destroy... well, *almost*!
             } else {
+                if (typeof this.trace === 'function') {
+                    this.trace(str);
+                }
                 if (!ExceptionClass) {
                     ExceptionClass = this.JisonParserError;
                 }
@@ -11178,7 +11236,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             var symbol = 0;
             var preErrorSymbol = 0;
-            var lastEofErrorStateDepth = 0;
+            var lastEofErrorStateDepth = -42;
             var recoveringErrorInfo = null;
             var recovering = 0; // (only used when the grammar contains error recovery rules)
             var TERROR = this.TERROR;
@@ -11713,7 +11771,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 var depth = 0;
 
                 // try to recover from error
-                for (;;) {
+                while (stack_probe >= 0) {
                     // check for error recovery rule in this state
 
 
@@ -11735,7 +11793,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                         if (symbol === EOF) {
-                            if (!lastEofErrorStateDepth) {
+                            if (lastEofErrorStateDepth === -42) {
                                 lastEofErrorStateDepth = sp - 1 - depth;
                             } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
 
@@ -11755,6 +11813,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     state = sstack[stack_probe];
                     ++depth;
                 }
+
+                return -1; // No suitable error recovery rule available.
             }
 
             try {
@@ -12270,62 +12330,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser$3.originalParseError = parser$3.parseError;
     parser$3.originalQuoteName = parser$3.quoteName;
-
-    var rmCommonWS$2 = helpers.rmCommonWS;
-    var checkActionBlock$2 = helpers.checkActionBlock;
-
-    function encodeRE(s) {
-        return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
-    }
-
-    function prepareString(s) {
-        // unescape slashes
-        s = s.replace(/\\\\/g, "\\");
-        s = encodeRE(s);
-        return s;
-    }
-
-    // convert string value to number or boolean value, when possible
-    // (and when this is more or less obviously the intent)
-    // otherwise produce the string itself as value.
-    function parseValue$1(v) {
-        if (v === 'false') {
-            return false;
-        }
-        if (v === 'true') {
-            return true;
-        }
-        // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
-        // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
-        if (v && !isNaN(v)) {
-            var rv = +v;
-            if (isFinite(rv)) {
-                return rv;
-            }
-        }
-        return v;
-    }
-
-    parser$3.warn = function p_warn() {
-        console.warn.apply(console, arguments);
-    };
-
-    parser$3.log = function p_log() {
-        console.log.apply(console, arguments);
-    };
-
-    parser$3.pre_parse = function p_lex() {
-        if (parser$3.yydebug) parser$3.log('pre_parse:', arguments);
-    };
-
-    parser$3.yy.pre_parse = function p_lex() {
-        if (parser$3.yydebug) parser$3.log('pre_parse YY:', arguments);
-    };
-
-    parser$3.yy.post_lex = function p_lex() {
-        if (parser$3.yydebug) parser$3.log('post_lex:', arguments);
-    };
-    /* lexer generated by jison-lex 0.6.1-207 */
+    /* lexer generated by jison-lex 0.6.1-208 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -13804,7 +13809,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                             return 51;
                         } else {
                             // TODO
-                            yy_.yyerror('oops!');
+                            yy_.yyerror(rmCommonWS(_templateObject68) + this.prettyPrintRange(yy_.yylloc));
 
                             return 37;
                         }
@@ -13814,7 +13819,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 3:
                         /*! Conditions:: action */
                         /*! Rule::       {WS}*\/\*[^]*?\*\/ */
-                        //yy.include_command_allowed = false; -- doesn't impact include-allowed state 
+                        //yy.include_command_allowed = false; -- doesn't impact include-allowed state
                         return 34;
 
                         break;
@@ -13918,7 +13923,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth <= 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject67) + this.prettyPrintRange(yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject69) + this.prettyPrintRange(yy_.yylloc));
 
                             return 30;
                         } else {
@@ -13959,7 +13964,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth !== 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject68, yy.depth) + this.prettyPrintRange(yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject70, yy.depth) + this.prettyPrintRange(yy_.yylloc));
 
                             yy_.yytext = '';
                             return 29;
@@ -14253,11 +14258,12 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Conditions:: INITIAL rules code */
                         /*! Rule::       %{NAME}([^\r\n]*) */
                         /* ignore unrecognized decl */
-                        this.warn(rmCommonWS(_templateObject69, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
+                        this.warn(rmCommonWS(_templateObject71, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
-                        yy_.yytext = [this.matches[1], // {NAME}  
-                        this.matches[2].trim() // optional value/parameters 
-                        ];
+                        yy_.yytext = {
+                            name: this.matches[1], // {NAME}  
+                            value: this.matches[2].trim() // optional value/parameters 
+                        };
 
                         return 23;
                         break;
@@ -14409,14 +14415,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /* b0rk on bad characters */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject70, rules, rules) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject72, rules, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         break;
 
                     case 107:
                         /*! Conditions:: * */
                         /*! Rule::       . */
-                        yy_.yyerror(rmCommonWS(_templateObject71, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject73, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         break;
 
@@ -14772,6 +14778,61 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return lexer;
     }();
     parser$3.lexer = lexer$2;
+
+    var rmCommonWS$2 = helpers.rmCommonWS;
+    var checkActionBlock$2 = helpers.checkActionBlock;
+
+    function encodeRE(s) {
+        return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
+    }
+
+    function prepareString(s) {
+        // unescape slashes
+        s = s.replace(/\\\\/g, "\\");
+        s = encodeRE(s);
+        return s;
+    }
+
+    // convert string value to number or boolean value, when possible
+    // (and when this is more or less obviously the intent)
+    // otherwise produce the string itself as value.
+    function parseValue$1(v) {
+        if (v === 'false') {
+            return false;
+        }
+        if (v === 'true') {
+            return true;
+        }
+        // http://stackoverflow.com/questions/175739/is-there-a-built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+        // Note that the `v` check ensures that we do not convert `undefined`, `null` and `''` (empty string!)
+        if (v && !isNaN(v)) {
+            var rv = +v;
+            if (isFinite(rv)) {
+                return rv;
+            }
+        }
+        return v;
+    }
+
+    parser$3.warn = function p_warn() {
+        console.warn.apply(console, arguments);
+    };
+
+    parser$3.log = function p_log() {
+        console.log.apply(console, arguments);
+    };
+
+    parser$3.pre_parse = function p_lex() {
+        if (parser$3.yydebug) parser$3.log('pre_parse:', arguments);
+    };
+
+    parser$3.yy.pre_parse = function p_lex() {
+        if (parser$3.yydebug) parser$3.log('pre_parse YY:', arguments);
+    };
+
+    parser$3.yy.post_lex = function p_lex() {
+        if (parser$3.yydebug) parser$3.log('post_lex:', arguments);
+    };
 
     function Parser$2() {
         this.yy = {};
