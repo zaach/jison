@@ -35,11 +35,12 @@
     "@gerhobbelt/json5": "0.5.1-20",
     "@gerhobbelt/lex-parser": "0.6.1-208",
     "@gerhobbelt/nomnom": "1.8.4-24",
-    "@gerhobbelt/recast": "0.12.7-14",
+    "@gerhobbelt/recast": "0.12.7-15",
     "@gerhobbelt/xregexp": "3.2.0-22",
     "jison-helpers-lib": "0.6.1-208"
   },
   "devDependencies": {
+    "@gerhobbelt/js-yaml": "3.10.1-5",
     "babel-cli": "6.26.0",
     "babel-core": "6.26.0",
     "babel-preset-env": "1.6.1",

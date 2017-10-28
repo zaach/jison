@@ -36,7 +36,7 @@
     "babel-preset-env": "1.6.1",
     "babel-preset-modern-browsers": "10.0.1",
     "chai": "4.1.2",
-    "jison-gho": "0.6.1-206",
+    "jison-gho": "0.6.1-207",
     "mocha": "4.0.1",
     "rollup-plugin-node-resolve": "3.0.0",
     "rollup": "0.50.0"
