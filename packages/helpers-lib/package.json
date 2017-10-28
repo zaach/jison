@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/recast": "0.12.7-14"
+    "@gerhobbelt/recast": "0.12.7-15"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
