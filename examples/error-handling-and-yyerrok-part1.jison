@@ -57,7 +57,6 @@
 
 
 
-
 %lex
 %%
 
@@ -74,6 +73,7 @@ zz          return 'ZZ';
 
 
 
+
 %token YY ZZ
 
 %options debug=0
@@ -83,9 +83,9 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("slist stmt\n"); }
-      | stmt ';'       { console.log("stmt\n"); }
-      | error ';'      { console.log("ERROR!!!\n");  yyerrok; }
+slist : slist stmt ';' { console.log("** slist stmt"); }
+      | stmt ';'       { console.log("** stmt"); }
+      | error ';'      { console.log("** ERROR!!!");  yyerrok; }
       ;
 
 stmt  : ZZ stmt

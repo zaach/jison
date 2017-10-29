@@ -44,9 +44,9 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("slist stmt\n"); }
-      | stmt ';'       { console.log("stmt\n"); }
-      | error ';'      { console.log("ERROR!!!\n"); }
+slist : slist stmt ';' { console.log("** slist stmt"); }
+      | stmt ';'       { console.log("** stmt"); }
+      | error ';'      { console.log("** ERROR!!!"); }
       ;
 
 stmt  : ZZ stmt
