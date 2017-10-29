@@ -7139,7 +7139,7 @@ var camelCase = helpers.camelCase;
 var code_exec = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-208'; // require('./package.json').version;
+var version$1 = '0.6.1-209'; // require('./package.json').version;
 
 
 var XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE; // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
@@ -8676,7 +8676,7 @@ RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-var version = '0.6.1-208'; // require('./package.json').version;
+var version = '0.6.1-209'; // require('./package.json').version;
 
 
 function getCommandlineOptions() {
