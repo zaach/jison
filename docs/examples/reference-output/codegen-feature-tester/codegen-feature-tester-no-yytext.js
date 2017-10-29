@@ -2210,12 +2210,34 @@ parse: function parse(input) {
                         // barf a fatal hairball when we're out of look-ahead symbols and none hit a match
                         // while we are still busy recovering from another error:
                         var po = this.__error_infos[this.__error_infos.length - 1];
-                        if (!po) {
-                            p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error.', null, expected, false);
+
+                        // Report error
+                        if (typeof lexer.yylineno === 'number') {
+                            errStr = 'Parsing halted on line ' + (lexer.yylineno + 1) + ' while starting to recover from another error';
                         } else {
-                            p = this.constructParseErrorInfo('Parsing halted while starting to recover from another error. Previous error which resulted in this fatal result: ' + po.errStr, null, expected, false);
+                            errStr = 'Parsing halted while starting to recover from another error';
+                        }
+
+                        if (po) {
+                            errStr += ' -- previous error which resulted in this fatal result: ' + po.errStr;
+                        } else {
+                            errStr += ': ';
+                        }
+
+                        if (typeof lexer.showPosition === 'function') {
+                            errStr += '\n' + lexer.showPosition(79 - 10, 10) + '\n';
+                        }
+                        if (expected.length) {
+                            errStr += 'Expecting ' + expected.join(', ') + ', got unexpected ' + errSymbolDescr;
+                        } else {
+                            errStr += 'Unexpected ' + errSymbolDescr;
+                        }
+
+                        p = this.constructParseErrorInfo(errStr, null, expected, false);
+                        if (po) {
                             p.extra_error_attributes = po;
                         }
+
                         retval = this.parseError(p.errStr, p, this.JisonParserError);
                         break;
                     }
