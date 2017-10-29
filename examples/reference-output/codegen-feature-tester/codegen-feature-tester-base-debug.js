@@ -1893,7 +1893,7 @@ parse: function parse(input) {
 
     var symbol = 0;
     var preErrorSymbol = 0;
-    var lastEofErrorStateDepth = -42;
+    var lastEofErrorStateDepth = Infinity;
     var recoveringErrorInfo = null;
     var recovering = 0;                 // (only used when the grammar contains error recovery rules)
     var TERROR = this.TERROR;
@@ -2533,9 +2533,9 @@ parse: function parse(input) {
                 // action code blocks:
                 if (yydebug) yydebug('locateNearestErrorRecoveryRule #found#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
                 if (symbol === EOF) {
-                    if (lastEofErrorStateDepth === -42) {
+                    if (lastEofErrorStateDepth > sp - 1 - depth) {
                         lastEofErrorStateDepth = sp - 1 - depth;
-                    } else if (lastEofErrorStateDepth <= sp - 1 - depth) {
+                    } else {
                         if (yydebug) yydebug('locateNearestErrorRecoveryRule #skip#: ', { symbol: symbol, state: state, depth: depth, stackidx: sp - 1 - depth, lastidx: lastEofErrorStateDepth });
                         --stack_probe; // popStack(1): [symbol, action]
                         state = sstack[stack_probe];
@@ -2707,7 +2707,7 @@ parse: function parse(input) {
                         recoveringErrorInfo.value_stack[esp] = {
                             yytext: shallow_copy(lexer.yytext),
                             errorRuleDepth: error_rule_depth,
-                            errorStr: errStr,
+                            errStr: errStr,
                             errorSymbolDescr: errSymbolDescr,
                             expectedStr: expected,
                             stackSampleLength: error_rule_depth + EXTRA_STACK_SAMPLE_DEPTH
