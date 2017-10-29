@@ -129,7 +129,7 @@ describe("Error Recovery/Handling", function () {
 
     assert.throws(function () { 
       parser.parse('gxxx;'); 
-    }, JisonParserError, /Parsing halted while starting to recover from another error/);
+    }, JisonParserError, /Parsing halted on line 1 while starting to recover from another error -- previous error which resulted in this fatal result: Parse error on line 1/);
   });
 
 // WARNING: the actual test in here differs from what it says on the tin, as we differ from jison in error recovery behaviour in this regard:
