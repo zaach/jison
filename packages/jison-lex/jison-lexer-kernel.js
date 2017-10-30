@@ -957,20 +957,76 @@
     lex: function lexer_lex() {
         var r;
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
+        if (typeof this.pre_lex === 'function') {
+            r = this.pre_lex.call(this, 0);
+        }
         if (typeof this.options.pre_lex === 'function') {
-            r = this.options.pre_lex.call(this);
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.options.pre_lex.call(this, r) || r;
+        }
+        if (this.yy && typeof this.yy.pre_lex === 'function') {
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.yy.pre_lex.call(this, r) || r;
         }
 
         while (!r) {
             r = this.next();
         }
 
+        if (this.yy && typeof this.yy.post_lex === 'function') {
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.yy.post_lex.call(this, r) || r;
+        }
         if (typeof this.options.post_lex === 'function') {
             // (also account for a userdef function which does not return any value: keep the token as is)
             r = this.options.post_lex.call(this, r) || r;
         }
+        if (typeof this.post_lex === 'function') {
+            // (also account for a userdef function which does not return any value: keep the token as is)
+            r = this.post_lex.call(this, r) || r;
+        }
         return r;
     },
+
+    /**
+     * return next match that has a token. Identical to the `lex()` API but does not invoke any of the 
+     * `pre_lex()` nor any of the `post_lex()` callbacks.
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    fastLex: function lexer_fastLex() {
+        var r;
+
+        while (!r) {
+            r = this.next();
+        }
+
+        return r;
+    },
+
+    /**
+     * return info about the lexer state that can help a parser or other lexer API user to use the
+     * most efficient means available. This API is provided to aid run-time performance for larger
+     * systems which employ this lexer.
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    canIUse: function lexer_canIUse() {
+        var rv = {
+            fast_lex: !(
+                typeof this.pre_lex === 'function' ||
+                typeof this.options.pre_lex === 'function' ||
+                (this.yy && typeof this.yy.pre_lex === 'function') ||
+                (this.yy && typeof this.yy.post_lex === 'function') ||
+                typeof this.options.post_lex === 'function' ||
+                typeof this.post_lex === 'function'
+            ),
+        };
+        return r;
+    },
+
 
     /**
      * backwards compatible alias for `pushState()`;
