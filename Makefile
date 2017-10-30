@@ -330,6 +330,9 @@ examples/parser-to-lexer-communication-test: build
 examples/parser-to-lexer-communication-test--profiling: build
 	cd examples/ && make parser-to-lexer-communication-test--profiling
 
+profiling: 
+	cd examples/ && make profiling
+
 examples/pascal: build
 	cd examples/ && make pascal
 
@@ -540,6 +543,9 @@ superclean: clean clean-site
 
 	-rm -rf dist
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
+
+	# recover old jison run-time so we can bootstrap without failure and need for manual git-revert action
+	git checkout dist/
 
 
 
