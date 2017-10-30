@@ -553,7 +553,7 @@ var parser = {
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
     //   has user-specified main(): ....... false
-    //   has user-specified require()/import modules for main(): 
+    //   has user-specified require()/import modules for main():
     //   .................................. false
     //   number of expected conflicts: .... 0
     //
@@ -1522,7 +1522,10 @@ parse: function parse(input) {
                     }
                     // we cannot recover from the error!
                     p = this.constructParseErrorInfo(errStr, null, expected, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
 
@@ -1544,13 +1547,19 @@ parse: function parse(input) {
                 // this shouldn't happen, unless resolve defaults are off
                 if (action instanceof Array) {
                     p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
                 p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                retval = this.parseError(p.errStr, p, this.JisonParserError);
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                }
                 break;
 
             // shift:
@@ -1564,18 +1573,9 @@ parse: function parse(input) {
                 symbol = 0;
 
 
-                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
-
-
-
-
-
-
-
-
-                
+                // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
 
@@ -1584,6 +1584,9 @@ parse: function parse(input) {
 
             // reduce:
             case 2:
+
+
+
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 yyrulelen = this_production[1];
 
@@ -1628,33 +1631,34 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                retval = true;
-                // Return the `$accept` rule's `$$` result, if available.
-                //
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit,
-                // default, action):
-                //
-                //     $accept: <startSymbol> $end
-                //                  %{ $$ = $1; @$ = @1; %}
-                //
-                // which, combined with the parse kernel's `$accept` state behaviour coded below,
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result,
-                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                //
-                // In code:
-                //
-                //                  %{
-                //                      @$ = @1;            // if location tracking support is included
-                //                      if (typeof $1 !== 'undefined')
-                //                          return $1;
-                //                      else
-                //                          return true;           // the default parse result if the rule actions don't produce anything
-                //                  %}
-                sp--;
-                if (typeof vstack[sp] !== 'undefined') {
-                    retval = vstack[sp];
+                if (sp !== -2) {
+                    retval = true;
+                    // Return the `$accept` rule's `$$` result, if available.
+                    //
+                    // Also note that JISON always adds this top-most `$accept` rule (with implicit,
+                    // default, action):
+                    //
+                    //     $accept: <startSymbol> $end
+                    //                  %{ $$ = $1; @$ = @1; %}
+                    //
+                    // which, combined with the parse kernel's `$accept` state behaviour coded below,
+                    // will produce the `$$` value output of the <startSymbol> rule as the parse result,
+                    // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                    //
+                    // In code:
+                    //
+                    //                  %{
+                    //                      @$ = @1;            // if location tracking support is included
+                    //                      if (typeof $1 !== 'undefined')
+                    //                          return $1;
+                    //                      else
+                    //                          return true;           // the default parse result if the rule actions don't produce anything
+                    //                  %}
+                    sp--;
+                    if (typeof vstack[sp] !== 'undefined') {
+                        retval = vstack[sp];
+                    }
                 }
-
                 break;
             }
 
@@ -1672,7 +1676,11 @@ parse: function parse(input) {
         }
         else {
             p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = this.parseError(p.errStr, p, this.JisonParserError);
+            retval = false;
+            r = this.parseError(p.errStr, p, this.JisonParserError);
+            if (typeof r !== 'undefined') {
+                retval = r;
+            }
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);

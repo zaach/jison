@@ -43,10 +43,10 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("** stmt\n"); }
+slist : slist stmt ';' { console.log("** slist stmt"); }
       | stmt ';'       {
                          yyerrok;
-                         console.log("** stmt\n");
+                         console.log("** stmt");
                        }
       ;
 

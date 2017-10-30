@@ -39,7 +39,7 @@
     "babel-preset-modern-browsers": "10.0.1",
     "chai": "4.1.2",
     "globby": "6.1.0",
-    "jison-gho": "0.6.1-207",
+    "jison-gho": "0.6.1-208",
     "mocha": "4.0.1",
     "rollup-plugin-node-resolve": "3.0.0",
     "rollup": "0.50.0"

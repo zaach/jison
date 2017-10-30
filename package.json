@@ -54,11 +54,11 @@
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "globby": "6.1.0",
-    "jison-gho": "0.6.1-207",
+    "jison-gho": "0.6.1-208",
     "mocha": "4.0.1",
     "rollup": "0.50.0",
     "rollup-plugin-node-resolve": "3.0.0",
-    "uglify-js": "3.1.5"
+    "uglify-js": "3.1.6"
   },
   "scripts": {
     "test": "make test",

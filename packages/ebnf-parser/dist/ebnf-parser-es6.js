@@ -954,7 +954,7 @@ var parser$1 = {
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
     //   has user-specified main(): ....... false
-    //   has user-specified require()/import modules for main(): 
+    //   has user-specified require()/import modules for main():
     //   .................................. false
     //   number of expected conflicts: .... 0
     //
@@ -1892,7 +1892,10 @@ parse: function parse(input) {
                     }
                     // we cannot recover from the error!
                     p = this.constructParseErrorInfo(errStr, null, expected, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
 
@@ -1914,13 +1917,19 @@ parse: function parse(input) {
                 // this shouldn't happen, unless resolve defaults are off
                 if (action instanceof Array) {
                     p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
                 p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                retval = this.parseError(p.errStr, p, this.JisonParserError);
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                }
                 break;
 
             // shift:
@@ -1934,18 +1943,9 @@ parse: function parse(input) {
                 symbol = 0;
 
 
-                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
-
-
-
-
-
-
-
-
-                
+                // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
 
@@ -1954,6 +1954,9 @@ parse: function parse(input) {
 
             // reduce:
             case 2:
+
+
+
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 yyrulelen = this_production[1];
 
@@ -1998,33 +2001,34 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                retval = true;
-                // Return the `$accept` rule's `$$` result, if available.
-                //
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit,
-                // default, action):
-                //
-                //     $accept: <startSymbol> $end
-                //                  %{ $$ = $1; @$ = @1; %}
-                //
-                // which, combined with the parse kernel's `$accept` state behaviour coded below,
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result,
-                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                //
-                // In code:
-                //
-                //                  %{
-                //                      @$ = @1;            // if location tracking support is included
-                //                      if (typeof $1 !== 'undefined')
-                //                          return $1;
-                //                      else
-                //                          return true;           // the default parse result if the rule actions don't produce anything
-                //                  %}
-                sp--;
-                if (typeof vstack[sp] !== 'undefined') {
-                    retval = vstack[sp];
+                if (sp !== -2) {
+                    retval = true;
+                    // Return the `$accept` rule's `$$` result, if available.
+                    //
+                    // Also note that JISON always adds this top-most `$accept` rule (with implicit,
+                    // default, action):
+                    //
+                    //     $accept: <startSymbol> $end
+                    //                  %{ $$ = $1; @$ = @1; %}
+                    //
+                    // which, combined with the parse kernel's `$accept` state behaviour coded below,
+                    // will produce the `$$` value output of the <startSymbol> rule as the parse result,
+                    // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                    //
+                    // In code:
+                    //
+                    //                  %{
+                    //                      @$ = @1;            // if location tracking support is included
+                    //                      if (typeof $1 !== 'undefined')
+                    //                          return $1;
+                    //                      else
+                    //                          return true;           // the default parse result if the rule actions don't produce anything
+                    //                  %}
+                    sp--;
+                    if (typeof vstack[sp] !== 'undefined') {
+                        retval = vstack[sp];
+                    }
                 }
-
                 break;
             }
 
@@ -2042,7 +2046,11 @@ parse: function parse(input) {
         }
         else {
             p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = this.parseError(p.errStr, p, this.JisonParserError);
+            retval = false;
+            r = this.parseError(p.errStr, p, this.JisonParserError);
+            if (typeof r !== 'undefined') {
+                retval = r;
+            }
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
@@ -4627,7 +4635,7 @@ var parser = {
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
     //   has user-specified main(): ....... false
-    //   has user-specified require()/import modules for main(): 
+    //   has user-specified require()/import modules for main():
     //   .................................. false
     //   number of expected conflicts: .... 0
     //
@@ -8674,7 +8682,9 @@ parse: function parse(input) {
                         // the `recoverable` flag without properly checking first:
                         // we always terminate the parse when there's no recovery rule available anyhow!
                         if (!p.recoverable || error_rule_depth < 0) {
-                            retval = r;
+                            if (typeof r !== 'undefined') {
+                                retval = r;
+                            }
                             break;
                         } else {
                             // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -8722,7 +8732,7 @@ parse: function parse(input) {
 
                     // try to recover from error
                     if (error_rule_depth < 0) {
-                        ASSERT(recovering > 0);
+                        ASSERT(recovering > 0, "line 897");
                         recoveringErrorInfo.info_stack_pointer = esp;
 
                         // barf a fatal hairball when we're out of look-ahead symbols and none hit a match
@@ -8756,7 +8766,10 @@ parse: function parse(input) {
                             p.extra_error_attributes = po;
                         }
 
-                        retval = this.parseError(p.errStr, p, this.JisonParserError);
+                        r = this.parseError(p.errStr, p, this.JisonParserError);
+                        if (typeof r !== 'undefined') {
+                            retval = r;
+                        }
                         break;
                     }
 
@@ -8861,17 +8874,32 @@ parse: function parse(input) {
                     // Now duplicate the standard parse machine here, at least its initial
                     // couple of rounds until the TERROR symbol is **pushed onto the parse stack**,
                     // as we wish to push something special then!
-
-
+                    //
                     // Run the state machine in this copy of the parser state machine
                     // until we *either* consume the error symbol (and its related information)
                     // *or* we run into another error while recovering from this one
                     // *or* we execute a `reduce` action which outputs a final parse
-                    // result (yes, that MAY happen!)...
+                    // result (yes, that MAY happen!).
+                    //
+                    // We stay in this secondary parse loop until we have completed
+                    // the *error recovery phase* as the main parse loop (further below)
+                    // is optimized for regular parse operation and DOES NOT cope with
+                    // error recovery *at all*.
+                    //
+                    // We call the secondary parse loop just below the "slow parse loop",
+                    // while the main parse loop, which is an almost-duplicate of this one,
+                    // yet optimized for regular parse operation, is called the "fast
+                    // parse loop".
+                    //
+                    // Compare this to `bison` & (vanilla) `jison`, both of which have
+                    // only a single parse loop, which handles everything. Our goal is
+                    // to eke out every drop of performance in the main parse loop...
 
-                    ASSERT(recoveringErrorInfo);
-                    ASSERT(symbol === TERROR);
-                    while (symbol) {
+                    ASSERT(recoveringErrorInfo, "line 1049");
+                    ASSERT(symbol === TERROR, "line 1050");
+                    ASSERT(!action, "line 1051");
+                    var errorSymbolFromParser = true;
+                    for (;;) {
                         // retrieve state number from top of stack
                         state = newState;               // sstack[sp - 1];
 
@@ -8880,6 +8908,19 @@ parse: function parse(input) {
                             action = 2;
                             newState = this.defaultActions[state];
                         } else {
+                            // The single `==` condition below covers both these `===` comparisons in a single
+                            // operation:
+                            //
+                            //     if (symbol === null || typeof symbol === 'undefined') ...
+                            if (!symbol) {
+                                symbol = lex();
+                                // **Warning: Edge Case**: the *lexer* may produce
+                                // TERROR tokens of its own volition: *those* TERROR
+                                // tokens should be treated like *regular tokens*
+                                // i.e. tokens which have a lexer-provided `yyvalue`
+                                // and `yylloc`:
+                                errorSymbolFromParser = false;
+                            }
                             // read action for current state and first input
                             t = (table[state] && table[state][symbol]) || NO_ACTION;
                             newState = t[1];
@@ -8897,6 +8938,25 @@ parse: function parse(input) {
                             // encountered another parse error? If so, break out to main loop
                             // and take it from there!
                             if (!action) {
+
+
+
+
+
+
+
+
+
+
+                                ASSERT(recoveringErrorInfo, "line 1087");
+
+                                // Prep state variables so that upon breaking out of
+                                // this "slow parse loop" and hitting the `continue;`
+                                // statement in the outer "fast parse loop" we redo
+                                // the exact same state table lookup as the one above
+                                // so that the outer=main loop will also correctly
+                                // detect the 'parse error' state (`!action`) we have
+                                // just encountered above.
                                 newState = state;
                                 break;
                             }
@@ -8915,32 +8975,43 @@ parse: function parse(input) {
                         // catch misc. parse failures:
                         default:
                             // this shouldn't happen, unless resolve defaults are off
-                            if (action instanceof Array) {
-                                p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                                retval = this.parseError(p.errStr, p, this.JisonParserError);
-                                // signal end of error recovery loop AND end of outer parse loop
-                                action = 3;
-                                break;
-                            }
-                            // Another case of better safe than sorry: in case state transitions come out of another error recovery process
-                            // or a buggy LUT (LookUp Table):
-                            p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                            retval = this.parseError(p.errStr, p, this.JisonParserError);
-                            // signal end of error recovery loop AND end of outer parse loop
-                            action = 3;
+                            //
+                            // SILENTLY SIGNAL that the outer "fast parse loop" should
+                            // take care of this internal error condition:
+                            // prevent useless code duplication now/here.
                             break;
 
                         // shift:
                         case 1:
                             stack[sp] = symbol;
-                            //vstack[sp] = lexer.yytext;
-                            ASSERT(recoveringErrorInfo);
-                            vstack[sp] = recoveringErrorInfo;
-                            //lstack[sp] = copy_yylloc(lexer.yylloc);
-                            lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
+                            // ### Note/Warning ###
+                            //
+                            // The *lexer* may also produce TERROR tokens on its own,
+                            // so we specifically test for the TERROR we did set up
+                            // in the error recovery logic further above!
+                            if (symbol === TERROR && errorSymbolFromParser) {
+                                // Push a special value onto the stack when we're
+                                // shifting the `error` symbol that is related to the
+                                // error we're recovering from.
+                                ASSERT(recoveringErrorInfo, "line 1131");
+                                vstack[sp] = recoveringErrorInfo;
+                                lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
+                            } else {
+                                ASSERT(symbol !== 0, "line 1135");
+                                ASSERT(preErrorSymbol === 0, "line 1136");
+                                vstack[sp] = lexer.yytext;
+                                lstack[sp] = copy_yylloc(lexer.yylloc);
+                            }
                             sstack[sp] = newState; // push state
+
                             ++sp;
                             symbol = 0;
+                            // **Warning: Edge Case**: the *lexer* may have produced
+                            // TERROR tokens of its own volition: *those* TERROR
+                            // tokens should be treated like *regular tokens*
+                            // i.e. tokens which have a lexer-provided `yyvalue`
+                            // and `yylloc`:
+                            errorSymbolFromParser = false;
                             if (!preErrorSymbol) { // normal execution / no error
                                 // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
@@ -8962,6 +9033,7 @@ parse: function parse(input) {
                                 }
                             } else {
                                 // error just occurred, resume old lookahead f/ before error, *unless* that drops us straight back into error mode:
+                                ASSERT(recovering > 0, "line 1163");
                                 symbol = preErrorSymbol;
                                 preErrorSymbol = 0;
 
@@ -8997,8 +9069,22 @@ parse: function parse(input) {
                                 }
                             }
 
-                            // once we have pushed the special ERROR token value, we're done in this inner loop!
-                            break;
+                            // once we have pushed the special ERROR token value,
+                            // we REMAIN in this inner, "slow parse loop" until
+                            // the entire error recovery phase has completed.
+                            //
+                            // ### Note About Edge Case ###
+                            //
+                            // Userland action code MAY already have 'reset' the
+                            // error recovery phase marker `recovering` to ZERO(0)
+                            // while the error symbol hasn't been shifted onto
+                            // the stack yet. Hence we only exit this "slow parse loop"
+                            // when *both* conditions are met!
+                            ASSERT(preErrorSymbol === 0, "line 1194");
+                            if (recovering === 0) {
+                                break;
+                            }
+                            continue;
 
                         // reduce:
                         case 2:
@@ -9019,6 +9105,7 @@ parse: function parse(input) {
                             if (typeof r !== 'undefined') {
                                 // signal end of error recovery loop AND end of outer parse loop
                                 action = 3;
+                                sp = -2;      // magic number: signal outer "fast parse loop" ACCEPT state that we already have a properly set up `retval` parser return value.
                                 retval = r;
                                 break;
                             }
@@ -9071,9 +9158,10 @@ parse: function parse(input) {
                             //                          return true;           // the default parse result if the rule actions don't produce anything
                             //                  %}
                             sp--;
-                            if (typeof vstack[sp] !== 'undefined') {
+                            if (sp >= 0 && typeof vstack[sp] !== 'undefined') {
                                 retval = vstack[sp];
                             }
+                            sp = -2;      // magic number: signal outer "fast parse loop" ACCEPT state that we already have a properly set up `retval` parser return value.
                             break;
                         }
 
@@ -9083,10 +9171,12 @@ parse: function parse(input) {
 
                     // should we also break out of the regular/outer parse loop,
                     // i.e. did the parser already produce a parse result in here?!
-                    if (action === 3) {
-                        break;
+                    // *or* did we hit an unsupported parse state, to be handled
+                    // in the `switch/default` code further below?
+                    ASSERT(action !== 2, "line 1272");
+                    if (action === 0 || action === 1) {
+                        continue;
                     }
-                    continue;
                 }
 
 
@@ -9107,13 +9197,19 @@ parse: function parse(input) {
                 // this shouldn't happen, unless resolve defaults are off
                 if (action instanceof Array) {
                     p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
                 p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                retval = this.parseError(p.errStr, p, this.JisonParserError);
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                }
                 break;
 
             // shift:
@@ -9125,67 +9221,22 @@ parse: function parse(input) {
 
                 ++sp;
                 symbol = 0;
-                ASSERT(preErrorSymbol === 0);
-                if (!preErrorSymbol) { // normal execution / no error
-                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
+
+                ASSERT(preErrorSymbol === 0, "line 1352");         // normal execution / no error
+                ASSERT(recovering === 0, "line 1353");             // normal execution / no error
+
+                // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
 
-                    yyloc = lexer.yylloc;
-
-                    if (recovering > 0) {
-                        recovering--;
-
-
-
-
-
-
-
-
-
-                    }
-                } else {
-                    // error just occurred, resume old lookahead f/ before error, *unless* that drops us straight back into error mode:
-                    symbol = preErrorSymbol;
-                    preErrorSymbol = 0;
-
-
-
-
-
-
-
-
-
-                    // read action for current state and first input
-                    t = (table[newState] && table[newState][symbol]) || NO_ACTION;
-                    if (!t[0] || symbol === TERROR) {
-                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
-                        // (simple) stuff might have been missing before the token which caused the error we're
-                        // recovering from now...
-                        //
-                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
-                        // recovery, for then this we would we idling (cycling) on the error forever.
-                        // Yes, this does not take into account the possibility that the *lexer* may have
-                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
-
-
-
-
-
-
-
-
-
-                        symbol = 0;
-                    }
-                }
-
+                yyloc = lexer.yylloc;
                 continue;
 
             // reduce:
             case 2:
+                ASSERT(preErrorSymbol === 0, "line 1364");         // normal execution / no error
+                ASSERT(recovering === 0, "line 1365");             // normal execution / no error
+
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 yyrulelen = this_production[1];
 
@@ -9230,33 +9281,34 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                retval = true;
-                // Return the `$accept` rule's `$$` result, if available.
-                //
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit,
-                // default, action):
-                //
-                //     $accept: <startSymbol> $end
-                //                  %{ $$ = $1; @$ = @1; %}
-                //
-                // which, combined with the parse kernel's `$accept` state behaviour coded below,
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result,
-                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                //
-                // In code:
-                //
-                //                  %{
-                //                      @$ = @1;            // if location tracking support is included
-                //                      if (typeof $1 !== 'undefined')
-                //                          return $1;
-                //                      else
-                //                          return true;           // the default parse result if the rule actions don't produce anything
-                //                  %}
-                sp--;
-                if (typeof vstack[sp] !== 'undefined') {
-                    retval = vstack[sp];
+                if (sp !== -2) {
+                    retval = true;
+                    // Return the `$accept` rule's `$$` result, if available.
+                    //
+                    // Also note that JISON always adds this top-most `$accept` rule (with implicit,
+                    // default, action):
+                    //
+                    //     $accept: <startSymbol> $end
+                    //                  %{ $$ = $1; @$ = @1; %}
+                    //
+                    // which, combined with the parse kernel's `$accept` state behaviour coded below,
+                    // will produce the `$$` value output of the <startSymbol> rule as the parse result,
+                    // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                    //
+                    // In code:
+                    //
+                    //                  %{
+                    //                      @$ = @1;            // if location tracking support is included
+                    //                      if (typeof $1 !== 'undefined')
+                    //                          return $1;
+                    //                      else
+                    //                          return true;           // the default parse result if the rule actions don't produce anything
+                    //                  %}
+                    sp--;
+                    if (typeof vstack[sp] !== 'undefined') {
+                        retval = vstack[sp];
+                    }
                 }
-
                 break;
             }
 
@@ -9274,7 +9326,11 @@ parse: function parse(input) {
         }
         else {
             p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = this.parseError(p.errStr, p, this.JisonParserError);
+            retval = false;
+            r = this.parseError(p.errStr, p, this.JisonParserError);
+            if (typeof r !== 'undefined') {
+                retval = r;
+            }
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
@@ -12445,7 +12501,7 @@ var parser$3 = {
     //   parser engine type: .............. lalr
     //   output main() in the module: ..... true
     //   has user-specified main(): ....... false
-    //   has user-specified require()/import modules for main(): 
+    //   has user-specified require()/import modules for main():
     //   .................................. false
     //   number of expected conflicts: .... 0
     //
@@ -16419,7 +16475,9 @@ parse: function parse(input) {
                         // the `recoverable` flag without properly checking first:
                         // we always terminate the parse when there's no recovery rule available anyhow!
                         if (!p.recoverable || error_rule_depth < 0) {
-                            retval = r;
+                            if (typeof r !== 'undefined') {
+                                retval = r;
+                            }
                             break;
                         } else {
                             // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -16467,7 +16525,7 @@ parse: function parse(input) {
 
                     // try to recover from error
                     if (error_rule_depth < 0) {
-                        ASSERT(recovering > 0);
+                        ASSERT(recovering > 0, "line 897");
                         recoveringErrorInfo.info_stack_pointer = esp;
 
                         // barf a fatal hairball when we're out of look-ahead symbols and none hit a match
@@ -16501,7 +16559,10 @@ parse: function parse(input) {
                             p.extra_error_attributes = po;
                         }
 
-                        retval = this.parseError(p.errStr, p, this.JisonParserError);
+                        r = this.parseError(p.errStr, p, this.JisonParserError);
+                        if (typeof r !== 'undefined') {
+                            retval = r;
+                        }
                         break;
                     }
 
@@ -16606,17 +16667,32 @@ parse: function parse(input) {
                     // Now duplicate the standard parse machine here, at least its initial
                     // couple of rounds until the TERROR symbol is **pushed onto the parse stack**,
                     // as we wish to push something special then!
-
-
+                    //
                     // Run the state machine in this copy of the parser state machine
                     // until we *either* consume the error symbol (and its related information)
                     // *or* we run into another error while recovering from this one
                     // *or* we execute a `reduce` action which outputs a final parse
-                    // result (yes, that MAY happen!)...
+                    // result (yes, that MAY happen!).
+                    //
+                    // We stay in this secondary parse loop until we have completed
+                    // the *error recovery phase* as the main parse loop (further below)
+                    // is optimized for regular parse operation and DOES NOT cope with
+                    // error recovery *at all*.
+                    //
+                    // We call the secondary parse loop just below the "slow parse loop",
+                    // while the main parse loop, which is an almost-duplicate of this one,
+                    // yet optimized for regular parse operation, is called the "fast
+                    // parse loop".
+                    //
+                    // Compare this to `bison` & (vanilla) `jison`, both of which have
+                    // only a single parse loop, which handles everything. Our goal is
+                    // to eke out every drop of performance in the main parse loop...
 
-                    ASSERT(recoveringErrorInfo);
-                    ASSERT(symbol === TERROR);
-                    while (symbol) {
+                    ASSERT(recoveringErrorInfo, "line 1049");
+                    ASSERT(symbol === TERROR, "line 1050");
+                    ASSERT(!action, "line 1051");
+                    var errorSymbolFromParser = true;
+                    for (;;) {
                         // retrieve state number from top of stack
                         state = newState;               // sstack[sp - 1];
 
@@ -16625,6 +16701,19 @@ parse: function parse(input) {
                             action = 2;
                             newState = this.defaultActions[state];
                         } else {
+                            // The single `==` condition below covers both these `===` comparisons in a single
+                            // operation:
+                            //
+                            //     if (symbol === null || typeof symbol === 'undefined') ...
+                            if (!symbol) {
+                                symbol = lex();
+                                // **Warning: Edge Case**: the *lexer* may produce
+                                // TERROR tokens of its own volition: *those* TERROR
+                                // tokens should be treated like *regular tokens*
+                                // i.e. tokens which have a lexer-provided `yyvalue`
+                                // and `yylloc`:
+                                errorSymbolFromParser = false;
+                            }
                             // read action for current state and first input
                             t = (table[state] && table[state][symbol]) || NO_ACTION;
                             newState = t[1];
@@ -16642,6 +16731,25 @@ parse: function parse(input) {
                             // encountered another parse error? If so, break out to main loop
                             // and take it from there!
                             if (!action) {
+
+
+
+
+
+
+
+
+
+
+                                ASSERT(recoveringErrorInfo, "line 1087");
+
+                                // Prep state variables so that upon breaking out of
+                                // this "slow parse loop" and hitting the `continue;`
+                                // statement in the outer "fast parse loop" we redo
+                                // the exact same state table lookup as the one above
+                                // so that the outer=main loop will also correctly
+                                // detect the 'parse error' state (`!action`) we have
+                                // just encountered above.
                                 newState = state;
                                 break;
                             }
@@ -16660,32 +16768,43 @@ parse: function parse(input) {
                         // catch misc. parse failures:
                         default:
                             // this shouldn't happen, unless resolve defaults are off
-                            if (action instanceof Array) {
-                                p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                                retval = this.parseError(p.errStr, p, this.JisonParserError);
-                                // signal end of error recovery loop AND end of outer parse loop
-                                action = 3;
-                                break;
-                            }
-                            // Another case of better safe than sorry: in case state transitions come out of another error recovery process
-                            // or a buggy LUT (LookUp Table):
-                            p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                            retval = this.parseError(p.errStr, p, this.JisonParserError);
-                            // signal end of error recovery loop AND end of outer parse loop
-                            action = 3;
+                            //
+                            // SILENTLY SIGNAL that the outer "fast parse loop" should
+                            // take care of this internal error condition:
+                            // prevent useless code duplication now/here.
                             break;
 
                         // shift:
                         case 1:
                             stack[sp] = symbol;
-                            //vstack[sp] = lexer.yytext;
-                            ASSERT(recoveringErrorInfo);
-                            vstack[sp] = recoveringErrorInfo;
-                            //lstack[sp] = copy_yylloc(lexer.yylloc);
-                            lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
+                            // ### Note/Warning ###
+                            //
+                            // The *lexer* may also produce TERROR tokens on its own,
+                            // so we specifically test for the TERROR we did set up
+                            // in the error recovery logic further above!
+                            if (symbol === TERROR && errorSymbolFromParser) {
+                                // Push a special value onto the stack when we're
+                                // shifting the `error` symbol that is related to the
+                                // error we're recovering from.
+                                ASSERT(recoveringErrorInfo, "line 1131");
+                                vstack[sp] = recoveringErrorInfo;
+                                lstack[sp] = this.yyMergeLocationInfo(null, null, recoveringErrorInfo.loc, lexer.yylloc, true);
+                            } else {
+                                ASSERT(symbol !== 0, "line 1135");
+                                ASSERT(preErrorSymbol === 0, "line 1136");
+                                vstack[sp] = lexer.yytext;
+                                lstack[sp] = copy_yylloc(lexer.yylloc);
+                            }
                             sstack[sp] = newState; // push state
+
                             ++sp;
                             symbol = 0;
+                            // **Warning: Edge Case**: the *lexer* may have produced
+                            // TERROR tokens of its own volition: *those* TERROR
+                            // tokens should be treated like *regular tokens*
+                            // i.e. tokens which have a lexer-provided `yyvalue`
+                            // and `yylloc`:
+                            errorSymbolFromParser = false;
                             if (!preErrorSymbol) { // normal execution / no error
                                 // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
@@ -16707,6 +16826,7 @@ parse: function parse(input) {
                                 }
                             } else {
                                 // error just occurred, resume old lookahead f/ before error, *unless* that drops us straight back into error mode:
+                                ASSERT(recovering > 0, "line 1163");
                                 symbol = preErrorSymbol;
                                 preErrorSymbol = 0;
 
@@ -16742,8 +16862,22 @@ parse: function parse(input) {
                                 }
                             }
 
-                            // once we have pushed the special ERROR token value, we're done in this inner loop!
-                            break;
+                            // once we have pushed the special ERROR token value,
+                            // we REMAIN in this inner, "slow parse loop" until
+                            // the entire error recovery phase has completed.
+                            //
+                            // ### Note About Edge Case ###
+                            //
+                            // Userland action code MAY already have 'reset' the
+                            // error recovery phase marker `recovering` to ZERO(0)
+                            // while the error symbol hasn't been shifted onto
+                            // the stack yet. Hence we only exit this "slow parse loop"
+                            // when *both* conditions are met!
+                            ASSERT(preErrorSymbol === 0, "line 1194");
+                            if (recovering === 0) {
+                                break;
+                            }
+                            continue;
 
                         // reduce:
                         case 2:
@@ -16764,6 +16898,7 @@ parse: function parse(input) {
                             if (typeof r !== 'undefined') {
                                 // signal end of error recovery loop AND end of outer parse loop
                                 action = 3;
+                                sp = -2;      // magic number: signal outer "fast parse loop" ACCEPT state that we already have a properly set up `retval` parser return value.
                                 retval = r;
                                 break;
                             }
@@ -16816,9 +16951,10 @@ parse: function parse(input) {
                             //                          return true;           // the default parse result if the rule actions don't produce anything
                             //                  %}
                             sp--;
-                            if (typeof vstack[sp] !== 'undefined') {
+                            if (sp >= 0 && typeof vstack[sp] !== 'undefined') {
                                 retval = vstack[sp];
                             }
+                            sp = -2;      // magic number: signal outer "fast parse loop" ACCEPT state that we already have a properly set up `retval` parser return value.
                             break;
                         }
 
@@ -16828,10 +16964,12 @@ parse: function parse(input) {
 
                     // should we also break out of the regular/outer parse loop,
                     // i.e. did the parser already produce a parse result in here?!
-                    if (action === 3) {
-                        break;
+                    // *or* did we hit an unsupported parse state, to be handled
+                    // in the `switch/default` code further below?
+                    ASSERT(action !== 2, "line 1272");
+                    if (action === 0 || action === 1) {
+                        continue;
                     }
-                    continue;
                 }
 
 
@@ -16852,13 +16990,19 @@ parse: function parse(input) {
                 // this shouldn't happen, unless resolve defaults are off
                 if (action instanceof Array) {
                     p = this.constructParseErrorInfo('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol, null, null, false);
-                    retval = this.parseError(p.errStr, p, this.JisonParserError);
+                    r = this.parseError(p.errStr, p, this.JisonParserError);
+                    if (typeof r !== 'undefined') {
+                        retval = r;
+                    }
                     break;
                 }
                 // Another case of better safe than sorry: in case state transitions come out of another error recovery process
                 // or a buggy LUT (LookUp Table):
                 p = this.constructParseErrorInfo('Parsing halted. No viable error recovery approach available due to internal system failure.', null, null, false);
-                retval = this.parseError(p.errStr, p, this.JisonParserError);
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
+                }
                 break;
 
             // shift:
@@ -16870,67 +17014,22 @@ parse: function parse(input) {
 
                 ++sp;
                 symbol = 0;
-                ASSERT(preErrorSymbol === 0);
-                if (!preErrorSymbol) { // normal execution / no error
-                    // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
+
+                ASSERT(preErrorSymbol === 0, "line 1352");         // normal execution / no error
+                ASSERT(recovering === 0, "line 1353");             // normal execution / no error
+
+                // Pick up the lexer details for the current symbol as that one is not 'look-ahead' any more:
 
 
 
-                    yyloc = lexer.yylloc;
-
-                    if (recovering > 0) {
-                        recovering--;
-
-
-
-
-
-
-
-
-
-                    }
-                } else {
-                    // error just occurred, resume old lookahead f/ before error, *unless* that drops us straight back into error mode:
-                    symbol = preErrorSymbol;
-                    preErrorSymbol = 0;
-
-
-
-
-
-
-
-
-
-                    // read action for current state and first input
-                    t = (table[newState] && table[newState][symbol]) || NO_ACTION;
-                    if (!t[0] || symbol === TERROR) {
-                        // forget about that symbol and move forward: this wasn't a 'forgot to insert' error type where
-                        // (simple) stuff might have been missing before the token which caused the error we're
-                        // recovering from now...
-                        //
-                        // Also check if the LookAhead symbol isn't the ERROR token we set as part of the error
-                        // recovery, for then this we would we idling (cycling) on the error forever.
-                        // Yes, this does not take into account the possibility that the *lexer* may have
-                        // produced a *new* TERROR token all by itself, but that would be a very peculiar grammar!
-
-
-
-
-
-
-
-
-
-                        symbol = 0;
-                    }
-                }
-
+                yyloc = lexer.yylloc;
                 continue;
 
             // reduce:
             case 2:
+                ASSERT(preErrorSymbol === 0, "line 1364");         // normal execution / no error
+                ASSERT(recovering === 0, "line 1365");             // normal execution / no error
+
                 this_production = this.productions_[newState - 1];  // `this.productions_[]` is zero-based indexed while states start from 1 upwards...
                 yyrulelen = this_production[1];
 
@@ -16975,33 +17074,34 @@ parse: function parse(input) {
 
             // accept:
             case 3:
-                retval = true;
-                // Return the `$accept` rule's `$$` result, if available.
-                //
-                // Also note that JISON always adds this top-most `$accept` rule (with implicit,
-                // default, action):
-                //
-                //     $accept: <startSymbol> $end
-                //                  %{ $$ = $1; @$ = @1; %}
-                //
-                // which, combined with the parse kernel's `$accept` state behaviour coded below,
-                // will produce the `$$` value output of the <startSymbol> rule as the parse result,
-                // IFF that result is *not* `undefined`. (See also the parser kernel code.)
-                //
-                // In code:
-                //
-                //                  %{
-                //                      @$ = @1;            // if location tracking support is included
-                //                      if (typeof $1 !== 'undefined')
-                //                          return $1;
-                //                      else
-                //                          return true;           // the default parse result if the rule actions don't produce anything
-                //                  %}
-                sp--;
-                if (typeof vstack[sp] !== 'undefined') {
-                    retval = vstack[sp];
+                if (sp !== -2) {
+                    retval = true;
+                    // Return the `$accept` rule's `$$` result, if available.
+                    //
+                    // Also note that JISON always adds this top-most `$accept` rule (with implicit,
+                    // default, action):
+                    //
+                    //     $accept: <startSymbol> $end
+                    //                  %{ $$ = $1; @$ = @1; %}
+                    //
+                    // which, combined with the parse kernel's `$accept` state behaviour coded below,
+                    // will produce the `$$` value output of the <startSymbol> rule as the parse result,
+                    // IFF that result is *not* `undefined`. (See also the parser kernel code.)
+                    //
+                    // In code:
+                    //
+                    //                  %{
+                    //                      @$ = @1;            // if location tracking support is included
+                    //                      if (typeof $1 !== 'undefined')
+                    //                          return $1;
+                    //                      else
+                    //                          return true;           // the default parse result if the rule actions don't produce anything
+                    //                  %}
+                    sp--;
+                    if (typeof vstack[sp] !== 'undefined') {
+                        retval = vstack[sp];
+                    }
                 }
-
                 break;
             }
 
@@ -17019,7 +17119,11 @@ parse: function parse(input) {
         }
         else {
             p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = this.parseError(p.errStr, p, this.JisonParserError);
+            retval = false;
+            r = this.parseError(p.errStr, p, this.JisonParserError);
+            if (typeof r !== 'undefined') {
+                retval = r;
+            }
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);

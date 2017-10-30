@@ -45,14 +45,14 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("** stmt\n"); }
-      | stmt ';'       { console.log("** stmt\n"); }
-      | error ';'      { console.log("** error stmt\n"); }
+slist : slist stmt ';' { console.log("** slist stmt"); }
+      | stmt ';'       { console.log("** stmt"); }
+      | error ';'      { console.log("** error stmt"); }
       ;
 
 stmt  : ZZ
       | '(' stmt ')'
-      | '(' error ')'  { console.log("** nested error\n"); }
+      | '(' error ')'  { console.log("** nested error"); }
       ;
 
 %%

@@ -44,17 +44,15 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("** stmt\n"); }
-      | stmt ';'       {
-                         console.log("** stmt\n");
-                       }
+slist : slist stmt ';' { console.log("** slist stmt"); }
+      | stmt ';'       { console.log("** stmt"); }
       ;
 
 stmt  : ZZ
       | error          {
                          if (!yy.error_count) { yy.error_count = 1; } else { yy.error_count++; }
 
-                         console.log("** yyerrok #" + yy.error_count + "\n");
+                         console.log("** yyerrok #" + yy.error_count);
                          yyerrok;            // <-- abort error process when error found
 
                          if (yy.error_count > 42) { throw new Error('kaboom! loop!'); }

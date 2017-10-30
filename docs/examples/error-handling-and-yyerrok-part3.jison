@@ -43,8 +43,8 @@ zz          return 'ZZ';
 
 %%
 
-slist : slist stmt ';' { console.log("stmt\n"); }
-      | stmt ';'       { console.log("stmt\n"); }
+slist : slist stmt ';' { console.log("** slist stmt"); }
+      | stmt ';'       { console.log("** stmt"); }
       ;
 
 stmt  :  ZZ

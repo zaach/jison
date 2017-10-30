@@ -540,20 +540,40 @@ btyacc-t2:
 error-only:
 	$(JISON) --main ./$@.y
 
+profiling: 															\
+			parser-to-lexer-communication-test						\
+			parser-to-lexer-communication-test-w-debug				\
+			parser-to-lexer-communication-test--profiling 			\
+			parser-to-lexer-communication-test-w-debug--profiling
+
 parser-to-lexer-communication-test--profiling:
+	-rm -f isolate-*-v8.log
 	$(JISON) --main -p lalr ./parser-to-lexer-communication-test.jison
 	node --prof ./output/$@/parser-to-lexer-communication-test.js
 	# and now collect the profile info and dump it to a report file:
 	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > ./output/$@/profile.$@.txt
 	# and make sure the profile report is saved in a unique file which can be compared against other profile runs later on:
+	cp ./isolate-*-v8.log ./output/$@/
 	cat ./output/$@/profile.$@.txt > ./output/$@/profile.$@.$$( date +%s%N ).txt
+	cat ./output/$@/profile.$@.txt > ../profile.$@.$$( date +%s%N ).txt
+
+parser-to-lexer-communication-test-w-debug--profiling:
+	-rm -f isolate-*-v8.log
+	$(JISON) --main -p lalr ./parser-to-lexer-communication-test-w-debug.jison
+	node --prof ./output/$@/parser-to-lexer-communication-test-w-debug.js
+	# and now collect the profile info and dump it to a report file:
+	node --prof-process $$( ls -t isolate-*-v8.log | head -n 1 ) | sed -f ./profile-report-filter.sed > ./output/$@/profile.$@.txt
+	# and make sure the profile report is saved in a unique file which can be compared against other profile runs later on:
+	cp ./isolate-*-v8.log ./output/$@/
+	cat ./output/$@/profile.$@.txt > ./output/$@/profile.$@.$$( date +%s%N ).txt
+	cat ./output/$@/profile.$@.txt > ../profile.$@.$$( date +%s%N ).txt
 
 parser-to-lexer-communication-test:
-	$(JISON) --main -p lr ./$@.jison
+	$(JISON) --main -p lalr ./$@.jison
 	node ./output/$@/$@.js
 
 parser-to-lexer-communication-test-w-debug:
-	$(JISON) --main -p lr ./$@.jison
+	$(JISON) --main -p lalr ./$@.jison
 	node ./output/$@/$@.js
 
 faking-multiple-start-rules:
