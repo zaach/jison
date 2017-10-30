@@ -216,19 +216,24 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 
 // expand macros and convert matchers to RegExp's
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
-    var m, i, k, rule, action, conditions,
-        active_conditions,
-        rules = dict.rules || [],
-        newRules = [],
-        macros = {},
-        regular_rule_count = 0,
-        simple_rule_count = 0;
+    var m, i, k, rule, action, conditions;
+    var active_conditions;
+    assert(Array.isArray(dict.rules));
+    var rules = dict.rules.slice(0);    // shallow copy of the rules array as we MAY modify it in here!        
+    var newRules = [];
+    var macros = {};
+    var regular_rule_count = 0;
+    var simple_rule_count = 0;
 
     // Assure all options are camelCased:
     assert(typeof opts.options['case-insensitive'] === 'undefined');
 
     if (!tokens) {
         tokens = {};
+    }
+
+    if (opts.options.flex && rules.length > 0) {
+        rules.push(['.', 'console.log("", yytext); /* `flex` lexing mode: the last resort rule! */']);
     }
 
     // Depending on the location within the regex we need different expansions of the macros:
@@ -252,14 +257,14 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         return str;
     }
 
-    actions.push('switch(yyrulenumber) {');
+    var routingCode = ['switch(yyrulenumber) {'];
 
     for (i = 0; i < rules.length; i++) {
-        rule = rules[i];
+        rule = rules[i].slice(0);           // shallow copy: do not modify input rules
         m = rule[0];
 
         active_conditions = [];
-        if (Object.prototype.toString.apply(m) !== '[object Array]') {
+        if (!Array.isArray(m)) {
             // implicit add to all inclusive start conditions
             for (k in startConditions) {
                 if (startConditions[k].inclusive) {
@@ -297,17 +302,18 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
             m = new XRegExp('^(?:' + m + ')', opts.options.caseInsensitive ? 'i' : '');
         }
         newRules.push(m);
-        if (typeof rule[1] === 'function') {
-            rule[1] = String(rule[1]).replace(/^\s*function \(\)\s?\{/, '').replace(/\}\s*$/, '');
-        }
         action = rule[1];
-        action = action.replace(/return '((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        action = action.replace(/return "((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+        if (typeof action === 'function') {
+            // TODO: also cope with Arrow Functions (and inline those as well?) -- see also https://github.com/zaach/jison-lex/issues/23
+            action = String(action).replace(/^\s*function\s*\(\)\s?\{/, '').replace(/\}\s*$/, '');
+        }
+        action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
+        action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
         code.push('*/', '\n/*! Rule::      ');
-        code.push(postprocessComment(rules[i][0]));
+        code.push(postprocessComment(rule[0]));
         code.push('*/', '\n');
 
         // When the action is *only* a simple `return TOKEN` statement, then add it to the caseHelpers;
@@ -331,12 +337,21 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
             caseHelper.push([].concat(code, i, ':', match_nr[1]).join(' ').replace(/[\n]/g, '\n  '));
         } else {
             regular_rule_count++;
-            actions.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
+            routingCode.push([].concat('case', i, ':', code, action, '\nbreak;').join(' '));
         }
     }
-    actions.push('default:');
-    actions.push('  return this.simpleCaseActionClusters[yyrulenumber];');
-    actions.push('}');
+    if (simple_rule_count) {
+        routingCode.push('default:');
+        routingCode.push('  return this.simpleCaseActionClusters[yyrulenumber];');
+    }
+    routingCode.push('}');
+
+    // only inject the big switch/case chunk when there's any `switch` or `default` branch to switch to:
+    if (simple_rule_count + regular_rule_count > 0) {
+        actions.push.apply(actions, routingCode);
+    } else {
+        actions.push('/* no rules ==> no rule SWITCH! */');
+    }
 
     return {
         rules: newRules,
@@ -886,11 +901,15 @@ function expandMacros(src, macros, opts) {
 }
 
 function prepareStartConditions(conditions) {
-    var sc,
-        hash = {};
+    var sc;
+    var hash = {};
+
     for (sc in conditions) {
         if (conditions.hasOwnProperty(sc)) {
-            hash[sc] = {rules:[], inclusive: !conditions[sc]};
+            hash[sc] = {
+                rules: [], 
+                inclusive: !conditions[sc]
+            };
         }
     }
     return hash;
@@ -910,15 +929,11 @@ function buildActions(dict, tokens, opts) {
         }
     }
 
-    if (opts.options.flex && dict.rules) {
-        dict.rules.push(['.', 'console.log("", yytext); /* `flex` lexing mode: the last resort rule! */']);
-    }
-
     var gen = prepareRules(dict, actions, caseHelper, tokens && toks, opts.conditions, opts);
 
-    var fun = actions.join('\n');
+    var code = actions.join('\n');
     'yytext yyleng yylineno yylloc yyerror'.split(' ').forEach(function (yy) {
-        fun = fun.replace(new RegExp('\\b(' + yy + ')\\b', 'g'), 'yy_.$1');
+        code = code.replace(new RegExp('\\b(' + yy + ')\\b', 'g'), 'yy_.$1');
     });
 
     return {
@@ -927,7 +942,7 @@ function buildActions(dict, tokens, opts) {
         actions: `function lexer__performAction(yy, yyrulenumber, YY_START) {
             var yy_ = this;
 
-            ${fun}
+            ${code}
         }`,
 
         rules: gen.rules,
@@ -1093,7 +1108,11 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
             // When we do NOT crash, we found/killed the problem area just before this call!
             if (src_exception && description) {
-                src_exception.message += '\n        (' + description + ')';
+                var msg = description;
+                if (typeof description === 'function') {
+                    msg = description();
+                }
+                src_exception.message += '\n        (' + msg + ')';
             }
 
             // patch the pre and post handlers in there, now that we have some live code to work with:
@@ -1150,10 +1169,20 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
                 opts.conditions = [];
                 opts.showSource = false;
-            }, ((dict.rules && dict.rules.length > 0) ?
-                'One or more of your lexer state names are possibly botched?' :
-                'Your custom lexer is somehow botched.'), ex, null)) {
+            }, function () {
+                assert(Array.isArray(opts.rules));
+                return (opts.rules.length > 0 ?
+                    'One or more of your lexer state names are possibly botched?' :
+                    'Your custom lexer is somehow botched.'
+                );
+            }, ex, null)) {
+                var rulesSpecSize;
                 if (!test_me(function () {
+                    // store the parsed rule set size so we can use that info in case
+                    // this attempt also fails:
+                    assert(Array.isArray(opts.rules));
+                    rulesSpecSize = opts.rules.length; 
+
                     // opts.conditions = [];
                     opts.rules = [];
                     opts.showSource = false;
@@ -1161,13 +1190,30 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
                     // kill each rule action block, one at a time and test again after each 'edit':
                     var rv = false;
-                    for (var i = 0, len = (dict.rules ? dict.rules.length : 0); i < len; i++) {
-                        dict.rules[i][1] = '{ /* nada */ }';
+                    for (var i = 0, len = rulesSpecSize; i < len; i++) {
+                        var lastEditedRuleSpec;
                         rv = test_me(function () {
+                            assert(Array.isArray(opts.rules));
+                            assert(opts.rules.length === rulesSpecSize);
+
                             // opts.conditions = [];
                             // opts.rules = [];
                             // opts.__in_rules_failure_analysis_mode__ = true;
-                        }, 'Your lexer rule "' + dict.rules[i][0] + '" action code block is botched?', ex, null);
+                            
+                            // nuke all rules' actions up to and including rule numero `i`:
+                            for (var j = 0; j <= i; j++) {
+                                // rules, when parsed, have 2 or 3 elements: [conditions, handle, action];
+                                // now we want to edit the *action* part:
+                                var rule = opts.rules[j];
+                                assert(Array.isArray(rule));
+                                assert(rule.length === 2 || rule.length === 3);
+                                rule.pop();
+                                rule.push('{ /* nada */ }');
+                                lastEditedRuleSpec = rule;
+                            }
+                        }, function () {
+                            return 'Your lexer rule "' + lastEditedRuleSpec[0] + '" action code block is botched?';
+                        }, ex, null);
                         if (rv) {
                             break;
                         }
@@ -2512,10 +2558,13 @@ function processGrammar(dict, tokens, build_options) {
         inclusive: true
     };
 
-    var code = buildActions(dict, tokens, opts);
+    // only produce rule action code blocks when there are any rules at all;
+    // a "custom lexer" has ZERO rules and must be defined entirely in 
+    // other code blocks: 
+    var code = (dict.rules ? buildActions(dict, tokens, opts) : {});
     opts.performAction = code.actions;
     opts.caseHelperInclude = code.caseHelperInclude;
-    opts.rules = code.rules;
+    opts.rules = code.rules || [];
     opts.macros = code.macros;
 
     opts.regular_rule_count = code.regular_rule_count;
@@ -2707,7 +2756,20 @@ function generateModuleBody(opt) {
         assert(typeof opt.options['case-insensitive'] === 'undefined');
 
         code.push('    options: ' + produceOptions(opt.options));
+  
+/*
+        function isEmpty(code) {
+            switch (typeof code) {
+            case 'undefined':
+            case 'null':
+                return true;
 
+            case 'string':
+
+            } 
+        }
+*/        
+        
         var performActionCode = String(opt.performAction);
         var simpleCaseActionClustersCode = String(opt.caseHelperInclude);
         var rulesCode = generateRegexesInitTableCode(opt);

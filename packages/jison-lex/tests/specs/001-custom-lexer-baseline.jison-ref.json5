@@ -64,7 +64,7 @@
           inclusive: true
         }
       },
-      performAction: "function lexer__performAction(yy, yyrulenumber, YY_START) {\n            var yy_ = this;\n\n            // custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };\nvar YYSTATE = YY_START;\nswitch(yyrulenumber) {\ndefault:\n  return this.simpleCaseActionClusters[yyrulenumber];\n}\n        }",
+      performAction: "function lexer__performAction(yy, yyrulenumber, YY_START) {\n            var yy_ = this;\n\n            // custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };\nvar YYSTATE = YY_START;\n/* no rules ==> no rule SWITCH! */\n        }",
       caseHelperInclude: "{\n\n}",
       rules: [],
       macros: {},
