@@ -78,6 +78,12 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 	$(JISON) examples/calculator.jison -o $@
 
 
+comparison: 
+	cd examples/ && make comparison
+
+lexer-comparison: build
+	cd packages/jison-lex && make comparison
+
 examples_directory: build
 	cd examples/ && make all
 
@@ -330,7 +336,7 @@ examples/parser-to-lexer-communication-test: build
 examples/parser-to-lexer-communication-test--profiling: build
 	cd examples/ && make parser-to-lexer-communication-test--profiling
 
-profiling: 
+profiling:
 	cd examples/ && make profiling
 
 examples/pascal: build
@@ -415,7 +421,7 @@ build:                                                                  \
 npm-install:
 	npm install
 
-npm-update: subpackages-npm-update 
+npm-update: subpackages-npm-update
 	ncu -a --packageFile=package.json
 
 prep_util_dir:
@@ -554,6 +560,7 @@ superclean: clean clean-site
 		prep subpackages-prep                                                       \
 		helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json          \
 		site preview deploy test web-examples examples examples-test                \
+		examples_directory comparison lexer-comparison                              \
 		error-handling-tests basic-tests github-issue-tests misc-tests              \
 		build npm-install                                                           \
 		subpackages                                                                 \
@@ -562,5 +569,5 @@ superclean: clean clean-site
 		git-tag subpackages-git-tag                                                 \
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
-		npm-update subpackages-npm-update 
+		npm-update subpackages-npm-update
 
