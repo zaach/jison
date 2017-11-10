@@ -3,7 +3,7 @@
 Reference directory for tests such as
 
 ```
-make codegen-feature-tester
+make comparison
 ```
 
 which test whether jison generates proper code for parsers with various features enabled/disabled.
