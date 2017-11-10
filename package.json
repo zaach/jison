@@ -40,7 +40,7 @@
     "@gerhobbelt/ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "0.5.1-20",
     "@gerhobbelt/nomnom": "1.8.4-24",
-    "@gerhobbelt/recast": "0.12.7-15",
+    "@gerhobbelt/recast": "0.12.8-17",
     "@gerhobbelt/xregexp": "3.2.0-22"
   },
   "devDependencies": {
@@ -56,9 +56,9 @@
     "globby": "6.1.0",
     "jison-gho": "0.6.1-208",
     "mocha": "4.0.1",
-    "rollup": "0.50.0",
+    "rollup": "0.51.3",
     "rollup-plugin-node-resolve": "3.0.0",
-    "uglify-js": "3.1.6"
+    "uglify-js": "3.1.8"
   },
   "scripts": {
     "test": "make test",

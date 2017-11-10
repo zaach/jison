@@ -35,8 +35,8 @@
 	PASV	TYPE	STRU	MODE	RETR	STOR
 	APPE	MLFL	MAIL	MSND	MSOM	MSAM
 	MRSQ	MRCP	ALLO	REST	RNFR	RNTO
-	ABOR	DELE	CWD	LIST	NLST	SITE
-	STAT	HELP	NOOP	MKD	RMD	PWD
+	ABOR	DELE	CWD		LIST	NLST	SITE
+	STAT	HELP	NOOP	MKD		RMD		PWD
 	CDUP	STOU	SMNT	SYST	SIZE	MDTM
 
 	UMASK	IDLE	CHMOD
@@ -176,111 +176,112 @@ check_login:	/* empty */
 %%
 
 
-#define	CMD	0	/* beginning of command */
-#define	ARGS	1	/* expect miscellaneous arguments */
-#define	STR1	2	/* expect SP followed by STRING */
-#define	STR2	3	/* expect STRING */
-#define	OSTR	4	/* optional SP then STRING */
-#define	ZSTR1	5	/* SP then optional STRING */
-#define	ZSTR2	6	/* optional STRING after SP */
-#define	SITECMD	7	/* SITE command */
-#define	NSTR	8	/* Number followed by a string */
+const 	CMD	    = 0;	/* beginning of command */
+const 	ARGS	= 1;	/* expect miscellaneous arguments */
+const 	STR1	= 2;	/* expect SP followed by STRING */
+const 	STR2	= 3;	/* expect STRING */
+const 	OSTR	= 4;	/* optional SP then STRING */
+const 	ZSTR1	= 5;	/* SP then optional STRING */
+const 	ZSTR2	= 6;	/* optional STRING after SP */
+const 	SITECMD	= 7;	/* SITE command */
+const 	NSTR	= 8;	/* Number followed by a string */
 
-struct tab {
-	char	*name;
-	short	token;
-	short	state;
-	short	implemented;	/* 1 if command is implemented */
-	char	*help;
-};
+//struct tab {
+//	char	*name;
+//	short	token;
+//	short	state;
+//	short	implemented;	/* 1 if command is implemented */
+//	char	*help;
+//};
 
-struct tab cmdtab[] = {		/* In order defined in RFC 765 */
-	{ "USER", USER, STR1, 1,	"<sp> username" },
-	{ "PASS", PASS, ZSTR1, 1,	"<sp> password" },
-	{ "ACCT", ACCT, STR1, 0,	"(specify account)" },
-	{ "SMNT", SMNT, ARGS, 0,	"(structure mount)" },
-	{ "REIN", REIN, ARGS, 0,	"(reinitialize server state)" },
-	{ "QUIT", QUIT, ARGS, 1,	"(terminate service)", },
-	{ "PORT", PORT, ARGS, 1,	"<sp> b0, b1, b2, b3, b4" },
-	{ "PASV", PASV, ARGS, 1,	"(set server in passive mode)" },
-	{ "TYPE", TYPE, ARGS, 1,	"<sp> [ A | E | I | L ]" },
-	{ "STRU", STRU, ARGS, 1,	"(specify file structure)" },
-	{ "MODE", MODE, ARGS, 1,	"(specify transfer mode)" },
-	{ "RETR", RETR, STR1, 1,	"<sp> file-name" },
-	{ "STOR", STOR, STR1, 1,	"<sp> file-name" },
-	{ "APPE", APPE, STR1, 1,	"<sp> file-name" },
-	{ "MLFL", MLFL, OSTR, 0,	"(mail file)" },
-	{ "MAIL", MAIL, OSTR, 0,	"(mail to user)" },
-	{ "MSND", MSND, OSTR, 0,	"(mail send to terminal)" },
-	{ "MSOM", MSOM, OSTR, 0,	"(mail send to terminal or mailbox)" },
-	{ "MSAM", MSAM, OSTR, 0,	"(mail send to terminal and mailbox)" },
-	{ "MRSQ", MRSQ, OSTR, 0,	"(mail recipient scheme question)" },
-	{ "MRCP", MRCP, STR1, 0,	"(mail recipient)" },
-	{ "ALLO", ALLO, ARGS, 1,	"allocate storage (vacuously)" },
-	{ "REST", REST, ARGS, 0,	"(restart command)" },
-	{ "RNFR", RNFR, STR1, 1,	"<sp> file-name" },
-	{ "RNTO", RNTO, STR1, 1,	"<sp> file-name" },
-	{ "ABOR", ABOR, ARGS, 1,	"(abort operation)" },
-	{ "DELE", DELE, STR1, 1,	"<sp> file-name" },
-	{ "CWD",  CWD,  OSTR, 1,	"[ <sp> directory-name ]" },
-	{ "XCWD", CWD,	OSTR, 1,	"[ <sp> directory-name ]" },
-	{ "LIST", LIST, OSTR, 1,	"[ <sp> path-name ]" },
-	{ "NLST", NLST, OSTR, 1,	"[ <sp> path-name ]" },
-	{ "SITE", SITE, SITECMD, 1,	"site-cmd [ <sp> arguments ]" },
-	{ "SYST", SYST, ARGS, 1,	"(get type of operating system)" },
-	{ "STAT", STAT, OSTR, 1,	"[ <sp> path-name ]" },
-	{ "HELP", HELP, OSTR, 1,	"[ <sp> <string> ]" },
-	{ "NOOP", NOOP, ARGS, 1,	"" },
-	{ "MKD",  MKD,  STR1, 1,	"<sp> path-name" },
-	{ "XMKD", MKD,  STR1, 1,	"<sp> path-name" },
-	{ "RMD",  RMD,  STR1, 1,	"<sp> path-name" },
-	{ "XRMD", RMD,  STR1, 1,	"<sp> path-name" },
-	{ "PWD",  PWD,  ARGS, 1,	"(return current directory)" },
-	{ "XPWD", PWD,  ARGS, 1,	"(return current directory)" },
-	{ "CDUP", CDUP, ARGS, 1,	"(change to parent directory)" },
-	{ "XCUP", CDUP, ARGS, 1,	"(change to parent directory)" },
-	{ "STOU", STOU, STR1, 1,	"<sp> file-name" },
-	{ "SIZE", SIZE, OSTR, 1,	"<sp> path-name" },
-	{ "MDTM", MDTM, OSTR, 1,	"<sp> path-name" },
-	{ NULL,   0,    0,    0,	0 }
-};
+const /* struct tab */ cmdtab = [		/* In order defined in RFC 765 */
+	[ "USER", USER, STR1, 1,	"<sp> username" ],
+	[ "PASS", PASS, ZSTR1, 1,	"<sp> password" ],
+	[ "ACCT", ACCT, STR1, 0,	"(specify account)" ],
+	[ "SMNT", SMNT, ARGS, 0,	"(structure mount)" ],
+	[ "REIN", REIN, ARGS, 0,	"(reinitialize server state)" ],
+	[ "QUIT", QUIT, ARGS, 1,	"(terminate service)", ],
+	[ "PORT", PORT, ARGS, 1,	"<sp> b0, b1, b2, b3, b4" ],
+	[ "PASV", PASV, ARGS, 1,	"(set server in passive mode)" ],
+	[ "TYPE", TYPE, ARGS, 1,	"<sp> [ A | E | I | L ]" ],
+	[ "STRU", STRU, ARGS, 1,	"(specify file structure)" ],
+	[ "MODE", MODE, ARGS, 1,	"(specify transfer mode)" ],
+	[ "RETR", RETR, STR1, 1,	"<sp> file-name" ],
+	[ "STOR", STOR, STR1, 1,	"<sp> file-name" ],
+	[ "APPE", APPE, STR1, 1,	"<sp> file-name" ],
+	[ "MLFL", MLFL, OSTR, 0,	"(mail file)" ],
+	[ "MAIL", MAIL, OSTR, 0,	"(mail to user)" ],
+	[ "MSND", MSND, OSTR, 0,	"(mail send to terminal)" ],
+	[ "MSOM", MSOM, OSTR, 0,	"(mail send to terminal or mailbox)" ],
+	[ "MSAM", MSAM, OSTR, 0,	"(mail send to terminal and mailbox)" ],
+	[ "MRSQ", MRSQ, OSTR, 0,	"(mail recipient scheme question)" ],
+	[ "MRCP", MRCP, STR1, 0,	"(mail recipient)" ],
+	[ "ALLO", ALLO, ARGS, 1,	"allocate storage (vacuously)" ],
+	[ "REST", REST, ARGS, 0,	"(restart command)" ],
+	[ "RNFR", RNFR, STR1, 1,	"<sp> file-name" ],
+	[ "RNTO", RNTO, STR1, 1,	"<sp> file-name" ],
+	[ "ABOR", ABOR, ARGS, 1,	"(abort operation)" ],
+	[ "DELE", DELE, STR1, 1,	"<sp> file-name" ],
+	[ "CWD",  CWD,  OSTR, 1,	"[ <sp> directory-name ]" ],
+	[ "XCWD", CWD,	OSTR, 1,	"[ <sp> directory-name ]" ],
+	[ "LIST", LIST, OSTR, 1,	"[ <sp> path-name ]" ],
+	[ "NLST", NLST, OSTR, 1,	"[ <sp> path-name ]" ],
+	[ "SITE", SITE, SITECMD, 1,	"site-cmd [ <sp> arguments ]" ],
+	[ "SYST", SYST, ARGS, 1,	"(get type of operating system)" ],
+	[ "STAT", STAT, OSTR, 1,	"[ <sp> path-name ]" ],
+	[ "HELP", HELP, OSTR, 1,	"[ <sp> <string> ]" ],
+	[ "NOOP", NOOP, ARGS, 1,	"" ],
+	[ "MKD",  MKD,  STR1, 1,	"<sp> path-name" ],
+	[ "XMKD", MKD,  STR1, 1,	"<sp> path-name" ],
+	[ "RMD",  RMD,  STR1, 1,	"<sp> path-name" ],
+	[ "XRMD", RMD,  STR1, 1,	"<sp> path-name" ],
+	[ "PWD",  PWD,  ARGS, 1,	"(return current directory)" ],
+	[ "XPWD", PWD,  ARGS, 1,	"(return current directory)" ],
+	[ "CDUP", CDUP, ARGS, 1,	"(change to parent directory)" ],
+	[ "XCUP", CDUP, ARGS, 1,	"(change to parent directory)" ],
+	[ "STOU", STOU, STR1, 1,	"<sp> file-name" ],
+	[ "SIZE", SIZE, OSTR, 1,	"<sp> path-name" ],
+	[ "MDTM", MDTM, OSTR, 1,	"<sp> path-name" ],
+	[ NULL,   0,    0,    0,	0 ]
+];
 
-struct tab sitetab[] = {
-	{ "UMASK", UMASK, ARGS, 1,	"[ <sp> umask ]" },
-	{ "IDLE", IDLE, ARGS, 1,	"[ <sp> maximum-idle-time ]" },
-	{ "CHMOD", CHMOD, NSTR, 1,	"<sp> mode <sp> file-name" },
-	{ "HELP", HELP, OSTR, 1,	"[ <sp> <string> ]" },
-	{ NULL,   0,    0,    0,	0 }
-};
+const /* struct tab */ sitetab = [
+	[ "UMASK", UMASK, ARGS, 1,	"[ <sp> umask ]" ],
+	[ "IDLE", IDLE, ARGS, 1,	"[ <sp> maximum-idle-time ]" ],
+	[ "CHMOD", CHMOD, NSTR, 1,	"<sp> mode <sp> file-name" ],
+	[ "HELP", HELP, OSTR, 1,	"[ <sp> <string> ]" ],
+	[ NULL,   0,    0,    0,	0 ]
+];
 
 
-yylex()
+var /* static int */ cpos, state;
+
+function yylex()
 {
-	static int cpos, state;
-	register char *cp, *cp2;
-	register struct tab *p;
-	int n;
-	char c, *strpbrk();
-	char *copy();
+	var /* char * */ cp, cp2;
+	var /* struct tab * */ p;
+	var n;
+	var c;
+	//char *copy();
 
 	for (;;) {
 		switch (state) {
 
 		case CMD:
-			(void) signal(SIGALRM, toolong);
-			(void) alarm((unsigned) timeout);
+			signal(SIGALRM, toolong);
+			alarm((unsigned) timeout);
 			if (getline(cbuf, sizeof(cbuf)-1, stdin) == NULL) {
 				reply(221, "You could at least say goodbye.");
 				dologout(0);
 			}
-			(void) alarm(0);
-#ifdef SETPROCTITLE
+			alarm(0);
+//#ifdef SETPROCTITLE
 			if (strncasecmp(cbuf, "PASS", 4) != NULL)
 				setproctitle("%s: %s", proctitle, cbuf);
-#endif /* SETPROCTITLE */
+//#endif /* SETPROCTITLE */
 			if ((cp = index(cbuf, '\r'))) {
-				*cp++ = '\n';
-				*cp = '\0';
+				cp[0] = '\n';
+				cp[1] = '\0';
 			}
 			if ((cp = strpbrk(cbuf, " \n")))
 				cpos = cp - cbuf;
@@ -292,14 +293,14 @@ yylex()
 			p = lookup(cmdtab, cbuf);
 			cbuf[cpos] = c;
 			if (p != 0) {
-				if (p->implemented == 0) {
-					nack(p->name);
-					longjmp(errcatch,0);
+				if (p.implemented == 0) {
+					nack(p.name);
+					longjmp(errcatch, 0);
 					/* NOTREACHED */
 				}
-				state = p->state;
-				*(char **)&yylval = p->name;
-				return (p->token);
+				state = p.state;
+				yylval = p.name;
+				return (p.token);
 			}
 			break;
 
@@ -308,7 +309,7 @@ yylex()
 				cpos++;
 				return (SP);
 			}
-			cp = &cbuf[cpos];
+			cp = cbuf + cpos;
 			if ((cp2 = strpbrk(cp, " \n")))
 				cpos = cp2 - cbuf;
 			c = cbuf[cpos];
@@ -317,15 +318,15 @@ yylex()
 			p = lookup(sitetab, cp);
 			cbuf[cpos] = c;
 			if (p != 0) {
-				if (p->implemented == 0) {
+				if (p.implemented == 0) {
 					state = CMD;
-					nack(p->name);
-					longjmp(errcatch,0);
+					nack(p.name);
+					longjmp(errcatch, 0);
 					/* NOTREACHED */
 				}
-				state = p->state;
-				*(char **)&yylval = p->name;
-				return (p->token);
+				state = p.state;
+				yylval = p.name;
+				return (p.token);
 			}
 			state = CMD;
 			break;
@@ -339,7 +340,7 @@ yylex()
 
 		case STR1:
 		case ZSTR1:
-		dostr1:
+dostr1:
 			if (cbuf[cpos] == ' ') {
 				cpos++;
 				state = state == OSTR ? STR2 : ++state;
@@ -355,7 +356,7 @@ yylex()
 			/* FALLTHROUGH */
 
 		case STR2:
-			cp = &cbuf[cpos];
+			cp = cbuf + cpos;
 			n = strlen(cp);
 			cpos += n - 1;
 			/*
@@ -363,7 +364,7 @@ yylex()
 			 */
 			if (n > 1 && cbuf[cpos] == '\n') {
 				cbuf[cpos] = '\0';
-				*(char **)&yylval = copy(cp);
+				yylval = copy(cp);
 				cbuf[cpos] = '\n';
 				state = ARGS;
 				return (STRING);
@@ -376,7 +377,7 @@ yylex()
 				return (SP);
 			}
 			if (isdigit(cbuf[cpos])) {
-				cp = &cbuf[cpos];
+				cp = cbuf + cpos;
 				while (isdigit(cbuf[++cpos]))
 					;
 				c = cbuf[cpos];
@@ -387,11 +388,12 @@ yylex()
 				return (NUMBER);
 			}
 			state = STR1;
-			goto dostr1;
+// goto dostr1;
+			break;
 
 		case ARGS:
 			if (isdigit(cbuf[cpos])) {
-				cp = &cbuf[cpos];
+				cp = cbuf + cpos;
 				while (isdigit(cbuf[++cpos]))
 					;
 				c = cbuf[cpos];
@@ -466,9 +468,9 @@ yylex()
 		default:
 			fatal("Unknown state in scanner.");
 		}
-		yyerror((char *) 0);
+		yyerror(NULL);
 		state = CMD;
-		longjmp(errcatch,0);
+		longjmp(errcatch, 0);
 	}
 }
 

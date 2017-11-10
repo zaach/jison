@@ -348,7 +348,7 @@ function checkActionBlock$1(src, yylloc) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
     if (yylloc && yylloc.first_line > 0) {
-        var cnt = yylloc.first_line + 1;
+        var cnt = yylloc.first_line;
         var lines = new Array(cnt);
         src = lines.join('\n') + src;
     } 
@@ -958,8 +958,8 @@ var parser = {
     // Options:
     //
     //   default action mode: ............. classic,merge
-    //   no try..catch: ................... false
-    //   no default resolve on conflict:    false
+    //   try..catch: ...................... true
+    //   default resolve on conflict: ..... true
     //   on-demand look-ahead: ............ false
     //   error recovery token skip maximum: 3
     //   yyerror in parse actions is: ..... NOT recoverable,
@@ -4452,8 +4452,9 @@ parse: function parse(input) {
             }
             this.__error_recovery_infos.length = 0;
 
-            if (recoveringErrorInfo && typeof recoveringErrorInfo.destroy === 'function') {
-                recoveringErrorInfo.destroy();
+            // `recoveringErrorInfo` is also part of the `__error_recovery_infos` array,
+            // hence has been destroyed already: no need to do that *twice*.
+            if (recoveringErrorInfo) {
                 recoveringErrorInfo = undefined;
             }
 
@@ -4929,10 +4930,9 @@ parse: function parse(input) {
 
                         p = this.constructParseErrorInfo(errStr, null, expected, (error_rule_depth >= 0));
 
-                        // cleanup the old one before we start the new error info track:
-                        if (recoveringErrorInfo && typeof recoveringErrorInfo.destroy === 'function') {
-                            recoveringErrorInfo.destroy();
-                        }
+                        // DO NOT cleanup the old one before we start the new error info track:
+                        // the old one will *linger* on the error stack and stay alive until we 
+                        // invoke the parser's cleanup API!
                         recoveringErrorInfo = this.shallowCopyErrorInfo(p);
 
                         r = this.parseError(p.errStr, p, this.JisonParserError);
@@ -6558,6 +6558,118 @@ EOF: 1,
     },
 
     /**
+     * return an YYLLOC info object derived off the given context (actual, preceding, following, current).
+     * Use this method when the given `actual` location is not guaranteed to exist (i.e. when
+     * it MAY be NULL) and you MUST have a valid location info object anyway:
+     * then we take the given context of the `preceding` and `following` locations, IFF those are available,
+     * and reconstruct the `actual` location info from those.
+     * If this fails, the heuristic is to take the `current` location, IFF available.
+     * If this fails as well, we assume the sought location is at/around the current lexer position
+     * and then produce that one as a response. DO NOTE that these heuristic/derived location info
+     * values MAY be inaccurate!
+     *
+     * NOTE: `deriveLocationInfo()` ALWAYS produces a location info object *copy* of `actual`, not just
+     * a *reference* hence all input location objects can be assumed to be 'constant' (function has no side-effects).
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    deriveLocationInfo: function lexer_deriveYYLLOC(actual, preceding, following, current) {
+      var loc = {
+        first_line: 1,
+        first_column: 0,
+        last_line: 1,
+        last_column: 0,
+        range: [0, 0]
+      };
+
+      if (actual) {
+        loc.first_line = actual.first_line | 0;
+        loc.last_line = actual.last_line | 0;
+        loc.first_column = actual.first_column | 0;
+        loc.last_column = actual.last_column | 0;
+
+        if (actual.range) {
+          loc.range[0] = actual.range[0] | 0;
+          loc.range[1] = actual.range[1] | 0;
+        }
+      }
+
+      if (loc.first_line <= 0 || loc.last_line < loc.first_line) {
+        // plan B: heuristic using preceding and following:
+        if (loc.first_line <= 0 && preceding) {
+          loc.first_line = preceding.last_line | 0;
+          loc.first_column = preceding.last_column | 0;
+
+          if (preceding.range) {
+            loc.range[0] = actual.range[1] | 0;
+          }
+        }
+
+        if ((loc.last_line <= 0 || loc.last_line < loc.first_line) && following) {
+          loc.last_line = following.first_line | 0;
+          loc.last_column = following.first_column | 0;
+
+          if (following.range) {
+            loc.range[1] = actual.range[0] | 0;
+          }
+        }
+
+        // plan C?: see if the 'current' location is useful/sane too:
+        if (loc.first_line <= 0 && current && (loc.last_line <= 0 || current.last_line <= loc.last_line)) {
+          loc.first_line = current.first_line | 0;
+          loc.first_column = current.first_column | 0;
+
+          if (current.range) {
+            loc.range[0] = current.range[0] | 0;
+          }
+        }
+
+        if (loc.last_line <= 0 && current && (loc.first_line <= 0 || current.first_line >= loc.first_line)) {
+          loc.last_line = current.last_line | 0;
+          loc.last_column = current.last_column | 0;
+
+          if (current.range) {
+            loc.range[1] = current.range[1] | 0;
+          }
+        }
+      }
+
+      // sanitize: fix last_line BEFORE we fix first_line as we use the 'raw' value of the latter
+      // or plan D heuristics to produce a 'sensible' last_line value:
+      if (loc.last_line <= 0) {
+        if (loc.first_line <= 0) {
+          loc.first_line = this.yylloc.first_line;
+          loc.last_line = this.yylloc.last_line;
+          loc.first_column = this.yylloc.first_column;
+          loc.last_column = this.yylloc.last_column;
+          loc.range[0] = this.yylloc.range[0];
+          loc.range[1] = this.yylloc.range[1];
+        } else {
+          loc.last_line = this.yylloc.last_line;
+          loc.last_column = this.yylloc.last_column;
+          loc.range[1] = this.yylloc.range[1];
+        }
+      }
+
+      if (loc.first_line <= 0) {
+        loc.first_line = loc.last_line;
+        loc.first_column = 0;  // loc.last_column; 
+        loc.range[1] = loc.range[0];
+      }
+
+      if (loc.first_column < 0) {
+        loc.first_column = 0;
+      }
+
+      if (loc.last_column < 0) {
+        loc.last_column = (loc.first_column > 0 ? loc.first_column : 80);
+      }
+
+      return loc;
+    },
+
+    /**
      * return a string which displays the lines & columns of input which are referenced 
      * by the given location info range, plus a few lines of context.
      * 
@@ -6603,15 +6715,13 @@ EOF: 1,
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
+      loc = this.deriveLocationInfo(loc, context_loc, context_loc2);
       const CONTEXT = 3;
       const CONTEXT_TAIL = 1;
       const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
       var input = this.matched + this._input;
       var lines = input.split('\n');
-
-      //var show_context = (error_size < 5 || context_loc);
       var l0 = Math.max(1, (context_loc ? context_loc.first_line : loc.first_line - CONTEXT));
-
       var l1 = Math.max(1, (context_loc2 ? context_loc2.last_line : loc.last_line + CONTEXT_TAIL));
       var lineno_display_width = 1 + Math.log10(l1 | 1) | 0;
       var ws_prefix = new Array(lineno_display_width).join(' ');
@@ -6971,18 +7081,71 @@ EOF: 1,
       var r;
 
       // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
+      if (typeof this.pre_lex === 'function') {
+        r = this.pre_lex.call(this, 0);
+      }
+
       if (typeof this.options.pre_lex === 'function') {
-        r = this.options.pre_lex.call(this);
+        // (also account for a userdef function which does not return any value: keep the token as is)
+        r = this.options.pre_lex.call(this, r) || r;
+      }
+
+      if (this.yy && typeof this.yy.pre_lex === 'function') {
+        // (also account for a userdef function which does not return any value: keep the token as is)
+        r = this.yy.pre_lex.call(this, r) || r;
       }
 
       while (!r) {
         r = this.next();
       }
 
+      if (this.yy && typeof this.yy.post_lex === 'function') {
+        // (also account for a userdef function which does not return any value: keep the token as is)
+        r = this.yy.post_lex.call(this, r) || r;
+      }
+
       if (typeof this.options.post_lex === 'function') {
         // (also account for a userdef function which does not return any value: keep the token as is)
         r = this.options.post_lex.call(this, r) || r;
       }
+
+      if (typeof this.post_lex === 'function') {
+        // (also account for a userdef function which does not return any value: keep the token as is)
+        r = this.post_lex.call(this, r) || r;
+      }
+
+      return r;
+    },
+
+    /**
+     * return next match that has a token. Identical to the `lex()` API but does not invoke any of the 
+     * `pre_lex()` nor any of the `post_lex()` callbacks.
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    fastLex: function lexer_fastLex() {
+      var r;
+
+      while (!r) {
+        r = this.next();
+      }
+
+      return r;
+    },
+
+    /**
+     * return info about the lexer state that can help a parser or other lexer API user to use the
+     * most efficient means available. This API is provided to aid run-time performance for larger
+     * systems which employ this lexer.
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    canIUse: function lexer_canIUse() {
+      var rv = {
+        fast_lex: !(typeof this.pre_lex === 'function' || typeof this.options.pre_lex === 'function' || this.yy && typeof this.yy.pre_lex === 'function' || this.yy && typeof this.yy.post_lex === 'function' || typeof this.options.post_lex === 'function' || typeof this.post_lex === 'function')
+      };
 
       return r;
     },
