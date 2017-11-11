@@ -22884,7 +22884,7 @@ function removeUnusedKernelFeatures(parseFn, info) {
         //     var yylineno;
         //     ...
 
-        parseFn = parseFn.replace(/, yylineno\b/g, '').replace(/^.*?\byylineno\b.*?=.*?\byylineno\b.*?$/gm, '');
+        parseFn = parseFn.replace(/\bvar yylineno\b/g, '').replace(/, yylineno\b/g, '').replace(/^.*?\byylineno\b.*?=.*?\byylineno\b.*?$/gm, '');
     }
 
     if (!info.actionsUseYYSTACK) {
