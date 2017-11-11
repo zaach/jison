@@ -165,8 +165,10 @@ describe("BNF parser", function () {
                                ["world", "return 'world';"]
                             ],
                             startConditions: {},
-                            unknownDecls: []
-                        },
+                            unknownDecls: [],
+                            codeSections: [],
+                            importDecls: [],
+                          },
                         bnf: {test: ["foo bar", "baz"], hello: ["world"]}
                     };
 
@@ -189,7 +191,9 @@ describe("BNF parser", function () {
                                 easy_keyword_rules: true
                             },
                             startConditions: {},
-                            unknownDecls: []
+                            unknownDecls: [],
+                            codeSections: [],
+                            importDecls: [],
                         },
                         bnf: {test: ["foo bar", "baz"], hello: ["world"]}
                     };
@@ -269,15 +273,21 @@ describe("BNF parser", function () {
 
   it("test quote in rule", function () {
     var grammar = "%lex\n%%\n\\' return \"'\"\n/lex\n%% test: foo bar \"'\";";
-    var expected = {lex: {
-      macros: {},
-      rules: [
-        ["'", "return \"'\""]
-      ],
-      startConditions: {},
-      unknownDecls: []
-    },
-    bnf: {test: ["foo bar \"'\""]}};
+    var expected = {
+      lex: {
+        macros: {},
+        rules: [
+          ["'", "return \"'\""]
+        ],
+        startConditions: {},
+        unknownDecls: [],
+        codeSections: [],
+        importDecls: [],
+      },
+      bnf: {
+        test: ["foo bar \"'\""]
+      }
+    };
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
   });

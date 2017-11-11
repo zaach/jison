@@ -25,13 +25,13 @@ lex
     : init definitions rules_and_epilogue EOF
         {
           $$ = $rules_and_epilogue;
-          $$.macros = $definitions.macros;
-          $$.startConditions = $definitions.startConditions;
-          $$.unknownDecls = $definitions.unknownDecls;
+          for (var key in $definitions) {
+            $$[key] = $definitions[key];
+          }
 
           // if there are any options, add them all, otherwise set options to NULL:
           // can't check for 'empty object' by `if (yy.options) ...` so we do it this way:
-          for (var k in yy.options) {
+          for (key in yy.options) {
             $$.options = yy.options;
             break;
           }
@@ -92,7 +92,7 @@ rules_and_epilogue
             jison and jison-lex documentation) which is intended to match a chunk
             of the input to lex, while the 'action_code' block is the JS code
             which will be invoked when the regex is matched. The 'action_code' block
-            may be any (indented!) set of JS statements, optionally surrounded 
+            may be any (indented!) set of JS statements, optionally surrounded
             by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
 
               Erroneous code:
@@ -126,7 +126,7 @@ rules_and_epilogue
             jison and jison-lex documentation) which is intended to match a chunk
             of the input to lex, while the 'action_code' block is the JS code
             which will be invoked when the regex is matched. The 'action_code' block
-            may be any (indented!) set of JS statements, optionally surrounded 
+            may be any (indented!) set of JS statements, optionally surrounded
             by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
 
               Erroneous code:
@@ -165,12 +165,35 @@ definitions
           if ($definition != null) {
             if ('length' in $definition) {
               $$.macros[$definition[0]] = $definition[1];
-            } else if ($definition.type === 'names') {
-              for (var name in $definition.names) {
-                $$.startConditions[name] = $definition.names[name];
+            } else {
+              switch ($definition.type) {
+              case 'names':
+                for (var name in $definition.names) {
+                  $$.startConditions[name] = $definition.names[name];
+                }
+                break;
+
+              case 'unknown':
+                $$.unknownDecls.push($definition.body);
+                break;
+
+              case 'imports':
+                $$.importDecls.push($definition.body);
+                break;
+
+              case 'codeSection':
+                $$.codeSections.push($definition.body);
+                break;
+
+              default:
+                yyerror(rmCommonWS`
+                  Encountered an unsupported definition type: ${$definition.type}.
+
+                    Erroneous area:
+                  ${yylexer.prettyPrintRange(@definition)}
+                `);
+                break;
               }
-            } else if ($definition.type === 'unknown') {
-              $$.unknownDecls.push($definition.body);
             }
           }
         }
@@ -179,7 +202,9 @@ definitions
           $$ = {
             macros: {},           // { hash table }
             startConditions: {},  // { hash table }
-            unknownDecls: []      // [ array of [key,value] pairs }
+            codeSections: [],     // [ array of {qualifier,include} pairs ]
+            importDecls: [],      // [ array of {name,path} pairs ]
+            unknownDecls: []      // [ array of {name,value} pairs ]
           };
         }
     ;
@@ -192,7 +217,7 @@ definition
     | START_EXC names_exclusive
         { $$ = $names_exclusive; }
     | action
-        { 
+        {
             var rv = checkActionBlock($action, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -202,15 +227,28 @@ definition
                     ${yylexer.prettyPrintRange(@action)}
                 `);
             }
-            yy.actionInclude.push($action); 
-            $$ = null; 
+            yy.actionInclude.push($action);
+            $$ = null;
         }
     | options
         { $$ = null; }
     | UNKNOWN_DECL
-        { $$ = {type: 'unknown', body: $1}; }
+        { 
+            $$ = {
+                type: 'unknown', 
+                body: $1
+            }; 
+        }
     | IMPORT import_name import_path
-        { $$ = {type: 'imports', name: $import_name, path: $import_path}; }
+        { 
+            $$ = {
+                type: 'imports', 
+                body: { 
+                    name: $import_name, 
+                    path: $import_path 
+                } 
+            }; 
+        }
     | IMPORT import_name error
         {
             yyerror(rmCommonWS`
@@ -242,18 +280,24 @@ definition
     | INIT_CODE init_code_name action
         {
             var rv = checkActionBlock($action, @action);
+            var name = $init_code_name;
+            var code = $action;
             if (rv) {
                 yyerror(rmCommonWS`
-                    The '%code ${$init_code_name}' action code section does not compile: ${rv}
+                    The '%code ${name}' action code section does not compile: ${rv}
+
+                    ${code}
 
                       Erroneous area:
                     ${yylexer.prettyPrintRange(@action, @INIT_CODE)}
                 `);
             }
             $$ = {
-                type: 'codesection',
-                qualifier: $init_code_name,
-                include: $action
+                type: 'codeSection',
+                body: {
+                  qualifier: $init_code_name,
+                  include: $action
+                }
             };
         }
     | INIT_CODE error action
@@ -381,7 +425,7 @@ rule
                     ${yylexer.prettyPrintRange(@action)}
                 `);
             }
-            $$ = [$regex, $action]; 
+            $$ = [$regex, $action];
         }
     | regex error
         {
@@ -417,10 +461,10 @@ action
                 ${yylexer.prettyPrintRange(@BRACKET_SURPLUS, @1)}
             `);
         }
-    | ACTION_START action_body ACTION_END 
+    | ACTION_START action_body ACTION_END
         {
             var s = $action_body.trim();
-            // remove outermost set of braces UNLESS there's 
+            // remove outermost set of braces UNLESS there's
             // a curly brace in there anywhere: in that case
             // we should leave it up to the sophisticated
             // code analyzer to simplify the code!
@@ -452,11 +496,11 @@ action_body
     | action_body include_macro_code
         { $$ = $action_body + '\n\n' + $include_macro_code + '\n\n'; }
     | action_body INCLUDE_PLACEMENT_ERROR
-        { 
+        {
             yyerror(rmCommonWS`
                 You may place the '%include' instruction only at the start/front of a line.
 
-                  It's use is not permitted at this position:
+                  Its use is not permitted at this position:
                 ${yylexer.prettyPrintRange(@INCLUDE_PLACEMENT_ERROR, @action_body)}
             `);
         }
@@ -571,9 +615,9 @@ regex
     ;
 
 regex_list
-    : regex_list '|' regex_concat 
+    : regex_list '|' regex_concat
         { $$ = $1 + '|' + $3; }
-    | regex_list '|' 
+    | regex_list '|'
         { $$ = $1 + '|'; }
     | regex_concat
         { $$ = $1; }
@@ -582,11 +626,11 @@ regex_list
     ;
 
 nonempty_regex_list
-    : nonempty_regex_list '|' regex_concat 
+    : nonempty_regex_list '|' regex_concat
         { $$ = $1 + '|' + $3; }
-    | nonempty_regex_list '|'  
+    | nonempty_regex_list '|'
         { $$ = $1 + '|'; }
-    | '|' regex_concat 
+    | '|' regex_concat
         { $$ = '|' + $2; }
     | regex_concat
         { $$ = $1; }
@@ -762,7 +806,7 @@ option
 
 extra_lexer_module_code
     : optional_module_code_chunk
-        { 
+        {
             var rv = checkActionBlock($optional_module_code_chunk, @optional_module_code_chunk);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -772,13 +816,13 @@ extra_lexer_module_code
                     ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
                 `);
             }
-            $$ = $optional_module_code_chunk; 
+            $$ = $optional_module_code_chunk;
         }
     | extra_lexer_module_code include_macro_code optional_module_code_chunk
-        { 
+        {
             // Each of the 3 chunks should be parse-able as a JS snippet on its own.
             //
-            // Note: we have already checked the first section in a previous reduction 
+            // Note: we have already checked the first section in a previous reduction
             // of this rule, so we don't need to check that one again!
             var rv = checkActionBlock($include_macro_code, @include_macro_code);
             if (rv) {
@@ -798,7 +842,7 @@ extra_lexer_module_code
                     ${yylexer.prettyPrintRange(@optional_module_code_chunk)}
                 `);
             }
-            $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk; 
+            $$ = $extra_lexer_module_code + $include_macro_code + $optional_module_code_chunk;
         }
     ;
 

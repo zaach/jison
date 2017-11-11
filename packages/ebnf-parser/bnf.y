@@ -631,7 +631,7 @@ handle_action
                         You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!
 
                           Erroneous area:
-                        ${yylexer.prettyPrintRange(@handle)}
+                        ${yylexer.prettyPrintRange(@handle, @0, @action /* @handle is very probably NULL! We need this one for some decent location info! */)}
                     `);
                 }
                 $$.push($prec);

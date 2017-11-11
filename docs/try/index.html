@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Jison / Try Jison Online</title>
+    <link rel="stylesheet" href="../assets/styles/style.css" type="text/css" media="screen" charset="utf-8" />
+
+    <!-- you don't need to keep this, but it's cool for stats! -->
+    <meta name="generator" content="Nanoc 4.8.0">
+  </head>
+  <body>
+    <div id="header">
+        <h1><a href="../">Jison</a></h1>
+    </div>
+    <ul id="nav">
+      <li><a href="../docs/">docs</a></li>
+      <li><a href="../demos/">demos</a></li>
+      <li><a href="../try/">try</a></li>
+      <li><a href="../docs/#installation">install</a></li>
+      <li><a href="../community/">community</a></li>
+    </ul>
+    <div id="content">
+      
+
+  <link href="../assets/styles/try.css" type="text/css" rel="stylesheet" media="screen" />
+
+  <div id="try">
+    <h1>Try Jison Online</h1>
+    <p>Build, test, and download your parser from the web!</p>
+    <h2>Describe Your Language</h2>
+
+    <p>
+    Load an example:
+    <select id="examples">
+      <option value="../examples/calculator.jison" selected="selected">Calculator</option>
+      <option value="../examples/lambdacalc.jison">Lambda Calculus</option>
+      <option value="../examples/happyhappy.jison">Happy Happy Joy Joy</option>
+
+      <option value="../examples/basic.jison">Basic</option>
+      <option value="../examples/basic_lex.jison">Basic (with lexer)</option>
+      <option value="../examples/basic_w_error_rule.jison">Basic (with error rule)</option>
+      <option value="../examples/basic2.jison">Basic #2</option>
+      <option value="../examples/basic2_lex.jison">Basic #2 (with lexer)</option>
+      <option value="../examples/ansic.jison">ANSI C</option>
+      <option value="../examples/btyacc-ansiC.y">btyacc-ansiC</option>
+      <option value="../examples/btyacc-ansiC2.y">btyacc-ansiC2</option>
+      <option value="../examples/btyacc-ftp.y">btyacc-ftp</option>
+      <option value="../examples/btyacc-t1.y">btyacc-t1</option>
+      <option value="../examples/btyacc-t2.y">btyacc-t2</option>
+      <option value="../examples/calc_LA_on_demand.jison">calculator (with option <em>lookahead_on_demand</em>)</option>
+      <option value="../examples/classy.jison">classy</option>
+      <option value="../examples/classy_ast.jison">classy_ast</option>
+      <option value="../examples/comments.jison">comments</option>
+      <option value="../examples/dism.jison">DISM</option>
+      <option value="../examples/dism_lr0.jison">DISM in LR(0)</option>
+      <option value="../examples/dot.jison">dot</option>
+      <option value="../examples/error-handling-and-yyclearin.jison">error-handling-and-yyclearin</option>
+      <option value="../examples/error-handling-and-yyerrok-loopfix.jison">error-handling-and-yyerrok-loopfix</option>
+      <option value="../examples/error-handling-and-yyerrok-looping1.jison">error-handling-and-yyerrok-looping1</option>
+      <option value="../examples/error-handling-and-yyerrok-looping2.jison">error-handling-and-yyerrok-looping2</option>
+      <option value="../examples/error-handling-and-yyerrok-macro.jison">error-handling-and-yyerrok-macro</option>
+      <option value="../examples/error-handling-and-yyerrok-part1.jison">error-handling-and-yyerrok-part1</option>
+      <option value="../examples/error-handling-and-yyerrok-part2.jison">error-handling-and-yyerrok-part2</option>
+      <option value="../examples/error-handling-and-yyerrok-part3.jison">error-handling-and-yyerrok-part3</option>
+      <option value="../examples/error-handling-and-yyerrok-part4a.jison">error-handling-and-yyerrok-part4a</option>
+      <option value="../examples/error-handling-and-yyerrok-part4b.jison">error-handling-and-yyerrok-part4b</option>
+      <option value="../examples/error-handling-and-yyerrok-part5.jison">error-handling-and-yyerrok-part5</option>
+      <option value="../examples/error-only.y">error-only</option>
+      <option value="../examples/error-recognition-actions.jison">error-recognition-actions</option>
+      <option value="../examples/faking-multiple-start-rules-alt.jison">faking-multiple-start-rules-alt</option>
+      <option value="../examples/faking-multiple-start-rules.jison">faking-multiple-start-rules</option>
+      <option value="../examples/flow.jison">flow</option>
+      <option value="../examples/formula.jison">formula</option>
+      <option value="../examples/fsyacc-cgrammar.jison">fsyacc-cgrammar</option>
+      <option value="../examples/gantt.jison">gantt</option>
+      <option value="../examples/grammar.jison">grammar</option>
+      <option value="../examples/inherited.y">inherited (yacc)</option>
+      <option value="../examples/issue-254.jison">issue-254</option>
+      <option value="../examples/issue-293.jison">issue-293</option>
+      <option value="../examples/jscore.jison">jscore (JavaScript core grammar)</option>
+      <option value="../examples/lojban-300.jison">lojban-300</option>
+      <option value="../examples/mermaid.jison">mermaid</option>
+      <option value="../examples/mfcalc.jison">mfcalc</option>
+      <option value="../examples/nv_classy_ast.jison">nv_classy_ast</option>
+      <option value="../examples/olmenu-proto2.jison">olmenu-proto2</option>
+      <option value="../examples/phraser.jison">phraser</option>
+      <option value="../examples/precedence.jison">Precedence operators</option>
+      <option value="../examples/reduce_conflict.jison">Reduce-Reduce conflict</option>
+      <option value="../examples/regex.jison">regex</option>
+      <option value="../examples/tikiwikiparser.jison">tikiwikiparser</option>
+      <option value="../examples/unicode.jison">unicode</option>
+      <option value="../examples/unicode2.jison">unicode2</option>
+      <option value="../examples/with-includes.jison">with-includes</option>
+      <option value="../examples/with_custom_lexer.jison">with_custom_lexer</option>
+      <option value="../examples/yacc-error-recovery.jison">yacc-error-recovery</option>
+    </select>
+    </p>
+
+    <textarea id="grammar" rows="20" cols="80">
+/* description: Parses end executes mathematical expressions. */
+
+/* lexical grammar */
+%lex
+%%
+
+\s+                   /* skip whitespace */
+[0-9]+("."[0-9]+)?\b  return 'NUMBER'
+"*"                   return '*'
+"/"                   return '/'
+"-"                   return '-'
+"+"                   return '+'
+"^"                   return '^'
+"("                   return '('
+")"                   return ')'
+"PI"                  return 'PI'
+"E"                   return 'E'
+&lt;&lt;EOF&gt;&gt;               return 'EOF'
+.                     return 'INVALID'
+
+/lex
+
+/* operator associations and precedence */
+
+%left '+' '-'
+%left '*' '/'
+%left '^'
+%left UMINUS
+
+%start expressions
+
+%% /* language grammar */
+
+expressions
+    : e EOF
+        {return $1;}
+    ;
+
+e
+    : e '+' e
+        {$$ = $1+$3;}
+    | e '-' e
+        {$$ = $1-$3;}
+    | e '*' e
+        {$$ = $1*$3;}
+    | e '/' e
+        {$$ = $1/$3;}
+    | e '^' e
+        {$$ = Math.pow($1, $3);}
+    | '-' e %prec UMINUS
+        {$$ = -$2;}
+    | '(' e ')'
+        {$$ = $2;}
+    | NUMBER
+        {$$ = Number(yytext);}
+    | E
+        {$$ = Math.E;}
+    | PI
+        {$$ = Math.PI;}
+    ;
+</textarea>
+    <p>
+      <button id="download_btn" disabled>Download</button>
+    </p>
+    <pre id="gen_out"></pre>
+
+    <div id="nonterminals"></div>
+    <div id="productions"></div>
+    <div id="table"></div>
+
+
+    <div id="parsing">
+      <h2>Test Your Parser</h2>
+      <textarea id="source" rows="8" cols="80">5*PI^2</textarea><br/>
+      <button id="parse_btn">Parse</button>
+    </div>
+    <pre id="out"></pre>
+
+    <div id="loading"></div>
+  </div>
+
+  <div id="usf">
+    <h2>Suggestion</h2>
+    <p>You may also want to try <a href="usf/index.html">the Jison USF page</a> which includes logic to show the productions and state transition diagram. This can be very useful for debugging your grammar!</p>
+  </div>
+
+  <script src="../assets/js/webtoolkit.base64.js"></script>
+  <script src="../assets/js/jquery.js"></script>
+  <script src="../assets/js/json2.js"></script>
+  <script src="../assets/js/es5.js"></script>
+  <script src="../assets/js/jison.js"></script>
+  <script src="../assets/js/try.js"></script>
+
+    </div>
+    <p id="footer">By <a href="http://zaa.ch">Zach Carter</a>, 2009-2016. MIT Licensed.</p>
+
+    <a href="http://github.com/zaach/jison"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
+  </body>
+</html>

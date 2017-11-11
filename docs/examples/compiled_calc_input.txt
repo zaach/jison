@@ -1,0 +1,11 @@
+# comment line...
+
+// another comment line...
+
+/*
+   and a multiline comment block
+ */
+
+1+2
+
+cos(PI)+log(10) < tan2(1, 2) + average(5, 7, 9, 8, 6, 4)

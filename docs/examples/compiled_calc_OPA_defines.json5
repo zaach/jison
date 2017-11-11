@@ -1,0 +1,11 @@
+//
+// bitfield defines or `fast_opcode_def_table`
+//
+{
+  OPA_VALUE: 0x0001,
+  OPA_OFFSET: 0x0002,
+  OPA_STRING: 0x0003,
+  OPA_VARIABLE_REF: 0x0004,
+  OPA_FUNCTION_REF: 0x0005,
+  OPA_ERROR_INFO_OBJ: 0x0006,
+}

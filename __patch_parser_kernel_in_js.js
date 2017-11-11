@@ -8,6 +8,12 @@ kernel = kernel
 .replace(/`/g, '\\`')
 .trim();
  
+var parseErrorCode = fs.readFileSync('lib/jison-parser-parseError-function.js', 'utf8');
+parseErrorCode = parseErrorCode
+.replace(/\\/g, '\\\\')
+.replace(/`/g, '\\`')
+.trim();
+ 
 var errorClassCode = fs.readFileSync('lib/jison-parser-error-code.js', 'utf8');
 errorClassCode = errorClassCode
 .replace(/\\/g, '\\\\')
@@ -36,6 +42,9 @@ parser.parse = \`${kernel}\`;
 var prelude = \`${errorClassCode}\`;
 
     ` + p2;
+        })
+        .replace(/(const parseErrorSourceCode = `)[^]+?(\/\/ END of parseErrorSourceCode chunk)/, function f(m, p1, p2) {
+            return p1 + '\n' + parseErrorCode + '\`;    ' + p2;
         });
 		updated = true;
 

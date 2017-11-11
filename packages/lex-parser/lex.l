@@ -49,7 +49,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 "%{"                                    yy.depth = 0;
                                         yy.include_command_allowed = false;
-                                        this.pushState('action'); 
+                                        this.pushState('action');
                                         this.unput(yytext);
                                         yytext = '';
                                         return 'ACTION_START';
@@ -66,65 +66,70 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                                 return 'INCLUDE';
                                             } else {
                                                 // TODO
-                                                yyerror('oops!');
+                                                yyerror(rmCommonWS`
+                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%\} action code block.
+                                                    Its use is not permitted at this position.
+
+                                                      Erroneous area:
+                                                    ` + this.prettyPrintRange(yylloc));
                                                 return 'INCLUDE_PLACEMENT_ERROR';
                                             }
                                         %}
-<action>{WS}*"/*"[^]*?"*/"              //yy.include_command_allowed = false; -- doesn't impact include-allowed state 
+<action>{WS}*"/*"[^]*?"*/"              //yy.include_command_allowed = false; -- doesn't impact include-allowed state
                                         return 'ACTION_BODY_C_COMMENT';
-<action>{WS}*"//".*                     yy.include_command_allowed = false; 
+<action>{WS}*"//".*                     yy.include_command_allowed = false;
                                         return 'ACTION_BODY_CPP_COMMENT';
 <action>{WS}+                           return 'ACTION_BODY_WHITESPACE';
 
 // make sure to terminate on linefeed before the next rule alternative,
-// which is announced by `|`:                                        
+// which is announced by `|`:
 <action>"|"                             if (yy.include_command_allowed) {
                                             this.popState();
                                             this.unput(yytext);
                                             yytext = '';
                                             return 'ACTION_END';
                                         } else {
-                                            return 'ACTION_BODY';    
+                                            return 'ACTION_BODY';
                                         }
 
 // make sure to terminate on linefeed before the rule section ends,
-// which is announced by `%%`:                                        
+// which is announced by `%%`:
 <action>"%%"                            if (yy.include_command_allowed) {
                                             this.popState();
                                             this.unput(yytext);
                                             yytext = '';
                                             return 'ACTION_END';
                                         } else {
-                                            return 'ACTION_BODY';    
+                                            return 'ACTION_BODY';
                                         }
 
-<action>"%"                             return 'ACTION_BODY';    
+<action>"%"                             return 'ACTION_BODY';
 
 // regexp with braces or quotes (and no spaces, so we don't mistake
 // a *division operator* `/` for a regex delimiter here in most circumstances):
 <action>"/"[^\s/]*?(?:['"`{}][^\s/]*?)*"/"
-                                        yy.include_command_allowed = false; 
+                                        yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 // hack to cope with slashes which MAY be divide operators OR are regex starters:
 // we simply gobble the entire line until the end or until we hit a closing brace,
 // as we MUST keep track of the curly brace pairs inside an action body.
 <action>"/"[^}{BR}]*
-                                        yy.include_command_allowed = false; 
+                                        yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 <action>\"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yy.include_command_allowed = false; 
+                                        yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
-<action>\'{QUOTED_STRING_CONTENT}\'     yy.include_command_allowed = false; 
+<action>\'{QUOTED_STRING_CONTENT}\'     yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
-<action>\`{ES2017_STRING_CONTENT}\`     yy.include_command_allowed = false; 
+<action>\`{ES2017_STRING_CONTENT}\`     yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
-<action>[^{}/"'`|%\{\}{BR}{WS}]+        yy.include_command_allowed = false; 
+<action>[^{}/"'`|%\{\}{BR}{WS}]+        yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
-<action>"{"                             yy.depth++; 
-                                        yy.include_command_allowed = false; 
+<action>"{"                             yy.depth++;
+                                        yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 <action>"}"                             %{
-                                            yy.include_command_allowed = false; 
+                                            yy.include_command_allowed = false;
                                             if (yy.depth <= 0) {
                                                 yyerror(rmCommonWS`
                                                     too many closing curly braces in lexer rule action block.
@@ -147,10 +152,10 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 // without leading whitespace. The only lexer command which we do accept
 // here after the last indent is `%include`, which is considered (part
 // of) the rule's action code block.
-<action>(?:{BR}{WS}+)+/[^{WS}{BR}|]     yy.include_command_allowed = true; 
+<action>(?:{BR}{WS}+)+/[^{WS}{BR}|]     yy.include_command_allowed = true;
                                         return 'ACTION_BODY_WHITESPACE';           // keep empty lines as-is inside action code blocks.
 <action>{BR}                            if (yy.depth > 0) {
-                                            yy.include_command_allowed = true; 
+                                            yy.include_command_allowed = true;
                                             return 'ACTION_BODY_WHITESPACE';       // keep empty lines as-is inside action code blocks.
                                         } else {
                                             // end of action code chunk
@@ -160,7 +165,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                             return 'ACTION_END';
                                         }
 <action><<EOF>>                         %{
-                                            yy.include_command_allowed = false; 
+                                            yy.include_command_allowed = false;
                                             if (yy.depth !== 0) {
                                                 yyerror(rmCommonWS`
                                                     missing ${yy.depth} closing curly braces in lexer rule action block.
@@ -201,14 +206,14 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 // never start with characters special to the lex language itself:
 // - `%` can start options, commands, etc., e.g. `%include` or `%options`
 // - `|` starts a rule alternative, never a chunk of action code.
-// -  					
-<rules>{WS}+/[^{WS}{BR}|%]              yy.depth = 0; 
-                                        yy.include_command_allowed = true; 
-                                        this.pushState('action'); 
+// -
+<rules>{WS}+/[^{WS}{BR}|%]              yy.depth = 0;
+                                        yy.include_command_allowed = true;
+                                        this.pushState('action');
                                         return 'ACTION_START';
 
-<rules>"%%"                             this.popState(); 
-                                        this.pushState('code'); 
+<rules>"%%"                             this.popState();
+                                        this.pushState('code');
                                         return '%%';
 
 // Accept any non-regex-special character as a direct literal without
@@ -288,13 +293,13 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 "%import"                               this.pushState('named_chunk'); return 'IMPORT';
 
 "%include"                              yy.depth = 0;
-                                        yy.include_command_allowed = true; 
-                                        this.pushState('action'); 
+                                        yy.include_command_allowed = true;
+                                        this.pushState('action');
                                         this.unput(yytext);
                                         yytext = '';
                                         return 'ACTION_START';
 
-<code>"%include"                        this.pushState('path'); 
+<code>"%include"                        this.pushState('path');
                                         return 'INCLUDE';
 
 <INITIAL,rules,code>"%"{NAME}([^\r\n]*)
@@ -306,10 +311,10 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yylloc));
-                                            yytext = [
-                                                this.matches[1],            // {NAME}
-                                                this.matches[2].trim()      // optional value/parameters
-                                            ];
+                                            yytext = {
+                                                name: this.matches[1],            // {NAME}
+                                                value: this.matches[2].trim()      // optional value/parameters
+                                            };
                                             return 'UNKNOWN_DECL';
                                         %}
 "%%"                                    this.pushState('rules');
@@ -438,8 +443,8 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 
 <*>.                                    %{
                                             yyerror(rmCommonWS`
-                                                unsupported lexer input: ${dquote(yytext)} 
-						while lexing in ${dquote(this.topState())} state.
+                                                unsupported lexer input: ${dquote(yytext)}
+                                                while lexing in ${dquote(this.topState())} state.
 
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yylloc));

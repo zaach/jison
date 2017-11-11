@@ -20,8 +20,5 @@
       ["<[^>]*>", "yytext = yytext.substr(1, yyleng-2); return 'ACTION';"],
       [".", "/* ignore bad characters */"],
       ["$", "return 'EOF';"]
-    ],
-    "macros": {},
-    "startConditions": {},
-    "unknownDecls": []
+    ]
 }

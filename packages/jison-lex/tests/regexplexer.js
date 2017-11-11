@@ -1,6 +1,11 @@
 var assert = require("chai").assert;
 var RegExpLexer = require("../dist/regexp-lexer-cjs-es5");
 var XRegExp = require("@gerhobbelt/xregexp");
+var yaml = require('@gerhobbelt/js-yaml');
+var JSON5 = require('@gerhobbelt/json5');
+var globby = require('globby');
+var fs = require('fs');
+
 
 function re2set(re) {
   var xr = new XRegExp(re);
@@ -2794,7 +2799,7 @@ describe("prettyPrintRange() API", function () {
     assert.strictEqual(lexer.lex(), lexer.EOF);
   });
 
-  it("fails when lexer cannot parse the spec due to faulty indentation", function () {
+  it("is invoked when lexer cannot parse the spec due to faulty indentation", function () {
     var dict = [
         '%%',
         // rule regex MUST start the line; indentation (incorrectly) indicates this is all 'action code':
@@ -2810,7 +2815,7 @@ describe("prettyPrintRange() API", function () {
     );
   });
 
-  it("fails when lexer cannot find the end of a rule's action code block (alt 1)", function () {
+  it("is invoked when lexer cannot find the end of a rule's action code block (alt 1)", function () {
     var dict = [
         '%%',
         // %{...%} action code blocks can contain ANYTHING, so 
@@ -2830,7 +2835,7 @@ describe("prettyPrintRange() API", function () {
     );
   });
 
-  it("fails when lexer cannot find the end of a rule's action code block (alt 2)", function () {
+  it("is invoked when lexer cannot find the end of a rule's action code block (alt 2)", function () {
     var dict = [
         '%%',
         // %{...%} action code blocks can contain ANYTHING.
@@ -2850,7 +2855,7 @@ describe("prettyPrintRange() API", function () {
     );
   });
 
-  it("fails when lexer finds an epilogue that's not parsable as JavaScript", function () {
+  it("is invoked when lexer finds an epilogue that's not parsable as JavaScript", function () {
     var dict = [
         '%%',
         '"a" %{ return true; %}',
@@ -2869,7 +2874,7 @@ describe("prettyPrintRange() API", function () {
     );
   });
 
-  it("fails when lexer finds a %code section that's not parsable as JavaScript", function () {
+  it("is invoked when lexer finds a %code section that's not parsable as JavaScript", function () {
     var dict = [
         '%%',
         '"a" %{ return true; %}',
@@ -2885,5 +2890,130 @@ describe("prettyPrintRange() API", function () {
       Error,
       /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "INIT_CODE"/
     );
+  });
+});
+
+
+
+
+//xdescribe("Error Detection and Diagnosis in JISON-LEX Tool", function () {
+
+
+
+
+
+
+
+describe("Test Lexer Grammars", function () {
+  console.log('exec glob....', __dirname);
+  var testset = globby.sync(__dirname + '/specs/*.jison');
+  var original_cwd = process.cwd();
+
+  testset = testset.sort().map(function (filepath) {
+    // Get document, or throw exception on error
+    try {
+      var spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+      console.log(spec);
+
+      var refOut;
+      try {
+        refOut = fs.readFileSync(filepath + '-ref.json5', 'utf8').replace(/\r\n|\r/g, '\n');
+        refOut = JSON5.parse(refOut);
+      } catch (ex) {
+        refOut = null;
+      }
+
+      // extract the top comment, which carries the title, etc. metadata:
+      var header = spec.substr(0, spec.indexOf('\n\n') + 1);
+      // then strip off the comment prefix for every line:
+      var extra;
+      header = header.replace(/^\/\/ ?/gm, '').replace(/\n...\n[^]*$/, function (m) {
+        extra = m;
+        return '';
+      });
+      var doc = yaml.safeLoad(header, {
+        filename: filepath,
+      });
+      return {
+        path: filepath,
+        spec: spec,
+        meta: doc,
+        metaExtra: extra,
+        ref: refOut
+      };
+    } catch (ex) {
+      console.log(ex);
+    }
+    return false;
+  })
+  .filter(function (info) {
+    return !!info;
+  });
+  console.log('testset....', testset);
+
+  var original_cwd = process.cwd();
+
+  testset.forEach(function (filespec) {
+    // process this file:
+    var title = filespec.meta.title;
+
+    // and create a test for it:
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function () {
+      var tokens = [];
+      var i = 0;
+      var lexerSourceCode;
+
+      try {
+        // Change CWD to the directory where the source grammar resides: this helps us properly
+        // %include any files mentioned in the grammar with relative paths:
+        process.chdir(__dirname + '/specs');
+
+        var lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
+          showSource: function (lexer, source, options) {
+            lexerSourceCode = {
+              sourceCode: source,
+              options: options,
+              
+            };
+          }
+        });
+        var countDown = 4;
+        for (i = 0; i < 1000; i++) {
+          var tok = lexer.lex();
+          tokens.push(tok);
+          tokens.push(lexer.yytext);
+          tokens.push(lexer.yylloc);
+          if (tok === lexer.EOF) {
+            // and make sure EOF stays EOF, i.e. continued invocation of `lex()` will only
+            // produce more EOF tokens at the same location:
+            countDown--;
+            if (countDown <= 0) {
+              break;
+            }
+          }
+        }
+      } catch (ex) {
+        // save the error:
+        tokens.push(-1);
+        tokens.push(ex.message);
+        tokens.push(ex);
+      } finally {
+        process.chdir(original_cwd);
+      }
+      // also store the number of tokens we received:
+      tokens.unshift(i);
+      if (lexerSourceCode) {
+        tokens.push(lexerSourceCode);
+      }
+
+      // either we check/test the correctness of the collected input, iff there's
+      // a reference provided, OR we create the reference file for future use:
+      if (filespec.refOut) {
+        assert.deepEqual(tokens, filespec.refOut);
+      } else {
+        var refOut = JSON5.stringify(tokens, null, 2);
+        fs.writeFileSync(filespec.path + '-ref.json5', refOut, 'utf8');
+      }
+    });
   });
 });
