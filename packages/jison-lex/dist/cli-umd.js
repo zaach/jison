@@ -4202,6 +4202,9 @@ parse: function parse(input) {
     var sp = 0;                         // 'stack pointer': index into the stacks
     var yyloc;
 
+    
+
+
     var symbol = 0;
     var preErrorSymbol = 0;
     var lastEofErrorStateDepth = Infinity;
@@ -7696,7 +7699,7 @@ EOF: 1,
 
       case 73:
         /*! Conditions:: rules macro named_chunk INITIAL */
-        /*! Rule::       %options\b */
+        /*! Rule::       %option[s]? */
         this.pushState('options');
 
         return 47;
@@ -8210,7 +8213,7 @@ EOF: 1,
       /*  70: */  /^(?:\\.)/,
       /*  71: */  /^(?:\$)/,
       /*  72: */  /^(?:\.)/,
-      /*  73: */  /^(?:%options\b)/,
+      /*  73: */  /^(?:%option[s]?)/,
       /*  74: */  /^(?:%s\b)/,
       /*  75: */  /^(?:%x\b)/,
       /*  76: */  /^(?:%code\b)/,
@@ -9664,7 +9667,7 @@ var camelCase   = helpers.camelCase;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-209';                              // require('./package.json').version;
+var version$1 = '0.6.1-210';                              // require('./package.json').version;
 
 
 
@@ -12928,7 +12931,7 @@ RegExpLexer.mkStdOptions = mkStdOptions;
 RegExpLexer.camelCase = camelCase;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
-var version = '0.6.1-209';                              // require('./package.json').version;
+var version = '0.6.1-210';                              // require('./package.json').version;
 
 
 function getCommandlineOptions() {

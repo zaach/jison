@@ -6,7 +6,7 @@
   },
   "name": "jison-gho",
   "description": "A parser generator with a Bison/YACC-similar API (derived off zaach/jison repo)",
-  "version": "0.6.1-209",
+  "version": "0.6.1-210",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -54,11 +54,11 @@
     "chai": "4.1.2",
     "get-stdin": "5.0.1",
     "globby": "6.1.0",
-    "jison-gho": "0.6.1-208",
+    "jison-gho": "0.6.1-209",
     "mocha": "4.0.1",
     "rollup": "0.51.3",
     "rollup-plugin-node-resolve": "3.0.0",
-    "uglify-js": "3.1.8"
+    "uglify-js": "3.1.9"
   },
   "scripts": {
     "test": "make test",

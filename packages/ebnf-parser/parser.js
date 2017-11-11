@@ -3863,7 +3863,7 @@ parse: function parse(input) {
     var sp = 0;                         // 'stack pointer': index into the stacks
     var yyloc;
 
-    var yylineno;
+    ;
 
 
     var symbol = 0;
@@ -7122,7 +7122,7 @@ EOF: 1,
 
       case 59:
         /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       %options\b */
+        /*! Rule::       %option[s]? */
         this.pushState('options');
 
         return 27;
@@ -7553,7 +7553,7 @@ EOF: 1,
       56: 35,
 
       /*! Conditions:: token bnf ebnf INITIAL */
-      /*! Rule::       %parse-param\b */
+      /*! Rule::       %parse-param[s]? */
       58: 31,
 
       /*! Conditions:: token bnf ebnf INITIAL */
@@ -7638,8 +7638,8 @@ EOF: 1,
       /* 55: */  /^(?:%right\b)/,
       /* 56: */  /^(?:%nonassoc\b)/,
       /* 57: */  /^(?:%token\b)/,
-      /* 58: */  /^(?:%parse-param\b)/,
-      /* 59: */  /^(?:%options\b)/,
+      /* 58: */  /^(?:%parse-param[s]?)/,
+      /* 59: */  /^(?:%option[s]?)/,
       /* 60: */  new XRegExp(
         '^(?:%lex((?:[^\\S\\n\\r])*(?:(?:\\r\\n|\\n|\\r)[^]*?)?(?:\\r\\n|\\n|\\r)(?:[^\\S\\n\\r])*)\\/lex\\b)',
         ''

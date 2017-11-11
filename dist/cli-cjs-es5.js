@@ -6037,7 +6037,7 @@ var lexer = function () {
 
                 case 73:
                     /*! Conditions:: rules macro named_chunk INITIAL */
-                    /*! Rule::       %options\b */
+                    /*! Rule::       %option[s]? */
                     this.pushState('options');
 
                     return 47;
@@ -6484,7 +6484,7 @@ var lexer = function () {
         /*  70: *//^(?:\\.)/,
         /*  71: *//^(?:\$)/,
         /*  72: *//^(?:\.)/,
-        /*  73: *//^(?:%options\b)/,
+        /*  73: *//^(?:%option[s]?)/,
         /*  74: *//^(?:%s\b)/,
         /*  75: *//^(?:%x\b)/,
         /*  76: *//^(?:%code\b)/,
@@ -7675,7 +7675,7 @@ var camelCase$1 = helpers.camelCase;
 var code_exec$1 = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$2 = '0.6.1-209'; // require('./package.json').version;
+var version$2 = '0.6.1-210'; // require('./package.json').version;
 
 
 var XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE; // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
@@ -17743,7 +17743,7 @@ var lexer$1 = function () {
 
                 case 59:
                     /*! Conditions:: token bnf ebnf INITIAL */
-                    /*! Rule::       %options\b */
+                    /*! Rule::       %option[s]? */
                     this.pushState('options');
 
                     return 27;
@@ -18124,7 +18124,7 @@ var lexer$1 = function () {
             56: 35,
 
             /*! Conditions:: token bnf ebnf INITIAL */
-            /*! Rule::       %parse-param\b */
+            /*! Rule::       %parse-param[s]? */
             58: 31,
 
             /*! Conditions:: token bnf ebnf INITIAL */
@@ -18203,8 +18203,8 @@ var lexer$1 = function () {
         /* 55: *//^(?:%right\b)/,
         /* 56: *//^(?:%nonassoc\b)/,
         /* 57: *//^(?:%token\b)/,
-        /* 58: *//^(?:%parse-param\b)/,
-        /* 59: *//^(?:%options\b)/,
+        /* 58: *//^(?:%parse-param[s]?)/,
+        /* 59: *//^(?:%option[s]?)/,
         /* 60: */new XRegExp('^(?:%lex((?:[^\\S\\n\\r])*(?:(?:\\r\\n|\\n|\\r)[^]*?)?(?:\\r\\n|\\n|\\r)(?:[^\\S\\n\\r])*)\\/lex\\b)', ''),
         /* 61: *//^(?:%code\b)/,
         /* 62: *//^(?:%import\b)/,
@@ -18391,7 +18391,7 @@ var bnf = {
 
 };
 
-var version$3 = '0.6.1-209'; // require('./package.json').version;
+var version$3 = '0.6.1-210'; // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);
@@ -19175,7 +19175,7 @@ function grammarPrinter(raw, options) {
 var rmCommonWS$1 = helpers.rmCommonWS;
 var camelCase = helpers.camelCase;
 var code_exec = helpers.exec;
-var version$1 = '0.6.1-209';
+var version$1 = '0.6.1-210';
 
 var devDebug = 0;
 
@@ -25129,7 +25129,7 @@ assert(Jison.defaultJisonOptions);
 assert(typeof Jison.mkStdOptions === 'function');
 assert(typeof Jison.Generator === 'function');
 
-var version = '0.6.1-209';
+var version = '0.6.1-210';
 
 function getCommandlineOptions() {
     var defaults = Jison.defaultJisonOptions;

@@ -1043,7 +1043,7 @@ parse: function parse(input) {
     var sp = 0;                         // 'stack pointer': index into the stacks
 
 
-    var yylineno;
+    ;
 
 
     var symbol = 0;

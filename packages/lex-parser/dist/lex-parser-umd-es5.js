@@ -5713,7 +5713,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 73:
                         /*! Conditions:: rules macro named_chunk INITIAL */
-                        /*! Rule::       %options\b */
+                        /*! Rule::       %option[s]? */
                         this.pushState('options');
 
                         return 47;
@@ -6160,7 +6160,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /*  70: *//^(?:\\.)/,
             /*  71: *//^(?:\$)/,
             /*  72: *//^(?:\.)/,
-            /*  73: *//^(?:%options\b)/,
+            /*  73: *//^(?:%option[s]?)/,
             /*  74: *//^(?:%s\b)/,
             /*  75: *//^(?:%x\b)/,
             /*  76: *//^(?:%code\b)/,

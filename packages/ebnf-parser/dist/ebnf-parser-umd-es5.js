@@ -8928,7 +8928,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 59:
                         /*! Conditions:: token bnf ebnf INITIAL */
-                        /*! Rule::       %options\b */
+                        /*! Rule::       %option[s]? */
                         this.pushState('options');
 
                         return 27;
@@ -9309,7 +9309,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 56: 35,
 
                 /*! Conditions:: token bnf ebnf INITIAL */
-                /*! Rule::       %parse-param\b */
+                /*! Rule::       %parse-param[s]? */
                 58: 31,
 
                 /*! Conditions:: token bnf ebnf INITIAL */
@@ -9388,8 +9388,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /* 55: *//^(?:%right\b)/,
             /* 56: *//^(?:%nonassoc\b)/,
             /* 57: *//^(?:%token\b)/,
-            /* 58: *//^(?:%parse-param\b)/,
-            /* 59: *//^(?:%options\b)/,
+            /* 58: *//^(?:%parse-param[s]?)/,
+            /* 59: *//^(?:%option[s]?)/,
             /* 60: */new XRegExp('^(?:%lex((?:[^\\S\\n\\r])*(?:(?:\\r\\n|\\n|\\r)[^]*?)?(?:\\r\\n|\\n|\\r)(?:[^\\S\\n\\r])*)\\/lex\\b)', ''),
             /* 61: *//^(?:%code\b)/,
             /* 62: *//^(?:%import\b)/,
@@ -14874,7 +14874,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 73:
                         /*! Conditions:: rules macro named_chunk INITIAL */
-                        /*! Rule::       %options\b */
+                        /*! Rule::       %option[s]? */
                         this.pushState('options');
 
                         return 47;
@@ -15321,7 +15321,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /*  70: *//^(?:\\.)/,
             /*  71: *//^(?:\$)/,
             /*  72: *//^(?:\.)/,
-            /*  73: *//^(?:%options\b)/,
+            /*  73: *//^(?:%option[s]?)/,
             /*  74: *//^(?:%s\b)/,
             /*  75: *//^(?:%x\b)/,
             /*  76: *//^(?:%code\b)/,
@@ -15529,7 +15529,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     };
 
-    var version = '0.6.1-209'; // require('./package.json').version;
+    var version = '0.6.1-210'; // require('./package.json').version;
 
     function parse(grammar) {
         return bnf.parser.parse(grammar);

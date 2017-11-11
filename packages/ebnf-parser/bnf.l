@@ -159,8 +159,8 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "%right"                                return 'RIGHT';
 "%nonassoc"                             return 'NONASSOC';
 "%token"                                this.pushState('token'); return 'TOKEN';
-"%parse-param"                          return 'PARSE_PARAM';
-"%options"                              this.pushState('options'); return 'OPTIONS';
+"%parse-param"[s]?                      return 'PARSE_PARAM';
+"%option"[s]?                           this.pushState('options'); return 'OPTIONS';
 "%lex"{LEX_CONTENT}"/lex"               %{
                                             // remove the %lex../lex wrapper and return the pure lex section:
                                             yytext = this.matches[1];
