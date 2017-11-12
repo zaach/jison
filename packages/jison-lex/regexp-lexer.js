@@ -2416,16 +2416,16 @@ return `{
      */
     canIUse: function lexer_canIUse() {
         var rv = {
-            fast_lex: !(
+            fastLex: !(
                 typeof this.pre_lex === 'function' ||
                 typeof this.options.pre_lex === 'function' ||
                 (this.yy && typeof this.yy.pre_lex === 'function') ||
                 (this.yy && typeof this.yy.post_lex === 'function') ||
                 typeof this.options.post_lex === 'function' ||
                 typeof this.post_lex === 'function'
-            ),
+            ) && typeof this.fastLex === 'function',
         };
-        return r;
+        return rv;
     },
 
 
