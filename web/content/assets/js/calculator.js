@@ -1403,7 +1403,7 @@ parse: function parse(input) {
     }
 
 
-    function lex() {
+    function stdLex() {
         var token = lexer.lex();
         // if token isn't its numeric value, convert
         if (typeof token !== 'number') {
@@ -1412,6 +1412,18 @@ parse: function parse(input) {
 
         return token || EOF;
     }
+
+    function fastLex() {
+        var token = lexer.fastLex();
+        // if token isn't its numeric value, convert
+        if (typeof token !== 'number') {
+            token = self.symbols_[token] || token;
+        }
+
+        return token || EOF;
+    }
+
+    var lex = stdLex;
 
 
     var state, action, r, t;
@@ -1431,6 +1443,17 @@ parse: function parse(input) {
         this.__reentrant_call_depth++;
 
         lexer.setInput(input, sharedState_yy);
+
+        // NOTE: we *assume* no lexer pre/post handlers are set up *after* 
+        // this initial `setInput()` call: hence we can now check and decide
+        // whether we'll go with the standard, slower, lex() API or the
+        // `fast_lex()` one:
+        if (typeof lexer.canIUse === 'function') {
+            var lexerInfo = lexer.canIUse();
+            if (lexerInfo.fastLex && typeof fastLex === 'function') {
+                lex = fastLex;
+            }
+        } 
 
 
 
@@ -3208,10 +3231,10 @@ EOF: 1,
      */
     canIUse: function lexer_canIUse() {
       var rv = {
-        fast_lex: !(typeof this.pre_lex === 'function' || typeof this.options.pre_lex === 'function' || this.yy && typeof this.yy.pre_lex === 'function' || this.yy && typeof this.yy.post_lex === 'function' || typeof this.options.post_lex === 'function' || typeof this.post_lex === 'function')
+        fastLex: !(typeof this.pre_lex === 'function' || typeof this.options.pre_lex === 'function' || this.yy && typeof this.yy.pre_lex === 'function' || this.yy && typeof this.yy.post_lex === 'function' || typeof this.options.post_lex === 'function' || typeof this.post_lex === 'function') && typeof this.fastLex === 'function'
       };
 
-      return r;
+      return rv;
     },
 
     /**
