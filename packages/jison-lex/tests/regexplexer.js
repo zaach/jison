@@ -2906,14 +2906,45 @@ describe("prettyPrintRange() API", function () {
 
 describe("Test Lexer Grammars", function () {
   console.log('exec glob....', __dirname);
-  var testset = globby.sync(__dirname + '/specs/*.jison');
+  var testset = globby.sync([
+    __dirname + '/specs/*.jison', 
+    __dirname + '/specs/*.json5', 
+    '!'+ __dirname + '/specs/*-ref.json5',
+    __dirname + '/specs/*.js', 
+  ]);
   var original_cwd = process.cwd();
 
   testset = testset.sort().map(function (filepath) {
     // Get document, or throw exception on error
     try {
-      var spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
-      console.log(spec);
+      console.log('Lexer Grammar file:', filepath.replace(/^.*?\/specs\//, ''));
+      var spec;
+      var header;
+      var extra;
+
+      if (filepath.match(/\.js$/)) {
+        spec = require(filepath);
+
+        var hdrspec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = hdrspec.substr(0, hdrspec.indexOf('\n\n') + 1);
+      } else {
+        spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = spec.substr(0, spec.indexOf('\n\n') + 1);
+      }
+
+      // then strip off the comment prefix for every line:
+      header = header.replace(/^\/\/ ?/gm, '').replace(/\n...\n[^]*$/, function (m) {
+        extra = m;
+        return '';
+      });
+
+      var doc = yaml.safeLoad(header, {
+        filename: filepath,
+      });
 
       var refOut;
       try {
@@ -2923,17 +2954,6 @@ describe("Test Lexer Grammars", function () {
         refOut = null;
       }
 
-      // extract the top comment, which carries the title, etc. metadata:
-      var header = spec.substr(0, spec.indexOf('\n\n') + 1);
-      // then strip off the comment prefix for every line:
-      var extra;
-      header = header.replace(/^\/\/ ?/gm, '').replace(/\n...\n[^]*$/, function (m) {
-        extra = m;
-        return '';
-      });
-      var doc = yaml.safeLoad(header, {
-        filename: filepath,
-      });
       return {
         path: filepath,
         spec: spec,
@@ -2943,19 +2963,19 @@ describe("Test Lexer Grammars", function () {
       };
     } catch (ex) {
       console.log(ex);
+      throw ex;
     }
     return false;
   })
   .filter(function (info) {
     return !!info;
   });
-  console.log('testset....', testset);
 
   var original_cwd = process.cwd();
 
   testset.forEach(function (filespec) {
     // process this file:
-    var title = filespec.meta.title;
+    var title = (filespec.meta ? filespec.meta.title : null);
 
     // and create a test for it:
     it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function () {
@@ -2969,11 +2989,11 @@ describe("Test Lexer Grammars", function () {
         process.chdir(__dirname + '/specs');
 
         var lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
+          json: true,           // input MAY be JSON/JSON5 format OR JISON LEX format!
           showSource: function (lexer, source, options) {
             lexerSourceCode = {
               sourceCode: source,
               options: options,
-              
             };
           }
         });
@@ -2996,6 +3016,7 @@ describe("Test Lexer Grammars", function () {
         // save the error:
         tokens.push(-1);
         tokens.push(ex.message);
+        tokens.push(ex.stack);
         tokens.push(ex);
       } finally {
         process.chdir(original_cwd);
@@ -3008,8 +3029,10 @@ describe("Test Lexer Grammars", function () {
 
       // either we check/test the correctness of the collected input, iff there's
       // a reference provided, OR we create the reference file for future use:
-      if (filespec.refOut) {
-        assert.deepEqual(tokens, filespec.refOut);
+      if (filespec.ref) {
+        // make sure we postprocess the lexer spec as we did when we created the reference template:
+        tokens = JSON5.parse(JSON5.stringify(tokens, null, 2));
+        assert.deepEqual(tokens, filespec.ref);
       } else {
         var refOut = JSON5.stringify(tokens, null, 2);
         fs.writeFileSync(filespec.path + '-ref.json5', refOut, 'utf8');
