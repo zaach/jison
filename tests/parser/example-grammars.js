@@ -30,6 +30,13 @@ const test_list = [
     __ignore__: true,
   },
   {
+    name: 'issue-lex-23',
+    inputs: [
+      '1 + 2 + 3 + 4 + 5\n'
+    ],
+    parseResult: 15,
+  },
+  {
     name: 'error-handling-and-yyclearin',
     inputs: [
       'A\nB A\nA\nA\n'
@@ -186,7 +193,10 @@ const test_list = [
 ];
 
 console.log('exec glob....', __dirname);
-var testset = glob.sync(__dirname + '/../../examples/*.jison');
+var testset = glob.sync([
+  __dirname + '/../../examples/*.jison',
+  __dirname + '/../../examples/issue-lex-*.js', 
+]);
 testset = testset.sort().map(function (filepath) {
   for (var j = 0, lj = test_list.length; j < lj; j++) {
     var fstr = test_list[j].name;
@@ -218,14 +228,22 @@ describe("Example/Test Grammars", function () {
   testset.forEach(function (filespec) {
     // process this file:
     it('test example: ' + filespec.path.replace(/^.*?\/examples\//, ''), function test_one_example_grammar_now() {
-      var grammar = fs.readFileSync(filespec.path, 'utf8');
+      var grammar;
+
+      if (filespec.path.match(/\.js$/)) {
+        grammar = require(filespec.path);
+      } else {
+        grammar = fs.readFileSync(filespec.path, 'utf8').replace(/\r\n|\r/g, '\n');
+      }
 
       // Change CWD to the directory where the source grammar resides: this helps us properly
       // %include any files mentioned in the grammar with relative paths:
       var new_cwd = path.dirname(path.normalize(filespec.path));
       process.chdir(new_cwd);
 
-      var options = {};
+      var options = {
+        json: true
+      };
       for (var k in filespec) {
         if (k !== 'path' && k !== 'inputs' && k !== '__check__' && k !== 'exportAllTables') {
           options[k] = filespec[k];
@@ -247,18 +265,20 @@ describe("Example/Test Grammars", function () {
       }
 
       code_exec(String(parser.parse), function test_exec() {
+        var expected_rv = (filespec.parseResult !== undefined ? filespec.parseResult : true);
+        
         if (typeof parser.main === 'function') {
           assert.ok(!parser.main(), 'main() is supposed to produce zero ~ success');
         } else if (filespec.inputs) {
           for (var i = 0, l = filespec.inputs.length; i < l; i++) {
             rv = parser.parse(filespec.inputs[i]);
             console.log('parse A: ', filespec.inputs[i], rv);
-            assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
+            assert.strictEqual(rv, expected_rv, 'parser.parse() is supposed to produce TRUE');
           }
         } else {
           rv = parser.parse('zz; yy; zz;zz ;');
           console.log('parse B: ', path.basename(filespec.path), rv);
-          assert.strictEqual(rv, true, 'parser.parse() is supposed to produce TRUE');
+          assert.strictEqual(rv, expected_rv, 'parser.parse() is supposed to produce TRUE');
         }
       }, {
         dumpSourceCodeOnFailure: true,
