@@ -526,9 +526,6 @@ clean: clean-site
 	cd packages/jison2json && make clean
 	cd packages/json2jison && make clean
 
-	-rm -rf node_modules/
-	-rm -f package-lock.json
-
 #
 # When you've run `make superclean` you must run `make prep`, `make` and `make deploy` to regenerate all content again.
 #
@@ -538,6 +535,9 @@ clean: clean-site
 # of each part of the generator (lexer & parser) as all derived copies have been killed.
 #
 superclean: clean clean-site
+	-rm -rf node_modules/
+	-rm -f package-lock.json
+
 	cd examples/ && make superclean
 
 	cd packages/helpers-lib && make superclean

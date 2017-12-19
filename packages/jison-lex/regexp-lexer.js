@@ -14,7 +14,7 @@ var code_exec   = helpers.exec;
 // import astUtils from '@gerhobbelt/ast-util';
 import assert from 'assert';
 
-var version = '0.6.1-209';                              // require('./package.json').version;
+var version = '0.6.1-213';                              // require('./package.json').version;
 
 
 
@@ -304,8 +304,18 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         newRules.push(m);
         action = rule[1];
         if (typeof action === 'function') {
-            // TODO: also cope with Arrow Functions (and inline those as well?) -- see also https://github.com/zaach/jison-lex/issues/23
-            action = String(action).replace(/^\s*function\s*\(\)\s?\{/, '').replace(/\}\s*$/, '');
+            // Also cope with Arrow Functions (and inline those as well?).
+            // See also https://github.com/zaach/jison-lex/issues/23
+            action = String(action);
+            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
+                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
+            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
+                // () => 'TOKEN'    --> return 'TOKEN' 
+                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
+            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
+                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
+                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
+            }
         }
         action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
         action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
@@ -2416,16 +2426,16 @@ return `{
      */
     canIUse: function lexer_canIUse() {
         var rv = {
-            fast_lex: !(
+            fastLex: !(
                 typeof this.pre_lex === 'function' ||
                 typeof this.options.pre_lex === 'function' ||
                 (this.yy && typeof this.yy.pre_lex === 'function') ||
                 (this.yy && typeof this.yy.post_lex === 'function') ||
                 typeof this.options.post_lex === 'function' ||
                 typeof this.post_lex === 'function'
-            ),
+            ) && typeof this.fastLex === 'function',
         };
-        return r;
+        return rv;
     },
 
 

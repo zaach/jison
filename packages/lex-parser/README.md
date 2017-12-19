@@ -3,7 +3,7 @@
 
 [![Join the chat at https://gitter.im/jison-parsers-lexers/Lobby](https://badges.gitter.im/jison-parsers-lexers/Lobby.svg)](https://gitter.im/jison-parsers-lexers/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
 [![Build Status](https://travis-ci.org/GerHobbelt/lex-parser.svg?branch=master)](https://travis-ci.org/GerHobbelt/lex-parser)
-[![NPM version](https://badge.fury.io/js/@gerhobbelt/lex-parser.svg)](http://badge.fury.io/js/@gerhobbelt/lex-parser)
+[![NPM version](https://badge.fury.io/js/%40gerhobbelt%2Flex-parser.svg)](http://badge.fury.io/js/%40gerhobbelt%2Flex-parser)
 [![Dependency Status](https://img.shields.io/david/GerHobbelt/lex-parser.svg)](https://david-dm.org/GerHobbelt/lex-parser)
 [![npm](https://img.shields.io/npm/dm/@gerhobbelt/lex-parser.svg?maxAge=2592000)]()
 
@@ -17,6 +17,60 @@ A parser for lexical grammars used by [jison](http://jison.org) and jison-lex.
 ## install
 
     npm install @gerhobbelt/lex-parser
+
+or the entire bundle via 
+
+    npm install jison-gho
+
+Then the `lex-parser` library is located in the subdirectory `packages/lex-parser/` of the `jison-gho` monorepo, i.e. `.../node_modules/jison-gho/packages/lex-parser/`.
+
+Alternatively, the entire `lex-parser` API is also available via the `jison` API itself as can be seen from this internal `jison` code snippet:
+
+```
+import Lexer from '../packages/jison-lex';
+import ebnfParser from '../packages/ebnf-parser';
+import lexParser from '../packages/lex-parser';
+import grammarPrinter from './util/grammar-printer.js';
+import helpers from '../packages/helpers-lib';
+var rmCommonWS = helpers.rmCommonWS;
+var camelCase  = helpers.camelCase;
+var code_exec  = helpers.exec;
+import XRegExp from '@gerhobbelt/xregexp';
+import recast from '@gerhobbelt/recast';
+import astUtils from '@gerhobbelt/ast-util';
+import json5 from '@gerhobbelt/json5';
+
+// Also export other APIs: the JISON module should act as a 'facade' for the others,
+// so applications using the JISON compiler itself can rely on it providing everything
+// in a guaranteed compatible version as it allows userland code to use the precise
+// same APIs as JISON will be using itself:
+Jison.Lexer = Lexer;
+Jison.ebnfParser = ebnfParser;
+Jison.lexParser = lexParser;
+Jison.codeExec = code_exec;
+Jison.XRegExp = XRegExp;
+Jison.recast = recast;
+Jison.astUtils = astUtils;
+Jison.JSON5 = json5;
+Jison.prettyPrint = grammarPrinter;
+Jison.rmCommonWS = rmCommonWS;
+Jison.mkStdOptions = mkStdOptions;
+Jison.camelCase = camelCase;
+Jison.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
+...
+Jison.Parser = Parser;
+
+export default Jison;
+```
+
+hence you can get at it this way, for example:
+
+```
+import jisonAPI from 'jison-gho';
+// get a reference to the full `lex-parser` API:
+const lexParserAPI = jisonAPI.lexParser;
+```
+
 
 
 ## build

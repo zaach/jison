@@ -285,7 +285,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 "\\".                                   yytext = yytext.replace(/^\\/g, ''); return 'ESCAPE_CHAR';
 "$"                                     return '$';
 "."                                     return '.';
-"%options"                              this.pushState('options'); return 'OPTIONS';
+"%option"[s]?                           this.pushState('options'); return 'OPTIONS';
 "%s"                                    this.pushState('start_condition'); return 'START_INC';
 "%x"                                    this.pushState('start_condition'); return 'START_EXC';
 

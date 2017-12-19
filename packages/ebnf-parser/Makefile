@@ -68,10 +68,10 @@ clean:
 	-rm -f bnf.js
 	-rm -f ebnf.js
 	-rm -rf dist/
-	-rm -rf node_modules/
-	-rm -f package-lock.json
 
 superclean: clean
+	-rm -rf node_modules/
+	-rm -f package-lock.json
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
 

@@ -170,11 +170,11 @@ publish:
 
 clean:
 	-rm -rf dist/
-	-rm -rf node_modules/
-	-rm -f package-lock.json
 	-rm -rf examples/output/
 
 superclean: clean
+	-rm -rf node_modules/
+	-rm -f package-lock.json
 	-find . -type d -name 'node_modules' -exec rm -rf "{}" \;
 
 

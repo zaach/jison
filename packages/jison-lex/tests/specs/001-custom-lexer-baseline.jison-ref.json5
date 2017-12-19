@@ -41,7 +41,7 @@
         moduleType: "commonjs",
         debug: false,
         enableDebugLogs: false,
-        json: false,
+        json: true,
         dumpSourceCodeOnFailure: true,
         throwErrorOnCompileFailure: true,
         defaultModuleName: "lexer",
