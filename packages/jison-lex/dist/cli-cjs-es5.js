@@ -7404,7 +7404,7 @@ var mkIdentifier$2 = helpers.mkIdentifier;
 var code_exec$1 = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-214'; // require('./package.json').version;
+var version$1 = '0.6.1-215'; // require('./package.json').version;
 
 
 var XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE; // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
@@ -9010,7 +9010,7 @@ RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 var mkIdentifier = helpers.mkIdentifier;
 
-var version = '0.6.1-214'; // require('./package.json').version;
+var version = '0.6.1-215'; // require('./package.json').version;
 
 
 function getCommandlineOptions() {
