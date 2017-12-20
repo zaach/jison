@@ -35,7 +35,8 @@ GITHUB_ISSUE_TARGETS =                                          \
 			issue-344-2-BAD                                     \
 			issue-348                                           \
 			issue-357-url-lexing                                \
-			issue-360
+			issue-360                                           \
+			issue-362
 
 
 CODEGEN_TARGETS =                                               \
@@ -88,6 +89,8 @@ BASIC_TARGETS =                                                 \
 			compiled_calc                                       \
 			dism                                                \
 			dism_lr0                                            \
+			documentation--custom-lexer-ULcase                  \
+			documentation--custom-lexer-ULcase-alt              \
 			dot                                                 \
 			error-only                                          \
 			faking-multiple-start-rules                         \
@@ -151,6 +154,8 @@ MISC_TARGETS =                                                  \
 			compiled_calc                                       \
 			dism                                                \
 			dism_lr0                                            \
+			documentation--custom-lexer-ULcase                  \
+			documentation--custom-lexer-ULcase-alt              \
 			dot                                                 \
 			$(ERROR_HANDLING_TARGETS)                           \
 			error-only                                          \
@@ -307,6 +312,14 @@ dism_lr0:
 # ./documentation--custom-lexer-ULcase.js
 # ./documentation--mygenerator.js
 
+documentation--custom-lexer-ULcase:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
+documentation--custom-lexer-ULcase-alt:
+	$(JISON) --main ./$@.jison
+	node ./output/$@/$@.js
+
 formula:
 	$(JISON) --main ./$@.jison
 
@@ -388,6 +401,9 @@ issue-357-url-lexing:
 issue-360:
 	$(JISON) --main --export-ast+ ./$@.json
 	node ./output/$@/$@.js $@.test-input-1.txt
+
+# build *AND* run the test:
+issue-362: documentation--custom-lexer-ULcase documentation--custom-lexer-ULcase-alt
 
 jscore:
 	$(JISON) --main ./$@.jison
