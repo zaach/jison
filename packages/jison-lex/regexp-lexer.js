@@ -8,7 +8,7 @@ import lexParser from '../lex-parser';
 import setmgmt from './regexp-set-management.js';
 import helpers from '../helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
-var camelCase   = helpers.camelCase;
+var mkIdentifier = helpers.mkIdentifier;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
@@ -114,7 +114,7 @@ function mkStdOptions(/*...args*/) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase(p)] = o[p];
+                o2[mkIdentifier(p)] = o[p];
             }
         }
 
@@ -3352,7 +3352,8 @@ RegExpLexer.generate = generate;
 RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
-RegExpLexer.camelCase = camelCase;
+RegExpLexer.camelCase = helpers.camelCase;
+RegExpLexer.mkIdentifier = mkIdentifier;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 

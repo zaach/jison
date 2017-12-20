@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import nomnom from '@gerhobbelt/nomnom';
 
+import helpers from '../helpers-lib';
+var mkIdentifier = helpers.mkIdentifier;
+
 import RegExpLexer from './regexp-lexer.js';
 
 var version = '0.6.1-213';                              // require('./package.json').version;
@@ -170,10 +173,7 @@ cli.main = function cliMain(opts) {
 
         opts.outfile = opts.outfile || (outpath + name + '.js');
         if (!opts.moduleName && name) {
-            opts.moduleName = opts.defaultModuleName = name.replace(/-\w/g,
-                function (match) {
-                    return match.charAt(1).toUpperCase();
-                });
+            opts.moduleName = opts.defaultModuleName = mkIdentifier(name);
         }
 
         // Change CWD to the directory where the source grammar resides: this helps us properly
