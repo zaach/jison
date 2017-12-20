@@ -2695,6 +2695,7 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseYYSSTACK: build_options.parseActionsUseYYSSTACK,
         parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
         parseActionsUseYYRULELENGTH: build_options.parseActionsUseYYRULELENGTH,
+        parseActionsUseYYMERGELOCATIONINFO: build_options.parseActionsUseYYMERGELOCATIONINFO,
         parserHasErrorRecovery: build_options.parserHasErrorRecovery,
         parserHasErrorReporting: build_options.parserHasErrorReporting,
 
@@ -2853,6 +2854,7 @@ function generateModuleBody(opt) {
           parseActionsUseYYSSTACK: 1,
           parseActionsUseYYSTACKPOINTER: 1,
           parseActionsUseYYRULELENGTH: 1,
+          parseActionsUseYYMERGELOCATIONINFO: 1,
           parserHasErrorRecovery: 1,
           parserHasErrorReporting: 1,
           lexerActionsUseYYLENG: 1,
