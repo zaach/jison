@@ -12,6 +12,27 @@ describe("helpers API", function () {
     assert.strictEqual(helpers.camelCase("1abc"), "1abc");
     assert.strictEqual(helpers.camelCase(" abc"), " abc");
     assert.strictEqual(helpers.camelCase("abc_def_ghi"), "abc_def_ghi");
+
+    assert.strictEqual(helpers.camelCase("abc___def"), "abc___def");
+    assert.strictEqual(helpers.camelCase("abc--def"), "abc-Def");
+    assert.strictEqual(helpers.camelCase("abc----def"), "abc---Def");
+    assert.strictEqual(helpers.camelCase("1-abc-2--def"), "1Abc-2-Def");
+    assert.strictEqual(helpers.camelCase("a+b+c+d+e+-Fg"), "a+b+c+d+e+Fg");
+  });
+
+  it("mkIdentifier", function () {
+    assert.strictEqual(helpers.mkIdentifier("abc"), "abc");
+    assert.strictEqual(helpers.mkIdentifier("abc-def-ghi"), "abcDefGhi");
+
+    assert.strictEqual(helpers.mkIdentifier("1abc"), "_abc");
+    assert.strictEqual(helpers.mkIdentifier(" abc"), "_abc");
+    assert.strictEqual(helpers.mkIdentifier("abc_def_ghi"), "abc_def_ghi");
+
+    assert.strictEqual(helpers.mkIdentifier("abc___def"), "abc_def");
+    assert.strictEqual(helpers.mkIdentifier("abc--def"), "abc_Def");
+    assert.strictEqual(helpers.mkIdentifier("abc----def"), "abc_Def");
+    assert.strictEqual(helpers.mkIdentifier("1-abc-2--def"), "_Abc_2_Def");
+    assert.strictEqual(helpers.mkIdentifier("a+b+c+d+e+-Fg"), "a_b_c_d_e_Fg");
   });
 
   it("dquote", function () {
