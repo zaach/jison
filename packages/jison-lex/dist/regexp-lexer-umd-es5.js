@@ -151,13 +151,31 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
     /** @public */
-    function camelCase$1(s) {
+    function camelCase(s) {
         // Convert first character to lowercase
         return s.replace(/^\w/, function (match) {
             return match.toLowerCase();
         }).replace(/-\w/g, function (match) {
-            return match.charAt(1).toUpperCase();
+            var c = match.charAt(1);
+            var rv = c.toUpperCase();
+            // do not mutate 'a-2' to 'a2':
+            if (c === rv && c.match(/\d/)) {
+                return match;
+            }
+            return rv;
         });
+    }
+
+    // Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+    /** @public */
+    function mkIdentifier$1(s) {
+        s = camelCase('' + s);
+        // cleanup: replace any non-suitable character series to a single underscore:
+        return s.replace(/^[^\w_]/, '_')
+        // do not accept numerics at the leading position, despite those matching regex `\w`:
+        .replace(/^\d/, '_').replace(/[^\w\d_]+/g, '_')
+        // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+        .replace(/^__+/, '#').replace(/__+$/, '#').replace(/_+/g, '_').replace(/#/g, '__');
     }
 
     // properly quote and escape the given input string
@@ -409,7 +427,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     var helpers = {
         rmCommonWS: rmCommonWS$2,
-        camelCase: camelCase$1,
+        camelCase: camelCase,
+        mkIdentifier: mkIdentifier$1,
         dquote: dquote,
 
         exec: code_exec$1.exec,
@@ -7378,7 +7397,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // MIT Licensed
 
     var rmCommonWS = helpers.rmCommonWS;
-    var camelCase = helpers.camelCase;
+    var mkIdentifier = helpers.mkIdentifier;
     var code_exec = helpers.exec;
     // import recast from '@gerhobbelt/recast';
     // import astUtils from '@gerhobbelt/ast-util';
@@ -7467,7 +7486,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             for (var p in o) {
                 if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                    o2[camelCase(p)] = o[p];
+                    o2[mkIdentifier(p)] = o[p];
                 }
             }
 
@@ -8982,7 +9001,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     RegExpLexer.version = version;
     RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
     RegExpLexer.mkStdOptions = mkStdOptions;
-    RegExpLexer.camelCase = camelCase;
+    RegExpLexer.camelCase = helpers.camelCase;
+    RegExpLexer.mkIdentifier = mkIdentifier;
     RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
     return RegExpLexer;

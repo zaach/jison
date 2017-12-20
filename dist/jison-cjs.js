@@ -2,262 +2,13 @@
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var assert = _interopDefault(require('assert'));
-var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
-var json5 = _interopDefault(require('@gerhobbelt/json5'));
 var fs = _interopDefault(require('fs'));
 var path = _interopDefault(require('path'));
 var recast = _interopDefault(require('@gerhobbelt/recast'));
+var assert = _interopDefault(require('assert'));
+var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
+var json5 = _interopDefault(require('@gerhobbelt/json5'));
 var astUtils = _interopDefault(require('@gerhobbelt/ast-util'));
-
-/*
- * Introduces a typal object to make classical/prototypal patterns easier
- * Plus some AOP sugar
- *
- * By Zachary Carter <zach@carter.name>
- * MIT Licensed
- */
-
-var create = Object.create || function (o) { 
-    function F(){} 
-    F.prototype = o; 
-    return new F(); 
-};
-var position = /^(before|after)/;
-
-// basic method layering
-// always returns original method's return value
-function layerMethod(pos, key, prop, fun) {
-    if (pos === 'after') {
-        return function () {
-            var ret = prop.apply(this, arguments);
-            var args = [].slice.call(arguments);
-            args.splice(0, 0, ret);
-            fun.apply(this, args);
-            return ret;
-        };
-    } else if (pos === 'before') {
-        return function () {
-            fun.apply(this, arguments);
-            var ret = prop.apply(this, arguments);
-            return ret;
-        };
-    }
-    return fun;
-}
-
-// mixes each argument's own properties into calling object,
-// overwriting them or layering them. i.e. an object method 'meth' is
-// layered by mixin methods 'beforemeth' or 'aftermeth'
-function typal_mix() {
-    var i, o, k;
-    for (i = 0; i < arguments.length; i++) {
-        o = arguments[i];
-        if (!o) continue;
-        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
-            this.constructor = o.constructor;
-        }
-        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
-            this.toString = o.toString;
-        }
-        for (k in o) {
-            if (Object.prototype.hasOwnProperty.call(o, k)) {
-                var match = k.match(position);
-                var key = k.replace(position, '');
-                if (match && typeof this[key] === 'function') {
-                    this[key] = layerMethod(match[0], key, this[key], o[k]);
-                } else {
-                    this[k] = o[k];
-                }
-            }
-        }
-    }
-    return this;
-}
-
-// Same as typal_mix but also camelCases every object member and 'standardizes' the key set of every input
-// argument through a caLLback function.
-// 
-// This is useful for processing options with dashes in their key, e.g. `token-stack` --> tokenStack.
-function typal_camel_mix(cb) {
-    var i, o, k;
-
-    // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'` 
-    function camelCase(s) {
-        return s.replace(/-\w/g, function (match) { 
-            return match.charAt(1).toUpperCase(); 
-        });
-    }
-
-    // Convert first character to lowercase
-    function lcase0(s) {
-        return s.replace(/^\w/, function (match) { 
-            return match.toLowerCase(); 
-        });
-    }
-
-    for (i = 1; i < arguments.length; i++) {
-        o = arguments[i];
-        if (!o) continue;
-        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
-            this.constructor = o.constructor;
-        }
-        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
-            this.toString = o.toString;
-        }
-        if (cb) {
-            o = cb(o);
-        }
-        for (k in o) {
-            if (Object.prototype.hasOwnProperty.call(o, k)) {
-                var nk = camelCase(k);
-                var match = k.match(position);
-                var key = k.replace(position, '');
-                // This anticipates before/after members to be camelcased already, e.g.
-                // 'afterParse()' for layering 'parse()': 
-                var alt_key = lcase0(key);
-                if (match && typeof this[key] === 'function') {
-                    this[key] = layerMethod(match[0], key, this[key], o[k]);
-                }
-                else if (match && typeof this[alt_key] === 'function') {
-                    this[alt_key] = layerMethod(match[0], alt_key, this[alt_key], o[k]);
-                } else {
-                    this[nk] = o[k];
-                }
-            }
-        }
-    }
-    return this;
-}
-
-var typal = {
-    // extend object with own properties of each argument
-    mix: typal_mix,
-
-    camelMix: typal_camel_mix,
-
-    // sugar for object begetting and mixing
-    // - Object.create(typal).mix(etc, etc);
-    // + typal.beget(etc, etc);
-    beget: function typal_beget() {
-        return arguments.length ? typal_mix.apply(create(this), arguments) : create(this);
-    },
-
-    // Creates a new Class function based on an object with a constructor method
-    construct: function typal_construct() {
-        var o = typal_mix.apply(create(this), arguments);
-        var constructor = o.constructor;
-        var Klass = o.constructor = function () { return constructor.apply(this, arguments); };
-        Klass.prototype = o;
-        Klass.mix = typal_mix; // allow for easy singleton property extension
-        return Klass;
-    },
-
-    // no op
-    constructor: function typal_constructor() { return this; }
-};
-
-// Set class to wrap arrays
-
-var setMixin = {
-    constructor: function Set_constructor(set, raw) {
-        this._items = [];
-        if (set && set.constructor === Array) {
-            this._items = raw ? set: set.slice(0);
-        }
-        else if (arguments.length) {
-            this._items = [].slice.call(arguments, 0);
-        }
-    },
-    concat: function concat(setB) {
-        this._items.push.apply(this._items, setB._items || setB);
-        return this;
-    },
-    eq: function eq(set) {
-        return this._items.length === set._items.length && this.subset(set) && this.superset(set);
-    },
-    indexOf: function indexOf(item) {
-        if (item && item.eq) {
-            for (var k = 0; k < this._items.length; k++) {
-                if (item.eq(this._items[k])) {
-                    return k;
-                }
-            }
-            return -1;
-        }
-        return this._items.indexOf(item);
-    },
-    intersection: function intersection(set) {
-        return this.filter(function intersection_filter(elm) {
-            return set.contains(elm);
-        });
-    },
-    complement: function complement(set) {
-        var that = this;
-        return set.filter(function sub_complement(elm) {
-            return !that.contains(elm);
-        });
-    },
-    subset: function subset(set) {
-        var cont = true;
-        for (var i = 0; i < this._items.length && cont; i++) {
-            cont = cont && set.contains(this._items[i]);
-        }
-        return cont;
-    },
-    superset: function superset(set) {
-        return set.subset(this);
-    },
-    joinSet: function joinSet(set) {
-        return this.concat(this.complement(set));
-    },
-    contains: function contains(item) { 
-        return this.indexOf(item) !== -1; 
-    },
-    item: function item(v) { 
-        return this._items[v]; 
-    },
-    i: function i(v) { 
-        return this._items[v]; 
-    },
-    assign: function assign(index, value) { 
-        this._items[index] = value;
-        return this; 
-    },
-    first: function first() { 
-        return this._items[0]; 
-    },
-    last: function last() { 
-        return this._items[this._items.length - 1]; 
-    },
-    size: function size() { 
-        return this._items.length; 
-    },
-    isEmpty: function isEmpty() { 
-        return this._items.length === 0; 
-    },
-    copy: function copy() { 
-        return new Set(this._items); 
-    },
-    toString: function toString() { 
-        return this._items.toString(); 
-    }
-};
-
-'push shift unshift forEach some every join sort'.split(' ').forEach(function (e, i) {
-    setMixin[e] = function () { 
-        return Array.prototype[e].apply(this._items, arguments); 
-    };
-    //setMixin[e].name = e;
-});
-'filter slice map'.split(' ').forEach(function (e, i) {
-    setMixin[e] = function () { 
-        return new Set(Array.prototype[e].apply(this._items, arguments), true); 
-    };
-    //setMixin[e].name = e;
-});
-
-var Set = typal.construct(setMixin);
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -278,7 +29,7 @@ function startsWith(src, searchString) {
 // should also be removed from all subsequent lines in the same template string.
 //
 // See also: https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Template_literals
-function rmCommonWS$3(strings, ...values) {
+function rmCommonWS$1(strings, ...values) {
     // As `strings[]` is an array of strings, each potentially consisting
     // of multiple lines, followed by one(1) value, we have to split each
     // individual string into lines to keep that bit of information intact.
@@ -348,14 +99,37 @@ function rmCommonWS$3(strings, ...values) {
 
 // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
 /** @public */
-function camelCase$2(s) {
+function camelCase(s) {
     // Convert first character to lowercase
     return s.replace(/^\w/, function (match) {
         return match.toLowerCase();
     })
     .replace(/-\w/g, function (match) {
-        return match.charAt(1).toUpperCase();
-    });
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    })
+}
+
+// Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+/** @public */
+function mkIdentifier$2(s) {
+    s = camelCase('' + s);
+    // cleanup: replace any non-suitable character series to a single underscore:
+    return s
+    .replace(/^[^\w_]/, '_')
+    // do not accept numerics at the leading position, despite those matching regex `\w`:
+    .replace(/^\d/, '_')
+    .replace(/[^\w\d_]+/g, '_')
+    // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+    .replace(/^__+/, '#')
+    .replace(/__+$/, '#')
+    .replace(/_+/g, '_')
+    .replace(/#/g, '__');
 }
 
 // properly quote and escape the given input string
@@ -522,7 +296,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
 
 
 
-var code_exec$2 = {
+var code_exec$1 = {
     exec: exec_and_diagnose_this_stuff,
     dump: dumpSourceToFile
 };
@@ -593,7 +367,7 @@ function prettyPrintAST(ast, options) {
 // validate the given JavaScript snippet: does it compile?
 // 
 // Return either the parsed AST (object) or an error message (string). 
-function checkActionBlock$1(src, yylloc) {
+function checkActionBlock(src, yylloc) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
     if (yylloc && yylloc.first_line > 0) {
@@ -622,7 +396,7 @@ function checkActionBlock$1(src, yylloc) {
 var parse2AST = {
     parseCodeChunkToAST,
     prettyPrintAST,
-    checkActionBlock: checkActionBlock$1,
+    checkActionBlock,
 };
 
 /// HELPER FUNCTION: print the function in source code form, properly indented.
@@ -645,12 +419,13 @@ var stringifier = {
 };
 
 var helpers = {
-    rmCommonWS: rmCommonWS$3,
-    camelCase: camelCase$2,
+    rmCommonWS: rmCommonWS$1,
+    camelCase,
+    mkIdentifier: mkIdentifier$2,
     dquote: dquote$1,
 
-    exec: code_exec$2.exec,
-    dump: code_exec$2.dump,
+    exec: code_exec$1.exec,
+    dump: code_exec$1.dump,
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
@@ -659,6 +434,251 @@ var helpers = {
 	printFunctionSourceCode: stringifier.printFunctionSourceCode,
 	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
 };
+
+/*
+ * Introduces a typal object to make classical/prototypal patterns easier
+ * Plus some AOP sugar
+ *
+ * By Zachary Carter <zach@carter.name>
+ * MIT Licensed
+ */
+
+var mkIdentifier$1 = helpers.mkIdentifier;
+
+
+var create = Object.create || function (o) { 
+    function F(){} 
+    F.prototype = o; 
+    return new F(); 
+};
+var position = /^(before|after)/;
+
+// basic method layering
+// always returns original method's return value
+function layerMethod(pos, key, prop, fun) {
+    if (pos === 'after') {
+        return function () {
+            var ret = prop.apply(this, arguments);
+            var args = [].slice.call(arguments);
+            args.splice(0, 0, ret);
+            fun.apply(this, args);
+            return ret;
+        };
+    } else if (pos === 'before') {
+        return function () {
+            fun.apply(this, arguments);
+            var ret = prop.apply(this, arguments);
+            return ret;
+        };
+    }
+    return fun;
+}
+
+// mixes each argument's own properties into calling object,
+// overwriting them or layering them. i.e. an object method 'meth' is
+// layered by mixin methods 'beforemeth' or 'aftermeth'
+function typal_mix() {
+    var i, o, k;
+    for (i = 0; i < arguments.length; i++) {
+        o = arguments[i];
+        if (!o) continue;
+        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
+            this.constructor = o.constructor;
+        }
+        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
+            this.toString = o.toString;
+        }
+        for (k in o) {
+            if (Object.prototype.hasOwnProperty.call(o, k)) {
+                var match = k.match(position);
+                var key = k.replace(position, '');
+                if (match && typeof this[key] === 'function') {
+                    this[key] = layerMethod(match[0], key, this[key], o[k]);
+                } else {
+                    this[k] = o[k];
+                }
+            }
+        }
+    }
+    return this;
+}
+
+// Same as typal_mix but also camelCases every object member and 'standardizes' the key set of every input
+// argument through a caLLback function.
+// 
+// This is useful for processing options with dashes in their key, e.g. `token-stack` --> tokenStack.
+function typal_camel_mix(cb) {
+    var i, o, k;
+
+    // Convert first character to lowercase
+    function lcase0(s) {
+        return s.replace(/^\w/, function (match) { 
+            return match.toLowerCase(); 
+        });
+    }
+
+    for (i = 1; i < arguments.length; i++) {
+        o = arguments[i];
+        if (!o) continue;
+        if (Object.prototype.hasOwnProperty.call(o, 'constructor')) {
+            this.constructor = o.constructor;
+        }
+        if (Object.prototype.hasOwnProperty.call(o, 'toString')) {
+            this.toString = o.toString;
+        }
+        if (cb) {
+            o = cb(o);
+        }
+        for (k in o) {
+            if (Object.prototype.hasOwnProperty.call(o, k)) {
+                var nk = mkIdentifier$1(k);
+                var match = k.match(position);
+                var key = k.replace(position, '');
+                // This anticipates before/after members to be camelcased already, e.g.
+                // 'afterParse()' for layering 'parse()': 
+                var alt_key = lcase0(key);
+                if (match && typeof this[key] === 'function') {
+                    this[key] = layerMethod(match[0], key, this[key], o[k]);
+                }
+                else if (match && typeof this[alt_key] === 'function') {
+                    this[alt_key] = layerMethod(match[0], alt_key, this[alt_key], o[k]);
+                } else {
+                    this[nk] = o[k];
+                }
+            }
+        }
+    }
+    return this;
+}
+
+var typal = {
+    // extend object with own properties of each argument
+    mix: typal_mix,
+
+    camelMix: typal_camel_mix,
+
+    // sugar for object begetting and mixing
+    // - Object.create(typal).mix(etc, etc);
+    // + typal.beget(etc, etc);
+    beget: function typal_beget() {
+        return arguments.length ? typal_mix.apply(create(this), arguments) : create(this);
+    },
+
+    // Creates a new Class function based on an object with a constructor method
+    construct: function typal_construct() {
+        var o = typal_mix.apply(create(this), arguments);
+        var constructor = o.constructor;
+        var Klass = o.constructor = function () { return constructor.apply(this, arguments); };
+        Klass.prototype = o;
+        Klass.mix = typal_mix; // allow for easy singleton property extension
+        return Klass;
+    },
+
+    // no op
+    constructor: function typal_constructor() { return this; }
+};
+
+// Set class to wrap arrays
+
+var setMixin = {
+    constructor: function Set_constructor(set, raw) {
+        this._items = [];
+        if (set && set.constructor === Array) {
+            this._items = raw ? set: set.slice(0);
+        }
+        else if (arguments.length) {
+            this._items = [].slice.call(arguments, 0);
+        }
+    },
+    concat: function concat(setB) {
+        this._items.push.apply(this._items, setB._items || setB);
+        return this;
+    },
+    eq: function eq(set) {
+        return this._items.length === set._items.length && this.subset(set) && this.superset(set);
+    },
+    indexOf: function indexOf(item) {
+        if (item && item.eq) {
+            for (var k = 0; k < this._items.length; k++) {
+                if (item.eq(this._items[k])) {
+                    return k;
+                }
+            }
+            return -1;
+        }
+        return this._items.indexOf(item);
+    },
+    intersection: function intersection(set) {
+        return this.filter(function intersection_filter(elm) {
+            return set.contains(elm);
+        });
+    },
+    complement: function complement(set) {
+        var that = this;
+        return set.filter(function sub_complement(elm) {
+            return !that.contains(elm);
+        });
+    },
+    subset: function subset(set) {
+        var cont = true;
+        for (var i = 0; i < this._items.length && cont; i++) {
+            cont = cont && set.contains(this._items[i]);
+        }
+        return cont;
+    },
+    superset: function superset(set) {
+        return set.subset(this);
+    },
+    joinSet: function joinSet(set) {
+        return this.concat(this.complement(set));
+    },
+    contains: function contains(item) { 
+        return this.indexOf(item) !== -1; 
+    },
+    item: function item(v) { 
+        return this._items[v]; 
+    },
+    i: function i(v) { 
+        return this._items[v]; 
+    },
+    assign: function assign(index, value) { 
+        this._items[index] = value;
+        return this; 
+    },
+    first: function first() { 
+        return this._items[0]; 
+    },
+    last: function last() { 
+        return this._items[this._items.length - 1]; 
+    },
+    size: function size() { 
+        return this._items.length; 
+    },
+    isEmpty: function isEmpty() { 
+        return this._items.length === 0; 
+    },
+    copy: function copy() { 
+        return new Set(this._items); 
+    },
+    toString: function toString() { 
+        return this._items.toString(); 
+    }
+};
+
+'push shift unshift forEach some every join sort'.split(' ').forEach(function (e, i) {
+    setMixin[e] = function () { 
+        return Array.prototype[e].apply(this._items, arguments); 
+    };
+    //setMixin[e].name = e;
+});
+'filter slice map'.split(' ').forEach(function (e, i) {
+    setMixin[e] = function () { 
+        return new Set(Array.prototype[e].apply(this._items, arguments), true); 
+    };
+    //setMixin[e].name = e;
+});
+
+var Set = typal.construct(setMixin);
 
 // hack:
 var assert$1;
@@ -1715,7 +1735,7 @@ case 2:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         There's an error in your lexer regex rules or epilogue.
         Maybe you did not correctly separate the lexer sections with a '%%'
         on an otherwise empty line?
@@ -1759,7 +1779,7 @@ case 4:
     // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         There's probably an error in one or more of your lexer regex rules.
         The lexer rule spec should have this structure:
     
@@ -1789,7 +1809,7 @@ case 5:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         There's an error in your lexer epilogue a.k.a. 'extra_module_code' block.
     
           Erroneous code:
@@ -1809,7 +1829,7 @@ case 6:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         There's probably an error in one or more of your lexer regex rules.
         The lexer rule spec should have this structure:
     
@@ -1898,7 +1918,7 @@ case 10:
           break;
     
         default:
-          yyparser.yyError(rmCommonWS$2`
+          yyparser.yyError(rmCommonWS$3`
             Encountered an unsupported definition type: ${yyvstack[yysp].type}.
     
               Erroneous area:
@@ -1959,9 +1979,9 @@ case 15:
     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The '%{...%}' lexer setup action code section does not compile: ${rv}
     
               Erroneous area:
@@ -2025,7 +2045,7 @@ case 19:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         You did not specify a legal file path for the '%import' initialization code statement, which must have the format:
             %import qualifier_name file_path
     
@@ -2046,7 +2066,7 @@ case 20:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         %import name or source filename missing maybe?
     
         Note: each '%import'-ed initialization code section must be qualified by a name, e.g. 'required' before the import path itself:
@@ -2068,11 +2088,11 @@ case 21:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     var name = yyvstack[yysp - 1];
     var code = yyvstack[yysp];
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The '%code ${name}' action code section does not compile: ${rv}
     
             ${code}
@@ -2099,7 +2119,7 @@ case 22:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
             %code qualifier_name {action code}
     
@@ -2253,7 +2273,7 @@ case 37:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you made a mistake while specifying one of the lexer rules inside
         the start condition
            <${yyvstack[yysp - 3].join(',')}> { rules... }
@@ -2276,7 +2296,7 @@ case 38:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you did not correctly bracket a lexer rules set inside
         the start condition
           <${yyvstack[yysp - 2].join(',')}> { rules... }
@@ -2309,9 +2329,9 @@ case 41:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The rule's action code section does not compile: ${rv}
     
               Erroneous area:
@@ -2330,7 +2350,7 @@ case 42:
     
     
     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Lexer rule regex action code declaration error?
     
           Erroneous code:
@@ -2350,7 +2370,7 @@ case 43:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
     
           Offending action body:
@@ -2367,7 +2387,7 @@ case 44:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
     
           Offending action body:
@@ -2448,7 +2468,7 @@ case 52:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         You may place the '%include' instruction only at the start/front of a line.
     
           Its use is not permitted at this position:
@@ -2465,7 +2485,7 @@ case 53:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you did not correctly match curly braces '{ ... }' in a lexer rule action block.
     
           Erroneous code:
@@ -2511,7 +2531,7 @@ case 56:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you did not correctly terminate the start condition set <${yyvstack[yysp - 1].join(',')},???> with a terminating '>'
     
           Erroneous code:
@@ -2705,7 +2725,7 @@ case 75:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
     
           Unterminated regex part:
@@ -2847,7 +2867,7 @@ case 91:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Seems you did not correctly bracket a lex rule regex set in '[...]' brackets.
     
           Unterminated regex set:
@@ -2958,7 +2978,7 @@ case 107:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Internal error: option "${$option}" value assignment failure.
     
           Erroneous area:
@@ -2979,7 +2999,7 @@ case 108:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Expected a valid option name (with optional value assignment).
     
           Erroneous area:
@@ -2998,9 +3018,9 @@ case 109:
     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
@@ -3022,18 +3042,18 @@ case 110:
     //
     // Note: we have already checked the first section in a previous reduction
     // of this rule, so we don't need to check that one again!
-    var rv = checkActionBlock(yyvstack[yysp - 1], yylstack[yysp - 1]);
+    var rv = checkActionBlock$1(yyvstack[yysp - 1], yylstack[yysp - 1]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The source code %include-d into the extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
             ${yylexer.prettyPrintRange(yylstack[yysp - 1])}
         `);
     }
-    rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$2`
+        yyparser.yyError(rmCommonWS$3`
             The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
@@ -3065,7 +3085,7 @@ case 112:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         %include MUST be followed by a valid file path.
     
           Erroneous path:
@@ -3086,7 +3106,7 @@ case 115:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$2`
+    yyparser.yyError(rmCommonWS$3`
         Module code declaration error?
     
           Erroneous code:
@@ -8857,8 +8877,8 @@ EOF: 1,
 }();
 parser$1.lexer = lexer;
 
-var rmCommonWS$2 = helpers.rmCommonWS;
-var checkActionBlock = helpers.checkActionBlock;
+var rmCommonWS$3 = helpers.rmCommonWS;
+var checkActionBlock$1 = helpers.checkActionBlock;
 
 
 function encodeRE(s) {
@@ -9929,9 +9949,9 @@ var setmgmt = {
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
 
-var rmCommonWS$1  = helpers.rmCommonWS;
-var camelCase$1   = helpers.camelCase;
-var code_exec$1   = helpers.exec;
+var rmCommonWS$2  = helpers.rmCommonWS;
+var mkIdentifier$3 = helpers.mkIdentifier;
+var code_exec$2   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
 var version$1 = '0.6.1-213';                              // require('./package.json').version;
@@ -10025,7 +10045,7 @@ function mkStdOptions$1(/*...args*/) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase$1(p)] = o[p];
+                o2[mkIdentifier$3(p)] = o[p];
             }
         }
 
@@ -10948,7 +10968,7 @@ const jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
-    return rmCommonWS$1`
+    return rmCommonWS$2`
         var __hacky_counter__ = 0;
 
         /**
@@ -11008,7 +11028,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 source,
                 '',
                 'return lexer;'].join('\n');
-            var lexer = code_exec$1(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
+            var lexer = code_exec$2(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
@@ -12437,7 +12457,7 @@ return `{
     // --- END lexer kernel ---
 }
 
-RegExpLexer.prototype = (new Function(rmCommonWS$1`
+RegExpLexer.prototype = (new Function(rmCommonWS$2`
     return ${getRegExpLexerPrototype()};
 `))();
 
@@ -12462,7 +12482,7 @@ function stripUnusedLexerCode(src, opt) {
     var ast = helpers.parseCodeChunkToAST(src, opt);
     var new_src = helpers.prettyPrintAST(ast, opt);
 
-new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS$1`
+new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS$2`
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -12764,7 +12784,7 @@ function generateModuleBody(opt) {
     if (opt.rules.length > 0 || opt.__in_rules_failure_analysis_mode__) {
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
-        var code = [rmCommonWS$1`
+        var code = [rmCommonWS$2`
             var lexer = {
             `, '/*JISON-LEX-ANALYTICS-REPORT*/' /* slot #1: placeholder for analysis report further below */
         ];
@@ -12801,7 +12821,7 @@ function generateModuleBody(opt) {
         var simpleCaseActionClustersCode = String(opt.caseHelperInclude);
         var rulesCode = generateRegexesInitTableCode(opt);
         var conditionsCode = cleanupJSON(JSON.stringify(opt.conditions, null, 2));
-        code.push(rmCommonWS$1`,
+        code.push(rmCommonWS$2`,
             JisonLexerError: JisonLexerError,
             performAction: ${performActionCode},
             simpleCaseActionClusters: ${simpleCaseActionClustersCode},
@@ -12846,7 +12866,7 @@ function generateModuleBody(opt) {
 }
 
 function generateGenericHeaderComment() {
-    var out = rmCommonWS$1`
+    var out = rmCommonWS$2`
     /* lexer generated by jison-lex ${version$1} */
 
     /*
@@ -13156,7 +13176,7 @@ function generateESModule(opt) {
         'function yylex() {',
         '    return lexer.lex.apply(lexer, arguments);',
         '}',
-        rmCommonWS$1`
+        rmCommonWS$2`
             export {
                 lexer,
                 yylex as lex
@@ -13205,7 +13225,8 @@ RegExpLexer.generate = generate;
 RegExpLexer.version = version$1;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions$1;
-RegExpLexer.camelCase = camelCase$1;
+RegExpLexer.camelCase = helpers.camelCase;
+RegExpLexer.mkIdentifier = mkIdentifier$3;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat$1;
 
 /* parser generated by jison 0.6.1-213 */
@@ -26018,7 +26039,7 @@ function grammarPrinter(raw, options) {
 // MIT Licensed
 
 var rmCommonWS = helpers.rmCommonWS;
-var camelCase  = helpers.camelCase;
+var mkIdentifier  = helpers.mkIdentifier;
 var code_exec  = helpers.exec;
 var version = '0.6.1-213';
 
@@ -26147,7 +26168,7 @@ function mkStdOptions(...args) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase(p)] = o[p];
+                o2[mkIdentifier(p)] = o[p];
             }
         }
 
@@ -26386,7 +26407,8 @@ function autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options
 
 Jison.rmCommonWS = rmCommonWS;
 Jison.mkStdOptions = mkStdOptions;
-Jison.camelCase = camelCase;
+Jison.camelCase = helpers.camelCase;
+Jison.mkIdentifier = mkIdentifier;
 Jison.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 // detect print

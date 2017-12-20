@@ -2,18 +2,18 @@
 
 
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(require('fs'), require('path'), require('@gerhobbelt/nomnom'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('@gerhobbelt/recast'), require('assert')) :
-	typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/nomnom', '@gerhobbelt/xregexp', '@gerhobbelt/json5', '@gerhobbelt/recast', 'assert'], factory) :
-	(factory(global.fs,global.path,global.nomnom,global.XRegExp,global.json5,global.recast,global.assert));
-}(this, (function (fs,path,nomnom,XRegExp,json5,recast,assert) { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(require('fs'), require('path'), require('@gerhobbelt/nomnom'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) :
+	typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/nomnom', '@gerhobbelt/recast', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) :
+	(factory(global.fs,global.path,global.nomnom,global.recast,global.assert,global.XRegExp,global.json5));
+}(this, (function (fs,path,nomnom,recast,assert,XRegExp,json5) { 'use strict';
 
 fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
 path = path && path.hasOwnProperty('default') ? path['default'] : path;
 nomnom = nomnom && nomnom.hasOwnProperty('default') ? nomnom['default'] : nomnom;
-XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
-json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
 recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
 assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
+XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
+json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -34,7 +34,7 @@ function startsWith(src, searchString) {
 // should also be removed from all subsequent lines in the same template string.
 //
 // See also: https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Template_literals
-function rmCommonWS$2(strings, ...values) {
+function rmCommonWS(strings, ...values) {
     // As `strings[]` is an array of strings, each potentially consisting
     // of multiple lines, followed by one(1) value, we have to split each
     // individual string into lines to keep that bit of information intact.
@@ -104,14 +104,37 @@ function rmCommonWS$2(strings, ...values) {
 
 // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
 /** @public */
-function camelCase$1(s) {
+function camelCase(s) {
     // Convert first character to lowercase
     return s.replace(/^\w/, function (match) {
         return match.toLowerCase();
     })
     .replace(/-\w/g, function (match) {
-        return match.charAt(1).toUpperCase();
-    });
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    })
+}
+
+// Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+/** @public */
+function mkIdentifier$1(s) {
+    s = camelCase('' + s);
+    // cleanup: replace any non-suitable character series to a single underscore:
+    return s
+    .replace(/^[^\w_]/, '_')
+    // do not accept numerics at the leading position, despite those matching regex `\w`:
+    .replace(/^\d/, '_')
+    .replace(/[^\w\d_]+/g, '_')
+    // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+    .replace(/^__+/, '#')
+    .replace(/__+$/, '#')
+    .replace(/_+/g, '_')
+    .replace(/#/g, '__');
 }
 
 // properly quote and escape the given input string
@@ -278,7 +301,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
 
 
 
-var code_exec$1 = {
+var code_exec = {
     exec: exec_and_diagnose_this_stuff,
     dump: dumpSourceToFile
 };
@@ -349,7 +372,7 @@ function prettyPrintAST(ast, options) {
 // validate the given JavaScript snippet: does it compile?
 // 
 // Return either the parsed AST (object) or an error message (string). 
-function checkActionBlock$1(src, yylloc) {
+function checkActionBlock(src, yylloc) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
     if (yylloc && yylloc.first_line > 0) {
@@ -378,7 +401,7 @@ function checkActionBlock$1(src, yylloc) {
 var parse2AST = {
     parseCodeChunkToAST,
     prettyPrintAST,
-    checkActionBlock: checkActionBlock$1,
+    checkActionBlock,
 };
 
 /// HELPER FUNCTION: print the function in source code form, properly indented.
@@ -401,12 +424,13 @@ var stringifier = {
 };
 
 var helpers = {
-    rmCommonWS: rmCommonWS$2,
-    camelCase: camelCase$1,
+    rmCommonWS,
+    camelCase,
+    mkIdentifier: mkIdentifier$1,
     dquote,
 
-    exec: code_exec$1.exec,
-    dump: code_exec$1.dump,
+    exec: code_exec.exec,
+    dump: code_exec.dump,
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
@@ -1471,7 +1495,7 @@ case 2:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         There's an error in your lexer regex rules or epilogue.
         Maybe you did not correctly separate the lexer sections with a '%%'
         on an otherwise empty line?
@@ -1515,7 +1539,7 @@ case 4:
     // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         There's probably an error in one or more of your lexer regex rules.
         The lexer rule spec should have this structure:
     
@@ -1545,7 +1569,7 @@ case 5:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         There's an error in your lexer epilogue a.k.a. 'extra_module_code' block.
     
           Erroneous code:
@@ -1565,7 +1589,7 @@ case 6:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         There's probably an error in one or more of your lexer regex rules.
         The lexer rule spec should have this structure:
     
@@ -1654,7 +1678,7 @@ case 10:
           break;
     
         default:
-          yyparser.yyError(rmCommonWS$1`
+          yyparser.yyError(rmCommonWS$2`
             Encountered an unsupported definition type: ${yyvstack[yysp].type}.
     
               Erroneous area:
@@ -1715,9 +1739,9 @@ case 15:
     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The '%{...%}' lexer setup action code section does not compile: ${rv}
     
               Erroneous area:
@@ -1781,7 +1805,7 @@ case 19:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         You did not specify a legal file path for the '%import' initialization code statement, which must have the format:
             %import qualifier_name file_path
     
@@ -1802,7 +1826,7 @@ case 20:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         %import name or source filename missing maybe?
     
         Note: each '%import'-ed initialization code section must be qualified by a name, e.g. 'required' before the import path itself:
@@ -1824,11 +1848,11 @@ case 21:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     var name = yyvstack[yysp - 1];
     var code = yyvstack[yysp];
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The '%code ${name}' action code section does not compile: ${rv}
     
             ${code}
@@ -1855,7 +1879,7 @@ case 22:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
             %code qualifier_name {action code}
     
@@ -2009,7 +2033,7 @@ case 37:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you made a mistake while specifying one of the lexer rules inside
         the start condition
            <${yyvstack[yysp - 3].join(',')}> { rules... }
@@ -2032,7 +2056,7 @@ case 38:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you did not correctly bracket a lexer rules set inside
         the start condition
           <${yyvstack[yysp - 2].join(',')}> { rules... }
@@ -2065,9 +2089,9 @@ case 41:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The rule's action code section does not compile: ${rv}
     
               Erroneous area:
@@ -2086,7 +2110,7 @@ case 42:
     
     
     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Lexer rule regex action code declaration error?
     
           Erroneous code:
@@ -2106,7 +2130,7 @@ case 43:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
     
           Offending action body:
@@ -2123,7 +2147,7 @@ case 44:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
     
           Offending action body:
@@ -2204,7 +2228,7 @@ case 52:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         You may place the '%include' instruction only at the start/front of a line.
     
           Its use is not permitted at this position:
@@ -2221,7 +2245,7 @@ case 53:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you did not correctly match curly braces '{ ... }' in a lexer rule action block.
     
           Erroneous code:
@@ -2267,7 +2291,7 @@ case 56:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you did not correctly terminate the start condition set <${yyvstack[yysp - 1].join(',')},???> with a terminating '>'
     
           Erroneous code:
@@ -2461,7 +2485,7 @@ case 75:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you did not correctly bracket a lex rule regex part in '(...)' braces.
     
           Unterminated regex part:
@@ -2603,7 +2627,7 @@ case 91:
     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Seems you did not correctly bracket a lex rule regex set in '[...]' brackets.
     
           Unterminated regex set:
@@ -2714,7 +2738,7 @@ case 107:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Internal error: option "${$option}" value assignment failure.
     
           Erroneous area:
@@ -2735,7 +2759,7 @@ case 108:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Expected a valid option name (with optional value assignment).
     
           Erroneous area:
@@ -2754,9 +2778,9 @@ case 109:
     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
     
     
-    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
@@ -2778,18 +2802,18 @@ case 110:
     //
     // Note: we have already checked the first section in a previous reduction
     // of this rule, so we don't need to check that one again!
-    var rv = checkActionBlock(yyvstack[yysp - 1], yylstack[yysp - 1]);
+    var rv = checkActionBlock$1(yyvstack[yysp - 1], yylstack[yysp - 1]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The source code %include-d into the extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
             ${yylexer.prettyPrintRange(yylstack[yysp - 1])}
         `);
     }
-    rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+    rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
     if (rv) {
-        yyparser.yyError(rmCommonWS$1`
+        yyparser.yyError(rmCommonWS$2`
             The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
     
               Erroneous area:
@@ -2821,7 +2845,7 @@ case 112:
     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
     
     
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         %include MUST be followed by a valid file path.
     
           Erroneous path:
@@ -2842,7 +2866,7 @@ case 115:
     
     
     // TODO ...
-    yyparser.yyError(rmCommonWS$1`
+    yyparser.yyError(rmCommonWS$2`
         Module code declaration error?
     
           Erroneous code:
@@ -8613,8 +8637,8 @@ EOF: 1,
 }();
 parser.lexer = lexer;
 
-var rmCommonWS$1 = helpers.rmCommonWS;
-var checkActionBlock = helpers.checkActionBlock;
+var rmCommonWS$2 = helpers.rmCommonWS;
+var checkActionBlock$1 = helpers.checkActionBlock;
 
 
 function encodeRE(s) {
@@ -9685,9 +9709,9 @@ var setmgmt = {
 // Zachary Carter <zach@carter.name>
 // MIT Licensed
 
-var rmCommonWS  = helpers.rmCommonWS;
-var camelCase   = helpers.camelCase;
-var code_exec   = helpers.exec;
+var rmCommonWS$1  = helpers.rmCommonWS;
+var mkIdentifier$2 = helpers.mkIdentifier;
+var code_exec$1   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
 var version$1 = '0.6.1-213';                              // require('./package.json').version;
@@ -9781,7 +9805,7 @@ function mkStdOptions(/*...args*/) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase(p)] = o[p];
+                o2[mkIdentifier$2(p)] = o[p];
             }
         }
 
@@ -10704,7 +10728,7 @@ const jisonLexerErrorDefinition = generateErrorClass();
 
 
 function generateFakeXRegExpClassSrcCode() {
-    return rmCommonWS`
+    return rmCommonWS$1`
         var __hacky_counter__ = 0;
 
         /**
@@ -10764,7 +10788,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 source,
                 '',
                 'return lexer;'].join('\n');
-            var lexer = code_exec(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
+            var lexer = code_exec$1(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
@@ -12193,7 +12217,7 @@ return `{
     // --- END lexer kernel ---
 }
 
-RegExpLexer.prototype = (new Function(rmCommonWS`
+RegExpLexer.prototype = (new Function(rmCommonWS$1`
     return ${getRegExpLexerPrototype()};
 `))();
 
@@ -12218,7 +12242,7 @@ function stripUnusedLexerCode(src, opt) {
     var ast = helpers.parseCodeChunkToAST(src, opt);
     var new_src = helpers.prettyPrintAST(ast, opt);
 
-new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS`
+new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS$1`
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -12520,7 +12544,7 @@ function generateModuleBody(opt) {
     if (opt.rules.length > 0 || opt.__in_rules_failure_analysis_mode__) {
         // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
         // JavaScript is fine with that.
-        var code = [rmCommonWS`
+        var code = [rmCommonWS$1`
             var lexer = {
             `, '/*JISON-LEX-ANALYTICS-REPORT*/' /* slot #1: placeholder for analysis report further below */
         ];
@@ -12557,7 +12581,7 @@ function generateModuleBody(opt) {
         var simpleCaseActionClustersCode = String(opt.caseHelperInclude);
         var rulesCode = generateRegexesInitTableCode(opt);
         var conditionsCode = cleanupJSON(JSON.stringify(opt.conditions, null, 2));
-        code.push(rmCommonWS`,
+        code.push(rmCommonWS$1`,
             JisonLexerError: JisonLexerError,
             performAction: ${performActionCode},
             simpleCaseActionClusters: ${simpleCaseActionClustersCode},
@@ -12602,7 +12626,7 @@ function generateModuleBody(opt) {
 }
 
 function generateGenericHeaderComment() {
-    var out = rmCommonWS`
+    var out = rmCommonWS$1`
     /* lexer generated by jison-lex ${version$1} */
 
     /*
@@ -12912,7 +12936,7 @@ function generateESModule(opt) {
         'function yylex() {',
         '    return lexer.lex.apply(lexer, arguments);',
         '}',
-        rmCommonWS`
+        rmCommonWS$1`
             export {
                 lexer,
                 yylex as lex
@@ -12961,8 +12985,11 @@ RegExpLexer.generate = generate;
 RegExpLexer.version = version$1;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
-RegExpLexer.camelCase = camelCase;
+RegExpLexer.camelCase = helpers.camelCase;
+RegExpLexer.mkIdentifier = mkIdentifier$2;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
+
+var mkIdentifier = helpers.mkIdentifier;
 
 var version = '0.6.1-213';                              // require('./package.json').version;
 
@@ -13124,10 +13151,7 @@ cli.main = function cliMain(opts) {
 
         opts.outfile = opts.outfile || (outpath + name + '.js');
         if (!opts.moduleName && name) {
-            opts.moduleName = opts.defaultModuleName = name.replace(/-\w/g,
-                function (match) {
-                    return match.charAt(1).toUpperCase();
-                });
+            opts.moduleName = opts.defaultModuleName = mkIdentifier(name);
         }
 
         // Change CWD to the directory where the source grammar resides: this helps us properly

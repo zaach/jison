@@ -51,17 +51,17 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? factory(require('fs'), require('path'), require('@gerhobbelt/nomnom'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('@gerhobbelt/recast'), require('assert')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/nomnom', '@gerhobbelt/xregexp', '@gerhobbelt/json5', '@gerhobbelt/recast', 'assert'], factory) : factory(global.fs, global.path, global.nomnom, global.XRegExp, global.json5, global.recast, global.assert);
-})(undefined, function (fs, path, nomnom, XRegExp, json5, recast, assert) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? factory(require('fs'), require('path'), require('@gerhobbelt/nomnom'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/nomnom', '@gerhobbelt/recast', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) : factory(global.fs, global.path, global.nomnom, global.recast, global.assert, global.XRegExp, global.json5);
+})(undefined, function (fs, path, nomnom, recast, assert, XRegExp, json5) {
     'use strict';
 
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     nomnom = nomnom && nomnom.hasOwnProperty('default') ? nomnom['default'] : nomnom;
-    XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
-    json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
     assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
+    XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
+    json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -80,7 +80,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // should also be removed from all subsequent lines in the same template string.
     //
     // See also: https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Template_literals
-    function rmCommonWS$2(strings) {
+    function rmCommonWS(strings) {
         // As `strings[]` is an array of strings, each potentially consisting
         // of multiple lines, followed by one(1) value, we have to split each
         // individual string into lines to keep that bit of information intact.
@@ -155,13 +155,31 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
     /** @public */
-    function camelCase$1(s) {
+    function camelCase(s) {
         // Convert first character to lowercase
         return s.replace(/^\w/, function (match) {
             return match.toLowerCase();
         }).replace(/-\w/g, function (match) {
-            return match.charAt(1).toUpperCase();
+            var c = match.charAt(1);
+            var rv = c.toUpperCase();
+            // do not mutate 'a-2' to 'a2':
+            if (c === rv && c.match(/\d/)) {
+                return match;
+            }
+            return rv;
         });
+    }
+
+    // Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+    /** @public */
+    function mkIdentifier$1(s) {
+        s = camelCase('' + s);
+        // cleanup: replace any non-suitable character series to a single underscore:
+        return s.replace(/^[^\w_]/, '_')
+        // do not accept numerics at the leading position, despite those matching regex `\w`:
+        .replace(/^\d/, '_').replace(/[^\w\d_]+/g, '_')
+        // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+        .replace(/^__+/, '#').replace(/__+$/, '#').replace(/_+/g, '_').replace(/#/g, '__');
     }
 
     // properly quote and escape the given input string
@@ -306,7 +324,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return p;
     }
 
-    var code_exec$1 = {
+    var code_exec = {
         exec: exec_and_diagnose_this_stuff,
         dump: dumpSourceToFile
     };
@@ -368,7 +386,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // validate the given JavaScript snippet: does it compile?
     // 
     // Return either the parsed AST (object) or an error message (string). 
-    function checkActionBlock$1(src, yylloc) {
+    function checkActionBlock(src, yylloc) {
         // make sure reasonable line numbers, etc. are reported in any
         // potential parse errors by pushing the source code down:
         if (yylloc && yylloc.first_line > 0) {
@@ -391,7 +409,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var parse2AST = {
         parseCodeChunkToAST: parseCodeChunkToAST,
         prettyPrintAST: prettyPrintAST,
-        checkActionBlock: checkActionBlock$1
+        checkActionBlock: checkActionBlock
     };
 
     /// HELPER FUNCTION: print the function in source code form, properly indented.
@@ -412,12 +430,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
 
     var helpers = {
-        rmCommonWS: rmCommonWS$2,
-        camelCase: camelCase$1,
+        rmCommonWS: rmCommonWS,
+        camelCase: camelCase,
+        mkIdentifier: mkIdentifier$1,
         dquote: dquote,
 
-        exec: code_exec$1.exec,
-        dump: code_exec$1.dump,
+        exec: code_exec.exec,
+        dump: code_exec.dump,
 
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
         prettyPrintAST: parse2AST.prettyPrintAST,
@@ -1327,7 +1346,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 3:
@@ -1354,7 +1373,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 5,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 3]), yyvstack[yysp - 3].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 3]), yyvstack[yysp - 3].errStr));
                     break;
 
                 case 5:
@@ -1366,7 +1385,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject3, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject3, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
                     break;
 
                 case 6:
@@ -1378,7 +1397,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject2, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 7:
@@ -1449,7 +1468,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                                     break;
 
                                 default:
-                                    yyparser.yyError(rmCommonWS$1(_templateObject4, yyvstack[yysp].type, yylexer.prettyPrintRange(yylstack[yysp])));
+                                    yyparser.yyError(rmCommonWS$2(_templateObject4, yyvstack[yysp].type, yylexer.prettyPrintRange(yylstack[yysp])));
                                     break;
                             }
                         }
@@ -1505,9 +1524,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+                    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject5, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject5, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     yy.actionInclude.push(yyvstack[yysp]);
                     this.$ = null;
@@ -1566,7 +1585,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject6, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject6, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 20:
@@ -1578,7 +1597,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject7, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject7, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 21:
@@ -1589,11 +1608,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+                    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
                     var name = yyvstack[yysp - 1];
                     var code = yyvstack[yysp];
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject8, name, rv, code, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject8, name, rv, code, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     }
                     this.$ = {
                         type: 'codeSection',
@@ -1613,7 +1632,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject9, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject9, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2], yylstack[yysp]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 23:
@@ -1758,7 +1777,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject10, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject10, yyvstack[yysp - 3].join(','), yylexer.prettyPrintRange(yylexer.mergeLocationInfo(yysp - 3, yysp), yylstack[yysp - 3]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 38:
@@ -1770,7 +1789,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject11, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject11, yyvstack[yysp - 2].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 39:
@@ -1792,9 +1811,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+                    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject12, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject12, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
                     break;
@@ -1808,7 +1827,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-                    yyparser.yyError(rmCommonWS$1(_templateObject13, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject13, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 43:
@@ -1820,7 +1839,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject14, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject14, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 44:
@@ -1832,7 +1851,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject15, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject15, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     break;
 
                 case 45:
@@ -1908,7 +1927,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject16, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
+                    yyparser.yyError(rmCommonWS$2(_templateObject16, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])));
                     break;
 
                 case 53:
@@ -1920,7 +1939,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject17, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject17, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 54:
@@ -1958,7 +1977,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject18, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject18, yyvstack[yysp - 1].join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 57:
@@ -2139,7 +2158,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject19, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject19, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 76:
@@ -2273,7 +2292,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject20, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject20, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 95:
@@ -2374,7 +2393,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$1(_templateObject21, $option, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject21, $option, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 108:
@@ -2387,7 +2406,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$1(_templateObject22, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject22, yylexer.prettyPrintRange(yylstack[yysp]), yyvstack[yysp].errStr));
                     break;
 
                 case 109:
@@ -2398,9 +2417,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+                    var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject23, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject23, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = yyvstack[yysp];
                     break;
@@ -2417,13 +2436,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     //
                     // Note: we have already checked the first section in a previous reduction
                     // of this rule, so we don't need to check that one again!
-                    var rv = checkActionBlock(yyvstack[yysp - 1], yylstack[yysp - 1]);
+                    var rv = checkActionBlock$1(yyvstack[yysp - 1], yylstack[yysp - 1]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject24, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject24, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
                     }
-                    rv = checkActionBlock(yyvstack[yysp], yylstack[yysp]);
+                    rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject23, rv, yylexer.prettyPrintRange(yylstack[yysp])));
+                        yyparser.yyError(rmCommonWS$2(_templateObject23, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                     }
                     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
                     break;
@@ -2450,7 +2469,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject25, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject25, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 115:
@@ -2463,7 +2482,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$1(_templateObject26, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$2(_templateObject26, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 151:
@@ -6331,8 +6350,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }();
     parser.lexer = lexer;
 
-    var rmCommonWS$1 = helpers.rmCommonWS;
-    var checkActionBlock = helpers.checkActionBlock;
+    var rmCommonWS$2 = helpers.rmCommonWS;
+    var checkActionBlock$1 = helpers.checkActionBlock;
 
     function encodeRE(s) {
         return s.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1').replace(/\\\\u([a-fA-F0-9]{4})/g, '\\u$1');
@@ -7381,9 +7400,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // Zachary Carter <zach@carter.name>
     // MIT Licensed
 
-    var rmCommonWS = helpers.rmCommonWS;
-    var camelCase = helpers.camelCase;
-    var code_exec = helpers.exec;
+    var rmCommonWS$1 = helpers.rmCommonWS;
+    var mkIdentifier$2 = helpers.mkIdentifier;
+    var code_exec$1 = helpers.exec;
     // import recast from '@gerhobbelt/recast';
     // import astUtils from '@gerhobbelt/ast-util';
     var version$1 = '0.6.1-213'; // require('./package.json').version;
@@ -7471,7 +7490,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             for (var p in o) {
                 if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                    o2[camelCase(p)] = o[p];
+                    o2[mkIdentifier$2(p)] = o[p];
                 }
             }
 
@@ -8321,7 +8340,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var jisonLexerErrorDefinition = generateErrorClass();
 
     function generateFakeXRegExpClassSrcCode() {
-        return rmCommonWS(_templateObject36);
+        return rmCommonWS$1(_templateObject36);
     }
 
     /** @constructor */
@@ -8355,7 +8374,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 // var lexer = { bla... };
                 // ```
                 var testcode = ['// provide a local version for test purposes:', jisonLexerErrorDefinition, '', generateFakeXRegExpClassSrcCode(), '', source, '', 'return lexer;'].join('\n');
-                var lexer = code_exec(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
+                var lexer = code_exec$1(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                     //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                     var lexer_f = new Function('', sourcecode);
                     return lexer_f();
@@ -8564,7 +8583,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         // --- END lexer kernel ---
     }
 
-    RegExpLexer.prototype = new Function(rmCommonWS(_templateObject37, getRegExpLexerPrototype()))();
+    RegExpLexer.prototype = new Function(rmCommonWS$1(_templateObject37, getRegExpLexerPrototype()))();
 
     // The lexer code stripper, driven by optimization analysis settings and
     // lexer options, which cannot be changed at run-time.
@@ -8586,7 +8605,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         var ast = helpers.parseCodeChunkToAST(src, opt);
         var new_src = helpers.prettyPrintAST(ast, opt);
 
-        new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS(_templateObject38, opt.options.backtrack_lexer, opt.options.ranges, opt.options.trackPosition, opt.parseActionsUseYYLENG, opt.parseActionsUseYYLINENO, opt.parseActionsUseYYTEXT, opt.parseActionsUseYYLOC, opt.parseActionsUseValueTracking, opt.parseActionsUseValueAssignment, opt.parseActionsUseLocationTracking, opt.parseActionsUseLocationAssignment, opt.lexerActionsUseYYLENG, opt.lexerActionsUseYYLINENO, opt.lexerActionsUseYYTEXT, opt.lexerActionsUseYYLOC, opt.lexerActionsUseParseError, opt.lexerActionsUseYYERROR, opt.lexerActionsUseLocationTracking, opt.lexerActionsUseMore, opt.lexerActionsUseUnput, opt.lexerActionsUseReject, opt.lexerActionsUseLess, opt.lexerActionsUseDisplayAPIs, opt.lexerActionsUseDescribeYYLOC));
+        new_src = new_src.replace(/\/\*\s*JISON-LEX-ANALYTICS-REPORT\s*\*\//g, rmCommonWS$1(_templateObject38, opt.options.backtrack_lexer, opt.options.ranges, opt.options.trackPosition, opt.parseActionsUseYYLENG, opt.parseActionsUseYYLINENO, opt.parseActionsUseYYTEXT, opt.parseActionsUseYYLOC, opt.parseActionsUseValueTracking, opt.parseActionsUseValueAssignment, opt.parseActionsUseLocationTracking, opt.parseActionsUseLocationAssignment, opt.lexerActionsUseYYLENG, opt.lexerActionsUseYYLINENO, opt.lexerActionsUseYYTEXT, opt.lexerActionsUseYYLOC, opt.lexerActionsUseParseError, opt.lexerActionsUseYYERROR, opt.lexerActionsUseLocationTracking, opt.lexerActionsUseMore, opt.lexerActionsUseUnput, opt.lexerActionsUseReject, opt.lexerActionsUseLess, opt.lexerActionsUseDisplayAPIs, opt.lexerActionsUseDescribeYYLOC));
 
         return new_src;
     }
@@ -8842,7 +8861,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         if (opt.rules.length > 0 || opt.__in_rules_failure_analysis_mode__) {
             // we don't mind that the `test_me()` code above will have this `lexer` variable re-defined:
             // JavaScript is fine with that.
-            var code = [rmCommonWS(_templateObject39), '/*JISON-LEX-ANALYTICS-REPORT*/' /* slot #1: placeholder for analysis report further below */
+            var code = [rmCommonWS$1(_templateObject39), '/*JISON-LEX-ANALYTICS-REPORT*/' /* slot #1: placeholder for analysis report further below */
             ];
 
             // get the RegExpLexer.prototype in source code form:
@@ -8874,7 +8893,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             var simpleCaseActionClustersCode = String(opt.caseHelperInclude);
             var rulesCode = generateRegexesInitTableCode(opt);
             var conditionsCode = cleanupJSON(JSON.stringify(opt.conditions, null, 2));
-            code.push(rmCommonWS(_templateObject40, performActionCode, simpleCaseActionClustersCode, rulesCode, conditionsCode));
+            code.push(rmCommonWS$1(_templateObject40, performActionCode, simpleCaseActionClustersCode, rulesCode, conditionsCode));
 
             opt.is_custom_lexer = false;
 
@@ -8910,7 +8929,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }
 
     function generateGenericHeaderComment() {
-        var out = rmCommonWS(_templateObject41, version$1);
+        var out = rmCommonWS$1(_templateObject41, version$1);
 
         return out;
     }
@@ -8962,7 +8981,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     function generateESModule(opt) {
         opt = prepareOptions(opt);
 
-        var out = [generateGenericHeaderComment(), '', 'var lexer = (function () {', jisonLexerErrorDefinition, '', generateModuleBody(opt), '', opt.moduleInclude ? opt.moduleInclude + ';' : '', '', 'return lexer;', '})();', '', 'function yylex() {', '    return lexer.lex.apply(lexer, arguments);', '}', rmCommonWS(_templateObject42)];
+        var out = [generateGenericHeaderComment(), '', 'var lexer = (function () {', jisonLexerErrorDefinition, '', generateModuleBody(opt), '', opt.moduleInclude ? opt.moduleInclude + ';' : '', '', 'return lexer;', '})();', '', 'function yylex() {', '    return lexer.lex.apply(lexer, arguments);', '}', rmCommonWS$1(_templateObject42)];
 
         var src = out.join('\n') + '\n';
         src = stripUnusedLexerCode(src, opt);
@@ -8986,8 +9005,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     RegExpLexer.version = version$1;
     RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
     RegExpLexer.mkStdOptions = mkStdOptions;
-    RegExpLexer.camelCase = camelCase;
+    RegExpLexer.camelCase = helpers.camelCase;
+    RegExpLexer.mkIdentifier = mkIdentifier$2;
     RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
+
+    var mkIdentifier = helpers.mkIdentifier;
 
     var version = '0.6.1-213'; // require('./package.json').version;
 
@@ -9147,9 +9169,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             opts.outfile = opts.outfile || outpath + name + '.js';
             if (!opts.moduleName && name) {
-                opts.moduleName = opts.defaultModuleName = name.replace(/-\w/g, function (match) {
-                    return match.charAt(1).toUpperCase();
-                });
+                opts.moduleName = opts.defaultModuleName = mkIdentifier(name);
             }
 
             // Change CWD to the directory where the source grammar resides: this helps us properly
