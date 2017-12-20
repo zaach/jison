@@ -6,7 +6,7 @@
   },
   "name": "jison-gho",
   "description": "A parser generator with a Bison/YACC-similar API (derived off zaach/jison repo)",
-  "version": "0.6.1-213",
+  "version": "0.6.1-214",
   "license": "MIT",
   "keywords": [
     "jison",
