@@ -110,7 +110,8 @@
 
 %start expressions
 
-%options parser-errors-are-recoverable lexer-errors-are-recoverable
+// %option parser-errors-are-recoverable 
+// %option lexer-errors-are-recoverable
 
 
 
@@ -128,19 +129,6 @@ expressions
           // to be a recognizer, but that is not the case here!)
           $$ = $1;
         }
-    | error EOF
-        {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
-            print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { '$1': typeof $1, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
-            yyerrok;
-            yyclearin;
-            $$ = 17;
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print('ERROR', #1, $2, '==>', $$);
-        }
     ;
 
 e
@@ -153,17 +141,6 @@ e
         {
             $$ = $1 - $3;
             print($1, $2, $3, '==>', $$);
-        }
-    | e error e
-        {
-            print('~~~EXPR-OPERATOR~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': typeof $2, '$3': $3, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
-            yyerrok;
-            yyclearin;
-            $$ = $e1 + 13 + $e2;
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print($1, 'ERROR', #2, $3, '==>', $$);
         }
     | m
     ;
@@ -254,19 +231,6 @@ v
             $$ = Math.PI;
             print($1, '==>', $$);
         }
-    | error
-        {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
-            print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, '@$': @$, token: parser.describeSymbol(#$), msg: $error.errStr }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
-            yyerrok;
-            yyclearin;
-            $$ = 5;         
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print('ERROR', #1, '==>', $$);
-        }
     ;
 
 
@@ -323,20 +287,6 @@ if (0) {
 
 
 
-parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
-    assert(hash.yy);
-    assert(this);
-    assert(this !== parser.yy);
-    assert(this === hash.yy.parser || this === hash.yy.lexer);
-    if (hash.recoverable) {
-        hash.yy.parser.trace(str);
-        hash.yy.lastErrorMessage = str;
-        hash.yy.lastErrorHash = hash;
-    } else {
-        console.error(str, hash && hash.exception);
-        throw new ExceptionClass(str, hash);
-    }
-};
 
 
 
@@ -355,7 +305,7 @@ parser.main = function () {
         const formulas_and_expectations =  [
             basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
             basenum + '+2*0.7%^PI^2+4+5',                            9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
-            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     74 + basenum, // with error recovery and all it gives you a value...
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     NaN, // with no error recovery it'll give you a crash result
             basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
         ];
 
@@ -364,8 +314,16 @@ parser.main = function () {
         for (var i = 0, len = formulas_and_expectations.length; i < len; i += 2) {
             var formula = formulas_and_expectations[i];
             var expectation = formulas_and_expectations[i + 1];
+            var rv;
 
-            var rv = parser.parse(formula);
+            try {
+              rv = parser.parse(formula);
+            } catch (ex) {
+              var stk = '' + ex.stack;
+              stk = stk.replace(/\t/g, '  ')
+              .replace(/  at (.+?)\(.*?[\\/]([^\\/\s]+)\)/g, '  at $1($2)');
+              rv = 'ERROR:' + ex.name + '::' + ex.message + '::' + stk;
+            }
             print("'" + formula + "' ==> ", rv, "\n");
             if (isNaN(rv) && isNaN(expectation)) {
               assert(1);
