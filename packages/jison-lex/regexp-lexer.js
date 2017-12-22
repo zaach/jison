@@ -18,6 +18,14 @@ var version = '0.6.1-215';                              // require('./package.js
 
 
 
+function chkBugger(src) {
+    src = '' + src;
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
+
+
 
 const XREGEXP_UNICODE_ESCAPE_RE = setmgmt.XREGEXP_UNICODE_ESCAPE_RE;              // Matches the XRegExp Unicode escape braced part, e.g. `{Number}`
 const CHR_RE = setmgmt.CHR_RE;
@@ -307,6 +315,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
             action = String(action);
+            chkBugger(action);
             if (action.match(/^\s*function\s*\(\)\s*\{/)) {
                 action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
             } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
@@ -1096,9 +1105,11 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 '',
                 source,
                 '',
-                'return lexer;'].join('\n');
+                'return lexer;'
+            ].join('\n');
             var lexer = code_exec(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
+                chkBugger(sourcecode);
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
             }, opts.options, "lexer");
@@ -2526,6 +2537,7 @@ return `{
     // --- END lexer kernel ---
 }
 
+chkBugger(getRegExpLexerPrototype());
 RegExpLexer.prototype = (new Function(rmCommonWS`
     return ${getRegExpLexerPrototype()};
 `))();

@@ -81,6 +81,7 @@ check-coverage:
 dynamic-analysis: analyze-coverage check-coverage
 
 test-nyc:
+	# clear the coverage cache, etc.
 	-rm -rf ./.nyc_output
 	-rm -rf ./coverage/
 	cd packages/helpers-lib && make test-nyc
@@ -90,6 +91,8 @@ test-nyc:
 	cd packages/json2jison && make test-nyc
 	cd packages/jison2json && make test-nyc
 	$(NYC) --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+	# report collective coverage results:
+	$(NYC) report --reporter=html
 
 coveralls:
 	$(NYC) report --reporter=html
