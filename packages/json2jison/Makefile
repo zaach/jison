@@ -3,7 +3,6 @@ ROLLUP = ../../node_modules/.bin/rollup
 BABEL = ../../node_modules/.bin/babel
 MOCHA = ../../node_modules/.bin/mocha
 NYC = ../../node_modules/.bin/nyc      --clean=false --temp-directory ../../.nyc_output
-COVERALLS = ../../node_modules/.bin/coveralls
 
 
 all: build test
@@ -24,9 +23,6 @@ test:
 test-nyc:
 	-rm -rf ./coverage/
 	$(NYC) --reporter=lcov --reporter=html --reporter=text  -- $(MOCHA) --check-leaks --globals assert tests/
-
-coveralls:
-	$(NYC) report --reporter=text-lcov | $(COVERALLS)
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
@@ -54,5 +50,5 @@ superclean: clean
 
 
 
-.PHONY: all prep npm-install build test clean superclean bump git-tag publish npm-update test-nyc coveralls
+.PHONY: all prep npm-install build test clean superclean bump git-tag publish npm-update test-nyc
 

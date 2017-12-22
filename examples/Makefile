@@ -4,7 +4,6 @@
 
 JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
 NYC = ../node_modules/.bin/nyc
-COVERALLS = ../node_modules/.bin/coveralls
 
 
 ERROR_HANDLING_TARGETS =                                        \

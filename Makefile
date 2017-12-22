@@ -5,7 +5,6 @@ ROLLUP = node_modules/.bin/rollup
 BABEL = node_modules/.bin/babel
 MOCHA = node_modules/.bin/mocha
 NYC = node_modules/.bin/nyc      --clean=false --temp-directory ./.nyc_output
-COVERALLS = node_modules/.bin/coveralls
 
 JISON = node dist/cli-cjs-es5.js
 
@@ -94,10 +93,6 @@ test-nyc:
 	# report collective coverage results:
 	$(NYC) report --reporter=html
 
-coveralls:
-	$(NYC) report --reporter=html
-	#$(NYC) report --reporter=text-lcov | $(COVERALLS)
-
 web-examples: web/content/assets/js/calculator.js
 
 examples: examples_directory
@@ -106,7 +101,7 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 	$(JISON) examples/calculator.jison -o $@
 
 
-comparison: 
+comparison:
 	cd examples/ && make comparison
 
 lexer-comparison: build
@@ -598,5 +593,5 @@ superclean: clean clean-site
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
 		npm-update subpackages-npm-update 											\
-		test-nyc coveralls
+		test-nyc
 

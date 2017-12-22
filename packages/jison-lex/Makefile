@@ -5,7 +5,6 @@ ROLLUP = ../../node_modules/.bin/rollup
 BABEL = ../../node_modules/.bin/babel
 MOCHA = ../../node_modules/.bin/mocha
 NYC = ../../node_modules/.bin/nyc      --clean=false --temp-directory ../../.nyc_output
-COVERALLS = ../../node_modules/.bin/coveralls
 
 
 all: build test examples
@@ -36,9 +35,6 @@ test:
 test-nyc:
 	-rm -rf ./coverage/
 	$(NYC) --reporter=lcov --reporter=html --reporter=text --exclude 'tests/specs/003-issue-*.js'  -- $(MOCHA) --timeout 18000 --check-leaks --globals assert tests/
-
-coveralls:
-	$(NYC) report --reporter=text-lcov | $(COVERALLS)
 
 
 examples:                                           \
@@ -189,5 +185,5 @@ superclean: clean
 
 
 
-.PHONY: all prep npm-install build test examples clean superclean bump git-tag publish example-lex example-include examples_basic2_lex examples_basic_lex examples_c99 examples_ccalc_lex examples_classy examples_codegen_feature_tester_base examples_comments examples_compiled_calc_parse examples_faking examples_floop examples_handlebars examples_issue_url_lexing examples_issue_x1 examples_issue_x2 examples_lex_grammar examples_lexer_comm_debug examples_pascal examples_regex examples_semwhitespace examples_tikiwikiparser examples_unicode2 examples_unicode examples_with_custom_lexer examples_with_includes comparison npm-update test-nyc coveralls
+.PHONY: all prep npm-install build test examples clean superclean bump git-tag publish example-lex example-include examples_basic2_lex examples_basic_lex examples_c99 examples_ccalc_lex examples_classy examples_codegen_feature_tester_base examples_comments examples_compiled_calc_parse examples_faking examples_floop examples_handlebars examples_issue_url_lexing examples_issue_x1 examples_issue_x2 examples_lex_grammar examples_lexer_comm_debug examples_pascal examples_regex examples_semwhitespace examples_tikiwikiparser examples_unicode2 examples_unicode examples_with_custom_lexer examples_with_includes comparison npm-update test-nyc
 
