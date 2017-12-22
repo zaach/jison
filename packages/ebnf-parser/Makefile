@@ -36,8 +36,6 @@ endif
 	$(JISON) -m es ebnf.y
 	mv ebnf.js transform-parser.js
 
-	node __patch_prelude_in_js.js
-
 	-mkdir -p dist
 	$(ROLLUP) -c
 	$(BABEL) dist/ebnf-parser-cjs.js -o dist/ebnf-parser-cjs-es5.js

@@ -29,10 +29,6 @@ ifeq ($(wildcard ../../node_modules/.bin/jison),)
 endif
 	$(JISON) -m es -o lex-parser.js lex.y lex.l
 	-mkdir -p dist
-	cat lex-parser-prelude.js > lex-parser-base.js
-	cat lex-parser.js >> lex-parser-base.js
-	cat lex-parser-base.js > lex-parser.js
-	-rm lex-parser-base.js
 	$(ROLLUP) -c
 	$(BABEL) dist/lex-parser-cjs.js -o dist/lex-parser-cjs-es5.js
 	$(BABEL) dist/lex-parser-umd.js -o dist/lex-parser-umd-es5.js
