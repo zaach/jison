@@ -81,7 +81,14 @@ check-coverage:
 dynamic-analysis: analyze-coverage check-coverage
 
 test-nyc:
-	$(NYC) --clean --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+	-rm -rf ./.nyc_output
+	cd packages/helpers-lib && make test-nyc
+	cd packages/lex-parser && make test-nyc
+	cd packages/jison-lex && make test-nyc
+	cd packages/ebnf-parser && make test-nyc
+	cd packages/json2jison && make test-nyc
+	cd packages/jison2json && make test-nyc
+	$(NYC) --temp-directory ./.nyc_output --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
 
 coveralls:
 	$(NYC) report --reporter=text-lcov | $(COVERALLS)
@@ -585,5 +592,6 @@ superclean: clean clean-site
 		git-tag subpackages-git-tag                                                 \
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
-		npm-update subpackages-npm-update
+		npm-update subpackages-npm-update 											\
+		test-nyc coveralls
 

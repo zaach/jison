@@ -918,14 +918,17 @@ describe("Lexer Kernel", function () {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
-           ['"[^"]*', function () {
+           ['"[^"]*', 
+             /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */ 
+             function () {
                if (yytext.charAt(yyleng - 1) === '\\') {
                    this.more();
                } else {
                    yytext += this.input(); // swallow end quote
                    return "STRING";
                }
-            } ],
+             } 
+           ],
            ["$", "return 'EOF';" ]
        ]
     };
@@ -2112,6 +2115,7 @@ describe("Lexer Kernel", function () {
     var src = null;
 
     // Wrap the custom lexer code in a function so we can String()-dump it:
+    /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */ 
     function customLexerCode() {
         var input = ""; 
         var input_offset = 0; 
