@@ -47,3 +47,7 @@ Vagrantfile
 *.log
 *.patch
 
+# istanbul / nyc code coverage analysis workspaces
+/.nyc_output
+/coverage
+

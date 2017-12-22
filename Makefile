@@ -4,6 +4,8 @@ NANOC := $(shell command -v nanoc 2> /dev/null)
 ROLLUP = node_modules/.bin/rollup
 BABEL = node_modules/.bin/babel
 MOCHA = node_modules/.bin/mocha
+NYC = node_modules/.bin/nyc
+COVERALLS = node_modules/.bin/coveralls
 
 JISON = node dist/cli-cjs-es5.js
 
@@ -69,6 +71,20 @@ deploy: site
 
 test:
 	$(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+
+analyze-coverage:
+	istanbul cover test/unit-tests.js
+
+check-coverage:
+	istanbul check-coverage --statement 96 --branch 96 --function 96
+
+dynamic-analysis: analyze-coverage check-coverage
+
+test-nyc:
+	$(NYC) --clean --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+
+coveralls:
+	$(NYC) report --reporter=text-lcov | $(COVERALLS)
 
 web-examples: web/content/assets/js/calculator.js
 
