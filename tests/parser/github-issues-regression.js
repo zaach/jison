@@ -138,6 +138,7 @@ describe("Github issues", function () {
   });
 
   it("https://github.com/zaach/jison-lex/issues/23:: ES6 arrow functions", function() {
+    /* istanbul ignore next: arrow `action` code is injected and then crashes the generated parser due to unreachable coverage global */ 
     var dict = {
         rules: [
            ["x", () => 'X' ],
