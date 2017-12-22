@@ -24,6 +24,10 @@ describe("SLR", function () {
     };
 
     var gen = new Jison.Generator(grammar, {type: "slr"});
+
+    assert.equal(gen.table.length, 3, "table has 3 states");
+    assert.equal(gen.conflicts, 0, "no conflicts");
+
     var parser = gen.createParser();
     var JisonParserError = parser.JisonParserError; 
     assert(JisonParserError);
@@ -37,6 +41,7 @@ describe("SLR", function () {
 
     assert.ok(parser.parse("xxx"), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
+    assert.ok(parser.parse(""),    "parse zero x");
 
     // also test the two different types of errors a parser can produce:
 
@@ -86,6 +91,7 @@ describe("SLR", function () {
 
     assert.ok(parser.parse("xxx"), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
+    assert.ok(parser.parse(""),    "parse zero x");
 
     assert.equal(gen.nullable('A'), true, "A is nullable");
 

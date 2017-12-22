@@ -10,9 +10,10 @@ var lexData = {
     ]
 };
 
+// Note: compare these tests with the SLR tests (tests have the same grammars)
 
 describe("LR(0)", function () {
-  xit("test left-recursive nullable grammar", function () {
+  it("test left-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -24,6 +25,10 @@ describe("LR(0)", function () {
     };
 
     var gen = new Jison.Generator(grammar, {type: "lr0"});
+
+    assert.equal(gen.table.length, 3, "table has 3 states");
+    assert.equal(gen.conflicts, 0, "no conflicts");
+
     var parser = gen.createParser();
     var JisonParserError = parser.JisonParserError; 
     assert(JisonParserError);
@@ -33,10 +38,11 @@ describe("LR(0)", function () {
     var JisonLexerError = parser.lexer.JisonLexerError; 
     assert(JisonLexerError);
 
-    assert.equal(gen.nullable('A'), true, "A is nullable");
+    //assert.equal(gen.nullable('A'), true, "A is nullable");
 
     assert.ok(parser.parse("xxx"), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
+    assert.ok(parser.parse(""),    "parse zero x");
 
     // also test the two different types of errors a parser can produce:
 
@@ -60,7 +66,7 @@ describe("LR(0)", function () {
     assert.strictEqual(parser.conflicts, 0, "no conflicts");
   });
 
-  xit("test right-recursive nullable grammar", function () {
+  it("test right-recursive nullable grammar", function () {
 
     var grammar = {
         tokens: [ 'x' ],
@@ -74,7 +80,7 @@ describe("LR(0)", function () {
     var gen = new Jison.Generator(grammar, {type: "lr0"});
 
     assert.equal(gen.table.length, 4, "table has 4 states");
-    assert.equal(gen.conflicts, 0, "no conflicts");
+    assert.equal(gen.conflicts, 2, "2 conflicts");
 
     var parser = gen.createParser();
     var JisonParserError = parser.JisonParserError; 
@@ -86,8 +92,9 @@ describe("LR(0)", function () {
 
     assert.ok(parser.parse("xxx"), "parse 3 x's");
     assert.ok(parser.parse("x"),   "parse single x");
+    assert.ok(parser.parse(""),    "parse zero x");
 
-    assert.equal(gen.nullable('A'), true, "A is nullable");
+    //assert.equal(gen.nullable('A'), true, "A is nullable");
 
     // also test the two different types of errors a parser can produce:
 
