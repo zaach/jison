@@ -137,13 +137,12 @@ describe("Github issues", function () {
     assert.equal(lexer2.EOF, lexerBase.EOF);
   });
 
-  xit("https://github.com/zaach/jison-lex/issues/23:: ES6 arrow functions", function() {
-    //TODO XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  it("https://github.com/zaach/jison-lex/issues/23:: ES6 arrow functions", function() {
     var dict = {
         rules: [
-           ["x", "return 'X';" ],
-           ["y", "return 'Y';" ],
-           ["$", "return 'EOF';" ]
+           ["x", () => 'X' ],
+           ["y", () => 'Y' ],
+           ["$", () => 'EOF' ]
        ]
     };
 

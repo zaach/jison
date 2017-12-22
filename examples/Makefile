@@ -3,6 +3,8 @@
 #
 
 JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
+NYC = ../node_modules/.bin/nyc
+COVERALLS = ../node_modules/.bin/coveralls
 
 
 ERROR_HANDLING_TARGETS =                                        \
@@ -115,6 +117,7 @@ BASIC_TARGETS =                                                 \
 			parser-to-lexer-communication-test                  \
 			parser-to-lexer-communication-test-w-debug          \
 			parser-to-lexer-communication-test--profiling       \
+			parser-to-lexer-communication-test-w-debug--profiling \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \
@@ -183,6 +186,7 @@ MISC_TARGETS =                                                  \
 			parser-to-lexer-communication-test                  \
 			parser-to-lexer-communication-test-w-debug          \
 			parser-to-lexer-communication-test--profiling       \
+			parser-to-lexer-communication-test-w-debug--profiling \
 			phraser                                             \
 			precedence                                          \
 			reduce_conflict                                     \

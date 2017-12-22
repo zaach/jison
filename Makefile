@@ -4,14 +4,14 @@ NANOC := $(shell command -v nanoc 2> /dev/null)
 ROLLUP = node_modules/.bin/rollup
 BABEL = node_modules/.bin/babel
 MOCHA = node_modules/.bin/mocha
-NYC = node_modules/.bin/nyc
+NYC = node_modules/.bin/nyc      --clean=false --temp-directory ./.nyc_output
 COVERALLS = node_modules/.bin/coveralls
 
 JISON = node dist/cli-cjs-es5.js
 
 
 
-all: build test examples-test
+all: build test test-nyc examples-test
 
 everything:                         \
 		clean                       \
@@ -82,16 +82,18 @@ dynamic-analysis: analyze-coverage check-coverage
 
 test-nyc:
 	-rm -rf ./.nyc_output
+	-rm -rf ./coverage/
 	cd packages/helpers-lib && make test-nyc
 	cd packages/lex-parser && make test-nyc
 	cd packages/jison-lex && make test-nyc
 	cd packages/ebnf-parser && make test-nyc
 	cd packages/json2jison && make test-nyc
 	cd packages/jison2json && make test-nyc
-	$(NYC) --temp-directory ./.nyc_output --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+	$(NYC) --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
 
 coveralls:
-	$(NYC) report --reporter=text-lcov | $(COVERALLS)
+	$(NYC) report --reporter=html
+	#$(NYC) report --reporter=text-lcov | $(COVERALLS)
 
 web-examples: web/content/assets/js/calculator.js
 

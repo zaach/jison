@@ -2,7 +2,7 @@
 ROLLUP = ../../node_modules/.bin/rollup
 BABEL = ../../node_modules/.bin/babel
 MOCHA = ../../node_modules/.bin/mocha
-NYC = ../../node_modules/.bin/nyc
+NYC = ../../node_modules/.bin/nyc      --clean=false --temp-directory ../../.nyc_output
 COVERALLS = ../../node_modules/.bin/coveralls
 
 
@@ -26,10 +26,11 @@ test:
 	$(MOCHA) --check-leaks --globals assert tests/
 
 test-nyc:
-	$(NYC) --temp-directory ../../.nyc_output --reporter=lcov --reporter=html --reporter=text  -- $(MOCHA) --check-leaks --globals assert tests/
+	-rm -rf ./coverage/
+	$(NYC) --reporter=lcov --reporter=html --reporter=text  -- $(MOCHA) --check-leaks --globals assert tests/
 
 coveralls:
-	$(NYC) report --temp-directory ../../.nyc_output --reporter=text-lcov | $(COVERALLS)
+	$(NYC) report --reporter=text-lcov | $(COVERALLS)
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
