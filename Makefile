@@ -14,7 +14,7 @@ endif
 
 
 
-all: clean-nyc build test test-nyc examples-test
+all: clean-nyc build test test-nyc examples-test report-nyc
 
 everything:                         \
 		clean                       \
@@ -97,6 +97,12 @@ test-nyc:
 	cd packages/json2jison && make test-nyc
 	cd packages/jison2json && make test-nyc
 	$(NYC) --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+	-rm -rf ./coverage/
+	# report PRELIMINARY collective coverage results:
+	$(NYC) report --reporter=html
+
+report-nyc:
+	-rm -rf ./coverage/
 	# report collective coverage results:
 	$(NYC) report --reporter=html
 
@@ -600,5 +606,5 @@ superclean: clean clean-site
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
 		npm-update subpackages-npm-update                                           \
-		test-nyc clean-nyc
+		test-nyc clean-nyc report-nyc
 
