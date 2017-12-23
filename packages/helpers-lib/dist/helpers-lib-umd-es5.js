@@ -162,6 +162,13 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     // 
 
 
+    function chkBugger(src) {
+        src = String(src);
+        if (src.match(/\bcov_\w+/)) {
+            console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+        }
+    }
+
     // Helper function: pad number with leading zeroes
     function pad(n, p) {
         p = p || 2;
@@ -252,6 +259,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
             if (typeof code_execution_rig !== 'function') {
                 throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
             }
+            chkBugger(sourcecode);
             p = code_execution_rig.call(this, sourcecode, options, errname, debug);
         } catch (ex) {
             if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -361,15 +369,24 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         checkActionBlock: checkActionBlock
     };
 
+    function chkBugger$1(src) {
+        src = String(src);
+        if (src.match(/\bcov_\w+/)) {
+            console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+        }
+    }
+
     /// HELPER FUNCTION: print the function in source code form, properly indented.
     /** @public */
     function printFunctionSourceCode(f) {
+        chkBugger$1(f);
         return String(f);
     }
 
     /// HELPER FUNCTION: print the function **content** in source code form, properly indented.
     /** @public */
     function printFunctionSourceCodeContainer(f) {
+        chkBugger$1(f);
         return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
     }
 
