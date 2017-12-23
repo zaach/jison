@@ -2,8 +2,16 @@
 # You can build each example to its own directory in ./output/<example>
 #
 
-JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
-NYC = ../node_modules/.bin/nyc
+NYC = ../node_modules/.bin/nyc      --clean=false --temp-directory ../.nyc_output
+
+ifndef FULL_CODE_COVERAGE
+	JISON = node ../dist/cli-cjs-es5.js -o ./output/$@/
+	NODE = node
+else
+	JISON = $(NYC) --reporter=lcov -- node ../dist/cli-cjs-es5.js -o ./output/$@/
+	NODE = $(NYC) --reporter=lcov -- node 
+endif
+
 
 
 ERROR_HANDLING_TARGETS =                                        \
@@ -317,11 +325,11 @@ dism_lr0:
 
 documentation--custom-lexer-ULcase:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 documentation--custom-lexer-ULcase-alt:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 formula:
 	$(JISON) --main ./$@.jison
@@ -335,46 +343,46 @@ inherited_y:
 # build *AND* run the test:
 issue-205:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-205-2:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-205-3:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-205-4:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-254:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-289:
 	$(JISON) --main -p lalr --no-partial-lr-upgrade-on-conflict ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 	$(JISON) --main -p lalr ./$@.jison -o ./output/$@/$@-HQ.js
-	node ./output/$@/$@-HQ.js
+	$(NODE) ./output/$@/$@-HQ.js
 	$(JISON) --main -p lr ./$@.jison -o ./output/$@/$@-LR.js
-	node ./output/$@/$@-LR.js
+	$(NODE) ./output/$@/$@-LR.js
 
 # build *AND* run the test:
 issue-293:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-342:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 issue-344-BAD:
 
@@ -383,27 +391,27 @@ issue-344-2-BAD:
 # build *AND* run the test:
 issue-344:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-344-2:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-348:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 issue-357-url-lexing:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test (JSON input!):
 issue-360:
 	$(JISON) --main --export-ast+ ./$@.json
-	node ./output/$@/$@.js $@.test-input-1.txt
+	$(NODE) ./output/$@/$@.js $@.test-input-1.txt
 
 # build *AND* run the test:
 issue-362: documentation--custom-lexer-ULcase documentation--custom-lexer-ULcase-alt
@@ -509,7 +517,7 @@ mfcalc:
 
 no-prec-hack-needed:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 olmenu-proto2:
 	$(JISON) --main ./$@.jison
@@ -589,11 +597,11 @@ parser-to-lexer-communication-test-w-debug--profiling:
 
 parser-to-lexer-communication-test:
 	$(JISON) --main -p lalr ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 parser-to-lexer-communication-test-w-debug:
 	$(JISON) --main -p lalr ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 faking-multiple-start-rules:
 	$(JISON) --main ./$@.jison
@@ -609,62 +617,62 @@ pascal:
 # build *AND* run the test:
 lalr-but-not-slr:
 	$(JISON) --main -p lalr ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 lr-but-not-lalr:
 	$(JISON) --main -p lr ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 theory-left-recurs-01:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-EOF-bugfix:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-epsilon-rules-early-reduce:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-literal-quote-tokens-in-grammar:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-nonassociative-operator-0:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-nonassociative-operator-1:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-nonassociative-operator-2:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 # build *AND* run the test:
 test-propagation-rules-reduction-1:
 	$(JISON) --main -c 0 -I ./$@.jison
 	$(JISON) --main -c 0 -I ./test-propagation-rules-reduction-2.jison
-	node ./output/$@/$@.js
-	node ./output/$@/test-propagation-rules-reduction-2.js
+	$(NODE) ./output/$@/$@.js
+	$(NODE) ./output/$@/test-propagation-rules-reduction-2.js
 
 test-unused-rules-reporting:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 test-unused-rules-reporting-alt:
 	$(JISON) --main ./$@.jison
-	node ./output/$@/$@.js
+	$(NODE) ./output/$@/$@.js
 
 
 
@@ -673,31 +681,31 @@ test-unused-rules-reporting-alt:
 compiled_calc:
 	$(JISON) ./$@_parse.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_parse.js
+	$(NODE) output/$@/$@_parse.js
 	$(JISON) ./$@_codegen.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_codegen.js
+	$(NODE) output/$@/$@_codegen.js
 	$(JISON) ./$@_print.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_print.js
+	$(NODE) output/$@/$@_print.js
 	$(JISON) ./$@_sorcerer.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_sorcerer.js
+	$(NODE) output/$@/$@_sorcerer.js
 	$(JISON) ./$@_BURG.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_BURG.js
+	$(NODE) output/$@/$@_BURG.js
 	$(JISON) ./$@_parse_for_fast_engine.jison
 	# test if the generated JavaScript is viable at all:
-	node output/$@/$@_parse_for_fast_engine.js
+	$(NODE) output/$@/$@_parse_for_fast_engine.js
 	#$(JISON) --main -t ./$@_exec.jison
 	$(JISON) --main ./$@_exec.jison
 	# postprocess generated source code:
-	#node ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js
-	node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
-	#node ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js
-	#node ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
+	#$(NODE) ./$@_const_rewrite_postprocess.js ./$@_AST_symbols.json5 output/$@/$@_exec.js
+	$(NODE) ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
+	#$(NODE) ./$@_const_rewrite_postprocess.js ./output/$@/$@_parse.js output/$@/$@_exec.js
+	#$(NODE) ./$@_const_rewrite_postprocess.js ./$@_OPA_defines.json5 output/$@/$@_exec.js
 	# and run it!
-	node output/$@/$@_exec.js $@_input.txt
+	$(NODE) output/$@/$@_exec.js $@_input.txt
 
 
 
@@ -722,118 +730,118 @@ codegen-feature-tester: $(CODEGEN_TARGETS)
 
 codegen-feature-tester-base:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base.js
-	node ./output/$(CGT)/$(CGT)-base.js
+	$(NODE) ./output/$(CGT)/$(CGT)-base.js
 
 codegen-feature-tester-base-debug:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-debug.js --debug
-	node ./output/$(CGT)/$(CGT)-base-debug.js
+	$(NODE) ./output/$(CGT)/$(CGT)-base-debug.js
 
 codegen-feature-tester-base-try-catch:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-try-catch.js --try-catch
-	node ./output/$(CGT)/$(CGT)-base-try-catch.js
+	$(NODE) ./output/$(CGT)/$(CGT)-base-try-catch.js
 
 codegen-feature-tester-base-no-try-catch:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-no-try-catch.js --no-try-catch
-	node ./output/$(CGT)/$(CGT)-base-no-try-catch.js
+	$(NODE) ./output/$(CGT)/$(CGT)-base-no-try-catch.js
 
 codegen-feature-tester-base-error-recovery-10:
 	$(JISON) --main ./$(CGT)-base.jison -o ./output/$(CGT)/$(CGT)-base-error-recovery-10.js -Q=10
-	node ./output/$(CGT)/$(CGT)-base-error-recovery-10.js
+	$(NODE) ./output/$(CGT)/$(CGT)-base-error-recovery-10.js
 
 codegen-feature-tester-no-default-action:
 	$(JISON) --main ./$(CGT)-no-default-action.jison -o ./output/$(CGT)/$(CGT)-no-default-action.js --default-action=none,none
-	node ./output/$(CGT)/$(CGT)-no-default-action.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-default-action.js
 
 codegen-feature-tester-all-default-action:
 	$(JISON) --main ./$(CGT)-all-default-action.jison -o ./output/$(CGT)/$(CGT)-all-default-action.js
-	node ./output/$(CGT)/$(CGT)-all-default-action.js
+	$(NODE) ./output/$(CGT)/$(CGT)-all-default-action.js
 
 codegen-feature-tester-no-yyleng:
 	$(JISON) --main ./$(CGT)-no-yyleng.jison -o ./output/$(CGT)/$(CGT)-no-yyleng.js
-	node ./output/$(CGT)/$(CGT)-no-yyleng.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyleng.js
 
 codegen-feature-tester-no-yylineno:
 	$(JISON) --main ./$(CGT)-no-yylineno.jison -o ./output/$(CGT)/$(CGT)-no-yylineno.js
-	node ./output/$(CGT)/$(CGT)-no-yylineno.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yylineno.js
 
 codegen-feature-tester-yylineno:
 	$(JISON) --main ./$(CGT)-yylineno.jison -o ./output/$(CGT)/$(CGT)-yylineno.js
-	node ./output/$(CGT)/$(CGT)-yylineno.js
+	$(NODE) ./output/$(CGT)/$(CGT)-yylineno.js
 
 codegen-feature-tester-no-yytext:
 	$(JISON) --main ./$(CGT)-no-yytext.jison -o ./output/$(CGT)/$(CGT)-no-yytext.js
-	node ./output/$(CGT)/$(CGT)-no-yytext.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yytext.js
 
 codegen-feature-tester-no-yyloc:
 	$(JISON) --main ./$(CGT)-no-yyloc.jison -o ./output/$(CGT)/$(CGT)-no-yyloc.js
-	node ./output/$(CGT)/$(CGT)-no-yyloc.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyloc.js
 
 codegen-feature-tester-no-parseerror:
 	$(JISON) --main ./$(CGT)-no-parseerror.jison -o ./output/$(CGT)/$(CGT)-no-parseerror.js
-	node ./output/$(CGT)/$(CGT)-no-parseerror.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-parseerror.js
 
 codegen-feature-tester-no-yyerror:
 	$(JISON) --main ./$(CGT)-no-yyerror.jison -o ./output/$(CGT)/$(CGT)-no-yyerror.js
-	node ./output/$(CGT)/$(CGT)-no-yyerror.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyerror.js
 
 codegen-feature-tester-no-yyrecovering:
 	$(JISON) --main ./$(CGT)-no-yyrecovering.jison -o ./output/$(CGT)/$(CGT)-no-yyrecovering.js
-	node ./output/$(CGT)/$(CGT)-no-yyrecovering.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyrecovering.js
 
 codegen-feature-tester-no-yyerrok:
 	$(JISON) --main ./$(CGT)-no-yyerrok.jison -o ./output/$(CGT)/$(CGT)-no-yyerrok.js
-	node ./output/$(CGT)/$(CGT)-no-yyerrok.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyerrok.js
 
 codegen-feature-tester-no-yyclearin:
 	$(JISON) --main ./$(CGT)-no-yyclearin.jison -o ./output/$(CGT)/$(CGT)-no-yyclearin.js
-	node ./output/$(CGT)/$(CGT)-no-yyclearin.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yyclearin.js
 
 codegen-feature-tester-no-value-tracking:
 	$(JISON) --main ./$(CGT)-no-value-tracking.jison -o ./output/$(CGT)/$(CGT)-no-value-tracking.js
-	node ./output/$(CGT)/$(CGT)-no-value-tracking.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-value-tracking.js
 
 codegen-feature-tester-no-value-assignment:
 	$(JISON) --main ./$(CGT)-no-value-assignment.jison -o ./output/$(CGT)/$(CGT)-no-value-assignment.js
-	node ./output/$(CGT)/$(CGT)-no-value-assignment.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-value-assignment.js
 
 codegen-feature-tester-no-location-tracking:
 	$(JISON) --main ./$(CGT)-no-location-tracking.jison -o ./output/$(CGT)/$(CGT)-no-location-tracking.js
-	node ./output/$(CGT)/$(CGT)-no-location-tracking.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-location-tracking.js
 
 codegen-feature-tester-no-location-assignment:
 	$(JISON) --main ./$(CGT)-no-location-assignment.jison -o ./output/$(CGT)/$(CGT)-no-location-assignment.js
-	node ./output/$(CGT)/$(CGT)-no-location-assignment.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-location-assignment.js
 
 codegen-feature-tester-no-yystack:
 	$(JISON) --main ./$(CGT)-no-yystack.jison -o ./output/$(CGT)/$(CGT)-no-yystack.js
-	node ./output/$(CGT)/$(CGT)-no-yystack.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yystack.js
 
 codegen-feature-tester-no-yysstack:
 	$(JISON) --main ./$(CGT)-no-yysstack.jison -o ./output/$(CGT)/$(CGT)-no-yysstack.js
-	node ./output/$(CGT)/$(CGT)-no-yysstack.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yysstack.js
 
 codegen-feature-tester-no-yysp:
 	$(JISON) --main ./$(CGT)-no-yysp.jison -o ./output/$(CGT)/$(CGT)-no-yysp.js
-	node ./output/$(CGT)/$(CGT)-no-yysp.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-yysp.js
 
 codegen-feature-tester-no-error-recovery:
 	$(JISON) --main ./$(CGT)-no-error-recovery.jison -o ./output/$(CGT)/$(CGT)-no-error-recovery.js
-	node ./output/$(CGT)/$(CGT)-no-error-recovery.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-error-recovery.js
 
 # (!info.actionsUseYYLOC && !info.actionsUseLocationTracking && !info.actionsUseLocationAssignment)
 codegen-feature-tester-no-location-info:
 	$(JISON) --main ./$(CGT)-no-location-info.jison -o ./output/$(CGT)/$(CGT)-no-location-info.js
-	node ./output/$(CGT)/$(CGT)-no-location-info.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-location-info.js
 
 # (!info.actionsUseValueTracking && !info.actionsUseValueAssignment) {
 codegen-feature-tester-no-value-work:
 	$(JISON) --main ./$(CGT)-no-value-work.jison -o ./output/$(CGT)/$(CGT)-no-value-work.js
-	node ./output/$(CGT)/$(CGT)-no-value-work.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-value-work.js
 
 # (!info.actionsUseYYERROK && !info.actionsUseYYRECOVERING && !info.actionsUseYYCLEARIN && !info.actionsUseYYERROR) {
 codegen-feature-tester-no-err-api-usage:
 	$(JISON) --main ./$(CGT)-no-err-api-usage.jison -o ./output/$(CGT)/$(CGT)-no-err-api-usage.js
-	node ./output/$(CGT)/$(CGT)-no-err-api-usage.js
+	$(NODE) ./output/$(CGT)/$(CGT)-no-err-api-usage.js
 
 
 

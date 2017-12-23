@@ -1,10 +1,15 @@
 
-LEX = node ./dist/cli-cjs-es5.js
 
 ROLLUP = ../../node_modules/.bin/rollup
 BABEL = ../../node_modules/.bin/babel
 MOCHA = ../../node_modules/.bin/mocha
 NYC = ../../node_modules/.bin/nyc      --clean=false --temp-directory ../../.nyc_output
+
+ifndef FULL_CODE_COVERAGE
+	LEX = node ./dist/cli-cjs-es5.js -o ./output/$@/
+else
+	LEX = $(NYC) --reporter=lcov -- node ./dist/cli-cjs-es5.js -o ./output/$@/
+endif
 
 
 all: build test examples

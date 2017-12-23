@@ -6,11 +6,15 @@ BABEL = node_modules/.bin/babel
 MOCHA = node_modules/.bin/mocha
 NYC = node_modules/.bin/nyc      --clean=false --temp-directory ./.nyc_output
 
-JISON = node dist/cli-cjs-es5.js
+ifndef FULL_CODE_COVERAGE
+	JISON = node dist/cli-cjs-es5.js
+else
+	JISON = $(NYC) --reporter=lcov -- node dist/cli-cjs-es5.js
+endif
 
 
 
-all: build test test-nyc examples-test
+all: clean-nyc build test test-nyc examples-test
 
 everything:                         \
 		clean                       \
@@ -79,10 +83,13 @@ check-coverage:
 
 dynamic-analysis: analyze-coverage check-coverage
 
-test-nyc:
+clean-nyc:
 	# clear the coverage cache, etc.
 	-rm -rf ./.nyc_output
 	-rm -rf ./coverage/
+
+test-nyc:
+	# DO NOT clear the coverage cache, etc.: earlier build tasks MAY also have contributed coverage info!
 	cd packages/helpers-lib && make test-nyc
 	cd packages/lex-parser && make test-nyc
 	cd packages/jison-lex && make test-nyc
@@ -592,6 +599,6 @@ superclean: clean clean-site
 		git-tag subpackages-git-tag                                                 \
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
-		npm-update subpackages-npm-update 											\
-		test-nyc
+		npm-update subpackages-npm-update                                           \
+		test-nyc clean-nyc
 

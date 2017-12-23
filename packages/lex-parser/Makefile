@@ -1,16 +1,21 @@
 
 JISON_VERSION := $(shell node ../../dist/cli-cjs-es5.js -V 2> /dev/null )
 
-ifndef JISON_VERSION
-	JISON = sh ../../node_modules/.bin/jison
-else
-	JISON = node ../../dist/cli-cjs-es5.js
-endif
-
 ROLLUP = ../../node_modules/.bin/rollup
 BABEL = ../../node_modules/.bin/babel
 MOCHA = ../../node_modules/.bin/mocha
 NYC = ../../node_modules/.bin/nyc      --clean=false --temp-directory ../../.nyc_output
+
+ifndef JISON_VERSION
+	JISON = sh ../../node_modules/.bin/jison
+else
+ifndef FULL_CODE_COVERAGE
+	JISON = node ../../dist/cli-cjs-es5.js
+else
+	JISON = $(NYC) --reporter=lcov -- node ../../dist/cli-cjs-es5.js
+endif
+endif
+
 
 
 all: build test
