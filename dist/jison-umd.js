@@ -423,16 +423,78 @@ function chkBugger$2(src) {
 /// HELPER FUNCTION: print the function in source code form, properly indented.
 /** @public */
 function printFunctionSourceCode(f) {
-    chkBugger$2(f);
-    return String(f);
+    var src = String(f);
+    chkBugger$2(src);
+    return src;
 }
 
-/// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+
+
+const funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
+const arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+
+/// HELPER FUNCTION: print the function **content** in source code form, properly indented,
+/// ergo: produce the code for inlining the function.
+/// 
+/// Also supports ES6's Arrow Functions:
+/// 
+/// ```
+/// function a(x) { return x; }        ==> 'return x;'
+/// function (x)  { return x; }        ==> 'return x;'
+/// (x) => { return x; }               ==> 'return x;'
+/// (x) => x;                          ==> 'return x;'
+/// (x) => do(1), do(2), x;            ==> 'return (do(1), do(2), x);'
+/// 
 /** @public */
 function printFunctionSourceCodeContainer(f) {
-    chkBugger$2(f);
-    return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+    var action = printFunctionSourceCode(f).trim();
+    var args;
+
+    // Also cope with Arrow Functions (and inline those as well?).
+    // See also https://github.com/zaach/jison-lex/issues/23
+    var m = funcRe.exec(action);
+    if (m) {
+        args = m[1].trim();
+        action = m[2].trim();
+    } else {
+        m = arrowFuncRe.exec(action);
+        if (m) {
+            if (m[2]) {
+                // non-bracketed arguments:
+                args = m[2].trim();
+            } else {
+                // bracketed arguments: may be empty args list!
+                args = m[1].trim();
+            }
+            if (m[5]) {
+                // non-bracketed version: implicit `return` statement!
+                //
+                // Q: Must we make sure we have extra braces around the return value 
+                // to prevent JavaScript from inserting implit EOS (End Of Statement) 
+                // markers when parsing this, when there are newlines in the code?
+                // A: No, we don't have to as arrow functions rvalues suffer from this
+                // same problem, hence the arrow function's programmer must already
+                // have formatted the code correctly.
+                action = m[4].trim();
+                action = 'return ' + action + ';';
+            } else {
+                action = m[3].trim();
+            }
+        } else {
+            var e = new Error('Cannot extract code from function');
+            e.subject = action;
+            throw e;
+        }
+    }
+    return {
+        args: args,
+        code: action,
+    };
 }
+
+
+
+
 
 
 
@@ -440,6 +502,16 @@ var stringifier = {
 	printFunctionSourceCode,
 	printFunctionSourceCodeContainer,
 };
+
+// 
+// 
+// 
+function detectIstanbulGlobal() {
+    const gcv = "__coverage__";
+    const globalvar = new Function('return this')();
+    var coverage = globalvar[gcv];
+    return coverage || false;
+}
 
 var helpers = {
     rmCommonWS: rmCommonWS$1,
@@ -454,8 +526,10 @@ var helpers = {
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
 
-	printFunctionSourceCode: stringifier.printFunctionSourceCode,
-	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+    printFunctionSourceCode: stringifier.printFunctionSourceCode,
+    printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+    detectIstanbulGlobal,
 };
 
 /*
@@ -1131,6 +1205,7 @@ if (typeof Object.setPrototypeOf === 'function') {
 }
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
+
 
 
 
@@ -9981,7 +10056,7 @@ var version$1 = '0.6.1-215';                              // require('./package.
 
 
 
-function chkBugger$3(src) {
+function chkBugger$4(src) {
     src = '' + src;
     if (src.match(/\bcov_\w+/)) {
         console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
@@ -10268,20 +10343,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         if (typeof action === 'function') {
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
-            action = String(action);
-            chkBugger$3(action);
-            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                // () => 'TOKEN'    --> return 'TOKEN' 
-                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-            }
+            action = helpers.printFunctionSourceCodeContainer(action).code;
         }
-        action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?'((?:\\'|[^']+)+)'\)?/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?"((?:\\"|[^"]+)+)"\)?/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
@@ -11063,7 +11128,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
             ].join('\n');
             var lexer = code_exec$2(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
-                chkBugger$3(sourcecode);
+                chkBugger$4(sourcecode);
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
             }, opts.options, "lexer");
@@ -12491,7 +12556,7 @@ return `{
     // --- END lexer kernel ---
 }
 
-chkBugger$3(getRegExpLexerPrototype());
+chkBugger$4(getRegExpLexerPrototype());
 RegExpLexer.prototype = (new Function(rmCommonWS$2`
     return ${getRegExpLexerPrototype()};
 `))();
@@ -13694,6 +13759,7 @@ if (typeof Object.setPrototypeOf === 'function') {
 }
 JisonParserError$2.prototype.constructor = JisonParserError$2;
 JisonParserError$2.prototype.name = 'JisonParserError';
+
 
 
 
@@ -17563,6 +17629,7 @@ JisonParserError$1.prototype.name = 'JisonParserError';
 
 
 
+
         // helper: reconstruct the productions[] table
         function bp$1(s) {
             var rv = [];
@@ -19478,7 +19545,7 @@ case 115:
     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
     
     
-    this.$ = '$$ = ' + yyvstack[yysp];
+    this.$ = '$$ = (' + yyvstack[yysp] + ');';
     break;
 
 case 119:
@@ -26384,9 +26451,46 @@ function autodetectAndConvertToJSONformat(grammar, optionalLexerSection, options
             chk_g = ebnfParser.parse(grammar, options);
         } catch (e) {
             if (options.json) {
-                err = new Error('Could not parse jison grammar in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
-                err.secondary_exception = e;
-                err.stack = ex1.stack;
+                // When both JSON5 and JISON input modes barf a hairball, assume the most important
+                // error is the JISON one (show that one first!), while it MAY be a JSON5 format
+                // error that triggered it (show that one last!).
+                // 
+                // Also check for common JISON errors which are obviously never triggered by any
+                // odd JSON5 input format error: when we encounter such an error here, we don't
+                // confuse matters and forget about the JSON5 fail as it's irrelevant:
+                const commonErrors = [
+                    /does not compile/,
+                    /you did not correctly separate trailing code/,
+                    /You did not specify/,
+                    /You cannot specify/,
+                    /must be qualified/,
+                    /%start/,
+                    /%token/,
+                    /%import/,
+                    /%include/,
+                    /%options/,
+                    /%parse-params/,
+                    /%parser-type/,
+                    /%epsilon/,
+                    /definition list error/,
+                    /token list error/,
+                    /declaration error/,
+                    /should be followed/,
+                    /should be separated/,
+                    /an error in one or more of your lexer regex rules/,
+                    /an error in your lexer epilogue/,
+                    /unsupported definition type/,
+                ];
+                var cmnerr = commonErrors.filter(function check(re) {
+                    return e.message.match(re);
+                });
+                if (cmnerr.length > 0) {
+                    err = e;
+                } else {
+                    err = new Error('Could not parse jison grammar in JSON AUTODETECT mode:\nin JISON Mode we get Error: ' + e.message + '\nwhile JSON5 Mode produces Error: ' + ex1.message);
+                    err.secondary_exception = e;
+                    err.stack = ex1.stack;
+                }
             } else {
                 err = new Error('Could not parse jison grammar\nError: ' + e.message);
                 err.stack = e.stack;
@@ -26778,18 +26882,7 @@ generator.constructor = function Jison_Generator(grammar, optionalLexerSection, 
         if (typeof grammar.actionInclude === 'function') {
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
-            var action = String(grammar.actionInclude);
-            chkBugger(action);
-            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                // () => 'TOKEN'    --> return 'TOKEN' 
-                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-            }
-            grammar.actionInclude = action;
+            grammar.actionInclude = helpers.printFunctionSourceCodeContainer(grammar.actionInclude).code;
         }
         this.actionInclude = grammar.actionInclude;
     }
@@ -31525,8 +31618,8 @@ lrGeneratorMixin.generateModule_ = function generateModule_() {
     ).concat([
         'table: ' + tableCode.tableCode,
         'defaultActions: ' + tableCode.defaultActionsCode,
-        'parseError: ' + String(this.parseError || parseErrorSourceCode),
-        'parse: ' + parseFn
+        'parseError: ' + String(this.parseError || parseErrorSourceCode).trim(),
+        'parse: ' + parseFn.trim()
     ]).concat(
         this.actionsUseYYERROR ?
         'yyError: 1' :

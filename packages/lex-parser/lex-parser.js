@@ -381,6 +381,7 @@ import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%option
   import helpers from '../helpers-lib';
   import fs from 'fs';
 
+
 // See also:
 // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
 // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
@@ -431,6 +432,7 @@ if (typeof Object.setPrototypeOf === 'function') {
 }
 JisonParserError.prototype.constructor = JisonParserError;
 JisonParserError.prototype.name = 'JisonParserError';
+
 
 
 

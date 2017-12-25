@@ -56,4 +56,4 @@ Vagrantfile
 /packages/jison2json/coverage
 /packages/lex-parser/coverage
 /packages/ebnf-parser/coverage
-
+/examples/coverage/

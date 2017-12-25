@@ -517,8 +517,8 @@ var index = {
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
 
-	printFunctionSourceCode: stringifier.printFunctionSourceCode,
-	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+    printFunctionSourceCode: stringifier.printFunctionSourceCode,
+    printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
 
     detectIstanbulGlobal,
 };

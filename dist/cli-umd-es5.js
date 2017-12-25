@@ -492,21 +492,87 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     /// HELPER FUNCTION: print the function in source code form, properly indented.
     /** @public */
     function printFunctionSourceCode(f) {
-        chkBugger$2(f);
-        return String(f);
+        var src = String(f);
+        chkBugger$2(src);
+        return src;
     }
 
-    /// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+    var funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
+    var arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+
+    /// HELPER FUNCTION: print the function **content** in source code form, properly indented,
+    /// ergo: produce the code for inlining the function.
+    /// 
+    /// Also supports ES6's Arrow Functions:
+    /// 
+    /// ```
+    /// function a(x) { return x; }        ==> 'return x;'
+    /// function (x)  { return x; }        ==> 'return x;'
+    /// (x) => { return x; }               ==> 'return x;'
+    /// (x) => x;                          ==> 'return x;'
+    /// (x) => do(1), do(2), x;            ==> 'return (do(1), do(2), x);'
+    /// 
     /** @public */
     function printFunctionSourceCodeContainer(f) {
-        chkBugger$2(f);
-        return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+        var action = printFunctionSourceCode(f).trim();
+        var args;
+
+        // Also cope with Arrow Functions (and inline those as well?).
+        // See also https://github.com/zaach/jison-lex/issues/23
+        var m = funcRe.exec(action);
+        if (m) {
+            args = m[1].trim();
+            action = m[2].trim();
+        } else {
+            m = arrowFuncRe.exec(action);
+            if (m) {
+                if (m[2]) {
+                    // non-bracketed arguments:
+                    args = m[2].trim();
+                } else {
+                    // bracketed arguments: may be empty args list!
+                    args = m[1].trim();
+                }
+                if (m[5]) {
+                    // non-bracketed version: implicit `return` statement!
+                    //
+                    // Q: Must we make sure we have extra braces around the return value 
+                    // to prevent JavaScript from inserting implit EOS (End Of Statement) 
+                    // markers when parsing this, when there are newlines in the code?
+                    // A: No, we don't have to as arrow functions rvalues suffer from this
+                    // same problem, hence the arrow function's programmer must already
+                    // have formatted the code correctly.
+                    action = m[4].trim();
+                    action = 'return ' + action + ';';
+                } else {
+                    action = m[3].trim();
+                }
+            } else {
+                var e = new Error('Cannot extract code from function');
+                e.subject = action;
+                throw e;
+            }
+        }
+        return {
+            args: args,
+            code: action
+        };
     }
 
     var stringifier = {
         printFunctionSourceCode: printFunctionSourceCode,
         printFunctionSourceCodeContainer: printFunctionSourceCodeContainer
     };
+
+    // 
+    // 
+    // 
+    function detectIstanbulGlobal() {
+        var gcv = "__coverage__";
+        var globalvar = new Function('return this')();
+        var coverage = globalvar[gcv];
+        return coverage || false;
+    }
 
     var helpers = {
         rmCommonWS: rmCommonWS$2,
@@ -522,7 +588,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         checkActionBlock: parse2AST.checkActionBlock,
 
         printFunctionSourceCode: stringifier.printFunctionSourceCode,
-        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
+        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+        detectIstanbulGlobal: detectIstanbulGlobal
     };
 
     /*
@@ -7730,7 +7798,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var version$2 = '0.6.1-215'; // require('./package.json').version;
 
 
-    function chkBugger$3(src) {
+    function chkBugger$4(src) {
         src = '' + src;
         if (src.match(/\bcov_\w+/)) {
             console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
@@ -8010,20 +8078,10 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             if (typeof action === 'function') {
                 // Also cope with Arrow Functions (and inline those as well?).
                 // See also https://github.com/zaach/jison-lex/issues/23
-                action = String(action);
-                chkBugger$3(action);
-                if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                    action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-                } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                    // () => 'TOKEN'    --> return 'TOKEN' 
-                    action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-                } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                    // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                    action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-                }
+                action = helpers.printFunctionSourceCodeContainer(action).code;
             }
-            action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-            action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+            action = action.replace(/return\s*\(?'((?:\\'|[^']+)+)'\)?/g, tokenNumberReplacement);
+            action = action.replace(/return\s*\(?"((?:\\"|[^"]+)+)"\)?/g, tokenNumberReplacement);
 
             var code = ['\n/*! Conditions::'];
             code.push(postprocessComment(active_conditions));
@@ -8706,7 +8764,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 var testcode = ['// provide a local version for test purposes:', jisonLexerErrorDefinition, '', generateFakeXRegExpClassSrcCode(), '', source, '', 'return lexer;'].join('\n');
                 var lexer = code_exec$2(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                     //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
-                    chkBugger$3(sourcecode);
+                    chkBugger$4(sourcecode);
                     var lexer_f = new Function('', sourcecode);
                     return lexer_f();
                 }, opts.options, "lexer");
@@ -8914,7 +8972,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         // --- END lexer kernel ---
     }
 
-    chkBugger$3(getRegExpLexerPrototype());
+    chkBugger$4(getRegExpLexerPrototype());
     RegExpLexer.prototype = new Function(rmCommonWS$3(_templateObject37, getRegExpLexerPrototype()))();
 
     // The lexer code stripper, driven by optimization analysis settings and
@@ -14719,7 +14777,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    this.$ = '$$ = ' + yyvstack[yysp];
+                    this.$ = '$$ = (' + yyvstack[yysp] + ');';
                     break;
 
                 case 119:
@@ -19598,9 +19656,24 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     chk_g = ebnfParser.parse(grammar, options);
                 } catch (e) {
                     if (options.json) {
-                        err = new Error('Could not parse jison grammar in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
-                        err.secondary_exception = e;
-                        err.stack = ex1.stack;
+                        // When both JSON5 and JISON input modes barf a hairball, assume the most important
+                        // error is the JISON one (show that one first!), while it MAY be a JSON5 format
+                        // error that triggered it (show that one last!).
+                        // 
+                        // Also check for common JISON errors which are obviously never triggered by any
+                        // odd JSON5 input format error: when we encounter such an error here, we don't
+                        // confuse matters and forget about the JSON5 fail as it's irrelevant:
+                        var commonErrors = [/does not compile/, /you did not correctly separate trailing code/, /You did not specify/, /You cannot specify/, /must be qualified/, /%start/, /%token/, /%import/, /%include/, /%options/, /%parse-params/, /%parser-type/, /%epsilon/, /definition list error/, /token list error/, /declaration error/, /should be followed/, /should be separated/, /an error in one or more of your lexer regex rules/, /an error in your lexer epilogue/, /unsupported definition type/];
+                        var cmnerr = commonErrors.filter(function check(re) {
+                            return e.message.match(re);
+                        });
+                        if (cmnerr.length > 0) {
+                            err = e;
+                        } else {
+                            err = new Error('Could not parse jison grammar in JSON AUTODETECT mode:\nin JISON Mode we get Error: ' + e.message + '\nwhile JSON5 Mode produces Error: ' + ex1.message);
+                            err.secondary_exception = e;
+                            err.stack = ex1.stack;
+                        }
                     } else {
                         err = new Error('Could not parse jison grammar\nError: ' + e.message);
                         err.stack = e.stack;
@@ -19989,18 +20062,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             if (typeof grammar.actionInclude === 'function') {
                 // Also cope with Arrow Functions (and inline those as well?).
                 // See also https://github.com/zaach/jison-lex/issues/23
-                var action = String(grammar.actionInclude);
-                chkBugger(action);
-                if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                    action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-                } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                    // () => 'TOKEN'    --> return 'TOKEN' 
-                    action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-                } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                    // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                    action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-                }
-                grammar.actionInclude = action;
+                grammar.actionInclude = helpers.printFunctionSourceCodeContainer(grammar.actionInclude).code;
             }
             this.actionInclude = grammar.actionInclude;
         }
@@ -23913,7 +23975,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         exportDest.terminalTable = produceTerminalTable(this.terminals_);
 
         var moduleCode = '{\n    // Code Generator Information Report\n    // ---------------------------------\n    //\n    // Options:\n    //\n    //   default action mode: ............. ' + JSON.stringify(this.options.defaultActionMode) + '\n    //   test-compile action mode: ........ ' + JSON.stringify(this.options.testCompileActionCode) + '\n    //   try..catch: ...................... ' + !this.options.noTryCatch + '\n    //   default resolve on conflict: ..... ' + !this.options.noDefaultResolve + '\n    //   on-demand look-ahead: ............ ' + this.onDemandLookahead + '\n    //   error recovery token skip maximum: ' + this.options.errorRecoveryTokenDiscardCount + '\n    //   yyerror in parse actions is: ..... ' + (this.options.parserErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   yyerror in lexer actions and other non-fatal lexer are:\n    //   .................................. ' + (this.options.lexerErrorsAreRecoverable ? 'recoverable' : 'NOT recoverable') + ',\n    //   debug grammar/output: ............ ' + this.options.debug + '\n    //   has partial LR conflict upgrade:   ' + this.options.hasPartialLrUpgradeOnConflict + '\n    //   rudimentary token-stack support:   ' + this.options.tokenStack + '\n    //   parser table compression mode: ... ' + this.options.compressTables + '\n    //   export debug tables: ............. ' + this.options.outputDebugTables + '\n    //   export *all* tables: ............. ' + this.options.exportAllTables.enabled + '\n    //   module type: ..................... ' + this.options.moduleType + '\n    //   parser engine type: .............. ' + this.options.type + '\n    //   output main() in the module: ..... ' + this.options.noMain + '\n    //   has user-specified main(): ....... ' + !!this.options.moduleMain + '\n    //   has user-specified require()/import modules for main():\n    //   .................................. ' + !!this.options.moduleMainImports + '\n    //   number of expected conflicts: .... ' + this.options.numExpectedConflictStates + '\n    //\n    //\n    // Parser Analysis flags:\n    //\n    //   no significant actions (parser is a language matcher only):\n    //   .................................. ' + this.actionsAreAllDefault + '\n    //   uses yyleng: ..................... ' + this.actionsUseYYLENG + '\n    //   uses yylineno: ................... ' + this.actionsUseYYLINENO + '\n    //   uses yytext: ..................... ' + this.actionsUseYYTEXT + '\n    //   uses yylloc: ..................... ' + this.actionsUseYYLOC + '\n    //   uses ParseError API: ............. ' + this.actionsUseParseError + '\n    //   uses YYERROR: .................... ' + this.actionsUseYYERROR + '\n    //   uses YYRECOVERING: ............... ' + this.actionsUseYYRECOVERING + '\n    //   uses YYERROK: .................... ' + this.actionsUseYYERROK + '\n    //   uses YYCLEARIN: .................. ' + this.actionsUseYYCLEARIN + '\n    //   tracks rule values: .............. ' + this.actionsUseValueTracking + '\n    //   assigns rule values: ............. ' + this.actionsUseValueAssignment + '\n    //   uses location tracking: .......... ' + this.actionsUseLocationTracking + '\n    //   assigns location: ................ ' + this.actionsUseLocationAssignment + '\n    //   uses yystack: .................... ' + this.actionsUseYYSTACK + '\n    //   uses yysstack: ................... ' + this.actionsUseYYSSTACK + '\n    //   uses yysp: ....................... ' + this.actionsUseYYSTACKPOINTER + '\n    //   uses yyrulelength: ............... ' + this.actionsUseYYRULELENGTH + '\n    //   uses yyMergeLocationInfo API: .... ' + this.actionsUseYYMERGELOCATIONINFO + '\n    //   has error recovery: .............. ' + this.hasErrorRecovery + '\n    //   has error reporting: ............. ' + this.hasErrorReporting + '\n    //\n    // --------- END OF REPORT -----------\n\n';
-        moduleCode += ['trace: ' + String(this.trace || parser.trace), 'JisonParserError: JisonParserError', 'yy: {}', 'options: ' + produceOptions(this.options), 'symbols_: ' + JSON.stringify(symbolTable, null, 2), 'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:')].concat(rulesLst ? 'nonterminals_: ' + rulesLst : []).concat(descrLst ? 'terminal_descriptions_: ' + descrLst : []).concat([define_parser_APIs_1.trim(), 'productions_: ' + tableCode.productionsCode]).concat(String(this.performAction).trim() !== '' ? 'performAction: ' + String(this.performAction) : []).concat(['table: ' + tableCode.tableCode, 'defaultActions: ' + tableCode.defaultActionsCode, 'parseError: ' + String(this.parseError || parseErrorSourceCode), 'parse: ' + parseFn]).concat(this.actionsUseYYERROR ? 'yyError: 1' : []).concat(this.actionsUseYYRECOVERING ? 'yyRecovering: 1' : []).concat(this.actionsUseYYERROK ? 'yyErrOk: 1' : []).concat(this.actionsUseYYCLEARIN ? 'yyClearIn: 1' : []).join(',\n');
+        moduleCode += ['trace: ' + String(this.trace || parser.trace), 'JisonParserError: JisonParserError', 'yy: {}', 'options: ' + produceOptions(this.options), 'symbols_: ' + JSON.stringify(symbolTable, null, 2), 'terminals_: ' + JSON.stringify(this.terminals_, null, 2).replace(/"([0-9]+)":/g, '$1:')].concat(rulesLst ? 'nonterminals_: ' + rulesLst : []).concat(descrLst ? 'terminal_descriptions_: ' + descrLst : []).concat([define_parser_APIs_1.trim(), 'productions_: ' + tableCode.productionsCode]).concat(String(this.performAction).trim() !== '' ? 'performAction: ' + String(this.performAction) : []).concat(['table: ' + tableCode.tableCode, 'defaultActions: ' + tableCode.defaultActionsCode, 'parseError: ' + String(this.parseError || parseErrorSourceCode).trim(), 'parse: ' + parseFn.trim()]).concat(this.actionsUseYYERROR ? 'yyError: 1' : []).concat(this.actionsUseYYRECOVERING ? 'yyRecovering: 1' : []).concat(this.actionsUseYYERROK ? 'yyErrOk: 1' : []).concat(this.actionsUseYYCLEARIN ? 'yyClearIn: 1' : []).join(',\n');
         moduleCode += '\n};';
 
         var exportSourceCode = this.options.exportSourceCode;

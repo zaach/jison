@@ -131,8 +131,6 @@ expressions
         }
     | error EOF
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
             print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { '$1': typeof $1, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
@@ -257,8 +255,6 @@ v
         }
     | error
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
             print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, '@$': @$, token: parser.describeSymbol(#$), msg: $error.errStr }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
             yyclearin;
