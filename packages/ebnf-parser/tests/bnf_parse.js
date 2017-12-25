@@ -266,7 +266,7 @@ describe("BNF parser", function () {
 
   it("test expression action", function () {
     var grammar = "%% test: foo bar -> $foo\n;";
-    var expected = {bnf: {test: [["foo bar","$$ = $foo"]]}};
+    var expected = {bnf: {test: [["foo bar","$$ = ($foo);"]]}};
 
     assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
   });

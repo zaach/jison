@@ -374,7 +374,7 @@ describe("Parser Generator API", function () {
       'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
       'e\n    : phrase+ \'joy\'? -> $1 + \' \' + yytext \n    ;\n\n' +
       'phrase\n    : \'happy\' \'happy\' \'joy\' \'joy\' ' +
-      ' -> [$1, $2, $3, $4].join(\' \'); \n    ;';
+      ' -> [$1, $2, $3, $4].join(\' \') \n    ;';
 
     var parser = new Jison.Parser(grammar);
     var generated = parser.generate();

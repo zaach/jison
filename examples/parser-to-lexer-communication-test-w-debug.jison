@@ -44,54 +44,54 @@
 
 
 S
-    : init x x e                -> parser.trace('S:complete = ', $e);
+    : init x x e                { parser.trace('S:complete = ', $e); }
     ;
 
 init
-    : %epsilon                  -> parser.trace('init:epsilon');
+    : %epsilon                  { parser.trace('init:epsilon'); }
     ;
 
 x
-    : %epsilon                  -> parser.trace('X:epsilon');                    $$ = '<X-epsilon>';
+    : %epsilon                  { parser.trace('X:epsilon');                    $$ = '<X-epsilon>'; }
     ;
 
 e
-    : cmd e                     -> parser.trace('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e;
-    | %epsilon                  -> parser.trace('e:epsilon');                    $$ = '<E-epsilon>';
+    : cmd e                     { parser.trace('e:cmd=', $cmd);                 $$ = $cmd + ' | ' + $e; }
+    | %epsilon                  { parser.trace('e:epsilon');                    $$ = '<E-epsilon>'; }
     ;
 
 cmd
-    : a                         -> parser.trace('cmd:a');                        $$ = $a;
-    | f_a                       -> parser.trace('cmd:function a()');             $$ = $f_a;
-    | b                         -> parser.trace('cmd:b');                        $$ = $b;
-    | f_b                       -> parser.trace('cmd:function b()');             $$ = $f_b;
-    | error                     -> parser.trace('cmd:error', get_reduced_error_info_obj($error) || $error);            yyerrok; yyclearin; $$ = 'ERROR';
+    : a                         { parser.trace('cmd:a');                        $$ = $a; }
+    | f_a                       { parser.trace('cmd:function a()');             $$ = $f_a; }
+    | b                         { parser.trace('cmd:b');                        $$ = $b; }
+    | f_b                       { parser.trace('cmd:function b()');             $$ = $f_b; }
+    | error                     { parser.trace('cmd:error', get_reduced_error_info_obj($error) || $error);            yyerrok; yyclearin; $$ = 'ERROR'; }
     ;
 
 a
-    : A                         -> parser.trace('a:A');                          $$ = 'A[' + $A + ']';
+    : A                         { parser.trace('a:A');                          $$ = 'A[' + $A + ']'; }
     ;
 
 f_a
-    : A lb e rb                 -> parser.trace('function a:', $e);              $$ = 'A' + $lb + $e + $rb;
+    : A lb e rb                 { parser.trace('function a:', $e);              $$ = 'A' + $lb + $e + $rb; }
     ;
 
 b
-    : B                         -> parser.trace('b:B');                          $$ = 'B[' + $B + ']';
+    : B                         { parser.trace('b:B');                          $$ = 'B[' + $B + ']'; }
     ;
 
 f_b
-    : B lb e rb                 -> parser.trace('function b:', $e);              $$ = 'B' + $lb + $e + $rb;
+    : B lb e rb                 { parser.trace('function b:', $e);              $$ = 'B' + $lb + $e + $rb; }
     ;
 
 lb
-    : '('                       -> parser.trace('lb+PUSH:[(] ');                 yy.lexer.pushState('alt'); $$ = '(';
-    | BEGIN                     -> parser.trace('lb:[alt-(] ');                  $$ = '{';
+    : '('                       { parser.trace('lb+PUSH:[(] ');                 yy.lexer.pushState('alt'); $$ = '('; }
+    | BEGIN                     { parser.trace('lb:[alt-(] ');                  $$ = '{'; }
     ;
 
 rb
-    : ')'                       -> parser.trace('lb:[)] ');                      $$ = ')';
-    | END                       -> parser.trace('lb+POP:[alt-)] ');              yy.lexer.popState(); $$ = '}';
+    : ')'                       { parser.trace('lb:[)] ');                      $$ = ')'; }
+    | END                       { parser.trace('lb+POP:[alt-)] ');              yy.lexer.popState(); $$ = '}'; }
     ;
 
 %%
