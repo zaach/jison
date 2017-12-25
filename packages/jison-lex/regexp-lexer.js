@@ -314,20 +314,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         if (typeof action === 'function') {
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
-            action = String(action);
-            chkBugger(action);
-            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                // () => 'TOKEN'    --> return 'TOKEN' 
-                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-            }
+            action = helpers.printFunctionSourceCodeContainer(action).code;
         }
-        action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?'((?:\\'|[^']+)+)'\)?/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?"((?:\\"|[^"]+)+)"\)?/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
