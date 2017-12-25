@@ -7,7 +7,7 @@
   "name": "@gerhobbelt/jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.6.1-215",
+  "version": "0.6.1-216",
   "keywords": [
     "jison",
     "parser",
@@ -33,11 +33,11 @@
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "0.5.1-20",
-    "@gerhobbelt/lex-parser": "0.6.1-215",
+    "@gerhobbelt/lex-parser": "0.6.1-216",
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/recast": "0.13.0-23",
     "@gerhobbelt/xregexp": "3.2.0-22",
-    "jison-helpers-lib": "0.6.1-215"
+    "jison-helpers-lib": "0.6.1-216"
   },
   "devDependencies": {
     "@gerhobbelt/js-yaml": "3.10.1-5",

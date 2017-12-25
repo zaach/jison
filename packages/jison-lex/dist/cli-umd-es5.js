@@ -7487,7 +7487,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var code_exec$1 = helpers.exec;
     // import recast from '@gerhobbelt/recast';
     // import astUtils from '@gerhobbelt/ast-util';
-    var version$1 = '0.6.1-215'; // require('./package.json').version;
+    var version$1 = '0.6.1-216'; // require('./package.json').version;
 
 
     function chkBugger$3(src) {
@@ -9095,7 +9095,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     var mkIdentifier = helpers.mkIdentifier;
 
-    var version = '0.6.1-215'; // require('./package.json').version;
+    var version = '0.6.1-216'; // require('./package.json').version;
 
 
     function getCommandlineOptions() {

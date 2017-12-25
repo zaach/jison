@@ -7790,7 +7790,7 @@ var mkIdentifier$3 = helpers.mkIdentifier;
 var code_exec$2 = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version$1 = '0.6.1-215'; // require('./package.json').version;
+var version$1 = '0.6.1-216'; // require('./package.json').version;
 
 
 function chkBugger$4(src) {
@@ -18563,7 +18563,7 @@ var bnf = {
 
 };
 
-var version$2 = '0.6.1-215'; // require('./package.json').version;
+var version$2 = '0.6.1-216'; // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);
@@ -19347,7 +19347,7 @@ function grammarPrinter(raw, options) {
 var rmCommonWS = helpers.rmCommonWS;
 var mkIdentifier = helpers.mkIdentifier;
 var code_exec = helpers.exec;
-var version = '0.6.1-215';
+var version = '0.6.1-216';
 
 var devDebug = 0;
 

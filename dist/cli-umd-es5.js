@@ -7795,7 +7795,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var code_exec$2 = helpers.exec;
     // import recast from '@gerhobbelt/recast';
     // import astUtils from '@gerhobbelt/ast-util';
-    var version$2 = '0.6.1-215'; // require('./package.json').version;
+    var version$2 = '0.6.1-216'; // require('./package.json').version;
 
 
     function chkBugger$4(src) {
@@ -18568,7 +18568,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     };
 
-    var version$3 = '0.6.1-215'; // require('./package.json').version;
+    var version$3 = '0.6.1-216'; // require('./package.json').version;
 
     function parse(grammar) {
         return bnf.parser.parse(grammar);
@@ -19352,7 +19352,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     var rmCommonWS$1 = helpers.rmCommonWS;
     var mkIdentifier$1 = helpers.mkIdentifier;
     var code_exec = helpers.exec;
-    var version$1 = '0.6.1-215';
+    var version$1 = '0.6.1-216';
 
     var devDebug = 0;
 
@@ -25230,7 +25230,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     assert$1(typeof Jison.mkStdOptions === 'function');
     assert$1(typeof Jison.Generator === 'function');
 
-    var version = '0.6.1-215';
+    var version = '0.6.1-216';
 
     function getCommandlineOptions() {
         var defaults = Jison.defaultJisonOptions;
