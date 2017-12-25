@@ -1,5 +1,17 @@
-0.6.1-??? / 2017-12-23
+0.6.1-215 / 2017-12-25
 
+  * final work on https://github.com/GerHobbelt/jison/issues/32: all tests pass now when running them in nyc/istanbul environment. This also takes care of https://github.com/gotwarlost/istanbul/issues/856 until it's fixed in the mainline there.
+  * fix: when both JSON5 and JISON input modes barf a hairball, assume the most important error is the JISON one (show that one first!), while it MAY be a JSON5 format error that triggered it (show that one last!).
+    Also check for common JISON errors which are obviously never triggered by any odd JSON5 input format error: when we encounter such an error, we don't confuse matters and forget about the JSON5 fail as it's irrelevant.
+  * further work on https://github.com/zaach/jison/issues/363 fixing the ARROW_ACTION action by placing the received user-defined action code within () braces so that the generated parser will certainly treat the entire blurb as a single JavaScript *expression* rather than a single or compound *statement*; also note commit SHA-1: 1c8c89dc62cfa4c9fa1e2888eb5459536853beb1 :: BNF parser: produce stricter action code for arrow action in any jison grammar so that we can more easily check coding mistakes in a production's arrow code, e.g. unwanted semicolons, multiple statements, etc., which can currently slip through the net and cause hard-to-diagnose havoc down the line.
+    Adjusted unit tests accordingly.
+  * given https://github.com/gotwarlost/istanbul/issues/856 add run-time detection for istanbul and provide unit tests to ensure both the istanbul run-time detector helper (detectIstanbulGlobal()) and the function source code stringifier/extractor helpers are on their best behaviour.
+  * fix the function code extractor to cope with the arrow function format x => expression.
+  * helpers-lib: augment the function `printFunctionSourceCodeContainer(f)` API to support ES6 arrow functions and extract the code content of any such function for inlining. This code will be used in jison and jison-lex to support arrow functions passed via the programmer API (a la https://github.com/zaach/jison-lex/issues/23 )
+    Also extended the unit tests to cover various function type input scenarios.
+  * BNF parser: produce stricter action code for arrow action in any jison grammar so that we can more easily check coding mistakes in a production's arrow code, e.g. unwanted semicolons, multiple statements, etc., which can currently slip through the net and cause hard-to-diagnose havoc down the line.
+  * add `make report-nyc` task as we observed that most examples (with code coverage when FULL_CODE_COVERAGE env.var. is set) are run after the `test-nyc` make target, hence we added `report-nyc` as a final target to the make all a.k.a. make build process. 
+    **WARNING: as now all jison compiles and examples' runs are code coveraged as well, this may take a while: ~30mins this evening on this box here ;-) ) -- anyway, the key is that we now are able to collect a lot of code coverage data and have the report-nyc task report on those statistics.
   * clean up backquotes in the master code chunks' files (used by patch_parser_kernel tool)
   * when you specify the environment variable FULL_CODE_COVERAGE=1, the subsequent make runs will include extensive code coverage analysis runs, next to the regular tests, etc.: a total summary will be available in the jison::/coverage/ directory when all is done.
 
@@ -35,9 +47,6 @@
     In other words: whn your custom parseError() handler DOES NOT check the hash.recoverable flag AND produces a non-undefined return value, you will always have the parse() call terminate the parse and return said return value to the caller.
     (This change also 'beautifies'/'shortens' the yylloc dump sections in any yydebug() debug lines.)
   * fix: don't let the parser analysis flag parseActionsUseYYMERGELOCATIONINFO slip through into the generated code's options section
-
-
-
 
 0.6.1-214 / 2017-12-20
 
