@@ -19,7 +19,7 @@ function printFunctionSourceCode(f) {
 
 
 const funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
-const arrowFuncRe = /^\(([^\)]*)\)[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+const arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
 
 /// HELPER FUNCTION: print the function **content** in source code form, properly indented,
 /// ergo: produce the code for inlining the function.
@@ -47,8 +47,14 @@ function printFunctionSourceCodeContainer(f) {
     } else {
         m = arrowFuncRe.exec(action);
         if (m) {
-            args = m[1].trim();
-            if (m[4]) {
+            if (m[2]) {
+                // non-bracketed arguments:
+                args = m[2].trim();
+            } else {
+                // bracketed arguments: may be empty args list!
+                args = m[1].trim();
+            }
+            if (m[5]) {
                 // non-bracketed version: implicit `return` statement!
                 //
                 // Q: Must we make sure we have extra braces around the return value 
@@ -57,10 +63,10 @@ function printFunctionSourceCodeContainer(f) {
                 // A: No, we don't have to as arrow functions rvalues suffer from this
                 // same problem, hence the arrow function's programmer must already
                 // have formatted the code correctly.
-                action = m[3].trim();
+                action = m[4].trim();
                 action = 'return ' + action + ';';
             } else {
-                action = m[2].trim();
+                action = m[3].trim();
             }
         } else {
             var e = new Error('Cannot extract code from function');

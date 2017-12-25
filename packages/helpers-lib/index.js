@@ -6,6 +6,7 @@ import dquote from './dquote';
 import code_exec from './safe-code-exec-and-diag';
 import parse2AST from './parse-code-chunk-to-AST';
 import stringifier from './code-stringification';
+import detectIstanbulGlobal from './detect-istanbul';
 
 
 export default {
@@ -23,4 +24,6 @@ export default {
 
 	printFunctionSourceCode: stringifier.printFunctionSourceCode,
 	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+    detectIstanbulGlobal,
 };

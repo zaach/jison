@@ -81,51 +81,125 @@ describe("helpers API", function () {
       'PRETTY RANGE');
   });
 
-  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
-  it("printFunctionSourceCode", function () {
-    function d(i) { /* mock for linters */ }
-
-    assert.strictEqual(helpers.printFunctionSourceCode(function a(x) { return x; }), "function a(x) { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode(function (x)  { return x; }), "function (x)  { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode((x) => { return x; }), "(x) => { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode((x) => x), "(x) => x");
-    assert.strictEqual(helpers.printFunctionSourceCode((x) => (d(1), d(2), x)), "(x) => (d(1), d(2), x)");
-
-    var f1 = function a(x) { return x; };
-    var f2 = function (x)  { return x; };
-    var f3 = (x) => { return x; };
-    var f4 = (x) => x;
-    var f5 = (x) => (d(1), d(2), x);
-
-    assert.strictEqual(helpers.printFunctionSourceCode(f1), "function a(x) { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode(f2), "function (x)  { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode(f3), "(x) => { return x; }");
-    assert.strictEqual(helpers.printFunctionSourceCode(f4), "(x) => x");
-    assert.strictEqual(helpers.printFunctionSourceCode(f5), "(x) => (d(1), d(2), x)");
+  it("detectIstanbulGlobal", function () {
+    if (!helpers.detectIstanbulGlobal()) {
+      assert.strictEqual(helpers.detectIstanbulGlobal(), false);
+    } else {
+      var o = helpers.detectIstanbulGlobal();
+      assert.ok(o);
+      assert.equal(typeof o, 'object');
+      var k = Object.keys(o);
+      var kp = k.filter(function pass_paths(el) {
+        return el.match(/[\\\/][^\\\/]+$/);
+      });
+      assert.ok(k.length > 0, "expected 1 or more keys in the istanbul global");
+      assert.ok(kp.length > 0, "expected 1 or more paths as keys in the istanbul global");
+      var kp = k.filter(function pass_istanbul_file_objects(idx) {
+        var el = o[idx];
+        return el && el.hash && el.statementMap && el.path;
+      });
+      assert.ok(kp.length > 0, "expected 1 or more istanbul file coverage objects in the istanbul global");
+    }
   });
 
   /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
-  it("printFunctionSourceCodeContainer", function () {
+  it("printFunctionSourceCode (direct)", function () {
     function d(i) { /* mock for linters */ }
-    var x;          /* mock */
-    
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(function a(x) { return x; }), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(function (x)  { return x; }), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => { return x; }), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => x), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => (d(1), d(2), x)), { args: "x", code: "return (d(1), d(2), x);" });
+
+    if (!helpers.detectIstanbulGlobal()) {
+      assert.strictEqual(helpers.printFunctionSourceCode(function a(x) { return x; }), "function a(x) { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode(function (x)  { return x; }), "function (x)  { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => { return x; }), "(x) => { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => x), "(x) => x");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => (d(1), d(2), x)), "(x) => (d(1), d(2), x)");
+      assert.strictEqual(helpers.printFunctionSourceCode(x => x + 7), "x => x + 7");
+    } else {
+      assert.strictEqual(helpers.printFunctionSourceCode(function a(x) { return x; }), "function a(x){return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode(function (x)  { return x; }), "function (x){return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => { return x; }), "x=>{return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => x), "x=>x");
+      assert.strictEqual(helpers.printFunctionSourceCode((x) => (d(1), d(2), x)), "x=>(d(1),d(2),x)");
+      assert.strictEqual(helpers.printFunctionSourceCode(x => x + 7), "x=>x+7");
+    }
+  });
+
+  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
+  it("printFunctionSourceCode (indirect)", function () {
+    function d(i) { /* mock for linters */ }
 
     var f1 = function a(x) { return x; };
     var f2 = function (x)  { return x; };
     var f3 = (x) => { return x; };
     var f4 = (x) => x;
     var f5 = (x) => (d(1), d(2), x);
+    var f6 = x => x + 7;
 
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f1), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f2), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f3), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f4), { args: "x", code: "return x;" });
-    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f5), { args: "x", code: "return (d(1), d(2), x);" });
+    if (!helpers.detectIstanbulGlobal()) {
+      assert.strictEqual(helpers.printFunctionSourceCode(f1), "function a(x) { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode(f2), "function (x)  { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode(f3), "(x) => { return x; }");
+      assert.strictEqual(helpers.printFunctionSourceCode(f4), "(x) => x");
+      assert.strictEqual(helpers.printFunctionSourceCode(f5), "(x) => (d(1), d(2), x)");
+      assert.strictEqual(helpers.printFunctionSourceCode(f6), "x => x + 7");
+    } else {
+      assert.strictEqual(helpers.printFunctionSourceCode(f1), "function a(x){return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode(f2), "function (x){return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode(f3), "x=>{return x;}");
+      assert.strictEqual(helpers.printFunctionSourceCode(f4), "x=>x");
+      assert.strictEqual(helpers.printFunctionSourceCode(f5), "x=>(d(1),d(2),x)");
+      assert.strictEqual(helpers.printFunctionSourceCode(f6), "x=>x+7");
+    } 
+  });
+
+  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
+  it("printFunctionSourceCodeContainer (direct)", function () {
+    function d(i) { /* mock for linters */ }
+    var x;          /* mock */
+    
+    if (!helpers.detectIstanbulGlobal()) {
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(function a(x) { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(function (x)  { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => x), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => (d(1), d(2), x)), { args: "x", code: "return (d(1), d(2), x);" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(x => x + 7), { args: "x", code: "return x + 7;" });
+    } else {
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(function a(x) { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(function (x)  { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => { return x; }), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => x), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => (d(1), d(2), x)), { args: "x", code: "return (d(1),d(2),x);" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(x => x + 7), { args: "x", code: "return x+7;" });
+    } 
+  });
+
+  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
+  it("printFunctionSourceCodeContainer (indirect)", function () {
+    function d(i) { /* mock for linters */ }
+    var x;          /* mock */
+    
+    var f1 = function a(x) { return x; };
+    var f2 = function (x)  { return x; };
+    var f3 = (x) => { return x; };
+    var f4 = (x) => x;
+    var f5 = (x) => (d(1), d(2), x);
+    var f6 = x => x + 7;
+
+    if (!helpers.detectIstanbulGlobal()) {
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f1), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f2), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f3), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f4), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f5), { args: "x", code: "return (d(1), d(2), x);" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f6), { args: "x", code: "return x + 7;" });
+    } else {
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f1), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f2), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f3), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f4), { args: "x", code: "return x;" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f5), { args: "x", code: "return (d(1),d(2),x);" });
+      assert.deepEqual(helpers.printFunctionSourceCodeContainer(f6), { args: "x", code: "return x+7;" });
+    } 
   });
 
   it("parseCodeChunkToAST + prettyPrintAST", function () {
