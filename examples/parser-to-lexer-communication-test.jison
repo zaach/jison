@@ -44,7 +44,7 @@
 
 
 S
-    : init x x e                -> $e;
+    : init x x e                -> $e
     ;
 
 init
@@ -52,45 +52,45 @@ init
     ;
 
 x
-    : %epsilon                  -> '<X-epsilon>';
+    : %epsilon                  -> '<X-epsilon>'
     ;
 
 e
-    : cmd e                     -> $cmd + ' | ' + $e;
-    | %epsilon                  -> '<E-epsilon>';
+    : cmd e                     -> $cmd + ' | ' + $e
+    | %epsilon                  -> '<E-epsilon>'
     ;
 
 cmd
-    : a                         -> $a;
-    | f_a                       -> $f_a;
-    | b                         -> $b;
-    | f_b                       -> $f_b;
+    : a                         -> $a
+    | f_a                       -> $f_a
+    | b                         -> $b
+    | f_b                       -> $f_b
     | error                     { yyerrok; yyclearin; $$ = 'ERROR'; }
     ;
 
 a
-    : A                         -> 'A[' + $A + ']';
+    : A                         -> 'A[' + $A + ']'
     ;
 
 f_a
-    : A lb e rb                 -> 'A' + $lb + $e + $rb;
+    : A lb e rb                 -> 'A' + $lb + $e + $rb
     ;
 
 b
-    : B                         -> 'B[' + $B + ']';
+    : B                         -> 'B[' + $B + ']'
     ;
 
 f_b
-    : B lb e rb                 -> 'B' + $lb + $e + $rb;
+    : B lb e rb                 -> 'B' + $lb + $e + $rb
     ;
 
 lb
     : '('                       { yylexer.pushState('alt'); $$ = '('; }
-    | BEGIN                     -> '{';
+    | BEGIN                     -> '{'
     ;
 
 rb
-    : ')'                       -> ')';
+    : ')'                       -> ')'
     | END                       { yylexer.popState(); $$ = '}'; }
     ;
 
