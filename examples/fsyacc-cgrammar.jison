@@ -326,20 +326,21 @@
 %left INF_INF SUP_SUP
 %left PLUS MINUS
 %left STAR SLASH PERCENT CONST RESTRICT VOLATILE
-%right  EXCLAM TILDE PLUS_PLUS MINUS_MINUS CAST RPAREN ADDROF SIZEOF ALIGNOF
+%right  EXCLAM TILDE PLUS_PLUS MINUS_MINUS CAST LPAREN RPAREN ADDROF SIZEOF ALIGNOF
 %left   LBRACKET
-%left DOT ARROW LPAREN LBRACE
+%left DOT ARROW LBRACE
 %right  NAMED_TYPE     /* We'll use this to handle redefinitions of
                         * NAMED_TYPE as variables */
-%left   IDENT
+
 
 /* Non-terminals informations */
 
 //%start interpret file
-//%start interpret 
+%start interpret 
 //%start primary_expression
-%start paren_attr_list
+//%start paren_attr_list
 
+%option test-compile-action-code="none"
 
 %%
 

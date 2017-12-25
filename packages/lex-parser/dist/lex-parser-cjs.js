@@ -6,7 +6,7 @@ var XRegExp = _interopDefault(require('@gerhobbelt/xregexp'));
 var fs = _interopDefault(require('fs'));
 var path = _interopDefault(require('path'));
 var recast = _interopDefault(require('@gerhobbelt/recast'));
-var assert = _interopDefault(require('assert'));
+var assert$1 = _interopDefault(require('assert'));
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -103,8 +103,31 @@ function camelCase(s) {
         return match.toLowerCase();
     })
     .replace(/-\w/g, function (match) {
-        return match.charAt(1).toUpperCase();
-    });
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    })
+}
+
+// Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+/** @public */
+function mkIdentifier(s) {
+    s = camelCase('' + s);
+    // cleanup: replace any non-suitable character series to a single underscore:
+    return s
+    .replace(/^[^\w_]/, '_')
+    // do not accept numerics at the leading position, despite those matching regex `\w`:
+    .replace(/^\d/, '_')
+    .replace(/[^\w\d_]+/g, '_')
+    // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+    .replace(/^__+/, '#')
+    .replace(/__+$/, '#')
+    .replace(/_+/g, '_')
+    .replace(/#/g, '__');
 }
 
 // properly quote and escape the given input string
@@ -137,6 +160,16 @@ function dquote(s) {
 // the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
 // we can test the code in a different environment so that we can see what precisely is causing the failure.
 // 
+
+
+function chkBugger(src) {
+    src = String(src);
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
+
+
 
 
 // Helper function: pad number with leading zeroes
@@ -245,6 +278,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         if (typeof code_execution_rig !== 'function') {
             throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
         }
+        chkBugger(sourcecode);
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
     } catch (ex) {
         if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -289,13 +323,13 @@ var code_exec = {
 
 
 //import astUtils from '@gerhobbelt/ast-util';
-assert(recast);
+assert$1(recast);
 var types = recast.types;
-assert(types);
+assert$1(types);
 var namedTypes = types.namedTypes;
-assert(namedTypes);
+assert$1(namedTypes);
 var b = types.builders;
-assert(b);
+assert$1(b);
 // //assert(astUtils);
 
 
@@ -374,17 +408,89 @@ var parse2AST = {
     checkActionBlock: checkActionBlock$1,
 };
 
+function chkBugger$1(src) {
+    src = String(src);
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
+
+
 /// HELPER FUNCTION: print the function in source code form, properly indented.
 /** @public */
 function printFunctionSourceCode(f) {
-    return String(f);
+    var src = String(f);
+    chkBugger$1(src);
+    return src;
 }
 
-/// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+
+
+const funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
+const arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+
+/// HELPER FUNCTION: print the function **content** in source code form, properly indented,
+/// ergo: produce the code for inlining the function.
+/// 
+/// Also supports ES6's Arrow Functions:
+/// 
+/// ```
+/// function a(x) { return x; }        ==> 'return x;'
+/// function (x)  { return x; }        ==> 'return x;'
+/// (x) => { return x; }               ==> 'return x;'
+/// (x) => x;                          ==> 'return x;'
+/// (x) => do(1), do(2), x;            ==> 'return (do(1), do(2), x);'
+/// 
 /** @public */
 function printFunctionSourceCodeContainer(f) {
-    return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+    var action = printFunctionSourceCode(f).trim();
+    var args;
+
+    // Also cope with Arrow Functions (and inline those as well?).
+    // See also https://github.com/zaach/jison-lex/issues/23
+    var m = funcRe.exec(action);
+    if (m) {
+        args = m[1].trim();
+        action = m[2].trim();
+    } else {
+        m = arrowFuncRe.exec(action);
+        if (m) {
+            if (m[2]) {
+                // non-bracketed arguments:
+                args = m[2].trim();
+            } else {
+                // bracketed arguments: may be empty args list!
+                args = m[1].trim();
+            }
+            if (m[5]) {
+                // non-bracketed version: implicit `return` statement!
+                //
+                // Q: Must we make sure we have extra braces around the return value 
+                // to prevent JavaScript from inserting implit EOS (End Of Statement) 
+                // markers when parsing this, when there are newlines in the code?
+                // A: No, we don't have to as arrow functions rvalues suffer from this
+                // same problem, hence the arrow function's programmer must already
+                // have formatted the code correctly.
+                action = m[4].trim();
+                action = 'return ' + action + ';';
+            } else {
+                action = m[3].trim();
+            }
+        } else {
+            var e = new Error('Cannot extract code from function');
+            e.subject = action;
+            throw e;
+        }
+    }
+    return {
+        args: args,
+        code: action,
+    };
 }
+
+
+
+
 
 
 
@@ -393,9 +499,20 @@ var stringifier = {
 	printFunctionSourceCodeContainer,
 };
 
+// 
+// 
+// 
+function detectIstanbulGlobal() {
+    const gcv = "__coverage__";
+    const globalvar = new Function('return this')();
+    var coverage = globalvar[gcv];
+    return coverage || false;
+}
+
 var helpers = {
     rmCommonWS: rmCommonWS$1,
     camelCase,
+    mkIdentifier,
     dquote,
 
     exec: code_exec.exec,
@@ -405,14 +522,13 @@ var helpers = {
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
 
-	printFunctionSourceCode: stringifier.printFunctionSourceCode,
-	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+    printFunctionSourceCode: stringifier.printFunctionSourceCode,
+    printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+    detectIstanbulGlobal,
 };
 
-// hack:
-var assert$1;
-
-/* parser generated by jison 0.6.1-213 */
+/* parser generated by jison 0.6.1-215 */
 
 /*
  * Returns a Parser object of the following structure:
@@ -843,6 +959,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 
 
 
+
         // helper: reconstruct the productions[] table
         function bp(s) {
             var rv = [];
@@ -955,7 +1072,8 @@ var parser = {
     //
     // Options:
     //
-    //   default action mode: ............. classic,merge
+    //   default action mode: ............. ["classic","merge"]
+    //   test-compile action mode: ........ "parser:*,lexer:*"
     //   try..catch: ...................... true
     //   default resolve on conflict: ..... true
     //   on-demand look-ahead: ............ false
@@ -1005,7 +1123,7 @@ var parser = {
     //
     // --------- END OF REPORT -----------
 
-trace: function no_op_trace() {},
+trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 options: {
@@ -1163,104 +1281,107 @@ terminals_: {
   53: "CODE"
 },
 TERROR: 2,
-EOF: 1,
+    EOF: 1,
 
-// internals: defined here so the object *structure* doesn't get modified by parse() et al,
-// thus helping JIT compilers like Chrome V8.
-originalQuoteName: null,
-originalParseError: null,
-cleanupAfterParse: null,
-constructParseErrorInfo: null,
-yyMergeLocationInfo: null,
+    // internals: defined here so the object *structure* doesn't get modified by parse() et al,
+    // thus helping JIT compilers like Chrome V8.
+    originalQuoteName: null,
+    originalParseError: null,
+    cleanupAfterParse: null,
+    constructParseErrorInfo: null,
+    yyMergeLocationInfo: null,
 
-__reentrant_call_depth: 0, // INTERNAL USE ONLY
-__error_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
-__error_recovery_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+    __reentrant_call_depth: 0,      // INTERNAL USE ONLY
+    __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+    __error_recovery_infos: [],     // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
-// APIs which will be set up depending on user action code analysis:
-//yyRecovering: 0,
-//yyErrOk: 0,
-//yyClearIn: 0,
+    // APIs which will be set up depending on user action code analysis:
+    //yyRecovering: 0,
+    //yyErrOk: 0,
+    //yyClearIn: 0,
 
-// Helper APIs
-// -----------
+    // Helper APIs
+    // -----------
 
-// Helper function which can be overridden by user code later on: put suitable quotes around
-// literal IDs in a description string.
-quoteName: function parser_quoteName(id_str) {
-    return '"' + id_str + '"';
-},
+    // Helper function which can be overridden by user code later on: put suitable quotes around
+    // literal IDs in a description string.
+    quoteName: function parser_quoteName(id_str) {
+        return '"' + id_str + '"';
+    },
 
-// Return the name of the given symbol (terminal or non-terminal) as a string, when available.
-//
-// Return NULL when the symbol is unknown to the parser.
-getSymbolName: function parser_getSymbolName(symbol) {
-    if (this.terminals_[symbol]) {
-        return this.terminals_[symbol];
-    }
-
-    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // Return the name of the given symbol (terminal or non-terminal) as a string, when available.
     //
-    // An example of this may be where a rule's action code contains a call like this:
-    //
-    //      parser.getSymbolName(#$)
-    //
-    // to obtain a human-readable name of the current grammar rule.
-    var s = this.symbols_;
-    for (var key in s) {
-        if (s[key] === symbol) {
-            return key;
+    // Return NULL when the symbol is unknown to the parser.
+    getSymbolName: function parser_getSymbolName(symbol) {
+        if (this.terminals_[symbol]) {
+            return this.terminals_[symbol];
         }
-    }
-    return null;
-},
 
-// Return a more-or-less human-readable description of the given symbol, when available,
-// or the symbol itself, serving as its own 'description' for lack of something better to serve up.
-//
-// Return NULL when the symbol is unknown to the parser.
-describeSymbol: function parser_describeSymbol(symbol) {
-    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
-        return this.terminal_descriptions_[symbol];
-    } else if (symbol === this.EOF) {
-        return 'end of input';
-    }
-    var id = this.getSymbolName(symbol);
-    if (id) {
-        return this.quoteName(id);
-    }
-    return null;
-},
-
-// Produce a (more or less) human-readable list of expected tokens at the point of failure.
-//
-// The produced list may contain token or token set descriptions instead of the tokens
-// themselves to help turning this output into something that easier to read by humans
-// unless `do_not_describe` parameter is set, in which case a list of the raw, *numeric*,
-// expected terminals and nonterminals is produced.
-//
-// The returned list (array) will not contain any duplicate entries.
-collect_expected_token_set: function parser_collect_expected_token_set(state, do_not_describe) {
-    var TERROR = this.TERROR;
-    var tokenset = [];
-    var check = {};
-    // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
-    // If so, use that one instead of the less palatable token set.
-    if (!do_not_describe && this.state_descriptions_ && this.state_descriptions_[state]) {
-        return [this.state_descriptions_[state]];
-    }
-    for (var p in this.table[state]) {
-        p = +p;
-        if (p !== TERROR) {
-            var d = do_not_describe ? p : this.describeSymbol(p);
-            if (d && !check[d]) {
-                tokenset.push(d);
-                check[d] = true; // Mark this token description as already mentioned to prevent outputting duplicate entries.
+        // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+        //
+        // An example of this may be where a rule's action code contains a call like this:
+        //
+        //      parser.getSymbolName(#$)
+        //
+        // to obtain a human-readable name of the current grammar rule.
+        var s = this.symbols_;
+        for (var key in s) {
+            if (s[key] === symbol) {
+                return key;
             }
         }
-    }
-    return tokenset;
-},
+        return null;
+    },
+
+    // Return a more-or-less human-readable description of the given symbol, when available,
+    // or the symbol itself, serving as its own 'description' for lack of something better to serve up.
+    //
+    // Return NULL when the symbol is unknown to the parser.
+    describeSymbol: function parser_describeSymbol(symbol) {
+        if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
+            return this.terminal_descriptions_[symbol];
+        }
+        else if (symbol === this.EOF) {
+            return 'end of input';
+        }
+        var id = this.getSymbolName(symbol);
+        if (id) {
+            return this.quoteName(id);
+        }
+        return null;
+    },
+
+    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
+    //
+    // The produced list may contain token or token set descriptions instead of the tokens
+    // themselves to help turning this output into something that easier to read by humans
+    // unless `do_not_describe` parameter is set, in which case a list of the raw, *numeric*,
+    // expected terminals and nonterminals is produced.
+    //
+    // The returned list (array) will not contain any duplicate entries.
+    collect_expected_token_set: function parser_collect_expected_token_set(state, do_not_describe) {
+        var TERROR = this.TERROR;
+        var tokenset = [];
+        var check = {};
+        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
+        // If so, use that one instead of the less palatable token set.
+        if (!do_not_describe && this.state_descriptions_ && this.state_descriptions_[state]) {
+            return [
+                this.state_descriptions_[state]
+            ];
+        }
+        for (var p in this.table[state]) {
+            p = +p;
+            if (p !== TERROR) {
+                var d = do_not_describe ? p : this.describeSymbol(p);
+                if (d && !check[d]) {
+                    tokenset.push(d);
+                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
+                }
+            }
+        }
+        return tokenset;
+    },
 productions_: bp({
   pop: u([
   54,
@@ -4227,14 +4348,14 @@ parse: function parse(input) {
     };
 
     var ASSERT;
-    if (typeof assert$1 !== 'function') {
+    if (typeof assert !== 'function') {
         ASSERT = function JisonAssert(cond, msg) {
             if (!cond) {
                 throw new Error('assertion failed: ' + (msg || '***'));
             }
         };
     } else {
-        ASSERT = assert$1;
+        ASSERT = assert;
     }
 
     this.yyGetSharedState = function yyGetSharedState() {
@@ -4340,8 +4461,7 @@ parse: function parse(input) {
                 hash.extra_error_attributes = args;
             }
 
-            var r = this.parseError(str, hash, this.JisonParserError);
-            return r;
+            return this.parseError(str, hash, this.JisonParserError);
         };
     }
 
@@ -4959,23 +5079,25 @@ parse: function parse(input) {
                         // invoke the parser's cleanup API!
                         recoveringErrorInfo = this.shallowCopyErrorInfo(p);
 
+
+
+
+
+
+
+
+
+
                         r = this.parseError(p.errStr, p, this.JisonParserError);
-
-
-
-
-
-
-
-
+                        if (typeof r !== 'undefined') {
+                            retval = r;
+                            break;
+                        }
 
                         // Protect against overly blunt userland `parseError` code which *sets*
                         // the `recoverable` flag without properly checking first:
                         // we always terminate the parse when there's no recovery rule available anyhow!
                         if (!p.recoverable || error_rule_depth < 0) {
-                            if (typeof r !== 'undefined') {
-                                retval = r;
-                            }
                             break;
                         } else {
                             // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -5615,13 +5737,12 @@ parse: function parse(input) {
         else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
             throw ex;
         }
-        else {
-            p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = false;
-            r = this.parseError(p.errStr, p, this.JisonParserError);
-            if (typeof r !== 'undefined') {
-                retval = r;
-            }
+
+        p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+        retval = false;
+        r = this.parseError(p.errStr, p, this.JisonParserError);
+        if (typeof r !== 'undefined') {
+            retval = r;
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
@@ -5634,7 +5755,7 @@ yyError: 1
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
-/* lexer generated by jison-lex 0.6.1-213 */
+/* lexer generated by jison-lex 0.6.1-215 */
 
 /*
  * Returns a Lexer object of the following structure:
@@ -7264,7 +7385,6 @@ EOF: 1,
       xregexp: true,
       ranges: true,
       trackPosition: true,
-      parseActionsUseYYMERGELOCATIONINFO: true,
       easy_keyword_rules: true
     },
 

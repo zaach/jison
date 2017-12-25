@@ -110,7 +110,10 @@
 
 %start expressions
 
-%options parser-errors-are-recoverable lexer-errors-are-recoverable
+%option parser-errors-are-recoverable 
+%option lexer-errors-are-recoverable
+
+%option defaultActionMode="none,none"
 
 
 
@@ -121,49 +124,28 @@
 expressions
     : e EOF
         {
-          print('### expression result:', $1);
-
-          // No need to `return $1;`: the value is automatically carried to the outside
-          // (UNLESS it is 'undefined', in which case the parser is assumed
-          // to be a recognizer, but that is not the case here!)
-          $$ = $1;
+          print('### expression result:', '---');
         }
     | error EOF
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
-            print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { '$1': typeof $1, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
+            print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { yytext: yytext, '@error': @error, token: parser.describeSymbol(#error) }, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
-            $$ = 17;
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print('ERROR', #1, $2, '==>', $$);
         }
     ;
 
 e
     : e '+' e
         {
-            $$ = $1 + $3;
-            print($1, $2, $3, '==>', $$);
         }
     | e '-' e
         {
-            $$ = $1 - $3;
-            print($1, $2, $3, '==>', $$);
         }
     | e error e
         {
-            print('~~~EXPR-OPERATOR~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': typeof $2, '$3': $3, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
+            print('~~~EXPR-OPERATOR~~~', parser.describeSymbol(#error), ' error: ', { yytext: yytext, '@error': @error, token: parser.describeSymbol(#error) }, yy.lastErrorMessage);
             yyerrok;
             yyclearin;
-            $$ = $e1 + 13 + $e2;
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print($1, 'ERROR', #2, $3, '==>', $$);
         }
     | m
     ;
@@ -171,18 +153,12 @@ e
 m
     : m MOD m
         {
-            $$ = $1 % $3;
-            print($1, $2, $3, '==>', $$);
         }
     | m '/' m
         {
-            $$ = $1 / $3;
-            print($1, $2, $3, '==>', $$);
         }
     | m '*' m
         {
-            $$ = $1 * $3;
-            print($1, $2, $3, '==>', $$);
         }
     | p
     ;
@@ -190,8 +166,6 @@ m
 p
     : p '^' p
         {
-            $$ = Math.pow($1, $3);
-            print($1, $2, $3, '==>', $$);
         }
     | u
     ;
@@ -199,41 +173,22 @@ p
 u
     :  u '!'                                    // 'factorial'
         {
-            $$ = (function fact(n) {
-                n = Math.max(0, n | 0);
-                var rv = 1;
-                for (var i = 2; i <= n; i++) {
-                    rv *= i;
-                }
-                return rv;
-            })($u);
-            print($1, $2, '==>', $$);
         }
     | '!' u                                     // 'not'
         {
-            $$ = ($u ? 0 : 1);
-            print($1, $2, '==>', $$);
         }
     // the PERCENT `%` operator only accepts direct values with optional sign:
     | NUMBER '%'
         {
-            $$ = $NUMBER / 100;
-            print($1, $2, '==>', $$);
         }
     | '-' u     // doesn't need the `%prec UMINUS` tweak as the grammar ruleset enforces the precedence implicitly
         {
-            $$ = -$u;
-            print($1, $2, '==>', $$);
         }
     | '+' u     // doesn't need the `%prec UMINUS` tweak as the grammar ruleset enforces the precedence implicitly
         {
-            $$ = $u;
-            print($1, $2, '==>', $$);
         }
     | '(' e ')'
         {
-            $$ = $2;
-            print($1, $2, $3, '==>', $$);
         }
     | v
     ;
@@ -241,31 +196,18 @@ u
 v
     : NUMBER
         {
-            $$ = Number(yytext);
-            print($1, '==>', $$);
         }
     | E
         {
-            $$ = Math.E;
-            print($1, '==>', $$);
         }
     | PI
         {
-            $$ = Math.PI;
-            print($1, '==>', $$);
         }
     | error
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
-            print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, '@$': @$, token: parser.describeSymbol(#$), msg: $error.errStr }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
+            print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '@$': @$, token: parser.describeSymbol(#$) }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
             yyerrok;
             yyclearin;
-            $$ = 5;         
-            // ^-- every error recovery rule in this grammar adds a different value 
-            // so we can track which error rule(s) were executed during the parse
-            // of (intentionally) erroneous test expressions.
-            print('ERROR', #1, '==>', $$);
         }
     ;
 
@@ -353,10 +295,10 @@ parser.main = function () {
 
     function test() {
         const formulas_and_expectations =  [
-            basenum + '+2*(3-5--+--+6!)-7/-8%',                      1523.5 + basenum,
-            basenum + '+2*0.7%^PI^2+4+5',                            9 + basenum, /* this bets on JS floating point calculations discarding the small difference with this integer value... */
-            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     74 + basenum, // with error recovery and all it gives you a value...
-            basenum + '+2*(3!-5!-6!)/7/8',                           -29.785714285714285 + basenum,
+            basenum + '+2*(3-5--+--+6!)-7/-8%',                      basenum, // default value assignment: produce first token...
+            basenum + '+2*0.7%^PI^2+4+5',                            basenum,
+            basenum + '+(2+3*++++)+5+6+7+8+9 9',                     basenum, // with error recovery and all it gives you a value...
+            basenum + '+2*(3!-5!-6!)/7/8',                           basenum,
         ];
 
         basenum++;

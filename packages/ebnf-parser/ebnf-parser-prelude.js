@@ -1,3 +1,0 @@
-
-// hack:
-var assert;

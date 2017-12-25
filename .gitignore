@@ -47,3 +47,13 @@ Vagrantfile
 *.log
 *.patch
 
+# istanbul / nyc code coverage analysis workspaces
+/.nyc_output
+/coverage
+/packages/helpers-lib/coverage
+/packages/jison-lex/coverage
+/packages/json2jison/coverage
+/packages/jison2json/coverage
+/packages/lex-parser/coverage
+/packages/ebnf-parser/coverage
+/examples/coverage/

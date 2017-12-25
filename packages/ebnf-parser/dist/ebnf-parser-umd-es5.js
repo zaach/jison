@@ -79,15 +79,15 @@ var _templateObject = _taggedTemplateLiteral(['\n        Maybe you did not corre
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', 'fs', 'path', '@gerhobbelt/recast', 'assert'], factory) : global['ebnf-parser'] = factory(global.XRegExp, global.fs, global.path, global.recast, global.assert);
-})(undefined, function (XRegExp, fs, path, recast, assert) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', 'fs', 'path', '@gerhobbelt/recast', 'assert'], factory) : global['ebnf-parser'] = factory(global.XRegExp, global.fs, global.path, global.recast, global.assert$1);
+})(undefined, function (XRegExp, fs, path, recast, assert$1) {
     'use strict';
 
     XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
-    assert = assert && assert.hasOwnProperty('default') ? assert['default'] : assert;
+    assert$1 = assert$1 && assert$1.hasOwnProperty('default') ? assert$1['default'] : assert$1;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -186,8 +186,26 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return s.replace(/^\w/, function (match) {
             return match.toLowerCase();
         }).replace(/-\w/g, function (match) {
-            return match.charAt(1).toUpperCase();
+            var c = match.charAt(1);
+            var rv = c.toUpperCase();
+            // do not mutate 'a-2' to 'a2':
+            if (c === rv && c.match(/\d/)) {
+                return match;
+            }
+            return rv;
         });
+    }
+
+    // Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+    /** @public */
+    function mkIdentifier(s) {
+        s = camelCase('' + s);
+        // cleanup: replace any non-suitable character series to a single underscore:
+        return s.replace(/^[^\w_]/, '_')
+        // do not accept numerics at the leading position, despite those matching regex `\w`:
+        .replace(/^\d/, '_').replace(/[^\w\d_]+/g, '_')
+        // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+        .replace(/^__+/, '#').replace(/__+$/, '#').replace(/_+/g, '_').replace(/#/g, '__');
     }
 
     // properly quote and escape the given input string
@@ -220,6 +238,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     // we can test the code in a different environment so that we can see what precisely is causing the failure.
     // 
 
+
+    function chkBugger(src) {
+        src = String(src);
+        if (src.match(/\bcov_\w+/)) {
+            console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+        }
+    }
 
     // Helper function: pad number with leading zeroes
     function pad(n, p) {
@@ -311,6 +336,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             if (typeof code_execution_rig !== 'function') {
                 throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
             }
+            chkBugger(sourcecode);
             p = code_execution_rig.call(this, sourcecode, options, errname, debug);
         } catch (ex) {
             if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -350,13 +376,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
     //import astUtils from '@gerhobbelt/ast-util';
-    assert(recast);
+    assert$1(recast);
     var types = recast.types;
-    assert(types);
+    assert$1(types);
     var namedTypes = types.namedTypes;
-    assert(namedTypes);
+    assert$1(namedTypes);
     var b = types.builders;
-    assert(b);
+    assert$1(b);
     // //assert(astUtils);
 
 
@@ -420,16 +446,81 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         checkActionBlock: checkActionBlock$1
     };
 
+    function chkBugger$1(src) {
+        src = String(src);
+        if (src.match(/\bcov_\w+/)) {
+            console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+        }
+    }
+
     /// HELPER FUNCTION: print the function in source code form, properly indented.
     /** @public */
     function printFunctionSourceCode(f) {
-        return String(f);
+        var src = String(f);
+        chkBugger$1(src);
+        return src;
     }
 
-    /// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+    var funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
+    var arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+
+    /// HELPER FUNCTION: print the function **content** in source code form, properly indented,
+    /// ergo: produce the code for inlining the function.
+    /// 
+    /// Also supports ES6's Arrow Functions:
+    /// 
+    /// ```
+    /// function a(x) { return x; }        ==> 'return x;'
+    /// function (x)  { return x; }        ==> 'return x;'
+    /// (x) => { return x; }               ==> 'return x;'
+    /// (x) => x;                          ==> 'return x;'
+    /// (x) => do(1), do(2), x;            ==> 'return (do(1), do(2), x);'
+    /// 
     /** @public */
     function printFunctionSourceCodeContainer(f) {
-        return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+        var action = printFunctionSourceCode(f).trim();
+        var args;
+
+        // Also cope with Arrow Functions (and inline those as well?).
+        // See also https://github.com/zaach/jison-lex/issues/23
+        var m = funcRe.exec(action);
+        if (m) {
+            args = m[1].trim();
+            action = m[2].trim();
+        } else {
+            m = arrowFuncRe.exec(action);
+            if (m) {
+                if (m[2]) {
+                    // non-bracketed arguments:
+                    args = m[2].trim();
+                } else {
+                    // bracketed arguments: may be empty args list!
+                    args = m[1].trim();
+                }
+                if (m[5]) {
+                    // non-bracketed version: implicit `return` statement!
+                    //
+                    // Q: Must we make sure we have extra braces around the return value 
+                    // to prevent JavaScript from inserting implit EOS (End Of Statement) 
+                    // markers when parsing this, when there are newlines in the code?
+                    // A: No, we don't have to as arrow functions rvalues suffer from this
+                    // same problem, hence the arrow function's programmer must already
+                    // have formatted the code correctly.
+                    action = m[4].trim();
+                    action = 'return ' + action + ';';
+                } else {
+                    action = m[3].trim();
+                }
+            } else {
+                var e = new Error('Cannot extract code from function');
+                e.subject = action;
+                throw e;
+            }
+        }
+        return {
+            args: args,
+            code: action
+        };
     }
 
     var stringifier = {
@@ -437,9 +528,20 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         printFunctionSourceCodeContainer: printFunctionSourceCodeContainer
     };
 
+    // 
+    // 
+    // 
+    function detectIstanbulGlobal() {
+        var gcv = "__coverage__";
+        var globalvar = new Function('return this')();
+        var coverage = globalvar[gcv];
+        return coverage || false;
+    }
+
     var helpers = {
         rmCommonWS: rmCommonWS$1,
         camelCase: camelCase,
+        mkIdentifier: mkIdentifier,
         dquote: dquote$1,
 
         exec: code_exec.exec,
@@ -450,10 +552,12 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         checkActionBlock: parse2AST.checkActionBlock,
 
         printFunctionSourceCode: stringifier.printFunctionSourceCode,
-        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer
+        printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+        detectIstanbulGlobal: detectIstanbulGlobal
     };
 
-    /* parser generated by jison 0.6.1-213 */
+    /* parser generated by jison 0.6.1-215 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -967,7 +1071,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //
         // Options:
         //
-        //   default action mode: ............. classic,merge
+        //   default action mode: ............. ["classic","merge"]
+        //   test-compile action mode: ........ "parser:*,lexer:*"
         //   try..catch: ...................... true
         //   default resolve on conflict: ..... true
         //   on-demand look-ahead: ............ false
@@ -1729,13 +1834,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     throw ex;
                 } else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
                     throw ex;
-                } else {
-                    p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-                    retval = false;
-                    r = this.parseError(p.errStr, p, this.JisonParserError);
-                    if (typeof r !== 'undefined') {
-                        retval = r;
-                    }
+                }
+
+                p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+                retval = false;
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
                 }
             } finally {
                 retval = this.cleanupAfterParse(retval, true, true);
@@ -1747,7 +1852,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser$1.originalParseError = parser$1.parseError;
     parser$1.originalQuoteName = parser$1.quoteName;
-    /* lexer generated by jison-lex 0.6.1-213 */
+    /* lexer generated by jison-lex 0.6.1-215 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -3838,10 +3943,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return rv;
     }
 
-    // hack:
-    var assert$1;
-
-    /* parser generated by jison 0.6.1-213 */
+    /* parser generated by jison 0.6.1-215 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -4367,7 +4469,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //
         // Options:
         //
-        //   default action mode: ............. classic,merge
+        //   default action mode: ............. ["classic","merge"]
+        //   test-compile action mode: ........ "parser:*,lexer:*"
         //   try..catch: ...................... true
         //   default resolve on conflict: ..... true
         //   on-demand look-ahead: ............ false
@@ -5830,7 +5933,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    this.$ = '$$ = ' + yyvstack[yysp];
+                    this.$ = '$$ = (' + yyvstack[yysp] + ');';
                     break;
 
                 case 119:
@@ -5999,14 +6102,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             };
 
             var ASSERT;
-            if (typeof assert$1 !== 'function') {
+            if (typeof assert !== 'function') {
                 ASSERT = function JisonAssert(cond, msg) {
                     if (!cond) {
                         throw new Error('assertion failed: ' + (msg || '***'));
                     }
                 };
             } else {
-                ASSERT = assert$1;
+                ASSERT = assert;
             }
 
             this.yyGetSharedState = function yyGetSharedState() {
@@ -6095,8 +6198,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         hash.extra_error_attributes = args;
                     }
 
-                    var r = this.parseError(str, hash, this.JisonParserError);
-                    return r;
+                    return this.parseError(str, hash, this.JisonParserError);
                 };
             }
 
@@ -6651,14 +6753,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                                 recoveringErrorInfo = this.shallowCopyErrorInfo(p);
 
                                 r = this.parseError(p.errStr, p, this.JisonParserError);
+                                if (typeof r !== 'undefined') {
+                                    retval = r;
+                                    break;
+                                }
 
                                 // Protect against overly blunt userland `parseError` code which *sets*
                                 // the `recoverable` flag without properly checking first:
                                 // we always terminate the parse when there's no recovery rule available anyhow!
                                 if (!p.recoverable || error_rule_depth < 0) {
-                                    if (typeof r !== 'undefined') {
-                                        retval = r;
-                                    }
                                     break;
                                 } else {
                                     // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -7154,13 +7257,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     throw ex;
                 } else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
                     throw ex;
-                } else {
-                    p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-                    retval = false;
-                    r = this.parseError(p.errStr, p, this.JisonParserError);
-                    if (typeof r !== 'undefined') {
-                        retval = r;
-                    }
+                }
+
+                p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+                retval = false;
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
                 }
             } finally {
                 retval = this.cleanupAfterParse(retval, true, true);
@@ -7173,7 +7276,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser.originalParseError = parser.parseError;
     parser.originalQuoteName = parser.quoteName;
-    /* lexer generated by jison-lex 0.6.1-213 */
+    /* lexer generated by jison-lex 0.6.1-215 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -8772,7 +8875,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 xregexp: true,
                 ranges: true,
                 trackPosition: true,
-                parseActionsUseYYMERGELOCATIONINFO: true,
                 easy_keyword_rules: true
             },
 
@@ -9622,10 +9724,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     };
 
-    // hack:
-    var assert$3;
-
-    /* parser generated by jison 0.6.1-213 */
+    /* parser generated by jison 0.6.1-215 */
 
     /*
      * Returns a Parser object of the following structure:
@@ -10151,7 +10250,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         //
         // Options:
         //
-        //   default action mode: ............. classic,merge
+        //   default action mode: ............. ["classic","merge"]
+        //   test-compile action mode: ........ "parser:*,lexer:*"
         //   try..catch: ...................... true
         //   default resolve on conflict: ..... true
         //   on-demand look-ahead: ............ false
@@ -11740,14 +11840,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             };
 
             var ASSERT;
-            if (typeof assert$3 !== 'function') {
+            if (typeof assert !== 'function') {
                 ASSERT = function JisonAssert(cond, msg) {
                     if (!cond) {
                         throw new Error('assertion failed: ' + (msg || '***'));
                     }
                 };
             } else {
-                ASSERT = assert$3;
+                ASSERT = assert;
             }
 
             this.yyGetSharedState = function yyGetSharedState() {
@@ -11836,8 +11936,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         hash.extra_error_attributes = args;
                     }
 
-                    var r = this.parseError(str, hash, this.JisonParserError);
-                    return r;
+                    return this.parseError(str, hash, this.JisonParserError);
                 };
             }
 
@@ -12392,14 +12491,15 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                                 recoveringErrorInfo = this.shallowCopyErrorInfo(p);
 
                                 r = this.parseError(p.errStr, p, this.JisonParserError);
+                                if (typeof r !== 'undefined') {
+                                    retval = r;
+                                    break;
+                                }
 
                                 // Protect against overly blunt userland `parseError` code which *sets*
                                 // the `recoverable` flag without properly checking first:
                                 // we always terminate the parse when there's no recovery rule available anyhow!
                                 if (!p.recoverable || error_rule_depth < 0) {
-                                    if (typeof r !== 'undefined') {
-                                        retval = r;
-                                    }
                                     break;
                                 } else {
                                     // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -12895,13 +12995,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     throw ex;
                 } else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
                     throw ex;
-                } else {
-                    p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-                    retval = false;
-                    r = this.parseError(p.errStr, p, this.JisonParserError);
-                    if (typeof r !== 'undefined') {
-                        retval = r;
-                    }
+                }
+
+                p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+                retval = false;
+                r = this.parseError(p.errStr, p, this.JisonParserError);
+                if (typeof r !== 'undefined') {
+                    retval = r;
                 }
             } finally {
                 retval = this.cleanupAfterParse(retval, true, true);
@@ -12914,7 +13014,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
     parser$3.originalParseError = parser$3.parseError;
     parser$3.originalQuoteName = parser$3.quoteName;
-    /* lexer generated by jison-lex 0.6.1-213 */
+    /* lexer generated by jison-lex 0.6.1-215 */
 
     /*
      * Returns a Lexer object of the following structure:
@@ -14513,7 +14613,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 xregexp: true,
                 ranges: true,
                 trackPosition: true,
-                parseActionsUseYYMERGELOCATIONINFO: true,
                 easy_keyword_rules: true
             },
 
@@ -15598,7 +15697,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     };
 
-    var version = '0.6.1-213'; // require('./package.json').version;
+    var version = '0.6.1-216'; // require('./package.json').version;
 
     function parse(grammar) {
         return bnf.parser.parse(grammar);

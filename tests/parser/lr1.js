@@ -171,7 +171,9 @@ describe("LR(1)", function () {
             "rules": [
                 ["\\s+", "/* skip whitespace */"],
                 ["{digit}+(\\.{digit}+)?", "return 'NUMBER';"],
-                ["\"[^\"]*", function(){
+                ["\"[^\"]*", 
+                  /* istanbul ignore next: code is injected and then crashes the generated parser due to unreachable coverage global */ 
+                  function () {
                     if(yytext.charAt(yyleng-1) == '\\') {
                         // remove escape
                         yytext = yytext.substr(0,yyleng-2);
@@ -181,7 +183,8 @@ describe("LR(1)", function () {
                         this.input(); // swallow end quote
                         return "STRING";
                     }
-                }],
+                  }
+                ],
                 ["\\{", "return '{'"],
                 ["\\}", "return '}'"],
                 ["\\[", "return '['"],

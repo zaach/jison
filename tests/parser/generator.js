@@ -168,7 +168,9 @@ describe("Parser Generator API", function () {
           "rules": [
               ["\\s+", "/* skip whitespace */"],
               ["-?{digit}+(\\.{digit}+)?{exp}?", "return 'NUMBER';"],
-              ["\"[^\"]*", function(){
+              ["\"[^\"]*", 
+                /* istanbul ignore next: code is injected and then crashes the generated parser due to unreachable coverage global */ 
+                function () {
                   if(yytext.charAt(yyleng-1) == '\\') {
                       // remove escape
                       yytext = yytext.substr(0,yyleng-2);
@@ -178,7 +180,8 @@ describe("Parser Generator API", function () {
                       this.input(); // swallow end quote
                       return "STRING";
                   }
-              }],
+                }
+              ],
               ["\\{", "return '{'"],
               ["\\}", "return '}'"],
               ["\\[", "return '['"],
@@ -371,7 +374,7 @@ describe("Parser Generator API", function () {
       'expressions\n    : e EOF\n        {return $1;}\n    ;\n\n' +
       'e\n    : phrase+ \'joy\'? -> $1 + \' \' + yytext \n    ;\n\n' +
       'phrase\n    : \'happy\' \'happy\' \'joy\' \'joy\' ' +
-      ' -> [$1, $2, $3, $4].join(\' \'); \n    ;';
+      ' -> [$1, $2, $3, $4].join(\' \') \n    ;';
 
     var parser = new Jison.Parser(grammar);
     var generated = parser.generate();

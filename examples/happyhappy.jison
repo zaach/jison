@@ -44,5 +44,5 @@ e
     ;
 
 phrase
-    : 'happy' 'happy' 'joy' 'joy'  -> [$1, $2, $3, $4].join(' ');
+    : 'happy' 'happy' 'joy' 'joy'  -> [$1, $2, $3, $4].join(' ')
     ;

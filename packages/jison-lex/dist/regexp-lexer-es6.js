@@ -3,7 +3,7 @@ import json5 from '@gerhobbelt/json5';
 import fs from 'fs';
 import path from 'path';
 import recast from '@gerhobbelt/recast';
-import assert from 'assert';
+import assert$1 from 'assert';
 
 // Return TRUE if `src` starts with `searchString`. 
 function startsWith(src, searchString) {
@@ -94,14 +94,37 @@ function rmCommonWS$2(strings, ...values) {
 
 // Convert dashed option keys to Camel Case, e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
 /** @public */
-function camelCase$1(s) {
+function camelCase(s) {
     // Convert first character to lowercase
     return s.replace(/^\w/, function (match) {
         return match.toLowerCase();
     })
     .replace(/-\w/g, function (match) {
-        return match.charAt(1).toUpperCase();
-    });
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    })
+}
+
+// Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
+/** @public */
+function mkIdentifier$1(s) {
+    s = camelCase('' + s);
+    // cleanup: replace any non-suitable character series to a single underscore:
+    return s
+    .replace(/^[^\w_]/, '_')
+    // do not accept numerics at the leading position, despite those matching regex `\w`:
+    .replace(/^\d/, '_')
+    .replace(/[^\w\d_]+/g, '_')
+    // and only accept multiple (double, not triple) underscores at start or end of identifier name:
+    .replace(/^__+/, '#')
+    .replace(/__+$/, '#')
+    .replace(/_+/g, '_')
+    .replace(/#/g, '__');
 }
 
 // properly quote and escape the given input string
@@ -134,6 +157,16 @@ function dquote(s) {
 // the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
 // we can test the code in a different environment so that we can see what precisely is causing the failure.
 // 
+
+
+function chkBugger$1(src) {
+    src = String(src);
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
+
+
 
 
 // Helper function: pad number with leading zeroes
@@ -242,6 +275,7 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         if (typeof code_execution_rig !== 'function') {
             throw new Error("safe-code-exec-and-diag: code_execution_rig MUST be a JavaScript function");
         }
+        chkBugger$1(sourcecode);
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
     } catch (ex) {
         if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -286,13 +320,13 @@ var code_exec$1 = {
 
 
 //import astUtils from '@gerhobbelt/ast-util';
-assert(recast);
+assert$1(recast);
 var types = recast.types;
-assert(types);
+assert$1(types);
 var namedTypes = types.namedTypes;
-assert(namedTypes);
+assert$1(namedTypes);
 var b = types.builders;
-assert(b);
+assert$1(b);
 // //assert(astUtils);
 
 
@@ -371,17 +405,89 @@ var parse2AST = {
     checkActionBlock: checkActionBlock$1,
 };
 
+function chkBugger$2(src) {
+    src = String(src);
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
+
+
 /// HELPER FUNCTION: print the function in source code form, properly indented.
 /** @public */
 function printFunctionSourceCode(f) {
-    return String(f);
+    var src = String(f);
+    chkBugger$2(src);
+    return src;
 }
 
-/// HELPER FUNCTION: print the function **content** in source code form, properly indented.
+
+
+const funcRe = /^function[\s\r\n]*[^\(]*\(([^\)]*)\)[\s\r\n]*\{([^]*?)\}$/;
+const arrowFuncRe = /^(?:(?:\(([^\)]*)\))|(?:([^\(\)]+)))[\s\r\n]*=>[\s\r\n]*(?:(?:\{([^]*?)\})|(?:(([^\s\r\n\{)])[^]*?)))$/;
+
+/// HELPER FUNCTION: print the function **content** in source code form, properly indented,
+/// ergo: produce the code for inlining the function.
+/// 
+/// Also supports ES6's Arrow Functions:
+/// 
+/// ```
+/// function a(x) { return x; }        ==> 'return x;'
+/// function (x)  { return x; }        ==> 'return x;'
+/// (x) => { return x; }               ==> 'return x;'
+/// (x) => x;                          ==> 'return x;'
+/// (x) => do(1), do(2), x;            ==> 'return (do(1), do(2), x);'
+/// 
 /** @public */
 function printFunctionSourceCodeContainer(f) {
-    return String(f).replace(/^[\s\r\n]*function\b[^\{]+\{/, '').replace(/\}[\s\r\n]*$/, '');
+    var action = printFunctionSourceCode(f).trim();
+    var args;
+
+    // Also cope with Arrow Functions (and inline those as well?).
+    // See also https://github.com/zaach/jison-lex/issues/23
+    var m = funcRe.exec(action);
+    if (m) {
+        args = m[1].trim();
+        action = m[2].trim();
+    } else {
+        m = arrowFuncRe.exec(action);
+        if (m) {
+            if (m[2]) {
+                // non-bracketed arguments:
+                args = m[2].trim();
+            } else {
+                // bracketed arguments: may be empty args list!
+                args = m[1].trim();
+            }
+            if (m[5]) {
+                // non-bracketed version: implicit `return` statement!
+                //
+                // Q: Must we make sure we have extra braces around the return value 
+                // to prevent JavaScript from inserting implit EOS (End Of Statement) 
+                // markers when parsing this, when there are newlines in the code?
+                // A: No, we don't have to as arrow functions rvalues suffer from this
+                // same problem, hence the arrow function's programmer must already
+                // have formatted the code correctly.
+                action = m[4].trim();
+                action = 'return ' + action + ';';
+            } else {
+                action = m[3].trim();
+            }
+        } else {
+            var e = new Error('Cannot extract code from function');
+            e.subject = action;
+            throw e;
+        }
+    }
+    return {
+        args: args,
+        code: action,
+    };
 }
+
+
+
+
 
 
 
@@ -390,9 +496,20 @@ var stringifier = {
 	printFunctionSourceCodeContainer,
 };
 
+// 
+// 
+// 
+function detectIstanbulGlobal() {
+    const gcv = "__coverage__";
+    const globalvar = new Function('return this')();
+    var coverage = globalvar[gcv];
+    return coverage || false;
+}
+
 var helpers = {
     rmCommonWS: rmCommonWS$2,
-    camelCase: camelCase$1,
+    camelCase,
+    mkIdentifier: mkIdentifier$1,
     dquote,
 
     exec: code_exec$1.exec,
@@ -402,14 +519,13 @@ var helpers = {
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
 
-	printFunctionSourceCode: stringifier.printFunctionSourceCode,
-	printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+    printFunctionSourceCode: stringifier.printFunctionSourceCode,
+    printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
+
+    detectIstanbulGlobal,
 };
 
-// hack:
-var assert$1;
-
-/* parser generated by jison 0.6.1-213 */
+/* parser generated by jison 0.6.1-215 */
 
 /*
  * Returns a Parser object of the following structure:
@@ -840,6 +956,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 
 
 
+
         // helper: reconstruct the productions[] table
         function bp(s) {
             var rv = [];
@@ -952,7 +1069,8 @@ var parser = {
     //
     // Options:
     //
-    //   default action mode: ............. classic,merge
+    //   default action mode: ............. ["classic","merge"]
+    //   test-compile action mode: ........ "parser:*,lexer:*"
     //   try..catch: ...................... true
     //   default resolve on conflict: ..... true
     //   on-demand look-ahead: ............ false
@@ -1002,7 +1120,7 @@ var parser = {
     //
     // --------- END OF REPORT -----------
 
-trace: function no_op_trace() {},
+trace: function no_op_trace() { },
 JisonParserError: JisonParserError,
 yy: {},
 options: {
@@ -1160,104 +1278,107 @@ terminals_: {
   53: "CODE"
 },
 TERROR: 2,
-EOF: 1,
+    EOF: 1,
 
-// internals: defined here so the object *structure* doesn't get modified by parse() et al,
-// thus helping JIT compilers like Chrome V8.
-originalQuoteName: null,
-originalParseError: null,
-cleanupAfterParse: null,
-constructParseErrorInfo: null,
-yyMergeLocationInfo: null,
+    // internals: defined here so the object *structure* doesn't get modified by parse() et al,
+    // thus helping JIT compilers like Chrome V8.
+    originalQuoteName: null,
+    originalParseError: null,
+    cleanupAfterParse: null,
+    constructParseErrorInfo: null,
+    yyMergeLocationInfo: null,
 
-__reentrant_call_depth: 0, // INTERNAL USE ONLY
-__error_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
-__error_recovery_infos: [], // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+    __reentrant_call_depth: 0,      // INTERNAL USE ONLY
+    __error_infos: [],              // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
+    __error_recovery_infos: [],     // INTERNAL USE ONLY: the set of parseErrorInfo objects created since the last cleanup
 
-// APIs which will be set up depending on user action code analysis:
-//yyRecovering: 0,
-//yyErrOk: 0,
-//yyClearIn: 0,
+    // APIs which will be set up depending on user action code analysis:
+    //yyRecovering: 0,
+    //yyErrOk: 0,
+    //yyClearIn: 0,
 
-// Helper APIs
-// -----------
+    // Helper APIs
+    // -----------
 
-// Helper function which can be overridden by user code later on: put suitable quotes around
-// literal IDs in a description string.
-quoteName: function parser_quoteName(id_str) {
-    return '"' + id_str + '"';
-},
+    // Helper function which can be overridden by user code later on: put suitable quotes around
+    // literal IDs in a description string.
+    quoteName: function parser_quoteName(id_str) {
+        return '"' + id_str + '"';
+    },
 
-// Return the name of the given symbol (terminal or non-terminal) as a string, when available.
-//
-// Return NULL when the symbol is unknown to the parser.
-getSymbolName: function parser_getSymbolName(symbol) {
-    if (this.terminals_[symbol]) {
-        return this.terminals_[symbol];
-    }
-
-    // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+    // Return the name of the given symbol (terminal or non-terminal) as a string, when available.
     //
-    // An example of this may be where a rule's action code contains a call like this:
-    //
-    //      parser.getSymbolName(#$)
-    //
-    // to obtain a human-readable name of the current grammar rule.
-    var s = this.symbols_;
-    for (var key in s) {
-        if (s[key] === symbol) {
-            return key;
+    // Return NULL when the symbol is unknown to the parser.
+    getSymbolName: function parser_getSymbolName(symbol) {
+        if (this.terminals_[symbol]) {
+            return this.terminals_[symbol];
         }
-    }
-    return null;
-},
 
-// Return a more-or-less human-readable description of the given symbol, when available,
-// or the symbol itself, serving as its own 'description' for lack of something better to serve up.
-//
-// Return NULL when the symbol is unknown to the parser.
-describeSymbol: function parser_describeSymbol(symbol) {
-    if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
-        return this.terminal_descriptions_[symbol];
-    } else if (symbol === this.EOF) {
-        return 'end of input';
-    }
-    var id = this.getSymbolName(symbol);
-    if (id) {
-        return this.quoteName(id);
-    }
-    return null;
-},
-
-// Produce a (more or less) human-readable list of expected tokens at the point of failure.
-//
-// The produced list may contain token or token set descriptions instead of the tokens
-// themselves to help turning this output into something that easier to read by humans
-// unless `do_not_describe` parameter is set, in which case a list of the raw, *numeric*,
-// expected terminals and nonterminals is produced.
-//
-// The returned list (array) will not contain any duplicate entries.
-collect_expected_token_set: function parser_collect_expected_token_set(state, do_not_describe) {
-    var TERROR = this.TERROR;
-    var tokenset = [];
-    var check = {};
-    // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
-    // If so, use that one instead of the less palatable token set.
-    if (!do_not_describe && this.state_descriptions_ && this.state_descriptions_[state]) {
-        return [this.state_descriptions_[state]];
-    }
-    for (var p in this.table[state]) {
-        p = +p;
-        if (p !== TERROR) {
-            var d = do_not_describe ? p : this.describeSymbol(p);
-            if (d && !check[d]) {
-                tokenset.push(d);
-                check[d] = true; // Mark this token description as already mentioned to prevent outputting duplicate entries.
+        // Otherwise... this might refer to a RULE token i.e. a non-terminal: see if we can dig that one up.
+        //
+        // An example of this may be where a rule's action code contains a call like this:
+        //
+        //      parser.getSymbolName(#$)
+        //
+        // to obtain a human-readable name of the current grammar rule.
+        var s = this.symbols_;
+        for (var key in s) {
+            if (s[key] === symbol) {
+                return key;
             }
         }
-    }
-    return tokenset;
-},
+        return null;
+    },
+
+    // Return a more-or-less human-readable description of the given symbol, when available,
+    // or the symbol itself, serving as its own 'description' for lack of something better to serve up.
+    //
+    // Return NULL when the symbol is unknown to the parser.
+    describeSymbol: function parser_describeSymbol(symbol) {
+        if (symbol !== this.EOF && this.terminal_descriptions_ && this.terminal_descriptions_[symbol]) {
+            return this.terminal_descriptions_[symbol];
+        }
+        else if (symbol === this.EOF) {
+            return 'end of input';
+        }
+        var id = this.getSymbolName(symbol);
+        if (id) {
+            return this.quoteName(id);
+        }
+        return null;
+    },
+
+    // Produce a (more or less) human-readable list of expected tokens at the point of failure.
+    //
+    // The produced list may contain token or token set descriptions instead of the tokens
+    // themselves to help turning this output into something that easier to read by humans
+    // unless `do_not_describe` parameter is set, in which case a list of the raw, *numeric*,
+    // expected terminals and nonterminals is produced.
+    //
+    // The returned list (array) will not contain any duplicate entries.
+    collect_expected_token_set: function parser_collect_expected_token_set(state, do_not_describe) {
+        var TERROR = this.TERROR;
+        var tokenset = [];
+        var check = {};
+        // Has this (error?) state been outfitted with a custom expectations description text for human consumption?
+        // If so, use that one instead of the less palatable token set.
+        if (!do_not_describe && this.state_descriptions_ && this.state_descriptions_[state]) {
+            return [
+                this.state_descriptions_[state]
+            ];
+        }
+        for (var p in this.table[state]) {
+            p = +p;
+            if (p !== TERROR) {
+                var d = do_not_describe ? p : this.describeSymbol(p);
+                if (d && !check[d]) {
+                    tokenset.push(d);
+                    check[d] = true;        // Mark this token description as already mentioned to prevent outputting duplicate entries.
+                }
+            }
+        }
+        return tokenset;
+    },
 productions_: bp({
   pop: u([
   54,
@@ -4224,14 +4345,14 @@ parse: function parse(input) {
     };
 
     var ASSERT;
-    if (typeof assert$1 !== 'function') {
+    if (typeof assert !== 'function') {
         ASSERT = function JisonAssert(cond, msg) {
             if (!cond) {
                 throw new Error('assertion failed: ' + (msg || '***'));
             }
         };
     } else {
-        ASSERT = assert$1;
+        ASSERT = assert;
     }
 
     this.yyGetSharedState = function yyGetSharedState() {
@@ -4337,8 +4458,7 @@ parse: function parse(input) {
                 hash.extra_error_attributes = args;
             }
 
-            var r = this.parseError(str, hash, this.JisonParserError);
-            return r;
+            return this.parseError(str, hash, this.JisonParserError);
         };
     }
 
@@ -4956,23 +5076,25 @@ parse: function parse(input) {
                         // invoke the parser's cleanup API!
                         recoveringErrorInfo = this.shallowCopyErrorInfo(p);
 
+
+
+
+
+
+
+
+
+
                         r = this.parseError(p.errStr, p, this.JisonParserError);
-
-
-
-
-
-
-
-
+                        if (typeof r !== 'undefined') {
+                            retval = r;
+                            break;
+                        }
 
                         // Protect against overly blunt userland `parseError` code which *sets*
                         // the `recoverable` flag without properly checking first:
                         // we always terminate the parse when there's no recovery rule available anyhow!
                         if (!p.recoverable || error_rule_depth < 0) {
-                            if (typeof r !== 'undefined') {
-                                retval = r;
-                            }
                             break;
                         } else {
                             // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
@@ -5612,13 +5734,12 @@ parse: function parse(input) {
         else if (lexer && typeof lexer.JisonLexerError === 'function' && ex instanceof lexer.JisonLexerError) {
             throw ex;
         }
-        else {
-            p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
-            retval = false;
-            r = this.parseError(p.errStr, p, this.JisonParserError);
-            if (typeof r !== 'undefined') {
-                retval = r;
-            }
+
+        p = this.constructParseErrorInfo('Parsing aborted due to exception.', ex, null, false);
+        retval = false;
+        r = this.parseError(p.errStr, p, this.JisonParserError);
+        if (typeof r !== 'undefined') {
+            retval = r;
         }
     } finally {
         retval = this.cleanupAfterParse(retval, true, true);
@@ -5631,7 +5752,7 @@ yyError: 1
 };
 parser.originalParseError = parser.parseError;
 parser.originalQuoteName = parser.quoteName;
-/* lexer generated by jison-lex 0.6.1-213 */
+/* lexer generated by jison-lex 0.6.1-215 */
 
 /*
  * Returns a Lexer object of the following structure:
@@ -7261,7 +7382,6 @@ EOF: 1,
       xregexp: true,
       ranges: true,
       trackPosition: true,
-      parseActionsUseYYMERGELOCATIONINFO: true,
       easy_keyword_rules: true
     },
 
@@ -8909,7 +9029,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
     for (i = 0; i <= UNICODE_BASE_PLANE_MAX_CP$1; i++) {
         k = t[i][0];
         if (t[i].length === 1 && !done[k]) {
-            assert(l[k] > 0);
+            assert$1(l[k] > 0);
             lut.push([i, k]);
             done[k] = true;
         }
@@ -8923,7 +9043,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
         }
         
         if (!done[k]) {
-            assert(l[k] > 0);
+            assert$1(l[k] > 0);
             // find a minimum span character to mark this one:
             var w = Infinity;
             var rv;
@@ -8932,7 +9052,7 @@ function updatePcodesBitarrayCacheTestOrder(opts) {
                 if (ba[i]) {
                     var tl = t[i].length;
                     if (tl > 1 && tl < w) {
-                        assert(l[k] > 0);
+                        assert$1(l[k] > 0);
                         rv = [i, k];
                         w = tl;
                     }
@@ -9121,7 +9241,7 @@ function set2bitarray(bitarr, s, opts) {
                     s = s.substr(c1.length);
                     // check for \S, \s, \D, \d, \W, \w and expand them:
                     var ba4e = EscCode_bitarray_output_refs.esc2bitarr[c1[1]];
-                    assert(ba4e);
+                    assert$1(ba4e);
                     add2bitarray(bitarr, ba4e);
                     continue;
 
@@ -9390,9 +9510,9 @@ function bitarray2set(l, output_inverted_variant, output_minimized) {
         }
     }
 
-    assert(rv.length);
+    assert$1(rv.length);
     var s = rv.join('');
-    assert(s);
+    assert$1(s);
 
     // Check if the set is better represented by one of the regex escapes:
     var esc4s = EscCode_bitarray_output_refs.set2esc[s];
@@ -9545,8 +9665,8 @@ function reduceRegexToSetBitArray(s, name, opts) {
     // inside a regex set:
     try {
         var re;
-        assert(s);
-        assert(!(s instanceof Error));
+        assert$1(s);
+        assert$1(!(s instanceof Error));
         re = new XRegExp('[' + s + ']');
         re.test(s[0]);
 
@@ -9561,7 +9681,7 @@ function reduceRegexToSetBitArray(s, name, opts) {
         s = new Error('[macro [' + name + '] is unsuitable for use inside regex set expressions: "[' + s + ']"]: ' + ex.message);
     }
 
-    assert(s);
+    assert$1(s);
     // propagate deferred exceptions = error reports.
     if (s instanceof Error) {
         return s;
@@ -9676,12 +9796,20 @@ var setmgmt = {
 // MIT Licensed
 
 var rmCommonWS  = helpers.rmCommonWS;
-var camelCase   = helpers.camelCase;
+var mkIdentifier = helpers.mkIdentifier;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
-var version = '0.6.1-213';                              // require('./package.json').version;
+var version = '0.6.1-216';                              // require('./package.json').version;
 
+
+
+function chkBugger(src) {
+    src = '' + src;
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
 
 
 
@@ -9771,7 +9899,7 @@ function mkStdOptions(/*...args*/) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase(p)] = o[p];
+                o2[mkIdentifier(p)] = o[p];
             }
         }
 
@@ -9875,7 +10003,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
 function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) {
     var m, i, k, rule, action, conditions;
     var active_conditions;
-    assert(Array.isArray(dict.rules));
+    assert$1(Array.isArray(dict.rules));
     var rules = dict.rules.slice(0);    // shallow copy of the rules array as we MAY modify it in here!        
     var newRules = [];
     var macros = {};
@@ -9883,7 +10011,7 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
     var simple_rule_count = 0;
 
     // Assure all options are camelCased:
-    assert(typeof opts.options['case-insensitive'] === 'undefined');
+    assert$1(typeof opts.options['case-insensitive'] === 'undefined');
 
     if (!tokens) {
         tokens = {};
@@ -9963,19 +10091,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         if (typeof action === 'function') {
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
-            action = String(action);
-            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                // () => 'TOKEN'    --> return 'TOKEN' 
-                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-            }
+            action = helpers.printFunctionSourceCodeContainer(action).code;
         }
-        action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?'((?:\\'|[^']+)+)'\)?/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?"((?:\\"|[^"]+)+)"\)?/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
@@ -10110,7 +10229,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
             // expand any macros in here:
             if (expandAllMacrosInSet_cb) {
                 se = expandAllMacrosInSet_cb(se);
-                assert(se);
+                assert$1(se);
                 if (se instanceof Error) {
                     return new Error(errinfo() + ': ' + se.message);
                 }
@@ -10167,7 +10286,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
                     c2 = c1 + c2 + c3;
                     if (expandAllMacrosElsewhere_cb) {
                         c2 = expandAllMacrosElsewhere_cb(c2);
-                        assert(c2);
+                        assert$1(c2);
                         if (c2 instanceof Error) {
                             return new Error(errinfo() + ': ' + c2.message);
                         }
@@ -10222,7 +10341,7 @@ function reduceRegex(s, name, opts, expandAllMacrosInSet_cb, expandAllMacrosElse
         return new Error(errinfo() + ': expands to an invalid regex: /' + s + '/');
     }
 
-    assert(s);
+    assert$1(s);
     return s;
 }
 
@@ -10268,7 +10387,7 @@ function prepareMacros(dict_macros, opts) {
                         a = m.split('{' + k + '}');
                         if (a.length > 1) {
                             var x = expandMacroInSet(k);
-                            assert(x);
+                            assert$1(x);
                             if (x instanceof Error) {
                                 m = x;
                                 break;
@@ -10359,7 +10478,7 @@ function prepareMacros(dict_macros, opts) {
                     var a = s.split('{' + i + '}');
                     if (a.length > 1) {
                         x = expandMacroInSet(i);
-                        assert(x);
+                        assert$1(x);
                         if (x instanceof Error) {
                             return new Error('failure to expand the macro [' + i + '] in set [' + s + ']: ' + x.message);
                         }
@@ -10396,7 +10515,7 @@ function prepareMacros(dict_macros, opts) {
                     var a = s.split('{' + i + '}');
                     if (a.length > 1) {
                         x = expandMacroElsewhere(i);
-                        assert(x);
+                        assert$1(x);
                         if (x instanceof Error) {
                             return new Error('failure to expand the macro [' + i + '] in regex /' + s + '/: ' + x.message);
                         }
@@ -10464,7 +10583,7 @@ function expandMacros(src, macros, opts) {
                     if (a.length > 1) {
                         x = m.in_set;
 
-                        assert(x);
+                        assert$1(x);
                         if (x instanceof Error) {
                             // this turns out to be an macro with 'issues' and it is used, so the 'issues' do matter: bombs away!
                             throw x;
@@ -10511,7 +10630,7 @@ function expandMacros(src, macros, opts) {
                     if (a.length > 1) {
                         // These are all main macro expansions, hence CAPTURING grouping is applied:
                         x = m.elsewhere;
-                        assert(x);
+                        assert$1(x);
 
                         // detect definition loop:
                         if (x === false) {
@@ -10724,7 +10843,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
         opts = processGrammar(dict, tokens, build_options);
         opts.__in_rules_failure_analysis_mode__ = false;
         prepExportStructures(opts);
-        assert(opts.options);
+        assert$1(opts.options);
         if (tweak_cb) {
             tweak_cb();
         }
@@ -10753,9 +10872,11 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 '',
                 source,
                 '',
-                'return lexer;'].join('\n');
+                'return lexer;'
+            ].join('\n');
             var lexer = code_exec(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
+                chkBugger(sourcecode);
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
             }, opts.options, "lexer");
@@ -10822,11 +10943,11 @@ function RegExpLexer(dict, input, tokens, build_options) {
         // When we get an exception here, it means some part of the user-specified lexer is botched.
         //
         // Now we go and try to narrow down the problem area/category:
-        assert(opts.options);
-        assert(opts.options.xregexp !== undefined);
+        assert$1(opts.options);
+        assert$1(opts.options.xregexp !== undefined);
         var orig_xregexp_opt = !!opts.options.xregexp;
         if (!test_me(function () {
-            assert(opts.options.xregexp !== undefined);
+            assert$1(opts.options.xregexp !== undefined);
             opts.options.xregexp = false;
             opts.showSource = false;
         }, 'When you have specified %option xregexp, you must also properly IMPORT the XRegExp library in the generated lexer.', ex, null)) {
@@ -10837,7 +10958,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 opts.conditions = [];
                 opts.showSource = false;
             }, function () {
-                assert(Array.isArray(opts.rules));
+                assert$1(Array.isArray(opts.rules));
                 return (opts.rules.length > 0 ?
                     'One or more of your lexer state names are possibly botched?' :
                     'Your custom lexer is somehow botched.'
@@ -10847,7 +10968,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 if (!test_me(function () {
                     // store the parsed rule set size so we can use that info in case
                     // this attempt also fails:
-                    assert(Array.isArray(opts.rules));
+                    assert$1(Array.isArray(opts.rules));
                     rulesSpecSize = opts.rules.length; 
 
                     // opts.conditions = [];
@@ -10860,8 +10981,8 @@ function RegExpLexer(dict, input, tokens, build_options) {
                     for (var i = 0, len = rulesSpecSize; i < len; i++) {
                         var lastEditedRuleSpec;
                         rv = test_me(function () {
-                            assert(Array.isArray(opts.rules));
-                            assert(opts.rules.length === rulesSpecSize);
+                            assert$1(Array.isArray(opts.rules));
+                            assert$1(opts.rules.length === rulesSpecSize);
 
                             // opts.conditions = [];
                             // opts.rules = [];
@@ -10872,8 +10993,8 @@ function RegExpLexer(dict, input, tokens, build_options) {
                                 // rules, when parsed, have 2 or 3 elements: [conditions, handle, action];
                                 // now we want to edit the *action* part:
                                 var rule = opts.rules[j];
-                                assert(Array.isArray(rule));
-                                assert(rule.length === 2 || rule.length === 3);
+                                assert$1(Array.isArray(rule));
+                                assert$1(rule.length === 2 || rule.length === 3);
                                 rule.pop();
                                 rule.push('{ /* nada */ }');
                                 lastEditedRuleSpec = rule;
@@ -12183,6 +12304,7 @@ return `{
     // --- END lexer kernel ---
 }
 
+chkBugger(getRegExpLexerPrototype());
 RegExpLexer.prototype = (new Function(rmCommonWS`
     return ${getRegExpLexerPrototype()};
 `))();
@@ -12294,6 +12416,7 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseYYSSTACK: build_options.parseActionsUseYYSSTACK,
         parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
         parseActionsUseYYRULELENGTH: build_options.parseActionsUseYYRULELENGTH,
+        parseActionsUseYYMERGELOCATIONINFO: build_options.parseActionsUseYYMERGELOCATIONINFO,
         parserHasErrorRecovery: build_options.parserHasErrorRecovery,
         parserHasErrorReporting: build_options.parserHasErrorReporting,
 
@@ -12452,6 +12575,7 @@ function generateModuleBody(opt) {
           parseActionsUseYYSSTACK: 1,
           parseActionsUseYYSTACKPOINTER: 1,
           parseActionsUseYYRULELENGTH: 1,
+          parseActionsUseYYMERGELOCATIONINFO: 1,
           parserHasErrorRecovery: 1,
           parserHasErrorReporting: 1,
           lexerActionsUseYYLENG: 1,
@@ -12524,9 +12648,9 @@ function generateModuleBody(opt) {
         .trim();
         code.push(protosrc + ',\n');
 
-        assert(opt.options);
+        assert$1(opt.options);
         // Assure all options are camelCased:
-        assert(typeof opt.options['case-insensitive'] === 'undefined');
+        assert$1(typeof opt.options['case-insensitive'] === 'undefined');
 
         code.push('    options: ' + produceOptions(opt.options));
   
@@ -12570,8 +12694,8 @@ function generateModuleBody(opt) {
         // what crazy stuff (or lack thereof) the userland code is pulling in the `actionInclude` chunk.
         out = 'var lexer;\n';
 
-        assert(opt.regular_rule_count === 0);
-        assert(opt.simple_rule_count === 0);
+        assert$1(opt.regular_rule_count === 0);
+        assert$1(opt.simple_rule_count === 0);
         opt.is_custom_lexer = true;
 
         if (opt.actionInclude) {
@@ -12951,7 +13075,8 @@ RegExpLexer.generate = generate;
 RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
-RegExpLexer.camelCase = camelCase;
+RegExpLexer.camelCase = helpers.camelCase;
+RegExpLexer.mkIdentifier = mkIdentifier;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 export default RegExpLexer;

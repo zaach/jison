@@ -8,14 +8,22 @@ import lexParser from '../lex-parser';
 import setmgmt from './regexp-set-management.js';
 import helpers from '../helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
-var camelCase   = helpers.camelCase;
+var mkIdentifier = helpers.mkIdentifier;
 var code_exec   = helpers.exec;
 // import recast from '@gerhobbelt/recast';
 // import astUtils from '@gerhobbelt/ast-util';
 import assert from 'assert';
 
-var version = '0.6.1-213';                              // require('./package.json').version;
+var version = '0.6.1-216';                              // require('./package.json').version;
 
+
+
+function chkBugger(src) {
+    src = '' + src;
+    if (src.match(/\bcov_\w+/)) {
+        console.error('### ISTANBUL COVERAGE CODE DETECTED ###\n', src);
+    }
+}
 
 
 
@@ -114,7 +122,7 @@ function mkStdOptions(/*...args*/) {
 
         for (var p in o) {
             if (typeof o[p] !== 'undefined' && h.call(o, p)) {
-                o2[camelCase(p)] = o[p];
+                o2[mkIdentifier(p)] = o[p];
             }
         }
 
@@ -306,19 +314,10 @@ function prepareRules(dict, actions, caseHelper, tokens, startConditions, opts) 
         if (typeof action === 'function') {
             // Also cope with Arrow Functions (and inline those as well?).
             // See also https://github.com/zaach/jison-lex/issues/23
-            action = String(action);
-            if (action.match(/^\s*function\s*\(\)\s*\{/)) {
-                action = action.replace(/^\s*function\s*\(\)\s*\{/, '').replace(/\}\s*$/, '');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*[^\s\r\n\{]/)) {
-                // () => 'TOKEN'    --> return 'TOKEN' 
-                action = action.replace(/^\s*\(\)\s*=>/, 'return ');
-            } else if (action.match(/^\s*\(\)\s*=>[\s\r\n]*\{/)) {
-                // () => { statements }     --> statements   (ergo: 'inline' the given function) 
-                action = action.replace(/^\s*\(\)\s*=>[\s\r\n]*\{/, '').replace(/\}\s*$/, '');
-            }
+            action = helpers.printFunctionSourceCodeContainer(action).code;
         }
-        action = action.replace(/return\s*'((?:\\'|[^']+)+)'/g, tokenNumberReplacement);
-        action = action.replace(/return\s*"((?:\\"|[^"]+)+)"/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?'((?:\\'|[^']+)+)'\)?/g, tokenNumberReplacement);
+        action = action.replace(/return\s*\(?"((?:\\"|[^"]+)+)"\)?/g, tokenNumberReplacement);
 
         var code = ['\n/*! Conditions::'];
         code.push(postprocessComment(active_conditions));
@@ -1096,9 +1095,11 @@ function RegExpLexer(dict, input, tokens, build_options) {
                 '',
                 source,
                 '',
-                'return lexer;'].join('\n');
+                'return lexer;'
+            ].join('\n');
             var lexer = code_exec(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
                 //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
+                chkBugger(sourcecode);
                 var lexer_f = new Function('', sourcecode);
                 return lexer_f();
             }, opts.options, "lexer");
@@ -2526,6 +2527,7 @@ return `{
     // --- END lexer kernel ---
 }
 
+chkBugger(getRegExpLexerPrototype());
 RegExpLexer.prototype = (new Function(rmCommonWS`
     return ${getRegExpLexerPrototype()};
 `))();
@@ -2695,6 +2697,7 @@ function processGrammar(dict, tokens, build_options) {
         parseActionsUseYYSSTACK: build_options.parseActionsUseYYSSTACK,
         parseActionsUseYYSTACKPOINTER: build_options.parseActionsUseYYSTACKPOINTER,
         parseActionsUseYYRULELENGTH: build_options.parseActionsUseYYRULELENGTH,
+        parseActionsUseYYMERGELOCATIONINFO: build_options.parseActionsUseYYMERGELOCATIONINFO,
         parserHasErrorRecovery: build_options.parserHasErrorRecovery,
         parserHasErrorReporting: build_options.parserHasErrorReporting,
 
@@ -2853,6 +2856,7 @@ function generateModuleBody(opt) {
           parseActionsUseYYSSTACK: 1,
           parseActionsUseYYSTACKPOINTER: 1,
           parseActionsUseYYRULELENGTH: 1,
+          parseActionsUseYYMERGELOCATIONINFO: 1,
           parserHasErrorRecovery: 1,
           parserHasErrorReporting: 1,
           lexerActionsUseYYLENG: 1,
@@ -3352,7 +3356,8 @@ RegExpLexer.generate = generate;
 RegExpLexer.version = version;
 RegExpLexer.defaultJisonLexOptions = defaultJisonLexOptions;
 RegExpLexer.mkStdOptions = mkStdOptions;
-RegExpLexer.camelCase = camelCase;
+RegExpLexer.camelCase = helpers.camelCase;
+RegExpLexer.mkIdentifier = mkIdentifier;
 RegExpLexer.autodetectAndConvertToJSONformat = autodetectAndConvertToJSONformat;
 
 

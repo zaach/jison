@@ -110,7 +110,8 @@
 
 %start expressions
 
-%options parser-errors-are-recoverable lexer-errors-are-recoverable
+%option parser-errors-are-recoverable 
+%option lexer-errors-are-recoverable
 
 
 
@@ -130,10 +131,7 @@ expressions
         }
     | error EOF
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
             print('~~~EOF~~~', parser.describeSymbol(#error), ' error: ', { '$1': typeof $1, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
-            yyerrok;
             yyclearin;
             $$ = 17;
             // ^-- every error recovery rule in this grammar adds a different value 
@@ -157,7 +155,6 @@ e
     | e error e
         {
             print('~~~EXPR-OPERATOR~~~', parser.describeSymbol(#error), ' error: ', { '$1': $1, '$2': typeof $2, '$3': $3, yytext: yytext, '@error': @error, token: parser.describeSymbol(#error), msg: $error.errStr }, yy.lastErrorMessage);
-            yyerrok;
             yyclearin;
             $$ = $e1 + 13 + $e2;
             // ^-- every error recovery rule in this grammar adds a different value 
@@ -256,10 +253,7 @@ v
         }
     | error
         {
-            //print('~~~ (...) error: ', { '$1': $1, '#1': #1, yytext: yytext, '$$': $$, '@$': @$, token: parser.describeSymbol(#$), 'yystack': yystack, 'yyvstack': yyvstack, 'yylstack': yylstack, last_error: yy.lastErrorMessage});
-
             print('~~~V~~~', parser.describeSymbol(#$), ' error: ', { '$1': typeof $1, '@$': @$, token: parser.describeSymbol(#$), msg: $error.errStr }, yy.lastErrorMessage, yy.lastErrorHash.token, yysp);
-            yyerrok;
             yyclearin;
             $$ = 5;         
             // ^-- every error recovery rule in this grammar adds a different value 
@@ -364,8 +358,16 @@ parser.main = function () {
         for (var i = 0, len = formulas_and_expectations.length; i < len; i += 2) {
             var formula = formulas_and_expectations[i];
             var expectation = formulas_and_expectations[i + 1];
+            var rv;
 
-            var rv = parser.parse(formula);
+            try {
+              rv = parser.parse(formula);
+            } catch (ex) {
+              var stk = '' + ex.stack;
+              stk = stk.replace(/\t/g, '  ')
+              .replace(/  at (.+?)\(.*?[\\/]([^\\/\s]+)\)/g, '  at $1($2)');
+              rv = 'ERROR:' + ex.name + '::' + ex.message + '::' + stk;
+            }
             print("'" + formula + "' ==> ", rv, "\n");
             if (isNaN(rv) && isNaN(expectation)) {
               assert(1);

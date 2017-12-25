@@ -365,7 +365,9 @@ describe("Parser Actions", function () {
             "E"   :[ ["E y", "return test();"],
                      "" ]
         },
-        actionInclude: function () {
+        actionInclude: 
+        /* istanbul ignore next: `actionInclude` code is injected and then crashes the generated parser due to unreachable coverage global */ 
+        function () {
             function test(val) {
                 return 1;
             }

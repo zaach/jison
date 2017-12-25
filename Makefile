@@ -4,12 +4,17 @@ NANOC := $(shell command -v nanoc 2> /dev/null)
 ROLLUP = node_modules/.bin/rollup
 BABEL = node_modules/.bin/babel
 MOCHA = node_modules/.bin/mocha
+NYC = node_modules/.bin/nyc      --clean=false --temp-directory ./.nyc_output
 
-JISON = node dist/cli-cjs-es5.js
+ifndef FULL_CODE_COVERAGE
+	JISON = node dist/cli-cjs-es5.js
+else
+	JISON = $(NYC) --reporter=lcov -- node dist/cli-cjs-es5.js
+endif
 
 
 
-all: build test examples-test
+all: clean-nyc build test test-nyc examples-test report-nyc
 
 everything:                         \
 		clean                       \
@@ -70,6 +75,37 @@ deploy: site
 test:
 	$(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
 
+analyze-coverage:
+	istanbul cover test/unit-tests.js
+
+check-coverage:
+	istanbul check-coverage --statement 96 --branch 96 --function 96
+
+dynamic-analysis: analyze-coverage check-coverage
+
+clean-nyc:
+	# clear the coverage cache, etc.
+	-rm -rf ./.nyc_output
+	-rm -rf ./coverage/
+
+test-nyc:
+	# DO NOT clear the coverage cache, etc.: earlier build tasks MAY also have contributed coverage info!
+	cd packages/helpers-lib && make test-nyc
+	cd packages/lex-parser && make test-nyc
+	cd packages/jison-lex && make test-nyc
+	cd packages/ebnf-parser && make test-nyc
+	cd packages/json2jison && make test-nyc
+	cd packages/jison2json && make test-nyc
+	$(NYC) --reporter=lcov --reporter=text --exclude 'examples/issue-lex*.js' -- $(MOCHA) --timeout 18000 --check-leaks --globals assert --recursive tests/
+	-rm -rf ./coverage/
+	# report PRELIMINARY collective coverage results:
+	$(NYC) report --reporter=html
+
+report-nyc:
+	-rm -rf ./coverage/
+	# report collective coverage results:
+	$(NYC) report --reporter=html
+
 web-examples: web/content/assets/js/calculator.js
 
 examples: examples_directory
@@ -78,7 +114,7 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 	$(JISON) examples/calculator.jison -o $@
 
 
-comparison: 
+comparison:
 	cd examples/ && make comparison
 
 lexer-comparison: build
@@ -569,5 +605,6 @@ superclean: clean clean-site
 		git-tag subpackages-git-tag                                                 \
 		compile-site clean-site                                                     \
 		publish subpackages-publish                                                 \
-		npm-update subpackages-npm-update
+		npm-update subpackages-npm-update                                           \
+		test-nyc clean-nyc report-nyc
 
