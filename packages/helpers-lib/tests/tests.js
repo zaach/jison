@@ -81,6 +81,53 @@ describe("helpers API", function () {
       'PRETTY RANGE');
   });
 
+  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
+  it("printFunctionSourceCode", function () {
+    function d(i) { /* mock for linters */ }
+
+    assert.strictEqual(helpers.printFunctionSourceCode(function a(x) { return x; }), "function a(x) { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode(function (x)  { return x; }), "function (x)  { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode((x) => { return x; }), "(x) => { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode((x) => x), "(x) => x");
+    assert.strictEqual(helpers.printFunctionSourceCode((x) => (d(1), d(2), x)), "(x) => (d(1), d(2), x)");
+
+    var f1 = function a(x) { return x; };
+    var f2 = function (x)  { return x; };
+    var f3 = (x) => { return x; };
+    var f4 = (x) => x;
+    var f5 = (x) => (d(1), d(2), x);
+
+    assert.strictEqual(helpers.printFunctionSourceCode(f1), "function a(x) { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode(f2), "function (x)  { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode(f3), "(x) => { return x; }");
+    assert.strictEqual(helpers.printFunctionSourceCode(f4), "(x) => x");
+    assert.strictEqual(helpers.printFunctionSourceCode(f5), "(x) => (d(1), d(2), x)");
+  });
+
+  /* istanbul ignore next: test functions' code is injected and then crashes the test due to extra code coverage statements having been injected */ 
+  it("printFunctionSourceCodeContainer", function () {
+    function d(i) { /* mock for linters */ }
+    var x;          /* mock */
+    
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(function a(x) { return x; }), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(function (x)  { return x; }), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => { return x; }), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => x), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer((x) => (d(1), d(2), x)), { args: "x", code: "return (d(1), d(2), x);" });
+
+    var f1 = function a(x) { return x; };
+    var f2 = function (x)  { return x; };
+    var f3 = (x) => { return x; };
+    var f4 = (x) => x;
+    var f5 = (x) => (d(1), d(2), x);
+
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f1), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f2), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f3), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f4), { args: "x", code: "return x;" });
+    assert.deepEqual(helpers.printFunctionSourceCodeContainer(f5), { args: "x", code: "return (d(1), d(2), x);" });
+  });
+
   it("parseCodeChunkToAST + prettyPrintAST", function () {
     var rmCommonWS = helpers.rmCommonWS;
 
