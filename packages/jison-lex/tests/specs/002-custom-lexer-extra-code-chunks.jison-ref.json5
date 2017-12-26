@@ -13,7 +13,23 @@
   null,
   null,
   {
-    sourceCode: "var lexer;\n// custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };\n",
+    sourceCode: `var lexer;
+// custom lexer...
+  console.log('oh boy!');
+  var lexer = {
+    lex: function () {
+      return 1;
+    },
+    setInput: function (s, yy) {
+      console.log('setInput: ', s, yy);
+    },
+    options: {
+
+    },
+    ERROR: 2,
+    EOF: 1, 
+  };
+`,
     options: {
       lexerActionsUseYYLENG: "???",
       lexerActionsUseYYLINENO: "???",
@@ -44,7 +60,21 @@
         ],
         importDecls: [],
         unknownDecls: [],
-        actionInclude: "// custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };"
+        actionInclude: `// custom lexer...
+  console.log('oh boy!');
+  var lexer = {
+    lex: function () {
+      return 1;
+    },
+    setInput: function (s, yy) {
+      console.log('setInput: ', s, yy);
+    },
+    options: {
+
+    },
+    ERROR: 2,
+    EOF: 1, 
+  };`
       },
       options: {
         moduleType: "commonjs",
@@ -73,8 +103,30 @@
           inclusive: true
         }
       },
-      performAction: "function lexer__performAction(yy, yyrulenumber, YY_START) {\n            var yy_ = this;\n\n            // custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };\nvar YYSTATE = YY_START;\n/* no rules ==> no rule SWITCH! */\n        }",
-      caseHelperInclude: "{\n\n}",
+      performAction: `function lexer__performAction(yy, yyrulenumber, YY_START) {
+            var yy_ = this;
+
+            // custom lexer...
+  console.log('oh boy!');
+  var lexer = {
+    lex: function () {
+      return 1;
+    },
+    setInput: function (s, yy) {
+      console.log('setInput: ', s, yy);
+    },
+    options: {
+
+    },
+    ERROR: 2,
+    EOF: 1, 
+  };
+var YYSTATE = YY_START;
+/* no rules ==> no rule SWITCH! */
+        }`,
+      caseHelperInclude: `{
+
+}`,
       rules: [],
       macros: {},
       regular_rule_count: 0,
@@ -82,7 +134,21 @@
       conditionStack: [
         "INITIAL"
       ],
-      actionInclude: "// custom lexer...\n  console.log('oh boy!');\n  var lexer = {\n    lex: function () {\n      return 1;\n    },\n    setInput: function (s, yy) {\n      console.log('setInput: ', s, yy);\n    },\n    options: {\n\n    },\n    ERROR: 2,\n    EOF: 1, \n  };",
+      actionInclude: `// custom lexer...
+  console.log('oh boy!');
+  var lexer = {
+    lex: function () {
+      return 1;
+    },
+    setInput: function (s, yy) {
+      console.log('setInput: ', s, yy);
+    },
+    options: {
+
+    },
+    ERROR: 2,
+    EOF: 1, 
+  };`,
       moduleInclude: "",
       __in_rules_failure_analysis_mode__: false,
       exportSourceCode: {
