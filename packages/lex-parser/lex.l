@@ -266,9 +266,15 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
                                         %}
 "["                                     this.pushState('set'); return 'REGEX_SET_START';
 "|"                                     return '|';
+
+// see also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
 "(?:"                                   return 'SPECIAL_GROUP';
 "(?="                                   return 'SPECIAL_GROUP';
 "(?!"                                   return 'SPECIAL_GROUP';
+// regex lookbehind prepwork: see also https://github.com/tc39/proposal-regexp-lookbehind
+"(?<="                                   return 'SPECIAL_GROUP';
+"(?<!"                                   return 'SPECIAL_GROUP';
+
 "("                                     return '(';
 ")"                                     return ')';
 "+"                                     return '+';
