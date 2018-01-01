@@ -1,23 +1,6 @@
-/*
- * From "Modern Compiler Implementation in C":
- * 
- * > ### Exercise 3.7: 
- * > 
- * > a. Left-factor this grammar.
- * > 
- * > b. Show that the resulting grammar is LL(2). You can do this by constructing
- * >   FIRST sets (etc.) containing two-symbol strings; but it is simpler to construct an LL(1)
- * >   parsing table and then argue convincingly that any conflicts can be resolved by
- * >   looking ahead one more symbol. 
- * > c. Show how the tok variable and advance function should be altered for
- * >   recursive-descent parsing with two-symbol lookahead.
- * > d. Use the grammar class hierarchy (Figure 3.29) to show that the (left factored)
- * >   grammar is LR(2).
- * > e. Prove that no string has two parse trees according to this (left-factored)
- * >   grammar. 
- * > 
- */
-
+// this grammar is expected to FAIL i.e. cannot compile in jison!
+//
+// grammar similar to examples/test-ll2-grammar-1.jison
 
 
 %options module-name=bison_bugger
@@ -52,14 +35,14 @@
 
 %%
 
-S : G;
+S → G;
 
-G : P
+G → P
   | P G;
 
-P : id ':' R;
+P → id ':' R;
 
-R : %empty
+R → %empty
   | id R;
 
 
