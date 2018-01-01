@@ -58,6 +58,8 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         return 'ACTION_BODY';
 <action>\'{QUOTED_STRING_CONTENT}\'
                                         return 'ACTION_BODY';
+<action>\`{ES2017_STRING_CONTENT}\`
+                                        return 'ACTION_BODY';
 <action>[/"'][^{}/"']+                  return 'ACTION_BODY';
 <action>[^{}/"']+                       return 'ACTION_BODY';
 <action>"{"                             yy.depth++; return '{';
@@ -96,15 +98,15 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 <option_values>{
 
 \"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yytext = unescQuote(this.matches[1], /\\"/g); 
+                                        yytext = unescQuote(this.matches[1]); 
                                         this.popState(); 
                                         return 'OPTION_STRING_VALUE';   // value is always a string type
 \'{QUOTED_STRING_CONTENT}\'
-                                        yytext = unescQuote(this.matches[1], /\\'/g); 
+                                        yytext = unescQuote(this.matches[1]); 
                                         this.popState(); 
                                         return 'OPTION_STRING_VALUE';   // value is always a string type
 \`{ES2017_STRING_CONTENT}\`
-                                        yytext = unescQuote(this.matches[1], /\\`/g); 
+                                        yytext = unescQuote(this.matches[1]); 
                                         this.popState(); 
                                         return 'OPTION_STRING_VALUE';   // value is always a string type
 
@@ -137,11 +139,15 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "$eof"                                  return 'EOF_ID';
 
 \"{DOUBLEQUOTED_STRING_CONTENT}\"       %{
-                                            yytext = unescQuote(this.matches[1], /\\"/g);
+                                            yytext = unescQuote(this.matches[1]);
                                             return 'STRING';
                                         %}
 \'{QUOTED_STRING_CONTENT}\'             %{
-                                            yytext = unescQuote(this.matches[1], /\\'/g);
+                                            yytext = unescQuote(this.matches[1]);
+                                            return 'STRING';
+                                        %}
+\`{ES2017_STRING_CONTENT}\`             %{
+                                            yytext = unescQuote(this.matches[1]); 
                                             return 'STRING';
                                         %}
 
@@ -222,6 +228,10 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         return 'PATH';
 <path>\'{QUOTED_STRING_CONTENT}\'
                                         yytext = unescQuote(this.matches[1]);
+                                        this.popState();
+                                        return 'PATH';
+<path>\`{ES2017_STRING_CONTENT}\`
+                                        yytext = unescQuote(this.matches[1]); 
                                         this.popState();
                                         return 'PATH';
 
@@ -317,18 +327,12 @@ var rmCommonWS = helpers.rmCommonWS;
 var dquote     = helpers.dquote;
 
 
-function indent(s, i) {
-    var a = s.split('\n');
-    var pf = (new Array(i + 1)).join(' ');
-    return pf + a.join('\n' + pf);
-}
-
 // unescape a string value which is wrapped in quotes/doublequotes
 function unescQuote(str) {
     str = '' + str;
     var a = str.split('\\\\');
     a = a.map(function (s) {
-        return s.replace(/\\'/g, "'").replace(/\\"/g, '"');
+        return s.replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\`/g, '`');
     });
     str = a.join('\\\\');
     return str;
