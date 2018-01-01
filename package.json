@@ -58,11 +58,11 @@
     "globby": "7.1.1",
     "istanbul": "0.4.5",
     "jison-gho": "0.6.1-215",
-    "mocha": "4.0.1",
+    "mocha": "4.1.0",
     "nyc": "11.4.1",
-    "rollup": "0.53.0",
+    "rollup": "0.53.2",
     "rollup-plugin-node-resolve": "3.0.0",
-    "uglify-js": "3.3.2"
+    "uglify-js": "3.3.4"
   },
   "scripts": {
     "test": "make test",
