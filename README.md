@@ -18,7 +18,7 @@ Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github
 
 Using npm:
 
-    npm install jison -g
+    npm install jison --global --unsafe_perm --allow_root
 
 Usage from the command line
 -----------------------
