@@ -193,20 +193,31 @@ describe("Lexer Kernel", function () {
         "'\\x42'     {return 'SC';}",
         "'\\u0043'     {return 'SD';}",
         "'\\ '     {return 'SE';}",
+        "'\\\\n'     {return 'LN';}",
+        "'\\\\r'     {return 'LR';}",
+        "'\\\\v'     {return 'LV';}",
+        "'\\\\a'     {return 'LA';}",
+        "'\\\\f'     {return 'LF';}",
+        "'\\\\b'     {return 'LB';}",
+        "'\\\\x42'     {return 'LC';}",
+        "'\\\\u0043'     {return 'LD';}",
+        "'\\\\\\\\ '     {return 'LE';}",
         "[^]       {return this.ERROR;}",
       ].join('\n');
 
       var lexer = new RegExpLexer(dict);
       var JisonLexerError = lexer.JisonLexerError; 
       assert(JisonLexerError);
+      console.log('lexer:', lexer);
 
-      var input = "x\nx\rx\vx\ax\fx\bx\x42x\u0043x xxx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\ ";
+      var input = "x\nx\rx\vx\x07x\fx\bx\x42x\u0043x \\ x.xx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\\\ ";
 
       // help us monitor/debug lexer output:
       var old_lex_f = lexer.lex;
       lexer.lex = function () {
         try {
           var rv = old_lex_f.call(this);
+          console.log('lex:', {rv, val: lexer.yytext});
           return rv;
         } catch (ex) {
           //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -218,59 +229,57 @@ describe("Lexer Kernel", function () {
       assert.equal(lexer.lex(), 'X');
 
       // \n
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SN');
       assert.equal(lexer.lex(), 'X');
       // \r
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SR');
       assert.equal(lexer.lex(), 'X');
       // \v
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SV');
       assert.equal(lexer.lex(), 'X');
       // \a
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SA');
       assert.equal(lexer.lex(), 'X');
       // \f
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SF');
       assert.equal(lexer.lex(), 'X');
       // \b
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SB');
       assert.equal(lexer.lex(), 'X');
       // \x42
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SC');
       assert.equal(lexer.lex(), 'X');
       // \u0043
       assert.equal(lexer.lex(), 'SD');
       assert.equal(lexer.lex(), 'X');
-      // \_
+      // _
       assert.equal(lexer.lex(), lexer.ERROR);
+      // \_
+      assert.equal(lexer.lex(), 'SE');
 
       assert.equal(lexer.lex(), 'X');
+      assert.equal(lexer.lex(), lexer.ERROR);
       assert.equal(lexer.lex(), 'X');
       assert.equal(lexer.lex(), 'X');
 
-      assert.equal(lexer.lex(), 'SN');
+      assert.equal(lexer.lex(), 'LN');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SR');
+      assert.equal(lexer.lex(), 'LR');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SV');
+      assert.equal(lexer.lex(), 'LV');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SA');
+      assert.equal(lexer.lex(), 'LA');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SF');
+      assert.equal(lexer.lex(), 'LF');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SB');
+      assert.equal(lexer.lex(), 'LB');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SC');
+      assert.equal(lexer.lex(), 'LC');
       assert.equal(lexer.lex(), 'X');
       // \\u0043
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'LD');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SE');
+      assert.equal(lexer.lex(), 'LE');
 
       assert.equal(lexer.lex(), lexer.EOF);
     });
@@ -2835,7 +2844,7 @@ describe("prettyPrintRange() API", function () {
         });
       }, 
       Error,
-      /The rule\'s action code section does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; \n\^\.\.\.\.\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n3: "b" %\{ return 1; %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+      /The lexer rule\'s action code section does not compile[^]*?\n  Erroneous area:\n2: "a" %\{ return true; \n\^\.\.\.\.\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n3: "b" %\{ return 1; %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
     );
   });
 
@@ -2892,7 +2901,7 @@ describe("prettyPrintRange() API", function () {
         });
       }, 
       Error,
-      /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "INIT_CODE"/
+      /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "CODE"/
     );
   });
 });
@@ -3038,7 +3047,16 @@ describe("Test Lexer Grammars", function () {
         tokens = JSON5.parse(JSON5.stringify(tokens, null, 2));
         assert.deepEqual(tokens, filespec.ref);
       } else {
-        var refOut = JSON5.stringify(tokens, null, 2);
+        var refOut = JSON5.stringify(tokens, null, 2, function testrig_circularRefHandler(obj, i, objStack, holder, key, isTopLevel, err) {
+          console.error(err);
+          console.error('Offending data:', obj);
+          // and produce an alternative structure to JSON-ify:
+          return {
+            ex: err,
+            index: i,
+            key: key
+          };
+        });
         fs.writeFileSync(filespec.path + '-ref.json5', refOut, 'utf8');
       }
     });
