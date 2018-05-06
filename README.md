@@ -38,7 +38,7 @@ Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github
 Using npm:
 
 ```
-npm install jison -g
+npm install jison-gho -g
 ```
 
 
