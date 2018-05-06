@@ -62,7 +62,6 @@ function AlphabetScanner() {
         last_line: 1,
         last_column: 0
     };
-    this.yylloc = this.yylloc;
     this.setInput = function(text_) {
         text = text_;
     };

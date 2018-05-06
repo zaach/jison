@@ -15,7 +15,7 @@
   {
     sourceCode: `var lexer;
 // custom lexer...
-  console.log('oh boy!');
+  console.log('The moment the custom lexer gets defined...');
   var lexer = {
     lex: function () {
       return 1;
@@ -61,7 +61,7 @@
         importDecls: [],
         unknownDecls: [],
         actionInclude: `// custom lexer...
-  console.log('oh boy!');
+  console.log('The moment the custom lexer gets defined...');
   var lexer = {
     lex: function () {
       return 1;
@@ -107,7 +107,7 @@
             var yy_ = this;
 
             // custom lexer...
-  console.log('oh boy!');
+  console.log('The moment the custom lexer gets defined...');
   var lexer = {
     lex: function () {
       return 1;
@@ -135,7 +135,7 @@ var YYSTATE = YY_START;
         "INITIAL"
       ],
       actionInclude: `// custom lexer...
-  console.log('oh boy!');
+  console.log('The moment the custom lexer gets defined...');
   var lexer = {
     lex: function () {
       return 1;
