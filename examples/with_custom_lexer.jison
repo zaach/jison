@@ -10,7 +10,7 @@
 
 %options ranges
 
-%include with-includes.prelude1.js
+%include "with-includes.prelude1.js"
 
 %{
     // When you set up a custom lexer, this is the minimum example for one:
@@ -59,7 +59,7 @@
 
 %%
 
-%include with-includes.prelude2.js
+%include "with-includes.prelude2.js"
 
 /lex
 

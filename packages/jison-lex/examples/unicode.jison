@@ -23,6 +23,9 @@
 %options xregexp
 
 
+%x INLINE_COMMENT
+
+
 
 
 

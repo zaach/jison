@@ -198,10 +198,12 @@ var lexer = {
     matched: '',                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far
     matches: false,                             /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt
     yytext: '',                                 /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the \`lex()\` API.
-    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far
+    offset: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far. (**WARNING:** this value MAY be negative if you \`unput()\` more text than you have already lexed. This type of behaviour is generally observed for one kind of 'lexer/parser hack' where custom token-illiciting characters are pushed in front of the input stream to help simulate multiple-START-points in the parser. When this happens, \`base_position\` will be adjusted to help track the original input's starting point in the \`_input\` buffer.)
+    base_position: 0,                           /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: index to the original starting point of the input; always ZERO(0) unless \`unput()\` has pushed content before the input: see the \`offset\` **WARNING** just above.
     yyleng: 0,                                  /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (\`yytext\`)
     yylineno: 0,                                /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located
     yylloc: null,                               /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction
+    CRLF_Re: /\\r\\n?|\\n/,                        /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: regex used to split lines while tracking the lexer cursor position.
 
     /**
      * INTERNAL USE: construct a suitable error info hash object instance for \`parseError\`.
@@ -445,6 +447,7 @@ var lexer = {
             range: [0, 0]
         };
         this.offset = 0;
+        this.base_position = 0;
         return this;
     },
 
@@ -565,12 +568,22 @@ var lexer = {
      */
     unput: function lexer_unput(ch) {
         var len = ch.length;
-        var lines = ch.split(/(?:\\r\\n?|\\n)/g);
+        var lines = ch.split(this.CRLF_Re);
 
         this._input = ch + this._input;
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
         this.yyleng = this.yytext.length;
         this.offset -= len;
+        // **WARNING:** 
+        // The \`offset\` value MAY be negative if you \`unput()\` more text than you have already lexed. 
+        // This type of behaviour is generally observed for one kind of 'lexer/parser hack' 
+        // where custom token-illiciting characters are pushed in front of the input stream to help 
+        // simulate multiple-START-points in the parser. 
+        // When this happens, \`base_position\` will be adjusted to help track the original input's 
+        // starting point in the \`_input\` buffer.
+        if (-this.offset > this.base_position) {
+            this.base_position = -this.offset;
+        }
         this.match = this.match.substr(0, this.match.length - len);
         this.matched = this.matched.substr(0, this.matched.length - len);
 
@@ -583,10 +596,10 @@ var lexer = {
             // last index slot; we don't mind when other previously 
             // matched lines end up in the array too. 
             var pre = this.match;
-            var pre_lines = pre.split(/(?:\\r\\n?|\\n)/g);
+            var pre_lines = pre.split(this.CRLF_Re);
             if (pre_lines.length === 1) {
                 pre = this.matched;
-                pre_lines = pre.split(/(?:\\r\\n?|\\n)/g);
+                pre_lines = pre.split(this.CRLF_Re);
             }
             this.yylloc.last_column = pre_lines[pre_lines.length - 1].length;
         } else {
@@ -653,7 +666,11 @@ var lexer = {
      * Limit the returned string to the \`maxLines\` number of lines of
      * input (default: 1).
      * 
-     * Negative limit values equal *unlimited*.
+     * A negative \`maxSize\` limit value equals *unlimited*, i.e. 
+     * produce the entire input that has already been lexed.
+     * 
+     * A negative \`maxLines\` limit value equals *unlimited*, i.e. limit the result
+     * to the \`maxSize\` specified number of characters *only*.
      * 
      * @public
      * @this {RegExpLexer}
@@ -674,7 +691,7 @@ var lexer = {
         past = past.substr(-maxSize * 2 - 2);
         // now that we have a significantly reduced string to process, transform the newlines
         // and chop them, then limit them:
-        var a = past.replace(/\\r\\n|\\r/g, '\\n').split('\\n');
+        var a = past.split(this.CRLF_Re);
         a = a.slice(-maxLines);
         past = a.join('\\n');
         // When, after limiting to maxLines, we still have too much to return,
@@ -692,7 +709,11 @@ var lexer = {
      * 
      * Limit the returned string to the \`maxLines\` number of lines of input (default: 1).
      * 
-     * Negative limit values equal *unlimited*.
+     * A negative \`maxSize\` limit value equals *unlimited*, i.e. 
+     * produce the entire input that is yet to be lexed.
+     * 
+     * A negative \`maxLines\` limit value equals *unlimited*, i.e. limit the result
+     * to the \`maxSize\` specified number of characters *only*.
      *
      * > ### NOTE ###
      * >
@@ -721,11 +742,11 @@ var lexer = {
         // more than necessary so that we can still properly check against maxSize
         // after we've transformed and limited the newLines in here:
         if (next.length < maxSize * 2 + 2) {
-            next += this._input.substring(0, maxSize * 2 + 2);  // substring is faster on Chrome/V8
+            next += this._input.substring(0, maxSize * 2 + 2 - next.length);  // substring is faster on Chrome/V8
         }
         // now that we have a significantly reduced string to process, transform the newlines
         // and chop them, then limit them:
-        var a = next.replace(/\\r\\n|\\r/g, '\\n').split('\\n');
+        var a = next.split(this.CRLF_Re, maxLines + 1);     // stop splitting once we have reached just beyond the reuired number of lines.
         a = a.slice(0, maxLines);
         next = a.join('\\n');
         // When, after limiting to maxLines, we still have too much to return,
@@ -1071,7 +1092,7 @@ var lexer = {
         match_str = match[0];
         match_str_len = match_str.length;
         // if (match_str.indexOf('\\n') !== -1 || match_str.indexOf('\\r') !== -1) {
-            lines = match_str.split(/(?:\\r\\n?|\\n)/g);
+            lines = match_str.split(this.CRLF_Re);
             if (lines.length > 1) {
                 this.yylineno += lines.length - 1;
 
@@ -1384,11 +1405,14 @@ var lexer = {
      * @this {RegExpLexer}
      */
     _currentRules: function lexer__currentRules() {
-        if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-            return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
+        var n = this.conditionStack.length - 1;
+        var state;
+        if (n >= 0) {
+            state = this.conditionStack[n];
         } else {
-            return this.conditions['INITIAL'];
+            state = 'INITIAL';
         }
+        return this.conditions[state] || this.conditions['INITIAL'];
     },
 
     /**

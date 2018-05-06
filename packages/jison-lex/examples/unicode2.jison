@@ -20,10 +20,13 @@
 
 
 
+
 %options ranges
 %options backtrack_lexer
 %options xregexp
 
+
+%x INLINE_COMMENT
 
 
 
