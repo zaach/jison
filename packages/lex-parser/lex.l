@@ -110,6 +110,22 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                         yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 
+<action>"%{{"([^]*?)"%}}"               yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"%{{{"([^]*?)"%}}}"             yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"{{"([^]*?)"}}"                 yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"{{{"([^]*?)"}}}"               yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
 <action>"%include"                      if (yy.include_command_allowed) {
                                             // This is an include instruction in place of (part of) an action:
                                             this.pushState('options');

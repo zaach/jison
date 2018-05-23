@@ -627,7 +627,7 @@ rule
             }
             $$ = [$regex, srcCode];
         }
-    | regex ARROW_ACTION action ACTION_END
+    | regex ARROW_ACTION_START action ACTION_END
         {
             var srcCode = trimActionCode($action);
             // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
@@ -667,7 +667,7 @@ rule
             // multiple statements separated by semicolon.
             $$ = [$regex, srcCode]; 
         }
-    | regex ARROW_ACTION error
+    | regex ARROW_ACTION_START error
         {
             $$ = [$regex, $error];
             yyerror(rmCommonWS`

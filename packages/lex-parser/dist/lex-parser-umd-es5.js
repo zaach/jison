@@ -57,16 +57,16 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 (function (global, factory) {
-    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5'), require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert')) : typeof define === 'function' && define.amd ? define(['@gerhobbelt/xregexp', '@gerhobbelt/json5', 'fs', 'path', '@gerhobbelt/recast', 'assert'], factory) : global['lex-parser'] = factory(global.XRegExp, global.JSON5, global.fs, global.path, global.recast, global.assert$1);
-})(undefined, function (XRegExp, JSON5, fs, path, recast, assert$1) {
+    (typeof exports === 'undefined' ? 'undefined' : _typeof(exports)) === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) : typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) : global['lex-parser'] = factory(global.fs, global.path, global.recast, global.assert$1, global.XRegExp, global.JSON5);
+})(undefined, function (fs, path, recast, assert$1, XRegExp, JSON5) {
     'use strict';
 
-    XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
-    JSON5 = JSON5 && JSON5.hasOwnProperty('default') ? JSON5['default'] : JSON5;
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
     assert$1 = assert$1 && assert$1.hasOwnProperty('default') ? assert$1['default'] : assert$1;
+    XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
+    JSON5 = JSON5 && JSON5.hasOwnProperty('default') ? JSON5['default'] : JSON5;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -289,18 +289,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     }
 
     //
-    // Helper library for safe code execution/compilation, including dumping offending code to file for further error analysis
-    // (the idea was originally coded in https://github.com/GerHobbelt/jison/commit/85e367d03b977780516d2b643afbe6f65ee758f2 )
-    //
-    // MIT Licensed
-    //
-    //
-    // This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-    //
-    // the given code fails, but where exactly and why? It's precise failure conditions are 'hidden' due to 
-    // the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
-    // we can test the code in a different environment so that we can see what precisely is causing the failure.
-    // 
 
 
     function chkBugger(src) {
@@ -391,9 +379,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         }
         var debug = 0;
 
-        if (debug) console.warn('generated ' + errname + ' code under EXEC TEST.');
-        if (debug > 1) console.warn('\n        ######################## source code ##########################\n        ' + sourcecode + '\n        ######################## source code ##########################\n        ');
-
         var p;
         try {
             // p = eval(sourcecode);
@@ -403,13 +388,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             chkBugger(sourcecode);
             p = code_execution_rig.call(this, sourcecode, options, errname, debug);
         } catch (ex) {
-            if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-            if (debug) console.log("generated " + errname + " source code fatal error: ", ex.message);
-
-            if (debug > 1) console.log("exec-and-diagnose options:", options);
-
-            if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 
             if (options.dumpSourceCodeOnFailure) {
                 dumpSourceToFile(sourcecode, errname, err_id, options, ex);
@@ -428,18 +406,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
 
     //
-    // Parse a given chunk of code to an AST.
-    //
-    // MIT Licensed
-    //
-    //
-    // This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-    //
-    // would the given code compile and possibly execute correctly, when included in a lexer, parser or other engine?
-    // 
 
-
-    //import astUtils from '@gerhobbelt/ast-util';
     assert$1(recast);
     var types = recast.types;
     assert$1(types);
@@ -461,6 +428,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
     function prettyPrintAST(ast, options) {
         var new_src;
+
         var s = recast.prettyPrint(ast, {
             tabWidth: 2,
             quote: 'single',
@@ -740,383 +708,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         detectIstanbulGlobal: detectIstanbulGlobal
     };
 
-    /* parser generated by jison 0.6.1-216 */
-
-    /*
-     * Returns a Parser object of the following structure:
-     *
-     *  Parser: {
-     *    yy: {}     The so-called "shared state" or rather the *source* of it;
-     *               the real "shared state" `yy` passed around to
-     *               the rule actions, etc. is a derivative/copy of this one,
-     *               not a direct reference!
-     *  }
-     *
-     *  Parser.prototype: {
-     *    yy: {},
-     *    EOF: 1,
-     *    TERROR: 2,
-     *
-     *    trace: function(errorMessage, ...),
-     *
-     *    JisonParserError: function(msg, hash),
-     *
-     *    quoteName: function(name),
-     *               Helper function which can be overridden by user code later on: put suitable
-     *               quotes around literal IDs in a description string.
-     *
-     *    originalQuoteName: function(name),
-     *               The basic quoteName handler provided by JISON.
-     *               `cleanupAfterParse()` will clean up and reset `quoteName()` to reference this function
-     *               at the end of the `parse()`.
-     *
-     *    describeSymbol: function(symbol),
-     *               Return a more-or-less human-readable description of the given symbol, when
-     *               available, or the symbol itself, serving as its own 'description' for lack
-     *               of something better to serve up.
-     *
-     *               Return NULL when the symbol is unknown to the parser.
-     *
-     *    symbols_: {associative list: name ==> number},
-     *    terminals_: {associative list: number ==> name},
-     *    nonterminals: {associative list: rule-name ==> {associative list: number ==> rule-alt}},
-     *    terminal_descriptions_: (if there are any) {associative list: number ==> description},
-     *    productions_: [...],
-     *
-     *    performAction: function parser__performAction(yytext, yyleng, yylineno, yyloc, yystate, yysp, yyvstack, yylstack, yystack, yysstack),
-     *
-     *               The function parameters and `this` have the following value/meaning:
-     *               - `this`    : reference to the `yyval` internal object, which has members (`$` and `_$`)
-     *                             to store/reference the rule value `$$` and location info `@$`.
-     *
-     *                 One important thing to note about `this` a.k.a. `yyval`: every *reduce* action gets
-     *                 to see the same object via the `this` reference, i.e. if you wish to carry custom
-     *                 data from one reduce action through to the next within a single parse run, then you
-     *                 may get nasty and use `yyval` a.k.a. `this` for storing you own semi-permanent data.
-     *
-     *                 `this.yy` is a direct reference to the `yy` shared state object.
-     *
-     *                 `%parse-param`-specified additional `parse()` arguments have been added to this `yy`
-     *                 object at `parse()` start and are therefore available to the action code via the
-     *                 same named `yy.xxxx` attributes (where `xxxx` represents a identifier name from
-     *                 the %parse-param` list.
-     *
-     *               - `yytext`  : reference to the lexer value which belongs to the last lexer token used
-     *                             to match this rule. This is *not* the look-ahead token, but the last token
-     *                             that's actually part of this rule.
-     *
-     *                 Formulated another way, `yytext` is the value of the token immediately preceeding
-     *                 the current look-ahead token.
-     *                 Caveats apply for rules which don't require look-ahead, such as epsilon rules.
-     *
-     *               - `yyleng`  : ditto as `yytext`, only now for the lexer.yyleng value.
-     *
-     *               - `yylineno`: ditto as `yytext`, only now for the lexer.yylineno value.
-     *
-     *               - `yyloc`   : ditto as `yytext`, only now for the lexer.yylloc lexer token location info.
-     *
-     *                               WARNING: since jison 0.4.18-186 this entry may be NULL/UNDEFINED instead
-     *                               of an empty object when no suitable location info can be provided.
-     *
-     *               - `yystate` : the current parser state number, used internally for dispatching and
-     *                               executing the action code chunk matching the rule currently being reduced.
-     *
-     *               - `yysp`    : the current state stack position (a.k.a. 'stack pointer')
-     *
-     *                 This one comes in handy when you are going to do advanced things to the parser
-     *                 stacks, all of which are accessible from your action code (see the next entries below).
-     *
-     *                 Also note that you can access this and other stack index values using the new double-hash
-     *                 syntax, i.e. `##$ === ##0 === yysp`, while `##1` is the stack index for all things
-     *                 related to the first rule term, just like you have `$1`, `@1` and `#1`.
-     *                 This is made available to write very advanced grammar action rules, e.g. when you want
-     *                 to investigate the parse state stack in your action code, which would, for example,
-     *                 be relevant when you wish to implement error diagnostics and reporting schemes similar
-     *                 to the work described here:
-     *
-     *                 + Pottier, F., 2016. Reachability and error diagnosis in LR(1) automata.
-     *                   In Journées Francophones des Languages Applicatifs.
-     *
-     *                 + Jeffery, C.L., 2003. Generating LR syntax error messages from examples.
-     *                   ACM Transactions on Programming Languages and Systems (TOPLAS), 25(5), pp.631–640.
-     *
-     *               - `yyrulelength`: the current rule's term count, i.e. the number of entries occupied on the stack.
-     *
-     *                 This one comes in handy when you are going to do advanced things to the parser
-     *                 stacks, all of which are accessible from your action code (see the next entries below).
-     *
-     *               - `yyvstack`: reference to the parser value stack. Also accessed via the `$1` etc.
-     *                             constructs.
-     *
-     *               - `yylstack`: reference to the parser token location stack. Also accessed via
-     *                             the `@1` etc. constructs.
-     *
-     *                             WARNING: since jison 0.4.18-186 this array MAY contain slots which are
-     *                             UNDEFINED rather than an empty (location) object, when the lexer/parser
-     *                             action code did not provide a suitable location info object when such a
-     *                             slot was filled!
-     *
-     *               - `yystack` : reference to the parser token id stack. Also accessed via the
-     *                             `#1` etc. constructs.
-     *
-     *                 Note: this is a bit of a **white lie** as we can statically decode any `#n` reference to
-     *                 its numeric token id value, hence that code wouldn't need the `yystack` but *you* might
-     *                 want access this array for your own purposes, such as error analysis as mentioned above!
-     *
-     *                 Note that this stack stores the current stack of *tokens*, that is the sequence of
-     *                 already parsed=reduced *nonterminals* (tokens representing rules) and *terminals*
-     *                 (lexer tokens *shifted* onto the stack until the rule they belong to is found and
-     *                 *reduced*.
-     *
-     *               - `yysstack`: reference to the parser state stack. This one carries the internal parser
-     *                             *states* such as the one in `yystate`, which are used to represent
-     *                             the parser state machine in the *parse table*. *Very* *internal* stuff,
-     *                             what can I say? If you access this one, you're clearly doing wicked things
-     *
-     *               - `...`     : the extra arguments you specified in the `%parse-param` statement in your
-     *                             grammar definition file.
-     *
-     *    table: [...],
-     *               State transition table
-     *               ----------------------
-     *
-     *               index levels are:
-     *               - `state`  --> hash table
-     *               - `symbol` --> action (number or array)
-     *
-     *                 If the `action` is an array, these are the elements' meaning:
-     *                 - index [0]: 1 = shift, 2 = reduce, 3 = accept
-     *                 - index [1]: GOTO `state`
-     *
-     *                 If the `action` is a number, it is the GOTO `state`
-     *
-     *    defaultActions: {...},
-     *
-     *    parseError: function(str, hash, ExceptionClass),
-     *    yyError: function(str, ...),
-     *    yyRecovering: function(),
-     *    yyErrOk: function(),
-     *    yyClearIn: function(),
-     *
-     *    constructParseErrorInfo: function(error_message, exception_object, expected_token_set, is_recoverable),
-     *               Helper function **which will be set up during the first invocation of the `parse()` method**.
-     *               Produces a new errorInfo 'hash object' which can be passed into `parseError()`.
-     *               See it's use in this parser kernel in many places; example usage:
-     *
-     *                   var infoObj = parser.constructParseErrorInfo('fail!', null,
-     *                                     parser.collect_expected_token_set(state), true);
-     *                   var retVal = parser.parseError(infoObj.errStr, infoObj, parser.JisonParserError);
-     *
-     *    originalParseError: function(str, hash, ExceptionClass),
-     *               The basic `parseError` handler provided by JISON.
-     *               `cleanupAfterParse()` will clean up and reset `parseError()` to reference this function
-     *               at the end of the `parse()`.
-     *
-     *    options: { ... parser %options ... },
-     *
-     *    parse: function(input[, args...]),
-     *               Parse the given `input` and return the parsed value (or `true` when none was provided by
-     *               the root action, in which case the parser is acting as a *matcher*).
-     *               You MAY use the additional `args...` parameters as per `%parse-param` spec of this grammar:
-     *               these extra `args...` are added verbatim to the `yy` object reference as member variables.
-     *
-     *               WARNING:
-     *               Parser's additional `args...` parameters (via `%parse-param`) MAY conflict with
-     *               any attributes already added to `yy` by the jison run-time;
-     *               when such a collision is detected an exception is thrown to prevent the generated run-time
-     *               from silently accepting this confusing and potentially hazardous situation!
-     *
-     *               The lexer MAY add its own set of additional parameters (via the `%parse-param` line in
-     *               the lexer section of the grammar spec): these will be inserted in the `yy` shared state
-     *               object and any collision with those will be reported by the lexer via a thrown exception.
-     *
-     *    cleanupAfterParse: function(resultValue, invoke_post_methods, do_not_nuke_errorinfos),
-     *               Helper function **which will be set up during the first invocation of the `parse()` method**.
-     *               This helper API is invoked at the end of the `parse()` call, unless an exception was thrown
-     *               and `%options no-try-catch` has been defined for this grammar: in that case this helper MAY
-     *               be invoked by calling user code to ensure the `post_parse` callbacks are invoked and
-     *               the internal parser gets properly garbage collected under these particular circumstances.
-     *
-     *    yyMergeLocationInfo: function(first_index, last_index, first_yylloc, last_yylloc, dont_look_back),
-     *               Helper function **which will be set up during the first invocation of the `parse()` method**.
-     *               This helper API can be invoked to calculate a spanning `yylloc` location info object.
-     *
-     *               Note: %epsilon rules MAY specify no `first_index` and `first_yylloc`, in which case
-     *               this function will attempt to obtain a suitable location marker by inspecting the location stack
-     *               backwards.
-     *
-     *               For more info see the documentation comment further below, immediately above this function's
-     *               implementation.
-     *
-     *    lexer: {
-     *        yy: {...},           A reference to the so-called "shared state" `yy` once
-     *                             received via a call to the `.setInput(input, yy)` lexer API.
-     *        EOF: 1,
-     *        ERROR: 2,
-     *        JisonLexerError: function(msg, hash),
-     *        parseError: function(str, hash, ExceptionClass),
-     *        setInput: function(input, [yy]),
-     *        input: function(),
-     *        unput: function(str),
-     *        more: function(),
-     *        reject: function(),
-     *        less: function(n),
-     *        pastInput: function(n),
-     *        upcomingInput: function(n),
-     *        showPosition: function(),
-     *        test_match: function(regex_match_array, rule_index, ...),
-     *        next: function(...),
-     *        lex: function(...),
-     *        begin: function(condition),
-     *        pushState: function(condition),
-     *        popState: function(),
-     *        topState: function(),
-     *        _currentRules: function(),
-     *        stateStackSize: function(),
-     *        cleanupAfterLex: function()
-     *
-     *        options: { ... lexer %options ... },
-     *
-     *        performAction: function(yy, yy_, $avoiding_name_collisions, YY_START, ...),
-     *        rules: [...],
-     *        conditions: {associative list: name ==> set},
-     *    }
-     *  }
-     *
-     *
-     *  token location info (@$, _$, etc.): {
-     *    first_line: n,
-     *    last_line: n,
-     *    first_column: n,
-     *    last_column: n,
-     *    range: [start_number, end_number]
-     *               (where the numbers are indexes into the input string, zero-based)
-     *  }
-     *
-     * ---
-     *
-     * The `parseError` function receives a 'hash' object with these members for lexer and
-     * parser errors:
-     *
-     *  {
-     *    text:        (matched text)
-     *    token:       (the produced terminal token, if any)
-     *    token_id:    (the produced terminal token numeric ID, if any)
-     *    line:        (yylineno)
-     *    loc:         (yylloc)
-     *  }
-     *
-     * parser (grammar) errors will also provide these additional members:
-     *
-     *  {
-     *    expected:    (array describing the set of expected tokens;
-     *                  may be UNDEFINED when we cannot easily produce such a set)
-     *    state:       (integer (or array when the table includes grammar collisions);
-     *                  represents the current internal state of the parser kernel.
-     *                  can, for example, be used to pass to the `collect_expected_token_set()`
-     *                  API to obtain the expected token set)
-     *    action:      (integer; represents the current internal action which will be executed)
-     *    new_state:   (integer; represents the next/planned internal state, once the current
-     *                  action has executed)
-     *    recoverable: (boolean: TRUE when the parser MAY have an error recovery rule
-     *                  available for this particular error)
-     *    state_stack: (array: the current parser LALR/LR internal state stack; this can be used,
-     *                  for instance, for advanced error analysis and reporting)
-     *    value_stack: (array: the current parser LALR/LR internal `$$` value stack; this can be used,
-     *                  for instance, for advanced error analysis and reporting)
-     *    location_stack: (array: the current parser LALR/LR internal location stack; this can be used,
-     *                  for instance, for advanced error analysis and reporting)
-     *    yy:          (object: the current parser internal "shared state" `yy`
-     *                  as is also available in the rule actions; this can be used,
-     *                  for instance, for advanced error analysis and reporting)
-     *    lexer:       (reference to the current lexer instance used by the parser)
-     *    parser:      (reference to the current parser instance)
-     *  }
-     *
-     * while `this` will reference the current parser instance.
-     *
-     * When `parseError` is invoked by the lexer, `this` will still reference the related *parser*
-     * instance, while these additional `hash` fields will also be provided:
-     *
-     *  {
-     *    lexer:       (reference to the current lexer instance which reported the error)
-     *  }
-     *
-     * When `parseError` is invoked by the parser due to a **JavaScript exception** being fired
-     * from either the parser or lexer, `this` will still reference the related *parser*
-     * instance, while these additional `hash` fields will also be provided:
-     *
-     *  {
-     *    exception:   (reference to the exception thrown)
-     *  }
-     *
-     * Please do note that in the latter situation, the `expected` field will be omitted as
-     * this type of failure is assumed not to be due to *parse errors* but rather due to user
-     * action code in either parser or lexer failing unexpectedly.
-     *
-     * ---
-     *
-     * You can specify parser options by setting / modifying the `.yy` object of your Parser instance.
-     * These options are available:
-     *
-     * ### options which are global for all parser instances
-     *
-     *  Parser.pre_parse: function(yy)
-     *                 optional: you can specify a pre_parse() function in the chunk following
-     *                 the grammar, i.e. after the last `%%`.
-     *  Parser.post_parse: function(yy, retval, parseInfo) { return retval; }
-     *                 optional: you can specify a post_parse() function in the chunk following
-     *                 the grammar, i.e. after the last `%%`. When it does not return any value,
-     *                 the parser will return the original `retval`.
-     *
-     * ### options which can be set up per parser instance
-     *
-     *  yy: {
-     *      pre_parse:  function(yy)
-     *                 optional: is invoked before the parse cycle starts (and before the first
-     *                 invocation of `lex()`) but immediately after the invocation of
-     *                 `parser.pre_parse()`).
-     *      post_parse: function(yy, retval, parseInfo) { return retval; }
-     *                 optional: is invoked when the parse terminates due to success ('accept')
-     *                 or failure (even when exceptions are thrown).
-     *                 `retval` contains the return value to be produced by `Parser.parse()`;
-     *                 this function can override the return value by returning another.
-     *                 When it does not return any value, the parser will return the original
-     *                 `retval`.
-     *                 This function is invoked immediately before `parser.post_parse()`.
-     *
-     *      parseError: function(str, hash, ExceptionClass)
-     *                 optional: overrides the default `parseError` function.
-     *      quoteName: function(name),
-     *                 optional: overrides the default `quoteName` function.
-     *  }
-     *
-     *  parser.lexer.options: {
-     *      pre_lex:  function()
-     *                 optional: is invoked before the lexer is invoked to produce another token.
-     *                 `this` refers to the Lexer object.
-     *      post_lex: function(token) { return token; }
-     *                 optional: is invoked when the lexer has produced a token `token`;
-     *                 this function can override the returned token value by returning another.
-     *                 When it does not return any (truthy) value, the lexer will return
-     *                 the original `token`.
-     *                 `this` refers to the Lexer object.
-     *
-     *      ranges: boolean
-     *                 optional: `true` ==> token location info will include a .range[] member.
-     *      flex: boolean
-     *                 optional: `true` ==> flex-like lexing behaviour where the rules are tested
-     *                 exhaustively to find the longest match.
-     *      backtrack_lexer: boolean
-     *                 optional: `true` ==> lexer regexes are tested in order and for invoked;
-     *                 the lexer terminates the scan when a token is returned by the action code.
-     *      xregexp: boolean
-     *                 optional: `true` ==> lexer rule regexes are "extended regex format" requiring the
-     *                 `XRegExp` library. When this `%option` has not been specified at compile time, all lexer
-     *                 rule regexes have been written as standard JavaScript RegExp expressions.
-     *  }
-     */
-
     // See also:
     // http://stackoverflow.com/questions/1382107/whats-a-good-way-to-extend-error-in-javascript/#35881508
     // but we keep the prototype.constructor and prototype.name assignment lines too for compatibility
@@ -1347,7 +938,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             "ACTION_BODY": 34,
             "ACTION_END": 24,
             "ACTION_START": 23,
-            "ARROW_ACTION": 32,
+            "ARROW_ACTION_START": 32,
             "BRACKET_MISSING": 36,
             "BRACKET_SURPLUS": 37,
             "CHARACTER_LIT": 49,
@@ -1452,7 +1043,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             29: "INCLUDE",
             30: "START_INC",
             31: "START_EXC",
-            32: "ARROW_ACTION",
+            32: "ARROW_ACTION_START",
             33: "ACTION",
             34: "ACTION_BODY",
             35: "INCLUDE_PLACEMENT_ERROR",
@@ -2234,7 +1825,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     break;
 
                 case 39:
-                    /*! Production::    rule : regex ARROW_ACTION action ACTION_END */
+                    /*! Production::    rule : regex ARROW_ACTION_START action ACTION_END */
 
                     // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
@@ -2272,7 +1863,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     break;
 
                 case 40:
-                    /*! Production::    rule : regex ARROW_ACTION error */
+                    /*! Production::    rule : regex ARROW_ACTION_START error */
 
                     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
                     this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
@@ -3788,8 +3379,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                                 // we always terminate the parse when there's no recovery rule available anyhow!
                                 if (!p.recoverable || error_rule_depth < 0) {
                                     break;
-                                } else {
-                                    // TODO: allow parseError callback to edit symbol and or state at the start of the error recovery process...
                                 }
                             }
 
@@ -5922,6 +5511,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
             performAction: function lexer__performAction(yy, yyrulenumber, YY_START) {
                 var yy_ = this;
+
                 switch (yyrulenumber) {
                     case 0:
                         /*! Conditions:: INITIAL macro options rules */
@@ -5946,6 +5536,42 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 3:
                         /*! Conditions:: action */
+                        /*! Rule::       %\{\{([^]*?)%\}\} */
+                        yy_.yytext = this.matches[1];
+
+                        yy.include_command_allowed = false;
+                        return 34;
+                        break;
+
+                    case 4:
+                        /*! Conditions:: action */
+                        /*! Rule::       %\{\{\{([^]*?)%\}\}\} */
+                        yy_.yytext = this.matches[1];
+
+                        yy.include_command_allowed = false;
+                        return 34;
+                        break;
+
+                    case 5:
+                        /*! Conditions:: action */
+                        /*! Rule::       \{\{([^]*?)\}\} */
+                        yy_.yytext = this.matches[1];
+
+                        yy.include_command_allowed = false;
+                        return 34;
+                        break;
+
+                    case 6:
+                        /*! Conditions:: action */
+                        /*! Rule::       \{\{\{([^]*?)\}\}\} */
+                        yy_.yytext = this.matches[1];
+
+                        yy.include_command_allowed = false;
+                        return 34;
+                        break;
+
+                    case 7:
+                        /*! Conditions:: action */
                         /*! Rule::       %include\b */
                         if (yy.include_command_allowed) {
                             // This is an include instruction in place of (part of) an action:
@@ -5961,7 +5587,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 4:
+                    case 8:
                         /*! Conditions:: action */
                         /*! Rule::       \/\*[^]*?\*\/ */
                         //yy.include_command_allowed = false; -- doesn't impact include-allowed state
@@ -5969,7 +5595,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 5:
+                    case 9:
                         /*! Conditions:: action */
                         /*! Rule::       \/\/.* */
                         yy.include_command_allowed = false;
@@ -5977,7 +5603,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 6:
+                    case 10:
                         /*! Conditions:: action */
                         /*! Rule::       \| */
                         if (yy.include_command_allowed /* && yy.depth === 0 */) {
@@ -5990,7 +5616,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 7:
+                    case 11:
                         /*! Conditions:: action */
                         /*! Rule::       %% */
                         if (yy.include_command_allowed /* && yy.depth === 0 */) {
@@ -6003,7 +5629,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 8:
+                    case 12:
                         /*! Conditions:: action */
                         /*! Rule::       \/.* */
                         yy.include_command_allowed = false;
@@ -6023,7 +5649,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 9:
+                    case 13:
                         /*! Conditions:: action */
                         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}"|'{QUOTED_STRING_CONTENT}'|`{ES2017_STRING_CONTENT}` */
                         yy.include_command_allowed = false;
@@ -6031,7 +5657,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 10:
+                    case 14:
                         /*! Conditions:: action */
                         /*! Rule::       [^/"'`|%\{\}{BR}{WS}]+ */
                         yy.include_command_allowed = false;
@@ -6039,7 +5665,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 11:
+                    case 15:
                         /*! Conditions:: action */
                         /*! Rule::       % */
                         yy.include_command_allowed = false;
@@ -6047,7 +5673,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 12:
+                    case 16:
                         /*! Conditions:: action */
                         /*! Rule::       \{ */
                         yy.depth++;
@@ -6056,7 +5682,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 13:
+                    case 17:
                         /*! Conditions:: action */
                         /*! Rule::       \} */
                         yy.include_command_allowed = false;
@@ -6072,7 +5698,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34;
                         break;
 
-                    case 14:
+                    case 18:
                         /*! Conditions:: action */
                         /*! Rule::       (?:[\s\r\n]*?){BR}+{WS}+(?=[^{WS}{BR}|]) */
                         yy.include_command_allowed = true;
@@ -6080,7 +5706,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 34; // keep empty lines as-is inside action code blocks.  
                         break;
 
-                    case 16:
+                    case 20:
                         /*! Conditions:: action */
                         /*! Rule::       {BR} */
                         if (yy.depth > 0) {
@@ -6096,7 +5722,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 17:
+                    case 21:
                         /*! Conditions:: action */
                         /*! Rule::       $ */
                         yy.include_command_allowed = false;
@@ -6111,7 +5737,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 24;
                         break;
 
-                    case 18:
+                    case 22:
                         /*! Conditions:: INITIAL rules options */
                         /*! Rule::       [%\{]\{+ */
                         {
@@ -6131,37 +5757,37 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 19:
+                    case 23:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       -> */
                         yy.depth = 0;
 
                         yy.include_command_allowed = false;
                         this.pushState('action');
-                        return 'ARROW_ACTION_START';
+                        return 32;
                         break;
 
-                    case 20:
+                    case 24:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       → */
                         yy.depth = 0;
 
                         yy.include_command_allowed = false;
                         this.pushState('action');
-                        return 'ARROW_ACTION_START';
+                        return 32;
                         break;
 
-                    case 21:
+                    case 25:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       => */
                         yy.depth = 0;
 
                         yy.include_command_allowed = false;
                         this.pushState('action');
-                        return 'ARROW_ACTION_START';
+                        return 32;
                         break;
 
-                    case 22:
+                    case 26:
                         /*! Conditions:: rules */
                         /*! Rule::       {WS}+(?=[^{WS}{BR}|]) */
                         yy.depth = 0;
@@ -6171,7 +5797,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 23;
                         break;
 
-                    case 23:
+                    case 27:
                         /*! Conditions:: rules */
                         /*! Rule::       %% */
                         this.popState();
@@ -6180,7 +5806,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 19;
                         break;
 
-                    case 24:
+                    case 28:
                         /*! Conditions:: rules */
                         /*! Rule::       $ */
                         this.popState();
@@ -6189,7 +5815,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 19;
                         break;
 
-                    case 29:
+                    case 33:
                         /*! Conditions:: options */
                         /*! Rule::       %% */
                         this.popState();
@@ -6198,7 +5824,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 22;
                         break;
 
-                    case 30:
+                    case 34:
                         /*! Conditions:: options */
                         /*! Rule::       %include\b */
                         yy.depth = 0;
@@ -6214,7 +5840,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 23;
                         break;
 
-                    case 31:
+                    case 35:
                         /*! Conditions:: options */
                         /*! Rule::       > */
                         this.popState();
@@ -6223,7 +5849,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 22;
                         break;
 
-                    case 34:
+                    case 38:
                         /*! Conditions:: options */
                         /*! Rule::       <{ID}> */
                         yy_.yytext = this.matches[1];
@@ -6231,13 +5857,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 'TOKEN_TYPE';
                         break;
 
-                    case 36:
+                    case 40:
                         /*! Conditions:: options */
                         /*! Rule::       {BR}{WS}+(?=\S) */
                         /* ignore */
                         break;
 
-                    case 37:
+                    case 41:
                         /*! Conditions:: options */
                         /*! Rule::       {BR} */
                         this.popState();
@@ -6246,13 +5872,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 22;
                         break;
 
-                    case 38:
+                    case 42:
                         /*! Conditions:: options */
                         /*! Rule::       {WS}+ */
                         /* skip whitespace */
                         break;
 
-                    case 39:
+                    case 43:
                         /*! Conditions:: INITIAL */
                         /*! Rule::       {ID} */
                         this.pushState('macro');
@@ -6260,7 +5886,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 20;
                         break;
 
-                    case 40:
+                    case 44:
                         /*! Conditions:: macro */
                         /*! Rule::       {BR}+ */
                         this.popState();
@@ -6269,7 +5895,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 21;
                         break;
 
-                    case 41:
+                    case 45:
                         /*! Conditions:: macro */
                         /*! Rule::       $ */
                         this.popState();
@@ -6278,19 +5904,19 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 21;
                         break;
 
-                    case 42:
+                    case 46:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       {BR}+ */
                         /* skip newlines */
                         break;
 
-                    case 43:
+                    case 47:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       {WS}+ */
                         /* skip whitespace */
                         break;
 
-                    case 47:
+                    case 51:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       {ANY_LITERAL_CHAR}+ */
                         // accept any non-regex, non-lex, non-string-delim,
@@ -6299,7 +5925,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                         break;
 
-                    case 48:
+                    case 52:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       \[ */
                         this.pushState('set');
@@ -6307,7 +5933,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 44;
                         break;
 
-                    case 63:
+                    case 67:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       < */
                         this.pushState('options');
@@ -6315,21 +5941,21 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 3;
                         break;
 
-                    case 65:
+                    case 69:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       \/! */
                         return 40; // treated as `(?!atom)`  
 
                         break;
 
-                    case 66:
+                    case 70:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       \/ */
                         return 13; // treated as `(?=atom)`  
 
                         break;
 
-                    case 68:
+                    case 72:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       \\(?:([0-7]{1,3})|c([@A-Z])|x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,8})\}) */
                         var m = this.matches;
@@ -6366,7 +5992,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 42;
                         break;
 
-                    case 69:
+                    case 73:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       \\. */
                         yy_.yytext = yy_.yytext.substring(1);
@@ -6374,7 +6000,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 49;
                         break;
 
-                    case 72:
+                    case 76:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %option[s]? */
                         this.pushState('options');
@@ -6382,7 +6008,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 26;
                         break;
 
-                    case 73:
+                    case 77:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %s\b */
                         this.pushState('options');
@@ -6390,7 +6016,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 30;
                         break;
 
-                    case 74:
+                    case 78:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %x\b */
                         this.pushState('options');
@@ -6398,7 +6024,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 31;
                         break;
 
-                    case 75:
+                    case 79:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %code\b */
                         this.pushState('options');
@@ -6406,7 +6032,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 28;
                         break;
 
-                    case 76:
+                    case 80:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %import\b */
                         this.pushState('options');
@@ -6414,7 +6040,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 27;
                         break;
 
-                    case 77:
+                    case 81:
                         /*! Conditions:: INITIAL rules code */
                         /*! Rule::       %include\b */
                         yy.depth = 0;
@@ -6430,7 +6056,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 23;
                         break;
 
-                    case 78:
+                    case 82:
                         /*! Conditions:: INITIAL rules code */
                         /*! Rule::       %{NAME}([^\r\n]*) */
                         /* ignore unrecognized decl */
@@ -6444,7 +6070,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 25;
                         break;
 
-                    case 79:
+                    case 83:
                         /*! Conditions:: rules macro INITIAL */
                         /*! Rule::       %% */
                         this.pushState('rules');
@@ -6452,7 +6078,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 19;
                         break;
 
-                    case 87:
+                    case 91:
                         /*! Conditions:: set */
                         /*! Rule::       \] */
                         this.popState();
@@ -6460,54 +6086,54 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 45;
                         break;
 
-                    case 89:
+                    case 93:
                         /*! Conditions:: code */
                         /*! Rule::       [^{BR}]+ */
                         return 53; // the bit of CODE just before EOF...  
 
                         break;
 
-                    case 90:
-                        /*! Conditions:: action */
-                        /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
-
-                        return 38;
-                        break;
-
-                    case 91:
-                        /*! Conditions:: action */
-                        /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
-
-                        return 38;
-                        break;
-
-                    case 92:
-                        /*! Conditions:: action */
-                        /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
-
-                        return 38;
-                        break;
-
-                    case 93:
-                        /*! Conditions:: options */
-                        /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
-
-                        return 38;
-                        break;
-
                     case 94:
-                        /*! Conditions:: options */
-                        /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                        /*! Conditions:: action */
+                        /*! Rule::       " */
+                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
 
                     case 95:
+                        /*! Conditions:: action */
+                        /*! Rule::       ' */
+                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
+
+                        return 38;
+                        break;
+
+                    case 96:
+                        /*! Conditions:: action */
+                        /*! Rule::       ` */
+                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
+
+                        return 38;
+                        break;
+
+                    case 97:
+                        /*! Conditions:: options */
+                        /*! Rule::       " */
+                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+
+                        return 38;
+                        break;
+
+                    case 98:
+                        /*! Conditions:: options */
+                        /*! Rule::       ' */
+                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+
+                        return 38;
+                        break;
+
+                    case 99:
                         /*! Conditions:: options */
                         /*! Rule::       ` */
                         yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
@@ -6515,7 +6141,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 38;
                         break;
 
-                    case 96:
+                    case 100:
                         /*! Conditions:: * */
                         /*! Rule::       " */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
@@ -6525,7 +6151,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 38;
                         break;
 
-                    case 97:
+                    case 101:
                         /*! Conditions:: * */
                         /*! Rule::       ' */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
@@ -6535,7 +6161,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 38;
                         break;
 
-                    case 98:
+                    case 102:
                         /*! Conditions:: * */
                         /*! Rule::       ` */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
@@ -6545,7 +6171,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 38;
                         break;
 
-                    case 99:
+                    case 103:
                         /*! Conditions:: macro rules */
                         /*! Rule::       . */
                         /* b0rk on bad characters */
@@ -6556,7 +6182,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 2;
                         break;
 
-                    case 100:
+                    case 104:
                         /*! Conditions:: options */
                         /*! Rule::       . */
                         yy_.yyerror(rmCommonWS(_templateObject50, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
@@ -6564,7 +6190,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return 2;
                         break;
 
-                    case 101:
+                    case 105:
                         /*! Conditions:: * */
                         /*! Rule::       . */
                         yy_.yyerror(rmCommonWS(_templateObject51, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
@@ -6580,299 +6206,303 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             simpleCaseActionClusters: {
                 /*! Conditions:: action */
                 /*! Rule::       {WS}+ */
-                15: 34,
+                19: 34,
 
                 /*! Conditions:: options */
                 /*! Rule::       = */
-                25: 18,
+                29: 18,
 
                 /*! Conditions:: options */
                 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-                26: 51,
+                30: 51,
 
                 /*! Conditions:: options */
                 /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-                27: 51,
+                31: 51,
 
                 /*! Conditions:: options */
                 /*! Rule::       `{ES2017_STRING_CONTENT}` */
-                28: 51,
+                32: 51,
 
                 /*! Conditions:: options */
                 /*! Rule::       , */
-                32: 17,
+                36: 17,
 
                 /*! Conditions:: options */
                 /*! Rule::       \* */
-                33: 11,
+                37: 11,
 
                 /*! Conditions:: options */
                 /*! Rule::       {ANY_LITERAL_CHAR}+ */
-                35: 52,
+                39: 52,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-                44: 48,
+                48: 48,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-                45: 48,
+                49: 48,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       `{ES2017_STRING_CONTENT}` */
-                46: 48,
+                50: 48,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \| */
-                49: 7,
+                53: 7,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \(\?: */
-                50: 39,
-
-                /*! Conditions:: rules macro INITIAL */
-                /*! Rule::       \(\?= */
-                51: 39,
-
-                /*! Conditions:: rules macro INITIAL */
-                /*! Rule::       \(\?! */
-                52: 39,
-
-                /*! Conditions:: rules macro INITIAL */
-                /*! Rule::       \(\?<= */
-                53: 39,
-
-                /*! Conditions:: rules macro INITIAL */
-                /*! Rule::       \(\?<! */
                 54: 39,
 
                 /*! Conditions:: rules macro INITIAL */
+                /*! Rule::       \(\?= */
+                55: 39,
+
+                /*! Conditions:: rules macro INITIAL */
+                /*! Rule::       \(\?! */
+                56: 39,
+
+                /*! Conditions:: rules macro INITIAL */
+                /*! Rule::       \(\?<= */
+                57: 39,
+
+                /*! Conditions:: rules macro INITIAL */
+                /*! Rule::       \(\?<! */
+                58: 39,
+
+                /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \( */
-                55: 8,
+                59: 8,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \) */
-                56: 9,
+                60: 9,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \+ */
-                57: 10,
+                61: 10,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \* */
-                58: 11,
+                62: 11,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \? */
-                59: 12,
+                63: 12,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \^ */
-                60: 15,
+                64: 15,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       , */
-                61: 17,
+                65: 17,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       <<EOF>> */
-                62: 16,
+                66: 16,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       > */
-                64: 6,
+                68: 6,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \\(?:[sSbBwWdDpP]|[rfntv\\*+()${}|[\]\/.^?]) */
-                67: 41,
+                71: 41,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \$ */
-                70: 16,
+                74: 16,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \. */
-                71: 14,
+                75: 14,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-                80: 47,
+                84: 47,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \{{ID}\} */
-                81: 43,
+                85: 43,
 
                 /*! Conditions:: set options */
                 /*! Rule::       \{{ID}\} */
-                82: 43,
+                86: 43,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \{ */
-                83: 4,
+                87: 4,
 
                 /*! Conditions:: rules macro INITIAL */
                 /*! Rule::       \} */
-                84: 5,
+                88: 5,
 
                 /*! Conditions:: set */
                 /*! Rule::       (?:\\[^{BR}]|[^\]{])+ */
-                85: 46,
+                89: 46,
 
                 /*! Conditions:: set */
                 /*! Rule::       \{ */
-                86: 46,
+                90: 46,
 
                 /*! Conditions:: code */
                 /*! Rule::       [^{BR}]*{BR}+ */
-                88: 53,
+                92: 53,
 
                 /*! Conditions:: * */
                 /*! Rule::       $ */
-                102: 1
+                106: 1
             },
 
             rules: [
             /*   0: *//^(?:\/\/[^\r\n]*)/,
-            /*   1: */new XRegExp('^(?:\\/\\*[^]*?\\*\\/)', ''),
-            /*   2: */new XRegExp('^(?:%\\{([^]*?)%\\})', ''),
-            /*   3: *//^(?:%include\b)/,
-            /*   4: */new XRegExp('^(?:\\/\\*[^]*?\\*\\/)', ''),
-            /*   5: *//^(?:\/\/.*)/,
-            /*   6: *//^(?:\|)/,
-            /*   7: *//^(?:%%)/,
-            /*   8: *//^(?:\/.*)/,
-            /*   9: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
-            /*  10: *//^(?:[^\s"%'\/`{-}]+)/,
-            /*  11: *//^(?:%)/,
-            /*  12: *//^(?:\{)/,
-            /*  13: *//^(?:\})/,
-            /*  14: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+(?=[^\s|]))/,
-            /*  15: *//^(?:([^\S\n\r])+)/,
-            /*  16: *//^(?:(\r\n|\n|\r))/,
-            /*  17: *//^(?:$)/,
-            /*  18: *//^(?:[%{]\{+)/,
-            /*  19: *//^(?:->)/,
-            /*  20: *//^(?:→)/,
-            /*  21: *//^(?:=>)/,
-            /*  22: *//^(?:([^\S\n\r])+(?=[^\s|]))/,
-            /*  23: *//^(?:%%)/,
-            /*  24: *//^(?:$)/,
-            /*  25: *//^(?:=)/,
-            /*  26: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-            /*  27: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-            /*  28: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-            /*  29: *//^(?:%%)/,
-            /*  30: *//^(?:%include\b)/,
-            /*  31: *//^(?:>)/,
-            /*  32: *//^(?:,)/,
-            /*  33: *//^(?:\*)/,
-            /*  34: */new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
-            /*  35: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
-            /*  36: *//^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
-            /*  37: *//^(?:(\r\n|\n|\r))/,
-            /*  38: *//^(?:([^\S\n\r])+)/,
-            /*  39: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
-            /*  40: *//^(?:(\r\n|\n|\r)+)/,
-            /*  41: *//^(?:$)/,
-            /*  42: *//^(?:(\r\n|\n|\r)+)/,
-            /*  43: *//^(?:([^\S\n\r])+)/,
-            /*  44: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-            /*  45: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-            /*  46: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-            /*  47: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
-            /*  48: *//^(?:\[)/,
-            /*  49: *//^(?:\|)/,
-            /*  50: *//^(?:\(\?:)/,
-            /*  51: *//^(?:\(\?=)/,
-            /*  52: *//^(?:\(\?!)/,
-            /*  53: *//^(?:\(\?<=)/,
-            /*  54: *//^(?:\(\?<!)/,
-            /*  55: *//^(?:\()/,
-            /*  56: *//^(?:\))/,
-            /*  57: *//^(?:\+)/,
-            /*  58: *//^(?:\*)/,
-            /*  59: *//^(?:\?)/,
-            /*  60: *//^(?:\^)/,
-            /*  61: *//^(?:,)/,
-            /*  62: *//^(?:<<EOF>>)/,
-            /*  63: *//^(?:<)/,
-            /*  64: *//^(?:>)/,
-            /*  65: *//^(?:\/!)/,
-            /*  66: *//^(?:\/)/,
-            /*  67: *//^(?:\\(?:[BDPSWbdpsw]|[$(-+.\/?\[-\^fnrtv{-}]))/,
-            /*  68: *//^(?:\\(?:([0-7]{1,3})|c([@-Z])|x([\dA-Fa-f]{2})|u([\dA-Fa-f]{4})|u\{([\dA-Fa-f]{1,8})\}))/,
-            /*  69: *//^(?:\\.)/,
-            /*  70: *//^(?:\$)/,
-            /*  71: *//^(?:\.)/,
-            /*  72: *//^(?:%option[s]?)/,
-            /*  73: *//^(?:%s\b)/,
-            /*  74: *//^(?:%x\b)/,
-            /*  75: *//^(?:%code\b)/,
-            /*  76: *//^(?:%import\b)/,
-            /*  77: *//^(?:%include\b)/,
-            /*  78: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
-            /*  79: *//^(?:%%)/,
-            /*  80: *//^(?:\{\d+(,\s*\d+|,)?\})/,
-            /*  81: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-            /*  82: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-            /*  83: *//^(?:\{)/,
-            /*  84: *//^(?:\})/,
-            /*  85: *//^(?:(?:\\[^\n\r]|[^\]{])+)/,
-            /*  86: *//^(?:\{)/,
-            /*  87: *//^(?:\])/,
-            /*  88: *//^(?:[^\n\r]*(\r\n|\n|\r)+)/,
-            /*  89: *//^(?:[^\n\r]+)/,
-            /*  90: *//^(?:")/,
-            /*  91: *//^(?:')/,
-            /*  92: *//^(?:`)/,
-            /*  93: *//^(?:")/,
-            /*  94: *//^(?:')/,
-            /*  95: *//^(?:`)/,
-            /*  96: *//^(?:")/,
-            /*  97: *//^(?:')/,
-            /*  98: *//^(?:`)/,
-            /*  99: *//^(?:.)/,
-            /* 100: *//^(?:.)/,
-            /* 101: *//^(?:.)/,
-            /* 102: *//^(?:$)/],
+            /*   1: *//^(?:\/\*[\s\S]*?\*\/)/,
+            /*   2: *//^(?:%\{([\s\S]*?)%\})/,
+            /*   3: *//^(?:%\{\{([\s\S]*?)%\}\})/,
+            /*   4: *//^(?:%\{\{\{([\s\S]*?)%\}\}\})/,
+            /*   5: *//^(?:\{\{([\s\S]*?)\}\})/,
+            /*   6: *//^(?:\{\{\{([\s\S]*?)\}\}\})/,
+            /*   7: *//^(?:%include\b)/,
+            /*   8: *//^(?:\/\*[\s\S]*?\*\/)/,
+            /*   9: *//^(?:\/\/.*)/,
+            /*  10: *//^(?:\|)/,
+            /*  11: *//^(?:%%)/,
+            /*  12: *//^(?:\/.*)/,
+            /*  13: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
+            /*  14: *//^(?:[^\s"%'\/`{-}]+)/,
+            /*  15: *//^(?:%)/,
+            /*  16: *//^(?:\{)/,
+            /*  17: *//^(?:\})/,
+            /*  18: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+(?=[^\s|]))/,
+            /*  19: *//^(?:([^\S\n\r])+)/,
+            /*  20: *//^(?:(\r\n|\n|\r))/,
+            /*  21: *//^(?:$)/,
+            /*  22: *//^(?:[%{]\{+)/,
+            /*  23: *//^(?:->)/,
+            /*  24: *//^(?:→)/,
+            /*  25: *//^(?:=>)/,
+            /*  26: *//^(?:([^\S\n\r])+(?=[^\s|]))/,
+            /*  27: *//^(?:%%)/,
+            /*  28: *//^(?:$)/,
+            /*  29: *//^(?:=)/,
+            /*  30: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+            /*  31: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+            /*  32: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+            /*  33: *//^(?:%%)/,
+            /*  34: *//^(?:%include\b)/,
+            /*  35: *//^(?:>)/,
+            /*  36: *//^(?:,)/,
+            /*  37: *//^(?:\*)/,
+            /*  38: */new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
+            /*  39: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+            /*  40: *//^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
+            /*  41: *//^(?:(\r\n|\n|\r))/,
+            /*  42: *//^(?:([^\S\n\r])+)/,
+            /*  43: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
+            /*  44: *//^(?:(\r\n|\n|\r)+)/,
+            /*  45: *//^(?:$)/,
+            /*  46: *//^(?:(\r\n|\n|\r)+)/,
+            /*  47: *//^(?:([^\S\n\r])+)/,
+            /*  48: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+            /*  49: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+            /*  50: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+            /*  51: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+            /*  52: *//^(?:\[)/,
+            /*  53: *//^(?:\|)/,
+            /*  54: *//^(?:\(\?:)/,
+            /*  55: *//^(?:\(\?=)/,
+            /*  56: *//^(?:\(\?!)/,
+            /*  57: *//^(?:\(\?<=)/,
+            /*  58: *//^(?:\(\?<!)/,
+            /*  59: *//^(?:\()/,
+            /*  60: *//^(?:\))/,
+            /*  61: *//^(?:\+)/,
+            /*  62: *//^(?:\*)/,
+            /*  63: *//^(?:\?)/,
+            /*  64: *//^(?:\^)/,
+            /*  65: *//^(?:,)/,
+            /*  66: *//^(?:<<EOF>>)/,
+            /*  67: *//^(?:<)/,
+            /*  68: *//^(?:>)/,
+            /*  69: *//^(?:\/!)/,
+            /*  70: *//^(?:\/)/,
+            /*  71: *//^(?:\\(?:[BDPSWbdpsw]|[$(-+.\/?\[-\^fnrtv{-}]))/,
+            /*  72: *//^(?:\\(?:([0-7]{1,3})|c([@-Z])|x([\dA-Fa-f]{2})|u([\dA-Fa-f]{4})|u\{([\dA-Fa-f]{1,8})\}))/,
+            /*  73: *//^(?:\\.)/,
+            /*  74: *//^(?:\$)/,
+            /*  75: *//^(?:\.)/,
+            /*  76: *//^(?:%option[s]?)/,
+            /*  77: *//^(?:%s\b)/,
+            /*  78: *//^(?:%x\b)/,
+            /*  79: *//^(?:%code\b)/,
+            /*  80: *//^(?:%import\b)/,
+            /*  81: *//^(?:%include\b)/,
+            /*  82: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
+            /*  83: *//^(?:%%)/,
+            /*  84: *//^(?:\{\d+(,\s*\d+|,)?\})/,
+            /*  85: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+            /*  86: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+            /*  87: *//^(?:\{)/,
+            /*  88: *//^(?:\})/,
+            /*  89: *//^(?:(?:\\[^\n\r]|[^\]{])+)/,
+            /*  90: *//^(?:\{)/,
+            /*  91: *//^(?:\])/,
+            /*  92: *//^(?:[^\n\r]*(\r\n|\n|\r)+)/,
+            /*  93: *//^(?:[^\n\r]+)/,
+            /*  94: *//^(?:")/,
+            /*  95: *//^(?:')/,
+            /*  96: *//^(?:`)/,
+            /*  97: *//^(?:")/,
+            /*  98: *//^(?:')/,
+            /*  99: *//^(?:`)/,
+            /* 100: *//^(?:")/,
+            /* 101: *//^(?:')/,
+            /* 102: *//^(?:`)/,
+            /* 103: *//^(?:.)/,
+            /* 104: *//^(?:.)/,
+            /* 105: *//^(?:.)/,
+            /* 106: *//^(?:$)/],
 
             conditions: {
                 'rules': {
-                    rules: [0, 1, 18, 19, 20, 21, 22, 23, 24, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 84, 96, 97, 98, 99, 101, 102],
+                    rules: [0, 1, 22, 23, 24, 25, 26, 27, 28, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 87, 88, 100, 101, 102, 103, 105, 106],
 
                     inclusive: true
                 },
 
                 'macro': {
-                    rules: [0, 1, 19, 20, 21, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 79, 80, 81, 83, 84, 96, 97, 98, 99, 101, 102],
+                    rules: [0, 1, 23, 24, 25, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 83, 84, 85, 87, 88, 100, 101, 102, 103, 105, 106],
 
                     inclusive: true
                 },
 
                 'code': {
-                    rules: [77, 78, 88, 89, 96, 97, 98, 101, 102],
+                    rules: [81, 82, 92, 93, 100, 101, 102, 105, 106],
                     inclusive: false
                 },
 
                 'options': {
-                    rules: [0, 1, 18, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 82, 93, 94, 95, 96, 97, 98, 100, 101, 102],
+                    rules: [0, 1, 22, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 86, 97, 98, 99, 100, 101, 102, 104, 105, 106],
 
                     inclusive: false
                 },
 
                 'action': {
-                    rules: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 90, 91, 92, 96, 97, 98, 101, 102],
+                    rules: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 94, 95, 96, 100, 101, 102, 105, 106],
 
                     inclusive: false
                 },
 
                 'set': {
-                    rules: [82, 85, 86, 87, 96, 97, 98, 101, 102],
+                    rules: [86, 89, 90, 91, 100, 101, 102, 105, 106],
                     inclusive: false
                 },
 
                 'INITIAL': {
-                    rules: [0, 1, 18, 19, 20, 21, 39, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 84, 96, 97, 98, 101, 102],
+                    rules: [0, 1, 22, 23, 24, 25, 43, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 87, 88, 100, 101, 102, 105, 106],
 
                     inclusive: true
                 }
