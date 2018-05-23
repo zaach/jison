@@ -31,19 +31,19 @@
   };
 `,
     options: {
-      lexerActionsUseYYLENG: "???",
-      lexerActionsUseYYLINENO: "???",
-      lexerActionsUseYYTEXT: "???",
-      lexerActionsUseYYLOC: "???",
-      lexerActionsUseParseError: "???",
-      lexerActionsUseYYERROR: "???",
-      lexerActionsUseLocationTracking: "???",
-      lexerActionsUseMore: "???",
-      lexerActionsUseUnput: "???",
-      lexerActionsUseReject: "???",
-      lexerActionsUseLess: "???",
-      lexerActionsUseDisplayAPIs: "???",
-      lexerActionsUseDescribeYYLOC: "???",
+      lexerActionsUseYYLENG: '???',
+      lexerActionsUseYYLINENO: '???',
+      lexerActionsUseYYTEXT: '???',
+      lexerActionsUseYYLOC: '???',
+      lexerActionsUseParseError: '???',
+      lexerActionsUseYYERROR: '???',
+      lexerActionsUseLocationTracking: '???',
+      lexerActionsUseMore: '???',
+      lexerActionsUseUnput: '???',
+      lexerActionsUseReject: '???',
+      lexerActionsUseLess: '???',
+      lexerActionsUseDisplayAPIs: '???',
+      lexerActionsUseDescribeYYLOC: '???',
       lex_rule_dictionary: {
         rules: [],
         macros: {},
@@ -65,16 +65,16 @@
     },
     ERROR: 2,
     EOF: 1, 
-  };`
+  };`,
       },
       options: {
-        moduleType: "commonjs",
+        moduleType: 'commonjs',
         debug: false,
         enableDebugLogs: false,
         json: true,
         dumpSourceCodeOnFailure: true,
         throwErrorOnCompileFailure: true,
-        defaultModuleName: "lexer",
+        defaultModuleName: 'lexer',
         xregexp: false,
         lexerErrorsAreRecoverable: false,
         flex: false,
@@ -85,14 +85,14 @@
         exportSourceCode: false,
         exportAST: false,
         prettyCfg: true,
-        noMain: true
+        noMain: true,
       },
-      moduleType: "commonjs",
+      moduleType: 'commonjs',
       conditions: {
         INITIAL: {
           rules: [],
-          inclusive: true
-        }
+          inclusive: true,
+        },
       },
       performAction: `function lexer__performAction(yy, yyrulenumber, YY_START) {
             var yy_ = this;
@@ -123,7 +123,7 @@ var YYSTATE = YY_START;
       regular_rule_count: 0,
       simple_rule_count: 0,
       conditionStack: [
-        "INITIAL"
+        'INITIAL',
       ],
       actionInclude: `// custom lexer...
   console.log('The moment the custom lexer gets defined...');
@@ -140,12 +140,12 @@ var YYSTATE = YY_START;
     ERROR: 2,
     EOF: 1, 
   };`,
-      moduleInclude: "",
+      moduleInclude: '',
       __in_rules_failure_analysis_mode__: false,
       exportSourceCode: {
-        enabled: false
+        enabled: false,
       },
-      is_custom_lexer: true
-    }
-  }
+      is_custom_lexer: true,
+    },
+  },
 ]

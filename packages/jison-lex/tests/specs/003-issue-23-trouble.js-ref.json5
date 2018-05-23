@@ -1,7 +1,7 @@
 [
   13,
-  "WORD",
-  "A",
+  'WORD',
+  'A',
   {
     first_line: 1,
     first_column: 0,
@@ -9,11 +9,11 @@
     last_column: 1,
     range: [
       0,
-      1
-    ]
+      1,
+    ],
   },
-  "TOK_A",
-  "a",
+  'TOK_A',
+  'a',
   {
     first_line: 1,
     first_column: 2,
@@ -21,11 +21,11 @@
     last_column: 3,
     range: [
       2,
-      3
-    ]
+      3,
+    ],
   },
-  "WORD",
-  "B",
+  'WORD',
+  'B',
   {
     first_line: 1,
     first_column: 4,
@@ -33,11 +33,11 @@
     last_column: 5,
     range: [
       4,
-      5
-    ]
+      5,
+    ],
   },
-  "WORD",
-  "C",
+  'WORD',
+  'C',
   {
     first_line: 1,
     first_column: 6,
@@ -45,11 +45,11 @@
     last_column: 7,
     range: [
       6,
-      7
-    ]
+      7,
+    ],
   },
-  "NUMBER",
-  "1",
+  'NUMBER',
+  '1',
   {
     first_line: 1,
     first_column: 8,
@@ -57,11 +57,11 @@
     last_column: 9,
     range: [
       8,
-      9
-    ]
+      9,
+    ],
   },
-  "+",
-  "+",
+  '+',
+  '+',
   {
     first_line: 1,
     first_column: 10,
@@ -69,11 +69,11 @@
     last_column: 11,
     range: [
       10,
-      11
-    ]
+      11,
+    ],
   },
-  "NUMBER",
-  "2",
+  'NUMBER',
+  '2',
   {
     first_line: 1,
     first_column: 12,
@@ -81,11 +81,11 @@
     last_column: 13,
     range: [
       12,
-      13
-    ]
+      13,
+    ],
   },
-  "+",
-  "+",
+  '+',
+  '+',
   {
     first_line: 1,
     first_column: 14,
@@ -93,11 +93,11 @@
     last_column: 15,
     range: [
       14,
-      15
-    ]
+      15,
+    ],
   },
-  "NUMBER",
-  "3",
+  'NUMBER',
+  '3',
   {
     first_line: 1,
     first_column: 16,
@@ -105,11 +105,11 @@
     last_column: 17,
     range: [
       16,
-      17
-    ]
+      17,
+    ],
   },
-  "EOF",
-  "",
+  'EOF',
+  '',
   {
     first_line: 1,
     first_column: 17,
@@ -117,23 +117,11 @@
     last_column: 17,
     range: [
       17,
-      17
-    ]
-  },
-  1,
-  "",
-  {
-    first_line: 1,
-    first_column: 17,
-    last_line: 1,
-    last_column: 17,
-    range: [
       17,
-      17
-    ]
+    ],
   },
   1,
-  "",
+  '',
   {
     first_line: 1,
     first_column: 17,
@@ -141,11 +129,11 @@
     last_column: 17,
     range: [
       17,
-      17
-    ]
+      17,
+    ],
   },
   1,
-  "",
+  '',
   {
     first_line: 1,
     first_column: 17,
@@ -153,11 +141,11 @@
     last_column: 17,
     range: [
       17,
-      17
-    ]
+      17,
+    ],
   },
   1,
-  "",
+  '',
   {
     first_line: 1,
     first_column: 17,
@@ -165,8 +153,20 @@
     last_column: 17,
     range: [
       17,
-      17
-    ]
+      17,
+    ],
+  },
+  1,
+  '',
+  {
+    first_line: 1,
+    first_column: 17,
+    last_line: 1,
+    last_column: 17,
+    range: [
+      17,
+      17,
+    ],
   },
   {
     sourceCode: `
@@ -730,8 +730,9 @@ var lexer = {
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
+        var source = this._input || '';
         if (maxSize < 0)
-            maxSize = next.length + this._input.length;
+            maxSize = next.length + source.length;
         else if (!maxSize)
             maxSize = 20;
         if (maxLines < 0)
@@ -742,7 +743,7 @@ var lexer = {
         // more than necessary so that we can still properly check against maxSize
         // after we've transformed and limited the newLines in here:
         if (next.length < maxSize * 2 + 2) {
-            next += this._input.substring(0, maxSize * 2 + 2 - next.length);  // substring is faster on Chrome/V8
+            next += source.substring(0, maxSize * 2 + 2 - next.length);  // substring is faster on Chrome/V8
         }
         // now that we have a significantly reduced string to process, transform the newlines
         // and chop them, then limit them:
@@ -929,7 +930,7 @@ var lexer = {
         const CONTEXT = 3;
         const CONTEXT_TAIL = 1;
         const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
-        var input = this.matched + this._input;
+        var input = this.matched + (this._input || '');
         var lines = input.split('\\n');
         var l0 = Math.max(1, (context_loc ? context_loc.first_line : loc.first_line - CONTEXT));
         var l1 = Math.max(1, (context_loc2 ? context_loc2.last_line : loc.last_line + CONTEXT_TAIL));
@@ -1486,51 +1487,51 @@ default:
 };
 `,
     options: {
-      lexerActionsUseYYLENG: "???",
-      lexerActionsUseYYLINENO: "???",
-      lexerActionsUseYYTEXT: "???",
-      lexerActionsUseYYLOC: "???",
-      lexerActionsUseParseError: "???",
-      lexerActionsUseYYERROR: "???",
-      lexerActionsUseLocationTracking: "???",
-      lexerActionsUseMore: "???",
-      lexerActionsUseUnput: "???",
-      lexerActionsUseReject: "???",
-      lexerActionsUseLess: "???",
-      lexerActionsUseDisplayAPIs: "???",
-      lexerActionsUseDescribeYYLOC: "???",
+      lexerActionsUseYYLENG: '???',
+      lexerActionsUseYYLINENO: '???',
+      lexerActionsUseYYTEXT: '???',
+      lexerActionsUseYYLOC: '???',
+      lexerActionsUseParseError: '???',
+      lexerActionsUseYYERROR: '???',
+      lexerActionsUseLocationTracking: '???',
+      lexerActionsUseMore: '???',
+      lexerActionsUseUnput: '???',
+      lexerActionsUseReject: '???',
+      lexerActionsUseLess: '???',
+      lexerActionsUseDisplayAPIs: '???',
+      lexerActionsUseDescribeYYLOC: '???',
       lex_rule_dictionary: {
         rules: [
           [
-            "\\s+",
-            ""
+            '\\s+',
+            '',
           ],
           [
-            "\\d+",
-            null
+            '\\d+',
+            null,
           ],
           [
-            "\\w+",
-            null
+            '\\w+',
+            null,
           ],
           [
-            "\\+",
-            null
+            '\\+',
+            null,
           ],
           [
-            "$",
-            null
-          ]
-        ]
+            '$',
+            null,
+          ],
+        ],
       },
       options: {
-        moduleType: "commonjs",
+        moduleType: 'commonjs',
         debug: false,
         enableDebugLogs: false,
         json: true,
         dumpSourceCodeOnFailure: true,
         throwErrorOnCompileFailure: true,
-        defaultModuleName: "lexer",
+        defaultModuleName: 'lexer',
         xregexp: false,
         lexerErrorsAreRecoverable: false,
         flex: false,
@@ -1541,9 +1542,9 @@ default:
         exportSourceCode: false,
         exportAST: false,
         prettyCfg: true,
-        noMain: true
+        noMain: true,
       },
-      moduleType: "commonjs",
+      moduleType: 'commonjs',
       conditions: {
         INITIAL: {
           rules: [
@@ -1551,10 +1552,10 @@ default:
             1,
             2,
             3,
-            4
+            4,
           ],
-          inclusive: true
-        }
+          inclusive: true,
+        },
       },
       performAction: `function lexer__performAction(yy, yyrulenumber, YY_START) {
             var yy_ = this;
@@ -1596,57 +1597,57 @@ default:
         {
           xregexp: {
             captureNames: null,
-            source: "^(?:\\s+)",
-            flags: "",
-            isNative: true
-          }
+            source: '^(?:\\s+)',
+            flags: '',
+            isNative: true,
+          },
         },
         {
           xregexp: {
             captureNames: null,
-            source: "^(?:\\d+)",
-            flags: "",
-            isNative: true
-          }
+            source: '^(?:\\d+)',
+            flags: '',
+            isNative: true,
+          },
         },
         {
           xregexp: {
             captureNames: null,
-            source: "^(?:\\w+)",
-            flags: "",
-            isNative: true
-          }
+            source: '^(?:\\w+)',
+            flags: '',
+            isNative: true,
+          },
         },
         {
           xregexp: {
             captureNames: null,
-            source: "^(?:\\+)",
-            flags: "",
-            isNative: true
-          }
+            source: '^(?:\\+)',
+            flags: '',
+            isNative: true,
+          },
         },
         {
           xregexp: {
             captureNames: null,
-            source: "^(?:$)",
-            flags: "",
-            isNative: true
-          }
-        }
+            source: '^(?:$)',
+            flags: '',
+            isNative: true,
+          },
+        },
       ],
       macros: {},
       regular_rule_count: 2,
       simple_rule_count: 3,
       conditionStack: [
-        "INITIAL"
+        'INITIAL',
       ],
-      actionInclude: "",
-      moduleInclude: "",
+      actionInclude: '',
+      moduleInclude: '',
       __in_rules_failure_analysis_mode__: false,
       exportSourceCode: {
-        enabled: false
+        enabled: false,
       },
-      is_custom_lexer: false
-    }
-  }
+      is_custom_lexer: false,
+    },
+  },
 ]

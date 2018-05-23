@@ -2986,12 +2986,27 @@ describe("Test Lexer Grammars", function () {
 
   var original_cwd = process.cwd();
 
+  function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
+    // and produce an alternative structure to JSON-ify:
+    return {
+      circularReference: true,
+      // ex: {
+      //   message: err.message,
+      //   type: err.name
+      // },
+      index: circusPos,
+      parentDepth: objStack.length - circusPos - 1,
+      key: key,
+      keyStack: keyStack,    // stack & keyStack have already been snapshotted by the JSON5 library itself so passing a direct ref is fine here!
+    };
+  }
+  
   testset.forEach(function (filespec) {
     // process this file:
     var title = (filespec.meta ? filespec.meta.title : null);
 
     // and create a test for it:
-    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function () {
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function testEachLexerExample() {
       var tokens = [];
       var i = 0;
       var lexerSourceCode;
@@ -3042,21 +3057,12 @@ describe("Test Lexer Grammars", function () {
 
       // either we check/test the correctness of the collected input, iff there's
       // a reference provided, OR we create the reference file for future use:
+      var refOut = JSON5.stringify(tokens, null, 2, testrig_JSON5circularRefHandler);
       if (filespec.ref) {
         // make sure we postprocess the lexer spec as we did when we created the reference template:
-        tokens = JSON5.parse(JSON5.stringify(tokens, null, 2));
+        tokens = JSON5.parse(refOut);
         assert.deepEqual(tokens, filespec.ref);
       } else {
-        var refOut = JSON5.stringify(tokens, null, 2, function testrig_circularRefHandler(obj, i, objStack, holder, key, isTopLevel, err) {
-          console.error(err);
-          console.error('Offending data:', obj);
-          // and produce an alternative structure to JSON-ify:
-          return {
-            ex: err,
-            index: i,
-            key: key
-          };
-        });
         fs.writeFileSync(filespec.path + '-ref.json5', refOut, 'utf8');
       }
     });
