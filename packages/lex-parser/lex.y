@@ -28,7 +28,7 @@
 
 
 %{
-    const OPTION_DOES_NOT_ACCEPT_VALUE = 0x0001;    
+    const OPTION_DOES_NOT_ACCEPT_VALUE = 0x0001;
     const OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES = 0x0002;
     const OPTION_ALSO_ACCEPTS_STAR_AS_IDENTIFIER_NAME = 0x0004;
     const OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS = 0x0008;
@@ -67,7 +67,7 @@ lex
         {
             yyerror(rmCommonWS`
                 There's an error in your lexer regex rules or epilogue.
-                Maybe you did not correctly separate the lexer sections with 
+                Maybe you did not correctly separate the lexer sections with
                 a '%%' on an otherwise empty line?
                 The lexer spec file should have this structure:
 
@@ -89,8 +89,9 @@ lex
 rules_and_epilogue
     : '%%' rules '%%' extra_lexer_module_code
       {
-        if ($extra_lexer_module_code.trim() !== '') {
-            var rv = checkActionBlock($extra_lexer_module_code, @extra_lexer_module_code);
+        var srcCode = trimActionCode($extra_lexer_module_code);
+        if (srcCode) {
+            var rv = checkActionBlock(srcCode, @extra_lexer_module_code);
             if (rv) {
                 yyerror(rmCommonWS`
                     The extra lexer module code section (a.k.a. 'epilogue') does not compile: ${rv}
@@ -99,7 +100,7 @@ rules_and_epilogue
                     ${yylexer.prettyPrintRange(@extra_lexer_module_code)}
                 `);
             }
-            $$ = { rules: $rules, moduleInclude: $extra_lexer_module_code };
+            $$ = { rules: $rules, moduleInclude: srcCode };
         } else {
             $$ = { rules: $rules };
         }
@@ -227,7 +228,7 @@ definitions
                         var name = condition_defs[i][0];
                         if (name in $$.startConditions && $$.startConditions[name] !== condition_defs[i][1]) {
                             yyerror(rmCommonWS`
-                                You have specified the lexer condition state '${name}' as both 
+                                You have specified the lexer condition state '${name}' as both
                                 EXCLUSIVE ('%x') and INCLUSIVE ('%s'). Pick one, please, e.g.:
 
                                     %x ${name}
@@ -286,7 +287,7 @@ definitions
 
 definition
     : MACRO_NAME regex MACRO_END
-        { 
+        {
             // Note: make sure we don't try re-define/override any XRegExp `\p{...}` or `\P{...}`
             // macros here:
             if (XRegExp._getUnicodeProperty($MACRO_NAME)) {
@@ -296,11 +297,11 @@ definition
                 // macro:
                 if ($MACRO_NAME.toUpperCase() !== $MACRO_NAME) {
                     yyerror(rmCommonWS`
-                      Cannot use name "${$MACRO_NAME}" as a macro name 
-                      as it clashes with the same XRegExp "\\p{..}" Unicode \'General Category\' 
-                      Property name. 
-                      Use all-uppercase macro names, e.g. name your macro 
-                      "${$MACRO_NAME.toUpperCase()}" to work around this issue 
+                      Cannot use name "${$MACRO_NAME}" as a macro name
+                      as it clashes with the same XRegExp "\\p{..}" Unicode \'General Category\'
+                      Property name.
+                      Use all-uppercase macro names, e.g. name your macro
+                      "${$MACRO_NAME.toUpperCase()}" to work around this issue
                       or give your offending macro a different name.
 
                         Erroneous area:
@@ -311,12 +312,12 @@ definition
 
             $$ = {
                 type: 'macro',
-                name: $MACRO_NAME, 
+                name: $MACRO_NAME,
                 body: $regex
-            }; 
+            };
         }
     | start_inclusive_keyword option_list OPTIONS_END
-        { 
+        {
             var lst = $option_list;
             for (var i = 0, len = lst.length; i < len; i++) {
                 lst[i][1] = 0;     // flag as 'inclusive'
@@ -328,7 +329,7 @@ definition
             };
         }
     | start_exclusive_keyword option_list OPTIONS_END
-        { 
+        {
             var lst = $option_list;
             for (var i = 0, len = lst.length; i < len; i++) {
                 lst[i][1] = 1;     // flag as 'exclusive'
@@ -341,7 +342,7 @@ definition
         }
     | ACTION_START action ACTION_END
         {
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -355,12 +356,12 @@ definition
             $$ = null;
         }
     | option_keyword option_list OPTIONS_END
-        { 
+        {
             var lst = $option_list;
             for (var i = 0, len = lst.length; i < len; i++) {
-                yy.options[lst[i][0]] = lst[i][1]; 
+                yy.options[lst[i][0]] = lst[i][1];
             }
-            $$ = null; 
+            $$ = null;
         }
     | option_keyword error
         {
@@ -375,14 +376,14 @@ definition
             `);
         }
     | UNKNOWN_DECL
-        { 
+        {
             $$ = {
-                type: 'unknown', 
+                type: 'unknown',
                 body: $1
-            }; 
+            };
         }
     | import_keyword option_list OPTIONS_END
-        { 
+        {
             // check if there are two unvalued options: 'name path'
             var lst = $option_list;
             var len = lst.length;
@@ -412,9 +413,9 @@ definition
             }
 
             $$ = {
-                type: 'imports', 
+                type: 'imports',
                 body: body
-            }; 
+            };
         }
     | import_keyword error
         {
@@ -431,7 +432,7 @@ definition
                 ${$error.errStr}
             `);
         }
-    | init_code_keyword option_list ACTION_START action ACTION_END OPTIONS_END 
+    | init_code_keyword option_list ACTION_START action ACTION_END OPTIONS_END
         {
             // check there's only 1 option which is an identifier
             var lst = $option_list;
@@ -458,7 +459,7 @@ definition
                 `);
             }
 
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -615,7 +616,7 @@ rule_block
 rule
     : regex ACTION_START action ACTION_END
         {
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -634,8 +635,8 @@ rule
             // will uncover any illegal action code following the arrow operator, e.g.
             // multiple statements separated by semicolon.
             //
-            // Note/Optimization: 
-            // there's no need for braces in the generated expression when we can 
+            // Note/Optimization:
+            // there's no need for braces in the generated expression when we can
             // already see the given action is a identifier string or something else
             // that's a sure simple thing for a JavaScript `return` statement to carry.
             // By doing this, we simplify the token return replacement code replacement
@@ -643,9 +644,9 @@ rule
             // will be generated by JISON.
             var ONLY_AN_ID_re = new XRegExp('^[\'"`]?[\p{Alphabetic}_\p{Number}.\(\)-][\'"`]?$');
             if (XRegExp.match(srcCode, ONLY_AN_ID_re)) {
-                srcCode = 'return ' + srcCode + ';';
+                srcCode = 'return ' + srcCode + '';
             } else {
-                srcCode = 'return (' + srcCode + ');'; 
+                srcCode = 'return (' + srcCode + ')';
             }
 
             var rv = checkActionBlock(srcCode, @action);
@@ -662,16 +663,13 @@ rule
                 `);
             }
 
-            // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
-            // will uncover any illegal action code following the arrow operator, e.g.
-            // multiple statements separated by semicolon.
-            $$ = [$regex, srcCode]; 
+            $$ = [$regex, srcCode];
         }
     | regex ARROW_ACTION_START error
         {
             $$ = [$regex, $error];
             yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
+                A lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
 
                     /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
 
@@ -687,9 +685,14 @@ rule
             // TODO: REWRITE
             $$ = [$regex, $error];
             yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
+                A lexer rule regex action code must be properly terminated and must contain a JavaScript statement block (or anything that does parse as such), e.g.:
 
-                    /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
+                    /rule/      %{ invokeHooHaw(); return 'TOKEN'; %}
+
+                NOTE: when you have very simple action code, wrapping it in '%{...}%' or equivalent is not required as long as you keep the code indented, e.g.:
+
+                    /rule/      invokeHooHaw();
+                                return 'TOKEN';
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @regex)}
@@ -752,7 +755,7 @@ action
             yyerror(rmCommonWS`
                 Unterminated string constant in lexer rule action block.
 
-                When your action code is as intended, it may help to enclose 
+                When your action code is as intended, it may help to enclose
                 your rule action block code in a '%{...%}' block.
 
                   Offending action body:
@@ -775,11 +778,11 @@ start_conditions
                 if (name !== '*' && name !== 'INITIAL' && !(name in yy.startConditions)) {
                     yyerror(rmCommonWS`
                         You specified an unknown lexer condition state '${name}'.
-                        Is this a typo or did you forget to include this one in the '%s' and '%x' 
-                        inclusive and exclusive condition state sets specifications at the top of 
+                        Is this a typo or did you forget to include this one in the '%s' and '%x'
+                        inclusive and exclusive condition state sets specifications at the top of
                         the lexer spec?
-                        
-                        As a rough example, things should look something like this in your lexer 
+
+                        As a rough example, things should look something like this in your lexer
                         spec file:
 
                             %s ${name}
@@ -805,8 +808,8 @@ start_conditions
             });
 
             yyerror(rmCommonWS`
-                Seems you did not correctly terminate the start condition set 
-                    <${lst.join(',')},???> 
+                Seems you did not correctly terminate the start condition set
+                    <${lst.join(',')},???>
                 with a terminating '>'
 
                   Erroneous code:
@@ -903,8 +906,8 @@ nonempty_regex_list
         { $$ = $1 + '|'; }
     | '|' regex_concat
         { $$ = '|' + $2; }
-    | '|'                       // pathological empty regex combo, e.g. `(|)` 
-        { $$ = '|'; }        
+    | '|'                       // pathological empty regex combo, e.g. `(|)`
+        { $$ = '|'; }
     | regex_concat
         { $$ = $1; }
     ;
@@ -1024,22 +1027,22 @@ range_regex
 
 literal_string
     : STRING_LIT
-        { 
+        {
             var src = $STRING_LIT;
             var s = src.substring(1, src.length - 1);
             var edge = src[0];
-            $$ = encodeRegexLiteralStr(s, edge); 
+            $$ = encodeRegexLiteralStr(s, edge);
         }
     | CHARACTER_LIT
-        { 
+        {
             var s = $CHARACTER_LIT;
-            $$ = encodeRegexLiteralStr(s); 
+            $$ = encodeRegexLiteralStr(s);
         }
     ;
 
 option_list
-    : option_list ','[comma] option 
-        { 
+    : option_list ','[comma] option
+        {
             // validate that this is legal behaviour under the given circumstances, i.e. parser context:
             if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
                 yyerror(rmCommonWS`
@@ -1050,8 +1053,8 @@ option_list
                 `);
             }
             if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS) {
-                var optlist = $option_list.map(function (opt) { 
-                    return opt[0]; 
+                var optlist = $option_list.map(function (opt) {
+                    return opt[0];
                 });
                 optlist.push($option[0]);
 
@@ -1065,11 +1068,11 @@ option_list
                     ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@comma, @option_list), @-1)}
                 `);
             }
-            $$ = $option_list; 
-            $$.push($option); 
+            $$ = $option_list;
+            $$.push($option);
         }
-    | option_list option 
-        { 
+    | option_list option
+        {
             // validate that this is legal behaviour under the given circumstances, i.e. parser context:
             if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
                 yyerror(rmCommonWS`
@@ -1079,19 +1082,19 @@ option_list
                     ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@option), @-1)}
                 `);
             }
-            $$ = $option_list; 
-            $$.push($option); 
+            $$ = $option_list;
+            $$.push($option);
         }
     | option
-        { 
-            $$ = [$option]; 
+        {
+            $$ = [$option];
         }
     ;
 
 option
     : option_name
-        { 
-            $$ = [$option_name, true]; 
+        {
+            $$ = [$option_name, true];
         }
     | option_name '=' option_value
         {
@@ -1104,7 +1107,7 @@ option
                     ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@option_value, @option_name), @-1)}
                 `);
             }
-            $$ = [$option_name, $option_value]; 
+            $$ = [$option_name, $option_value];
         }
     | option_name '=' error
         {
@@ -1139,7 +1142,7 @@ option
 
 option_name
     : option_value[name]
-        { 
+        {
             // validate that this is legal input under the given circumstances, i.e. parser context:
             if (yy.__options_flags__ & OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES) {
                 $$ = mkIdentifier($name);
@@ -1167,7 +1170,7 @@ option_name
             }
         }
     | '*'[star]
-        { 
+        {
             // validate that this is legal input under the given circumstances, i.e. parser context:
             if (!(yy.__options_flags__ & OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES) || (yy.__options_flags__ & OPTION_ALSO_ACCEPTS_STAR_AS_IDENTIFIER_NAME)) {
                 $$ = $star;
@@ -1330,7 +1333,7 @@ const codeCvtTable = {
 };
 
 // Note about 'b' in the regex below:
-// when inside a literal string, it's BACKSPACE, otherwise it's 
+// when inside a literal string, it's BACKSPACE, otherwise it's
 // the regex word edge condition `\b`. Here it's BACKSPACE.
 var codedCharRe = /(?:([sSBwWdDpP])|([*+()${}|[\]\/.^?])|([aberfntv])|([0-7]{1,3})|c([@A-Z])|x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,8})\}|())/g;
 
@@ -1378,7 +1381,7 @@ function encodeRegexLiteralStr(s, edge) {
                     continue;
                 }
                 codedCharRe.lastIndex = i;
-                // we 'fake' the RegExp 'y'=sticky feature cross-platform by using 'g' flag instead 
+                // we 'fake' the RegExp 'y'=sticky feature cross-platform by using 'g' flag instead
                 // plus an empty capture group at the end of the regex: when that one matches,
                 // we know we did not get a hit.
                 var m = codedCharRe.exec(s);
@@ -1442,7 +1445,7 @@ function encodeRegexLiteralStr(s, edge) {
             rv += '\\\\';
             i--;
             continue;
-        
+
         default:
             // escape regex operators:
             var pos = ".*+?^${}()|[]/\\".indexOf(c);
@@ -1474,7 +1477,7 @@ function encodeRegexLiteralStr(s, edge) {
     return s;
 }
 
-function trimActionCode(src) {
+function trimActionCode(src, startMarker) {
     var s = src.trim();
     // remove outermost set of braces UNLESS there's
     // a curly brace in there anywhere: in that case
@@ -1490,10 +1493,30 @@ function trimActionCode(src) {
     // comment which happens to contain that closing
     // curly brace at the end!
     //
+    // Also DO strip off any trailing optional semicolon,
+    // which might have ended up here due to lexer rules
+    // like this one:
+    //
+    //     [a-z]+              -> 'TOKEN';
+    //
+    // We can safely ditch any trailing semicolon(s) as
+    // our code generator reckons with JavaScript's
+    // ASI rules (Automatic Semicolon Insertion).
+    //
+    //
     // TODO: make this is real code edit without that
     // last edge case as a fault condition.
-    s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
-    return s;    
+    if (startMarker === '{') {
+        // code is wrapped in `{...}` for sure: remove the wrapping braces.
+        s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+    } else {
+        // code may not be wrapped or otherwise non-simple: only remove
+        // wrapping braces when we can guarantee they're the only ones there,
+        // i.e. only exist as outer wrapping.
+        s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
+    }
+    s = s.replace(/;+$/, '').trim();
+    return s;
 }
 
 

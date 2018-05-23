@@ -133,7 +133,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                         } else {
                                             // TODO
                                             yyerror(rmCommonWS`
-                                                %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.
+                                                %include statements must occur on a line on their own and cannot occur inside an action code block.
                                                 Its use is not permitted at this position.
 
                                                   Erroneous area:
@@ -158,7 +158,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 
 // make sure to terminate before the rule section ends,
 // which is announced by `%%`:
-<action>"%%"                            if (yy.include_command_allowed /* && yy.depth === 0 */) {
+<action>"%%"                            if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -211,14 +211,11 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                         }
                                         return 'ACTION_BODY';
 
-// make sure to terminate before the next rule alternative,
-// which is announced by `|` or any regex or options.
-//
 // Note that lexer options & commands should be at the start-of-line, i.e.
 // without leading whitespace. The only lexer command which we do accept
 // here after the last indent is `%include`, which is considered (part
 // of) the rule's action code block.
-<action>(?:[\s\r\n]*?){BR}+{WS}+/[^{WS}{BR}|]
+<action>(?:[\s\r\n]*?){BR}+{WS}+
                                         yy.include_command_allowed = true;
                                         return 'ACTION_BODY';           // keep empty lines as-is inside action code blocks.
 <action>{WS}+                           return 'ACTION_BODY';
@@ -254,7 +251,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 // (which is NIL in case the action code chunk starts with `{`!) as described near the
 // top of this lexer spec file, where the action state lexer rules reside.
 //
-<INITIAL,rules,options>[%\{]\{+       {
+<INITIAL,rules,options>[%\{]\{+     {  
                                         yy.depth = 0;
                                         yy.include_command_allowed = false;
                                         this.pushState('action');
@@ -284,16 +281,59 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 
 
 // ACTION code chunks follow rules and are generally indented and
-// may start with the '%' character which is special to the JISON lex language itself:
+// may not start with the '%' character which is special to the JISON lex language itself:
 // - `%` can start options, commands, etc., e.g. `%include` or `%options`, 
-//   of which only `%include` is allowed inside an action chunk.
+//   of which only `%include` is allowed inside an action chunk (and recognized in another rule in this lexer).
 // - `|` starts a rule alternative, never a chunk of action code.
 // - `%%` delimits a lexer spec section and should always be placed at the start
 //   of a new line, as are most other lexer spec entities.
-<rules>{WS}+/[^{WS}{BR}|]               yy.depth = 0;
-                                        yy.include_command_allowed = true;
-                                        this.pushState('action');
-                                        return 'ACTION_START';
+// - also don't forget about the arrows: those should be lexed via whispace-skip and then 
+//   matching one of the rules above in the next `lex()` call.
+//
+// The `{WS}|{BR}` chunk in the postcondition of the lexer regex below is there to prevent
+// it from matching all the whitepace up to, but not including, the last whitespace 
+// character on the line and consequently triggering the 'action' mode unwantedly.
+// Writing this one was hard, while the same can be accomplished with some extra
+// action code which calls `upcomingInput()`, `unput()` and `reject()` lexer kernel APIs,
+// but we have decided to do it this way for educational purposes: this is the classic
+// way to write non-trivial lexer specs and sometimes it's bloody tough. [GHo] 
+<rules>{WS}+/!(?:"|"|"%"|"->"|"=>"|"→"|{WS}|{BR})
+                                        {{      
+                                            yy.depth = 0;
+                                            yy.include_command_allowed = true;
+                                            this.pushState('action');
+
+                                            // Do a bit of magic that's useful for the parser when we
+                                            // call `trimActionCode()` in there to perform a bit of
+                                            // rough initial action code chunk cleanup: 
+                                            // when we start the action block -- hence *delimit* the
+                                            // action block -- with a plain old '{' brace, we can
+                                            // throw that one and its counterpart out safely without
+                                            // damaging the action code in any way.
+                                            //
+                                            // In order to be able to detect that, we look ahead
+                                            // now and see whether or rule's regex with the fancy
+                                            // '/!' postcondition check actually hit a '{', which
+                                            // is the only action code block starter we cannot
+                                            // detect explicitly using any of the '%{.*?%}' lexer
+                                            // rules you've seen further above.
+                                            //
+                                            // Thanks to this rule's regex, we DO know that the
+                                            // first look-ahead character will be a non-whitespace
+                                            // character, which would either be an action code block
+                                            // delimiter *or* a comment starter. In the latter case
+                                            // we just throw up our hands and leave code trimming
+                                            // and analysis to the more advanced systems which
+                                            // follow after `trimActionCode()` has passed once we
+                                            // get to the parser productions which process this
+                                            // upcoming action code block.
+                                            var la = this.lookAhead();
+                                            if (la[0] === '{') {
+                                                yytext = '{';           // hint the parser 
+                                            }
+
+                                            return 'ACTION_START';
+                                        }}
 
 <rules>"%%"                             this.popState();
                                         this.pushState('code');
@@ -314,8 +354,8 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 \`{ES2017_STRING_CONTENT}\`             return 'OPTION_STRING';
 
 // make sure to terminate before the section ends,
-// which is announced by `%%`:
-"%%"                                    this.popState();
+// which is announced by `%%`, `|` or `;`:
+"%%"|"|"|";"                            this.popState();
                                         this.unput(yytext);
                                         return 'OPTIONS_END';
 
