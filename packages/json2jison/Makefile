@@ -14,6 +14,7 @@ npm-install:
 
 npm-update:
 	ncu -a --packageFile=package.json
+	-rm -f package-lock.json
 
 build:
 
