@@ -202,7 +202,7 @@ function autodetectAndConvertToJSONformat(lexerSpec, options) {
           chk_l = lexParser.parse(lexerSpec, options);
       } catch (e) {
           if (options.json) {
-              err = new Error('Could not parse lexer spec in JSON AUTODETECT mode\nError: ' + ex1.message + ' (' + e.message + ')');
+              err = new Error('Could not parse lexer spec in JSON AUTODETECT mode\nJSON5 Error: ' + ex1.message + '\n\nOtherwise there\'s the JISON Error:' + e.message);
               err.secondary_exception = e;
               err.stack = ex1.stack;
           } else {
@@ -1749,6 +1749,29 @@ return `{
     },
 
     /**
+     * return the upcoming input *which has not been lexed yet*.
+     * This can, for example, be used for custom look-ahead inspection code 
+     * in your lexer.
+     * 
+     * The entire pending input string is returned.
+     *
+     * > ### NOTE ###
+     * >
+     * > When augmenting error reports and alike, you might want to
+     * > look at the \`upcomingInput()\` API instead, which offers more
+     * > features for limited input extraction and which includes the
+     * > part of the input which has been lexed by the last token a.k.a.
+     * > the *currently lexed* input.
+     * > 
+     * 
+     * @public
+     * @this {RegExpLexer}
+     */
+    lookAhead: function lexer_lookAhead() {
+        return this._input || '';
+    },
+
+    /**
      * cache matched text and append it on next action
      * 
      * @public
@@ -1839,7 +1862,9 @@ return `{
     },
 
     /**
-     * return (part of the) upcoming input, i.e. for error messages.
+     * return (part of the) upcoming input *including* the input 
+     * matched by the last token (see also the NOTE below). 
+     * This can be used to augment error messages, for example.
      * 
      * Limit the returned string length to \`maxSize\` (default: 20).
      * 
@@ -1860,6 +1885,11 @@ return `{
      * > the lexer token. This happens when you are invoking this API
      * > from inside any lexer rule action code block. 
      * >
+     * > When you want access to the 'upcoming input' in that you want access
+     * > to the input *which has not been lexed yet* for look-ahead
+     * > inspection or likewise purposes, please consider using the
+     * > \`lookAhead()\` API instead.
+     * > 
      * 
      * @public
      * @this {RegExpLexer}
