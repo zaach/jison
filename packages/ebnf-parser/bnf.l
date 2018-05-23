@@ -115,6 +115,22 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 
+<action>"%{{"([^]*?)"%}}"               yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"%{{{"([^]*?)"%}}}"             yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"{{"([^]*?)"}}"                 yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
+<action>"{{{"([^]*?)"}}}"               yytext = this.matches[1];
+                                        yy.include_command_allowed = false;
+                                        return 'ACTION_BODY';
+
 <action>"%include"                      if (yy.include_command_allowed) {
                                             // This is an include instruction in place of (part of) an action:
                                             this.pushState('options');
@@ -253,7 +269,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 // (which is NIL in case the action code chunk starts with `{`!) as described near the
 // top of this lexer spec file, where the action state lexer rules reside.
 //
-<INITIAL,ebnf,options>[%\{]\{+       {
+<INITIAL,ebnf,options>[%\{]?\{+     {
                                         yy.depth = 0;
                                         yy.include_command_allowed = false;
                                         this.pushState('action');

@@ -3,7 +3,7 @@ import bnf from "./parser";
 import transform from "./ebnf-transform";
 import jisonlex from "../lex-parser";
 
-var version = '0.6.1-216';                              // require('./package.json').version;
+var version = '0.6.5-218';                              // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);
@@ -42,10 +42,10 @@ bnf.parser.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
             grammar.options[decl.options[i][0]] = decl.options[i][1];
         }
     } else if (decl.unknownDecl) {
-        if (!grammar.unknownDecls) grammar.unknownDecls = [];
+        if (!grammar.unknownDecls) grammar.unknownDecls = [];         // [ array of {name,value} pairs ]
         grammar.unknownDecls.push(decl.unknownDecl);
     } else if (decl.imports) {
-        if (!grammar.imports) grammar.imports = [];
+        if (!grammar.imports) grammar.imports = [];                   // [ array of {name,path} pairs ]
         grammar.imports.push(decl.imports);
     } else if (decl.actionInclude) {
         if (!grammar.actionInclude) {

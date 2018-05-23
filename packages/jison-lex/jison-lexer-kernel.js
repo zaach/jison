@@ -562,8 +562,9 @@
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
         var next = this.match;
+        var source = this._input || '';
         if (maxSize < 0)
-            maxSize = next.length + this._input.length;
+            maxSize = next.length + source.length;
         else if (!maxSize)
             maxSize = 20;
         if (maxLines < 0)
@@ -574,7 +575,7 @@
         // more than necessary so that we can still properly check against maxSize
         // after we've transformed and limited the newLines in here:
         if (next.length < maxSize * 2 + 2) {
-            next += this._input.substring(0, maxSize * 2 + 2 - next.length);  // substring is faster on Chrome/V8
+            next += source.substring(0, maxSize * 2 + 2 - next.length);  // substring is faster on Chrome/V8
         }
         // now that we have a significantly reduced string to process, transform the newlines
         // and chop them, then limit them:
@@ -761,7 +762,7 @@
         const CONTEXT = 3;
         const CONTEXT_TAIL = 1;
         const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
-        var input = this.matched + this._input;
+        var input = this.matched + (this._input || '');
         var lines = input.split('\n');
         var l0 = Math.max(1, (context_loc ? context_loc.first_line : loc.first_line - CONTEXT));
         var l1 = Math.max(1, (context_loc2 ? context_loc2.last_line : loc.last_line + CONTEXT_TAIL));

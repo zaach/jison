@@ -233,18 +233,7 @@ function dquote(s) {
 }
 
 //
-// Helper library for safe code execution/compilation, including dumping offending code to file for further error analysis
-// (the idea was originally coded in https://github.com/GerHobbelt/jison/commit/85e367d03b977780516d2b643afbe6f65ee758f2 )
-//
-// MIT Licensed
-//
-//
-// This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-//
-// the given code fails, but where exactly and why? It's precise failure conditions are 'hidden' due to 
-// the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
-// we can test the code in a different environment so that we can see what precisely is causing the failure.
-// 
+
 
 
 function chkBugger(src) {
@@ -350,13 +339,6 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     }
     const debug = 0;
 
-    if (debug) console.warn('generated ' + errname + ' code under EXEC TEST.');
-    if (debug > 1) console.warn(`
-        ######################## source code ##########################
-        ${sourcecode}
-        ######################## source code ##########################
-        `);
-
     var p;
     try {
         // p = eval(sourcecode);
@@ -366,13 +348,6 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         chkBugger(sourcecode);
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
     } catch (ex) {
-        if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-        if (debug) console.log("generated " + errname + " source code fatal error: ", ex.message);
-
-        if (debug > 1) console.log("exec-and-diagnose options:", options);
-
-        if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         
         if (options.dumpSourceCodeOnFailure) {
             dumpSourceToFile(sourcecode, errname, err_id, options, ex);
@@ -396,18 +371,7 @@ var code_exec = {
 };
 
 //
-// Parse a given chunk of code to an AST.
-//
-// MIT Licensed
-//
-//
-// This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-//
-// would the given code compile and possibly execute correctly, when included in a lexer, parser or other engine?
-// 
 
-
-//import astUtils from '@gerhobbelt/ast-util';
 assert(recast);
 var types = recast.types;
 assert(types);
@@ -434,6 +398,7 @@ function parseCodeChunkToAST(src, options) {
 
 function prettyPrintAST(ast, options) {
     var new_src;
+
     var s = recast.prettyPrint(ast, { 
         tabWidth: 2,
         quote: 'single',

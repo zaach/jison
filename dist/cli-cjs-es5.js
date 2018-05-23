@@ -31,15 +31,15 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
     _templateObject24 = _taggedTemplateLiteral(['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The source code %include-d into the extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject25 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject26 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject27 = _taggedTemplateLiteral(['\n                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                    Its use is not permitted at this position.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                    Its use is not permitted at this position.\n\n                                                      Erroneous area:\n                                                    ']),
-    _templateObject28 = _taggedTemplateLiteral(['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    too many closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
+    _templateObject27 = _taggedTemplateLiteral(['\n                                                %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                %include statements must occur on a line on their own and cannot occur inside an %{...%\\} action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject28 = _taggedTemplateLiteral(['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%\\}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                ']),
     _templateObject29 = _taggedTemplateLiteral(['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    '], ['\n                                                    missing ', ' closing curly braces in lexer rule action block.\n\n                                                    Note: the action code chunk may be too complex for jison to parse\n                                                    easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                    to help jison grok more or less complex action code chunks.\n\n                                                      Erroneous area:\n                                                    ']),
     _templateObject30 = _taggedTemplateLiteral(['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                LEX: ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
     _templateObject31 = _taggedTemplateLiteral(['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject32 = _taggedTemplateLiteral(['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject33 = _taggedTemplateLiteral(['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant  encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject34 = _taggedTemplateLiteral(['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input encountered while lexing\n                                                ', ' (i.e. jison lex regexes).\n\n                                                    NOTE: When you want this input to be interpreted as a LITERAL part\n                                                          of a lex rule regex, you MUST enclose it in double or\n                                                          single quotes.\n\n                                                          If not, then know that this input is not accepted as a valid\n                                                          regex expression here in jison-lex ', '.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject35 = _taggedTemplateLiteral(['\n                                                unsupported lexer input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported lexer input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject34 = _taggedTemplateLiteral(['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes).\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes).\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject35 = _taggedTemplateLiteral(['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            ']),
     _templateObject36 = _taggedTemplateLiteral(['\n        var __hacky_counter__ = 0;\n\n        /**\n         * @constructor\n         * @nocollapse\n         */\n        function XRegExp(re, f) {\n            this.re = re;\n            this.flags = f;\n            this._getUnicodeProperty = function (k) {};\n            var fake = /./;    // WARNING: this exact \'fake\' is also depended upon by the xregexp unit test!\n            __hacky_counter__++;\n            fake.__hacky_backy__ = __hacky_counter__;\n            return fake;\n        }\n    '], ['\n        var __hacky_counter__ = 0;\n\n        /**\n         * @constructor\n         * @nocollapse\n         */\n        function XRegExp(re, f) {\n            this.re = re;\n            this.flags = f;\n            this._getUnicodeProperty = function (k) {};\n            var fake = /./;    // WARNING: this exact \'fake\' is also depended upon by the xregexp unit test!\n            __hacky_counter__++;\n            fake.__hacky_backy__ = __hacky_counter__;\n            return fake;\n        }\n    ']),
     _templateObject37 = _taggedTemplateLiteral(['\n    return ', ';\n'], ['\n    return ', ';\n']),
     _templateObject38 = _taggedTemplateLiteral(['\n        // Code Generator Information Report\n        // ---------------------------------\n        //\n        // Options:\n        //\n        //   backtracking: .................... ', '\n        //   location.ranges: ................. ', '\n        //   location line+column tracking: ... ', '\n        //\n        //\n        // Forwarded Parser Analysis flags:\n        //\n        //   uses yyleng: ..................... ', '\n        //   uses yylineno: ................... ', '\n        //   uses yytext: ..................... ', '\n        //   uses yylloc: ..................... ', '\n        //   uses lexer values: ............... ', ' / ', '\n        //   location tracking: ............... ', '\n        //   location assignment: ............. ', '\n        //\n        //\n        // Lexer Analysis flags:\n        //\n        //   uses yyleng: ..................... ', '\n        //   uses yylineno: ................... ', '\n        //   uses yytext: ..................... ', '\n        //   uses yylloc: ..................... ', '\n        //   uses ParseError API: ............. ', '\n        //   uses yyerror: .................... ', '\n        //   uses location tracking & editing:  ', '\n        //   uses more() API: ................. ', '\n        //   uses unput() API: ................ ', '\n        //   uses reject() API: ............... ', '\n        //   uses less() API: ................. ', '\n        //   uses display APIs pastInput(), upcomingInput(), showPosition():\n        //        ............................. ', '\n        //   uses describeYYLLOC() API: ....... ', '\n        //\n        // --------- END OF REPORT -----------\n\n    '], ['\n        // Code Generator Information Report\n        // ---------------------------------\n        //\n        // Options:\n        //\n        //   backtracking: .................... ', '\n        //   location.ranges: ................. ', '\n        //   location line+column tracking: ... ', '\n        //\n        //\n        // Forwarded Parser Analysis flags:\n        //\n        //   uses yyleng: ..................... ', '\n        //   uses yylineno: ................... ', '\n        //   uses yytext: ..................... ', '\n        //   uses yylloc: ..................... ', '\n        //   uses lexer values: ............... ', ' / ', '\n        //   location tracking: ............... ', '\n        //   location assignment: ............. ', '\n        //\n        //\n        // Lexer Analysis flags:\n        //\n        //   uses yyleng: ..................... ', '\n        //   uses yylineno: ................... ', '\n        //   uses yytext: ..................... ', '\n        //   uses yylloc: ..................... ', '\n        //   uses ParseError API: ............. ', '\n        //   uses yyerror: .................... ', '\n        //   uses location tracking & editing:  ', '\n        //   uses more() API: ................. ', '\n        //   uses unput() API: ................ ', '\n        //   uses reject() API: ............... ', '\n        //   uses less() API: ................. ', '\n        //   uses display APIs pastInput(), upcomingInput(), showPosition():\n        //        ............................. ', '\n        //   uses describeYYLLOC() API: ....... ', '\n        //\n        // --------- END OF REPORT -----------\n\n    ']),
@@ -86,7 +86,7 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
     _templateObject79 = _taggedTemplateLiteral(['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    '], ['\n    %include MUST be followed by a valid file path.\n    \n      Erroneous path:\n    ']),
     _templateObject80 = _taggedTemplateLiteral(['\n        module code declaration error?\n    \n          Erroneous area:\n        '], ['\n        module code declaration error?\n    \n          Erroneous area:\n        ']),
     _templateObject81 = _taggedTemplateLiteral(['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                EBNF: ignoring unsupported parser option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject82 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n                                                \n                                                  Erroneous area:\n                                                ']),
+    _templateObject82 = _taggedTemplateLiteral(['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                unsupported parser input: ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
     _templateObject83 = _taggedTemplateLiteral(['\n                // macros:\n            '], ['\n                // macros:\n            ']),
     _templateObject84 = _taggedTemplateLiteral(['\n                // END of the lexer macros.\n            '], ['\n                // END of the lexer macros.\n            ']),
     _templateObject85 = _taggedTemplateLiteral(['\n                // unknown declarations:\n            '], ['\n                // unknown declarations:\n            ']),
@@ -6135,13 +6135,21 @@ var lexer = function () {
 
                 case 53:
                     /*! Conditions:: rules macro named_chunk INITIAL */
+                    /*! Rule::       `{ES2017_STRING_CONTENT}` */
+                    yy_.yytext = unescQuote(this.matches[1]);
+
+                    return 26;
+                    break;
+
+                case 54:
+                    /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       \[ */
                     this.pushState('set');
 
                     return 41;
                     break;
 
-                case 68:
+                case 69:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       < */
                     this.pushState('conditions');
@@ -6149,21 +6157,21 @@ var lexer = function () {
                     return 5;
                     break;
 
-                case 69:
+                case 70:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       \/! */
                     return 39; // treated as `(?!atom)`  
 
                     break;
 
-                case 70:
+                case 71:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       \/ */
                     return 14; // treated as `(?=atom)`  
 
                     break;
 
-                case 72:
+                case 73:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       \\. */
                     yy_.yytext = yy_.yytext.replace(/^\\/g, '');
@@ -6171,7 +6179,7 @@ var lexer = function () {
                     return 44;
                     break;
 
-                case 75:
+                case 76:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %option[s]? */
                     this.pushState('options');
@@ -6179,7 +6187,7 @@ var lexer = function () {
                     return 47;
                     break;
 
-                case 76:
+                case 77:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %s\b */
                     this.pushState('start_condition');
@@ -6187,7 +6195,7 @@ var lexer = function () {
                     return 21;
                     break;
 
-                case 77:
+                case 78:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %x\b */
                     this.pushState('start_condition');
@@ -6195,7 +6203,7 @@ var lexer = function () {
                     return 22;
                     break;
 
-                case 78:
+                case 79:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %code\b */
                     this.pushState('named_chunk');
@@ -6203,7 +6211,7 @@ var lexer = function () {
                     return 25;
                     break;
 
-                case 79:
+                case 80:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %import\b */
                     this.pushState('named_chunk');
@@ -6211,7 +6219,7 @@ var lexer = function () {
                     return 24;
                     break;
 
-                case 80:
+                case 81:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %include\b */
                     yy.depth = 0;
@@ -6223,7 +6231,7 @@ var lexer = function () {
                     return 28;
                     break;
 
-                case 81:
+                case 82:
                     /*! Conditions:: code */
                     /*! Rule::       %include\b */
                     this.pushState('path');
@@ -6231,7 +6239,7 @@ var lexer = function () {
                     return 51;
                     break;
 
-                case 82:
+                case 83:
                     /*! Conditions:: INITIAL rules code */
                     /*! Rule::       %{NAME}([^\r\n]*) */
                     /* ignore unrecognized decl */
@@ -6245,7 +6253,7 @@ var lexer = function () {
                     return 23;
                     break;
 
-                case 83:
+                case 84:
                     /*! Conditions:: rules macro named_chunk INITIAL */
                     /*! Rule::       %% */
                     this.pushState('rules');
@@ -6253,7 +6261,7 @@ var lexer = function () {
                     return 19;
                     break;
 
-                case 91:
+                case 92:
                     /*! Conditions:: set */
                     /*! Rule::       \] */
                     this.popState();
@@ -6261,14 +6269,14 @@ var lexer = function () {
                     return 42;
                     break;
 
-                case 93:
+                case 94:
                     /*! Conditions:: code */
                     /*! Rule::       [^\r\n]+ */
                     return 53; // the bit of CODE just before EOF...  
 
                     break;
 
-                case 94:
+                case 95:
                     /*! Conditions:: path */
                     /*! Rule::       {BR} */
                     this.popState();
@@ -6276,7 +6284,7 @@ var lexer = function () {
                     this.unput(yy_.yytext);
                     break;
 
-                case 95:
+                case 96:
                     /*! Conditions:: path */
                     /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
                     yy_.yytext = unescQuote(this.matches[1]);
@@ -6285,7 +6293,7 @@ var lexer = function () {
                     return 52;
                     break;
 
-                case 96:
+                case 97:
                     /*! Conditions:: path */
                     /*! Rule::       '{QUOTED_STRING_CONTENT}' */
                     yy_.yytext = unescQuote(this.matches[1]);
@@ -6294,13 +6302,22 @@ var lexer = function () {
                     return 52;
                     break;
 
-                case 97:
+                case 98:
+                    /*! Conditions:: path */
+                    /*! Rule::       `{ES2017_STRING_CONTENT}` */
+                    yy_.yytext = unescQuote(this.matches[1]);
+
+                    this.popState();
+                    return 52;
+                    break;
+
+                case 99:
                     /*! Conditions:: path */
                     /*! Rule::       {WS}+ */
                     // skip whitespace in the line 
                     break;
 
-                case 98:
+                case 100:
                     /*! Conditions:: path */
                     /*! Rule::       [^\s\r\n]+ */
                     this.popState();
@@ -6308,77 +6325,57 @@ var lexer = function () {
                     return 52;
                     break;
 
-                case 99:
-                    /*! Conditions:: action */
-                    /*! Rule::       " */
-                    yy_.yyerror(rmCommonWS(_templateObject31) + this.prettyPrintRange(yy_.yylloc));
-
-                    return 2;
-                    break;
-
-                case 100:
-                    /*! Conditions:: action */
-                    /*! Rule::       ' */
-                    yy_.yyerror(rmCommonWS(_templateObject31) + this.prettyPrintRange(yy_.yylloc));
-
-                    return 2;
-                    break;
-
                 case 101:
                     /*! Conditions:: action */
-                    /*! Rule::       ` */
+                    /*! Rule::       " */
                     yy_.yyerror(rmCommonWS(_templateObject31) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 102:
-                    /*! Conditions:: options */
-                    /*! Rule::       " */
-                    yy_.yyerror(rmCommonWS(_templateObject32) + this.prettyPrintRange(yy_.yylloc));
+                    /*! Conditions:: action */
+                    /*! Rule::       ' */
+                    yy_.yyerror(rmCommonWS(_templateObject31) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 103:
-                    /*! Conditions:: options */
-                    /*! Rule::       ' */
-                    yy_.yyerror(rmCommonWS(_templateObject32) + this.prettyPrintRange(yy_.yylloc));
+                    /*! Conditions:: action */
+                    /*! Rule::       ` */
+                    yy_.yyerror(rmCommonWS(_templateObject31) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 104:
                     /*! Conditions:: options */
-                    /*! Rule::       ` */
+                    /*! Rule::       " */
                     yy_.yyerror(rmCommonWS(_templateObject32) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 105:
-                    /*! Conditions:: * */
-                    /*! Rule::       " */
-                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                    yy_.yyerror(rmCommonWS(_templateObject33, rules) + this.prettyPrintRange(yy_.yylloc));
+                    /*! Conditions:: options */
+                    /*! Rule::       ' */
+                    yy_.yyerror(rmCommonWS(_templateObject32) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 106:
-                    /*! Conditions:: * */
-                    /*! Rule::       ' */
-                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                    yy_.yyerror(rmCommonWS(_templateObject33, rules) + this.prettyPrintRange(yy_.yylloc));
+                    /*! Conditions:: options */
+                    /*! Rule::       ` */
+                    yy_.yyerror(rmCommonWS(_templateObject32) + this.prettyPrintRange(yy_.yylloc));
 
                     return 2;
                     break;
 
                 case 107:
                     /*! Conditions:: * */
-                    /*! Rule::       ` */
+                    /*! Rule::       " */
                     var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
                     yy_.yyerror(rmCommonWS(_templateObject33, rules) + this.prettyPrintRange(yy_.yylloc));
@@ -6387,6 +6384,26 @@ var lexer = function () {
                     break;
 
                 case 108:
+                    /*! Conditions:: * */
+                    /*! Rule::       ' */
+                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                    yy_.yyerror(rmCommonWS(_templateObject33, rules) + this.prettyPrintRange(yy_.yylloc));
+
+                    return 2;
+                    break;
+
+                case 109:
+                    /*! Conditions:: * */
+                    /*! Rule::       ` */
+                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                    yy_.yyerror(rmCommonWS(_templateObject33, rules) + this.prettyPrintRange(yy_.yylloc));
+
+                    return 2;
+                    break;
+
+                case 110:
                     /*! Conditions:: macro rules */
                     /*! Rule::       . */
                     /* b0rk on bad characters */
@@ -6396,7 +6413,7 @@ var lexer = function () {
 
                     break;
 
-                case 109:
+                case 111:
                     /*! Conditions:: * */
                     /*! Rule::       . */
                     yy_.yyerror(rmCommonWS(_templateObject35, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
@@ -6451,107 +6468,107 @@ var lexer = function () {
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \| */
-            54: 9,
+            55: 9,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \(\?: */
-            55: 38,
-
-            /*! Conditions:: rules macro named_chunk INITIAL */
-            /*! Rule::       \(\?= */
             56: 38,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
-            /*! Rule::       \(\?! */
+            /*! Rule::       \(\?= */
             57: 38,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
-            /*! Rule::       \(\?<= */
+            /*! Rule::       \(\?! */
             58: 38,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
-            /*! Rule::       \(\?<! */
+            /*! Rule::       \(\?<= */
             59: 38,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
+            /*! Rule::       \(\?<! */
+            60: 38,
+
+            /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \( */
-            60: 10,
+            61: 10,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \) */
-            61: 11,
+            62: 11,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \+ */
-            62: 12,
+            63: 12,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \* */
-            63: 7,
+            64: 7,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \? */
-            64: 13,
+            65: 13,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \^ */
-            65: 16,
+            66: 16,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       , */
-            66: 8,
+            67: 8,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       <<EOF>> */
-            67: 17,
+            68: 17,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */
-            71: 44,
+            72: 44,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \$ */
-            73: 17,
+            74: 17,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \. */
-            74: 15,
+            75: 15,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-            84: 45,
+            85: 45,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
-            /*! Rule::       \{{ID}\} */
-            85: 40,
-
-            /*! Conditions:: set options */
             /*! Rule::       \{{ID}\} */
             86: 40,
 
+            /*! Conditions:: set options */
+            /*! Rule::       \{{ID}\} */
+            87: 40,
+
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \{ */
-            87: 3,
+            88: 3,
 
             /*! Conditions:: rules macro named_chunk INITIAL */
             /*! Rule::       \} */
-            88: 4,
+            89: 4,
 
             /*! Conditions:: set */
             /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */
-            89: 43,
+            90: 43,
 
             /*! Conditions:: set */
             /*! Rule::       \{ */
-            90: 43,
+            91: 43,
 
             /*! Conditions:: code */
             /*! Rule::       [^\r\n]*(\r|\n)+ */
-            92: 53,
+            93: 53,
 
             /*! Conditions:: * */
             /*! Rule::       $ */
-            110: 1
+            112: 1
         },
 
         rules: [
@@ -6608,123 +6625,125 @@ var lexer = function () {
         /*  50: *//^(?:\s+)/,
         /*  51: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
         /*  52: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-        /*  53: *//^(?:\[)/,
-        /*  54: *//^(?:\|)/,
-        /*  55: *//^(?:\(\?:)/,
-        /*  56: *//^(?:\(\?=)/,
-        /*  57: *//^(?:\(\?!)/,
-        /*  58: *//^(?:\(\?<=)/,
-        /*  59: *//^(?:\(\?<!)/,
-        /*  60: *//^(?:\()/,
-        /*  61: *//^(?:\))/,
-        /*  62: *//^(?:\+)/,
-        /*  63: *//^(?:\*)/,
-        /*  64: *//^(?:\?)/,
-        /*  65: *//^(?:\^)/,
-        /*  66: *//^(?:,)/,
-        /*  67: *//^(?:<<EOF>>)/,
-        /*  68: *//^(?:<)/,
-        /*  69: *//^(?:\/!)/,
-        /*  70: *//^(?:\/)/,
-        /*  71: *//^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
-        /*  72: *//^(?:\\.)/,
-        /*  73: *//^(?:\$)/,
-        /*  74: *//^(?:\.)/,
-        /*  75: *//^(?:%option[s]?)/,
-        /*  76: *//^(?:%s\b)/,
-        /*  77: *//^(?:%x\b)/,
-        /*  78: *//^(?:%code\b)/,
-        /*  79: *//^(?:%import\b)/,
-        /*  80: *//^(?:%include\b)/,
+        /*  53: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+        /*  54: *//^(?:\[)/,
+        /*  55: *//^(?:\|)/,
+        /*  56: *//^(?:\(\?:)/,
+        /*  57: *//^(?:\(\?=)/,
+        /*  58: *//^(?:\(\?!)/,
+        /*  59: *//^(?:\(\?<=)/,
+        /*  60: *//^(?:\(\?<!)/,
+        /*  61: *//^(?:\()/,
+        /*  62: *//^(?:\))/,
+        /*  63: *//^(?:\+)/,
+        /*  64: *//^(?:\*)/,
+        /*  65: *//^(?:\?)/,
+        /*  66: *//^(?:\^)/,
+        /*  67: *//^(?:,)/,
+        /*  68: *//^(?:<<EOF>>)/,
+        /*  69: *//^(?:<)/,
+        /*  70: *//^(?:\/!)/,
+        /*  71: *//^(?:\/)/,
+        /*  72: *//^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
+        /*  73: *//^(?:\\.)/,
+        /*  74: *//^(?:\$)/,
+        /*  75: *//^(?:\.)/,
+        /*  76: *//^(?:%option[s]?)/,
+        /*  77: *//^(?:%s\b)/,
+        /*  78: *//^(?:%x\b)/,
+        /*  79: *//^(?:%code\b)/,
+        /*  80: *//^(?:%import\b)/,
         /*  81: *//^(?:%include\b)/,
-        /*  82: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
-        /*  83: *//^(?:%%)/,
-        /*  84: *//^(?:\{\d+(,\s*\d+|,)?\})/,
-        /*  85: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+        /*  82: *//^(?:%include\b)/,
+        /*  83: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
+        /*  84: *//^(?:%%)/,
+        /*  85: *//^(?:\{\d+(,\s*\d+|,)?\})/,
         /*  86: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-        /*  87: *//^(?:\{)/,
-        /*  88: *//^(?:\})/,
-        /*  89: *//^(?:(?:\\\\|\\\]|[^\]{])+)/,
-        /*  90: *//^(?:\{)/,
-        /*  91: *//^(?:\])/,
-        /*  92: *//^(?:[^\r\n]*(\r|\n)+)/,
-        /*  93: *//^(?:[^\r\n]+)/,
-        /*  94: *//^(?:(\r\n|\n|\r))/,
-        /*  95: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-        /*  96: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-        /*  97: *//^(?:([^\S\n\r])+)/,
-        /*  98: *//^(?:\S+)/,
-        /*  99: *//^(?:")/,
-        /* 100: *//^(?:')/,
-        /* 101: *//^(?:`)/,
-        /* 102: *//^(?:")/,
-        /* 103: *//^(?:')/,
-        /* 104: *//^(?:`)/,
-        /* 105: *//^(?:")/,
-        /* 106: *//^(?:')/,
-        /* 107: *//^(?:`)/,
-        /* 108: *//^(?:.)/,
-        /* 109: *//^(?:.)/,
-        /* 110: *//^(?:$)/],
+        /*  87: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+        /*  88: *//^(?:\{)/,
+        /*  89: *//^(?:\})/,
+        /*  90: *//^(?:(?:\\\\|\\\]|[^\]{])+)/,
+        /*  91: *//^(?:\{)/,
+        /*  92: *//^(?:\])/,
+        /*  93: *//^(?:[^\r\n]*(\r|\n)+)/,
+        /*  94: *//^(?:[^\r\n]+)/,
+        /*  95: *//^(?:(\r\n|\n|\r))/,
+        /*  96: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+        /*  97: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+        /*  98: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+        /*  99: *//^(?:([^\S\n\r])+)/,
+        /* 100: *//^(?:\S+)/,
+        /* 101: *//^(?:")/,
+        /* 102: *//^(?:')/,
+        /* 103: *//^(?:`)/,
+        /* 104: *//^(?:")/,
+        /* 105: *//^(?:')/,
+        /* 106: *//^(?:`)/,
+        /* 107: *//^(?:")/,
+        /* 108: *//^(?:')/,
+        /* 109: *//^(?:`)/,
+        /* 110: *//^(?:.)/,
+        /* 111: *//^(?:.)/,
+        /* 112: *//^(?:$)/],
 
         conditions: {
             'rules': {
-                rules: [0, 26, 27, 28, 29, 30, 31, 32, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82, 83, 84, 85, 87, 88, 105, 106, 107, 108, 109, 110],
+                rules: [0, 26, 27, 28, 29, 30, 31, 32, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 84, 85, 86, 88, 89, 107, 108, 109, 110, 111, 112],
 
                 inclusive: true
             },
 
             'macro': {
-                rules: [0, 24, 25, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 83, 84, 85, 87, 88, 105, 106, 107, 108, 109, 110],
+                rules: [0, 24, 25, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 84, 85, 86, 88, 89, 107, 108, 109, 110, 111, 112],
 
                 inclusive: true
             },
 
             'named_chunk': {
-                rules: [0, 45, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 83, 84, 85, 87, 88, 105, 106, 107, 109, 110],
+                rules: [0, 45, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 84, 85, 86, 88, 89, 107, 108, 109, 111, 112],
 
                 inclusive: true
             },
 
             'code': {
-                rules: [81, 82, 92, 93, 105, 106, 107, 109, 110],
+                rules: [82, 83, 93, 94, 107, 108, 109, 111, 112],
                 inclusive: false
             },
 
             'start_condition': {
-                rules: [24, 25, 42, 43, 44, 105, 106, 107, 109, 110],
+                rules: [24, 25, 42, 43, 44, 107, 108, 109, 111, 112],
                 inclusive: false
             },
 
             'options': {
-                rules: [24, 25, 33, 34, 35, 36, 37, 38, 39, 40, 41, 86, 102, 103, 104, 105, 106, 107, 109, 110],
+                rules: [24, 25, 33, 34, 35, 36, 37, 38, 39, 40, 41, 87, 104, 105, 106, 107, 108, 109, 111, 112],
 
                 inclusive: false
             },
 
             'conditions': {
-                rules: [20, 21, 22, 23, 105, 106, 107, 109, 110],
+                rules: [20, 21, 22, 23, 107, 108, 109, 111, 112],
                 inclusive: false
             },
 
             'action': {
-                rules: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 99, 100, 101, 105, 106, 107, 109, 110],
+                rules: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 101, 102, 103, 107, 108, 109, 111, 112],
 
                 inclusive: false
             },
 
             'path': {
-                rules: [24, 25, 94, 95, 96, 97, 98, 105, 106, 107, 109, 110],
+                rules: [24, 25, 95, 96, 97, 98, 99, 100, 107, 108, 109, 111, 112],
                 inclusive: false
             },
 
             'set': {
-                rules: [86, 89, 90, 91, 105, 106, 107, 109, 110],
+                rules: [87, 90, 91, 92, 107, 108, 109, 111, 112],
                 inclusive: false
             },
 
             'INITIAL': {
-                rules: [0, 24, 25, 46, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 82, 83, 84, 85, 87, 88, 105, 106, 107, 109, 110],
+                rules: [0, 24, 25, 46, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 84, 85, 86, 88, 89, 107, 108, 109, 111, 112],
 
                 inclusive: true
             }
@@ -14606,6 +14625,7 @@ var parser$2 = {
 
                 this.$ = [yyvstack[yysp - 2].length ? yyvstack[yysp - 2].join(' ') : ''];
                 if (yyvstack[yysp]) {
+                    console.warn('checkActionBlock:', yyvstack[yysp]);
                     var rv = checkActionBlock$2(yyvstack[yysp], yylstack[yysp]);
                     if (rv) {
                         yyparser.yyError(rmCommonWS$5(_templateObject69, rv, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
@@ -18354,20 +18374,20 @@ var lexer$1 = function () {
             25: 25,
 
             /*! Conditions:: token bnf ebnf INITIAL */
-            /*! Rule::       {ID} */
-            39: 24,
-
-            /*! Conditions:: token bnf ebnf INITIAL */
-            /*! Rule::       {NAME} */
-            40: 25,
-
-            /*! Conditions:: token bnf ebnf INITIAL */
             /*! Rule::       \$end\b */
-            41: 41,
+            39: 41,
 
             /*! Conditions:: token bnf ebnf INITIAL */
             /*! Rule::       \$eof\b */
-            42: 41,
+            40: 41,
+
+            /*! Conditions:: token bnf ebnf INITIAL */
+            /*! Rule::       {ID} */
+            41: 24,
+
+            /*! Conditions:: token bnf ebnf INITIAL */
+            /*! Rule::       {NAME} */
+            42: 25,
 
             /*! Conditions:: token */
             /*! Rule::       [^\s\r\n]+ */
@@ -18474,10 +18494,10 @@ var lexer$1 = function () {
         /* 36: *//^(?:([^\S\n\r])+)/,
         /* 37: *//^(?:(\r\n|\n|\r)+)/,
         /* 38: */new XRegExp('^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])', ''),
-        /* 39: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
-        /* 40: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))', ''),
-        /* 41: *//^(?:\$end\b)/,
-        /* 42: *//^(?:\$eof\b)/,
+        /* 39: *//^(?:\$end\b)/,
+        /* 40: *//^(?:\$eof\b)/,
+        /* 41: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
+        /* 42: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))', ''),
         /* 43: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
         /* 44: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
         /* 45: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
