@@ -51,11 +51,11 @@
         codeSections: [
           {
             qualifier: 'init',
-            include: "console.log('init');",
+            include: "console.log('init')",
           },
           {
             qualifier: '__misc__',
-            include: "console.log('_x_misc_x_');",
+            include: "console.log('_x_misc_x_')",
           },
         ],
         importDecls: [],
@@ -74,7 +74,7 @@
     },
     ERROR: 2,
     EOF: 1, 
-  };`,
+  }`,
       },
       options: {
         moduleType: 'commonjs',
@@ -120,7 +120,7 @@
     },
     ERROR: 2,
     EOF: 1, 
-  };
+  }
 var YYSTATE = YY_START;
 /* no rules ==> no rule SWITCH! */
         }`,
@@ -148,7 +148,7 @@ var YYSTATE = YY_START;
     },
     ERROR: 2,
     EOF: 1, 
-  };`,
+  }`,
       moduleInclude: '',
       __in_rules_failure_analysis_mode__: false,
       exportSourceCode: {

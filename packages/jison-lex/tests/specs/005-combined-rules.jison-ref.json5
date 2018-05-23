@@ -1,7 +1,7 @@
 [
-  13,
-  'WORD',
-  'A',
+  7,
+  'TOKEN',
+  'a',
   {
     first_line: 1,
     first_column: 0,
@@ -12,8 +12,8 @@
       1,
     ],
   },
-  'TOK_A',
-  'a',
+  'TOKEN',
+  '1',
   {
     first_line: 1,
     first_column: 2,
@@ -24,8 +24,8 @@
       3,
     ],
   },
-  'WORD',
-  'B',
+  'TOKEN',
+  'b',
   {
     first_line: 1,
     first_column: 4,
@@ -36,8 +36,8 @@
       5,
     ],
   },
-  'WORD',
-  'C',
+  'TOKEN',
+  '2',
   {
     first_line: 1,
     first_column: 6,
@@ -48,124 +48,52 @@
       7,
     ],
   },
-  'NUMBER',
-  '1',
-  {
-    first_line: 1,
-    first_column: 8,
-    last_line: 1,
-    last_column: 9,
-    range: [
-      8,
-      9,
-    ],
-  },
-  '+',
-  '+',
-  {
-    first_line: 1,
-    first_column: 10,
-    last_line: 1,
-    last_column: 11,
-    range: [
-      10,
-      11,
-    ],
-  },
-  'NUMBER',
-  '2',
-  {
-    first_line: 1,
-    first_column: 12,
-    last_line: 1,
-    last_column: 13,
-    range: [
-      12,
-      13,
-    ],
-  },
-  '+',
-  '+',
-  {
-    first_line: 1,
-    first_column: 14,
-    last_line: 1,
-    last_column: 15,
-    range: [
-      14,
-      15,
-    ],
-  },
-  'NUMBER',
-  '3',
-  {
-    first_line: 1,
-    first_column: 16,
-    last_line: 1,
-    last_column: 17,
-    range: [
-      16,
-      17,
-    ],
-  },
-  'EOF',
+  1,
   '',
   {
     first_line: 1,
-    first_column: 17,
+    first_column: 7,
     last_line: 1,
-    last_column: 17,
+    last_column: 7,
     range: [
-      17,
-      17,
+      7,
+      7,
     ],
   },
   1,
   '',
   {
     first_line: 1,
-    first_column: 17,
+    first_column: 7,
     last_line: 1,
-    last_column: 17,
+    last_column: 7,
     range: [
-      17,
-      17,
+      7,
+      7,
     ],
   },
   1,
   '',
   {
     first_line: 1,
-    first_column: 17,
+    first_column: 7,
     last_line: 1,
-    last_column: 17,
+    last_column: 7,
     range: [
-      17,
-      17,
+      7,
+      7,
     ],
   },
   1,
   '',
   {
     first_line: 1,
-    first_column: 17,
+    first_column: 7,
     last_line: 1,
-    last_column: 17,
+    last_column: 7,
     range: [
-      17,
-      17,
-    ],
-  },
-  1,
-  '',
-  {
-    first_line: 1,
-    first_column: 17,
-    last_line: 1,
-    last_column: 17,
-    range: [
-      17,
-      17,
+      7,
+      7,
     ],
   },
   {
@@ -1468,16 +1396,7 @@ switch(yyrulenumber) {
 case 0 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \\s+ */ 
-  
-break;
-case 2 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \\w+ */ 
- if (yy_.yytext === 'a') {
-                return 'TOK_A';                
-            } else {
-                return 'WORD'; 
-            } 
+ // ignore 
 break;
 default:
   return this.simpleCaseActionClusters[yyrulenumber];
@@ -1486,30 +1405,18 @@ default:
     simpleCaseActionClusters: {
 
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       \\d+ */ 
-   1 : 'NUMBER',
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \\+ */ 
-   3 : '+',
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       $ */ 
-   4 : 'EOF'
+  /*! Rule::       \\d+|[a-z]+ */ 
+   1 : 'TOKEN'
 },
     rules: [
         /* 0: */  /^(?:\\s+)/,
-/* 1: */  /^(?:\\d+)/,
-/* 2: */  /^(?:\\w+)/,
-/* 3: */  /^(?:\\+)/,
-/* 4: */  /^(?:$)/
+/* 1: */  /^(?:\\d+|[a-z]+)/
     ],
     conditions: {
   "INITIAL": {
     rules: [
       0,
-      1,
-      2,
-      3,
-      4
+      1
     ],
     inclusive: true
   }
@@ -1534,25 +1441,18 @@ default:
         rules: [
           [
             '\\s+',
-            '',
+            '// ignore',
           ],
           [
-            '\\d+',
-            null,
-          ],
-          [
-            '\\w+',
-            null,
-          ],
-          [
-            '\\+',
-            null,
-          ],
-          [
-            '$',
-            null,
+            '\\d+|[a-z]+',
+            "return ('TOKEN')",
           ],
         ],
+        macros: {},
+        startConditions: {},
+        codeSections: [],
+        importDecls: [],
+        unknownDecls: [],
       },
       options: {
         moduleType: 'commonjs',
@@ -1580,9 +1480,6 @@ default:
           rules: [
             0,
             1,
-            2,
-            3,
-            4,
           ],
           inclusive: true,
         },
@@ -1596,16 +1493,7 @@ switch(yyrulenumber) {
 case 0 : 
 /*! Conditions:: INITIAL */ 
 /*! Rule::       \\s+ */ 
-  
-break;
-case 2 : 
-/*! Conditions:: INITIAL */ 
-/*! Rule::       \\w+ */ 
- if (yy_.yytext === 'a') {
-                return 'TOK_A';                
-            } else {
-                return 'WORD'; 
-            } 
+ // ignore 
 break;
 default:
   return this.simpleCaseActionClusters[yyrulenumber];
@@ -1614,14 +1502,8 @@ default:
       caseHelperInclude: `{
 
   /*! Conditions:: INITIAL */ 
-  /*! Rule::       \\d+ */ 
-   1 : 'NUMBER',
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       \\+ */ 
-   3 : '+',
-  /*! Conditions:: INITIAL */ 
-  /*! Rule::       $ */ 
-   4 : 'EOF'
+  /*! Rule::       \\d+|[a-z]+ */ 
+   1 : 'TOKEN'
 }`,
       rules: [
         {
@@ -1635,39 +1517,15 @@ default:
         {
           xregexp: {
             captureNames: null,
-            source: '^(?:\\d+)',
-            flags: '',
-            isNative: true,
-          },
-        },
-        {
-          xregexp: {
-            captureNames: null,
-            source: '^(?:\\w+)',
-            flags: '',
-            isNative: true,
-          },
-        },
-        {
-          xregexp: {
-            captureNames: null,
-            source: '^(?:\\+)',
-            flags: '',
-            isNative: true,
-          },
-        },
-        {
-          xregexp: {
-            captureNames: null,
-            source: '^(?:$)',
+            source: '^(?:\\d+|[a-z]+)',
             flags: '',
             isNative: true,
           },
         },
       ],
       macros: {},
-      regular_rule_count: 2,
-      simple_rule_count: 3,
+      regular_rule_count: 1,
+      simple_rule_count: 1,
       conditionStack: [
         'INITIAL',
       ],

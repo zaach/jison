@@ -2,13 +2,15 @@
   0,
   -1,
   `Could not parse lexer spec in JSON AUTODETECT mode
-Error: JSON5: invalid character '%' at 9:1 (
+JSON5 Error: JSON5: invalid character '%' at 9:1
+
+Otherwise there's the JISON Error:
 You specified an unknown lexer condition state 'NUMBER'.
-Is this a typo or did you forget to include this one in the '%s' and '%x' 
-inclusive and exclusive condition state sets specifications at the top of 
+Is this a typo or did you forget to include this one in the '%s' and '%x'
+inclusive and exclusive condition state sets specifications at the top of
 the lexer spec?
     
-As a rough example, things should look something like this in your lexer 
+As a rough example, things should look something like this in your lexer
 spec file:
     
     %s NUMBER
@@ -19,38 +21,40 @@ spec file:
 14: <NUMBER>\\d+         -> 'NUMBER';
 ^^...^^^^^^
 15: 
-)`,
+`,
   `SyntaxError: JSON5: invalid character '%' at 9:1
-    at syntaxError (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\@gerhobbelt\\json5\\dist\\index.js:1325:21)
-    at invalidChar (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\@gerhobbelt\\json5\\dist\\index.js:1270:16)
-    at Object.value (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\@gerhobbelt\\json5\\dist\\index.js:349:19)
-    at lex (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\@gerhobbelt\\json5\\dist\\index.js:128:46)
-    at Object.parse (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\@gerhobbelt\\json5\\dist\\index.js:74:21)
-    at autodetectAndConvertToJSONformat (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\packages\\jison-lex\\dist\\regexp-lexer-cjs-es5.js:7992:31)
-    at processGrammar (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\packages\\jison-lex\\dist\\regexp-lexer-cjs-es5.js:9100:12)
-    at test_me (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\packages\\jison-lex\\dist\\regexp-lexer-cjs-es5.js:8781:16)
-    at new RegExpLexer (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\packages\\jison-lex\\dist\\regexp-lexer-cjs-es5.js:8871:17)
-    at Context.testEachLexerExample (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\packages\\jison-lex\\tests\\regexplexer.js:3019:21)
-    at callFn (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runnable.js:372:21)
-    at Test.Runnable.run (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runnable.js:364:7)
-    at Runner.runTest (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:455:10)
-    at W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:573:12
-    at next (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:369:14)
-    at W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:379:7
-    at next (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:303:14)
-    at Immediate.<anonymous> (W:\\Users\\Ger\\Projects\\sites\\library.visyond.gov\\80\\lib\\tooling\\jison\\node_modules\\mocha\\lib\\runner.js:347:5)
+    at syntaxError (\index.js:1325:21)
+    at invalidChar (\index.js:1270:16)
+    at Object.value (\index.js:349:19)
+    at lex (\index.js:128:46)
+    at Object.parse (\index.js:74:21)
+    at autodetectAndConvertToJSONformat (\regexp-lexer-cjs-es5.js:8105:31)
+    at processGrammar (\regexp-lexer-cjs-es5.js:9213:12)
+    at test_me (\regexp-lexer-cjs-es5.js:8894:16)
+    at new RegExpLexer (\regexp-lexer-cjs-es5.js:8984:17)
+    at Context.testEachLexerExample (\regexplexer.js:3019:21)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at Immediate.<anonymous> (\runner.js:347:5)
     at runCallback (timers.js:794:20)
     at tryOnImmediate (timers.js:752:5)
     at processImmediate [as _immediateCallback] (timers.js:729:5)`,
   {
     message: `Could not parse lexer spec in JSON AUTODETECT mode
-Error: JSON5: invalid character '%' at 9:1 (
+JSON5 Error: JSON5: invalid character '%' at 9:1
+
+Otherwise there's the JISON Error:
 You specified an unknown lexer condition state 'NUMBER'.
-Is this a typo or did you forget to include this one in the '%s' and '%x' 
-inclusive and exclusive condition state sets specifications at the top of 
+Is this a typo or did you forget to include this one in the '%s' and '%x'
+inclusive and exclusive condition state sets specifications at the top of
 the lexer spec?
     
-As a rough example, things should look something like this in your lexer 
+As a rough example, things should look something like this in your lexer
 spec file:
     
     %s NUMBER
@@ -61,16 +65,16 @@ spec file:
 14: <NUMBER>\\d+         -> 'NUMBER';
 ^^...^^^^^^
 15: 
-)`,
+`,
     name: 'Error',
     secondary_exception: {
       message: `
 You specified an unknown lexer condition state 'NUMBER'.
-Is this a typo or did you forget to include this one in the '%s' and '%x' 
-inclusive and exclusive condition state sets specifications at the top of 
+Is this a typo or did you forget to include this one in the '%s' and '%x'
+inclusive and exclusive condition state sets specifications at the top of
 the lexer spec?
     
-As a rough example, things should look something like this in your lexer 
+As a rough example, things should look something like this in your lexer
 spec file:
     
     %s NUMBER
@@ -86,11 +90,11 @@ spec file:
       hash: {
         errStr: `
 You specified an unknown lexer condition state 'NUMBER'.
-Is this a typo or did you forget to include this one in the '%s' and '%x' 
-inclusive and exclusive condition state sets specifications at the top of 
+Is this a typo or did you forget to include this one in the '%s' and '%x'
+inclusive and exclusive condition state sets specifications at the top of
 the lexer spec?
     
-As a rough example, things should look something like this in your lexer 
+As a rough example, things should look something like this in your lexer
 spec file:
     
     %s NUMBER
@@ -185,6 +189,7 @@ spec file:
           ],
           __currentRuleSet__: null,
           offset: 0,
+          base_position: 0,
         },
         parser: {
           yy: {},
@@ -442,6 +447,7 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -575,6 +581,7 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -595,6 +602,9 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
             {
               errStr: `
 The lexer rule's action code section does not compile: Line 3: Unexpected number
+    
+return true; 
+"b" %{ return 1
     
   Erroneous area:
 2: "a" %{ return true; 
@@ -659,6 +669,9 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
                 ],
                 depth: 0,
                 include_command_allowed: false,
+                cached_action_chunk_rule: {
+                  '%{': {},
+                },
               },
               lexer: {
                 yy: {},
@@ -689,6 +702,7 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -708,7 +722,7 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
             },
             {
               errStr: `
-The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5: Unexpected token **
+The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 4: Unexpected token **
     
   Erroneous area:
 1: %%
@@ -759,6 +773,9 @@ The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5
                 ],
                 depth: 0,
                 include_command_allowed: false,
+                cached_action_chunk_rule: {
+                  '%{': {},
+                },
               },
               lexer: {
                 yy: {},
@@ -789,6 +806,7 @@ The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -903,6 +921,7 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -1039,6 +1058,7 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 ],
                 __currentRuleSet__: null,
                 offset: 0,
+                base_position: 0,
               },
               parser: {
                 circularReference: true,
@@ -10270,6 +10290,9 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
               errStr: `
 The lexer rule's action code section does not compile: Line 3: Unexpected number
     
+return true; 
+"b" %{ return 1
+    
   Erroneous area:
 2: "a" %{ return true; 
 ^......^^^^^^^^^^^^^^^^
@@ -10591,7 +10614,7 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
                 {},
                 {},
                 'a',
-                ' ',
+                '',
                 ' return true; \n"b" %{ return 1; ',
                 '',
                 null,
@@ -10750,11 +10773,11 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
                 },
                 {
                   first_line: 2,
-                  first_column: 3,
+                  first_column: 4,
                   last_line: 2,
                   last_column: 4,
                   range: [
-                    6,
+                    7,
                     7,
                   ],
                 },
@@ -10909,6 +10932,9 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
                 ],
                 depth: 0,
                 include_command_allowed: false,
+                cached_action_chunk_rule: {
+                  '%{': {},
+                },
               },
               base_pointer: 10,
               info_stack_pointer: 10,
@@ -10919,7 +10945,7 @@ The lexer rule's action code section does not compile: Line 3: Unexpected number
             },
             {
               errStr: `
-The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5: Unexpected token **
+The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 4: Unexpected token **
     
   Erroneous area:
 1: %%
@@ -11228,11 +11254,11 @@ The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5
                 {
                   '0': [
                     'a',
-                    'return true;',
+                    'return true',
                   ],
                   '1': [
                     'b',
-                    'return 1;',
+                    'return 1',
                   ],
                 },
                 '%%',
@@ -11573,6 +11599,9 @@ The extra lexer module code section (a.k.a. 'epilogue') does not compile: Line 5
                 ],
                 depth: 0,
                 include_command_allowed: false,
+                cached_action_chunk_rule: {
+                  '%{': {},
+                },
               },
               base_pointer: 10,
               info_stack_pointer: 10,
@@ -11903,24 +11932,24 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 {
                   '0': [
                     'a',
-                    'return true;',
+                    'return true',
                   ],
                   '1': [
                     'b',
-                    'return 1;',
+                    'return 1',
                   ],
                 },
                 {
                   '0': [
                     'b',
-                    'return 1;',
+                    'return 1',
                   ],
                 },
                 {
                   '0': 'b',
-                  '1': 'return 1;',
+                  '1': 'return 1',
                 },
-                ' ',
+                '',
                 ' return 1; ',
                 '',
                 {
@@ -12337,11 +12366,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     },
                     {
                       first_line: 3,
-                      first_column: 3,
+                      first_column: 4,
                       last_line: 3,
                       last_column: 4,
                       range: [
-                        29,
+                        30,
                         30,
                       ],
                     },
@@ -12952,11 +12981,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     },
                     {
                       first_line: 3,
-                      first_column: 3,
+                      first_column: 4,
                       last_line: 3,
                       last_column: 4,
                       range: [
-                        29,
+                        30,
                         30,
                       ],
                     },
@@ -13567,11 +13596,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     },
                     {
                       first_line: 3,
-                      first_column: 3,
+                      first_column: 4,
                       last_line: 3,
                       last_column: 4,
                       range: [
-                        29,
+                        30,
                         30,
                       ],
                     },
@@ -14511,11 +14540,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                         },
                         {
                           first_line: 3,
-                          first_column: 3,
+                          first_column: 4,
                           last_line: 3,
                           last_column: 4,
                           range: [
-                            29,
+                            30,
                             30,
                           ],
                         },
@@ -14735,9 +14764,9 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     {},
                     {
                       '0': 'b',
-                      '1': 'return 1;',
+                      '1': 'return 1',
                     },
-                    ' ',
+                    '',
                     ' return 1; ',
                     '',
                     null,
@@ -14905,11 +14934,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     },
                     {
                       first_line: 3,
-                      first_column: 3,
+                      first_column: 4,
                       last_line: 3,
                       last_column: 4,
                       range: [
-                        29,
+                        30,
                         30,
                       ],
                     },
@@ -15235,11 +15264,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 },
                 {
                   first_line: 3,
-                  first_column: 3,
+                  first_column: 4,
                   last_line: 3,
                   last_column: 4,
                   range: [
-                    29,
+                    30,
                     30,
                   ],
                 },
@@ -16119,24 +16148,24 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     {
                       '0': [
                         'a',
-                        'return true;',
+                        'return true',
                       ],
                       '1': [
                         'b',
-                        'return 1;',
+                        'return 1',
                       ],
                     },
                     {
                       '0': [
                         'b',
-                        'return 1;',
+                        'return 1',
                       ],
                     },
                     {
                       '0': 'b',
-                      '1': 'return 1;',
+                      '1': 'return 1',
                     },
-                    ' ',
+                    '',
                     ' return 1; ',
                     '',
                     {
@@ -16555,11 +16584,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                         },
                         {
                           first_line: 3,
-                          first_column: 3,
+                          first_column: 4,
                           last_line: 3,
                           last_column: 4,
                           range: [
-                            29,
+                            30,
                             30,
                           ],
                         },
@@ -17172,11 +17201,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                         },
                         {
                           first_line: 3,
-                          first_column: 3,
+                          first_column: 4,
                           last_line: 3,
                           last_column: 4,
                           range: [
-                            29,
+                            30,
                             30,
                           ],
                         },
@@ -17789,11 +17818,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                         },
                         {
                           first_line: 3,
-                          first_column: 3,
+                          first_column: 4,
                           last_line: 3,
                           last_column: 4,
                           range: [
-                            29,
+                            30,
                             30,
                           ],
                         },
@@ -18188,11 +18217,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                     },
                     {
                       first_line: 3,
-                      first_column: 3,
+                      first_column: 4,
                       last_line: 3,
                       last_column: 4,
                       range: [
-                        29,
+                        30,
                         30,
                       ],
                     },
@@ -18412,9 +18441,9 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 {},
                 {
                   '0': 'b',
-                  '1': 'return 1;',
+                  '1': 'return 1',
                 },
-                ' ',
+                '',
                 ' return 1; ',
                 '',
                 null,
@@ -18582,11 +18611,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
                 },
                 {
                   first_line: 3,
-                  first_column: 3,
+                  first_column: 4,
                   last_line: 3,
                   last_column: 4,
                   range: [
-                    29,
+                    30,
                     30,
                   ],
                 },
@@ -18755,11 +18784,11 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
             {
               errStr: `
 You specified an unknown lexer condition state 'NUMBER'.
-Is this a typo or did you forget to include this one in the '%s' and '%x' 
-inclusive and exclusive condition state sets specifications at the top of 
+Is this a typo or did you forget to include this one in the '%s' and '%x'
+inclusive and exclusive condition state sets specifications at the top of
 the lexer spec?
     
-As a rough example, things should look something like this in your lexer 
+As a rough example, things should look something like this in your lexer
 spec file:
     
     %s NUMBER
@@ -19086,7 +19115,7 @@ spec file:
                   ],
                   '1': [
                     '\\d',
-                    "this.pushState('NUMBER');",
+                    "this.pushState('NUMBER')",
                   ],
                 },
                 '<',
@@ -27351,6 +27380,9 @@ to help jison grok more or less complex action code chunks.
                   ],
                   depth: 1,
                   include_command_allowed: false,
+                  cached_action_chunk_rule: {
+                    '%{': {},
+                  },
                 },
                 lexer: {
                   yy: {},
@@ -27381,6 +27413,7 @@ to help jison grok more or less complex action code chunks.
                   ],
                   __currentRuleSet__: null,
                   offset: 0,
+                  base_position: 0,
                 },
               },
             ],
@@ -27396,9 +27429,11 @@ to help jison grok more or less complex action code chunks.
             matches: false,
             yytext: '',
             offset: 0,
+            base_position: 0,
             yyleng: 0,
             yylineno: 0,
             yylloc: null,
+            CRLF_Re: {},
             options: {
               xregexp: true,
               ranges: true,
@@ -28235,6 +28270,7 @@ to help jison grok more or less complex action code chunks.
             ],
             __currentRuleSet__: null,
             offset: 0,
+            base_position: 0,
           },
         },
       },

@@ -82,8 +82,8 @@ ID [a-zA-Z_][a-zA-Z0-9_]+
             "ID": "[a-zA-Z_][a-zA-Z0-9_]+"
         },
         rules: [
-            ["{D}ohhai", "print(9);"],
-            ["\\{", "return '{';"]
+            ["{D}ohhai", "print(9)"],
+            ["\\{", "return '{'"]
         ],
     });
 
@@ -106,8 +106,8 @@ ID [{L}_][{L}{D}_]+
             "ID": "[{L}_][{L}{D}_]+"
         },
         rules: [
-            ["[{D}]ohhai", "print(9);"],
-            ["\\{", "return '{';"]
+            ["[{D}]ohhai", "print(9)"],
+            ["\\{", "return '{'"]
         ],
     });
 
@@ -139,10 +139,10 @@ ID [{L}_][{L}{D}_]+
         `;
     var expected = mixExpected({
         rules: [
-            ["\\n+", "return 'NL';"],
-            ["\\n+", "return 'NL2';"],
-            ["\\\\n+", "return 'NL3';"],
-            ["\\n+", "return 'NL4';"],
+            ["\\n+", "return 'NL'"],
+            ["\\n+", "return 'NL2'"],
+            ["\\\\n+", "return 'NL3'"],
+            ["\\n+", "return 'NL4'"],
             ["\\s+", "/* skip */"]
         ],
     });
@@ -160,7 +160,7 @@ $ {return 'EOF';}
         `;
     var expected = mixExpected({
         rules: [
-            ["$", "return 'EOF';"],
+            ["$", "return 'EOF'"],
             [".", "/* skip */"],
             ["stuff*(?=(\\{|;))", "/* ok */"],
             ["(.+)[a-z]{1,2}hi*?", "/* skip */"]
@@ -179,9 +179,9 @@ $ {return 'EOF';}
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "return true;"],
-            ["f\"oo'bar", "return 'baz2';"],
-            ['fo"obar', "return 'baz';"]
+            ["\\[[^\\]]\\]", "return true"],
+            ["f\"oo'bar", "return 'baz2'"],
+            ['fo"obar', "return 'baz'"]
         ],
     });
 
@@ -192,7 +192,7 @@ $ {return 'EOF';}
     var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "return true;"]
+            ["\\[[^\\]]\\]", "return true"]
         ],
     });
 
@@ -209,7 +209,7 @@ return true;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b={};\nreturn true;"]
+            ["\\[[^\\]]\\]", "var b={};\nreturn true"]
         ],
     });
 
@@ -225,7 +225,7 @@ var b=7; /* { */ return true;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b=7; /* { */ return true;"]
+            ["\\[[^\\]]\\]", "var b=7; /* { */ return true"]
         ],
     });
 
@@ -242,7 +242,7 @@ return 2 / 3;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b={}; // {\nreturn 2 / 3;"]
+            ["\\[[^\\]]\\]", "var b={}; // {\nreturn 2 / 3"]
         ],
     });
 
@@ -259,7 +259,7 @@ return 2 / 3;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b='{' + \"{\"; // {\nreturn 2 / 3;"]
+            ["\\[[^\\]]\\]", "var b='{' + \"{\"; // {\nreturn 2 / 3"]
         ],
     });
 
@@ -276,7 +276,7 @@ return 2 / 3;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b=/{/; // {\nreturn 2 / 3;"]
+            ["\\[[^\\]]\\]", "var b=/{/; // {\nreturn 2 / 3"]
         ],
     });
 
@@ -293,7 +293,7 @@ return 2 / 3;
         `;
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "var b=/{/;\n  // {\n  return 2 / 3;"]
+            ["\\[[^\\]]\\]", "var b=/{/;\n  // {\n  return 2 / 3"]
         ],
     });
 
@@ -306,7 +306,7 @@ return 2 / 3;
         macros: {"RULE": "[0-9]"},
         actionInclude: "hi; {stuff;}",
         rules: [
-            ["\\[[^\\]]\\]", "return true;"]
+            ["\\[[^\\]]\\]", "return true"]
         ],
     });
 
@@ -357,10 +357,10 @@ return 2 / 3;
             "EAT": 1,
         },
         rules: [
-            ["enter-test", "this.begin('TEST');" ],
-            [["TEST","EAT"], "x", "return 'T';" ],
-            [["*"], "z", "return 'Z';" ],
-            [["TEST"], "y", "this.begin('INITIAL'); return 'TY';" ]
+            ["enter-test", "this.begin('TEST')" ],
+            [["TEST","EAT"], "x", "return 'T'" ],
+            [["*"], "z", "return 'Z'" ],
+            [["TEST"], "y", "this.begin('INITIAL'); return 'TY'" ]
         ],
     });
 
@@ -402,8 +402,8 @@ return 2 / 3;
     var lexgrammar = '%%\n"["[^\\]]"]" return true;\n"x" return 1;';
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "return true;"],
-            ["x", "return 1;"]
+            ["\\[[^\\]]\\]", "return true"],
+            ["x", "return 1"]
         ],
     });
 
@@ -414,7 +414,7 @@ return 2 / 3;
     var lexgrammar = '%%\n\\"\\\'"x" return 1;';
     var expected = mixExpected({
         rules: [
-            ["\"'x", "return 1;"]
+            ["\"'x", "return 1"]
         ],
     });
 
@@ -428,12 +428,12 @@ return 2 / 3;
 "a"\\b return 2;
 \\cA {}
 \\012 {}
-\\xFF {}
+\\xFF ;
         `;
     var expected = mixExpected({
         rules: [
-            ["\"'\\\\\\*i", "return 1;"],
-            ["a\\b", "return 2;"],
+            ["\"'\\\\\\*i", "return 1"],
+            ["a\\b", "return 2"],
             ["\\u0001", ""],
             ["\\n", ""],
             ["\xFF", ""]
@@ -447,7 +447,7 @@ return 2 / 3;
     var lexgrammar = '%%\n"\\u03c0" return 1;';
     var expected = mixExpected({
         rules: [
-            ["\u03c0", "return 1;"]
+            ["\u03c0", "return 1"]
         ],
     });
 
@@ -458,7 +458,7 @@ return 2 / 3;
     var lexgrammar = '%%\n"π" return 1;';
     var expected = mixExpected({
         rules: [
-            ["π", "return 1;"]
+            ["π", "return 1"]
         ],
     });
 
@@ -469,8 +469,8 @@ return 2 / 3;
     var lexgrammar = '%%\nπ return 1;\n-abc return 2;';
     var expected = mixExpected({
         rules: [
-            ["π", "return 1;"],
-            ["-abc", "return 2;"]
+            ["π", "return 1"],
+            ["-abc", "return 2"]
         ],
     });
 
@@ -481,7 +481,7 @@ return 2 / 3;
     var lexgrammar = '%%\n\\\'([^\\\\\']+|\\\\(\\n|.))*?\\\' return 1;';
     var expected = mixExpected({
         rules: [
-            ["'([^\\\\']+|\\\\(\\n|.))*?'", "return 1;"]
+            ["'([^\\\\']+|\\\\(\\n|.))*?'", "return 1"]
         ],
     });
 
@@ -492,7 +492,7 @@ return 2 / 3;
     var lexgrammar = '%%\n(?:"foo"|"bar")\\(\\) return 1;';
     var expected = mixExpected({
         rules: [
-            ["(?:foo|bar)\\(\\)", "return 1;"]
+            ["(?:foo|bar)\\(\\)", "return 1"]
         ],
     });
 
@@ -503,9 +503,9 @@ return 2 / 3;
     var lexgrammar = '%%"foo"  {return bar;}\n%% var bar = 1;';
     var expected = mixExpected({
         rules: [
-            ['foo', "return bar;"]
+            ['foo', "return bar"]
         ],
-        moduleInclude: " var bar = 1;",
+        moduleInclude: "var bar = 1",
     });
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
@@ -515,7 +515,7 @@ return 2 / 3;
     var lexgrammar = '%%\n(|"bar")("foo"|)(|) return 1;';
     var expected = mixExpected({
         rules: [
-            ["(|bar)(foo|)(|)", "return 1;"]
+            ["(|bar)(foo|)(|)", "return 1"]
         ],
     });
 
@@ -526,7 +526,7 @@ return 2 / 3;
     var lexgrammar = '%options flex\n%%\n"foo" return 1;';
     var expected = mixExpected({
         rules: [
-            ["foo", "return 1;"]
+            ["foo", "return 1"]
         ],
         options: {flex: true},
     });
@@ -538,7 +538,7 @@ return 2 / 3;
     var lexgrammar = '%options token-stack\n%%\n"foo" return 1;';
     var expected = mixExpected({
         rules: [
-            ["foo", "return 1;"]
+            ["foo", "return 1"]
         ],
         options: {
             tokenStack: true    // option name camel-casing is done very early in the game: see lex.y source code.
@@ -552,7 +552,7 @@ return 2 / 3;
     var lexgrammar = '%options ping=666 bla=blub bool1 s1="s1value" s2=\'s2value\' s3=false s4="false" a-b-c="d"\n%%\n"foo" return 1;';
     var expected = mixExpected({
         rules: [
-            ["foo", "return 1;"]
+            ["foo", "return 1"]
         ],
         options: {
             ping: 666,
@@ -573,7 +573,7 @@ return 2 / 3;
     var lexgrammar = '%options ping=666\n bla=blub\n bool1\n s1="s1value"\n s2=\'s2value\'\n s3=false\n s4="false"\n a-b-c="d"\n%%\n"foo" return 1;';
     var expected = mixExpected({
         rules: [
-            ["foo", "return 1;"]
+            ["foo", "return 1"]
         ],
         options: {
             ping: 666,
@@ -598,7 +598,7 @@ return 2 / 3;
         `;
     var expected = mixExpected({
         rules: [
-            ["foo", "return 1;"]
+            ["foo", "return 1"]
         ],
         options: {
             s1: "s1\"val'ue",
@@ -625,9 +625,9 @@ return 2 / 3;
     var lexgrammar = '%%\n"["[^\\\\]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\\\]\\]", "return true;"],
-            ["f\"oo'bar", "return 'baz2';"],
-            ['fo"obar', "return 'baz';"]
+            ["\\[[^\\\\]\\]", "return true"],
+            ["f\"oo'bar", "return 'baz2'"],
+            ['fo"obar', "return 'baz'"]
         ],
     });
 
@@ -660,8 +660,8 @@ return 2 / 3;
     var lexgrammar = '%%\n"a" return true;\n  \n"b" return 1;\n   \n';
     var expected = mixExpected({
         rules: [
-            ["a", "return true;"],
-            ["b", "return 1;"]
+            ["a", "return true"],
+            ["b", "return 1"]
         ],
     });
 
@@ -673,7 +673,7 @@ return 2 / 3;
     var expected = mixExpected({
         macros: {"BR": "\\r\\n|\\n|\\r"},
         rules: [
-            ["{BR}", "return true;"]
+            ["{BR}", "return true"]
         ],
     });
 
@@ -684,7 +684,7 @@ return 2 / 3;
     var lexgrammar = '%%\r\n"["[^\\]]"]" %{\r\nreturn true;\r\n%}\r\n';
     var expected = mixExpected({
         rules: [
-            ["\\[[^\\]]\\]", "return true;"]
+            ["\\[[^\\]]\\]", "return true"]
         ],
     });
 
@@ -695,8 +695,8 @@ return 2 / 3;
     var lexgrammar = '%%\n"a" %{  \nreturn true;\n%}  \n  \n"b" %{    return 1;\n%}  \n   \n';
     var expected = mixExpected({
         rules: [
-            ["a", "return true;"],
-            ["b", "return 1;"]
+            ["a", "return true"],
+            ["b", "return 1"]
         ],
     });
 
@@ -731,20 +731,20 @@ return 2 / 3;
             "EAT": 1,
         },
         rules: [
-            ["enter-test\\b", "this.begin('TEST');" ],                 // '-' dash is accepted as it's *followed* by a word, hence the *tail* is an 'easy keyword', hence it merits an automatic `\b` word-boundary check added!
-            ["enter_test\\b", "this.begin('TEST');" ],
-            [["TEST","EAT"], "x\\b", "return 'T';" ],
-            [["*"], "z\\b", "return 'Z';" ],
-            [["TEST"], "y\\b", "this.begin('INITIAL'); return 'TY';" ],
-            ["\"'a\\b", "return 1;"],                                  // keywords *with any non-keyword prefix*, i.e. keywords 'at the tail end', get the special 'easy keyword' treatment too!
-            ["\"'\\\\\\*i\\b", "return 1;"],
-            ["a\\b", "return 2;"],
+            ["enter-test\\b", "this.begin('TEST')" ],                 // '-' dash is accepted as it's *followed* by a word, hence the *tail* is an 'easy keyword', hence it merits an automatic `\b` word-boundary check added!
+            ["enter_test\\b", "this.begin('TEST')" ],
+            [["TEST","EAT"], "x\\b", "return 'T'" ],
+            [["*"], "z\\b", "return 'Z'" ],
+            [["TEST"], "y\\b", "this.begin('INITIAL'); return 'TY'" ],
+            ["\"'a\\b", "return 1"],                                  // keywords *with any non-keyword prefix*, i.e. keywords 'at the tail end', get the special 'easy keyword' treatment too!
+            ["\"'\\\\\\*i\\b", "return 1"],
+            ["a\\b", "return 2"],
             ["\\u0001", ""],
             ["\\n", ""],
             ["\xFF", ""],
-            ["\\[[^\\\\]\\]", "return true;"],
-            ["f\"oo'bar\\b", "return 'baz2';"],
-            ['fo"obar\\b', "return 'baz';"]
+            ["\\[[^\\\\]\\]", "return true"],
+            ["f\"oo'bar\\b", "return 'baz2'"],
+            ['fo"obar\\b', "return 'baz'"]
         ],
         options: {
             "easy_keyword_rules": true
