@@ -3058,6 +3058,9 @@ describe("Test Lexer Grammars", function () {
       // either we check/test the correctness of the collected input, iff there's
       // a reference provided, OR we create the reference file for future use:
       var refOut = JSON5.stringify(tokens, null, 2, testrig_JSON5circularRefHandler);
+      // strip away devbox-specific paths in error stack traces in the output:
+      refOut = refOut.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
+      refOut = refOut.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
       if (filespec.ref) {
         // make sure we postprocess the lexer spec as we did when we created the reference template:
         tokens = JSON5.parse(refOut);
