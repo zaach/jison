@@ -28,17 +28,17 @@
     "node": ">=4.0"
   },
   "dependencies": {
-    "@gerhobbelt/xregexp": "3.2.0-22",
+    "@gerhobbelt/xregexp": "4.1.1-29",
     "jison-helpers-lib": "0.6.5-218"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
-    "babel-preset-env": "1.6.1",
-    "babel-preset-modern-browsers": "10.0.1",
+    "babel-preset-env": "1.7.0",
+    "babel-preset-modern-browsers": "11.0.1",
     "chai": "4.1.2",
     "jison-gho": "0.6.1-215",
-    "mocha": "4.1.0",
-    "rollup-plugin-node-resolve": "3.0.2",
-    "rollup": "0.54.0"
+    "mocha": "5.2.0",
+    "rollup-plugin-node-resolve": "3.3.0",
+    "rollup": "0.59.2"
   }
 }

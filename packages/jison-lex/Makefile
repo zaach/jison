@@ -21,6 +21,7 @@ npm-install:
 
 npm-update:
 	ncu -a --packageFile=package.json
+	-rm -f package-lock.json
 
 build:
 	node __patch_version_in_js.js

@@ -459,6 +459,7 @@ npm-install:
 
 npm-update: subpackages-npm-update
 	ncu -a --packageFile=package.json
+	-rm -f package-lock.json
 
 prep_util_dir:
 	#@[ -d  node_modules/jison-gho/dist ] || echo "### FAILURE: Make sure you have run 'make prep' before as the jison compiler backup utility files are unavailable! ###"
