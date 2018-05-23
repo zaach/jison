@@ -603,9 +603,6 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
               errStr: `
 The lexer rule's action code section does not compile: Line 3: Unexpected number
     
-return true; 
-"b" %{ return 1
-    
   Erroneous area:
 2: "a" %{ return true; 
 ^......^^^^^^^^^^^^^^^^
@@ -10289,9 +10286,6 @@ Expecting end of input, "<", "{", "|", "(", "/", ".", "^", "$", "%%", "SPECIAL_G
             {
               errStr: `
 The lexer rule's action code section does not compile: Line 3: Unexpected number
-    
-return true; 
-"b" %{ return 1
     
   Erroneous area:
 2: "a" %{ return true; 
