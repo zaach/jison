@@ -2,13 +2,13 @@
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with \n        a \'%%\' on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n            definitions\n            %%\n            rules\n            %%                  // <-- only needed if epilogue follows\n            extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with \n        a \'%%\' on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n            definitions\n            %%\n            rules\n            %%                  // <-- only needed if epilogue follows\n            extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with\n        a \'%%\' on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n            definitions\n            %%\n            rules\n            %%                  // <-- only needed if epilogue follows\n            extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer regex rules or epilogue.\n        Maybe you did not correctly separate the lexer sections with\n        a \'%%\' on an otherwise empty line?\n        The lexer spec file should have this structure:\n    \n            definitions\n            %%\n            rules\n            %%                  // <-- only needed if epilogue follows\n            extra_module_code   // <-- optional epilogue!\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject2 = _taggedTemplateLiteral(['\n                The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                The extra lexer module code section (a.k.a. \'epilogue\') does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            ']),
     _templateObject3 = _taggedTemplateLiteral(['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded\n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s probably an error in one or more of your lexer regex rules.\n        The lexer rule spec should have this structure:\n    \n                regex  action_code\n    \n        where \'regex\' is a lex-style regex expression (see the\n        jison and jison-lex documentation) which is intended to match a chunk\n        of the input to lex, while the \'action_code\' block is the JS code\n        which will be invoked when the regex is matched. The \'action_code\' block\n        may be any (indented!) set of JS statements, optionally surrounded\n        by \'{...}\' curly braces or otherwise enclosed in a \'%{...%}\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject4 = _taggedTemplateLiteral(['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        There\'s an error in your lexer epilogue a.k.a. \'extra_module_code\' block.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject5 = _taggedTemplateLiteral(['\n                        You have specified the lexer condition state \'', '\' as both \n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    '], ['\n                        You have specified the lexer condition state \'', '\' as both \n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    ']),
+    _templateObject5 = _taggedTemplateLiteral(['\n                        You have specified the lexer condition state \'', '\' as both\n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    '], ['\n                        You have specified the lexer condition state \'', '\' as both\n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    ']),
     _templateObject6 = _taggedTemplateLiteral(['\n              Encountered an unsupported definition type: ', '.\n    \n                Erroneous area:\n              ', '\n            '], ['\n              Encountered an unsupported definition type: ', '.\n    \n                Erroneous area:\n              ', '\n            ']),
-    _templateObject7 = _taggedTemplateLiteral(['\n              Cannot use name "', '" as a macro name \n              as it clashes with the same XRegExp "\\p{..}" Unicode \'General Category\' \n              Property name. \n              Use all-uppercase macro names, e.g. name your macro \n              "', '" to work around this issue \n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            '], ['\n              Cannot use name "', '" as a macro name \n              as it clashes with the same XRegExp "\\\\p{..}" Unicode \\\'General Category\\\' \n              Property name. \n              Use all-uppercase macro names, e.g. name your macro \n              "', '" to work around this issue \n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            ']),
+    _templateObject7 = _taggedTemplateLiteral(['\n              Cannot use name "', '" as a macro name\n              as it clashes with the same XRegExp "\\p{..}" Unicode \'General Category\'\n              Property name.\n              Use all-uppercase macro names, e.g. name your macro\n              "', '" to work around this issue\n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            '], ['\n              Cannot use name "', '" as a macro name\n              as it clashes with the same XRegExp "\\\\p{..}" Unicode \\\'General Category\\\'\n              Property name.\n              Use all-uppercase macro names, e.g. name your macro\n              "', '" to work around this issue\n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            ']),
     _templateObject8 = _taggedTemplateLiteral(['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject9 = _taggedTemplateLiteral(['\n        ill defined %options line.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        ill defined %options line.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject10 = _taggedTemplateLiteral(['\n            You did not specify a legal qualifier name and/or file path for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        '], ['\n            You did not specify a legal qualifier name and/or file path for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        ']),
@@ -22,37 +22,38 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
     _templateObject18 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject19 = _taggedTemplateLiteral(['\n            The lexer rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The lexer rule\'s action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject20 = _taggedTemplateLiteral(['\n            The lexer rule\'s \'arrow\' action code section does not compile: ', '\n    \n            # NOTE that the arrow action automatically wraps the action code\n            # in a `return (...);` statement to prevent hard-to-diagnose run-time\n            # errors down the line.\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The lexer rule\'s \'arrow\' action code section does not compile: ', '\n    \n            # NOTE that the arrow action automatically wraps the action code\n            # in a \\`return (...);\\` statement to prevent hard-to-diagnose run-time\n            # errors down the line.\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject21 = _taggedTemplateLiteral(['\n        An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:\n    \n            /rule/   -> \'BUGGABOO\'    // eqv. to `return \'BUGGABOO\';`\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:\n    \n            /rule/   -> \'BUGGABOO\'    // eqv. to \\`return \'BUGGABOO\';\\`\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject22 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject23 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    ']),
-    _templateObject24 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject25 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject26 = _taggedTemplateLiteral(['\n        Unterminated string constant in lexer rule action block.\n    \n        When your action code is as intended, it may help to enclose \n        your rule action block code in a \'%{...%}\' block.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Unterminated string constant in lexer rule action block.\n    \n        When your action code is as intended, it may help to enclose \n        your rule action block code in a \'%{...%}\' block.\n    \n          Offending action body:\n        ', '\n    ']),
-    _templateObject27 = _taggedTemplateLiteral(['\n                You specified an unknown lexer condition state \'', '\'.\n                Is this a typo or did you forget to include this one in the \'%s\' and \'%x\' \n                inclusive and exclusive condition state sets specifications at the top of \n                the lexer spec?\n    \n                As a rough example, things should look something like this in your lexer \n                spec file:\n    \n                    %s ', '\n                    %%\n                    <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                  Erroneous code:\n                ', '\n            '], ['\n                You specified an unknown lexer condition state \'', '\'.\n                Is this a typo or did you forget to include this one in the \'%s\' and \'%x\' \n                inclusive and exclusive condition state sets specifications at the top of \n                the lexer spec?\n    \n                As a rough example, things should look something like this in your lexer \n                spec file:\n    \n                    %s ', '\n                    %%\n                    <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                  Erroneous code:\n                ', '\n            ']),
-    _templateObject28 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set \n            <', ',???> \n        with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set \n            <', ',???> \n        with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject29 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject30 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject31 = _taggedTemplateLiteral(['\n            You may only specify one name/argument in a ', ' statement.\n    \n              Erroneous area:\n            ', '\n        '], ['\n            You may only specify one name/argument in a ', ' statement.\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject32 = _taggedTemplateLiteral(['\n            You may not separate entries in a ', ' statement using commas.\n            Use whitespace instead, e.g.:\n    \n                ', ' ', ' ...\n    \n              Erroneous area:\n            ', '\n        '], ['\n            You may not separate entries in a ', ' statement using commas.\n            Use whitespace instead, e.g.:\n    \n                ', ' ', ' ...\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject33 = _taggedTemplateLiteral(['\n            The entries in a ', ' statement MUST NOT be assigned values, such as \'', '=', '\'.\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The entries in a ', ' statement MUST NOT be assigned values, such as \'', '=', '\'.\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject34 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject35 = _taggedTemplateLiteral(['\n        Expected a valid option name', ' in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name', ' in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject36 = _taggedTemplateLiteral(['\n                Expected a valid name/argument', ' in a ', ' statement.\n                Entries (names) must look like regular programming language\n                identifiers, with the addition that option names MAY contain\n                \'-\' dashes, e.g. \'example-option-1\'.\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                Expected a valid name/argument', ' in a ', ' statement.\n                Entries (names) must look like regular programming language\n                identifiers, with the addition that option names MAY contain\n                \'-\' dashes, e.g. \'example-option-1\'.\n    \n                  Erroneous area:\n                ', '\n            ']),
-    _templateObject37 = _taggedTemplateLiteral(['\n            Expected a valid name/argument', ' in a ', ' statement.\n            Entries (names) must look like regular programming language\n            identifiers, with the addition that option names MAY contain\n            \'-\' dashes, e.g. \'example-option-1\'\n    \n              Erroneous area:\n            ', '\n        '], ['\n            Expected a valid name/argument', ' in a ', ' statement.\n            Entries (names) must look like regular programming language\n            identifiers, with the addition that option names MAY contain\n            \'-\' dashes, e.g. \'example-option-1\'\n    \n              Erroneous area:\n            ', '\n        ']),
-    _templateObject38 = _taggedTemplateLiteral(['\n            You did not specify a legal file path for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        '], ['\n            You did not specify a legal file path for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        ']),
-    _templateObject39 = _taggedTemplateLiteral(['\n            You did specify too many attributes for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        '], ['\n            You did specify too many attributes for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        ']),
-    _templateObject40 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject41 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
-    _templateObject42 = _taggedTemplateLiteral(['\n                                                %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject43 = _taggedTemplateLiteral(['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject44 = _taggedTemplateLiteral(['\n                                                missing ', ' closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                missing ', ' closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject45 = _taggedTemplateLiteral(['\n                                                ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
-    _templateObject46 = _taggedTemplateLiteral(['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject47 = _taggedTemplateLiteral(['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject48 = _taggedTemplateLiteral(['\n                                            unterminated string constant encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject49 = _taggedTemplateLiteral(['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes) in ', ' state.\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes) in ', ' state.\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject50 = _taggedTemplateLiteral(['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                            If this input was intentional, you might want to put quotes around\n                                            it; any JavaScript string quoting style is accepted (single quotes,\n                                            double quotes *or* backtick quotes a la ES6 string templates).\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                            If this input was intentional, you might want to put quotes around\n                                            it; any JavaScript string quoting style is accepted (single quotes,\n                                            double quotes *or* backtick quotes a la ES6 string templates).\n\n                                              Erroneous area:\n                                            ']),
-    _templateObject51 = _taggedTemplateLiteral(['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            ']);
+    _templateObject21 = _taggedTemplateLiteral(['\n        A lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:\n    \n            /rule/   -> \'BUGGABOO\'    // eqv. to `return \'BUGGABOO\';`\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        A lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:\n    \n            /rule/   -> \'BUGGABOO\'    // eqv. to \\`return \'BUGGABOO\';\\`\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject22 = _taggedTemplateLiteral(['\n        A lexer rule regex action code must be properly terminated and must contain a JavaScript statement block (or anything that does parse as such), e.g.:\n    \n            /rule/      %{ invokeHooHaw(); return \'TOKEN\'; %}\n    \n        NOTE: when you have very simple action code, wrapping it in \'%{...}%\' or equivalent is not required as long as you keep the code indented, e.g.:\n    \n            /rule/      invokeHooHaw();\n                        return \'TOKEN\';\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        A lexer rule regex action code must be properly terminated and must contain a JavaScript statement block (or anything that does parse as such), e.g.:\n    \n            /rule/      %{ invokeHooHaw(); return \'TOKEN\'; %}\n    \n        NOTE: when you have very simple action code, wrapping it in \'%{...}%\' or equivalent is not required as long as you keep the code indented, e.g.:\n    \n            /rule/      invokeHooHaw();\n                        return \'TOKEN\';\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject23 = _taggedTemplateLiteral(['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Lexer rule regex action code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject24 = _taggedTemplateLiteral(['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    '], ['\n        You may place the \'%include\' instruction only at the start/front of a line.\n    \n          Its use is not permitted at this position:\n        ', '\n    ']),
+    _templateObject25 = _taggedTemplateLiteral(['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject26 = _taggedTemplateLiteral(['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: \'{ ... }\'.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject27 = _taggedTemplateLiteral(['\n        Unterminated string constant in lexer rule action block.\n    \n        When your action code is as intended, it may help to enclose\n        your rule action block code in a \'%{...%}\' block.\n    \n          Offending action body:\n        ', '\n    '], ['\n        Unterminated string constant in lexer rule action block.\n    \n        When your action code is as intended, it may help to enclose\n        your rule action block code in a \'%{...%}\' block.\n    \n          Offending action body:\n        ', '\n    ']),
+    _templateObject28 = _taggedTemplateLiteral(['\n                You specified an unknown lexer condition state \'', '\'.\n                Is this a typo or did you forget to include this one in the \'%s\' and \'%x\'\n                inclusive and exclusive condition state sets specifications at the top of\n                the lexer spec?\n    \n                As a rough example, things should look something like this in your lexer\n                spec file:\n    \n                    %s ', '\n                    %%\n                    <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                  Erroneous code:\n                ', '\n            '], ['\n                You specified an unknown lexer condition state \'', '\'.\n                Is this a typo or did you forget to include this one in the \'%s\' and \'%x\'\n                inclusive and exclusive condition state sets specifications at the top of\n                the lexer spec?\n    \n                As a rough example, things should look something like this in your lexer\n                spec file:\n    \n                    %s ', '\n                    %%\n                    <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                  Erroneous code:\n                ', '\n            ']),
+    _templateObject29 = _taggedTemplateLiteral(['\n        Seems you did not correctly terminate the start condition set\n            <', ',???>\n        with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly terminate the start condition set\n            <', ',???>\n        with a terminating \'>\'\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject30 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex part in \'(...)\' braces.\n    \n          Unterminated regex part:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject31 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lex rule regex set in \'[...]\' brackets.\n    \n          Unterminated regex set:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject32 = _taggedTemplateLiteral(['\n            You may only specify one name/argument in a ', ' statement.\n    \n              Erroneous area:\n            ', '\n        '], ['\n            You may only specify one name/argument in a ', ' statement.\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject33 = _taggedTemplateLiteral(['\n            You may not separate entries in a ', ' statement using commas.\n            Use whitespace instead, e.g.:\n    \n                ', ' ', ' ...\n    \n              Erroneous area:\n            ', '\n        '], ['\n            You may not separate entries in a ', ' statement using commas.\n            Use whitespace instead, e.g.:\n    \n                ', ' ', ' ...\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject34 = _taggedTemplateLiteral(['\n            The entries in a ', ' statement MUST NOT be assigned values, such as \'', '=', '\'.\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The entries in a ', ' statement MUST NOT be assigned values, such as \'', '=', '\'.\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject35 = _taggedTemplateLiteral(['\n        Internal error: option "', '" value assignment failure in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Internal error: option "', '" value assignment failure in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject36 = _taggedTemplateLiteral(['\n        Expected a valid option name', ' in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Expected a valid option name', ' in a ', ' statement.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject37 = _taggedTemplateLiteral(['\n                Expected a valid name/argument', ' in a ', ' statement.\n                Entries (names) must look like regular programming language\n                identifiers, with the addition that option names MAY contain\n                \'-\' dashes, e.g. \'example-option-1\'.\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                Expected a valid name/argument', ' in a ', ' statement.\n                Entries (names) must look like regular programming language\n                identifiers, with the addition that option names MAY contain\n                \'-\' dashes, e.g. \'example-option-1\'.\n    \n                  Erroneous area:\n                ', '\n            ']),
+    _templateObject38 = _taggedTemplateLiteral(['\n            Expected a valid name/argument', ' in a ', ' statement.\n            Entries (names) must look like regular programming language\n            identifiers, with the addition that option names MAY contain\n            \'-\' dashes, e.g. \'example-option-1\'\n    \n              Erroneous area:\n            ', '\n        '], ['\n            Expected a valid name/argument', ' in a ', ' statement.\n            Entries (names) must look like regular programming language\n            identifiers, with the addition that option names MAY contain\n            \'-\' dashes, e.g. \'example-option-1\'\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject39 = _taggedTemplateLiteral(['\n            You did not specify a legal file path for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        '], ['\n            You did not specify a legal file path for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        ']),
+    _templateObject40 = _taggedTemplateLiteral(['\n            You did specify too many attributes for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        '], ['\n            You did specify too many attributes for the \'%include\' statement, which must have the format:\n                %include file_path\n    \n              Erroneous code:\n            ', '\n    \n              Technical error report:\n            ', '\n        ']),
+    _templateObject41 = _taggedTemplateLiteral(['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %include MUST be followed by a valid file path.\n    \n          Erroneous path:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject42 = _taggedTemplateLiteral(['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Module code declaration error?\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
+    _templateObject43 = _taggedTemplateLiteral(['\n                                                %include statements must occur on a line on their own and cannot occur inside an action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                %include statements must occur on a line on their own and cannot occur inside an action code block.\n                                                Its use is not permitted at this position.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject44 = _taggedTemplateLiteral(['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                too many closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject45 = _taggedTemplateLiteral(['\n                                                missing ', ' closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                missing ', ' closing curly braces in lexer rule action block.\n\n                                                Note: the action code chunk may be too complex for jison to parse\n                                                easily; we suggest you wrap the action code chunk in \'%{...%}\'\n                                                to help jison grok more or less complex action code chunks.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject46 = _taggedTemplateLiteral(['\n                                                ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                '], ['\n                                                ignoring unsupported lexer option ', '\n                                                while lexing in ', ' state.\n\n                                                  Erroneous area:\n                                                ']),
+    _templateObject47 = _taggedTemplateLiteral(['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in lexer rule action block.\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject48 = _taggedTemplateLiteral(['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant in %options entry.\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject49 = _taggedTemplateLiteral(['\n                                            unterminated string constant encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unterminated string constant encountered while lexing\n                                            ', '.\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject50 = _taggedTemplateLiteral(['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes) in ', ' state.\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input encountered while lexing\n                                            ', ' (i.e. jison lex regexes) in ', ' state.\n\n                                                NOTE: When you want this input to be interpreted as a LITERAL part\n                                                      of a lex rule regex, you MUST enclose it in double or\n                                                      single quotes.\n\n                                                      If not, then know that this input is not accepted as a valid\n                                                      regex expression here in jison-lex ', '.\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject51 = _taggedTemplateLiteral(['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                            If this input was intentional, you might want to put quotes around\n                                            it; any JavaScript string quoting style is accepted (single quotes,\n                                            double quotes *or* backtick quotes a la ES6 string templates).\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                            If this input was intentional, you might want to put quotes around\n                                            it; any JavaScript string quoting style is accepted (single quotes,\n                                            double quotes *or* backtick quotes a la ES6 string templates).\n\n                                              Erroneous area:\n                                            ']),
+    _templateObject52 = _taggedTemplateLiteral(['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            '], ['\n                                            unsupported lexer input: ', '\n                                            while lexing in ', ' state.\n\n                                              Erroneous area:\n                                            ']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -1250,12 +1251,13 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    if (yyvstack[yysp].trim() !== '') {
-                        var rv = checkActionBlock$1(yyvstack[yysp], yylstack[yysp]);
+                    var srcCode = trimActionCode(yyvstack[yysp]);
+                    if (srcCode) {
+                        var rv = checkActionBlock$1(srcCode, yylstack[yysp]);
                         if (rv) {
                             yyparser.yyError(rmCommonWS$1(_templateObject2, rv, yylexer.prettyPrintRange(yylstack[yysp])));
                         }
-                        this.$ = { rules: yyvstack[yysp - 2], moduleInclude: yyvstack[yysp] };
+                        this.$ = { rules: yyvstack[yysp - 2], moduleInclude: srcCode };
                     } else {
                         this.$ = { rules: yyvstack[yysp - 2] };
                     }
@@ -1500,7 +1502,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var srcCode = trimActionCode(yyvstack[yysp - 1]);
+                    var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
                     var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
                     if (rv) {
                         yyparser.yyError(rmCommonWS$1(_templateObject8, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
@@ -1613,7 +1615,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yyparser.yyError(rmCommonWS$1(_templateObject14, yylexer.prettyPrintRange(yylstack[yysp - 4], yylstack[yysp - 5])));
                     }
 
-                    var srcCode = trimActionCode(yyvstack[yysp - 2]);
+                    var srcCode = trimActionCode(yyvstack[yysp - 2], yyvstack[yysp - 3]);
                     var rv = checkActionBlock$1(srcCode, yylstack[yysp - 2]);
                     if (rv) {
                         yyparser.yyError(rmCommonWS$1(_templateObject15, name, rv, srcCode, yylexer.prettyPrintRange(yylstack[yysp - 2], yylstack[yysp - 5])));
@@ -1816,7 +1818,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
-                    var srcCode = trimActionCode(yyvstack[yysp - 1]);
+                    var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
                     var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
                     if (rv) {
                         yyparser.yyError(rmCommonWS$1(_templateObject19, rv, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 3])));
@@ -1837,8 +1839,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // will uncover any illegal action code following the arrow operator, e.g.
                     // multiple statements separated by semicolon.
                     //
-                    // Note/Optimization: 
-                    // there's no need for braces in the generated expression when we can 
+                    // Note/Optimization:
+                    // there's no need for braces in the generated expression when we can
                     // already see the given action is a identifier string or something else
                     // that's a sure simple thing for a JavaScript `return` statement to carry.
                     // By doing this, we simplify the token return replacement code replacement
@@ -1846,9 +1848,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // will be generated by JISON.
                     var ONLY_AN_ID_re = new XRegExp('^[\'"`]?[\p{Alphabetic}_\p{Number}.\(\)-][\'"`]?$');
                     if (XRegExp.match(srcCode, ONLY_AN_ID_re)) {
-                        srcCode = 'return ' + srcCode + ';';
+                        srcCode = 'return ' + srcCode + '';
                     } else {
-                        srcCode = 'return (' + srcCode + ');';
+                        srcCode = 'return (' + srcCode + ')';
                     }
 
                     var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
@@ -1856,9 +1858,6 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yyparser.yyError(rmCommonWS$1(_templateObject20, rv, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 3])));
                     }
 
-                    // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
-                    // will uncover any illegal action code following the arrow operator, e.g.
-                    // multiple statements separated by semicolon.
                     this.$ = [yyvstack[yysp - 3], srcCode];
                     break;
 
@@ -1884,7 +1883,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     // TODO: REWRITE
                     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
-                    yyparser.yyError(rmCommonWS$1(_templateObject21, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject22, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 42:
@@ -1896,7 +1895,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     this.$ = [yyvstack[yysp - 1], yyvstack[yysp]];
-                    yyparser.yyError(rmCommonWS$1(_templateObject22, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject23, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 43:
@@ -1940,7 +1939,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject23, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
+                    yyparser.yyError(rmCommonWS$1(_templateObject24, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
                     break;
 
                 case 47:
@@ -1952,7 +1951,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject24, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
+                    yyparser.yyError(rmCommonWS$1(_templateObject25, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
                     break;
 
                 case 48:
@@ -1964,7 +1963,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject25, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
+                    yyparser.yyError(rmCommonWS$1(_templateObject26, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
                     break;
 
                 case 49:
@@ -1976,7 +1975,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject26, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
+                    yyparser.yyError(rmCommonWS$1(_templateObject27, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3])));
                     break;
 
                 case 50:
@@ -2009,7 +2008,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         // Validate the given condition state: when it isn't known, print an error message
                         // accordingly:
                         if (name !== '*' && name !== 'INITIAL' && !(name in yy.startConditions)) {
-                            yyparser.yyError(rmCommonWS$1(_templateObject27, name, name, name, yylexer.prettyPrintRange(yylstack[yysp - 2], yylstack[yysp - 3], yylstack[yysp])));
+                            yyparser.yyError(rmCommonWS$1(_templateObject28, name, name, name, yylexer.prettyPrintRange(yylstack[yysp - 2], yylstack[yysp - 3], yylstack[yysp])));
                         }
 
                         return name;
@@ -2033,7 +2032,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         return el[0];
                     });
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject28, lst.join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject29, lst.join(','), yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 53:
@@ -2215,7 +2214,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject29, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject30, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 68:
@@ -2356,7 +2355,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject30, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject31, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2]), yyvstack[yysp].errStr));
                     break;
 
                 case 88:
@@ -2412,7 +2411,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     // validate that this is legal behaviour under the given circumstances, i.e. parser context:
                     if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject31, yy.__options_category_description__, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp - 1], yylstack[yysp]), yylstack[yysp - 4])));
+                        yyparser.yyError(rmCommonWS$1(_templateObject32, yy.__options_category_description__, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp - 1], yylstack[yysp]), yylstack[yysp - 4])));
                     }
                     if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS) {
                         var optlist = yyvstack[yysp - 2].map(function (opt) {
@@ -2420,7 +2419,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         });
                         optlist.push(yyvstack[yysp][0]);
 
-                        yyparser.yyError(rmCommonWS$1(_templateObject32, yy.__options_category_description__, yyvstack[yysp - 4], optlist.join(' '), yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp - 1], yylstack[yysp - 2]), yylstack[yysp - 4])));
+                        yyparser.yyError(rmCommonWS$1(_templateObject33, yy.__options_category_description__, yyvstack[yysp - 4], optlist.join(' '), yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp - 1], yylstack[yysp - 2]), yylstack[yysp - 4])));
                     }
                     this.$ = yyvstack[yysp - 2];
                     this.$.push(yyvstack[yysp]);
@@ -2436,7 +2435,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     // validate that this is legal behaviour under the given circumstances, i.e. parser context:
                     if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject31, yy.__options_category_description__, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp]), yylstack[yysp - 3])));
+                        yyparser.yyError(rmCommonWS$1(_templateObject32, yy.__options_category_description__, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp]), yylstack[yysp - 3])));
                     }
                     this.$ = yyvstack[yysp - 1];
                     this.$.push(yyvstack[yysp]);
@@ -2474,7 +2473,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     // validate that this is legal behaviour under the given circumstances, i.e. parser context:
                     if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject33, yy.__options_category_description__, $option_name, $option_value, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp], yylstack[yysp - 2]), yylstack[yysp - 4])));
+                        yyparser.yyError(rmCommonWS$1(_templateObject34, yy.__options_category_description__, $option_name, $option_value, yylexer.prettyPrintRange(yylexer.deriveLocationInfo(yylstack[yysp], yylstack[yysp - 2]), yylstack[yysp - 4])));
                     }
                     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
                     break;
@@ -2489,7 +2488,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$1(_templateObject34, $option, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 4]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject35, $option, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 4]), yyvstack[yysp].errStr));
                     break;
 
                 case 98:
@@ -2505,7 +2504,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
                         with_value_msg = '';
                     }
-                    yyparser.yyError(rmCommonWS$1(_templateObject35, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject36, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 3]), yyvstack[yysp].errStr));
                     break;
 
                 case 99:
@@ -2528,7 +2527,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                             if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
                                 with_value_msg = '';
                             }
-                            yyparser.yyError(rmCommonWS$1(_templateObject36, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                            yyparser.yyError(rmCommonWS$1(_templateObject37, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                         }
                     } else {
                         this.$ = yyvstack[yysp];
@@ -2551,7 +2550,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
                             with_value_msg = '';
                         }
-                        yyparser.yyError(rmCommonWS$1(_templateObject37, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
+                        yyparser.yyError(rmCommonWS$1(_templateObject38, with_value_msg, yy.__options_category_description__, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])));
                     }
                     break;
 
@@ -2604,9 +2603,9 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         // `path`:
                         path$$1 = lst[0][0];
                     } else if (len <= 1) {
-                        yyparser.yyError(rmCommonWS$1(_templateObject38, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2]), $error.errStr));
-                    } else {
                         yyparser.yyError(rmCommonWS$1(_templateObject39, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2]), $error.errStr));
+                    } else {
+                        yyparser.yyError(rmCommonWS$1(_templateObject40, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 2]), $error.errStr));
                     }
 
                     var fileContent = fs.readFileSync(path$$1, { encoding: 'utf-8' });
@@ -2623,7 +2622,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
 
 
-                    yyparser.yyError(rmCommonWS$1(_templateObject40, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject41, yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]), yyvstack[yysp].errStr));
                     break;
 
                 case 109:
@@ -2636,7 +2635,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
 
                     // TODO ...
-                    yyparser.yyError(rmCommonWS$1(_templateObject41, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
+                    yyparser.yyError(rmCommonWS$1(_templateObject42, yylexer.prettyPrintRange(yylstack[yysp - 1]), yyvstack[yysp - 1].errStr));
                     break;
 
                 case 158:
@@ -4235,10 +4234,12 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             matched: '', /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks entire input which has been matched so far  
             matches: false, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks RE match result for last (successful) match attempt  
             yytext: '', /// ADVANCED USE ONLY: tracks input which has been matched so far for the lexer token under construction; this value is transferred to the parser as the 'token value' when the parser consumes the lexer token produced through a call to the `lex()` API.  
-            offset: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far  
+            offset: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks the 'cursor position' in the input string, i.e. the number of characters matched so far. (**WARNING:** this value MAY be negative if you `unput()` more text than you have already lexed. This type of behaviour is generally observed for one kind of 'lexer/parser hack' where custom token-illiciting characters are pushed in front of the input stream to help simulate multiple-START-points in the parser. When this happens, `base_position` will be adjusted to help track the original input's starting point in the `_input` buffer.)  
+            base_position: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: index to the original starting point of the input; always ZERO(0) unless `unput()` has pushed content before the input: see the `offset` **WARNING** just above.  
             yyleng: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: length of matched input for the token under construction (`yytext`)  
             yylineno: 0, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: 'line number' at which the token under construction is located  
             yylloc: null, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: tracks location info (lines + columns) for the token under construction  
+            CRLF_Re: /\r\n?|\n/, /// READ-ONLY EXTERNAL ACCESS - ADVANCED USE ONLY: regex used to split lines while tracking the lexer cursor position.  
 
             /**
              * INTERNAL USE: construct a suitable error info hash object instance for `parseError`.
@@ -4499,6 +4500,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 };
 
                 this.offset = 0;
+                this.base_position = 0;
                 return this;
             },
 
@@ -4627,11 +4629,23 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              */
             unput: function lexer_unput(ch) {
                 var len = ch.length;
-                var lines = ch.split(/(?:\r\n?|\n)/g);
+                var lines = ch.split(this.CRLF_Re);
                 this._input = ch + this._input;
                 this.yytext = this.yytext.substr(0, this.yytext.length - len);
                 this.yyleng = this.yytext.length;
                 this.offset -= len;
+
+                // **WARNING:** 
+                // The `offset` value MAY be negative if you `unput()` more text than you have already lexed. 
+                // This type of behaviour is generally observed for one kind of 'lexer/parser hack' 
+                // where custom token-illiciting characters are pushed in front of the input stream to help 
+                // simulate multiple-START-points in the parser. 
+                // When this happens, `base_position` will be adjusted to help track the original input's 
+                // starting point in the `_input` buffer.
+                if (-this.offset > this.base_position) {
+                    this.base_position = -this.offset;
+                }
+
                 this.match = this.match.substr(0, this.match.length - len);
                 this.matched = this.matched.substr(0, this.matched.length - len);
 
@@ -4644,11 +4658,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     // matched lines end up in the array too. 
                     var pre = this.match;
 
-                    var pre_lines = pre.split(/(?:\r\n?|\n)/g);
+                    var pre_lines = pre.split(this.CRLF_Re);
 
                     if (pre_lines.length === 1) {
                         pre = this.matched;
-                        pre_lines = pre.split(/(?:\r\n?|\n)/g);
+                        pre_lines = pre.split(this.CRLF_Re);
                     }
 
                     this.yylloc.last_column = pre_lines[pre_lines.length - 1].length;
@@ -4659,6 +4673,29 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 this.yylloc.range[1] = this.yylloc.range[0] + this.yyleng;
                 this.done = false;
                 return this;
+            },
+
+            /**
+             * return the upcoming input *which has not been lexed yet*.
+             * This can, for example, be used for custom look-ahead inspection code 
+             * in your lexer.
+             * 
+             * The entire pending input string is returned.
+             *
+             * > ### NOTE ###
+             * >
+             * > When augmenting error reports and alike, you might want to
+             * > look at the `upcomingInput()` API instead, which offers more
+             * > features for limited input extraction and which includes the
+             * > part of the input which has been lexed by the last token a.k.a.
+             * > the *currently lexed* input.
+             * > 
+             * 
+             * @public
+             * @this {RegExpLexer}
+             */
+            lookAhead: function lexer_lookAhead() {
+                return this._input || '';
             },
 
             /**
@@ -4719,7 +4756,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * Limit the returned string to the `maxLines` number of lines of
              * input (default: 1).
              * 
-             * Negative limit values equal *unlimited*.
+             * A negative `maxSize` limit value equals *unlimited*, i.e. 
+             * produce the entire input that has already been lexed.
+             * 
+             * A negative `maxLines` limit value equals *unlimited*, i.e. limit the result
+             * to the `maxSize` specified number of characters *only*.
              * 
              * @public
              * @this {RegExpLexer}
@@ -4739,7 +4780,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                 // now that we have a significantly reduced string to process, transform the newlines
                 // and chop them, then limit them:
-                var a = past.replace(/\r\n|\r/g, '\n').split('\n');
+                var a = past.split(this.CRLF_Re);
 
                 a = a.slice(-maxLines);
                 past = a.join('\n');
@@ -4754,13 +4795,19 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             },
 
             /**
-             * return (part of the) upcoming input, i.e. for error messages.
+             * return (part of the) upcoming input *including* the input 
+             * matched by the last token (see also the NOTE below). 
+             * This can be used to augment error messages, for example.
              * 
              * Limit the returned string length to `maxSize` (default: 20).
              * 
              * Limit the returned string to the `maxLines` number of lines of input (default: 1).
              * 
-             * Negative limit values equal *unlimited*.
+             * A negative `maxSize` limit value equals *unlimited*, i.e. 
+             * produce the entire input that is yet to be lexed.
+             * 
+             * A negative `maxLines` limit value equals *unlimited*, i.e. limit the result
+             * to the `maxSize` specified number of characters *only*.
              *
              * > ### NOTE ###
              * >
@@ -4771,14 +4818,20 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * > the lexer token. This happens when you are invoking this API
              * > from inside any lexer rule action code block. 
              * >
+             * > When you want access to the 'upcoming input' in that you want access
+             * > to the input *which has not been lexed yet* for look-ahead
+             * > inspection or likewise purposes, please consider using the
+             * > `lookAhead()` API instead.
+             * > 
              * 
              * @public
              * @this {RegExpLexer}
              */
             upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
                 var next = this.match;
+                var source = this._input || '';
 
-                if (maxSize < 0) maxSize = next.length + this._input.length;else if (!maxSize) maxSize = 20;
+                if (maxSize < 0) maxSize = next.length + source.length;else if (!maxSize) maxSize = 20;
 
                 if (maxLines < 0) maxLines = maxSize; // can't ever have more input lines than this! 
                 else if (!maxLines) maxLines = 1;
@@ -4787,12 +4840,12 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 // more than necessary so that we can still properly check against maxSize
                 // after we've transformed and limited the newLines in here:
                 if (next.length < maxSize * 2 + 2) {
-                    next += this._input.substring(0, maxSize * 2 + 2); // substring is faster on Chrome/V8 
+                    next += source.substring(0, maxSize * 2 + 2 - next.length); // substring is faster on Chrome/V8 
                 }
 
                 // now that we have a significantly reduced string to process, transform the newlines
                 // and chop them, then limit them:
-                var a = next.replace(/\r\n|\r/g, '\n').split('\n');
+                var a = next.split(this.CRLF_Re, maxLines + 1); // stop splitting once we have reached just beyond the reuired number of lines. 
 
                 a = a.slice(0, maxLines);
                 next = a.join('\n');
@@ -4981,7 +5034,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 var CONTEXT = 3;
                 var CONTEXT_TAIL = 1;
                 var MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
-                var input = this.matched + this._input;
+                var input = this.matched + (this._input || '');
                 var lines = input.split('\n');
                 var l0 = Math.max(1, context_loc ? context_loc.first_line : loc.first_line - CONTEXT);
                 var l1 = Math.max(1, context_loc2 ? context_loc2.last_line : loc.last_line + CONTEXT_TAIL);
@@ -5149,7 +5202,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                 match_str_len = match_str.length;
 
                 // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-                lines = match_str.split(/(?:\r\n?|\n)/g);
+                lines = match_str.split(this.CRLF_Re);
 
                 if (lines.length > 1) {
                     this.yylineno += lines.length - 1;
@@ -5483,11 +5536,16 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
              * @this {RegExpLexer}
              */
             _currentRules: function lexer__currentRules() {
-                if (this.conditionStack.length && this.conditionStack[this.conditionStack.length - 1]) {
-                    return this.conditions[this.conditionStack[this.conditionStack.length - 1]];
+                var n = this.conditionStack.length - 1;
+                var state;
+
+                if (n >= 0) {
+                    state = this.conditionStack[n];
                 } else {
-                    return this.conditions['INITIAL'];
+                    state = 'INITIAL';
                 }
+
+                return this.conditions[state] || this.conditions['INITIAL'];
             },
 
             /**
@@ -5580,7 +5638,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                             return 29;
                         } else {
                             // TODO
-                            yy_.yyerror(rmCommonWS(_templateObject42) + this.prettyPrintRange(yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject43) + this.prettyPrintRange(yy_.yylloc));
 
                             return 35;
                         }
@@ -5619,11 +5677,11 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 11:
                         /*! Conditions:: action */
                         /*! Rule::       %% */
-                        if (yy.include_command_allowed /* && yy.depth === 0 */) {
-                                this.popState();
-                                this.unput(yy_.yytext);
-                                return 24;
-                            } else {
+                        if (yy.depth === 0) {
+                            this.popState();
+                            this.unput(yy_.yytext);
+                            return 24;
+                        } else {
                             return 34;
                         }
 
@@ -5688,7 +5746,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth <= 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject43) + this.prettyPrintRange(yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject44) + this.prettyPrintRange(yy_.yylloc));
 
                             return 37;
                         } else {
@@ -5700,7 +5758,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 18:
                         /*! Conditions:: action */
-                        /*! Rule::       (?:[\s\r\n]*?){BR}+{WS}+(?=[^{WS}{BR}|]) */
+                        /*! Rule::       (?:[\s\r\n]*?){BR}+{WS}+ */
                         yy.include_command_allowed = true;
 
                         return 34; // keep empty lines as-is inside action code blocks.  
@@ -5728,7 +5786,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         yy.include_command_allowed = false;
 
                         if (yy.depth !== 0) {
-                            yy_.yyerror(rmCommonWS(_templateObject44, yy.depth) + this.prettyPrintRange(yy_.yylloc));
+                            yy_.yyerror(rmCommonWS(_templateObject45, yy.depth) + this.prettyPrintRange(yy_.yylloc));
 
                             return 36;
                         }
@@ -5789,12 +5847,47 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 26:
                         /*! Conditions:: rules */
-                        /*! Rule::       {WS}+(?=[^{WS}{BR}|]) */
-                        yy.depth = 0;
+                        /*! Rule::       {WS}+(?!(?:\||%|->|=>|→|{WS}|{BR})) */
+                        {
+                            {
+                                yy.depth = 0;
+                                yy.include_command_allowed = true;
+                                this.pushState('action');
 
-                        yy.include_command_allowed = true;
-                        this.pushState('action');
-                        return 23;
+                                // Do a bit of magic that's useful for the parser when we
+                                // call `trimActionCode()` in there to perform a bit of
+                                // rough initial action code chunk cleanup: 
+                                // when we start the action block -- hence *delimit* the
+                                // action block -- with a plain old '{' brace, we can
+                                // throw that one and its counterpart out safely without
+                                // damaging the action code in any way.
+                                //
+                                // In order to be able to detect that, we look ahead
+                                // now and see whether or rule's regex with the fancy
+                                // '/!' postcondition check actually hit a '{', which
+                                // is the only action code block starter we cannot
+                                // detect explicitly using any of the '%{.*?%}' lexer
+                                // rules you've seen further above.
+                                //
+                                // Thanks to this rule's regex, we DO know that the
+                                // first look-ahead character will be a non-whitespace
+                                // character, which would either be an action code block
+                                // delimiter *or* a comment starter. In the latter case
+                                // we just throw up our hands and leave code trimming
+                                // and analysis to the more advanced systems which
+                                // follow after `trimActionCode()` has passed once we
+                                // get to the parser productions which process this
+                                // upcoming action code block.
+                                var la = this.lookAhead();
+
+                                if (la[0] === '{') {
+                                    yy_.yytext = '{'; // hint the parser  
+                                }
+
+                                return 23;
+                            }
+                        }
+
                         break;
 
                     case 27:
@@ -5817,7 +5910,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
 
                     case 33:
                         /*! Conditions:: options */
-                        /*! Rule::       %% */
+                        /*! Rule::       %%|\||; */
                         this.popState();
 
                         this.unput(yy_.yytext);
@@ -6060,7 +6153,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Conditions:: INITIAL rules code */
                         /*! Rule::       %{NAME}([^\r\n]*) */
                         /* ignore unrecognized decl */
-                        this.warn(rmCommonWS(_templateObject45, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
+                        this.warn(rmCommonWS(_templateObject46, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         yy_.yytext = {
                             name: this.matches[1], // {NAME}  
@@ -6096,7 +6189,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 94:
                         /*! Conditions:: action */
                         /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6104,7 +6197,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 95:
                         /*! Conditions:: action */
                         /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6112,7 +6205,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 96:
                         /*! Conditions:: action */
                         /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject46) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6120,7 +6213,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 97:
                         /*! Conditions:: options */
                         /*! Rule::       " */
-                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6128,7 +6221,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 98:
                         /*! Conditions:: options */
                         /*! Rule::       ' */
-                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6136,7 +6229,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 99:
                         /*! Conditions:: options */
                         /*! Rule::       ` */
-                        yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6146,7 +6239,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       " */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject48, rules) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6156,7 +6249,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       ' */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject48, rules) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6166,7 +6259,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /*! Rule::       ` */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject48, rules) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 38;
                         break;
@@ -6177,7 +6270,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         /* b0rk on bad characters */
                         var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
 
-                        yy_.yyerror(rmCommonWS(_templateObject49, rules, dquote(this.topState()), rules) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject50, rules, dquote(this.topState()), rules) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -6185,7 +6278,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 104:
                         /*! Conditions:: options */
                         /*! Rule::       . */
-                        yy_.yyerror(rmCommonWS(_templateObject50, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject51, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -6193,7 +6286,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                     case 105:
                         /*! Conditions:: * */
                         /*! Rule::       . */
-                        yy_.yyerror(rmCommonWS(_templateObject51, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
+                        yy_.yyerror(rmCommonWS(_templateObject52, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
 
                         return 2;
                         break;
@@ -6376,7 +6469,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /*  15: *//^(?:%)/,
             /*  16: *//^(?:\{)/,
             /*  17: *//^(?:\})/,
-            /*  18: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+(?=[^\s|]))/,
+            /*  18: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+)/,
             /*  19: *//^(?:([^\S\n\r])+)/,
             /*  20: *//^(?:(\r\n|\n|\r))/,
             /*  21: *//^(?:$)/,
@@ -6384,14 +6477,14 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
             /*  23: *//^(?:->)/,
             /*  24: *//^(?:→)/,
             /*  25: *//^(?:=>)/,
-            /*  26: *//^(?:([^\S\n\r])+(?=[^\s|]))/,
+            /*  26: *//^(?:([^\S\n\r])+(?!(?:\||%|->|=>|→|([^\S\n\r])|(\r\n|\n|\r))))/,
             /*  27: *//^(?:%%)/,
             /*  28: *//^(?:$)/,
             /*  29: *//^(?:=)/,
             /*  30: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
             /*  31: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
             /*  32: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-            /*  33: *//^(?:%%)/,
+            /*  33: *//^(?:%%|\||;)/,
             /*  34: *//^(?:%include\b)/,
             /*  35: *//^(?:>)/,
             /*  36: *//^(?:,)/,
@@ -6639,7 +6732,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
     };
 
     // Note about 'b' in the regex below:
-    // when inside a literal string, it's BACKSPACE, otherwise it's 
+    // when inside a literal string, it's BACKSPACE, otherwise it's
     // the regex word edge condition `\b`. Here it's BACKSPACE.
     var codedCharRe = /(?:([sSBwWdDpP])|([*+()${}|[\]\/.^?])|([aberfntv])|([0-7]{1,3})|c([@A-Z])|x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,8})\}|())/g;
 
@@ -6687,7 +6780,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                             continue;
                         }
                         codedCharRe.lastIndex = i;
-                        // we 'fake' the RegExp 'y'=sticky feature cross-platform by using 'g' flag instead 
+                        // we 'fake' the RegExp 'y'=sticky feature cross-platform by using 'g' flag instead
                         // plus an empty capture group at the end of the regex: when that one matches,
                         // we know we did not get a hit.
                         var m = codedCharRe.exec(s);
@@ -6783,7 +6876,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         return s;
     }
 
-    function trimActionCode(src) {
+    function trimActionCode(src, startMarker) {
         var s = src.trim();
         // remove outermost set of braces UNLESS there's
         // a curly brace in there anywhere: in that case
@@ -6799,9 +6892,29 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
         // comment which happens to contain that closing
         // curly brace at the end!
         //
+        // Also DO strip off any trailing optional semicolon,
+        // which might have ended up here due to lexer rules
+        // like this one:
+        //
+        //     [a-z]+              -> 'TOKEN';
+        //
+        // We can safely ditch any trailing semicolon(s) as
+        // our code generator reckons with JavaScript's
+        // ASI rules (Automatic Semicolon Insertion).
+        //
+        //
         // TODO: make this is real code edit without that
         // last edge case as a fault condition.
-        s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+        if (startMarker === '{') {
+            // code is wrapped in `{...}` for sure: remove the wrapping braces.
+            s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+        } else {
+            // code may not be wrapped or otherwise non-simple: only remove
+            // wrapping braces when we can guarantee they're the only ones there,
+            // i.e. only exist as outer wrapping.
+            s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
+        }
+        s = s.replace(/;+$/, '').trim();
         return s;
     }
 
