@@ -153,7 +153,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 
 // make sure to terminate before the current rule spec ends,
 // which is announced by a `;` semicolon on a separate line:
-<action>";"                             if (yy.include_command_allowed /* && yy.depth === 0 */) {
+<action>";"                             if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -163,7 +163,11 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 
 // make sure to terminate before the next rule alternative,
 // which is announced by `|`:
-<action>"|"                             if (yy.include_command_allowed /* && yy.depth === 0 */) {
+<action>"|"                             console.warn('lexing PIPE:', {
+                                            allowed: yy.include_command_allowed,
+                                            depth: yy.depth
+                                        });
+                                        if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -173,7 +177,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 
 // make sure to terminate before the rule section ends,
 // which is announced by `%%`:
-<action>"%%"                            if (yy.include_command_allowed /* && yy.depth === 0 */) {
+<action>"%%"                            if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -226,14 +230,11 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         }
                                         return 'ACTION_BODY';
 
-// make sure to terminate before the next rule alternative,
-// which is announced by `|` or any regex or options.
-//
 // Note that parser options & commands should be at the start-of-line, i.e.
 // without leading whitespace. The only parser command which we do accept
 // here after the last indent is `%include`, which is considered (part
 // of) the rule's action code block.
-<action>(?:[\s\r\n]*?){BR}+{WS}+/[^{WS}{BR}|]
+<action>(?:[\s\r\n]*?){BR}+{WS}+
                                         yy.include_command_allowed = true;
                                         return 'ACTION_BODY';           // keep empty lines as-is inside action code blocks.
 <action>{WS}+                           return 'ACTION_BODY';
@@ -301,11 +302,22 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 // ACTION code chunks follow rules and are generally indented and
 // may start with the '%' character which is special to the JISON grammar language itself:
 // - `%` can start options, commands, etc., e.g. `%include` or `%options`, 
-//   of which only `%include` is allowed inside an action chunk.
+//   of which only `%include` is allowed inside an action chunk (and recognized in another rule in this lexer).
 // - `|` starts a rule/production alternative, never a chunk of action code.
 // - `%%` delimits a parser spec section and should always be placed at the start
 //   of a new line, as are most other parser spec entities.
-//<ebnf>{WS}+/[^{WS}{BR}|]                yy.depth = 0;
+// - also don't forget about the arrows: those should be lexed via whispace-skip and then 
+//   matching one of the rules above in the next `lex()` call.
+//
+// The `{WS}|{BR}` chunk in the postcondition of the lexer regex below is there to prevent
+// it from matching all the whitepace up to, but not including, the last whitespace 
+// character on the line and consequently triggering the 'action' mode unwantedly.
+// Writing this one was hard, while the same can be accomplished with some extra
+// action code which calls `upcomingInput()`, `unput()` and `reject()` lexer kernel APIs,
+// but we have decided to do it this way for educational purposes: this is the classic
+// way to write non-trivial lexer specs and sometimes it's bloody tough. [GHo] 
+//<ebnf>{WS}+/!(?:"|"|"%"|"->"|"=>"|"→"|{WS}|{BR})
+//                                        yy.depth = 0;
 //                                        yy.include_command_allowed = true;
 //                                        this.pushState('action');
 //                                        return 'ACTION_START';
@@ -329,8 +341,8 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 \`{ES2017_STRING_CONTENT}\`             return 'OPTION_STRING';
 
 // make sure to terminate before the section ends,
-// which is announced by `%%`:
-"%%"                                    this.popState();
+// which is announced by `%%`, `|` or `;`:
+"%%"|"|"|";"                            this.popState();
                                         this.unput(yytext);
                                         return 'OPTIONS_END';
 

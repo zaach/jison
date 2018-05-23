@@ -1,6 +1,7 @@
 
 %code imports %{
-  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer
+  import XRegExp from '@gerhobbelt/xregexp';        // for helping out the `%options xregexp` in the lexer
+  import JSON5 from '@gerhobbelt/json5';            // TODO: quick fix until `%code imports` works in the lexer spec!
   import helpers from '../helpers-lib';
   import fs from 'fs';
   import transform from './ebnf-transform';
@@ -97,6 +98,7 @@ init
         {
             if (!yy.options) yy.options = {};
             yy.__options_flags__ = 0;
+            yy.__options_category_description__ = '???';
         }
     ;
 
@@ -209,63 +211,111 @@ declaration
         }
     | UNKNOWN_DECL
         { $$ = {unknownDecl: $UNKNOWN_DECL}; }
-    | IMPORT import_name import_path
-        { $$ = {imports: {name: $import_name, path: $import_path}}; }
-    | IMPORT import_name error
+    | import_keyword option_list OPTIONS_END
+        { 
+            // check if there are two unvalued options: 'name path'
+            var lst = $option_list;
+            var len = lst.length;
+            var body;
+            if (len === 2 && lst[0][1] === true && lst[1][1] === true) {
+                // `name path`:
+                body = {
+                    name: lst[0][0],
+                    path: lst[1][0]
+                };
+            } else if (len <= 2) {
+                yyerror(rmCommonWS`
+                    You did not specify a legal qualifier name and/or file path for the '%import' statement, which must have the format:
+                        %import qualifier_name file_path
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @import_keyword)}
+                `);
+            } else {
+                yyerror(rmCommonWS`
+                    You did specify too many attributes for the '%import' statement, which must have the format:
+                        %import qualifier_name file_path
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @import_keyword)}
+                `);
+            }
+
+            $$ = {
+                type: 'imports', 
+                body: body
+            }; 
+        }
+    | import_keyword error
         {
             yyerror(rmCommonWS`
-                You did not specify a legal file path for the '%import' initialization code statement, which must have the format:
+                %import name or source filename missing maybe?
 
+                Note: each '%import' must be qualified by a name, e.g. 'required' before the import path itself:
                     %import qualifier_name file_path
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @import_keyword)}
 
                   Technical error report:
                 ${$error.errStr}
             `);
         }
-    | IMPORT error import_path
+    | init_code_keyword option_list ACTION_START action ACTION_END OPTIONS_END 
         {
-            yyerror(rmCommonWS`
-                Each '%import'-ed initialization code section must be qualified by a name, e.g. 'required' before the import path itself:
+            // check there's only 1 option which is an identifier
+            var lst = $option_list;
+            var len = lst.length;
+            var name;
+            if (len === 1 && lst[0][1] === true) {
+                // `name`:
+                name = lst[0][0];
+            } else if (len <= 1) {
+                yyerror(rmCommonWS`
+                    You did not specify a legal qualifier name for the '%code' initialization code statement, which must have the format:
+                        %code qualifier_name %{...code...%}
 
-                    %import qualifier_name file_path
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @init_code_keyword)}
+                `);
+            } else {
+                yyerror(rmCommonWS`
+                    You did specify too many attributes for the '%code' initialization code statement, which must have the format:
+                        %code qualifier_name %{...code...%}
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @init_code_keyword)}
+                `);
+            }
 
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | CODE init_code_name ACTION_START action ACTION_END
-        {
-            var rv = checkActionBlock($action, @action);
+            var srcCode = trimActionCode($action);
+            var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
-                    %code "${$init_code_name}" initialization section action code block does not compile: ${rv}
+                    The '%code ${name}' initialization code section does not compile: ${rv}
+
+                    ${srcCode}
 
                       Erroneous area:
-                    ${yylexer.prettyPrintRange(@action, @CODE)}
+                    ${yylexer.prettyPrintRange(@action, @init_code_keyword)}
                 `);
             }
             $$ = {
-                initCode: {
-                    qualifier: $init_code_name,
-                    include: $action
+                type: 'codeSection',
+                body: {
+                  qualifier: name,
+                  include: srcCode
                 }
             };
         }
-    | CODE error ACTION_START action ACTION_END
+    | init_code_keyword error ACTION_START /* ...action ACTION_END */
         {
             yyerror(rmCommonWS`
                 Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
-
                     %code qualifier_name {action code}
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @CODE, @action)}
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @init_code_keyword)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -297,20 +347,6 @@ declaration
                 ${$error.errStr}
             `);
         }
-    | IMPORT error
-        {
-            // TODO ...
-            yyerror(rmCommonWS`
-                %import name or source filename missing maybe?
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-//    | CODE error
     ;
 
 option_keyword
@@ -630,7 +666,7 @@ production_id
                             ;
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@ARROW_ACTION, @id)}
+                ${yylexer.prettyPrintRange(@ARROW_ACTION_START, @id)}
             `);
         }
     ;
@@ -683,8 +719,9 @@ handle_action
     : handle prec ACTION_START action ACTION_END
         {
             $$ = [($handle.length ? $handle.join(' ') : '')];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+            var srcCode = trimActionCode($action);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
                         production rule action code block does not compile: ${rv}
@@ -693,7 +730,7 @@ handle_action
                         ${yylexer.prettyPrintRange(@action, @handle)}
                     `);
                 }
-                $$.push($action);
+                $$.push(srcCode);
             }
             if ($prec) {
                 if ($handle.length === 0) {
@@ -713,18 +750,31 @@ handle_action
     | handle prec ARROW_ACTION_START action ACTION_END
         {
             $$ = [($handle.length ? $handle.join(' ') : '')];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+
+            var srcCode = trimActionCode($action);
+            if (srcCode) {
+                // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
+                // will uncover any illegal action code following the arrow operator, e.g.
+                // multiple statements separated by semicolon.
+                srcCode = '$$ = (' + srcCode + ');'; 
+
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
-                        production rule action code block does not compile: ${rv}
+                        The lexer rule's 'arrow' action code section does not compile: ${rv}
+
+                        # NOTE that the arrow action automatically wraps the action code
+                        # in a \`$$ = (...);\` statement to prevent hard-to-diagnose run-time
+                        # errors down the line.
 
                           Erroneous area:
                         ${yylexer.prettyPrintRange(@action, @handle)}
                     `);
                 }
+
                 $$.push($action);
             }
+            
             if ($prec) {
                 if ($handle.length === 0) {
                     yyerror(rmCommonWS`
@@ -740,14 +790,34 @@ handle_action
                 $$ = $$[0];
             }
         }
+    | handle prec
+        {
+            $$ = [($handle.length ? $handle.join(' ') : '')];
+
+            if ($prec) {
+                if ($handle.length === 0) {
+                    yyerror(rmCommonWS`
+                        You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@handle, @0, @-1 /* @handle is very probably NULL! We need this one for some decent location info! */)}
+                    `);
+                }
+                $$.push($prec);
+            }
+            if ($$.length === 1) {
+                $$ = $$[0];
+            }
+        }
     | EPSILON ACTION_START action ACTION_END
         // %epsilon may only be used to signal this is an empty rule alt;
         // hence it can only occur by itself
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [''];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+            var srcCode = trimActionCode($action);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
                         epsilon production rule action code block does not compile: ${rv}
@@ -756,7 +826,7 @@ handle_action
                         ${yylexer.prettyPrintRange(@action, @EPSILON)}
                     `);
                 }
-                $$.push($action);
+                $$.push(srcCode);
             }
             if ($$.length === 1) {
                 $$ = $$[0];
@@ -768,58 +838,101 @@ handle_action
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [''];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+            var srcCode = trimActionCode($action);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
-                        epsilon production rule action code block does not compile: ${rv}
+                        epsilon production arrow rule action code block does not compile: ${rv}
 
                           Erroneous area:
                         ${yylexer.prettyPrintRange(@action, @EPSILON)}
                     `);
                 }
-                $$.push($action);
+                $$.push(srcCode);
             }
             if ($$.length === 1) {
                 $$ = $$[0];
             }
         }
-    | EPSILON ARROW_ACTION_START error
+    | EPSILON 
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = '';
+        }
+    | /* ε */ DUMMY4 
+        // empty rules, which are otherwise identical to %epsilon rules:
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = '';
+        }
+    | /* ε */ DUMMY4 ACTION_START action ACTION_END
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = [''];
+            var srcCode = trimActionCode($action);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        epsilon production rule action code block does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action, @ACTION_START)}
+                    `);
+                }
+                $$.push(srcCode);
+            }
+            if ($$.length === 1) {
+                $$ = $$[0];
+            }
+        }
+    | /* ε */ DUMMY4 ARROW_ACTION_START /* action ACTION_END */
+        // empty rules, which are otherwise identical to %epsilon rules, MUST NOT contain arrow actions.
+        {
+            yyerror(rmCommonWS`
+                Empty (~ epsilon) rule productions MAY NOT contain arrow action code blocks.
+                Only regular '%{...%}' action blocks are allowed here.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ARROW_ACTION_START)}
+            `);
+        }
+    | DUMMY3 EPSILON ARROW_ACTION_START error
         {
             $$ = [$regex, $error];
             yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
+                An epsilon production rule action arrow must be followed by a single JavaScript expression to assign the production rule's value, e.g.:
 
-                    /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
+                    rule: %epsilon   -> 42
+                        ;
+
+                which is equivalent to:
+
+                    rule: %epsilon   %{ $$ = 42; %}
+                        ;
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @regex)}
+                ${yylexer.prettyPrintRange(@error, @ARROW_ACTION_START)}
 
                   Technical error report:
                 ${$error.errStr}
             `);
         }
-    | EPSILON ACTION_START error /* ACTION_END */
+    | DUMMY3 EPSILON ACTION_START error /* ACTION_END */
         {
             // TODO: REWRITE
             $$ = [$regex, $error];
             yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
+                An epsilon production rule action must consist of a (properly '%{...%}' delimited) JavaScript statement block, e.g.:
 
-                    /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @regex)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | EPSILON error
-        {
-            // TODO ...
-            yyerror(rmCommonWS`
-                %epsilon rule action declaration error?
+                    rule: %epsilon   %{ $$ = 'BUGGABOO'; %}
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @EPSILON)}
@@ -828,103 +941,14 @@ handle_action
                 ${$error.errStr}
             `);
         }
-
-
-
-
-    | regex ACTION_START action ACTION_END
+    | DUMMY3 EPSILON error
         {
-            var srcCode = trimActionCode($action);
-            var rv = checkActionBlock(srcCode, @action);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    The lexer rule's action code section does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@action, @regex)}
-                `);
-            }
-            $$ = [$regex, srcCode];
-        }
-    | regex ARROW_ACTION_START action ACTION_END
-        {
-            var srcCode = trimActionCode($action);
-            // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
-            // will uncover any illegal action code following the arrow operator, e.g.
-            // multiple statements separated by semicolon.
-            //
-            // Note/Optimization: 
-            // there's no need for braces in the generated expression when we can 
-            // already see the given action is a identifier string or something else
-            // that's a sure simple thing for a JavaScript `return` statement to carry.
-            // By doing this, we simplify the token return replacement code replacement
-            // process which will be applied to the parsed lexer before its code
-            // will be generated by JISON.
-            var ONLY_AN_ID_re = new XRegExp('^[\'"`]?[\p{Alphabetic}_\p{Number}.\(\)-][\'"`]?$');
-            if (XRegExp.match(srcCode, ONLY_AN_ID_re)) {
-                srcCode = 'return ' + srcCode + ';';
-            } else {
-                srcCode = 'return (' + srcCode + ');'; 
-            }
-
-            var rv = checkActionBlock(srcCode, @action);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    The lexer rule's 'arrow' action code section does not compile: ${rv}
-
-                    # NOTE that the arrow action automatically wraps the action code
-                    # in a \`return (...);\` statement to prevent hard-to-diagnose run-time
-                    # errors down the line.
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@action, @regex)}
-                `);
-            }
-
-            // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
-            // will uncover any illegal action code following the arrow operator, e.g.
-            // multiple statements separated by semicolon.
-            $$ = [$regex, srcCode]; 
-        }
-    | regex ARROW_ACTION_START error
-        {
-            $$ = [$regex, $error];
+            // TODO ...
             yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
-
-                    /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
+                %epsilon rule action declaration error?
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @regex)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | regex ACTION_START error /* ACTION_END */
-        {
-            // TODO: REWRITE
-            $$ = [$regex, $error];
-            yyerror(rmCommonWS`
-                An lexer rule action arrow must be followed by on a single line by a JavaScript expression specifying the lexer token to produce, e.g.:
-
-                    /rule/   -> 'BUGGABOO'    // eqv. to \`return 'BUGGABOO';\`
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @regex)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | regex error
-        {
-            $$ = [$regex, $error];
-            yyerror(rmCommonWS`
-                Lexer rule regex action code declaration error?
-
-                  Erroneous code:
-                ${yylexer.prettyPrintRange(@error, @regex)}
+                ${yylexer.prettyPrintRange(@error, @EPSILON)}
 
                   Technical error report:
                 ${$error.errStr}
@@ -986,6 +1010,7 @@ expression
         }
     | '(' handle_sublist ')'
         {
+            // TODO: do not allow empty sublist here, i.e. writing '()' in a grammar is illegal.
             $$ = '(' + $handle_sublist.join(' | ') + ')';
         }
     | '(' handle_sublist error
@@ -1047,52 +1072,6 @@ symbol
 id
     : ID
         { $$ = $ID; }
-    ;
-
-action_ne
-    : '{' action_body '}'
-        { $$ = $action_body; }
-    | '{' action_body error
-        {
-            yyerror(rmCommonWS`
-                Seems you did not correctly bracket a parser rule action block in curly braces: '{ ... }'.
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @1)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | include_macro_code
-        { $$ = $include_macro_code; }
-    ;
-
-action
-    : action_ne
-        { $$ = $action_ne; }
-    | ARROW_ACTION_START action_ne
-        // add braces around the action code so that the action chunk test/compiler
-        // will uncover any illegal action code following the arrow operator, e.g.
-        // multiple statements separated by semicolon.
-        { $$ = '$$ = (' + $action_ne + ');'; }
-    | ARROW_ACTION_START error
-        {
-            yyerror(rmCommonWS`
-                An rule action arrow must be followed by a single JavaScript expression to assign the rule's value, e.g.:
-
-                    rule: term1 term2   -> $term1 + $term2
-                        ;
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @ARROW_ACTION_START)}
-
-                  Technical error report:
-                ${$error.errStr}
-            `);
-        }
-    | ε
-        { $$ = ''; }
     ;
 
 action
@@ -1401,6 +1380,8 @@ optional_module_code_chunk
 var rmCommonWS = helpers.rmCommonWS;
 var dquote = helpers.dquote;
 var checkActionBlock = helpers.checkActionBlock;
+var mkIdentifier = helpers.mkIdentifier;
+var isLegalIdentifierInput = helpers.isLegalIdentifierInput;
 
 
 // transform ebnf to bnf if necessary
