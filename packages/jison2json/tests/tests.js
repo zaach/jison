@@ -12,7 +12,7 @@ describe("JISON2JSON", function () {
         "foo": [
           [
             "bar",
-            " return true; "
+            "return true"
           ]
         ]
       }
