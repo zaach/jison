@@ -33,8 +33,11 @@ bnf.parser.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
         if (!grammar.options) grammar.options = {};
         grammar.options.type = decl.parserType;
     } else if (decl.include) {
-        if (!grammar.moduleInclude) grammar.moduleInclude = '';
-        grammar.moduleInclude += decl.include;
+        if (!grammar.moduleInclude) {
+            grammar.moduleInclude = decl.include;
+        } else {
+            grammar.moduleInclude += '\n\n' + decl.include;
+        }
     } else if (decl.options) {
         if (!grammar.options) grammar.options = {};
         // last occurrence of `%options` wins:
@@ -49,9 +52,10 @@ bnf.parser.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
         grammar.imports.push(decl.imports);
     } else if (decl.actionInclude) {
         if (!grammar.actionInclude) {
-            grammar.actionInclude = '';
+            grammar.actionInclude = decl.actionInclude;
+        } else {
+            grammar.actionInclude += '\n\n' + decl.actionInclude;
         }
-        grammar.actionInclude += decl.actionInclude;
     } else if (decl.initCode) {
         if (!grammar.moduleInit) {
             grammar.moduleInit = [];

@@ -4,7 +4,6 @@
 /** @public */
 export default function scanRegExp(s) {
     s = '' + s;
-
     // code based on Esprima scanner: `Scanner.prototype.scanRegExpBody()`
     var index = 0;
     var length = s.length;
@@ -20,12 +19,12 @@ export default function scanRegExp(s) {
             ch = s[index++];
             // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
             if (isLineTerminator(ch.charCodeAt(0))) {
-                return -1;          // UnterminatedRegExp
+                break;             // UnterminatedRegExp
             }
             str += ch;
         }
         else if (isLineTerminator(ch.charCodeAt(0))) {
-            return -1;              // UnterminatedRegExp
+            break;                 // UnterminatedRegExp
         }
         else if (classMarker) {
             if (ch === ']') {

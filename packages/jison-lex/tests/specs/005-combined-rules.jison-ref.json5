@@ -1445,7 +1445,7 @@ default:
           ],
           [
             '\\d+|[a-z]+',
-            "return ('TOKEN')",
+            "return 'TOKEN'",
           ],
         ],
         macros: {},

@@ -9,14 +9,14 @@ var _templateObject = _taggedTemplateLiteral(['\n        There\'s an error in yo
     _templateObject5 = _taggedTemplateLiteral(['\n                        You have specified the lexer condition state \'', '\' as both\n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    '], ['\n                        You have specified the lexer condition state \'', '\' as both\n                        EXCLUSIVE (\'%x\') and INCLUSIVE (\'%s\'). Pick one, please, e.g.:\n    \n                            %x ', '\n                            %%\n                            <', '>LEXER_RULE_REGEX    return \'TOK\';\n    \n                          Erroneous code:\n                        ', '\n    \n                          Technical error report:\n                        ', '\n                    ']),
     _templateObject6 = _taggedTemplateLiteral(['\n              Encountered an unsupported definition type: ', '.\n    \n                Erroneous area:\n              ', '\n            '], ['\n              Encountered an unsupported definition type: ', '.\n    \n                Erroneous area:\n              ', '\n            ']),
     _templateObject7 = _taggedTemplateLiteral(['\n              Cannot use name "', '" as a macro name\n              as it clashes with the same XRegExp "\\p{..}" Unicode \'General Category\'\n              Property name.\n              Use all-uppercase macro names, e.g. name your macro\n              "', '" to work around this issue\n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            '], ['\n              Cannot use name "', '" as a macro name\n              as it clashes with the same XRegExp "\\\\p{..}" Unicode \\\'General Category\\\'\n              Property name.\n              Use all-uppercase macro names, e.g. name your macro\n              "', '" to work around this issue\n              or give your offending macro a different name.\n    \n                Erroneous area:\n              ', '\n            ']),
-    _templateObject8 = _taggedTemplateLiteral(['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject8 = _taggedTemplateLiteral(['\n                The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            '], ['\n                The \'%{...%}\' lexer setup action code section does not compile: ', '\n    \n                  Erroneous area:\n                ', '\n            ']),
     _templateObject9 = _taggedTemplateLiteral(['\n        ill defined %options line.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        ill defined %options line.\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject10 = _taggedTemplateLiteral(['\n            You did not specify a legal qualifier name and/or file path for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        '], ['\n            You did not specify a legal qualifier name and/or file path for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        ']),
     _templateObject11 = _taggedTemplateLiteral(['\n            You did specify too many attributes for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        '], ['\n            You did specify too many attributes for the \'%import\' statement, which must have the format:\n                %import qualifier_name file_path\n    \n              Erroneous code:\n            ', '\n        ']),
     _templateObject12 = _taggedTemplateLiteral(['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\' must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        %import name or source filename missing maybe?\n    \n        Note: each \'%import\' must be qualified by a name, e.g. \'required\' before the import path itself:\n            %import qualifier_name file_path\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject13 = _taggedTemplateLiteral(['\n            You did not specify a legal qualifier name for the \'%code\' initialization code statement, which must have the format:\n                %code qualifier_name %{...code...%}\n    \n              Erroneous code:\n            ', '\n        '], ['\n            You did not specify a legal qualifier name for the \'%code\' initialization code statement, which must have the format:\n                %code qualifier_name %{...code...%}\n    \n              Erroneous code:\n            ', '\n        ']),
     _templateObject14 = _taggedTemplateLiteral(['\n            You did specify too many attributes for the \'%code\' initialization code statement, which must have the format:\n                %code qualifier_name %{...code...%}\n    \n              Erroneous code:\n            ', '\n        '], ['\n            You did specify too many attributes for the \'%code\' initialization code statement, which must have the format:\n                %code qualifier_name %{...code...%}\n    \n              Erroneous code:\n            ', '\n        ']),
-    _templateObject15 = _taggedTemplateLiteral(['\n            The \'%code ', '\' initialization code section does not compile: ', '\n    \n            ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%code ', '\' initialization code section does not compile: ', '\n    \n            ', '\n    \n              Erroneous area:\n            ', '\n        ']),
+    _templateObject15 = _taggedTemplateLiteral(['\n            The \'%code ', '\' initialization code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        '], ['\n            The \'%code ', '\' initialization code section does not compile: ', '\n    \n              Erroneous area:\n            ', '\n        ']),
     _templateObject16 = _taggedTemplateLiteral(['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Each \'%code\' initialization code section must be qualified by a name, e.g. \'required\' before the action code itself:\n            %code qualifier_name {action code}\n    \n          Erroneous code:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject17 = _taggedTemplateLiteral(['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you made a mistake while specifying one of the lexer rules inside\n        the start condition\n           <', '> { rules... }\n        block.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
     _templateObject18 = _taggedTemplateLiteral(['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    '], ['\n        Seems you did not correctly bracket a lexer rules set inside\n        the start condition\n          <', '> { rules... }\n        as a terminating curly brace \'}\' could not be found.\n    \n          Erroneous area:\n        ', '\n    \n          Technical error report:\n        ', '\n    ']),
@@ -211,7 +211,6 @@ function mkIdentifier(s) {
 /** @public */
 function scanRegExp(s) {
     s = '' + s;
-
     // code based on Esprima scanner: `Scanner.prototype.scanRegExpBody()`
     var index = 0;
     var length = s.length;
@@ -227,11 +226,11 @@ function scanRegExp(s) {
             ch = s[index++];
             // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
             if (isLineTerminator(ch.charCodeAt(0))) {
-                return -1; // UnterminatedRegExp
+                break; // UnterminatedRegExp
             }
             str += ch;
         } else if (isLineTerminator(ch.charCodeAt(0))) {
-            return -1; // UnterminatedRegExp
+            break; // UnterminatedRegExp
         } else if (classMarker) {
             if (ch === ']') {
                 classMarker = false;
@@ -479,10 +478,83 @@ function checkActionBlock(src, yylloc) {
     }
 }
 
+// The rough-and-ready preprocessor for any action code block:
+// this one trims off any surplus whitespace and removes any
+// trailing semicolons and/or wrapping `{...}` braces,
+// when such is easily possible *without having to actually
+// **parse** the `src` code block in order to do this safely*.
+// 
+// Returns the trimmed sourcecode which was provided via `src`.
+// 
+// Note: the `startMarker` argument is special in that a lexer/parser
+// can feed us the delimiter which started the code block here:
+// when the starting delimiter actually is `{` we can safely
+// remove the outer `{...}` wrapper (which then *will* be present!),
+// while otherwise we may *not* do so as complex/specially-crafted
+// code will fail when it was wrapped in other delimiters, e.g.
+// action code specs like this one:
+// 
+//              %{
+//                  {  // trimActionCode sees this one as outer-starting: WRONG
+//                      a: 1
+//                  };
+//                  {
+//                      b: 2
+//                  }  // trimActionCode sees this one as outer-ending: WRONG
+//              %}
+//              
+// Of course the example would be 'ludicrous' action code but the
+// key point here is that users will certainly be able to come up with 
+// convoluted code that is smarter than our simple regex-based
+// `{...}` trimmer in here!
+// 
+function trimActionCode(src, startMarker) {
+    var s = src.trim();
+    // remove outermost set of braces UNLESS there's
+    // a curly brace in there anywhere: in that case
+    // we should leave it up to the sophisticated
+    // code analyzer to simplify the code!
+    //
+    // This is a very rough check as it will also look
+    // inside code comments, which should not have
+    // any influence.
+    //
+    // Nevertheless: this is a *safe* transform as
+    // long as the code doesn't end with a C++-style
+    // comment which happens to contain that closing
+    // curly brace at the end!
+    //
+    // Also DO strip off any trailing optional semicolon,
+    // which might have ended up here due to lexer rules
+    // like this one:
+    //
+    //     [a-z]+              -> 'TOKEN';
+    //
+    // We can safely ditch any trailing semicolon(s) as
+    // our code generator reckons with JavaScript's
+    // ASI rules (Automatic Semicolon Insertion).
+    //
+    //
+    // TODO: make this is real code edit without that
+    // last edge case as a fault condition.
+    if (startMarker === '{') {
+        // code is wrapped in `{...}` for sure: remove the wrapping braces.
+        s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+    } else {
+        // code may not be wrapped or otherwise non-simple: only remove
+        // wrapping braces when we can guarantee they're the only ones there,
+        // i.e. only exist as outer wrapping.
+        s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
+    }
+    s = s.replace(/;+$/, '').trim();
+    return s;
+}
+
 var parse2AST = {
     parseCodeChunkToAST: parseCodeChunkToAST,
     prettyPrintAST: prettyPrintAST,
-    checkActionBlock: checkActionBlock
+    checkActionBlock: checkActionBlock,
+    trimActionCode: trimActionCode
 };
 
 function chkBugger$1(src) {
@@ -708,6 +780,7 @@ var helpers = {
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
+    trimActionCode: parse2AST.trimActionCode,
 
     printFunctionSourceCode: stringifier.printFunctionSourceCode,
     printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,
@@ -1257,7 +1330,7 @@ var parser = {
                 // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
-                var srcCode = trimActionCode(yyvstack[yysp]);
+                var srcCode = trimActionCode$1(yyvstack[yysp]);
                 if (srcCode) {
                     var rv = checkActionBlock$1(srcCode, yylstack[yysp]);
                     if (rv) {
@@ -1508,12 +1581,14 @@ var parser = {
                 // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-)
 
 
-                var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
-                var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
-                if (rv) {
-                    yyparser.yyError(rmCommonWS$1(_templateObject8, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
+                var srcCode = trimActionCode$1(yyvstack[yysp - 1], yyvstack[yysp - 2]);
+                if (srcCode) {
+                    var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
+                    if (rv) {
+                        yyparser.yyError(rmCommonWS$1(_templateObject8, rv, yylexer.prettyPrintRange(yylstack[yysp - 1])));
+                    }
+                    yy.actionInclude.push(srcCode);
                 }
-                yy.actionInclude.push(srcCode);
                 this.$ = null;
                 break;
 
@@ -1621,10 +1696,10 @@ var parser = {
                     yyparser.yyError(rmCommonWS$1(_templateObject14, yylexer.prettyPrintRange(yylstack[yysp - 4], yylstack[yysp - 5])));
                 }
 
-                var srcCode = trimActionCode(yyvstack[yysp - 2], yyvstack[yysp - 3]);
+                var srcCode = trimActionCode$1(yyvstack[yysp - 2], yyvstack[yysp - 3]);
                 var rv = checkActionBlock$1(srcCode, yylstack[yysp - 2]);
                 if (rv) {
-                    yyparser.yyError(rmCommonWS$1(_templateObject15, name, rv, srcCode, yylexer.prettyPrintRange(yylstack[yysp - 2], yylstack[yysp - 5])));
+                    yyparser.yyError(rmCommonWS$1(_templateObject15, name, rv, yylexer.prettyPrintRange(yylstack[yysp - 2], yylstack[yysp - 5])));
                 }
                 this.$ = {
                     type: 'codeSection',
@@ -1824,7 +1899,7 @@ var parser = {
                 // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
-                var srcCode = trimActionCode(yyvstack[yysp - 1], yyvstack[yysp - 2]);
+                var srcCode = trimActionCode$1(yyvstack[yysp - 1], yyvstack[yysp - 2]);
                 var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
                 if (rv) {
                     yyparser.yyError(rmCommonWS$1(_templateObject19, rv, yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 3])));
@@ -1840,23 +1915,22 @@ var parser = {
                 // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
 
 
-                var srcCode = trimActionCode(yyvstack[yysp - 1]);
+                var srcCode = trimActionCode$1(yyvstack[yysp - 1]);
                 // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
                 // will uncover any illegal action code following the arrow operator, e.g.
                 // multiple statements separated by semicolon.
                 //
                 // Note/Optimization:
                 // there's no need for braces in the generated expression when we can
-                // already see the given action is a identifier string or something else
+                // already see the given action is an identifier string or something else
                 // that's a sure simple thing for a JavaScript `return` statement to carry.
                 // By doing this, we simplify the token return replacement code replacement
                 // process which will be applied to the parsed lexer before its code
                 // will be generated by JISON.
-                var ONLY_AN_ID_re = new XRegExp('^[\'"`]?[\p{Alphabetic}_\p{Number}.\(\)-][\'"`]?$');
-                if (XRegExp.match(srcCode, ONLY_AN_ID_re)) {
-                    srcCode = 'return ' + srcCode + '';
+                if (/^[^\r\n;\/]+$/.test(srcCode)) {
+                    srcCode = 'return ' + srcCode;
                 } else {
-                    srcCode = 'return (' + srcCode + ')';
+                    srcCode = 'return (' + srcCode + '\n)';
                 }
 
                 var rv = checkActionBlock$1(srcCode, yylstack[yysp - 1]);
@@ -5600,42 +5674,6 @@ var lexer = function () {
 
                 case 3:
                     /*! Conditions:: action */
-                    /*! Rule::       %\{\{([^]*?)%\}\} */
-                    yy_.yytext = this.matches[1];
-
-                    yy.include_command_allowed = false;
-                    return 34;
-                    break;
-
-                case 4:
-                    /*! Conditions:: action */
-                    /*! Rule::       %\{\{\{([^]*?)%\}\}\} */
-                    yy_.yytext = this.matches[1];
-
-                    yy.include_command_allowed = false;
-                    return 34;
-                    break;
-
-                case 5:
-                    /*! Conditions:: action */
-                    /*! Rule::       \{\{([^]*?)\}\} */
-                    yy_.yytext = this.matches[1];
-
-                    yy.include_command_allowed = false;
-                    return 34;
-                    break;
-
-                case 6:
-                    /*! Conditions:: action */
-                    /*! Rule::       \{\{\{([^]*?)\}\}\} */
-                    yy_.yytext = this.matches[1];
-
-                    yy.include_command_allowed = false;
-                    return 34;
-                    break;
-
-                case 7:
-                    /*! Conditions:: action */
                     /*! Rule::       %include\b */
                     if (yy.include_command_allowed) {
                         // This is an include instruction in place of (part of) an action:
@@ -5651,7 +5689,7 @@ var lexer = function () {
 
                     break;
 
-                case 8:
+                case 4:
                     /*! Conditions:: action */
                     /*! Rule::       \/\*[^]*?\*\/ */
                     //yy.include_command_allowed = false; -- doesn't impact include-allowed state
@@ -5659,7 +5697,7 @@ var lexer = function () {
 
                     break;
 
-                case 9:
+                case 5:
                     /*! Conditions:: action */
                     /*! Rule::       \/\/.* */
                     yy.include_command_allowed = false;
@@ -5667,7 +5705,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 10:
+                case 6:
                     /*! Conditions:: action */
                     /*! Rule::       \| */
                     if (yy.include_command_allowed /* && yy.depth === 0 */) {
@@ -5680,7 +5718,7 @@ var lexer = function () {
 
                     break;
 
-                case 11:
+                case 7:
                     /*! Conditions:: action */
                     /*! Rule::       %% */
                     if (yy.depth === 0) {
@@ -5693,7 +5731,14 @@ var lexer = function () {
 
                     break;
 
-                case 12:
+                case 8:
+                    /*! Conditions:: action */
+                    /*! Rule::       \/(?=\s) */
+                    return 34; // most probably a `/` divide operator.  
+
+                    break;
+
+                case 9:
                     /*! Conditions:: action */
                     /*! Rule::       \/.* */
                     yy.include_command_allowed = false;
@@ -5713,7 +5758,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 13:
+                case 10:
                     /*! Conditions:: action */
                     /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}"|'{QUOTED_STRING_CONTENT}'|`{ES2017_STRING_CONTENT}` */
                     yy.include_command_allowed = false;
@@ -5721,7 +5766,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 14:
+                case 11:
                     /*! Conditions:: action */
                     /*! Rule::       [^/"'`|%\{\}{BR}{WS}]+ */
                     yy.include_command_allowed = false;
@@ -5729,7 +5774,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 15:
+                case 12:
                     /*! Conditions:: action */
                     /*! Rule::       % */
                     yy.include_command_allowed = false;
@@ -5737,7 +5782,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 16:
+                case 13:
                     /*! Conditions:: action */
                     /*! Rule::       \{ */
                     yy.depth++;
@@ -5746,7 +5791,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 17:
+                case 14:
                     /*! Conditions:: action */
                     /*! Rule::       \} */
                     yy.include_command_allowed = false;
@@ -5762,7 +5807,7 @@ var lexer = function () {
                     return 34;
                     break;
 
-                case 18:
+                case 15:
                     /*! Conditions:: action */
                     /*! Rule::       (?:[\s\r\n]*?){BR}+{WS}+ */
                     yy.include_command_allowed = true;
@@ -5770,7 +5815,7 @@ var lexer = function () {
                     return 34; // keep empty lines as-is inside action code blocks.  
                     break;
 
-                case 20:
+                case 17:
                     /*! Conditions:: action */
                     /*! Rule::       {BR} */
                     if (yy.depth > 0) {
@@ -5786,7 +5831,7 @@ var lexer = function () {
 
                     break;
 
-                case 21:
+                case 18:
                     /*! Conditions:: action */
                     /*! Rule::       $ */
                     yy.include_command_allowed = false;
@@ -5801,7 +5846,7 @@ var lexer = function () {
                     return 24;
                     break;
 
-                case 22:
+                case 19:
                     /*! Conditions:: INITIAL rules options */
                     /*! Rule::       [%\{]\{+ */
                     {
@@ -5809,11 +5854,18 @@ var lexer = function () {
                         yy.include_command_allowed = false;
                         this.pushState('action');
 
+                        // keep matched string in local variable as the `unput()` call at the end will also 'unput' `yy_.yytext`,
+                        // which for our purposes here is highly undesirable (see trimActionCode() use in the BNF parser spec).
+                        var marker = yy_.yytext;
+
                         // Make sure we've the proper lexer rule regex active for any possible `%{...%}`, `{{...}}` or what have we here?
-                        this.setupDelimitedActionChunkLexerRegex(yy_.yytext, yy);
+                        this.setupDelimitedActionChunkLexerRegex(marker);
 
                         // Allow the start marker to be re-matched by the generated lexer rule regex:
-                        this.unput(yy_.yytext);
+                        this.unput(marker);
+
+                        // Now RESET `yy_.yytext` to what it was originally, i.e. un-unput that lexer variable explicitly:
+                        yy_.yytext = marker;
 
                         // and allow the next lexer round to match and execute the suitable lexer rule(s) to parse this incoming action code block. 
                         return 23;
@@ -5821,7 +5873,7 @@ var lexer = function () {
 
                     break;
 
-                case 23:
+                case 20:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       -> */
                     yy.depth = 0;
@@ -5831,7 +5883,7 @@ var lexer = function () {
                     return 32;
                     break;
 
-                case 24:
+                case 21:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       → */
                     yy.depth = 0;
@@ -5841,7 +5893,7 @@ var lexer = function () {
                     return 32;
                     break;
 
-                case 25:
+                case 22:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       => */
                     yy.depth = 0;
@@ -5851,7 +5903,7 @@ var lexer = function () {
                     return 32;
                     break;
 
-                case 26:
+                case 23:
                     /*! Conditions:: rules */
                     /*! Rule::       {WS}+(?!(?:\||%|->|=>|→|{WS}|{BR})) */
                     {
@@ -5896,7 +5948,7 @@ var lexer = function () {
 
                     break;
 
-                case 27:
+                case 24:
                     /*! Conditions:: rules */
                     /*! Rule::       %% */
                     this.popState();
@@ -5905,7 +5957,7 @@ var lexer = function () {
                     return 19;
                     break;
 
-                case 28:
+                case 25:
                     /*! Conditions:: rules */
                     /*! Rule::       $ */
                     this.popState();
@@ -5914,7 +5966,7 @@ var lexer = function () {
                     return 19;
                     break;
 
-                case 33:
+                case 30:
                     /*! Conditions:: options */
                     /*! Rule::       %%|\||; */
                     this.popState();
@@ -5923,7 +5975,7 @@ var lexer = function () {
                     return 22;
                     break;
 
-                case 34:
+                case 31:
                     /*! Conditions:: options */
                     /*! Rule::       %include\b */
                     yy.depth = 0;
@@ -5939,7 +5991,7 @@ var lexer = function () {
                     return 23;
                     break;
 
-                case 35:
+                case 32:
                     /*! Conditions:: options */
                     /*! Rule::       > */
                     this.popState();
@@ -5948,7 +6000,7 @@ var lexer = function () {
                     return 22;
                     break;
 
-                case 38:
+                case 35:
                     /*! Conditions:: options */
                     /*! Rule::       <{ID}> */
                     yy_.yytext = this.matches[1];
@@ -5956,13 +6008,13 @@ var lexer = function () {
                     return 'TOKEN_TYPE';
                     break;
 
-                case 40:
+                case 37:
                     /*! Conditions:: options */
                     /*! Rule::       {BR}{WS}+(?=\S) */
                     /* ignore */
                     break;
 
-                case 41:
+                case 38:
                     /*! Conditions:: options */
                     /*! Rule::       {BR} */
                     this.popState();
@@ -5971,13 +6023,13 @@ var lexer = function () {
                     return 22;
                     break;
 
-                case 42:
+                case 39:
                     /*! Conditions:: options */
                     /*! Rule::       {WS}+ */
                     /* skip whitespace */
                     break;
 
-                case 43:
+                case 40:
                     /*! Conditions:: INITIAL */
                     /*! Rule::       {ID} */
                     this.pushState('macro');
@@ -5985,7 +6037,7 @@ var lexer = function () {
                     return 20;
                     break;
 
-                case 44:
+                case 41:
                     /*! Conditions:: macro */
                     /*! Rule::       {BR}+ */
                     this.popState();
@@ -5994,7 +6046,7 @@ var lexer = function () {
                     return 21;
                     break;
 
-                case 45:
+                case 42:
                     /*! Conditions:: macro */
                     /*! Rule::       $ */
                     this.popState();
@@ -6003,19 +6055,19 @@ var lexer = function () {
                     return 21;
                     break;
 
-                case 46:
+                case 43:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       {BR}+ */
                     /* skip newlines */
                     break;
 
-                case 47:
+                case 44:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       {WS}+ */
                     /* skip whitespace */
                     break;
 
-                case 51:
+                case 48:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       {ANY_LITERAL_CHAR}+ */
                     // accept any non-regex, non-lex, non-string-delim,
@@ -6024,7 +6076,7 @@ var lexer = function () {
 
                     break;
 
-                case 52:
+                case 49:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       \[ */
                     this.pushState('set');
@@ -6032,7 +6084,7 @@ var lexer = function () {
                     return 44;
                     break;
 
-                case 67:
+                case 64:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       < */
                     this.pushState('options');
@@ -6040,21 +6092,21 @@ var lexer = function () {
                     return 3;
                     break;
 
-                case 69:
+                case 66:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       \/! */
                     return 40; // treated as `(?!atom)`  
 
                     break;
 
-                case 70:
+                case 67:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       \/ */
                     return 13; // treated as `(?=atom)`  
 
                     break;
 
-                case 72:
+                case 69:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       \\(?:([0-7]{1,3})|c([@A-Z])|x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,8})\}) */
                     var m = this.matches;
@@ -6091,7 +6143,7 @@ var lexer = function () {
                     return 42;
                     break;
 
-                case 73:
+                case 70:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       \\. */
                     yy_.yytext = yy_.yytext.substring(1);
@@ -6099,7 +6151,7 @@ var lexer = function () {
                     return 49;
                     break;
 
-                case 76:
+                case 73:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %option[s]? */
                     this.pushState('options');
@@ -6107,7 +6159,7 @@ var lexer = function () {
                     return 26;
                     break;
 
-                case 77:
+                case 74:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %s\b */
                     this.pushState('options');
@@ -6115,7 +6167,7 @@ var lexer = function () {
                     return 30;
                     break;
 
-                case 78:
+                case 75:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %x\b */
                     this.pushState('options');
@@ -6123,7 +6175,7 @@ var lexer = function () {
                     return 31;
                     break;
 
-                case 79:
+                case 76:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %code\b */
                     this.pushState('options');
@@ -6131,7 +6183,7 @@ var lexer = function () {
                     return 28;
                     break;
 
-                case 80:
+                case 77:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %import\b */
                     this.pushState('options');
@@ -6139,7 +6191,7 @@ var lexer = function () {
                     return 27;
                     break;
 
-                case 81:
+                case 78:
                     /*! Conditions:: INITIAL rules code */
                     /*! Rule::       %include\b */
                     yy.depth = 0;
@@ -6155,7 +6207,7 @@ var lexer = function () {
                     return 23;
                     break;
 
-                case 82:
+                case 79:
                     /*! Conditions:: INITIAL rules code */
                     /*! Rule::       %{NAME}([^\r\n]*) */
                     /* ignore unrecognized decl */
@@ -6169,7 +6221,7 @@ var lexer = function () {
                     return 25;
                     break;
 
-                case 83:
+                case 80:
                     /*! Conditions:: rules macro INITIAL */
                     /*! Rule::       %% */
                     this.pushState('rules');
@@ -6177,7 +6229,7 @@ var lexer = function () {
                     return 19;
                     break;
 
-                case 91:
+                case 88:
                     /*! Conditions:: set */
                     /*! Rule::       \] */
                     this.popState();
@@ -6185,92 +6237,92 @@ var lexer = function () {
                     return 45;
                     break;
 
-                case 93:
+                case 90:
                     /*! Conditions:: code */
                     /*! Rule::       [^{BR}]+ */
                     return 53; // the bit of CODE just before EOF...  
 
                     break;
 
-                case 94:
+                case 91:
                     /*! Conditions:: action */
                     /*! Rule::       " */
                     yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+
+                    return 38;
+                    break;
+
+                case 92:
+                    /*! Conditions:: action */
+                    /*! Rule::       ' */
+                    yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+
+                    return 38;
+                    break;
+
+                case 93:
+                    /*! Conditions:: action */
+                    /*! Rule::       ` */
+                    yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+
+                    return 38;
+                    break;
+
+                case 94:
+                    /*! Conditions:: options */
+                    /*! Rule::       " */
+                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 95:
-                    /*! Conditions:: action */
+                    /*! Conditions:: options */
                     /*! Rule::       ' */
-                    yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 96:
-                    /*! Conditions:: action */
+                    /*! Conditions:: options */
                     /*! Rule::       ` */
-                    yy_.yyerror(rmCommonWS(_templateObject47) + this.prettyPrintRange(yy_.yylloc));
+                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 97:
-                    /*! Conditions:: options */
+                    /*! Conditions:: * */
                     /*! Rule::       " */
-                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
+                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 98:
-                    /*! Conditions:: options */
+                    /*! Conditions:: * */
                     /*! Rule::       ' */
-                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
+                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 99:
-                    /*! Conditions:: options */
+                    /*! Conditions:: * */
                     /*! Rule::       ` */
-                    yy_.yyerror(rmCommonWS(_templateObject48) + this.prettyPrintRange(yy_.yylloc));
+                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
+
+                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
 
                     return 38;
                     break;
 
                 case 100:
-                    /*! Conditions:: * */
-                    /*! Rule::       " */
-                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
-
-                    return 38;
-                    break;
-
-                case 101:
-                    /*! Conditions:: * */
-                    /*! Rule::       ' */
-                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
-
-                    return 38;
-                    break;
-
-                case 102:
-                    /*! Conditions:: * */
-                    /*! Rule::       ` */
-                    var rules = this.topState() === 'macro' ? 'macro\'s' : this.topState();
-
-                    yy_.yyerror(rmCommonWS(_templateObject49, rules) + this.prettyPrintRange(yy_.yylloc));
-
-                    return 38;
-                    break;
-
-                case 103:
                     /*! Conditions:: macro rules */
                     /*! Rule::       . */
                     /* b0rk on bad characters */
@@ -6281,7 +6333,7 @@ var lexer = function () {
                     return 2;
                     break;
 
-                case 104:
+                case 101:
                     /*! Conditions:: options */
                     /*! Rule::       . */
                     yy_.yyerror(rmCommonWS(_templateObject51, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
@@ -6289,7 +6341,7 @@ var lexer = function () {
                     return 2;
                     break;
 
-                case 105:
+                case 102:
                     /*! Conditions:: * */
                     /*! Rule::       . */
                     yy_.yyerror(rmCommonWS(_templateObject52, dquote(yy_.yytext), dquote(this.topState())) + this.prettyPrintRange(yy_.yylloc));
@@ -6305,303 +6357,300 @@ var lexer = function () {
         simpleCaseActionClusters: {
             /*! Conditions:: action */
             /*! Rule::       {WS}+ */
-            19: 34,
+            16: 34,
 
             /*! Conditions:: options */
             /*! Rule::       = */
-            29: 18,
+            26: 18,
 
             /*! Conditions:: options */
             /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-            30: 51,
+            27: 51,
 
             /*! Conditions:: options */
             /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-            31: 51,
+            28: 51,
 
             /*! Conditions:: options */
             /*! Rule::       `{ES2017_STRING_CONTENT}` */
-            32: 51,
+            29: 51,
 
             /*! Conditions:: options */
             /*! Rule::       , */
-            36: 17,
+            33: 17,
 
             /*! Conditions:: options */
             /*! Rule::       \* */
-            37: 11,
+            34: 11,
 
             /*! Conditions:: options */
             /*! Rule::       {ANY_LITERAL_CHAR}+ */
-            39: 52,
+            36: 52,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-            48: 48,
+            45: 48,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-            49: 48,
+            46: 48,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       `{ES2017_STRING_CONTENT}` */
-            50: 48,
+            47: 48,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \| */
-            53: 7,
+            50: 7,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \(\?: */
-            54: 39,
+            51: 39,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \(\?= */
-            55: 39,
+            52: 39,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \(\?! */
-            56: 39,
+            53: 39,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \(\?<= */
-            57: 39,
+            54: 39,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \(\?<! */
-            58: 39,
+            55: 39,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \( */
-            59: 8,
+            56: 8,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \) */
-            60: 9,
+            57: 9,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \+ */
-            61: 10,
+            58: 10,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \* */
-            62: 11,
+            59: 11,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \? */
-            63: 12,
+            60: 12,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \^ */
-            64: 15,
+            61: 15,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       , */
-            65: 17,
+            62: 17,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       <<EOF>> */
-            66: 16,
+            63: 16,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       > */
-            68: 6,
+            65: 6,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \\(?:[sSbBwWdDpP]|[rfntv\\*+()${}|[\]\/.^?]) */
-            71: 41,
+            68: 41,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \$ */
-            74: 16,
+            71: 16,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \. */
-            75: 14,
+            72: 14,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-            84: 47,
+            81: 47,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \{{ID}\} */
-            85: 43,
+            82: 43,
 
             /*! Conditions:: set options */
             /*! Rule::       \{{ID}\} */
-            86: 43,
+            83: 43,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \{ */
-            87: 4,
+            84: 4,
 
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       \} */
-            88: 5,
+            85: 5,
 
             /*! Conditions:: set */
             /*! Rule::       (?:\\[^{BR}]|[^\]{])+ */
-            89: 46,
+            86: 46,
 
             /*! Conditions:: set */
             /*! Rule::       \{ */
-            90: 46,
+            87: 46,
 
             /*! Conditions:: code */
             /*! Rule::       [^{BR}]*{BR}+ */
-            92: 53,
+            89: 53,
 
             /*! Conditions:: * */
             /*! Rule::       $ */
-            106: 1
+            103: 1
         },
 
         rules: [
         /*   0: *//^(?:\/\/[^\r\n]*)/,
         /*   1: *//^(?:\/\*[\s\S]*?\*\/)/,
         /*   2: *//^(?:%\{([\s\S]*?)%\})/,
-        /*   3: *//^(?:%\{\{([\s\S]*?)%\}\})/,
-        /*   4: *//^(?:%\{\{\{([\s\S]*?)%\}\}\})/,
-        /*   5: *//^(?:\{\{([\s\S]*?)\}\})/,
-        /*   6: *//^(?:\{\{\{([\s\S]*?)\}\}\})/,
-        /*   7: *//^(?:%include\b)/,
-        /*   8: *//^(?:\/\*[\s\S]*?\*\/)/,
-        /*   9: *//^(?:\/\/.*)/,
-        /*  10: *//^(?:\|)/,
-        /*  11: *//^(?:%%)/,
-        /*  12: *//^(?:\/.*)/,
-        /*  13: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
-        /*  14: *//^(?:[^\s"%'\/`{-}]+)/,
-        /*  15: *//^(?:%)/,
-        /*  16: *//^(?:\{)/,
-        /*  17: *//^(?:\})/,
-        /*  18: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+)/,
-        /*  19: *//^(?:([^\S\n\r])+)/,
-        /*  20: *//^(?:(\r\n|\n|\r))/,
-        /*  21: *//^(?:$)/,
-        /*  22: *//^(?:[%{]\{+)/,
-        /*  23: *//^(?:->)/,
-        /*  24: *//^(?:→)/,
-        /*  25: *//^(?:=>)/,
-        /*  26: *//^(?:([^\S\n\r])+(?!(?:\||%|->|=>|→|([^\S\n\r])|(\r\n|\n|\r))))/,
-        /*  27: *//^(?:%%)/,
-        /*  28: *//^(?:$)/,
-        /*  29: *//^(?:=)/,
-        /*  30: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-        /*  31: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-        /*  32: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-        /*  33: *//^(?:%%|\||;)/,
-        /*  34: *//^(?:%include\b)/,
-        /*  35: *//^(?:>)/,
-        /*  36: *//^(?:,)/,
-        /*  37: *//^(?:\*)/,
-        /*  38: */new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
-        /*  39: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
-        /*  40: *//^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
-        /*  41: *//^(?:(\r\n|\n|\r))/,
-        /*  42: *//^(?:([^\S\n\r])+)/,
-        /*  43: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
-        /*  44: *//^(?:(\r\n|\n|\r)+)/,
-        /*  45: *//^(?:$)/,
-        /*  46: *//^(?:(\r\n|\n|\r)+)/,
-        /*  47: *//^(?:([^\S\n\r])+)/,
-        /*  48: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-        /*  49: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-        /*  50: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-        /*  51: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
-        /*  52: *//^(?:\[)/,
-        /*  53: *//^(?:\|)/,
-        /*  54: *//^(?:\(\?:)/,
-        /*  55: *//^(?:\(\?=)/,
-        /*  56: *//^(?:\(\?!)/,
-        /*  57: *//^(?:\(\?<=)/,
-        /*  58: *//^(?:\(\?<!)/,
-        /*  59: *//^(?:\()/,
-        /*  60: *//^(?:\))/,
-        /*  61: *//^(?:\+)/,
-        /*  62: *//^(?:\*)/,
-        /*  63: *//^(?:\?)/,
-        /*  64: *//^(?:\^)/,
-        /*  65: *//^(?:,)/,
-        /*  66: *//^(?:<<EOF>>)/,
-        /*  67: *//^(?:<)/,
-        /*  68: *//^(?:>)/,
-        /*  69: *//^(?:\/!)/,
-        /*  70: *//^(?:\/)/,
-        /*  71: *//^(?:\\(?:[BDPSWbdpsw]|[$(-+.\/?\[-\^fnrtv{-}]))/,
-        /*  72: *//^(?:\\(?:([0-7]{1,3})|c([@-Z])|x([\dA-Fa-f]{2})|u([\dA-Fa-f]{4})|u\{([\dA-Fa-f]{1,8})\}))/,
-        /*  73: *//^(?:\\.)/,
-        /*  74: *//^(?:\$)/,
-        /*  75: *//^(?:\.)/,
-        /*  76: *//^(?:%option[s]?)/,
-        /*  77: *//^(?:%s\b)/,
-        /*  78: *//^(?:%x\b)/,
-        /*  79: *//^(?:%code\b)/,
-        /*  80: *//^(?:%import\b)/,
-        /*  81: *//^(?:%include\b)/,
-        /*  82: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
-        /*  83: *//^(?:%%)/,
-        /*  84: *//^(?:\{\d+(,\s*\d+|,)?\})/,
-        /*  85: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-        /*  86: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+        /*   3: *//^(?:%include\b)/,
+        /*   4: *//^(?:\/\*[\s\S]*?\*\/)/,
+        /*   5: *//^(?:\/\/.*)/,
+        /*   6: *//^(?:\|)/,
+        /*   7: *//^(?:%%)/,
+        /*   8: *//^(?:\/(?=\s))/,
+        /*   9: *//^(?:\/.*)/,
+        /*  10: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
+        /*  11: *//^(?:[^\s"%'\/`{-}]+)/,
+        /*  12: *//^(?:%)/,
+        /*  13: *//^(?:\{)/,
+        /*  14: *//^(?:\})/,
+        /*  15: *//^(?:(?:\s*?)(\r\n|\n|\r)+([^\S\n\r])+)/,
+        /*  16: *//^(?:([^\S\n\r])+)/,
+        /*  17: *//^(?:(\r\n|\n|\r))/,
+        /*  18: *//^(?:$)/,
+        /*  19: *//^(?:[%{]\{+)/,
+        /*  20: *//^(?:->)/,
+        /*  21: *//^(?:→)/,
+        /*  22: *//^(?:=>)/,
+        /*  23: *//^(?:([^\S\n\r])+(?!(?:\||%|->|=>|→|([^\S\n\r])|(\r\n|\n|\r))))/,
+        /*  24: *//^(?:%%)/,
+        /*  25: *//^(?:$)/,
+        /*  26: *//^(?:=)/,
+        /*  27: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+        /*  28: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+        /*  29: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+        /*  30: *//^(?:%%|\||;)/,
+        /*  31: *//^(?:%include\b)/,
+        /*  32: *//^(?:>)/,
+        /*  33: *//^(?:,)/,
+        /*  34: *//^(?:\*)/,
+        /*  35: */new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
+        /*  36: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+        /*  37: *//^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
+        /*  38: *//^(?:(\r\n|\n|\r))/,
+        /*  39: *//^(?:([^\S\n\r])+)/,
+        /*  40: */new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
+        /*  41: *//^(?:(\r\n|\n|\r)+)/,
+        /*  42: *//^(?:$)/,
+        /*  43: *//^(?:(\r\n|\n|\r)+)/,
+        /*  44: *//^(?:([^\S\n\r])+)/,
+        /*  45: *//^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+        /*  46: *//^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+        /*  47: *//^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+        /*  48: *//^(?:([^\s!"$%'-,.\/:-?\[-\^`{-}])+)/,
+        /*  49: *//^(?:\[)/,
+        /*  50: *//^(?:\|)/,
+        /*  51: *//^(?:\(\?:)/,
+        /*  52: *//^(?:\(\?=)/,
+        /*  53: *//^(?:\(\?!)/,
+        /*  54: *//^(?:\(\?<=)/,
+        /*  55: *//^(?:\(\?<!)/,
+        /*  56: *//^(?:\()/,
+        /*  57: *//^(?:\))/,
+        /*  58: *//^(?:\+)/,
+        /*  59: *//^(?:\*)/,
+        /*  60: *//^(?:\?)/,
+        /*  61: *//^(?:\^)/,
+        /*  62: *//^(?:,)/,
+        /*  63: *//^(?:<<EOF>>)/,
+        /*  64: *//^(?:<)/,
+        /*  65: *//^(?:>)/,
+        /*  66: *//^(?:\/!)/,
+        /*  67: *//^(?:\/)/,
+        /*  68: *//^(?:\\(?:[BDPSWbdpsw]|[$(-+.\/?\[-\^fnrtv{-}]))/,
+        /*  69: *//^(?:\\(?:([0-7]{1,3})|c([@-Z])|x([\dA-Fa-f]{2})|u([\dA-Fa-f]{4})|u\{([\dA-Fa-f]{1,8})\}))/,
+        /*  70: *//^(?:\\.)/,
+        /*  71: *//^(?:\$)/,
+        /*  72: *//^(?:\.)/,
+        /*  73: *//^(?:%option[s]?)/,
+        /*  74: *//^(?:%s\b)/,
+        /*  75: *//^(?:%x\b)/,
+        /*  76: *//^(?:%code\b)/,
+        /*  77: *//^(?:%import\b)/,
+        /*  78: *//^(?:%include\b)/,
+        /*  79: */new XRegExp('^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))', ''),
+        /*  80: *//^(?:%%)/,
+        /*  81: *//^(?:\{\d+(,\s*\d+|,)?\})/,
+        /*  82: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+        /*  83: */new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+        /*  84: *//^(?:\{)/,
+        /*  85: *//^(?:\})/,
+        /*  86: *//^(?:(?:\\[^\n\r]|[^\]{])+)/,
         /*  87: *//^(?:\{)/,
-        /*  88: *//^(?:\})/,
-        /*  89: *//^(?:(?:\\[^\n\r]|[^\]{])+)/,
-        /*  90: *//^(?:\{)/,
-        /*  91: *//^(?:\])/,
-        /*  92: *//^(?:[^\n\r]*(\r\n|\n|\r)+)/,
-        /*  93: *//^(?:[^\n\r]+)/,
+        /*  88: *//^(?:\])/,
+        /*  89: *//^(?:[^\n\r]*(\r\n|\n|\r)+)/,
+        /*  90: *//^(?:[^\n\r]+)/,
+        /*  91: *//^(?:")/,
+        /*  92: *//^(?:')/,
+        /*  93: *//^(?:`)/,
         /*  94: *//^(?:")/,
         /*  95: *//^(?:')/,
         /*  96: *//^(?:`)/,
         /*  97: *//^(?:")/,
         /*  98: *//^(?:')/,
         /*  99: *//^(?:`)/,
-        /* 100: *//^(?:")/,
-        /* 101: *//^(?:')/,
-        /* 102: *//^(?:`)/,
-        /* 103: *//^(?:.)/,
-        /* 104: *//^(?:.)/,
-        /* 105: *//^(?:.)/,
-        /* 106: *//^(?:$)/],
+        /* 100: *//^(?:.)/,
+        /* 101: *//^(?:.)/,
+        /* 102: *//^(?:.)/,
+        /* 103: *//^(?:$)/],
 
         conditions: {
             'rules': {
-                rules: [0, 1, 22, 23, 24, 25, 26, 27, 28, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 87, 88, 100, 101, 102, 103, 105, 106],
+                rules: [0, 1, 19, 20, 21, 22, 23, 24, 25, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 97, 98, 99, 100, 102, 103],
 
                 inclusive: true
             },
 
             'macro': {
-                rules: [0, 1, 23, 24, 25, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 83, 84, 85, 87, 88, 100, 101, 102, 103, 105, 106],
+                rules: [0, 1, 20, 21, 22, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 80, 81, 82, 84, 85, 97, 98, 99, 100, 102, 103],
 
                 inclusive: true
             },
 
             'code': {
-                rules: [81, 82, 92, 93, 100, 101, 102, 105, 106],
+                rules: [78, 79, 89, 90, 97, 98, 99, 102, 103],
                 inclusive: false
             },
 
             'options': {
-                rules: [0, 1, 22, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 86, 97, 98, 99, 100, 101, 102, 104, 105, 106],
+                rules: [0, 1, 19, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 83, 94, 95, 96, 97, 98, 99, 101, 102, 103],
 
                 inclusive: false
             },
 
             'action': {
-                rules: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 94, 95, 96, 100, 101, 102, 105, 106],
+                rules: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 91, 92, 93, 97, 98, 99, 102, 103],
 
                 inclusive: false
             },
 
             'set': {
-                rules: [86, 89, 90, 91, 100, 101, 102, 105, 106],
+                rules: [83, 86, 87, 88, 97, 98, 99, 102, 103],
                 inclusive: false
             },
 
             'INITIAL': {
-                rules: [0, 1, 22, 23, 24, 25, 43, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 87, 88, 100, 101, 102, 105, 106],
+                rules: [0, 1, 19, 20, 21, 22, 40, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 97, 98, 99, 102, 103],
 
                 inclusive: true
             }
@@ -6612,20 +6661,21 @@ var lexer = function () {
     var dquote = helpers.dquote;
     var scanRegExp = helpers.scanRegExp;
 
-    lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(yytext, yy) {
+    lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(yytext) {
         // Calculate the end marker to match and produce a
         // lexer rule to match when the need arrises:
         var marker = yytext;
 
         // Special: when we encounter `{` as the start of the action code block,
-        // we NIL the `%{...%}` lexer rule by just using that one:
+        // we DO NOT patch the `%{...%}` lexer rule as we will handle `{...}` 
+        // elsewhere in the lexer anyway: we cannot use a simple regex like 
+        // `/{[^]*?}/` to match an entire action code block after all!
         if (marker === '{') {
             marker = '%{';
         }
 
-        var action_end_marker = marker.replace(/\{/g, '}');
-
         // Note: this bit comes straight from the lexer kernel!
+        //
         // Get us the currently active set of lexer rules. 
         // (This is why we push the 'action' lexer condition state above *before*
         // we commence and work on the ruleset itself.)
@@ -6639,42 +6689,70 @@ var lexer = function () {
             spec = this.__currentRuleSet__ = this._currentRules();
         }
 
+        var regexes = spec.__rule_regexes;
+        var len = spec.__rule_count;
         var rules = spec.rules;
-        var i, len;
+        var i;
         var action_chunk_regex;
 
         // Must we still locate the rule to patch or have we done 
         // that already during a previous encounter?
-        if (!yy.action_chunk_rule_idx) {
-            // **WARNING**: *(this bit comes straight from the lexer kernel)*
+        //
+        // WARNING: our cache/patch must live beyond the current lexer+parser invocation:
+        // our patching must remain detected indefinitely to ensure subsequent invocations
+        // of the parser will still work as expected!
+        // This implies that we CANNOT store anything in the `yy` context as that one
+        // is short-lived: `yy` dies once the current parser.parse() has completed!
+        // Hence we store our patch data in the lexer instance itself: in `spec`.
+        //
+        if (!spec.__action_chunk_rule_idx) {
+            // **WARNING**: *(this bit, like so much else in here, comes straight from the lexer kernel)*
             //
             // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
-            for (i = 1, len = rules.length; i < len; i++) {
-                var rule_re = rules[i];
+            var orig_re_str1 = '/^(?:%\\{([^]*?)%\\})/';
 
-                if (rule_re.toString() === '^(?:%\\{([^]*?)%\\})') {
-                    yy.action_chunk_rule_idx = i;
+            var orig_re_str2 = '/^(?:%\\{([\\s\\S]*?)%\\})/'; // the XRegExp 'cross-platform' version of the same. 
+
+            // Note: the arrays are 1-based, while `len` itself is a valid index,
+            // hence the non-standard less-or-equal check in the next loop condition!
+            for (i = 1; i <= len; i++) {
+                var rule_re = regexes[i];
+                var re_str = rule_re.toString();
+
+                //console.error('test regexes:', {i, len, re1: re_str, match1: rule_re.toString() === orig_re_str1, match1: rule_re.toString() === orig_re_str2});
+                if (re_str === orig_re_str1 || re_str === orig_re_str2) {
+                    spec.__action_chunk_rule_idx = i;
                     break;
                 }
             }
 
+            if (!spec.__action_chunk_rule_idx) {
+                //console.error('ruleset dump:', spec);
+                throw new Error('INTERNAL DEV ERROR: cannot locate %{...%} rule regex!');
+            }
+
             // As we haven't initialized yet, we're sure the rule cache doesn't exist either.
             // Make it happen:
-            yy.cached_action_chunk_rule = {}; // set up empty cache 
+            spec.__cached_action_chunk_rule = {}; // set up empty cache 
         }
 
-        i = yy.action_chunk_rule_idx;
+        i = spec.__action_chunk_rule_idx;
 
         // Must we build the lexer rule or did we already run this variant 
         // through this lexer before? 
         // If so, fetch the cached version!
-        action_chunk_regex = yy.cached_action_chunk_rule[marker];
+        action_chunk_regex = spec.__cached_action_chunk_rule[marker];
 
         if (!action_chunk_regex) {
-            action_chunk_regex = yy.cached_action_chunk_rule[marker] = new RegExp('^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + ')');
+            var action_end_marker = marker.replace(/\{/g, '}');
+
+            action_chunk_regex = spec.__cached_action_chunk_rule[marker] = new RegExp('^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + ')');
+            //console.warn('encode new action block regex:', action_chunk_regex); 
         }
 
-        rules[i] = action_chunk_regex;
+        //console.error('new ACTION REGEX:', { i, action_chunk_regex });
+        // and patch the lexer regex table for the current lexer condition state:
+        regexes[i] = action_chunk_regex;
     };
 
     lexer.warn = function l_warn() {
@@ -6701,6 +6779,7 @@ var rmCommonWS$1 = helpers.rmCommonWS;
 var checkActionBlock$1 = helpers.checkActionBlock;
 var mkIdentifier$1 = helpers.mkIdentifier;
 var isLegalIdentifierInput$1 = helpers.isLegalIdentifierInput;
+var trimActionCode$1 = helpers.trimActionCode;
 
 // see also:
 // - https://en.wikipedia.org/wiki/C0_and_C1_control_codes
@@ -6879,48 +6958,6 @@ function encodeRegexLiteralStr(s, edge) {
     }
     s = rv;
     //console.warn("encodeRegexLiteralStr ROUND 3:", {s});
-    return s;
-}
-
-function trimActionCode(src, startMarker) {
-    var s = src.trim();
-    // remove outermost set of braces UNLESS there's
-    // a curly brace in there anywhere: in that case
-    // we should leave it up to the sophisticated
-    // code analyzer to simplify the code!
-    //
-    // This is a very rough check as it will also look
-    // inside code comments, which should not have
-    // any influence.
-    //
-    // Nevertheless: this is a *safe* transform as
-    // long as the code doesn't end with a C++-style
-    // comment which happens to contain that closing
-    // curly brace at the end!
-    //
-    // Also DO strip off any trailing optional semicolon,
-    // which might have ended up here due to lexer rules
-    // like this one:
-    //
-    //     [a-z]+              -> 'TOKEN';
-    //
-    // We can safely ditch any trailing semicolon(s) as
-    // our code generator reckons with JavaScript's
-    // ASI rules (Automatic Semicolon Insertion).
-    //
-    //
-    // TODO: make this is real code edit without that
-    // last edge case as a fault condition.
-    if (startMarker === '{') {
-        // code is wrapped in `{...}` for sure: remove the wrapping braces.
-        s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
-    } else {
-        // code may not be wrapped or otherwise non-simple: only remove
-        // wrapping braces when we can guarantee they're the only ones there,
-        // i.e. only exist as outer wrapping.
-        s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
-    }
-    s = s.replace(/;+$/, '').trim();
     return s;
 }
 

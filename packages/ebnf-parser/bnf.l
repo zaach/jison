@@ -115,22 +115,6 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 
-<action>"%{{"([^]*?)"%}}"               yytext = this.matches[1];
-                                        yy.include_command_allowed = false;
-                                        return 'ACTION_BODY';
-
-<action>"%{{{"([^]*?)"%}}}"             yytext = this.matches[1];
-                                        yy.include_command_allowed = false;
-                                        return 'ACTION_BODY';
-
-<action>"{{"([^]*?)"}}"                 yytext = this.matches[1];
-                                        yy.include_command_allowed = false;
-                                        return 'ACTION_BODY';
-
-<action>"{{{"([^]*?)"}}}"               yytext = this.matches[1];
-                                        yy.include_command_allowed = false;
-                                        return 'ACTION_BODY';
-
 <action>"%include"                      if (yy.include_command_allowed) {
                                             // This is an include instruction in place of (part of) an action:
                                             this.pushState('options');
@@ -163,11 +147,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 
 // make sure to terminate before the next rule alternative,
 // which is announced by `|`:
-<action>"|"                             console.warn('lexing PIPE:', {
-                                            allowed: yy.include_command_allowed,
-                                            depth: yy.depth
-                                        });
-                                        if (yy.depth === 0) {
+<action>"|"                             if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -189,6 +169,12 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 //
 // simply scan using an Esprima-equivalent regex scanner: when the next
 // bit turns out to be a regex, assume it is one and pass it on.
+//
+// To prevent trouble with confusing this with a divide operator, 
+// only accept regexes which at least start with a non-whitespace 
+// character, otherwise we can bet it's a divide operator most
+// probably.
+<action>"/"/\s                          return 'ACTION_BODY';       // most probably a `/` divide operator.
 <action>"/".*
                                         yy.include_command_allowed = false;
                                         var l = scanRegExp(yytext);
@@ -275,11 +261,18 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         yy.include_command_allowed = false;
                                         this.pushState('action');
 
+										// keep matched string in local variable as the `unput()` call at the end will also 'unput' `yytext`,
+										// which for our purposes here is highly undesirable (see trimActionCode() use in the BNF parser spec).
+										var marker = yytext;
+										
                                         // Make sure we've the proper lexer rule regex active for any possible `%{...%}`, `{{...}}` or what have we here?
-                                        this.setupDelimitedActionChunkLexerRegex(yytext, yy);
+                                        this.setupDelimitedActionChunkLexerRegex(marker);
 
                                         // Allow the start marker to be re-matched by the generated lexer rule regex:
-                                        this.unput(yytext);
+                                        this.unput(marker);
+										
+										// Now RESET `yytext` to what it was originally, i.e. un-unput that lexer variable explicitly:
+										yytext = marker;
 
                                         // and allow the next lexer round to match and execute the suitable lexer rule(s) to parse this incoming action code block. 
                                         return 'ACTION_START';
@@ -332,6 +325,8 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         this.pushState('code');
                                         return '%%';
 
+
+//===================== <options> section start =============================
 <options>{
 
 "="                                     return '=';
@@ -400,7 +395,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 {WS}+                                   /* skip whitespace */
 
 }
-//-- end <options> section.
+//===================== <options> section start =============================
 
 
 {BR}+                                   /* skip newlines */
@@ -435,7 +430,6 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         return 'INTEGER';
 
 {ID}                                    return 'ID';
-{NAME}                                  return 'NAME';
 
 "("                                     return '(';
 ")"                                     return ')';
@@ -464,7 +458,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "%left"                                 return 'LEFT';
 "%right"                                return 'RIGHT';
 "%nonassoc"                             return 'NONASSOC';
-"%token"                                this.pushState('options');
+"%token"                                //this.pushState('options');
                                         return 'TOKEN';
 "%parse-param"[s]?                      return 'PARSE_PARAM';
 "%option"[s]?                           this.pushState('options');
@@ -504,10 +498,6 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             };
                                             return 'UNKNOWN_DECL';
                                         %}
-
-"<"{ID}">"                              yytext = this.matches[1];
-                                        return 'TOKEN_TYPE';
-
 
 
 // in the trailing CODE block, only accept these `%include` macros when
@@ -619,18 +609,21 @@ var scanRegExp = helpers.scanRegExp;
 
 
 
-lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(yytext, yy) {
+lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(yytext) {
     // Calculate the end marker to match and produce a
     // lexer rule to match when the need arrises:
     var marker = yytext;
+
     // Special: when we encounter `{` as the start of the action code block,
-    // we NIL the `%{...%}` lexer rule by just using that one:
+    // we DO NOT patch the `%{...%}` lexer rule as we will handle `{...}` 
+    // elsewhere in the lexer anyway: we cannot use a simple regex like 
+    // `/{[^]*?}/` to match an entire action code block after all!
     if (marker === '{') {
         marker = '%{';
     }
-    var action_end_marker = marker.replace(/\{/g, '}');
 
     // Note: this bit comes straight from the lexer kernel!
+    //
     // Get us the currently active set of lexer rules. 
     // (This is why we push the 'action' lexer condition state above *before*
     // we commence and work on the ruleset itself.)
@@ -643,39 +636,65 @@ lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedAction
         spec = this.__currentRuleSet__ = this._currentRules();
     }
 
+    var regexes = spec.__rule_regexes;
+    var len = spec.__rule_count;
     var rules = spec.rules;
-    var i, len;
+    var i;
     var action_chunk_regex;
 
     // Must we still locate the rule to patch or have we done 
     // that already during a previous encounter?
-    if (!yy.action_chunk_rule_idx) {
-        // **WARNING**: *(this bit comes straight from the lexer kernel)*
+    //
+    // WARNING: our cache/patch must live beyond the current lexer+parser invocation:
+    // our patching must remain detected indefinitely to ensure subsequent invocations
+    // of the parser will still work as expected!
+    // This implies that we CANNOT store anything in the `yy` context as that one
+    // is short-lived: `yy` dies once the current parser.parse() has completed!
+    // Hence we store our patch data in the lexer instance itself: in `spec`.
+    //
+    if (!spec.__action_chunk_rule_idx) {
+        // **WARNING**: *(this bit, like so much else in here, comes straight from the lexer kernel)*
         //
         // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
-        for (i = 1, len = rules.length; i < len; i++) {
-            var rule_re = rules[i];
-            if (rule_re.toString() === '^(?:%\\{([^]*?)%\\})') {
-                yy.action_chunk_rule_idx = i;
+        var orig_re_str1 = '/^(?:%\\{([^]*?)%\\})/';
+        var orig_re_str2 = '/^(?:%\\{([\\s\\S]*?)%\\})/';   // the XRegExp 'cross-platform' version of the same.
+
+        // Note: the arrays are 1-based, while `len` itself is a valid index,
+        // hence the non-standard less-or-equal check in the next loop condition!
+        for (i = 1; i <= len; i++) {
+            var rule_re = regexes[i];
+            var re_str = rule_re.toString();
+            //console.error('test regexes:', {i, len, re1: re_str, match1: rule_re.toString() === orig_re_str1, match1: rule_re.toString() === orig_re_str2});
+            if (re_str === orig_re_str1 || re_str === orig_re_str2) {
+                spec.__action_chunk_rule_idx = i;
                 break;
             }
         }
 
+        if (!spec.__action_chunk_rule_idx) {
+            //console.error('ruleset dump:', spec);
+            throw new Error('INTERNAL DEV ERROR: cannot locate %{...%} rule regex!');
+        }
+
         // As we haven't initialized yet, we're sure the rule cache doesn't exist either.
         // Make it happen:
-        yy.cached_action_chunk_rule = {};   // set up empty cache
+        spec.__cached_action_chunk_rule = {};   // set up empty cache
     }
 
-    i = yy.action_chunk_rule_idx;
+    i = spec.__action_chunk_rule_idx;
 
     // Must we build the lexer rule or did we already run this variant 
     // through this lexer before? 
     // If so, fetch the cached version!
-    action_chunk_regex = yy.cached_action_chunk_rule[marker];
+    action_chunk_regex = spec.__cached_action_chunk_rule[marker];
     if (!action_chunk_regex) {
-        action_chunk_regex = yy.cached_action_chunk_rule[marker] = new RegExp('^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + ')');
+        var action_end_marker = marker.replace(/\{/g, '}');
+        action_chunk_regex = spec.__cached_action_chunk_rule[marker] = new RegExp('^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + ')');
+        //console.warn('encode new action block regex:', action_chunk_regex);
     }
-    rules[i] = action_chunk_regex;
+    //console.error('new ACTION REGEX:', { i, action_chunk_regex });
+    // and patch the lexer regex table for the current lexer condition state:
+    regexes[i] = action_chunk_regex;
 };
 
 

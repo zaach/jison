@@ -60,7 +60,7 @@ spec
     : init declaration_list '%%' grammar optional_end_block EOF
         {
             $$ = $declaration_list;
-            if ($optional_end_block.trim() !== '') {
+            if ($optional_end_block !== '') {
                 yy.addDeclaration($$, { include: $optional_end_block });
             }
             return extend($$, $grammar);
@@ -107,49 +107,44 @@ optional_end_block
         { $$ = ''; }
     | '%%' extra_parser_module_code
         { 
-            var rv = checkActionBlock($extra_parser_module_code, @extra_parser_module_code);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    The extra parser module code section (a.k.a. 'epilogue') does not compile: ${rv}
+            var srcCode = trimActionCode($extra_parser_module_code);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @extra_parser_module_code);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The extra parser module code section (a.k.a. 'epilogue') does not compile: ${rv}
 
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@extra_parser_module_code)}
-                `);
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@extra_parser_module_code)}
+                    `);
+                }
+                $$ = srcCode; 
+            } else {
+                $$ = '';
             }
-            $$ = $extra_parser_module_code; 
         }
     ;
 
 optional_action_header_block
     : %empty
-        { $$ = {}; }
-    | optional_action_header_block ACTION
-        {
-            $$ = $optional_action_header_block;
-            var rv = checkActionBlock($ACTION, @ACTION);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action header code block does not compile: ${rv}
+        { $$ = ''; }
+    | optional_action_header_block ACTION_START action ACTION_END
+        { 
+            var srcCode = trimActionCode($action, $ACTION_START);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        header action code block in the grammar spec production rules section does not compile: ${rv}
 
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@ACTION)}
-                `);
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action)}
+                    `);
+                }
+                $$ = $optional_action_header_block + '\n\n' + srcCode;
+            } else {
+                $$ = $optional_action_header_block;
             }
-            yy.addDeclaration($$, { actionInclude: $ACTION });
-        }
-    | optional_action_header_block include_macro_code
-        {
-            $$ = $optional_action_header_block;
-            var rv = checkActionBlock($include_macro_code, @include_macro_code);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action header code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@include_macro_code)}
-                `);
-            }
-            yy.addDeclaration($$, { actionInclude: $include_macro_code });
         }
     ;
 
@@ -174,8 +169,8 @@ declaration_list
     ;
 
 declaration
-    : START id
-        { $$ = {start: $id}; }
+    : START ID
+        { $$ = {start: $ID}; }
     | LEX_BLOCK
         { $$ = {lex: {text: $LEX_BLOCK, position: @LEX_BLOCK}}; }
     | operator
@@ -184,7 +179,7 @@ declaration
         { $$ = {token_list: $full_token_definitions}; }
     | ACTION_START action ACTION_END
         { 
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -288,13 +283,11 @@ declaration
                 `);
             }
 
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
                     The '%code ${name}' initialization code section does not compile: ${rv}
-
-                    ${srcCode}
 
                       Erroneous area:
                     ${yylexer.prettyPrintRange(@action, @init_code_keyword)}
@@ -405,33 +398,9 @@ start_conditions_marker
         }
     ;
 
-init_code_name
-    : ID
-        { $$ = $ID; }
-    | NAME
-        { $$ = $NAME; }
-    | STRING_LIT
-        { $$ = $STRING_LIT; }
-    ;
-
-import_name
-    : ID
-        { $$ = $ID; }
-    | STRING_LIT
-        { $$ = $STRING_LIT; }
-    ;
-
-import_path
-    : ID
-        { $$ = $ID; }
-    | STRING_LIT
-        { $$ = $STRING_LIT; }
-    ;
-
-
 parse_params
-    : PARSE_PARAM token_list
-        { $$ = $token_list; }
+    : PARSE_PARAM id_list
+        { $$ = $id_list; }
     | PARSE_PARAM error
         {
             // TODO ...
@@ -466,8 +435,8 @@ parser_type
     ;
 
 operator
-    : associativity token_list
-        { $$ = [$associativity]; $$.push.apply($$, $token_list); }
+    : associativity symbol_list
+        { $$ = [$associativity]; $$.push.apply($$, $symbol_list); }
     | associativity error
         {
             // TODO ...
@@ -490,13 +459,6 @@ associativity
         { $$ = 'right'; }
     | NONASSOC
         { $$ = 'nonassoc'; }
-    ;
-
-token_list
-    : token_list symbol
-        { $$ = $token_list; $$.push($symbol); }
-    | symbol
-        { $$ = [$symbol]; }
     ;
 
 // As per http://www.gnu.org/software/bison/manual/html_node/Token-Decl.html
@@ -526,7 +488,7 @@ full_token_definitions
     ;
 
 one_full_token
-    : id token_value token_description
+    : ID token_value token_description
         {
             $$ = {
                 id: $id,
@@ -534,14 +496,14 @@ one_full_token
                 description: $token_description
             };
         }
-    | id token_description
+    | ID token_description
         {
             $$ = {
                 id: $id,
                 description: $token_description
             };
         }
-    | id token_value
+    | ID token_value
         {
             $$ = {
                 id: $id,
@@ -567,25 +529,18 @@ token_description
         { $$ = $STRING_LIT; }
     ;
 
-id_list
-    : id_list id
-        { $$ = $id_list; $$.push($id); }
-    | id
-        { $$ = [$id]; }
-    ;
-
-// token_id
-//     : TOKEN_TYPE id
-//         { $$ = $id; }
-//     | id
-//         { $$ = $id; }
-//     ;
-
 grammar
     : optional_action_header_block production_list
         {
-            $$ = $optional_action_header_block;
-            $$.grammar = $production_list;
+            $$ = {
+                grammar: $production_list
+            };
+
+            // source code has already been checked!
+            var srcCode = $optional_action_header_block;
+            if (srcCode) {
+                yy.addDeclaration($$, { actionInclude: srcCode });
+            }
         }
     ;
 
@@ -635,26 +590,26 @@ production
     ;
 
 production_id
-    : id optional_production_description ':'
+    : ID optional_production_description ':'
         {
-            $$ = $id;
+            $$ = $ID;
 
             // TODO: carry rule description support into the parser generator...
         }
-    | id optional_production_description error
+    | ID optional_production_description error
         {
             // TODO ...
             yyerror(rmCommonWS`
                 rule id should be followed by a colon, but that one seems missing?
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @id)}
+                ${yylexer.prettyPrintRange(@error, @ID)}
 
                   Technical error report:
                 ${$error.errStr}
             `);
         }
-    | id optional_production_description ARROW_ACTION_START
+    | ID optional_production_description ARROW_ACTION_START
         {
             yyerror(rmCommonWS`
                 rule id should be followed by a colon instead of an arrow: 
@@ -666,7 +621,7 @@ production_id
                             ;
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@ARROW_ACTION_START, @id)}
+                ${yylexer.prettyPrintRange(@ARROW_ACTION_START, @ID)}
             `);
         }
     ;
@@ -719,7 +674,7 @@ handle_action
     : handle prec ACTION_START action ACTION_END
         {
             $$ = [($handle.length ? $handle.join(' ') : '')];
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -732,6 +687,7 @@ handle_action
                 }
                 $$.push(srcCode);
             }
+
             if ($prec) {
                 if ($handle.length === 0) {
                     yyerror(rmCommonWS`
@@ -743,6 +699,7 @@ handle_action
                 }
                 $$.push($prec);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -756,7 +713,19 @@ handle_action
                 // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
                 // will uncover any illegal action code following the arrow operator, e.g.
                 // multiple statements separated by semicolon.
-                srcCode = '$$ = (' + srcCode + ');'; 
+                //
+                // Note/Optimization:
+                // there's no need for braces in the generated expression when we can
+                // already see the given action is an identifier string or something else
+                // that's a sure simple thing for a JavaScript `return` statement to carry.
+                // By doing this, we simplify the token return replacement code replacement
+                // process which will be applied to the parsed lexer before its code
+                // will be generated by JISON.
+                if (/^[^\r\n;\/]+$/.test(srcCode)) {
+                    srcCode = '$$ = ' + srcCode; 
+                } else {
+                    srcCode = '$$ = (' + srcCode + '\n)'; 
+                }
 
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -772,7 +741,7 @@ handle_action
                     `);
                 }
 
-                $$.push($action);
+                $$.push(srcCode);
             }
             
             if ($prec) {
@@ -786,6 +755,7 @@ handle_action
                 }
                 $$.push($prec);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -805,6 +775,7 @@ handle_action
                 }
                 $$.push($prec);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -815,7 +786,7 @@ handle_action
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [''];
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -828,6 +799,7 @@ handle_action
                 }
                 $$.push(srcCode);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -851,6 +823,7 @@ handle_action
                 }
                 $$.push(srcCode);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -876,7 +849,7 @@ handle_action
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [''];
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -889,6 +862,7 @@ handle_action
                 }
                 $$.push(srcCode);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
@@ -992,27 +966,31 @@ suffixed_expression
     ;
 
 expression
-    : ID
+    : symbol
         {
-            $$ = $ID;
+            $$ = $symbol;
         }
     | EOF_ID
         {
             $$ = '$end';
         }
-    | STRING_LIT
-        {
-            // Re-encode the string *anyway* as it will
-            // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
-            // to be able to handle all tokens, including *significant space*
-            // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
-            $$ = dquote($STRING_LIT);
-        }
     | '(' handle_sublist ')'
-        {
-            // TODO: do not allow empty sublist here, i.e. writing '()' in a grammar is illegal.
+        %{
+            // Do not allow empty sublist here, i.e. writing '()' in a grammar is illegal.
+            //
+            // empty list ε is encoded as `[[]]`:
+            var lst = $handle_sublist;
+            if (lst.length === 1 && lst[0].length === 0) {
+                yyerror(rmCommonWS`
+                    Empty grammar rule sublists are not accepted within '( ... )' brackets.
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@$) /* @$ =?= yylexer.deriveLocationInfo(@1, @3) */}
+                `);
+            }
+
             $$ = '(' + $handle_sublist.join(' | ') + ')';
-        }
+        %}
     | '(' handle_sublist error
         {
             yyerror(rmCommonWS`
@@ -1062,16 +1040,39 @@ prec
         }
     ;
 
+symbol_list
+    : symbol_list symbol
+        { $$ = $symbol_list; $$.push($symbol); }
+    | symbol
+        { $$ = [$symbol]; }
+    ;
+
 symbol
-    : id
-        { $$ = $id; }
+    : ID
+        { $$ = $ID; }
     | STRING_LIT
+        // Re-encode the string *anyway* as it will
+        // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
+        // to be able to handle all tokens, including *significant space*
+        // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
+        //
+        // We also want to detect whether it was a *literal string* ID or a direct ID that 
+        // serves as a symbol anywhere else. That way, we can potentially cope with 'nasty' 
+        // lexer/parser constructs such as 
+        //
+        //      %token 'N'
+        //      %token N
+        //
+        //      rule: N 'N' N;
+        //
         { $$ = $STRING_LIT; }
     ;
 
-id
-    : ID
-        { $$ = $ID; }
+id_list
+    : id_list ID
+        { $$ = $id_list; $$.push($ID); }
+    | ID
+        { $$ = [$ID]; }
     ;
 
 action
@@ -1382,6 +1383,7 @@ var dquote = helpers.dquote;
 var checkActionBlock = helpers.checkActionBlock;
 var mkIdentifier = helpers.mkIdentifier;
 var isLegalIdentifierInput = helpers.isLegalIdentifierInput;
+var trimActionCode = helpers.trimActionCode;
 
 
 // transform ebnf to bnf if necessary
@@ -1397,28 +1399,6 @@ function extend(json, grammar) {
         json.actionInclude = grammar.actionInclude;
     }
     return json;
-}
-
-function trimActionCode(src) {
-    var s = src.trim();
-    // remove outermost set of braces UNLESS there's
-    // a curly brace in there anywhere: in that case
-    // we should leave it up to the sophisticated
-    // code analyzer to simplify the code!
-    //
-    // This is a very rough check as it will also look
-    // inside code comments, which should not have
-    // any influence.
-    //
-    // Nevertheless: this is a *safe* transform as
-    // long as the code doesn't end with a C++-style
-    // comment which happens to contain that closing
-    // curly brace at the end!
-    //
-    // TODO: make this is real code edit without that
-    // last edge case as a fault condition.
-    s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
-    return s;    
 }
 
 
