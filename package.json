@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/json5": "1.0.1-29",
+    "@gerhobbelt/json5": "1.0.1-31",
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/recast": "0.14.7-28",
     "@gerhobbelt/xregexp": "4.1.1-29"
@@ -58,9 +58,10 @@
     "globby": "8.0.1",
     "istanbul": "0.4.5",
     "jison-gho": "0.6.1-215",
+    "mkdirp": "0.5.1",
     "mocha": "5.2.0",
     "nyc": "11.8.0",
-    "rollup": "0.59.2",
+    "rollup": "0.59.3",
     "rollup-plugin-node-resolve": "3.3.0",
     "uglify-js": "3.3.27"
   },

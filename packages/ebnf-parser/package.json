@@ -40,8 +40,9 @@
     "chai": "4.1.2",
     "globby": "8.0.1",
     "jison-gho": "0.6.1-215",
+    "mkdirp": "0.5.1",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
-    "rollup": "0.59.2"
+    "rollup": "0.59.3"
   }
 }

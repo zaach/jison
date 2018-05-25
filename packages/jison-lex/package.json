@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/json5": "1.0.1-29",
+    "@gerhobbelt/json5": "1.0.1-31",
     "@gerhobbelt/lex-parser": "0.6.5-218",
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/recast": "0.14.7-28",
@@ -47,9 +47,10 @@
     "babel-preset-modern-browsers": "11.0.1",
     "chai": "4.1.2",
     "globby": "8.0.1",
+    "mkdirp": "0.5.1",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
-    "rollup": "0.59.2"
+    "rollup": "0.59.3"
   },
   "scripts": {
     "test": "make test",

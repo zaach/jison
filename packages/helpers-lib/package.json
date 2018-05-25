@@ -39,6 +39,6 @@
     "chai": "4.1.2",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
-    "rollup": "0.59.2"
+    "rollup": "0.59.3"
   }
 }
