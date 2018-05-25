@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: PI/(5+E^E)
+// ...
+//  
+
 
 // %options backtrack_lexer
 
@@ -146,7 +151,7 @@ parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
 
 
 
-%include "benchmark.js"
+%include "includes/benchmark.js"
 
 
 

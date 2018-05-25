@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: function f(a) { return a + 6; } int x = 7 - 3.1415E-1;
+// ...
+//  
+
 
 /*
  * ANSI C grammar, Lex specification

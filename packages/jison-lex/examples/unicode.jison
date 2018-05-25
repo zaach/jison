@@ -1,3 +1,7 @@
+// title: Simple lexer example - a lexer spec without any errors
+// ...
+//  
+
 /*
  * Which advanced JISON features are showcased in this grammar?
  * ============================================================

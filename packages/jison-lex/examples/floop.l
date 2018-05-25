@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: DEFINE A = B × C
+// ...
+//  
+
 ID          [A-Z-]+"?"?
 NUM         ([1-9][0-9]+|[0-9])
 

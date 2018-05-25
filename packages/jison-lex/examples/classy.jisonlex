@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: class t extends bubbaloo
+// ...
+//  
+
 digit                       [0-9]
 id                          [a-zA-Z][a-zA-Z0-9]*
 
@@ -33,7 +38,7 @@ id                          [a-zA-Z][a-zA-Z0-9]*
 ")"                         return 'RPAREN';
 ";"                         return 'SEMICOLON';
 \s+                         /* skip whitespace */
-"."                         throw 'Illegal character';
+.                           throw 'Illegal character';
 <<EOF>>                     return 'ENDOFFILE';
 
 

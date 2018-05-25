@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: DEFINE A = B × C
+// ...
+//  
+
 
 %code imports %{
   import JSON5 from '@gerhobbelt/json5';
