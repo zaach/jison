@@ -177,48 +177,85 @@ function prepExportStructures(options) {
 // Otherwise return the *parsed* lexer spec as it has
 // been processed through LexParser.
 function autodetectAndConvertToJSONformat(lexerSpec, options) {
-  var chk_l = null;
-  var ex1, err;
-
-  if (typeof lexerSpec === 'string') {
-    if (options.json) {
-      try {
-          chk_l = json5.parse(lexerSpec);
-
-          // When JSON5-based parsing of the lexer spec succeeds, this implies the lexer spec is specified in `JSON mode`
-          // *OR* there's a JSON/JSON5 format error in the input:
-      } catch (e) {
-          ex1 = e;
-      }
+    var chk_l = null;
+    var ex1, err;
+  
+    if (typeof lexerSpec === 'string') {
+        if (options.json) {
+            try {
+                chk_l = json5.parse(lexerSpec);
+        
+                // When JSON5-based parsing of the lexer spec succeeds, this implies the lexer spec is specified in `JSON mode`
+                // *OR* there's a JSON/JSON5 format error in the input:
+            } catch (e) {
+                ex1 = e;
+            }
+        }
+        if (!chk_l) {
+            // // WARNING: the lexer may receive options specified in the **grammar spec file**,
+            // //          hence we should mix the options to ensure the lexParser always
+            // //          receives the full set!
+            // //
+            // // make sure all options are 'standardized' before we go and mix them together:
+            // options = mkStdOptions(grammar.options, options);
+            try {
+                chk_l = lexParser.parse(lexerSpec, options);
+            } catch (e) {
+                if (options.json) {
+                    // When both JSON5 and JISON input modes barf a hairball, assume the most important
+                    // error is the JISON one (show that one first!), while it MAY be a JSON5 format
+                    // error that triggered it (show that one last!).
+                    // 
+                    // Also check for common JISON errors which are obviously never triggered by any
+                    // odd JSON5 input format error: when we encounter such an error here, we don't
+                    // confuse matters and forget about the JSON5 fail as it's irrelevant:
+                    const commonErrors = [
+                        /does not compile/,
+                        /you did not correctly separate trailing code/,
+                        /You did not specify/,
+                        /You cannot specify/,
+                        /must be qualified/,
+                        /%start/,
+                        /%token/,
+                        /%import/,
+                        /%include/,
+                        /%options/,
+                        /%parse-params/,
+                        /%parser-type/,
+                        /%epsilon/,
+                        /definition list error/,
+                        /token list error/,
+                        /declaration error/,
+                        /should be followed/,
+                        /should be separated/,
+                        /an error in one or more of your lexer regex rules/,
+                        /an error in your lexer epilogue/,
+                        /unsupported definition type/,
+                    ];
+                    var cmnerr = commonErrors.filter(function check(re) {
+                        return e.message.match(re);
+                    });
+                    if (cmnerr.length > 0) {
+                        err = e;
+                    } else {
+                        err = new Error('Could not parse jison lexer spec in JSON AUTODETECT mode:\nin JISON Mode we get Error: ' + e.message + '\n\nwhile JSON5 Mode produces Error: ' + ex1.message);
+                        err.secondary_exception = e;
+                        err.stack = ex1.stack;
+                    }
+                } else {
+                    err = new Error('Could not parse lexer spec\nError: ' + e.message);
+                    err.stack = e.stack;
+                }
+                throw err;
+            }
+        }
+    } else {
+        chk_l = lexerSpec;
     }
-    if (!chk_l) {
-      // // WARNING: the lexer may receive options specified in the **grammar spec file**,
-      // //          hence we should mix the options to ensure the lexParser always
-      // //          receives the full set!
-      // //
-      // // make sure all options are 'standardized' before we go and mix them together:
-      // options = mkStdOptions(grammar.options, options);
-      try {
-          chk_l = lexParser.parse(lexerSpec, options);
-      } catch (e) {
-          if (options.json) {
-              err = new Error('Could not parse lexer spec in JSON AUTODETECT mode\nJSON5 Error: ' + ex1.message + '\n\nOtherwise there\'s the JISON Error:' + e.message);
-              err.secondary_exception = e;
-              err.stack = ex1.stack;
-          } else {
-              err = new Error('Could not parse lexer spec\nError: ' + e.message);
-              err.stack = e.stack;
-          }
-          throw err;
-      }
-    }
-  } else {
-    chk_l = lexerSpec;
-  }
-
-  // Save time! Don't reparse the entire lexer spec *again* inside the code generators when that's not necessary:
-
-  return chk_l;
+  
+    // Save time! Don't reparse the entire lexer spec *again* inside the code generators when that's not necessary:
+  
+    return chk_l;
 }
 
 
