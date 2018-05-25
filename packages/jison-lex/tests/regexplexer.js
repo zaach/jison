@@ -2976,9 +2976,10 @@ describe("Test Lexer Grammars", function () {
       });
 
       var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
+      var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
       var lexerRefFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-lexer.js');
       var lexerOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-lexer.js');
-      mkdirp(path.dirname(refOutFilePath));
+      mkdirp(path.dirname(lexerRefFilePath));
       mkdirp(path.dirname(lexerOutFilePath));
 
       var refOut;
@@ -2992,6 +2993,7 @@ describe("Test Lexer Grammars", function () {
       return {
         path: filepath,
         outputRefPath: refOutFilePath,
+        outputOutPath: testOutFilePath,
         lexerRefPath: lexerRefFilePath,
         lexerOutPath: lexerOutFilePath,
         spec: spec,
@@ -3095,16 +3097,23 @@ describe("Test Lexer Grammars", function () {
       // strip away devbox-specific paths in error stack traces in the output:
       refOut = refOut.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
       refOut = refOut.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+      // and convert it back so we have a `tokens` set that's cleaned up 
+      // and potentially matching the stored reference set:
+      tokens = JSON5.parse(refOut);
       if (filespec.ref) {
-        // make sure we postprocess the lexer spec as we did when we created the reference template:
-        tokens = JSON5.parse(refOut);
-        assert.deepEqual(tokens, filespec.ref);
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(tokens, filespec.ref);
       } else {
         fs.writeFileSync(filespec.outputRefPath, refOut, 'utf8');
+        filespec.ref = refOut;
       }
+      fs.writeFileSync(filespec.outputOutPath, refOut, 'utf8');
 
+      var refSrc, dumpStr;
       if (lexerSourceCode) {
-        var dumpStr = `
+        dumpStr = `
             ${lexerSourceCode.sourceCode.replace(/\r\n|\r/g, '\n')};
 
             //=============================================================================
@@ -3116,15 +3125,31 @@ describe("Test Lexer Grammars", function () {
 
         fs.writeFileSync(filespec.lexerOutPath, dumpStr, 'utf8');
         if (fs.existsSync(filespec.lexerRefPath)) {
-          var refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
+          refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
 
           //assert.equal(refSrc, lexerSourceCode);
           // ^--- when this one fails, it takes ages to print a diff from those huge files,
-          //      hence we write this another way:
-          assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
+          //      hence we write this another way.
+          //      
+          // Perform the validations only AFTER we've written the files to output:
+          // several tests produce very large outputs, which we shouldn't let assert() process
+          // for diff reporting as that takes bloody ages:
+          //assert.deepEqual(tokens, filespec.ref);
+          //assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
         } else {
           fs.writeFileSync(filespec.lexerRefPath, dumpStr, 'utf8');
+          refSrc = dumpStr;
         }
+
+        // now that we have saved all data, perform the validation checks:
+        // keep them simple so assert doesn't need a lot of time to produce diff reports
+        // when the test fails:
+        // 
+        // stringify the token sets! (no assert.deepEqual!)
+        var ist = JSON5.stringify(tokens, null, 2);
+        var soll = JSON5.stringify(filespec.ref, null, 2);
+        assert.ok(ist === soll, "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
+        assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
       } else if (fs.existsSync(filespec.lexerRefPath)) {
         throw new Error('reference lexer sourcecode exists, while this test did not produce a working lexer');
       }
