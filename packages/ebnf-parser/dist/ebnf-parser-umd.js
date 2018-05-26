@@ -5700,7 +5700,7 @@
         
         
         this.$ = {
-            id: $id,
+            id: yyvstack[yysp - 2],
             value: yyvstack[yysp - 1],
             description: yyvstack[yysp]
         };
@@ -5715,7 +5715,7 @@
         
         
         this.$ = {
-            id: $id,
+            id: yyvstack[yysp - 1],
             description: yyvstack[yysp]
         };
         break;
@@ -5729,7 +5729,7 @@
         
         
         this.$ = {
-            id: $id,
+            id: yyvstack[yysp - 1],
             value: yyvstack[yysp]
         };
         break;

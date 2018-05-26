@@ -2866,7 +2866,7 @@ describe("prettyPrintRange() API", function () {
         });
       },
       Error,
-      /Error: Lexical error on line 3:[^]*?missing 1 closing curly braces in lexer rule action block.[^]*?help jison grok more or less complex action code chunks.\n\n  Erroneous area:\n1: %%\n2: "a" %{ return true; %}\n3: "b" %{ return 1;\s*\n\^\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\^/
+      /Incorrectly terminated action code block\. We\'re expecting the\n\'%}\' end marker to go with the given start marker/
     );
   });
 
@@ -2885,7 +2885,7 @@ describe("prettyPrintRange() API", function () {
         });
       },
       Error,
-      /The extra lexer module code section \(a\.k\.a\. 'epilogue'\) does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %%\n\^\.\.\.\.\^\n5: \*\*This is gibberish!\*\*\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+      /The \'%%\' lexer epilogue code does not compile: Line 4: Unexpected token \*\*/
     );
   });
 
@@ -2903,7 +2903,7 @@ describe("prettyPrintRange() API", function () {
         });
       },
       Error,
-      /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "CODE"/
+      /`%code` statements must be placed in\nthe top section of the lexer spec file, above the first \'%%\'\nseparator\. You cannot specify any in the second section as has been\ndone here./
     );
   });
 });
@@ -3013,6 +3013,12 @@ describe("Test Lexer Grammars", function () {
 
   var original_cwd = process.cwd();
 
+  function stripErrorStackPaths(msg) {
+    // strip away devbox-specific paths in error stack traces in the output:
+    msg = msg.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
+    msg = msg.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+    return msg;
+  }
   function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
     // and produce an alternative structure to JSON-ify:
     return {
@@ -3036,7 +3042,8 @@ describe("Test Lexer Grammars", function () {
     it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/') + (title ? ' :: ' + title : ''), function testEachLexerExample() {
       var tokens = [];
       var i = 0;
-      var lexer, lexerSourceCode;
+      var lexer;
+      var lexerSourceCode, err;
 
       try {
         // Change CWD to the directory where the source grammar resides: this helps us properly
@@ -3045,7 +3052,7 @@ describe("Test Lexer Grammars", function () {
 
         lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
           json: true,           // input MAY be JSON/JSON5 format OR JISON LEX format!
-          showSource: function (lexer, source, options) {
+          showSource: function (lexer, source, options, RegExpLexerClass) {
             lexerSourceCode = {
               sourceCode: source,
               options: options,
@@ -3070,9 +3077,13 @@ describe("Test Lexer Grammars", function () {
       } catch (ex) {
         // save the error:
         tokens.push(-1);
+        err = ex;
         tokens.push(ex.message);
+        tokens.push(ex.name);
         tokens.push(ex.stack);
         tokens.push(ex);
+        // and make sure lexer !== undefined:
+        lexer = { fail: 1 };
       } finally {
         process.chdir(original_cwd);
       }
@@ -3095,8 +3106,7 @@ describe("Test Lexer Grammars", function () {
         circularRefHandler: testrig_JSON5circularRefHandler
       });
       // strip away devbox-specific paths in error stack traces in the output:
-      refOut = refOut.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
-      refOut = refOut.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+      refOut = stripErrorStackPaths(refOut);
       // and convert it back so we have a `tokens` set that's cleaned up 
       // and potentially matching the stored reference set:
       tokens = JSON5.parse(refOut);
@@ -3122,37 +3132,43 @@ describe("Test Lexer Grammars", function () {
             ${JSON5.stringify(lexerSourceCode.options, {space: 2})}
 
         `;
-
-        fs.writeFileSync(filespec.lexerOutPath, dumpStr, 'utf8');
-        if (fs.existsSync(filespec.lexerRefPath)) {
-          refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
-
-          //assert.equal(refSrc, lexerSourceCode);
-          // ^--- when this one fails, it takes ages to print a diff from those huge files,
-          //      hence we write this another way.
-          //      
-          // Perform the validations only AFTER we've written the files to output:
-          // several tests produce very large outputs, which we shouldn't let assert() process
-          // for diff reporting as that takes bloody ages:
-          //assert.deepEqual(tokens, filespec.ref);
-          //assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
-        } else {
-          fs.writeFileSync(filespec.lexerRefPath, dumpStr, 'utf8');
-          refSrc = dumpStr;
-        }
-
-        // now that we have saved all data, perform the validation checks:
-        // keep them simple so assert doesn't need a lot of time to produce diff reports
-        // when the test fails:
-        // 
-        // stringify the token sets! (no assert.deepEqual!)
-        var ist = JSON5.stringify(tokens, null, 2);
-        var soll = JSON5.stringify(filespec.ref, null, 2);
-        assert.ok(ist === soll, "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
-        assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
-      } else if (fs.existsSync(filespec.lexerRefPath)) {
-        throw new Error('reference lexer sourcecode exists, while this test did not produce a working lexer');
+      } else {
+        dumpStr = JSON5.stringify({
+          error: {
+            message: err.message,
+            type: err.name,
+            stack: err.stack
+          }
+        }, {space: 2});
+        dumpStr = stripErrorStackPaths(dumpStr);
       }
+
+      fs.writeFileSync(filespec.lexerOutPath, dumpStr, 'utf8');
+      if (fs.existsSync(filespec.lexerRefPath)) {
+        refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        //assert.equal(refSrc, lexerSourceCode);
+        // ^--- when this one fails, it takes ages to print a diff from those huge files,
+        //      hence we write this another way.
+        //      
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert,strictEqual() process
+        // for diff reporting as that takes bloody ages:
+        //assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
+      } else {
+        fs.writeFileSync(filespec.lexerRefPath, dumpStr, 'utf8');
+        refSrc = dumpStr;
+      }
+
+      // now that we have saved all data, perform the validation checks:
+      // keep them simple so assert doesn't need a lot of time to produce diff reports
+      // when the test fails:
+      // 
+      // stringify the token sets! (no assert.deepEqual!)
+      var ist = JSON5.stringify(tokens, null, 2);
+      var soll = JSON5.stringify(filespec.ref, null, 2);
+      assert.ok(ist === soll, "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
+      assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
     });
   });
 });

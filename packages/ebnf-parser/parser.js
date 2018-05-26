@@ -456,7 +456,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 
         // helper: reconstruct the defaultActions[] table
         function bda(s) {
-            var rv = {};
+            var rv = [];
             var d = s.idx;
             var g = s.goto;
             for (var i = 0, l = d.length; i < l; i++) {
@@ -1762,7 +1762,7 @@ case 47:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 2],
         value: yyvstack[yysp - 1],
         description: yyvstack[yysp]
     };
@@ -1777,7 +1777,7 @@ case 48:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 1],
         description: yyvstack[yysp]
     };
     break;
@@ -1791,7 +1791,7 @@ case 49:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 1],
         value: yyvstack[yysp]
     };
     break;

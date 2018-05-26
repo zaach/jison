@@ -300,6 +300,179 @@ return 2 / 3;
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
   });
 
+  it("test multiline action with unmatching end marker", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n}}\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /Lexical error on line 2:\s+Incorrectly terminated.*?expecting the\s+\'%}\' end marker/);
+  });
+
+  // this tests the case where the desired end marker `%{` is **made to look like** another end marker: `%}}`.
+  // The tailing `}` is illegal in the grammar, hence would caught when occurring alone as well.
+  // 
+  // We check both in here.
+  it("test multiline action with end marker plus illegal tail 1", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}}\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /Lexical error on line 2:\s+Incorrectly terminated.*?expecting the\s+\'%}\' end marker/);
+  });
+
+  // test three nasty situations where we have trailing curly brace beyond the end-of-scope for the action block:
+
+  it("test multiline action with end marker plus illegal tail 2", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%} }\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /too many closing curly braces/);
+  });
+
+  it("test multiline action with end marker plus illegal tail 3", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n }\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /too many closing curly braces/);
+  });
+
+  it("test multiline action with end marker plus illegal tail 4", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n}\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /probably an error in one or more of your lexer regex rules/);
+  });
+
+  it("test multiline action with alternative markers 1", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{\nreturn "%{..%}";\n%}}\n';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test multiline action with alternative markers 2", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" {{\nreturn "%{..%}";\n}}\n';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test multiline action with alternative markers 3", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{\nreturn "%{..%}";\n%}}\n';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test multiline action with alternative markers 4", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{{{{\nreturn "%{..%}";\n%}}}}}\n';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test multiline action with alternative markers 5", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{{{{\nreturn "%{..%}";\n}}}}}%\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /Incorrectly terminated action code block/);
+  });
+
+  it("test multiline action with alternative markers 6", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" {{{{{\nreturn "{{{{..}}}}";\n}}}}}\n';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "{{{{..}}}}"']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test stability across lexer invocations as we patch lexer rules under the hood", function () {
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{\nreturn "%{..%}";\n%}}\na %{ return "A"; %}';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"'],
+            ["a", 'return "A"'],
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+    var lexgrammar = '%%\n"["[^\\]]"]" {{\nreturn "%{..%}";\n}}\na %{ return "A"; %}';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"'],
+            ["a", 'return "A"'],
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{\nreturn "%{..%}";\n%}}\na %{ return "A"; %}';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"'],
+            ["a", 'return "A"'],
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{{{{\nreturn "%{..%}";\n%}}}}}\na %{ return "A"; %}';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "%{..%}"'],
+            ["a", 'return "A"'],
+        ],
+    });
+
+    var lexgrammar = '%%\n"["[^\\]]"]" %{{{{{\nreturn "%{..%}";\n}}}}}%\na %{ return "A"; %}';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /Incorrectly terminated action code block/);
+
+    var lexgrammar = '%%\n"["[^\\]]"]" {{{{{\nreturn "{{{{..}}}}";\n}}}}}\na %{ return "A"; %}';
+    var expected = mixExpected({
+        rules: [
+            ["\\[[^\\]]\\]", 'return "{{{{..}}}}"'],
+            ["a", 'return "A"'],
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+  });
+
+  it("test correct diagnosis for indented rule regex + action 1", function () {
+    var lexgrammar = '%%\n  "a" %{ return 1; %}\n';
+
+    assert.throws(function () {
+        return lex.parse(lexgrammar);
+    }, Error, /probably an error in one or more of your lexer regex rules/);
+  });
+
   it("test include", function () {
     var lexgrammar = '\nRULE [0-9]\n\n%{\n hi; {stuff;} \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
     var expected = mixExpected({
@@ -397,6 +570,34 @@ return 2 / 3;
 
     assert.deepEqual(lex.parse(lexgrammar), expected, "%import declarations should be parsed correctly");
   });
+
+  it("test %code section declarations", function () {
+    var lexgrammar = `
+%code section %{ x; %}
+%code imports %{
+  import JSON5 from '@gerhobbelt/json5';
+
+  import helpers from '../helpers-lib';
+%}
+%%
+. //
+    `;
+    var expected = mixExpected({
+        codeSections: [
+            { qualifier: 'section', include: 'x' },
+            { qualifier: 'imports', include: "import JSON5 from '@gerhobbelt/json5';\n\n  import helpers from '../helpers-lib'" },
+        ],
+        rules: [
+            ['.', '//']
+        ],
+    });
+
+    assert.deepEqual(lex.parse(lexgrammar), expected, "%import declarations should be parsed correctly");
+  });
+
+
+
+
 
   it("test no brace action", function () {
     var lexgrammar = '%%\n"["[^\\]]"]" return true;\n"x" return 1;';

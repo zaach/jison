@@ -15,7 +15,7 @@
 %}
 
 					%{
-						block0C();   // init chunk 3
+						block0C();   // indented, hence SHOULD barf a hairball as there's no rule to relate it to! Or it should become init chunk 3...
 					%}
 					%include "includes/dummy002.include"
 
@@ -31,3 +31,13 @@
 						block2();   // also belong to the rule above; we don't care about empty lines in between chunks...
 					%}
 
+
+
+
+
+
+
+
+%%
+
+%include "includes/dummydecl.include"

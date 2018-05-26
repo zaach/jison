@@ -127,7 +127,7 @@ BTW:
 
 ```
 rule: a b c d e f 
-    { @$ = yylexer.mergeLocationInfo(##a, ##f); $$ = $a + $b + $c + $d + $e + $f; }
+    { @$ = yyparser.mergeLocationInfo(##a, ##f); $$ = $a + $b + $c + $d + $e + $f; }
 ```
 
 `##` is a jison-specific **advanced use** prefix: it transforms the production term reference name/number into the **index** number for the parse stack(s) `yyvstack` (value stack, i.e. the array carrying all the `$a/$b/$c/...` values), `yylstack` (location infos `@a,@b,@c,...`), `yysstack` (parse state stack, in case you want to use these internals), etc.

@@ -5694,7 +5694,7 @@ case 47:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 2],
         value: yyvstack[yysp - 1],
         description: yyvstack[yysp]
     };
@@ -5709,7 +5709,7 @@ case 48:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 1],
         description: yyvstack[yysp]
     };
     break;
@@ -5723,7 +5723,7 @@ case 49:
     
     
     this.$ = {
-        id: $id,
+        id: yyvstack[yysp - 1],
         value: yyvstack[yysp]
     };
     break;

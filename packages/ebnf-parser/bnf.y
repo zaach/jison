@@ -491,7 +491,7 @@ one_full_token
     : ID token_value token_description
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 value: $token_value,
                 description: $token_description
             };
@@ -499,14 +499,14 @@ one_full_token
     | ID token_description
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 description: $token_description
             };
         }
     | ID token_value
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 value: $token_value
             };
         }

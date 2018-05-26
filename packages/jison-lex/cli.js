@@ -21,24 +21,24 @@ function getCommandlineOptions() {
             file: {
                 flag: true,
                 position: 0,
-                help: 'file containing a lexical grammar'
+                help: 'file containing a lexical grammar.'
             },
             json: {
                 abbr: 'j',
                 flag: true,
                 default: false,
-                help: 'jison will expect a grammar in either JSON/JSON5 or JISON format: the precise format is autodetected'
+                help: 'jison will expect a grammar in either JSON/JSON5 or JISON format: the precise format is autodetected.'
             },
             outfile: {
                 abbr: 'o',
                 metavar: 'FILE',
-                help : 'Filepath and base module name of the generated parser;\nwhen terminated with a / (dir separator) it is treated as the destination directory where the generated output will be stored'
+                help: 'Filepath and base module name of the generated parser. When terminated with a "/" (dir separator) it is treated as the destination directory where the generated output will be stored.'
             },
             debug: {
-                abbr: 'd',
+                abbr: 't',
                 flag: true,
                 default: false,
-                help: 'Debug mode'
+                help: 'Debug mode.'
             },
             dumpSourceCodeOnFailure: {
                 full: 'dump-sourcecode-on-failure',
@@ -57,11 +57,11 @@ function getCommandlineOptions() {
                 abbr: 'I',
                 flag: true,
                 default: false,
-                help: 'Report some statistics about the generated parser'
+                help: 'Report some statistics about the generated parser.'
             },
             moduleType: {
                 full: 'module-type',
-                abbr: 't',
+                abbr: 'm',
                 default: 'commonjs',
                 metavar: 'TYPE',
                 choices: ['commonjs', 'amd', 'js', 'es'],
@@ -69,40 +69,43 @@ function getCommandlineOptions() {
             },
             moduleName: {
                 full: 'module-name',
-            	abbr: 'n',
-            	metavar: 'NAME',
-            	help: 'The name of the generated parser object, namespace supported'
+                abbr: 'n',
+                metavar: 'NAME',
+                help: 'The name of the generated parser object, namespace supported.'
             },
             main: {
                 full: 'main',
             	abbr: 'x',
                 flag: true,
                 default: false,
-                help: 'Include .main() entry point in generated commonjs module'
+                help: 'Include .main() entry point in generated commonjs module.'
             },
             moduleMain: {
                 full: 'module-main',
-            	abbr: 'y',
-            	metavar: 'NAME',
-            	help: 'The main module function definition'
+                abbr: 'y',
+                metavar: 'NAME',
+                help: 'The main module function definition.'
             },
             version: {
                 abbr: 'V',
                 flag: true,
-                help: 'print version and exit',
+                help: 'Print version and exit.',
                 callback: function () {
-                    return version;
+                    console.log(version);
+                    process.exit(0);
                 }
             }
         }).parse();
 
+    if (opts.debug) {
+        console.log("JISON-LEX CLI options:\n", opts);
+    }
+
     return opts;
 }
 
-var cli = module.exports;
 
-cli.main = function cliMain(opts) {
-    'use strict';
+function cliMain(opts) {
 
     opts = RegExpLexer.mkStdOptions(opts);
 
@@ -153,9 +156,15 @@ cli.main = function cliMain(opts) {
         // When only the directory part of the output path was specified, then we
         // do NOT have the target module name in there as well!
         var outpath = opts.outfile;
-        if (/[\\\/]$/.test(outpath) || isDirectory(outpath)) {
-            opts.outfile = null;
-            outpath = outpath.replace(/[\\\/]$/, '');
+        if (typeof outpath === 'string') {
+            if (/[\\\/]$/.test(outpath) || isDirectory(outpath)) {
+                opts.outfile = null;
+                outpath = outpath.replace(/[\\\/]$/, '');
+            } else {
+                outpath = path.dirname(outpath);
+            }
+        } else {
+            outpath = null;
         }
         if (outpath && outpath.length > 0) {
             outpath += '/';
@@ -186,6 +195,7 @@ cli.main = function cliMain(opts) {
         // and change back to the CWD we started out with:
         process.chdir(original_cwd);
 
+        opts.outfile = path.normalize(opts.outfile);
         mkdirp(path.dirname(opts.outfile));
         fs.writeFileSync(opts.outfile, lexer);
         console.log('JISON-LEX output for module [' + opts.moduleName + '] has been written to file:', opts.outfile);
@@ -216,16 +226,25 @@ cli.main = function cliMain(opts) {
     } else {
         processStdin();
     }
-};
+}
 
-cli.generateLexerString = function generateLexerString(lexerSpec, opts) {
+
+function generateLexerString(lexerSpec, opts) {
     'use strict';
 
     // var settings = RegExpLexer.mkStdOptions(opts);
     var predefined_tokens = null;
 
     return RegExpLexer.generate(lexerSpec, predefined_tokens, opts);
+}
+
+var cli = {
+    main: cliMain,
+    generateLexerString: generateLexerString
 };
+
+
+export default cli;
 
 
 if (require.main === module) {

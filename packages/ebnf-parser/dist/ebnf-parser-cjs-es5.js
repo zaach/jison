@@ -4942,7 +4942,7 @@ var parser$2 = {
 
 
                 this.$ = {
-                    id: $id,
+                    id: yyvstack[yysp - 2],
                     value: yyvstack[yysp - 1],
                     description: yyvstack[yysp]
                 };
@@ -4957,7 +4957,7 @@ var parser$2 = {
 
 
                 this.$ = {
-                    id: $id,
+                    id: yyvstack[yysp - 1],
                     description: yyvstack[yysp]
                 };
                 break;
@@ -4971,7 +4971,7 @@ var parser$2 = {
 
 
                 this.$ = {
-                    id: $id,
+                    id: yyvstack[yysp - 1],
                     value: yyvstack[yysp]
                 };
                 break;

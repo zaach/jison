@@ -8852,7 +8852,7 @@ function RegExpLexer(dict, input, tokens, build_options) {
 
             if (opts.options.showSource) {
                 if (typeof opts.options.showSource === 'function') {
-                    opts.options.showSource(lexer, source, opts);
+                    opts.options.showSource(lexer, source, opts, RegExpLexer);
                 } else {
                     console.log("\nGenerated lexer sourcecode:\n----------------------------------------\n", source, "\n----------------------------------------\n");
                 }
