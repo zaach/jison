@@ -262,6 +262,9 @@
           this.__decompressed = true;
         }
 
+        if (input && typeof input !== 'string') {
+            input = '' + input;
+        }
         this._input = input || '';
         this.clear();
         this._signaled_error_token = false;
@@ -533,11 +536,11 @@
     pastInput: function lexer_pastInput(maxSize, maxLines) {
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
-            maxSize = past.length;
+            maxSize = Infinity;
         else if (!maxSize)
             maxSize = 20;
         if (maxLines < 0)
-            maxLines = past.length;         // can't ever have more input lines than this!
+            maxLines = Infinity;         // can't ever have more input lines than this!
         else if (!maxLines)
             maxLines = 1;
         // `substr` anticipation: treat \r\n as a single character and take a little
