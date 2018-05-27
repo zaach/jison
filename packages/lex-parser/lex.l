@@ -136,7 +136,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 
 // make sure to terminate before the next rule alternative,
 // which is announced by `|`:
-"|"                                     if (yy.include_command_allowed /* && yy.depth === 0 */) {
+"|"                                     if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
                                             return 'ACTION_END';
@@ -180,7 +180,12 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 \"{DOUBLEQUOTED_STRING_CONTENT}\"|\'{QUOTED_STRING_CONTENT}\'|\`{ES2017_STRING_CONTENT}\`
                                         yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
-[^/"'`|%\{\}{BR}{WS}]+                  yy.include_command_allowed = false;
+// Gobble an entire line of code unless there's chance there's 
+// a regex, string, comment, {...} block start or end brace or sentinel
+// in it: then only gobble everything up to that particular 
+// character and let the lexer handle that one, and what follows,
+// in the round. Meanwhile we have us some action code pass on.
+[^/"'`%\{\}\/{BR}]+                     yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
 "%"                                     yy.include_command_allowed = false;
                                         return 'ACTION_BODY';
@@ -266,8 +271,11 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                         // if it is, we treat it as a different token to signal the grammar we've
                                         // got an action which stands on its own, i.e. is not a rule action, %code
                                         // section, etc...
-                                        var precedingStr = this.pastInput(1,2).replace(/[\r\n]/g, '\n');
-                                        var atSOL = (precedingStr.length === 0 /* @ Start Of File */ || precedingStr[precedingStr.length - 1] === '\n');
+                                        //var precedingStr = this.pastInput(1,2).replace(/[\r\n]/g, '\n');
+                                        //var precedingStr = this.matched.substr(-this.match.length - 1, 1);
+                                        var precedingStr = this.matched[this.matched.length - this.match.length - 1];
+
+                                        var atSOL = (precedingStr.length === 0 /* @ Start Of File */ || precedingStr === '\n');
 
                                         // Make sure we've the proper lexer rule regex active for any possible `%{...%}`, `{{...}}` or what have we here?
                                         var endMarker = this.setupDelimitedActionChunkLexerRegex(marker);

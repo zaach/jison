@@ -4,10 +4,10 @@
   'is_constant is not defined',
   'ReferenceError',
   `ReferenceError: is_constant is not defined
-    at Object.lexer__performAction [as performAction] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1399:2)
-    at Object.lexer_test_match [as test_match] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1061:36)
-    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1141:34)
-    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1221:22)
+    at Object.lexer__performAction [as performAction] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1402:2)
+    at Object.lexer_test_match [as test_match] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1064:36)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1144:34)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1224:22)
     at Context.testEachLexerExample (\regexplexer.js:3064:27)
     at callFn (\runnable.js:372:21)
     at Test.Runnable.run (\runnable.js:364:7)

@@ -8520,7 +8520,7 @@
           case 6:
             /*! Conditions:: action */
             /*! Rule::       \| */
-            if (yy.include_command_allowed /* && yy.depth === 0 */) {
+            if (yy.depth === 0) {
               this.popState();
               this.unput(yy_.yytext);
               return 24;
@@ -8580,7 +8580,7 @@
 
           case 11:
             /*! Conditions:: action */
-            /*! Rule::       [^/"'`|%\{\}{BR}{WS}]+ */
+            /*! Rule::       [^/"'`%\{\}\/{BR}]+ */
             yy.include_command_allowed = false;
 
             return 36;
@@ -8694,9 +8694,11 @@
               // if it is, we treat it as a different token to signal the grammar we've
               // got an action which stands on its own, i.e. is not a rule action, %code
               // section, etc...
-              var precedingStr = this.pastInput(1, 2).replace(/[\r\n]/g, '\n');
+              //var precedingStr = this.pastInput(1,2).replace(/[\r\n]/g, '\n');
+              //var precedingStr = this.matched.substr(-this.match.length - 1, 1);
+              var precedingStr = this.matched[this.matched.length - this.match.length - 1];
 
-              var atSOL = precedingStr.length === 0 /* @ Start Of File */ || precedingStr[precedingStr.length - 1] === '\n';
+              var atSOL = precedingStr.length === 0 /* @ Start Of File */ || precedingStr === '\n';
 
               // Make sure we've the proper lexer rule regex active for any possible `%{...%}`, `{{...}}` or what have we here?
               var endMarker = this.setupDelimitedActionChunkLexerRegex(marker);
@@ -9479,7 +9481,7 @@
           /*   8: */  /^(?:\/(?=\s))/,
           /*   9: */  /^(?:\/.*)/,
           /*  10: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)"|'((?:\\'|\\[^']|[^\n\r'\\])*)'|`((?:\\`|\\[^`]|[^\\`])*)`)/,
-          /*  11: */  /^(?:[^\s"%'\/`{-}]+)/,
+          /*  11: */  /^(?:[^\n\r"%'\/`{}]+)/,
           /*  12: */  /^(?:%)/,
           /*  13: */  /^(?:\{)/,
           /*  14: */  /^(?:\})/,

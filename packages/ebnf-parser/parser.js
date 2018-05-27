@@ -456,7 +456,7 @@ JisonParserError.prototype.name = 'JisonParserError';
 
         // helper: reconstruct the defaultActions[] table
         function bda(s) {
-            var rv = [];
+            var rv = {};
             var d = s.idx;
             var g = s.goto;
             for (var i = 0, l = d.length; i < l; i++) {

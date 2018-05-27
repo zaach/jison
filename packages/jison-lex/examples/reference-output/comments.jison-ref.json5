@@ -4,10 +4,10 @@
   'getTypes is not defined',
   'ReferenceError',
   `ReferenceError: getTypes is not defined
-    at Object.lexer__performAction [as performAction] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1411:9)
-    at Object.lexer_test_match [as test_match] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1061:36)
-    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1157:26)
-    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9348:31), <anonymous>:1221:22)
+    at Object.lexer__performAction [as performAction] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1414:9)
+    at Object.lexer_test_match [as test_match] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1064:36)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1160:26)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9350:31), <anonymous>:1224:22)
     at Context.testEachLexerExample (\regexplexer.js:3064:27)
     at callFn (\runnable.js:372:21)
     at Test.Runnable.run (\runnable.js:364:7)

@@ -869,6 +869,107 @@ return 2 / 3;
     assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
   });
 
+  // test a large set of action code patterns which are specifically targetting particular
+  // lexer rules: these serve as regression tests and power checks to ensure our lexer
+  // does indeed handle these as one might (or might not) expect; when it doesn't cope
+  // well, these should cause a failure in the parser, ideally...
+  describe("test with critical action patterns", function () {
+    beforeEach(function beforeEachTest() {
+      lexer_reset();
+    });
+
+    it("regex pipe symbol in JS action code: a | b", function () {
+      var lexgrammar = [
+        '%%\n"a" return a | b;\n  \n"b" return 1;\n   \n',
+        '%%\n"a" return a | b\n  \n"b" return 1;\n   \n',
+      ];
+      var expected = mixExpected({
+          rules: [
+              ["a", "return a | b"],
+              ["b", "return 1"]
+          ],
+      });
+
+      for (var i = 0, len = lexgrammar.length; i < len; i++) {
+        assert.deepEqual(lex.parse(lexgrammar[i]), expected, `grammar [${i}] should be parsed correctly`);
+      }
+
+      //---
+      var lexgrammar = '%%\n"a" return a|b ;\n  \n"b" return 1;\n   \n';
+      var expected = mixExpected({
+          rules: [
+              ["a", "return a|b"],
+              ["b", "return 1"]
+          ],
+      });
+
+      assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+      //---
+      var lexgrammar = '%%\n"a" return a |b;\n  \n"b" return 1;\n   \n';
+      var expected = mixExpected({
+          rules: [
+              ["a", "return a |b"],
+              ["b", "return 1"]
+          ],
+      });
+
+      assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+      //---
+      var lexgrammar = '%%\n"a" return a|b;\n  \n"b" return 1;\n   \n';
+      var expected = mixExpected({
+          rules: [
+              ["a", "return a|b"],
+              ["b", "return 1"]
+          ],
+      });
+
+      assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+      //--- and finally, when we want pipe to be interpreted as OR operator in lexer rule spec:
+      var lexgrammar = '%%\na |\nb return 2;\n  \n"x" return 1;\n   \n';
+      var expected = mixExpected({
+          rules: [
+              ["a|b", "return 2"],
+              ["x", "return 1"]
+          ],
+      });
+
+      assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+      //--- and finally, when we want pipe to be interpreted as OR operator in lexer rule spec:
+      var lexgrammar = '%%\na return 0\n|b return 2;\n  \n"x" return 1;\n   \n';
+      var expected = mixExpected({
+          rules: [
+              ["a", "return 0"],
+              ["|b", "return 2"],
+              ["x", "return 1"]
+          ],
+      });
+
+      assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+    });
+
+    it("%% end of section marker in one-liner specs", function () {
+      var lexgrammar = [
+        '%%\n"a" return a %% return 1;\n   \n',
+        '%%"a" return a %% return 1;\n   \n',
+      ];
+      var expected = mixExpected({
+          rules: [
+              ["a", "return a"],
+          ],
+          moduleInclude: "return 1"
+      });
+
+      for (var i = 0, len = lexgrammar.length; i < len; i++) {
+        assert.deepEqual(lex.parse(lexgrammar[i]), expected, `grammar [${i}] should be parsed correctly`);
+      }
+    });
+
+  });
+
   it("test macro for commit SHA-1: 1246dbb75472cee8e4e91318cc5a0d4739a8fe12", function () {
     var lexgrammar = 'BR  \\r\\n|\\n|\\r\n%%\r\n{BR} %{\r\nreturn true;\r\n%}\r\n';
     var expected = mixExpected({
