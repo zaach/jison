@@ -611,10 +611,10 @@ definition
                     %code qualifier_name {action code}
 
                   Erroneous code:
-                ${yylexer.prettyPrintRange(@error1, @init_code_keyword)}
+                ${yylexer.prettyPrintRange(@error, @init_code_keyword)}
 
                   Technical error report:
-                ${$error1.errStr}
+                ${$error.errStr}
             `);
         }
     | error

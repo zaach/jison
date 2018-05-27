@@ -2984,8 +2984,8 @@ describe("Test Lexer Grammars", function () {
 
       var refOut;
       try {
-        refOut = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
-        refOut = JSON5.parse(refOut);
+        var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        refOut = JSON5.parse(soll);
       } catch (ex) {
         refOut = null;
       }
@@ -3019,6 +3019,7 @@ describe("Test Lexer Grammars", function () {
     msg = msg.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
     return msg;
   }
+
   function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
     // and produce an alternative structure to JSON-ify:
     return {
@@ -3032,6 +3033,14 @@ describe("Test Lexer Grammars", function () {
       key: key,
       keyStack: keyStack,    // stack & keyStack have already been snapshotted by the JSON5 library itself so passing a direct ref is fine here!
     };
+  }
+
+  function reduceWhitespace(src) {
+    // replace tabs with space, clean out multiple spaces and kill trailing spaces:
+    return src
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ $/gm, '');
   }
 
   testset.forEach(function (filespec) {
@@ -3107,7 +3116,7 @@ describe("Test Lexer Grammars", function () {
       });
       // strip away devbox-specific paths in error stack traces in the output:
       refOut = stripErrorStackPaths(refOut);
-      // and convert it back so we have a `tokens` set that's cleaned up 
+      // and convert it back so we have a `tokens` set that's cleaned up
       // and potentially matching the stored reference set:
       tokens = JSON5.parse(refOut);
       if (filespec.ref) {
@@ -3150,7 +3159,7 @@ describe("Test Lexer Grammars", function () {
         //assert.equal(refSrc, lexerSourceCode);
         // ^--- when this one fails, it takes ages to print a diff from those huge files,
         //      hence we write this another way.
-        //      
+        //
         // Perform the validations only AFTER we've written the files to output:
         // several tests produce very large outputs, which we shouldn't let assert,strictEqual() process
         // for diff reporting as that takes bloody ages:
@@ -3163,12 +3172,12 @@ describe("Test Lexer Grammars", function () {
       // now that we have saved all data, perform the validation checks:
       // keep them simple so assert doesn't need a lot of time to produce diff reports
       // when the test fails:
-      // 
+      //
       // stringify the token sets! (no assert.deepEqual!)
       var ist = JSON5.stringify(tokens, null, 2);
       var soll = JSON5.stringify(filespec.ref, null, 2);
-      assert.ok(ist === soll, "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
-      assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
+      assert.ok(reduceWhitespace(ist) === reduceWhitespace(soll), "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
+      assert.ok(reduceWhitespace(refSrc) === reduceWhitespace(dumpStr), "generated source code does not match reference; please compare /output/ vs /reference-output/");
     });
   });
 });

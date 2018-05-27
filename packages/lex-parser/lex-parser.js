@@ -8277,15 +8277,11 @@ EOF: 1,
         {
           yy.depth = 0;
           yy.include_command_allowed = false;
-
-          //console.error('*** ACTION start @ 257:', yy_.yytext);
           this.pushState('action');
 
           // keep matched string in local variable as the `unput()` call at the end will also 'unput' `yy_.yytext`,
           // which for our purposes here is highly undesirable (see trimActionCode() use in the BNF parser spec).
           var marker = yy_.yytext;
-
-          //console.error('*** marker:', marker);
 
           // check whether this `%{` marker was located at the start of the line:
           // if it is, we treat it as a different token to signal the grammar we've
@@ -8295,7 +8291,7 @@ EOF: 1,
           //var precedingStr = this.matched.substr(-this.match.length - 1, 1);
           var precedingStr = this.matched[this.matched.length - this.match.length - 1];
 
-          var atSOL = precedingStr.length === 0 /* @ Start Of File */ || precedingStr === '\n';
+          var atSOL = !precedingStr /* @ Start Of File */ || precedingStr === '\n';
 
           // Make sure we've the proper lexer rule regex active for any possible `%{...%}`, `{{...}}` or what have we here?
           var endMarker = this.setupDelimitedActionChunkLexerRegex(marker);
@@ -8312,28 +8308,32 @@ EOF: 1,
           // to cover this failure mode in a more helpful manner.
           var remaining = this.lookAhead();
 
-          var endMarkerIndex = remaining.indexOf(endMarker);
+          var prevEnd = 0;
+          var endMarkerIndex;
 
-          // check for both simple non-existence *and* non-match due to trailing braces,
-          // e.g. in this input: `%{{...%}}}` -- note the 3rd curly closing brace.
-          //console.error('*** endmarker checks: ', {
-          //    endMarker,
-          //    endMarkerIndex,
-          //    remaining,
-          //    check: remaining.substring(endMarkerIndex),
-          //    post: remaining[endMarkerIndex + endMarker.length],
-          //    HIT: (endMarkerIndex < 0 || remaining[endMarkerIndex + endMarker.length] === '}')
-          //});
-          if (endMarkerIndex < 0 || remaining[endMarkerIndex + endMarker.length] === '}') {
-            yy_.yyerror(rmCommonWS`
-                                                Incorrectly terminated action code block. We're expecting the
-                                                '${endMarker}' end marker to go with the given start marker.
-                                                Regrettably, it does not exist in the remainder of the input.
+          for (; ; ) {
+            endMarkerIndex = remaining.indexOf(endMarker, prevEnd);
 
-                                                  Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
+            // check for both simple non-existence *and* non-match due to trailing braces,
+            // e.g. in this input: `%{{...%}}}` -- note the 3rd curly closing brace.
+            if (endMarkerIndex >= 0 && remaining[endMarkerIndex + endMarker.length] === '}') {
+              prevEnd = endMarkerIndex + endMarker.length;
+              continue;
+            }
 
-            return 25;
+            if (endMarkerIndex < 0) {
+              yy_.yyerror(rmCommonWS`
+                                                    Incorrectly terminated action code block. We're expecting the
+                                                    '${endMarker}' end marker to go with the given start marker.
+                                                    Regrettably, it does not exist in the remainder of the input.
+
+                                                      Erroneous area:
+                                                ` + this.prettyPrintRange(yy_.yylloc));
+
+              return 25;
+            }
+
+            break;
           }
 
           // Allow the start marker to be re-matched by the generated lexer rule regex:
@@ -9445,98 +9445,97 @@ EOF: 1,
   var dquote = helpers.dquote;
   var scanRegExp = helpers.scanRegExp;
 
-  lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(yytext) {
-    // Calculate the end marker to match and produce a
-    // lexer rule to match when the need arrises:
-    var marker = yytext;
-
+  // Calculate the end marker to match and produce a
+  // lexer rule to match when the need arrises:
+  lexer.setupDelimitedActionChunkLexerRegex = function lexer__setupDelimitedActionChunkLexerRegex(marker) {
     // Special: when we encounter `{` as the start of the action code block,
     // we DO NOT patch the `%{...%}` lexer rule as we will handle `{...}` 
     // elsewhere in the lexer anyway: we cannot use a simple regex like 
     // `/{[^]*?}/` to match an entire action code block after all!
-    if (marker === '{') {
-      marker = '%{';
-    }
+    var doNotPatch = marker === '{';
 
-    // Note: this bit comes straight from the lexer kernel!
-    //
-    // Get us the currently active set of lexer rules. 
-    // (This is why we push the 'action' lexer condition state above *before*
-    // we commence and work on the ruleset itself.)
-    var spec = this.__currentRuleSet__;
-
-    if (!spec) {
-      // Update the ruleset cache as we apparently encountered a state change or just started lexing.
-      // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
-      // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
-      // speed up those activities a tiny bit.
-      spec = this.__currentRuleSet__ = this._currentRules();
-    }
-
-    var regexes = spec.__rule_regexes;
-    var len = spec.__rule_count;
-    var rules = spec.rules;
-    var i;
-    var action_chunk_regex;
-
-    // Must we still locate the rule to patch or have we done 
-    // that already during a previous encounter?
-    //
-    // WARNING: our cache/patch must live beyond the current lexer+parser invocation:
-    // our patching must remain detected indefinitely to ensure subsequent invocations
-    // of the parser will still work as expected!
-    // This implies that we CANNOT store anything in the `yy` context as that one
-    // is short-lived: `yy` dies once the current parser.parse() has completed!
-    // Hence we store our patch data in the lexer instance itself: in `spec`.
-    //
-    if (!spec.__action_chunk_rule_idx) {
-      // **WARNING**: *(this bit, like so much else in here, comes straight from the lexer kernel)*
-      //
-      // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
-      var orig_re_str1 = '/^(?:%\\{([^]*?)%\\}(?!\\}))/';
-
-      var orig_re_str2 = '/^(?:%\\{([\\s\\S]*?)%\\}(?!\\}))/';    // the XRegExp 'cross-platform' version of the same. 
-
-      // Note: the arrays are 1-based, while `len` itself is a valid index,
-      // hence the non-standard less-or-equal check in the next loop condition!
-      for (i = 1; i <= len; i++) {
-        var rule_re = regexes[i];
-        var re_str = rule_re.toString();
-
-        //console.error('test regexes:', {i, len, re1: re_str, match1: rule_re.toString() === orig_re_str1, match1: rule_re.toString() === orig_re_str2});
-        if (re_str === orig_re_str1 || re_str === orig_re_str2) {
-          spec.__action_chunk_rule_idx = i;
-          break;
-        }
-      }
-
-      if (!spec.__action_chunk_rule_idx) {
-        //console.error('ruleset dump:', spec);
-        throw new Error('INTERNAL DEV ERROR: cannot locate %{...%} rule regex!');
-      }
-
-      // As we haven't initialized yet, we're sure the rule cache doesn't exist either.
-      // Make it happen:
-      spec.__cached_action_chunk_rule = {};    // set up empty cache 
-    }
-
-    i = spec.__action_chunk_rule_idx;
     var action_end_marker = marker.replace(/\{/g, '}');
 
-    // Must we build the lexer rule or did we already run this variant 
-    // through this lexer before? When the latter, fetch the cached version!
-    action_chunk_regex = spec.__cached_action_chunk_rule[marker];
+    if (!doNotPatch) {
+      // Note: this bit comes straight from the lexer kernel!
+      //
+      // Get us the currently active set of lexer rules. 
+      // (This is why we push the 'action' lexer condition state above *before*
+      // we commence and work on the ruleset itself.)
+      var spec = this.__currentRuleSet__;
 
-    if (!action_chunk_regex) {
-      action_chunk_regex = spec.__cached_action_chunk_rule[marker] = new RegExp(
-        '^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + '(?!\\}))'
-      ); 
-      //console.warn('encode new action block regex:', action_chunk_regex); 
+      if (!spec) {
+        // Update the ruleset cache as we apparently encountered a state change or just started lexing.
+        // The cache is set up for fast lookup -- we assume a lexer will switch states much less often than it will
+        // invoke the `lex()` token-producing API and related APIs, hence caching the set for direct access helps
+        // speed up those activities a tiny bit.
+        spec = this.__currentRuleSet__ = this._currentRules();
+      }
+
+      var regexes = spec.__rule_regexes;
+      var len = spec.__rule_count;
+      var rules = spec.rules;
+      var i;
+      var action_chunk_regex;
+
+      // Must we still locate the rule to patch or have we done 
+      // that already during a previous encounter?
+      //
+      // WARNING: our cache/patch must live beyond the current lexer+parser invocation:
+      // our patching must remain detected indefinitely to ensure subsequent invocations
+      // of the parser will still work as expected!
+      // This implies that we CANNOT store anything in the `yy` context as that one
+      // is short-lived: `yy` dies once the current parser.parse() has completed!
+      // Hence we store our patch data in the lexer instance itself: in `spec`.
+      //
+      if (!spec.__action_chunk_rule_idx) {
+        // **WARNING**: *(this bit, like so much else in here, comes straight from the lexer kernel)*
+        //
+        // slot 0 is unused; we use a 1-based index approach here to keep the hottest code in `lexer_next()` fast and simple!
+        var orig_re_str1 = '/^(?:%\\{([^]*?)%\\}(?!\\}))/';
+
+        var orig_re_str2 = '/^(?:%\\{([\\s\\S]*?)%\\}(?!\\}))/';    // the XRegExp 'cross-platform' version of the same. 
+
+        // Note: the arrays are 1-based, while `len` itself is a valid index,
+        // hence the non-standard less-or-equal check in the next loop condition!
+        for (i = 1; i <= len; i++) {
+          var rule_re = regexes[i];
+          var re_str = rule_re.toString();
+
+          //console.error('test regexes:', {i, len, re1: re_str, match1: rule_re.toString() === orig_re_str1, match1: rule_re.toString() === orig_re_str2});
+          if (re_str === orig_re_str1 || re_str === orig_re_str2) {
+            spec.__action_chunk_rule_idx = i;
+            break;
+          }
+        }
+
+        if (!spec.__action_chunk_rule_idx) {
+          //console.error('ruleset dump:', spec);
+          throw new Error('INTERNAL DEV ERROR: cannot locate %{...%} rule regex!');
+        }
+
+        // As we haven't initialized yet, we're sure the rule cache doesn't exist either.
+        // Make it happen:
+        spec.__cached_action_chunk_rule = {};    // set up empty cache 
+      }
+
+      i = spec.__action_chunk_rule_idx;
+
+      // Must we build the lexer rule or did we already run this variant 
+      // through this lexer before? When the latter, fetch the cached version!
+      action_chunk_regex = spec.__cached_action_chunk_rule[marker];
+
+      if (!action_chunk_regex) {
+        action_chunk_regex = spec.__cached_action_chunk_rule[marker] = new RegExp(
+          '^(?:' + marker.replace(/\{/g, '\\{') + '([^]*?)' + action_end_marker.replace(/\}/g, '\\}') + '(?!\\}))'
+        ); 
+        //console.warn('encode new action block regex:', action_chunk_regex); 
+      }
+
+      //console.error('new ACTION REGEX:', { i, action_chunk_regex });
+      // and patch the lexer regex table for the current lexer condition state:
+      regexes[i] = action_chunk_regex;
     }
-
-    //console.error('new ACTION REGEX:', { i, action_chunk_regex });
-    // and patch the lexer regex table for the current lexer condition state:
-    regexes[i] = action_chunk_regex;
 
     return action_end_marker;
   };
