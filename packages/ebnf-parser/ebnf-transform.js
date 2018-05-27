@@ -215,7 +215,10 @@ function transformProduction(id, production, grammar) {
             opts = handle[2];
             handle = handle[0];
         }
-        var expressions = parser.parse(handle);
+        var expressions = handle;
+        if (typeof expressions === 'string') {
+            expressions = parser.parse(handle);
+        }
 
         if (devDebug > 1) console.log('\n================\nEBNF transform expressions:\n ', handle, opts, JSON.stringify(expressions, null, 2));
 
