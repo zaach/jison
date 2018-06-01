@@ -139,6 +139,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 "|"                                     if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         } else {
                                             return 'ACTION_BODY';
@@ -149,6 +150,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
 "%%"                                    if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         } else {
                                             return 'ACTION_BODY';
@@ -225,6 +227,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                             // end of action code chunk; allow parent mode to see this mode-terminating linebreak too.
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         }
 <<EOF>>                                 yy.include_command_allowed = false;
@@ -241,6 +244,7 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                             return 'BRACKET_MISSING';
                                         }
                                         this.popState();
+                                        yytext = '';
                                         return 'ACTION_END';
 
 }

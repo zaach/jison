@@ -144,6 +144,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 ";"                                     if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         } else {
                                             return 'ACTION_BODY';
@@ -154,6 +155,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "|"                                     if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         } else {
                                             return 'ACTION_BODY';
@@ -164,6 +166,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "%%"                                    if (yy.depth === 0) {
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         } else {
                                             return 'ACTION_BODY';
@@ -222,6 +225,16 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             return 'BRACKET_SURPLUS';
                                         } else {
                                             yy.depth--;
+                                            // Contrary to the lexer language, the parser grammar language
+                                            // REQUIRES braces around action code chunks, hence when we've
+                                            // hit the top-most brace level, we *know* we're at the end
+                                            // of the action code block!
+                                            if (yy.depth === 0) {
+                                                this.popState();
+                                                // this.unput(yytext);
+                                                // yytext = '}';
+                                                return 'ACTION_END';
+                                            }
                                         }
                                         return 'ACTION_BODY';
 
@@ -240,6 +253,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             // end of action code chunk; allow parent mode to see this mode-terminating linebreak too.
                                             this.popState();
                                             this.unput(yytext);
+                                            // yytext = '';    --- ommitted as this is the side-effect of .unput(yytext) already!
                                             return 'ACTION_END';
                                         }
 <<EOF>>                                 yy.include_command_allowed = false;
@@ -256,6 +270,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                             return 'BRACKET_MISSING';
                                         }
                                         this.popState();
+                                        yytext = '';
                                         return 'ACTION_END';
 
 }

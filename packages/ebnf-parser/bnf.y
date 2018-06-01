@@ -194,7 +194,7 @@ declaration
     //
     | ACTION_START_AT_SOL action ACTION_END
         { 
-            var srcCode = trimActionCode($action, $ACTION_START_AT_SOL);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -240,7 +240,7 @@ declaration
         %}
     | ACTION_START include_macro_code ACTION_END 
         {
-            $$ = {include: $include_macro_code}; 
+            $$ = {include: $include_macro_code + $ACTION_END}; 
         }
     //
     // see the alternative above: this rule is added to aid error
@@ -414,7 +414,7 @@ declaration
                 `);
             }
 
-            var srcCode = trimActionCode($action, $ACTION_START);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             var rv = checkActionBlock(srcCode, @action);
             if (rv) {
                 yyerror(rmCommonWS`
@@ -848,7 +848,7 @@ handle_action
     : handle prec ACTION_START action ACTION_END
         {
             $$ = [$handle];
-            var srcCode = trimActionCode($action, $ACTION_START);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -874,7 +874,7 @@ handle_action
         {
             $$ = [$handle];
 
-            var srcCode = trimActionCode($action);
+            var srcCode = trimActionCode($action + $ACTION_END);
             if (srcCode) {
                 // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
                 // will uncover any illegal action code following the arrow operator, e.g.
@@ -936,7 +936,7 @@ handle_action
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [[]];
-            var srcCode = trimActionCode($action, $ACTION_START);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -993,7 +993,7 @@ handle_action
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
             $$ = [[]];
-            var srcCode = trimActionCode($action, $ACTION_START);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
@@ -1505,11 +1505,11 @@ epilogue_chunk
     //
     : ACTION_START include_macro_code ACTION_END 
         {
-            $$ = '\n\n' + $include_macro_code + '\n\n';
+            $$ = '\n\n' + $include_macro_code + '\n\n' + $ACTION_END + '\n\n';
         }
     | ACTION_START_AT_SOL action ACTION_END
         {
-            var srcCode = trimActionCode($action, $ACTION_START_AT_SOL);
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
             if (srcCode) {
                 var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
