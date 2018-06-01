@@ -1,0 +1,20 @@
+{
+  rules: [
+    [
+      '\\[[^\\]]\\]',
+      'var b={};\nreturn true',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"["[^\\]]"]" {
+var b={};
+return true;
+}
+
+`,
+}

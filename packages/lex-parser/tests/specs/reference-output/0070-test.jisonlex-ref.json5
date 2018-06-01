@@ -1,0 +1,22 @@
+{
+  rules: [
+    [
+      '{BR}',
+      'return true',
+    ],
+  ],
+  macros: {
+    BR: '\\r\\n|\\n|\\r',
+  },
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `BR  \\r\\n|\\n|\\r
+%%
+{BR} %{
+return true;
+%}
+
+`,
+}

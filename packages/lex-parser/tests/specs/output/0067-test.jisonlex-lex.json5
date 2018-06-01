@@ -1,0 +1,347 @@
+[
+  {
+    id: 19,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        0,
+        2,
+      ],
+    },
+  },
+  {
+    id: 51,
+    token: '"CHARACTER_LIT"',
+    yytext: 'a',
+    yylloc: {
+      first_line: 2,
+      first_column: 0,
+      last_line: 2,
+      last_column: 1,
+      range: [
+        3,
+        4,
+      ],
+    },
+  },
+  {
+    id: 26,
+    token: '"ACTION_START"',
+    yytext: ' ',
+    yylloc: {
+      first_line: 2,
+      first_column: 1,
+      last_line: 2,
+      last_column: 2,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: 'return 0',
+    yylloc: {
+      first_line: 2,
+      first_column: 2,
+      last_line: 2,
+      last_column: 10,
+      range: [
+        5,
+        13,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_END"',
+    yytext: '',
+    yylloc: {
+      first_line: 2,
+      first_column: 10,
+      last_line: 2,
+      last_column: 10,
+      range: [
+        13,
+        13,
+      ],
+    },
+  },
+  {
+    id: 7,
+    token: '"|"',
+    yytext: '|',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 1,
+      range: [
+        14,
+        15,
+      ],
+    },
+  },
+  {
+    id: 51,
+    token: '"CHARACTER_LIT"',
+    yytext: 'b',
+    yylloc: {
+      first_line: 3,
+      first_column: 1,
+      last_line: 3,
+      last_column: 2,
+      range: [
+        15,
+        16,
+      ],
+    },
+  },
+  {
+    id: 26,
+    token: '"ACTION_START"',
+    yytext: ' ',
+    yylloc: {
+      first_line: 3,
+      first_column: 2,
+      last_line: 3,
+      last_column: 3,
+      range: [
+        16,
+        17,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: 'return 2;',
+    yylloc: {
+      first_line: 3,
+      first_column: 3,
+      last_line: 3,
+      last_column: 12,
+      range: [
+        17,
+        26,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: '\n  ',
+    yylloc: {
+      first_line: 3,
+      first_column: 12,
+      last_line: 4,
+      last_column: 2,
+      range: [
+        26,
+        29,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: '//',
+    yylloc: {
+      first_line: 4,
+      first_column: 2,
+      last_line: 4,
+      last_column: 4,
+      range: [
+        29,
+        31,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_END"',
+    yytext: '',
+    yylloc: {
+      first_line: 4,
+      first_column: 4,
+      last_line: 4,
+      last_column: 4,
+      range: [
+        31,
+        31,
+      ],
+    },
+  },
+  {
+    id: 50,
+    token: '"STRING_LIT"',
+    yytext: '"x"',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 3,
+      range: [
+        32,
+        35,
+      ],
+    },
+  },
+  {
+    id: 26,
+    token: '"ACTION_START"',
+    yytext: ' ',
+    yylloc: {
+      first_line: 5,
+      first_column: 3,
+      last_line: 5,
+      last_column: 4,
+      range: [
+        35,
+        36,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: 'return 1;',
+    yylloc: {
+      first_line: 5,
+      first_column: 4,
+      last_line: 5,
+      last_column: 13,
+      range: [
+        36,
+        45,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: '\n  ',
+    yylloc: {
+      first_line: 5,
+      first_column: 13,
+      last_line: 6,
+      last_column: 2,
+      range: [
+        45,
+        48,
+      ],
+    },
+  },
+  {
+    id: 36,
+    token: '"ACTION_BODY"',
+    yytext: '//',
+    yylloc: {
+      first_line: 6,
+      first_column: 2,
+      last_line: 6,
+      last_column: 4,
+      range: [
+        48,
+        50,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_END"',
+    yytext: '',
+    yylloc: {
+      first_line: 6,
+      first_column: 4,
+      last_line: 6,
+      last_column: 4,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+  {
+    id: 19,
+    token: '"%%"',
+    yytext: '',
+    yylloc: {
+      first_line: 8,
+      first_column: 0,
+      last_line: 8,
+      last_column: 0,
+      range: [
+        52,
+        52,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 8,
+      first_column: 0,
+      last_line: 8,
+      last_column: 0,
+      range: [
+        52,
+        52,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 8,
+      first_column: 0,
+      last_line: 8,
+      last_column: 0,
+      range: [
+        52,
+        52,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 8,
+      first_column: 0,
+      last_line: 8,
+      last_column: 0,
+      range: [
+        52,
+        52,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 8,
+      first_column: 0,
+      last_line: 8,
+      last_column: 0,
+      range: [
+        52,
+        52,
+      ],
+    },
+  },
+]

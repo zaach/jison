@@ -1,0 +1,102 @@
+{
+  fail: 1,
+  spec: `%%
+"["[^\\\\]]"]" %{{{{{
+return "%{..%}";
+}}}}}%
+
+`,
+  err: {
+    message: `Lexical error on line 2: 
+unsupported lexer input encountered while lexing
+rules (i.e. jison lex regexes) in "rules" state.
+
+    NOTE: When you want this input to be interpreted as a LITERAL part
+          of a lex rule regex, you MUST enclose it in double or
+          single quotes.
+
+          If not, then know that this input is not accepted as a valid
+          regex expression here in jison-lex rules.
+
+  Erroneous area:
+1: %%
+2: "["[^\\\\]]"]" %{{{{{
+^..........^
+3: return "%{..%}";
+4: }}}}}%`,
+    name: 'JisonLexerError',
+    hash: {
+      errStr: `Lexical error on line 2: 
+unsupported lexer input encountered while lexing
+rules (i.e. jison lex regexes) in "rules" state.
+
+    NOTE: When you want this input to be interpreted as a LITERAL part
+          of a lex rule regex, you MUST enclose it in double or
+          single quotes.
+
+          If not, then know that this input is not accepted as a valid
+          regex expression here in jison-lex rules.
+
+  Erroneous area:
+1: %%
+2: "["[^\\\\]]"]" %{{{{{
+^..........^
+3: return "%{..%}";
+4: }}}}}%`,
+      recoverable: false,
+      text: ']',
+      token: null,
+      line: 1,
+      loc: {
+        first_line: 2,
+        first_column: 8,
+        last_line: 2,
+        last_column: 9,
+        range: [
+          11,
+          12,
+        ],
+      },
+      yy: {
+        actionInclude: [],
+        options: {},
+        __options_flags__: 0,
+        __options_category_description__: '???',
+        startConditions: {},
+        __context_description__: [
+          '???CONTEXT???',
+        ],
+      },
+      lexer: {
+        yy: {},
+        _input: '',
+        yytext: '',
+        yyleng: 0,
+        match: '',
+        matches: false,
+        _more: false,
+        _backtrack: false,
+        yylloc: {
+          first_line: 1,
+          first_column: 0,
+          last_line: 1,
+          last_column: 0,
+          range: [
+            0,
+            0,
+          ],
+        },
+        _signaled_error_token: false,
+        done: false,
+        yylineno: 0,
+        matched: '',
+        conditionStack: [
+          'INITIAL',
+        ],
+        __currentRuleSet__: null,
+        offset: 0,
+        base_position: 0,
+      },
+    },
+  },
+}

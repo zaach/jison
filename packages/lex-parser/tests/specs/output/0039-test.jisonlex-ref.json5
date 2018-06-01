@@ -1,0 +1,28 @@
+{
+  rules: [
+    [
+      '.',
+      '//',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [
+    {
+      name: 'base',
+      path: './base.file',
+    },
+    {
+      name: 'extension',
+      path: '/tmp/qux',
+    },
+  ],
+  unknownDecls: [],
+  __original_input__: `%import base "./base.file"
+%import extension "/tmp/qux"
+%%
+. //
+
+`,
+}

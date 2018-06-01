@@ -1,0 +1,33 @@
+{
+  rules: [
+    [
+      '.',
+      '//',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [
+    {
+      name: 'a',
+      value: 'b c',
+    },
+    {
+      name: 'foo',
+      value: '[bar] baz qux',
+    },
+    {
+      name: 'a',
+      value: 'b c',
+    },
+  ],
+  __original_input__: `%a b c
+%foo[bar] baz qux
+%a b c
+%%
+. //
+
+`,
+}

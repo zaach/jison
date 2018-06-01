@@ -1,0 +1,92 @@
+{
+  fail: 1,
+  spec: `%%
+"["[^\\]]"]" %{
+return true;
+}}
+
+`,
+  err: {
+    message: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{
+^..............^^
+3: return true;
+4: }}`,
+    name: 'JisonLexerError',
+    hash: {
+      errStr: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{
+^..............^^
+3: return true;
+4: }}`,
+      recoverable: false,
+      text: '%{',
+      token: null,
+      line: 1,
+      loc: {
+        first_line: 2,
+        first_column: 12,
+        last_line: 2,
+        last_column: 14,
+        range: [
+          15,
+          17,
+        ],
+      },
+      yy: {
+        actionInclude: [],
+        options: {},
+        __options_flags__: 0,
+        __options_category_description__: '???',
+        startConditions: {},
+        __context_description__: [
+          '???CONTEXT???',
+        ],
+        depth: 0,
+        include_command_allowed: false,
+      },
+      lexer: {
+        yy: {},
+        _input: '',
+        yytext: '',
+        yyleng: 0,
+        match: '',
+        matches: false,
+        _more: false,
+        _backtrack: false,
+        yylloc: {
+          first_line: 1,
+          first_column: 0,
+          last_line: 1,
+          last_column: 0,
+          range: [
+            0,
+            0,
+          ],
+        },
+        _signaled_error_token: false,
+        done: false,
+        yylineno: 0,
+        matched: '',
+        conditionStack: [
+          'INITIAL',
+        ],
+        __currentRuleSet__: null,
+        offset: 0,
+        base_position: 0,
+      },
+    },
+  },
+}
