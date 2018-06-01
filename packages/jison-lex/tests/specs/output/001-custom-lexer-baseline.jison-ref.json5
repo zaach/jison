@@ -1,15 +1,15 @@
 [
   3,
-  1,
-  null,
-  null,
-  1,
-  null,
-  null,
-  1,
-  null,
-  null,
-  1,
-  null,
-  null,
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
 ]

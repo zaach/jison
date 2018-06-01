@@ -34,6 +34,7 @@
     "jison-helpers-lib": "0.6.5-218"
   },
   "devDependencies": {
+    "@gerhobbelt/json5": "0.1.0",
     "babel-cli": "6.26.0",
     "babel-preset-env": "1.7.0",
     "babel-preset-modern-browsers": "11.0.1",

@@ -3071,9 +3071,11 @@ describe("Test Lexer Grammars", function () {
         var countDown = 4;
         for (i = 0; i < 1000; i++) {
           var tok = lexer.lex();
-          tokens.push(tok);
-          tokens.push(lexer.yytext);
-          tokens.push(lexer.yylloc);
+          tokens.push({
+            token: tok,
+            yytext: lexer.yytext,
+            yylloc: lexer.yylloc
+          });
           if (tok === lexer.EOF) {
             // and make sure EOF stays EOF, i.e. continued invocation of `lex()` will only
             // produce more EOF tokens at the same location:
@@ -3087,10 +3089,13 @@ describe("Test Lexer Grammars", function () {
         // save the error:
         tokens.push(-1);
         err = ex;
-        tokens.push(ex.message);
-        tokens.push(ex.name);
-        tokens.push(ex.stack);
-        tokens.push(ex);
+        tokens.push({
+          fail: 1,
+          message: ex.message,
+          name: ex.name,
+          stack: ex.stack,
+          ex: ex,
+        });
         // and make sure lexer !== undefined:
         lexer = { fail: 1 };
       } finally {
