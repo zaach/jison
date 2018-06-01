@@ -6022,6 +6022,8 @@ var lexer = function () {
                     if (yy.depth === 0) {
                         this.popState();
                         this.unput(yy_.yytext);
+
+                        // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                         return 24;
                     } else {
                         return 36;
@@ -6035,6 +6037,8 @@ var lexer = function () {
                     if (yy.depth === 0) {
                         this.popState();
                         this.unput(yy_.yytext);
+
+                        // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                         return 24;
                     } else {
                         return 36;
@@ -6137,6 +6141,8 @@ var lexer = function () {
                         this.popState();
 
                         this.unput(yy_.yytext);
+
+                        // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                         return 24;
                     }
 
@@ -6154,6 +6160,7 @@ var lexer = function () {
                     }
 
                     this.popState();
+                    yy_.yytext = '';
                     return 24;
                     break;
 

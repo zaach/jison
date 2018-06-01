@@ -8525,6 +8525,8 @@ EOF: 1,
         if (yy.depth === 0) {
           this.popState();
           this.unput(yy_.yytext);
+
+          // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
           return 24;
         } else {
           return 36;
@@ -8538,6 +8540,8 @@ EOF: 1,
         if (yy.depth === 0) {
           this.popState();
           this.unput(yy_.yytext);
+
+          // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
           return 24;
         } else {
           return 36;
@@ -8648,6 +8652,8 @@ EOF: 1,
           this.popState();
 
           this.unput(yy_.yytext);
+
+          // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
           return 24;
         }
 
@@ -8673,6 +8679,7 @@ EOF: 1,
         }
 
         this.popState();
+        yy_.yytext = '';
         return 24;
         break;
 

@@ -6023,6 +6023,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         if (yy.depth === 0) {
                             this.popState();
                             this.unput(yy_.yytext);
+
+                            // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                             return 24;
                         } else {
                             return 36;
@@ -6036,6 +6038,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         if (yy.depth === 0) {
                             this.popState();
                             this.unput(yy_.yytext);
+
+                            // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                             return 24;
                         } else {
                             return 36;
@@ -6138,6 +6142,8 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                             this.popState();
 
                             this.unput(yy_.yytext);
+
+                            // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
                             return 24;
                         }
 
@@ -6155,6 +6161,7 @@ function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defi
                         }
 
                         this.popState();
+                        yy_.yytext = '';
                         return 24;
                         break;
 
