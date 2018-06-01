@@ -1,0 +1,92 @@
+{
+  lex: {
+    rules: [
+      [
+        'foo',
+        "return 'foo'",
+      ],
+      [
+        'bar',
+        "return 'bar'",
+      ],
+      [
+        'baz',
+        "return 'baz'",
+      ],
+      [
+        'world',
+        "return 'world'",
+      ],
+    ],
+    macros: {},
+    startConditions: {},
+    codeSections: [],
+    importDecls: [],
+    unknownDecls: [],
+  },
+  bnf: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%lex 
+%%
+'foo' return 'foo';
+'bar' {return 'bar';}
+'baz' {return 'baz';}
+'world' {return 'world';}
+/lex                   %% test: foo bar | baz ; hello: world ;
+
+`,
+}

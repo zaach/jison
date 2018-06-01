@@ -1,0 +1,68 @@
+{
+  unknownDecls: [
+    {
+      name: 'type',
+      value: '<type> blah',
+    },
+  ],
+  bnf: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%type <type> blah
+%% test: foo bar | baz ; hello: world ;
+
+`,
+}

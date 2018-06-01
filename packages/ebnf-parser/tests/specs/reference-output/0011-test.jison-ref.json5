@@ -1,0 +1,27 @@
+{
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `/* comment
+ comment
+ comment */ %% hello: world ;
+
+`,
+}

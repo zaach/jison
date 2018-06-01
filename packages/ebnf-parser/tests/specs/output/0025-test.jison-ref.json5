@@ -1,0 +1,61 @@
+{
+  bnf: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        `node({}, 3 / 4, "{"); /{'"/g; 1 / 2`,
+      ],
+    ],
+    hello: [
+      [
+        [
+          [
+            'symbol',
+            'world',
+          ],
+        ],
+        'blah / bah',
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        `node({}, 3 / 4, "{"); /{'"/g; 1 / 2`,
+      ],
+    ],
+    hello: [
+      [
+        [
+          [
+            'symbol',
+            'world',
+          ],
+        ],
+        'blah / bah',
+      ],
+    ],
+  },
+  __original_input__: `%% test: foo bar { node({}, 3 / 4, "{"); /{'"/g; 1 / 2; }; hello: world { blah / bah };
+
+`,
+}

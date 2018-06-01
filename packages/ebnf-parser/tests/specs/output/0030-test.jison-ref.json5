@@ -1,0 +1,63 @@
+{
+  lex: {
+    rules: [
+      [
+        "'",
+        `return "'"`,
+      ],
+      [
+        '"',
+        `return '"'`,
+      ],
+    ],
+    macros: {},
+    startConditions: {},
+    codeSections: [],
+    importDecls: [],
+    unknownDecls: [],
+  },
+  bnf: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+        [
+          'symbol',
+          `"'"`,
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+        [
+          'symbol',
+          `"'"`,
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%lex
+%% 
+\\' return "'" 
+\\" return '"' 
+/lex 
+%% test: foo bar "'";
+
+`,
+}
