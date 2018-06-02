@@ -774,7 +774,7 @@ production
     ;
 
 production_id
-    : ID optional_production_description 
+    : ID production_description 
         {
             $$ = $ID;
 
