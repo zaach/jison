@@ -10,7 +10,7 @@ kernel = kernel
 .replace(/^[^{]*/, '')
 .replace(/[\s\r\n]+$/, '')          // rtrim()
 ;
- 
+
 var errorClassCode = fs.readFileSync('jison-lexer-error-code.js', 'utf8');
 errorClassCode = errorClassCode
 .replace(/\\/g, '\\\\')
@@ -18,17 +18,15 @@ errorClassCode = errorClassCode
 .trim();
 
 globby(['regexp-lexer.js']).then(paths => {
-	var count = 0;
+    var count = 0;
 
     //console.log(paths);
     paths.forEach(path => {
-    	var updated = false;
+        var updated = false;
 
-    	//console.log('path: ', path);
-
-    	var src = fs.readFileSync(path, 'utf8');
-    	src = src
-      .replace(/(\/\/ --- START lexer kernel ---)[^]+?(\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
+        var src = fs.readFileSync(path, 'utf8');
+        src = src
+        .replace(/(\/\/ --- START lexer kernel ---)[^]+?(\/\/ --- END lexer kernel ---)/, function f(m, p1, p2) {
             return p1 + `
 return \`${kernel}\`;
     ` + p2;
@@ -40,16 +38,16 @@ var prelude = \`${errorClassCode}\`;
 
     ` + p2;
         });
-		updated = true;
+        updated = true;
 
-    	if (updated) {
-    		count++;
-    		console.log('updated: ', path);
-	    	fs.writeFileSync(path, src, {
+        if (updated) {
+            count++;
+            console.log('updated: ', path);
+            fs.writeFileSync(path, src, {
                 encoding: 'utf8',
                 flags: 'w'
             });
-	    }
+        }
     });
 
     console.log('\nUpdated', count, 'files\' lexer kernel core code.');
