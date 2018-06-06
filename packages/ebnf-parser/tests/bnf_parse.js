@@ -4,7 +4,7 @@ var path = require('path');
 var mkdirp = require('mkdirp');
 var yaml = require('@gerhobbelt/js-yaml');
 var JSON5 = require('@gerhobbelt/json5');
-var globby = require("globby");
+var globby = require('globby');
 var bnf = require("../dist/ebnf-parser-cjs-es5");
 
 
@@ -48,12 +48,12 @@ function parser_reset() {
 
   console.log('exec glob....', __dirname);
   var testset = globby.sync([
-    __dirname + '/specs/*.jison',
-    __dirname + '/specs/*.bnf',
-    __dirname + '/specs/*.ebnf',
-    __dirname + '/specs/*.json5',
-    '!'+ __dirname + '/specs/*-ref.json5',
-    __dirname + '/specs/*.js',
+    __dirname + '/specs/0*.jison',
+    __dirname + '/specs/0*.bnf',
+    __dirname + '/specs/0*.ebnf',
+    __dirname + '/specs/0*.json5',
+    '!'+ __dirname + '/specs/0*-ref.json5',
+    __dirname + '/specs/0*.js',
   ]);
   var original_cwd = process.cwd();
 
@@ -66,6 +66,7 @@ function parser_reset() {
       var spec;
       var header;
       var extra;
+      var grammar;
 
       if (filepath.match(/\.js$/)) {
         spec = require(filepath);
@@ -74,11 +75,16 @@ function parser_reset() {
 
         // extract the top comment, which carries the title, etc. metadata:
         header = hdrspec.substr(0, hdrspec.indexOf('\n\n') + 1);
+        
+        grammar = spec;
       } else {
         spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
 
         // extract the top comment, which carries the title, etc. metadata:
         header = spec.substr(0, spec.indexOf('\n\n') + 1);
+
+        // extract the grammar to test:
+        grammar = spec.substr(spec.indexOf('\n\n') + 2);
       }
 
       // then strip off the comment prefix for every line:
@@ -91,8 +97,9 @@ function parser_reset() {
         filename: filepath,
       });
 
-      // extract the grammar to test:
-      var grammar = spec.substr(spec.indexOf('\n\n') + 2);
+      if (doc.crlf && typeof grammar === 'string') {
+        grammar = grammar.replace(/\n/g, "\r\n");
+      }
 
       var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
       var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
@@ -104,6 +111,9 @@ function parser_reset() {
       var refOut;
       try {
         var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
         refOut = JSON5.parse(soll);
       } catch (ex) {
         refOut = null;
@@ -112,6 +122,9 @@ function parser_reset() {
       var lexerRefOut;
       try {
         var soll = fs.readFileSync(lexerRefFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
         lexerRefOut = JSON5.parse(soll);
       } catch (ex) {
         lexerRefOut = null;
@@ -191,7 +204,6 @@ describe("BNF lexer", function () {
     var title = (filespec.meta ? filespec.meta.title : null);
 
     // and create a test for it:
-
     it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function testEachParserExample() {
       var err, ast, grammar;
       var tokens = [];
@@ -203,10 +215,6 @@ describe("BNF lexer", function () {
         process.chdir(path.dirname(filespec.path));
 
         grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
-
-        if (filespec.meta.crlf) {
-            grammar = grammar.replace(/\n/g, "\r\n");
-        }
 
         ast = lexer.setInput(grammar);
         ast.__original_input__ = grammar;
@@ -231,16 +239,36 @@ describe("BNF lexer", function () {
         }
       } catch (ex) {
         // save the error:
+        tokens.push(-1);
         err = ex;
+        tokens.push({
+          fail: 1,
+          message: ex.message,
+          name: ex.name,
+          stack: ex.stack,
+          meta: filespec.spec.meta, 
+          ex: ex,
+        });
         // and make sure ast !== undefined:
-        tokens.push({ fail: 1, meta: filespec.spec.meta, err: err });
+        ast = { fail: 1 };
       } finally {
         process.chdir(original_cwd);
       }
+      // also store the number of tokens we received:
+      tokens.unshift(i);
+      // if (lexerSourceCode) {
+      //   tokens.push(lexerSourceCode);
+      // }
 
       // either we check/test the correctness of the collected input, iff there's
       // a reference provided, OR we create the reference file for future use:
       var refOut = JSON5.stringify(tokens, {
+        replacer: function remove_lexer_objrefs(key, value) {
+          if (value === lexer) {
+            return "[lexer instance]";
+          }
+          return value;
+        },
         space: 2,
         circularRefHandler: testrig_JSON5circularRefHandler
       });
@@ -296,10 +324,6 @@ describe("BNF parser", function () {
         process.chdir(path.dirname(filespec.path));
 
         grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
-
-        if (filespec.meta.crlf) {
-            grammar = grammar.replace(/\n/g, "\r\n");
-        }
 
         ast = bnf.parse(grammar);
         ast.__original_input__ = grammar;

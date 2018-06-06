@@ -1,0 +1,97 @@
+{
+  options: {
+    ebnf: true,
+  },
+  ebnf: {
+    top: [
+      [
+        [
+          '()',
+          [
+            [
+              [
+                '()',
+                [
+                  [
+                    [
+                      'symbol',
+                      'word',
+                    ],
+                    [
+                      'symbol',
+                      'word',
+                    ],
+                  ],
+                ],
+              ],
+            ],
+            [
+              [
+                'symbol',
+                'word',
+              ],
+            ],
+          ],
+        ],
+        [
+          'symbol',
+          'EOF',
+        ],
+      ],
+    ],
+  },
+  bnf: {
+    top: [
+      [
+        '',
+        [
+          'symbol',
+          'EOF',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    top: [
+      [
+        [
+          '()',
+          [
+            [
+              [
+                '()',
+                [
+                  [
+                    [
+                      'symbol',
+                      'word',
+                    ],
+                    [
+                      'symbol',
+                      'word',
+                    ],
+                  ],
+                ],
+              ],
+            ],
+            [
+              [
+                'symbol',
+                'word',
+              ],
+            ],
+          ],
+        ],
+        [
+          'symbol',
+          'EOF',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%ebnf
+%%
+top : ((word word) | word) EOF;
+
+`,
+}
