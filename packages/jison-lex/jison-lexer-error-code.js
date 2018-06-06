@@ -9,6 +9,8 @@
  * @nocollapse
  */
 function JisonLexerError(msg, hash) {
+    "use strict";
+
     Object.defineProperty(this, 'name', {
         enumerable: false,
         writable: false,
