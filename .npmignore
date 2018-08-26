@@ -4,6 +4,17 @@
 ## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
 node_modules/
 
+## Google Closure Compiler install directory
+gcc/
+
+## Book build output
+#_book
+
+## eBook build output
+#*.epub
+#*.mobi
+#*.pdf
+
 # Ignore the monorepo subpackages directory as the dist/ files do not need them and those should be published separately
 packages/
 
@@ -23,9 +34,37 @@ web/crash.log
 
 # ignore the compiler output for any examples:            
 /examples/output
+/packages/jison-lex/examples/output
+/docs/examples/output
+/docs/examples/reference-output
+
+# Vagrant sandbox
+vagrant/
+Vagrantfile
 
 # scratch space
 /tmp/
+/book-using-jison-beyond-the-basics/base-materials/
+*.log
+*.patch
+
+# istanbul / nyc code coverage analysis workspaces
+/.nyc_output
+/coverage
+/packages/helpers-lib/coverage
+/packages/jison-lex/coverage
+/packages/json2jison/coverage
+/packages/jison2json/coverage
+/packages/lex-parser/coverage
+/packages/ebnf-parser/coverage
+/examples/coverage/
+
+# additional crap thast shouldn't land in git repo or npm:
+/tmp*/
+/test*.*
+/issue*.*
+/examples/formula-v*.*
+/docs/examples/formula-v*.*
 
 # Ignore the web directory, i.e. the web pages
 web/
@@ -57,3 +96,4 @@ book.json
 # jscs et al config files:
 .js*
 .travis*
+
