@@ -226,11 +226,14 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 <options>{NAME}                         return 'NAME';
 <options>"="                            return '=';
 <options>\"{DOUBLEQUOTED_STRING_CONTENT}\"
-                                        yytext = unescQuote(this.matches[1], /\\"/g); return 'OPTION_STRING_VALUE';   // value is always a string type
+                                        yytext = unescQuote(this.matches[1]); 
+                                        return 'OPTION_STRING_VALUE';   // value is always a string type
 <options>\'{QUOTED_STRING_CONTENT}\'
-                                        yytext = unescQuote(this.matches[1], /\\'/g); return 'OPTION_STRING_VALUE';   // value is always a string type
+                                        yytext = unescQuote(this.matches[1]); 
+                                        return 'OPTION_STRING_VALUE';   // value is always a string type
 <options>\`{ES2017_STRING_CONTENT}\`
-                                        yytext = unescQuote(this.matches[1], /\\`/g); return 'OPTION_STRING_VALUE';   // value is always a string type
+                                        yytext = unescQuote(this.matches[1]); 
+                                        return 'OPTION_STRING_VALUE';   // value is always a string type
 
 <options>[^\s\r\n]+                     return 'OPTION_VALUE';
 <options>{BR}{WS}+(?=\S)                /* skip leading whitespace on the next line of input, when followed by more options */
@@ -257,18 +260,24 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 \s+                                     /* empty */
 
 \"{DOUBLEQUOTED_STRING_CONTENT}\"       %{
-                                            yytext = unescQuote(this.matches[1], /\\"/g);
+                                            yytext = unescQuote(this.matches[1]);
                                             return 'STRING_LIT';
                                         %}
 \'{QUOTED_STRING_CONTENT}\'             %{
-                                            yytext = unescQuote(this.matches[1], /\\'/g);
+                                            yytext = unescQuote(this.matches[1]);
                                             return 'STRING_LIT';
                                         %}
 "["                                     this.pushState('set'); return 'REGEX_SET_START';
 "|"                                     return '|';
+
+// see also: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
 "(?:"                                   return 'SPECIAL_GROUP';
 "(?="                                   return 'SPECIAL_GROUP';
 "(?!"                                   return 'SPECIAL_GROUP';
+// regex lookbehind prepwork: see also https://github.com/tc39/proposal-regexp-lookbehind
+"(?<="                                   return 'SPECIAL_GROUP';
+"(?<!"                                   return 'SPECIAL_GROUP';
+
 "("                                     return '(';
 ")"                                     return ')';
 "+"                                     return '+';
@@ -458,12 +467,6 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\";]
 var rmCommonWS = helpers.rmCommonWS;
 var dquote     = helpers.dquote;
 
-
-function indent(s, i) {
-    var a = s.split('\n');
-    var pf = (new Array(i + 1)).join(' ');
-    return pf + a.join('\n' + pf);
-}
 
 // unescape a string value which is wrapped in quotes/doublequotes
 function unescQuote(str) {

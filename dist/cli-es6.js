@@ -7952,7 +7952,7 @@ EOF: 1,
       case 35:
         /*! Conditions:: options */
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-        yy_.yytext = unescQuote(this.matches[1], /\\"/g);
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 49;    // value is always a string type  
         break;
@@ -7960,7 +7960,7 @@ EOF: 1,
       case 36:
         /*! Conditions:: options */
         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-        yy_.yytext = unescQuote(this.matches[1], /\\'/g);
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 49;    // value is always a string type  
         break;
@@ -7968,7 +7968,7 @@ EOF: 1,
       case 37:
         /*! Conditions:: options */
         /*! Rule::       `{ES2017_STRING_CONTENT}` */
-        yy_.yytext = unescQuote(this.matches[1], /\\`/g);
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 49;    // value is always a string type  
         break;
@@ -8045,7 +8045,7 @@ EOF: 1,
       case 51:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-        yy_.yytext = unescQuote(this.matches[1], /\\"/g);
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 26;
         break;
@@ -8053,7 +8053,7 @@ EOF: 1,
       case 52:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-        yy_.yytext = unescQuote(this.matches[1], /\\'/g);
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 26;
         break;
@@ -8066,7 +8066,7 @@ EOF: 1,
         return 41;
         break;
 
-      case 66:
+      case 68:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       < */
         this.pushState('conditions');
@@ -8074,21 +8074,21 @@ EOF: 1,
         return 5;
         break;
 
-      case 67:
+      case 69:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \/! */
         return 39;                     // treated as `(?!atom)`  
 
         break;
 
-      case 68:
+      case 70:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \/ */
         return 14;                      // treated as `(?=atom)`  
 
         break;
 
-      case 70:
+      case 72:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \\. */
         yy_.yytext = yy_.yytext.replace(/^\\/g, '');
@@ -8096,7 +8096,7 @@ EOF: 1,
         return 44;
         break;
 
-      case 73:
+      case 75:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %option[s]? */
         this.pushState('options');
@@ -8104,7 +8104,7 @@ EOF: 1,
         return 47;
         break;
 
-      case 74:
+      case 76:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %s\b */
         this.pushState('start_condition');
@@ -8112,7 +8112,7 @@ EOF: 1,
         return 21;
         break;
 
-      case 75:
+      case 77:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %x\b */
         this.pushState('start_condition');
@@ -8120,7 +8120,7 @@ EOF: 1,
         return 22;
         break;
 
-      case 76:
+      case 78:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %code\b */
         this.pushState('named_chunk');
@@ -8128,7 +8128,7 @@ EOF: 1,
         return 25;
         break;
 
-      case 77:
+      case 79:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %import\b */
         this.pushState('named_chunk');
@@ -8136,7 +8136,7 @@ EOF: 1,
         return 24;
         break;
 
-      case 78:
+      case 80:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %include\b */
         yy.depth = 0;
@@ -8148,7 +8148,7 @@ EOF: 1,
         return 28;
         break;
 
-      case 79:
+      case 81:
         /*! Conditions:: code */
         /*! Rule::       %include\b */
         this.pushState('path');
@@ -8156,7 +8156,7 @@ EOF: 1,
         return 51;
         break;
 
-      case 80:
+      case 82:
         /*! Conditions:: INITIAL rules code */
         /*! Rule::       %{NAME}([^\r\n]*) */
         /* ignore unrecognized decl */
@@ -8175,7 +8175,7 @@ EOF: 1,
         return 23;
         break;
 
-      case 81:
+      case 83:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %% */
         this.pushState('rules');
@@ -8183,7 +8183,7 @@ EOF: 1,
         return 19;
         break;
 
-      case 89:
+      case 91:
         /*! Conditions:: set */
         /*! Rule::       \] */
         this.popState();
@@ -8191,14 +8191,14 @@ EOF: 1,
         return 42;
         break;
 
-      case 91:
+      case 93:
         /*! Conditions:: code */
         /*! Rule::       [^\r\n]+ */
         return 53;       // the bit of CODE just before EOF...  
 
         break;
 
-      case 92:
+      case 94:
         /*! Conditions:: path */
         /*! Rule::       {BR} */
         this.popState();
@@ -8206,7 +8206,7 @@ EOF: 1,
         this.unput(yy_.yytext);
         break;
 
-      case 93:
+      case 95:
         /*! Conditions:: path */
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
         yy_.yytext = unescQuote(this.matches[1]);
@@ -8215,7 +8215,7 @@ EOF: 1,
         return 52;
         break;
 
-      case 94:
+      case 96:
         /*! Conditions:: path */
         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
         yy_.yytext = unescQuote(this.matches[1]);
@@ -8224,13 +8224,13 @@ EOF: 1,
         return 52;
         break;
 
-      case 95:
+      case 97:
         /*! Conditions:: path */
         /*! Rule::       {WS}+ */
         // skip whitespace in the line 
         break;
 
-      case 96:
+      case 98:
         /*! Conditions:: path */
         /*! Rule::       [^\s\r\n]+ */
         this.popState();
@@ -8238,33 +8238,9 @@ EOF: 1,
         return 52;
         break;
 
-      case 97:
-        /*! Conditions:: action */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
-      case 98:
-        /*! Conditions:: action */
-        /*! Rule::       ' */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
       case 99:
         /*! Conditions:: action */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
@@ -8275,10 +8251,10 @@ EOF: 1,
         break;
 
       case 100:
-        /*! Conditions:: options */
-        /*! Rule::       " */
+        /*! Conditions:: action */
+        /*! Rule::       ' */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8287,10 +8263,10 @@ EOF: 1,
         break;
 
       case 101:
-        /*! Conditions:: options */
-        /*! Rule::       ' */
+        /*! Conditions:: action */
+        /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8300,7 +8276,7 @@ EOF: 1,
 
       case 102:
         /*! Conditions:: options */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
@@ -8311,13 +8287,10 @@ EOF: 1,
         break;
 
       case 103:
-        /*! Conditions:: * */
-        /*! Rule::       " */
-        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+        /*! Conditions:: options */
+        /*! Rule::       ' */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant  encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8326,13 +8299,10 @@ EOF: 1,
         break;
 
       case 104:
-        /*! Conditions:: * */
-        /*! Rule::       ' */
-        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+        /*! Conditions:: options */
+        /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant  encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8342,7 +8312,7 @@ EOF: 1,
 
       case 105:
         /*! Conditions:: * */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
 
         yy_.yyerror(rmCommonWS`
@@ -8356,6 +8326,36 @@ EOF: 1,
         break;
 
       case 106:
+        /*! Conditions:: * */
+        /*! Rule::       ' */
+        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 107:
+        /*! Conditions:: * */
+        /*! Rule::       ` */
+        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 108:
         /*! Conditions:: macro rules */
         /*! Rule::       . */
         /* b0rk on bad characters */
@@ -8377,7 +8377,7 @@ EOF: 1,
 
         break;
 
-      case 107:
+      case 109:
         /*! Conditions:: * */
         /*! Rule::       . */
         yy_.yyerror(rmCommonWS`
@@ -8452,84 +8452,92 @@ EOF: 1,
       57: 38,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
+      /*! Rule::       \(\?<= */
+      58: 38,
+
+      /*! Conditions:: rules macro named_chunk INITIAL */
+      /*! Rule::       \(\?<! */
+      59: 38,
+
+      /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \( */
-      58: 10,
+      60: 10,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \) */
-      59: 11,
+      61: 11,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \+ */
-      60: 12,
+      62: 12,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \* */
-      61: 7,
+      63: 7,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \? */
-      62: 13,
+      64: 13,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \^ */
-      63: 16,
+      65: 16,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       , */
-      64: 8,
+      66: 8,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       <<EOF>> */
-      65: 17,
+      67: 17,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */
-      69: 44,
+      71: 44,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \$ */
-      71: 17,
+      73: 17,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \. */
-      72: 15,
+      74: 15,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-      82: 45,
+      84: 45,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \{{ID}\} */
-      83: 40,
+      85: 40,
 
       /*! Conditions:: set options */
       /*! Rule::       \{{ID}\} */
-      84: 40,
+      86: 40,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \{ */
-      85: 3,
+      87: 3,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \} */
-      86: 4,
+      88: 4,
 
       /*! Conditions:: set */
       /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */
-      87: 43,
+      89: 43,
 
       /*! Conditions:: set */
       /*! Rule::       \{ */
-      88: 43,
+      90: 43,
 
       /*! Conditions:: code */
       /*! Rule::       [^\r\n]*(\r|\n)+ */
-      90: 53,
+      92: 53,
 
       /*! Conditions:: * */
       /*! Rule::       $ */
-      108: 1
+      110: 1
     },
 
     rules: [
@@ -8597,60 +8605,62 @@ EOF: 1,
       /*  55: */  /^(?:\(\?:)/,
       /*  56: */  /^(?:\(\?=)/,
       /*  57: */  /^(?:\(\?!)/,
-      /*  58: */  /^(?:\()/,
-      /*  59: */  /^(?:\))/,
-      /*  60: */  /^(?:\+)/,
-      /*  61: */  /^(?:\*)/,
-      /*  62: */  /^(?:\?)/,
-      /*  63: */  /^(?:\^)/,
-      /*  64: */  /^(?:,)/,
-      /*  65: */  /^(?:<<EOF>>)/,
-      /*  66: */  /^(?:<)/,
-      /*  67: */  /^(?:\/!)/,
-      /*  68: */  /^(?:\/)/,
-      /*  69: */  /^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
-      /*  70: */  /^(?:\\.)/,
-      /*  71: */  /^(?:\$)/,
-      /*  72: */  /^(?:\.)/,
-      /*  73: */  /^(?:%option[s]?)/,
-      /*  74: */  /^(?:%s\b)/,
-      /*  75: */  /^(?:%x\b)/,
-      /*  76: */  /^(?:%code\b)/,
-      /*  77: */  /^(?:%import\b)/,
-      /*  78: */  /^(?:%include\b)/,
-      /*  79: */  /^(?:%include\b)/,
-      /*  80: */  new XRegExp(
+      /*  58: */  /^(?:\(\?<=)/,
+      /*  59: */  /^(?:\(\?<!)/,
+      /*  60: */  /^(?:\()/,
+      /*  61: */  /^(?:\))/,
+      /*  62: */  /^(?:\+)/,
+      /*  63: */  /^(?:\*)/,
+      /*  64: */  /^(?:\?)/,
+      /*  65: */  /^(?:\^)/,
+      /*  66: */  /^(?:,)/,
+      /*  67: */  /^(?:<<EOF>>)/,
+      /*  68: */  /^(?:<)/,
+      /*  69: */  /^(?:\/!)/,
+      /*  70: */  /^(?:\/)/,
+      /*  71: */  /^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
+      /*  72: */  /^(?:\\.)/,
+      /*  73: */  /^(?:\$)/,
+      /*  74: */  /^(?:\.)/,
+      /*  75: */  /^(?:%option[s]?)/,
+      /*  76: */  /^(?:%s\b)/,
+      /*  77: */  /^(?:%x\b)/,
+      /*  78: */  /^(?:%code\b)/,
+      /*  79: */  /^(?:%import\b)/,
+      /*  80: */  /^(?:%include\b)/,
+      /*  81: */  /^(?:%include\b)/,
+      /*  82: */  new XRegExp(
         '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
         ''
       ),
-      /*  81: */  /^(?:%%)/,
-      /*  82: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
-      /*  83: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-      /*  84: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-      /*  85: */  /^(?:\{)/,
-      /*  86: */  /^(?:\})/,
-      /*  87: */  /^(?:(?:\\\\|\\\]|[^\]{])+)/,
-      /*  88: */  /^(?:\{)/,
-      /*  89: */  /^(?:\])/,
-      /*  90: */  /^(?:[^\r\n]*(\r|\n)+)/,
-      /*  91: */  /^(?:[^\r\n]+)/,
-      /*  92: */  /^(?:(\r\n|\n|\r))/,
-      /*  93: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-      /*  94: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /*  95: */  /^(?:([^\S\n\r])+)/,
-      /*  96: */  /^(?:\S+)/,
-      /*  97: */  /^(?:")/,
-      /*  98: */  /^(?:')/,
-      /*  99: */  /^(?:`)/,
-      /* 100: */  /^(?:")/,
-      /* 101: */  /^(?:')/,
-      /* 102: */  /^(?:`)/,
-      /* 103: */  /^(?:")/,
-      /* 104: */  /^(?:')/,
-      /* 105: */  /^(?:`)/,
-      /* 106: */  /^(?:.)/,
-      /* 107: */  /^(?:.)/,
-      /* 108: */  /^(?:$)/
+      /*  83: */  /^(?:%%)/,
+      /*  84: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
+      /*  85: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+      /*  86: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+      /*  87: */  /^(?:\{)/,
+      /*  88: */  /^(?:\})/,
+      /*  89: */  /^(?:(?:\\\\|\\\]|[^\]{])+)/,
+      /*  90: */  /^(?:\{)/,
+      /*  91: */  /^(?:\])/,
+      /*  92: */  /^(?:[^\r\n]*(\r|\n)+)/,
+      /*  93: */  /^(?:[^\r\n]+)/,
+      /*  94: */  /^(?:(\r\n|\n|\r))/,
+      /*  95: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+      /*  96: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+      /*  97: */  /^(?:([^\S\n\r])+)/,
+      /*  98: */  /^(?:\S+)/,
+      /*  99: */  /^(?:")/,
+      /* 100: */  /^(?:')/,
+      /* 101: */  /^(?:`)/,
+      /* 102: */  /^(?:")/,
+      /* 103: */  /^(?:')/,
+      /* 104: */  /^(?:`)/,
+      /* 105: */  /^(?:")/,
+      /* 106: */  /^(?:')/,
+      /* 107: */  /^(?:`)/,
+      /* 108: */  /^(?:.)/,
+      /* 109: */  /^(?:.)/,
+      /* 110: */  /^(?:$)/
     ],
 
     conditions: {
@@ -8694,18 +8704,20 @@ EOF: 1,
           76,
           77,
           78,
+          79,
           80,
-          81,
           82,
           83,
+          84,
           85,
-          86,
-          103,
-          104,
+          87,
+          88,
           105,
           106,
           107,
-          108
+          108,
+          109,
+          110
         ],
 
         inclusive: true
@@ -8748,17 +8760,19 @@ EOF: 1,
           76,
           77,
           78,
-          81,
-          82,
+          79,
+          80,
           83,
+          84,
           85,
-          86,
-          103,
-          104,
+          87,
+          88,
           105,
           106,
           107,
-          108
+          108,
+          109,
+          110
         ],
 
         inclusive: true
@@ -8799,28 +8813,30 @@ EOF: 1,
           76,
           77,
           78,
-          81,
-          82,
+          79,
+          80,
           83,
+          84,
           85,
-          86,
-          103,
-          104,
+          87,
+          88,
           105,
+          106,
           107,
-          108
+          109,
+          110
         ],
 
         inclusive: true
       },
 
       'code': {
-        rules: [79, 80, 90, 91, 103, 104, 105, 107, 108],
+        rules: [81, 82, 92, 93, 105, 106, 107, 109, 110],
         inclusive: false
       },
 
       'start_condition': {
-        rules: [24, 25, 42, 43, 44, 103, 104, 105, 107, 108],
+        rules: [24, 25, 42, 43, 44, 105, 106, 107, 109, 110],
         inclusive: false
       },
 
@@ -8837,22 +8853,22 @@ EOF: 1,
           39,
           40,
           41,
-          84,
-          100,
-          101,
+          86,
           102,
           103,
           104,
           105,
+          106,
           107,
-          108
+          109,
+          110
         ],
 
         inclusive: false
       },
 
       'conditions': {
-        rules: [20, 21, 22, 23, 103, 104, 105, 107, 108],
+        rules: [20, 21, 22, 23, 105, 106, 107, 109, 110],
         inclusive: false
       },
 
@@ -8877,26 +8893,26 @@ EOF: 1,
           17,
           18,
           19,
-          97,
-          98,
           99,
-          103,
-          104,
+          100,
+          101,
           105,
+          106,
           107,
-          108
+          109,
+          110
         ],
 
         inclusive: false
       },
 
       'path': {
-        rules: [24, 25, 92, 93, 94, 95, 96, 103, 104, 105, 107, 108],
+        rules: [24, 25, 94, 95, 96, 97, 98, 105, 106, 107, 109, 110],
         inclusive: false
       },
 
       'set': {
-        rules: [84, 87, 88, 89, 103, 104, 105, 107, 108],
+        rules: [86, 89, 90, 91, 105, 106, 107, 109, 110],
         inclusive: false
       },
 
@@ -8936,17 +8952,19 @@ EOF: 1,
           76,
           77,
           78,
+          79,
           80,
-          81,
           82,
           83,
+          84,
           85,
-          86,
-          103,
-          104,
+          87,
+          88,
           105,
+          106,
           107,
-          108
+          109,
+          110
         ],
 
         inclusive: true
@@ -8957,6 +8975,7 @@ EOF: 1,
   var rmCommonWS = helpers.rmCommonWS;
   var dquote = helpers.dquote;
 
+  // unescape a string value which is wrapped in quotes/doublequotes
   function unescQuote(str) {
     str = '' + str;
     var a = str.split('\\\\');
@@ -17856,18 +17875,19 @@ symbols_: {
   "=": 3,
   "?": 10,
   "ACTION": 15,
-  "ACTION_BODY": 43,
-  "ALIAS": 39,
-  "ARROW_ACTION": 42,
-  "CODE": 46,
+  "ACTION_BODY": 44,
+  "ALIAS": 40,
+  "ARROW_ACTION": 38,
+  "ARROW_ACTION_CODE": 43,
+  "CODE": 47,
   "DEBUG": 19,
   "EBNF": 20,
   "EOF": 1,
-  "EOF_ID": 40,
-  "EPSILON": 38,
+  "EOF_ID": 41,
+  "EPSILON": 39,
   "ID": 24,
   "IMPORT": 22,
-  "INCLUDE": 44,
+  "INCLUDE": 45,
   "INIT_CODE": 23,
   "INTEGER": 37,
   "LEFT": 33,
@@ -17880,60 +17900,60 @@ symbols_: {
   "OPTION_VALUE": 30,
   "PARSER_TYPE": 32,
   "PARSE_PARAM": 31,
-  "PATH": 45,
-  "PREC": 41,
+  "PATH": 46,
+  "PREC": 42,
   "RIGHT": 34,
   "START": 16,
   "STRING": 26,
   "TOKEN": 18,
   "TOKEN_TYPE": 36,
   "UNKNOWN_DECL": 21,
-  "action": 85,
-  "action_body": 86,
-  "action_comments_body": 87,
-  "action_ne": 84,
-  "associativity": 61,
-  "declaration": 51,
-  "declaration_list": 50,
+  "action": 86,
+  "action_body": 87,
+  "action_comments_body": 88,
+  "action_ne": 85,
+  "associativity": 62,
+  "declaration": 52,
+  "declaration_list": 51,
   "error": 2,
-  "expression": 79,
-  "extra_parser_module_code": 88,
-  "full_token_definitions": 63,
-  "grammar": 69,
-  "handle": 76,
-  "handle_action": 75,
-  "handle_list": 74,
-  "handle_sublist": 77,
-  "id": 83,
-  "id_list": 68,
-  "import_name": 53,
-  "import_path": 54,
-  "include_macro_code": 89,
-  "init_code_name": 52,
-  "module_code_chunk": 90,
-  "one_full_token": 64,
-  "operator": 60,
-  "option": 57,
-  "option_list": 56,
-  "optional_action_header_block": 49,
-  "optional_end_block": 48,
-  "optional_module_code_chunk": 91,
-  "optional_production_description": 73,
-  "optional_token_type": 65,
-  "options": 55,
-  "parse_params": 58,
-  "parser_type": 59,
-  "prec": 81,
-  "production": 71,
-  "production_id": 72,
-  "production_list": 70,
-  "spec": 47,
-  "suffix": 80,
-  "suffixed_expression": 78,
-  "symbol": 82,
-  "token_description": 67,
-  "token_list": 62,
-  "token_value": 66,
+  "expression": 80,
+  "extra_parser_module_code": 89,
+  "full_token_definitions": 64,
+  "grammar": 70,
+  "handle": 77,
+  "handle_action": 76,
+  "handle_list": 75,
+  "handle_sublist": 78,
+  "id": 84,
+  "id_list": 69,
+  "import_name": 54,
+  "import_path": 55,
+  "include_macro_code": 90,
+  "init_code_name": 53,
+  "module_code_chunk": 91,
+  "one_full_token": 65,
+  "operator": 61,
+  "option": 58,
+  "option_list": 57,
+  "optional_action_header_block": 50,
+  "optional_end_block": 49,
+  "optional_module_code_chunk": 92,
+  "optional_production_description": 74,
+  "optional_token_type": 66,
+  "options": 56,
+  "parse_params": 59,
+  "parser_type": 60,
+  "prec": 82,
+  "production": 72,
+  "production_id": 73,
+  "production_list": 71,
+  "spec": 48,
+  "suffix": 81,
+  "suffixed_expression": 79,
+  "symbol": 83,
+  "token_description": 68,
+  "token_list": 63,
+  "token_value": 67,
   "{": 12,
   "|": 6,
   "}": 13
@@ -17976,15 +17996,16 @@ terminals_: {
   35: "NONASSOC",
   36: "TOKEN_TYPE",
   37: "INTEGER",
-  38: "EPSILON",
-  39: "ALIAS",
-  40: "EOF_ID",
-  41: "PREC",
-  42: "ARROW_ACTION",
-  43: "ACTION_BODY",
-  44: "INCLUDE",
-  45: "PATH",
-  46: "CODE"
+  38: "ARROW_ACTION",
+  39: "EPSILON",
+  40: "ALIAS",
+  41: "EOF_ID",
+  42: "PREC",
+  43: "ARROW_ACTION_CODE",
+  44: "ACTION_BODY",
+  45: "INCLUDE",
+  46: "PATH",
+  47: "CODE"
 },
 TERROR: 2,
     EOF: 1,
@@ -18091,89 +18112,89 @@ TERROR: 2,
 productions_: bp$1({
   pop: u$1([
   s$1,
-  [47, 3],
-  48,
-  48,
-  s$1,
-  [49, 3],
+  [48, 3],
+  49,
+  49,
   s$1,
   [50, 3],
   s$1,
-  [51, 20],
+  [51, 3],
   s$1,
-  [52, 3],
-  53,
-  53,
+  [52, 20],
+  s$1,
+  [53, 3],
   54,
   54,
+  55,
+  55,
   s$1,
-  [55, 3],
-  56,
-  56,
+  [56, 3],
+  57,
+  57,
   s$1,
-  [57, 6],
-  58,
-  58,
+  [58, 6],
   59,
   59,
   60,
   60,
+  61,
+  61,
   s$1,
-  [61, 3],
-  62,
-  62,
+  [62, 3],
   63,
   63,
+  64,
+  64,
   s$1,
-  [64, 3],
-  65,
+  [65, 3],
+  66,
   s$1,
-  [65, 4, 1],
-  68,
+  [66, 4, 1],
   69,
   70,
-  70,
+  71,
+  71,
   s$1,
-  [71, 3],
-  72,
-  72,
-  73,
-  73,
+  [72, 3],
   s$1,
-  [74, 4],
+  [73, 3],
+  74,
+  74,
   s$1,
-  [75, 3],
-  76,
-  76,
+  [75, 4],
+  s$1,
+  [76, 3],
   77,
   77,
   78,
   78,
+  79,
+  79,
   s$1,
-  [79, 5],
+  [80, 5],
   s$1,
-  [80, 4],
+  [81, 4],
   s$1,
-  [81, 3],
-  82,
-  82,
+  [82, 3],
   83,
+  83,
+  84,
   s$1,
-  [84, 4],
+  [85, 4],
   s$1,
-  [85, 3],
+  [86, 4],
   s$1,
-  [86, 5],
-  87,
-  87,
+  [87, 5],
   88,
   88,
   89,
   89,
+  90,
+  90,
   s$1,
-  [90, 3],
-  91,
-  91
+  [91, 3],
+  92,
+  92
 ]),
   rule: u$1([
   5,
@@ -18217,41 +18238,40 @@ productions_: bp$1({
   [11, 7],
   c$1,
   [36, 4],
-  3,
-  3,
+  s$1,
+  [3, 3],
   1,
   0,
   3,
   c$1,
-  [39, 4],
+  [40, 4],
   c$1,
-  [80, 4],
+  [81, 4],
   c$1,
   [9, 3],
   c$1,
-  [39, 4],
+  [40, 4],
   3,
   3,
   c$1,
-  [34, 5],
+  [35, 5],
   c$1,
-  [40, 5],
+  [41, 5],
   c$1,
   [32, 3],
-  s$1,
-  [1, 3],
-  0,
+  c$1,
+  [11, 5],
   0,
   1,
   5,
   4,
   4,
   c$1,
-  [53, 3],
+  [55, 3],
   c$1,
-  [85, 4],
+  [87, 4],
   c$1,
-  [35, 3],
+  [36, 3],
   0
 ])
 }),
@@ -18327,13 +18347,13 @@ case 3:
 
 case 4:
     /*! Production::    optional_end_block : %epsilon */
-case 100:
+case 101:
     /*! Production::    suffix : %epsilon */
-case 116:
+case 118:
     /*! Production::    action : %epsilon */
-case 117:
+case 119:
     /*! Production::    action_body : %epsilon */
-case 132:
+case 134:
     /*! Production::    optional_module_code_chunk : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -18747,37 +18767,37 @@ case 68:
     /*! Production::    token_value : INTEGER */
 case 69:
     /*! Production::    token_description : STRING */
-case 80:
+case 81:
     /*! Production::    optional_production_description : STRING */
-case 95:
+case 96:
     /*! Production::    expression : ID */
-case 101:
-    /*! Production::    suffix : "*" */
 case 102:
-    /*! Production::    suffix : "?" */
+    /*! Production::    suffix : "*" */
 case 103:
+    /*! Production::    suffix : "?" */
+case 104:
     /*! Production::    suffix : "+" */
-case 107:
-    /*! Production::    symbol : id */
 case 108:
-    /*! Production::    symbol : STRING */
+    /*! Production::    symbol : id */
 case 109:
+    /*! Production::    symbol : STRING */
+case 110:
     /*! Production::    id : ID */
-case 112:
-    /*! Production::    action_ne : ACTION */
 case 113:
-    /*! Production::    action_ne : include_macro_code */
+    /*! Production::    action_ne : ACTION */
 case 114:
+    /*! Production::    action_ne : include_macro_code */
+case 115:
     /*! Production::    action : action_ne */
-case 118:
+case 120:
     /*! Production::    action_body : action_comments_body */
-case 122:
-    /*! Production::    action_comments_body : ACTION_BODY */
 case 124:
+    /*! Production::    action_comments_body : ACTION_BODY */
+case 126:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk */
-case 128:
+case 130:
     /*! Production::    module_code_chunk : CODE */
-case 131:
+case 133:
     /*! Production::    optional_module_code_chunk : module_code_chunk */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -18790,7 +18810,7 @@ case 131:
 
 case 39:
     /*! Production::    options : OPTIONS option_list OPTIONS_END */
-case 110:
+case 111:
     /*! Production::    action_ne : "{" action_body "}" */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -18858,7 +18878,7 @@ case 60:
     /*! Production::    token_list : symbol */
 case 71:
     /*! Production::    id_list : id */
-case 83:
+case 84:
     /*! Production::    handle_list : handle_action */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -19258,7 +19278,30 @@ case 79:
     `);
     break;
 
-case 81:
+case 80:
+    /*! Production::    production_id : id optional_production_description ARROW_ACTION */
+
+    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
+    this.$ = yyvstack[yysp - 2];
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
+    
+    
+    yyparser.yyError(rmCommonWS$5`
+        rule id should be followed by a colon instead of an arrow: 
+        please adjust your grammar to use this format:
+    
+            rule_id : terms  { optional action code }
+                    | terms  { optional action code }
+                    ...
+                    ;
+    
+          Erroneous area:
+        ${yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])}
+    `);
+    break;
+
+case 82:
     /*! Production::    optional_production_description : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-):
@@ -19267,7 +19310,7 @@ case 81:
     // END of default action (generated by JISON mode classic/merge :: 0,VT,VA,-,-,LT,LA,-,-)
     break;
 
-case 82:
+case 83:
     /*! Production::    handle_list : handle_list "|" handle_action */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19279,7 +19322,7 @@ case 82:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 84:
+case 85:
     /*! Production::    handle_list : handle_list "|" error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -19297,7 +19340,7 @@ case 84:
     `);
     break;
 
-case 85:
+case 86:
     /*! Production::    handle_list : handle_list ":" error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -19315,7 +19358,7 @@ case 85:
     `);
     break;
 
-case 86:
+case 87:
     /*! Production::    handle_action : handle prec action */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19352,7 +19395,7 @@ case 86:
     }
     break;
 
-case 87:
+case 88:
     /*! Production::    handle_action : EPSILON action */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -19378,7 +19421,7 @@ case 87:
     }
     break;
 
-case 88:
+case 89:
     /*! Production::    handle_action : EPSILON error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -19396,7 +19439,7 @@ case 88:
     `);
     break;
 
-case 89:
+case 90:
     /*! Production::    handle : handle suffixed_expression */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -19408,7 +19451,7 @@ case 89:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 90:
+case 91:
     /*! Production::    handle : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -19419,7 +19462,7 @@ case 90:
     this.$ = [];
     break;
 
-case 91:
+case 92:
     /*! Production::    handle_sublist : handle_sublist "|" handle */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19431,7 +19474,7 @@ case 91:
     this.$.push(yyvstack[yysp].join(' '));
     break;
 
-case 92:
+case 93:
     /*! Production::    handle_sublist : handle */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -19442,7 +19485,7 @@ case 92:
     this.$ = [yyvstack[yysp].join(' ')];
     break;
 
-case 93:
+case 94:
     /*! Production::    suffixed_expression : expression suffix ALIAS */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19453,11 +19496,11 @@ case 93:
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + "[" + yyvstack[yysp] + "]";
     break;
 
-case 94:
+case 95:
     /*! Production::    suffixed_expression : expression suffix */
-case 123:
+case 125:
     /*! Production::    action_comments_body : action_comments_body ACTION_BODY */
-case 129:
+case 131:
     /*! Production::    module_code_chunk : module_code_chunk CODE */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -19468,7 +19511,7 @@ case 129:
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 96:
+case 97:
     /*! Production::    expression : EOF_ID */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -19479,7 +19522,7 @@ case 96:
     this.$ = '$end';
     break;
 
-case 97:
+case 98:
     /*! Production::    expression : STRING */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -19494,7 +19537,7 @@ case 97:
     this.$ = dquote$2(yyvstack[yysp]);
     break;
 
-case 98:
+case 99:
     /*! Production::    expression : "(" handle_sublist ")" */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19505,7 +19548,7 @@ case 98:
     this.$ = '(' + yyvstack[yysp - 1].join(' | ') + ')';
     break;
 
-case 99:
+case 100:
     /*! Production::    expression : "(" handle_sublist error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -19522,7 +19565,7 @@ case 99:
     `);
     break;
 
-case 104:
+case 105:
     /*! Production::    prec : PREC symbol */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -19533,7 +19576,7 @@ case 104:
     this.$ = { prec: yyvstack[yysp] };
     break;
 
-case 105:
+case 106:
     /*! Production::    prec : PREC error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -19551,7 +19594,7 @@ case 105:
     `);
     break;
 
-case 106:
+case 107:
     /*! Production::    prec : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -19562,7 +19605,7 @@ case 106:
     this.$ = null;
     break;
 
-case 111:
+case 112:
     /*! Production::    action_ne : "{" action_body error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -19579,18 +19622,38 @@ case 111:
     `);
     break;
 
-case 115:
-    /*! Production::    action : ARROW_ACTION */
+case 116:
+    /*! Production::    action : ARROW_ACTION ARROW_ACTION_CODE */
 
-    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
-    this._$ = yylstack[yysp];
-    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
+    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
     
     
     this.$ = '$$ = (' + yyvstack[yysp] + ');';
     break;
 
-case 119:
+case 117:
+    /*! Production::    action : ARROW_ACTION error */
+
+    // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
+    this.$ = yyvstack[yysp - 1];
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-)
+    
+    
+    yyparser.yyError(rmCommonWS$5`
+        An rule action arrow must be followed by on a single line by a JavaScript expression to assign the rule's value, e.g.:
+    
+            rule: term1 term2   -> $term1 + $term2
+                ;
+    
+          Erroneous area:
+        ${yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1])}
+    `);
+    break;
+
+case 121:
     /*! Production::    action_body : action_body "{" action_body "}" action_comments_body */
 
     // default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-):
@@ -19601,7 +19664,7 @@ case 119:
     this.$ = yyvstack[yysp - 4] + yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 120:
+case 122:
     /*! Production::    action_body : action_body "{" action_body "}" */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
@@ -19612,7 +19675,7 @@ case 120:
     this.$ = yyvstack[yysp - 3] + yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 121:
+case 123:
     /*! Production::    action_body : action_body "{" action_body error */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
@@ -19629,7 +19692,7 @@ case 121:
     `);
     break;
 
-case 125:
+case 127:
     /*! Production::    extra_parser_module_code : optional_module_code_chunk include_macro_code extra_parser_module_code */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -19640,7 +19703,7 @@ case 125:
     this.$ = yyvstack[yysp - 2] + yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 126:
+case 128:
     /*! Production::    include_macro_code : INCLUDE PATH */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -19662,7 +19725,7 @@ case 126:
     this.$ = '\n// Included by Jison: ' + yyvstack[yysp] + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + yyvstack[yysp] + '\n\n';
     break;
 
-case 127:
+case 129:
     /*! Production::    include_macro_code : INCLUDE error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -19678,7 +19741,7 @@ case 127:
     ` + yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 1]));
     break;
 
-case 130:
+case 132:
     /*! Production::    module_code_chunk : error */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -19695,7 +19758,7 @@ case 130:
         ` + yylexer.prettyPrintRange(yylstack[yysp]));
     break;
 
-case 164:       // === NO_ACTION[1] :: ensures that anyone (but us) using this new state will fail dramatically!
+case 167:       // === NO_ACTION[1] :: ensures that anyone (but us) using this new state will fail dramatically!
                 // error recovery reduction action (action generated by jison,
                 // using the user-specified `%code error_recovery_reduction` %{...%}
                 // code chunk below.
@@ -19765,7 +19828,7 @@ table: bt$1({
   c$1,
   [40, 3],
   17,
-  4,
+  5,
   20,
   18,
   23,
@@ -19791,8 +19854,8 @@ table: bt$1({
   3,
   15,
   11,
-  2,
-  2,
+  3,
+  3,
   19,
   20,
   18,
@@ -19816,23 +19879,24 @@ table: bt$1({
   18,
   9,
   s$1,
-  [3, 4],
-  14,
-  14,
+  [3, 3],
+  2,
+  s$1,
+  [14, 3],
   18,
   21,
   21,
   6,
   4,
   c$1,
-  [50, 5],
+  [51, 5],
   7,
   7,
   s$1,
   [15, 4],
   3,
-  9,
-  3,
+  c$1,
+  [25, 4],
   14,
   18,
   18,
@@ -19849,52 +19913,52 @@ table: bt$1({
   27,
   s$1,
   [31, 5, 1],
-  44,
-  47,
-  50,
+  45,
+  48,
+  51,
   1,
   c$1,
   [21, 18],
-  51,
-  55,
+  52,
+  56,
   s$1,
-  [58, 4, 1],
-  89,
+  [59, 4, 1],
+  90,
   15,
   24,
-  44,
-  49,
-  69,
+  45,
+  50,
+  70,
   c$1,
   [31, 19],
   c$1,
   [18, 19],
   24,
-  83,
+  84,
   c$1,
   [39, 38],
   36,
-  63,
-  65,
+  64,
+  66,
   c$1,
   [41, 37],
   c$1,
   [18, 108],
   24,
   26,
-  53,
+  54,
   2,
   24,
   25,
   26,
-  52,
+  53,
   c$1,
   [9, 3],
-  62,
-  82,
+  63,
   83,
+  84,
   2,
-  45,
+  46,
   c$1,
   [8, 7],
   24,
@@ -19902,22 +19966,22 @@ table: bt$1({
   c$1,
   [5, 3],
   25,
-  56,
   57,
+  58,
   c$1,
   [9, 3],
   c$1,
   [3, 6],
   c$1,
   [266, 3],
-  48,
+  49,
   c$1,
   [275, 3],
-  70,
   71,
   72,
-  83,
-  89,
+  73,
+  84,
+  90,
   c$1,
   [278, 38],
   4,
@@ -19930,30 +19994,30 @@ table: bt$1({
   c$1,
   [24, 6],
   37,
-  42,
+  38,
   c$1,
   [152, 37],
   24,
-  64,
-  68,
-  83,
+  65,
+  69,
+  84,
   24,
   c$1,
   [119, 3],
-  54,
+  55,
   c$1,
   [27, 11],
   c$1,
   [67, 8],
-  44,
-  54,
+  45,
+  55,
   c$1,
   [147, 6],
   12,
   15,
-  44,
-  84,
-  89,
+  45,
+  85,
+  90,
   c$1,
   [5, 8],
   c$1,
@@ -19979,7 +20043,7 @@ table: bt$1({
   [25, 11],
   c$1,
   [73, 7],
-  46,
+  47,
   c$1,
   [24, 24],
   c$1,
@@ -19988,7 +20052,7 @@ table: bt$1({
   [18, 25],
   25,
   28,
-  57,
+  58,
   c$1,
   [21, 12],
   28,
@@ -20001,11 +20065,11 @@ table: bt$1({
   s$1,
   [1, 3],
   2,
-  44,
-  46,
-  88,
-  90,
+  45,
+  47,
+  89,
   91,
+  92,
   c$1,
   [425, 3],
   24,
@@ -20025,100 +20089,102 @@ table: bt$1({
   24,
   26,
   38,
-  40,
+  39,
   41,
   42,
-  44,
-  74,
+  45,
   75,
   76,
+  77,
   2,
   5,
   26,
-  73,
+  38,
+  74,
   c$1,
-  [151, 12],
+  [152, 12],
   c$1,
-  [94, 7],
+  [95, 7],
   c$1,
-  [307, 38],
+  [308, 38],
   37,
-  44,
-  66,
+  45,
   67,
+  68,
   c$1,
-  [685, 109],
+  [686, 109],
   12,
   13,
-  43,
-  86,
+  44,
   87,
+  88,
   c$1,
-  [349, 14],
+  [350, 14],
   c$1,
-  [445, 11],
+  [446, 11],
   c$1,
   [84, 46],
   c$1,
-  [504, 10],
+  [505, 10],
   c$1,
-  [348, 19],
+  [349, 19],
   c$1,
   [58, 19],
   25,
   29,
   30,
   c$1,
-  [346, 5],
+  [347, 5],
   1,
-  44,
-  89,
+  45,
+  90,
   1,
   c$1,
-  [483, 3],
+  [484, 3],
   c$1,
   [3, 6],
   c$1,
-  [339, 3],
+  [340, 3],
   c$1,
   [121, 3],
   c$1,
-  [496, 3],
+  [497, 3],
   c$1,
   [8, 5],
   c$1,
-  [349, 8],
+  [350, 9],
   c$1,
-  [348, 4],
-  78,
+  [349, 3],
   79,
-  81,
+  80,
+  82,
   c$1,
-  [568, 5],
+  [569, 5],
   15,
-  42,
-  44,
-  84,
+  38,
+  45,
   85,
-  89,
+  86,
+  90,
   2,
   5,
-  2,
-  5,
+  38,
   c$1,
-  [359, 19],
+  [3, 4],
+  c$1,
+  [361, 18],
   c$1,
   [19, 11],
   c$1,
-  [142, 8],
+  [144, 8],
   c$1,
-  [337, 30],
+  [339, 30],
   c$1,
-  [180, 26],
+  [182, 26],
   c$1,
-  [284, 3],
+  [286, 3],
   c$1,
-  [287, 4],
+  [289, 4],
   c$1,
   [4, 4],
   25,
@@ -20128,89 +20194,97 @@ table: bt$1({
   c$1,
   [4, 4],
   c$1,
-  [517, 8],
+  [520, 8],
   c$1,
-  [168, 6],
+  [170, 6],
   c$1,
-  [507, 14],
+  [510, 14],
   c$1,
-  [506, 3],
+  [509, 3],
   c$1,
-  [189, 7],
+  [191, 7],
   c$1,
-  [162, 8],
+  [164, 8],
   s$1,
   [4, 5, 1],
   c$1,
-  [190, 8],
+  [192, 8],
   c$1,
-  [1024, 6],
+  [1027, 6],
   s$1,
   [4, 9, 1],
   c$1,
-  [22, 3],
-  s$1,
-  [39, 4, 1],
-  44,
-  80,
+  [22, 4],
+  40,
+  c$1,
+  [23, 3],
+  81,
   c$1,
   [19, 18],
   c$1,
   [18, 37],
   c$1,
   [16, 3],
-  c$1,
-  [88, 3],
-  76,
+  24,
+  26,
+  41,
   77,
+  78,
   c$1,
-  [292, 6],
+  [294, 6],
   c$1,
-  [3, 6],
+  [3, 3],
+  2,
+  43,
   c$1,
-  [144, 14],
+  [143, 14],
   c$1,
-  [14, 15],
+  [14, 29],
   c$1,
-  [480, 39],
+  [495, 39],
   c$1,
   [21, 21],
   c$1,
-  [549, 6],
+  [564, 6],
   c$1,
   [6, 3],
   1,
   c$1,
-  [111, 12],
+  [124, 9],
   c$1,
-  [234, 7],
+  [3, 6],
+  c$1,
+  [247, 4],
   c$1,
   [7, 7],
   c$1,
-  [238, 10],
+  [251, 11],
   c$1,
-  [179, 11],
+  [192, 10],
   c$1,
   [15, 40],
   6,
   8,
   c$1,
-  [209, 7],
-  78,
+  [222, 7],
   79,
+  80,
   c$1,
-  [374, 4],
+  [219, 7],
   c$1,
-  [313, 14],
+  [393, 3],
   c$1,
-  [271, 43],
+  [332, 14],
   c$1,
-  [164, 4],
+  [290, 43],
   c$1,
-  [169, 4],
+  [170, 4],
   c$1,
-  [78, 12],
-  43
+  [175, 4],
+  c$1,
+  [84, 9],
+  c$1,
+  [17, 4]
 ]),
   type: u$1([
   s$1,
@@ -20265,23 +20339,23 @@ table: bt$1({
   c$1,
   [98, 26],
   c$1,
-  [489, 7],
+  [356, 27],
   c$1,
-  [721, 173],
+  [722, 154],
   c$1,
-  [462, 131],
+  [463, 131],
   c$1,
   [130, 37],
   c$1,
-  [375, 11],
+  [376, 11],
   c$1,
-  [818, 45],
+  [819, 47],
   c$1,
-  [223, 79],
+  [225, 79],
   c$1,
-  [124, 24],
+  [126, 24],
   c$1,
-  [986, 15],
+  [989, 15],
   c$1,
   [38, 19],
   c$1,
@@ -20289,15 +20363,15 @@ table: bt$1({
   c$1,
   [157, 62],
   c$1,
-  [443, 106],
+  [445, 119],
   c$1,
-  [106, 103],
+  [119, 103],
   c$1,
-  [103, 62],
+  [103, 68],
   c$1,
-  [1248, 16],
+  [914, 16],
   c$1,
-  [78, 6]
+  [84, 6]
 ]),
   state: u$1([
   1,
@@ -20368,26 +20442,26 @@ table: bt$1({
   133,
   131,
   82,
-  137,
-  142,
+  138,
+  143,
   94,
   93,
-  143,
+  144,
   101,
   133,
-  146,
-  82,
   147,
+  82,
+  148,
   50,
-  149,
-  154,
-  153,
+  150,
   155,
+  154,
+  158,
   111,
   124,
   126,
-  162,
-  163,
+  165,
+  166,
   124,
   126
 ]),
@@ -20437,58 +20511,59 @@ table: bt$1({
   c$1,
   [427, 12],
   c$1,
-  [9, 15],
+  [10, 15],
   c$1,
-  [335, 13],
+  [62, 22],
   c$1,
-  [389, 39],
+  [390, 31],
   c$1,
   [45, 43],
   c$1,
-  [509, 77],
+  [510, 77],
   c$1,
-  [762, 121],
+  [763, 121],
   c$1,
   [129, 9],
   c$1,
-  [756, 14],
+  [757, 14],
   c$1,
-  [334, 14],
+  [368, 12],
   c$1,
-  [41, 6],
+  [367, 6],
   c$1,
-  [367, 5],
+  [368, 7],
   c$1,
-  [784, 37],
+  [650, 26],
   c$1,
-  [208, 63],
+  [210, 76],
   c$1,
-  [1142, 20],
+  [1145, 20],
   c$1,
-  [1081, 10],
+  [1084, 10],
   c$1,
-  [487, 14],
+  [490, 14],
   c$1,
   [22, 9],
   c$1,
-  [151, 17],
+  [152, 17],
   c$1,
-  [221, 10],
+  [223, 10],
   c$1,
-  [803, 156],
+  [806, 81],
   c$1,
-  [318, 61],
+  [887, 107],
   c$1,
-  [216, 50],
+  [106, 43],
   c$1,
-  [457, 7],
+  [149, 49],
   c$1,
-  [455, 38],
+  [490, 7],
   c$1,
-  [123, 34],
+  [297, 72],
   c$1,
-  [1206, 8],
-  1
+  [889, 8],
+  c$1,
+  [447, 7]
 ]),
   goto: u$1([
   s$1,
@@ -20576,7 +20651,7 @@ table: bt$1({
   s$1,
   [29, 18],
   s$1,
-  [109, 26],
+  [110, 26],
   s$1,
   [15, 18],
   s$1,
@@ -20616,13 +20691,13 @@ table: bt$1({
   s$1,
   [60, 20],
   s$1,
-  [107, 25],
-  s$1,
   [108, 25],
   s$1,
-  [126, 24],
+  [109, 25],
   s$1,
-  [127, 24],
+  [128, 24],
+  s$1,
+  [129, 24],
   s$1,
   [50, 11],
   33,
@@ -20650,9 +20725,9 @@ table: bt$1({
   44,
   90,
   91,
-  132,
+  134,
   96,
-  132,
+  134,
   95,
   s$1,
   [72, 3],
@@ -20665,13 +20740,14 @@ table: bt$1({
   [74, 4],
   99,
   s$1,
-  [90, 8],
+  [91, 9],
   102,
   s$1,
-  [90, 4],
-  81,
-  81,
+  [91, 3],
+  82,
+  82,
   104,
+  82,
   s$1,
   [61, 11],
   33,
@@ -20699,11 +20775,12 @@ table: bt$1({
   s$1,
   [27, 18],
   s$1,
-  [117, 3],
-  s$1,
-  [112, 22],
+  [119, 3],
+  112,
   s$1,
   [113, 21],
+  s$1,
+  [114, 21],
   s$1,
   [28, 18],
   s$1,
@@ -20723,15 +20800,15 @@ table: bt$1({
   1,
   2,
   5,
-  124,
+  126,
   21,
-  131,
-  131,
+  133,
+  133,
   118,
   s$1,
-  [128, 3],
-  s$1,
   [130, 3],
+  s$1,
+  [132, 3],
   s$1,
   [73, 4],
   119,
@@ -20743,29 +20820,30 @@ table: bt$1({
   77,
   77,
   s$1,
-  [83, 3],
+  [84, 3],
   s$1,
-  [106, 3],
+  [107, 3],
   130,
-  106,
-  106,
+  107,
+  107,
   127,
   129,
+  107,
   128,
   125,
-  106,
-  106,
+  107,
   132,
   s$1,
-  [116, 3],
+  [118, 3],
   80,
   81,
   134,
   21,
   136,
   135,
-  80,
-  80,
+  137,
+  s$1,
+  [81, 3],
   s$1,
   [70, 19],
   s$1,
@@ -20779,14 +20857,14 @@ table: bt$1({
   [68, 19],
   s$1,
   [69, 18],
-  139,
   140,
-  138,
-  s$1,
-  [118, 3],
   141,
+  139,
   s$1,
-  [122, 4],
+  [120, 3],
+  142,
+  s$1,
+  [124, 4],
   45,
   45,
   46,
@@ -20796,119 +20874,126 @@ table: bt$1({
   48,
   48,
   c$1,
-  [494, 4],
+  [497, 4],
   s$1,
-  [129, 3],
+  [131, 3],
   s$1,
   [75, 4],
-  144,
-  c$1,
-  [487, 13],
   145,
+  c$1,
+  [490, 13],
+  146,
   s$1,
   [76, 4],
   c$1,
-  [153, 7],
+  [155, 7],
   s$1,
-  [89, 14],
-  148,
+  [90, 14],
+  149,
   33,
   51,
   s$1,
-  [100, 6],
-  150,
+  [101, 6],
   151,
   152,
+  153,
   s$1,
-  [100, 9],
-  s$1,
-  [95, 18],
+  [101, 9],
   s$1,
   [96, 18],
   s$1,
   [97, 18],
   s$1,
-  [90, 7],
+  [98, 18],
   s$1,
-  [87, 3],
+  [91, 7],
   s$1,
   [88, 3],
   s$1,
-  [114, 3],
+  [89, 3],
   s$1,
   [115, 3],
+  157,
+  156,
   s$1,
   [78, 14],
   s$1,
   [79, 14],
   s$1,
+  [80, 14],
+  s$1,
   [63, 18],
   s$1,
-  [110, 21],
-  s$1,
   [111, 21],
+  s$1,
+  [112, 21],
   c$1,
-  [526, 4],
+  [541, 4],
   s$1,
-  [123, 4],
-  125,
+  [125, 4],
+  127,
   s$1,
-  [82, 3],
-  s$1,
-  [84, 3],
+  [83, 3],
   s$1,
   [85, 3],
   s$1,
   [86, 3],
   s$1,
-  [104, 7],
+  [87, 3],
   s$1,
   [105, 7],
   s$1,
-  [94, 10],
-  156,
+  [106, 7],
   s$1,
-  [94, 4],
+  [95, 11],
+  159,
   s$1,
-  [101, 15],
+  [95, 3],
   s$1,
   [102, 15],
   s$1,
   [103, 15],
-  158,
-  159,
-  157,
-  92,
-  92,
-  130,
-  92,
-  c$1,
-  [465, 3],
+  s$1,
+  [104, 15],
   161,
-  140,
+  162,
   160,
+  93,
+  93,
+  130,
+  93,
+  127,
+  129,
+  128,
   s$1,
-  [93, 14],
+  [116, 3],
   s$1,
-  [98, 18],
+  [117, 3],
+  164,
+  141,
+  163,
+  s$1,
+  [94, 14],
   s$1,
   [99, 18],
   s$1,
-  [90, 7],
+  [100, 18],
   s$1,
-  [120, 3],
+  [91, 7],
+  s$1,
+  [122, 3],
   112,
   s$1,
-  [121, 3],
-  91,
-  91,
+  [123, 3],
+  92,
+  92,
   130,
-  91,
+  92,
   c$1,
-  [74, 3],
+  [80, 3],
   s$1,
-  [119, 3],
-  141
+  [121, 3],
+  142
 ])
 }),
 defaultActions: bda$1({
@@ -20963,15 +21048,19 @@ defaultActions: bda$1({
   122,
   124,
   s$1,
-  [127, 13, 1],
+  [127, 7, 1],
   s$1,
-  [141, 8, 1],
-  150,
+  [135, 6, 1],
+  s$1,
+  [142, 8, 1],
   151,
   152,
+  153,
+  156,
+  157,
   s$1,
-  [156, 4, 1],
-  161
+  [159, 4, 1],
+  164
 ]),
   goto: u$1([
   10,
@@ -20987,7 +21076,7 @@ defaultActions: bda$1({
   3,
   12,
   29,
-  109,
+  110,
   15,
   30,
   67,
@@ -20998,10 +21087,10 @@ defaultActions: bda$1({
   34,
   55,
   60,
-  107,
   108,
-  126,
-  127,
+  109,
+  128,
+  129,
   51,
   52,
   53,
@@ -21016,8 +21105,8 @@ defaultActions: bda$1({
   38,
   26,
   27,
-  112,
   113,
+  114,
   28,
   59,
   39,
@@ -21027,51 +21116,53 @@ defaultActions: bda$1({
   1,
   2,
   5,
-  128,
   130,
+  132,
   73,
-  83,
-  80,
+  84,
+  81,
   70,
   64,
   68,
   69,
-  122,
+  124,
   s$1,
   [45, 4, 1],
-  129,
+  131,
   75,
   76,
-  89,
-  95,
+  90,
   96,
   97,
-  90,
-  87,
+  98,
+  91,
   88,
-  114,
+  89,
   115,
   78,
   79,
+  80,
   63,
-  110,
   111,
-  123,
+  112,
   125,
-  82,
-  84,
+  127,
+  83,
   85,
   86,
-  104,
+  87,
   105,
-  101,
+  106,
   102,
   103,
-  93,
-  98,
+  104,
+  116,
+  117,
+  94,
   99,
-  90,
-  121
+  100,
+  91,
+  123
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -21112,7 +21203,7 @@ parse: function parse(input) {
     var TERROR = this.TERROR;
     var EOF = this.EOF;
     var ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
-    var NO_ACTION = [0, 164 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
+    var NO_ACTION = [0, 167 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
 
     var lexer;
     if (this.__lexer__) {
@@ -24196,11 +24287,11 @@ EOF: 1,
       case 2:
         /*! Conditions:: action */
         /*! Rule::       \/[^ /]*?['"{}][^ ]*?\/ */
-        return 43;  // regexp with braces or quotes (and no spaces)  
+        return 44;  // regexp with braces or quotes (and no spaces)  
 
         break;
 
-      case 7:
+      case 8:
         /*! Conditions:: action */
         /*! Rule::       \{ */
         yy.depth++;
@@ -24208,7 +24299,7 @@ EOF: 1,
         return 12;
         break;
 
-      case 8:
+      case 9:
         /*! Conditions:: action */
         /*! Rule::       \} */
         if (yy.depth === 0) {
@@ -24220,28 +24311,28 @@ EOF: 1,
         return 13;
         break;
 
-      case 9:
+      case 10:
         /*! Conditions:: token */
         /*! Rule::       {BR} */
         this.popState();
 
         break;
 
-      case 10:
+      case 11:
         /*! Conditions:: token */
         /*! Rule::       %% */
         this.popState();
 
         break;
 
-      case 11:
+      case 12:
         /*! Conditions:: token */
         /*! Rule::       ; */
         this.popState();
 
         break;
 
-      case 12:
+      case 13:
         /*! Conditions:: bnf ebnf */
         /*! Rule::       %% */
         this.pushState('code');
@@ -24249,7 +24340,7 @@ EOF: 1,
         return 14;
         break;
 
-      case 25:
+      case 26:
         /*! Conditions:: options */
         /*! Rule::       = */
         this.pushState('option_values');
@@ -24257,19 +24348,10 @@ EOF: 1,
         return 3;
         break;
 
-      case 26:
-        /*! Conditions:: option_values */
-        /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-        yy_.yytext = unescQuote(this.matches[1], /\\"/g);
-
-        this.popState();
-        return 29;    // value is always a string type  
-        break;
-
       case 27:
         /*! Conditions:: option_values */
-        /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-        yy_.yytext = unescQuote(this.matches[1], /\\'/g);
+        /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
+        yy_.yytext = unescQuote(this.matches[1]);
 
         this.popState();
         return 29;    // value is always a string type  
@@ -24277,26 +24359,35 @@ EOF: 1,
 
       case 28:
         /*! Conditions:: option_values */
-        /*! Rule::       `{ES2017_STRING_CONTENT}` */
-        yy_.yytext = unescQuote(this.matches[1], /\\`/g);
+        /*! Rule::       '{QUOTED_STRING_CONTENT}' */
+        yy_.yytext = unescQuote(this.matches[1]);
 
         this.popState();
         return 29;    // value is always a string type  
         break;
 
       case 29:
+        /*! Conditions:: option_values */
+        /*! Rule::       `{ES2017_STRING_CONTENT}` */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        this.popState();
+        return 29;    // value is always a string type  
+        break;
+
+      case 30:
         /*! Conditions:: INITIAL ebnf bnf token path options option_values */
         /*! Rule::       \/\/[^\r\n]* */
         /* skip single-line comment */
         break;
 
-      case 30:
+      case 31:
         /*! Conditions:: INITIAL ebnf bnf token path options option_values */
         /*! Rule::       \/\*[^]*?\*\/ */
         /* skip multi-line comment */
         break;
 
-      case 31:
+      case 32:
         /*! Conditions:: option_values */
         /*! Rule::       [^\s\r\n]+ */
         this.popState();
@@ -24304,13 +24395,13 @@ EOF: 1,
         return 30;
         break;
 
-      case 32:
+      case 33:
         /*! Conditions:: options */
         /*! Rule::       {BR}{WS}+(?=\S) */
         /* skip leading whitespace on the next line of input, when followed by more options */
         break;
 
-      case 33:
+      case 34:
         /*! Conditions:: options */
         /*! Rule::       {BR} */
         this.popState();
@@ -24318,49 +24409,57 @@ EOF: 1,
         return 28;
         break;
 
-      case 34:
-        /*! Conditions:: options option_values */
-        /*! Rule::       {WS}+ */
-        /* skip whitespace */
-        break;
-
       case 35:
-        /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Conditions:: options option_values */
         /*! Rule::       {WS}+ */
         /* skip whitespace */
         break;
 
       case 36:
         /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       {BR}+ */
-        /* skip newlines */
+        /*! Rule::       {WS}+ */
+        /* skip whitespace */
         break;
 
       case 37:
         /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Rule::       {BR}+ */
+        /* skip newlines */
+        break;
+
+      case 38:
+        /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       \[{ID}\] */
         yy_.yytext = this.matches[1];
 
-        return 39;
-        break;
-
-      case 42:
-        /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-        yy_.yytext = unescQuote(this.matches[1], /\\"/g);
-
-        return 26;
+        return 40;
         break;
 
       case 43:
         /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-        yy_.yytext = unescQuote(this.matches[1], /\\'/g);
+        /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
+        yy_.yytext = unescQuote(this.matches[1]);
 
         return 26;
         break;
 
-      case 48:
+      case 44:
+        /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Rule::       '{QUOTED_STRING_CONTENT}' */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        return 26;
+        break;
+
+      case 45:
+        /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Rule::       `{ES2017_STRING_CONTENT}` */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        return 26;
+        break;
+
+      case 50:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %% */
         this.pushState((yy.ebnf ? 'ebnf' : 'bnf'));
@@ -24368,7 +24467,7 @@ EOF: 1,
         return 14;
         break;
 
-      case 49:
+      case 51:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %ebnf\b */
         yy.ebnf = true;
@@ -24376,7 +24475,7 @@ EOF: 1,
         return 20;
         break;
 
-      case 57:
+      case 59:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %token\b */
         this.pushState('token');
@@ -24384,7 +24483,7 @@ EOF: 1,
         return 18;
         break;
 
-      case 59:
+      case 61:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %option[s]? */
         this.pushState('options');
@@ -24392,7 +24491,7 @@ EOF: 1,
         return 27;
         break;
 
-      case 60:
+      case 62:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %lex{LEX_CONTENT}\/lex\b */
         // remove the %lex../lex wrapper and return the pure lex section:
@@ -24401,15 +24500,15 @@ EOF: 1,
         return 17;
         break;
 
-      case 63:
+      case 65:
         /*! Conditions:: INITIAL ebnf bnf code */
         /*! Rule::       %include\b */
         this.pushState('path');
 
-        return 44;
+        return 45;
         break;
 
-      case 64:
+      case 66:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %{NAME}([^\r\n]*) */
         /* ignore unrecognized decl */
@@ -24428,7 +24527,7 @@ EOF: 1,
         return 21;
         break;
 
-      case 65:
+      case 67:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       <{ID}> */
         yy_.yytext = this.matches[1];
@@ -24436,7 +24535,7 @@ EOF: 1,
         return 36;
         break;
 
-      case 66:
+      case 68:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       \{\{([^]*?)\}\} */
         yy_.yytext = this.matches[1].replace(/\}\\\}/g, '}}');   // unescape any literal '}\}' that exists within the action code block 
@@ -24444,7 +24543,7 @@ EOF: 1,
         return 15;
         break;
 
-      case 67:
+      case 69:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       %\{([^]*?)%\} */
         yy_.yytext = this.matches[1].replace(/%\\\}/g, '%}');    // unescape any literal '%\}' that exists within the action code block 
@@ -24452,7 +24551,7 @@ EOF: 1,
         return 15;
         break;
 
-      case 68:
+      case 70:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       \{ */
         yy.depth = 0;
@@ -24461,31 +24560,40 @@ EOF: 1,
         return 12;
         break;
 
-      case 69:
-        /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       ->.* */
-        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim();
-
-        return 42;
-        break;
-
-      case 70:
-        /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       →.* */
-        yy_.yytext = yy_.yytext.substr(1, yy_.yyleng - 1).trim();
-
-        return 42;
-        break;
-
       case 71:
         /*! Conditions:: token bnf ebnf INITIAL */
-        /*! Rule::       =>.* */
-        yy_.yytext = yy_.yytext.substr(2, yy_.yyleng - 2).trim();
+        /*! Rule::       -> */
+        this.pushState('arrow_action');
 
-        return 42;
+        return 38;
         break;
 
       case 72:
+        /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Rule::       → */
+        this.pushState('arrow_action');
+
+        return 38;
+        break;
+
+      case 73:
+        /*! Conditions:: token bnf ebnf INITIAL */
+        /*! Rule::       => */
+        this.pushState('arrow_action');
+
+        return 38;
+        break;
+
+      case 74:
+        /*! Conditions:: arrow_action */
+        /*! Rule::       .* */
+        this.popState();
+
+        yy_.yytext = yy_.yytext.trim();
+        return 43;
+        break;
+
+      case 75:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       {HEX_NUMBER} */
         yy_.yytext = parseInt(yy_.yytext, 16);
@@ -24493,7 +24601,7 @@ EOF: 1,
         return 37;
         break;
 
-      case 73:
+      case 76:
         /*! Conditions:: token bnf ebnf INITIAL */
         /*! Rule::       {DECIMAL_NUMBER}(?![xX0-9a-fA-F]) */
         yy_.yytext = parseInt(yy_.yytext, 10);
@@ -24501,14 +24609,14 @@ EOF: 1,
         return 37;
         break;
 
-      case 75:
+      case 78:
         /*! Conditions:: code */
         /*! Rule::       [^\r\n]+ */
-        return 46;       // the bit of CODE just before EOF...  
+        return 47;       // the bit of CODE just before EOF...  
 
         break;
 
-      case 76:
+      case 79:
         /*! Conditions:: path */
         /*! Rule::       {BR} */
         this.popState();
@@ -24516,91 +24624,52 @@ EOF: 1,
         this.unput(yy_.yytext);
         break;
 
-      case 77:
+      case 80:
         /*! Conditions:: path */
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
         yy_.yytext = unescQuote(this.matches[1]);
 
         this.popState();
-        return 45;
+        return 46;
         break;
 
-      case 78:
+      case 81:
         /*! Conditions:: path */
         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
         yy_.yytext = unescQuote(this.matches[1]);
 
         this.popState();
-        return 45;
+        return 46;
         break;
 
-      case 79:
+      case 82:
+        /*! Conditions:: path */
+        /*! Rule::       `{ES2017_STRING_CONTENT}` */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        this.popState();
+        return 46;
+        break;
+
+      case 83:
         /*! Conditions:: path */
         /*! Rule::       {WS}+ */
         // skip whitespace in the line 
         break;
 
-      case 80:
+      case 84:
         /*! Conditions:: path */
         /*! Rule::       [^\s\r\n]+ */
         this.popState();
 
-        return 45;
-        break;
-
-      case 81:
-        /*! Conditions:: action */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
-      case 82:
-        /*! Conditions:: action */
-        /*! Rule::       ' */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
-      case 83:
-        /*! Conditions:: action */
-        /*! Rule::       ` */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
-      case 84:
-        /*! Conditions:: option_values */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
+        return 46;
         break;
 
       case 85:
-        /*! Conditions:: option_values */
-        /*! Rule::       ' */
+        /*! Conditions:: action */
+        /*! Rule::       " */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -24609,6 +24678,54 @@ EOF: 1,
         break;
 
       case 86:
+        /*! Conditions:: action */
+        /*! Rule::       ' */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in lexer rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 87:
+        /*! Conditions:: action */
+        /*! Rule::       ` */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in lexer rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 88:
+        /*! Conditions:: option_values */
+        /*! Rule::       " */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 89:
+        /*! Conditions:: option_values */
+        /*! Rule::       ' */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 90:
         /*! Conditions:: option_values */
         /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
@@ -24620,7 +24737,7 @@ EOF: 1,
         return 2;
         break;
 
-      case 87:
+      case 91:
         /*! Conditions:: * */
         /*! Rule::       " */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -24635,7 +24752,7 @@ EOF: 1,
         return 2;
         break;
 
-      case 88:
+      case 92:
         /*! Conditions:: * */
         /*! Rule::       ' */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -24650,7 +24767,7 @@ EOF: 1,
         return 2;
         break;
 
-      case 89:
+      case 93:
         /*! Conditions:: * */
         /*! Rule::       ` */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -24665,7 +24782,7 @@ EOF: 1,
         return 2;
         break;
 
-      case 90:
+      case 94:
         /*! Conditions:: * */
         /*! Rule::       . */
         /* b0rk on bad characters */
@@ -24686,155 +24803,159 @@ EOF: 1,
     simpleCaseActionClusters: {
       /*! Conditions:: action */
       /*! Rule::       \/\*[^]*?\*\/ */
-      0: 43,
+      0: 44,
 
       /*! Conditions:: action */
       /*! Rule::       \/\/[^\r\n]* */
-      1: 43,
+      1: 44,
 
       /*! Conditions:: action */
       /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-      3: 43,
+      3: 44,
 
       /*! Conditions:: action */
       /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-      4: 43,
+      4: 44,
+
+      /*! Conditions:: action */
+      /*! Rule::       `{ES2017_STRING_CONTENT}` */
+      5: 44,
 
       /*! Conditions:: action */
       /*! Rule::       [/"'][^{}/"']+ */
-      5: 43,
+      6: 44,
 
       /*! Conditions:: action */
       /*! Rule::       [^{}/"']+ */
-      6: 43,
+      7: 44,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       %empty\b */
-      13: 38,
+      14: 39,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       %epsilon\b */
-      14: 38,
+      15: 39,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       \u0190 */
-      15: 38,
+      16: 39,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       \u025B */
-      16: 38,
+      17: 39,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       \u03B5 */
-      17: 38,
+      18: 39,
 
       /*! Conditions:: bnf ebnf */
       /*! Rule::       \u03F5 */
-      18: 38,
+      19: 39,
 
       /*! Conditions:: ebnf */
       /*! Rule::       \( */
-      19: 7,
+      20: 7,
 
       /*! Conditions:: ebnf */
       /*! Rule::       \) */
-      20: 8,
+      21: 8,
 
       /*! Conditions:: ebnf */
       /*! Rule::       \* */
-      21: 9,
+      22: 9,
 
       /*! Conditions:: ebnf */
       /*! Rule::       \? */
-      22: 10,
+      23: 10,
 
       /*! Conditions:: ebnf */
       /*! Rule::       \+ */
-      23: 11,
+      24: 11,
 
       /*! Conditions:: options */
       /*! Rule::       {NAME} */
-      24: 25,
+      25: 25,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       {ID} */
-      38: 24,
+      39: 24,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       {NAME} */
-      39: 25,
+      40: 25,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       \$end\b */
-      40: 40,
+      41: 41,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       \$eof\b */
-      41: 40,
+      42: 41,
 
       /*! Conditions:: token */
       /*! Rule::       [^\s\r\n]+ */
-      44: 'TOKEN_WORD',
+      46: 'TOKEN_WORD',
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       : */
-      45: 5,
+      47: 5,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       ; */
-      46: 4,
+      48: 4,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       \| */
-      47: 6,
+      49: 6,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %debug\b */
-      50: 19,
+      52: 19,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %parser-type\b */
-      51: 32,
+      53: 32,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %prec\b */
-      52: 41,
+      54: 42,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %start\b */
-      53: 16,
+      55: 16,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %left\b */
-      54: 33,
+      56: 33,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %right\b */
-      55: 34,
+      57: 34,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %nonassoc\b */
-      56: 35,
+      58: 35,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %parse-param[s]? */
-      58: 31,
+      60: 31,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %code\b */
-      61: 23,
+      63: 23,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       %import\b */
-      62: 22,
+      64: 22,
 
       /*! Conditions:: code */
       /*! Rule::       [^\r\n]*(\r|\n)+ */
-      74: 46,
+      77: 47,
 
       /*! Conditions:: * */
       /*! Rule::       $ */
-      91: 1
+      95: 1
     },
 
     rules: [
@@ -24843,141 +24964,149 @@ EOF: 1,
       /*  2: */  /^(?:\/[^ \/]*?['"{}][^ ]*?\/)/,
       /*  3: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
       /*  4: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /*  5: */  /^(?:[\/"'][^{}\/"']+)/,
-      /*  6: */  /^(?:[^{}\/"']+)/,
-      /*  7: */  /^(?:\{)/,
-      /*  8: */  /^(?:\})/,
-      /*  9: */  /^(?:(\r\n|\n|\r))/,
-      /* 10: */  /^(?:%%)/,
-      /* 11: */  /^(?:;)/,
-      /* 12: */  /^(?:%%)/,
-      /* 13: */  /^(?:%empty\b)/,
-      /* 14: */  /^(?:%epsilon\b)/,
-      /* 15: */  /^(?:\u0190)/,
-      /* 16: */  /^(?:\u025B)/,
-      /* 17: */  /^(?:\u03B5)/,
-      /* 18: */  /^(?:\u03F5)/,
-      /* 19: */  /^(?:\()/,
-      /* 20: */  /^(?:\))/,
-      /* 21: */  /^(?:\*)/,
-      /* 22: */  /^(?:\?)/,
-      /* 23: */  /^(?:\+)/,
-      /* 24: */  new XRegExp(
+      /*  5: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /*  6: */  /^(?:[\/"'][^{}\/"']+)/,
+      /*  7: */  /^(?:[^{}\/"']+)/,
+      /*  8: */  /^(?:\{)/,
+      /*  9: */  /^(?:\})/,
+      /* 10: */  /^(?:(\r\n|\n|\r))/,
+      /* 11: */  /^(?:%%)/,
+      /* 12: */  /^(?:;)/,
+      /* 13: */  /^(?:%%)/,
+      /* 14: */  /^(?:%empty\b)/,
+      /* 15: */  /^(?:%epsilon\b)/,
+      /* 16: */  /^(?:\u0190)/,
+      /* 17: */  /^(?:\u025B)/,
+      /* 18: */  /^(?:\u03B5)/,
+      /* 19: */  /^(?:\u03F5)/,
+      /* 20: */  /^(?:\()/,
+      /* 21: */  /^(?:\))/,
+      /* 22: */  /^(?:\*)/,
+      /* 23: */  /^(?:\?)/,
+      /* 24: */  /^(?:\+)/,
+      /* 25: */  new XRegExp(
         '^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))',
         ''
       ),
-      /* 25: */  /^(?:=)/,
-      /* 26: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-      /* 27: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /* 28: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
-      /* 29: */  /^(?:\/\/[^\r\n]*)/,
-      /* 30: */  new XRegExp('^(?:\\/\\*[^]*?\\*\\/)', ''),
-      /* 31: */  /^(?:\S+)/,
-      /* 32: */  /^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
-      /* 33: */  /^(?:(\r\n|\n|\r))/,
-      /* 34: */  /^(?:([^\S\n\r])+)/,
+      /* 26: */  /^(?:=)/,
+      /* 27: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+      /* 28: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+      /* 29: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /* 30: */  /^(?:\/\/[^\r\n]*)/,
+      /* 31: */  new XRegExp('^(?:\\/\\*[^]*?\\*\\/)', ''),
+      /* 32: */  /^(?:\S+)/,
+      /* 33: */  /^(?:(\r\n|\n|\r)([^\S\n\r])+(?=\S))/,
+      /* 34: */  /^(?:(\r\n|\n|\r))/,
       /* 35: */  /^(?:([^\S\n\r])+)/,
-      /* 36: */  /^(?:(\r\n|\n|\r)+)/,
-      /* 37: */  new XRegExp('^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])', ''),
-      /* 38: */  new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
-      /* 39: */  new XRegExp(
+      /* 36: */  /^(?:([^\S\n\r])+)/,
+      /* 37: */  /^(?:(\r\n|\n|\r)+)/,
+      /* 38: */  new XRegExp('^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])', ''),
+      /* 39: */  new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
+      /* 40: */  new XRegExp(
         '^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))',
         ''
       ),
-      /* 40: */  /^(?:\$end\b)/,
-      /* 41: */  /^(?:\$eof\b)/,
-      /* 42: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-      /* 43: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /* 44: */  /^(?:\S+)/,
-      /* 45: */  /^(?::)/,
-      /* 46: */  /^(?:;)/,
-      /* 47: */  /^(?:\|)/,
-      /* 48: */  /^(?:%%)/,
-      /* 49: */  /^(?:%ebnf\b)/,
-      /* 50: */  /^(?:%debug\b)/,
-      /* 51: */  /^(?:%parser-type\b)/,
-      /* 52: */  /^(?:%prec\b)/,
-      /* 53: */  /^(?:%start\b)/,
-      /* 54: */  /^(?:%left\b)/,
-      /* 55: */  /^(?:%right\b)/,
-      /* 56: */  /^(?:%nonassoc\b)/,
-      /* 57: */  /^(?:%token\b)/,
-      /* 58: */  /^(?:%parse-param[s]?)/,
-      /* 59: */  /^(?:%option[s]?)/,
-      /* 60: */  new XRegExp(
+      /* 41: */  /^(?:\$end\b)/,
+      /* 42: */  /^(?:\$eof\b)/,
+      /* 43: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+      /* 44: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+      /* 45: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /* 46: */  /^(?:\S+)/,
+      /* 47: */  /^(?::)/,
+      /* 48: */  /^(?:;)/,
+      /* 49: */  /^(?:\|)/,
+      /* 50: */  /^(?:%%)/,
+      /* 51: */  /^(?:%ebnf\b)/,
+      /* 52: */  /^(?:%debug\b)/,
+      /* 53: */  /^(?:%parser-type\b)/,
+      /* 54: */  /^(?:%prec\b)/,
+      /* 55: */  /^(?:%start\b)/,
+      /* 56: */  /^(?:%left\b)/,
+      /* 57: */  /^(?:%right\b)/,
+      /* 58: */  /^(?:%nonassoc\b)/,
+      /* 59: */  /^(?:%token\b)/,
+      /* 60: */  /^(?:%parse-param[s]?)/,
+      /* 61: */  /^(?:%option[s]?)/,
+      /* 62: */  new XRegExp(
         '^(?:%lex((?:[^\\S\\n\\r])*(?:(?:\\r\\n|\\n|\\r)[^]*?)?(?:\\r\\n|\\n|\\r)(?:[^\\S\\n\\r])*)\\/lex\\b)',
         ''
       ),
-      /* 61: */  /^(?:%code\b)/,
-      /* 62: */  /^(?:%import\b)/,
-      /* 63: */  /^(?:%include\b)/,
-      /* 64: */  new XRegExp(
+      /* 63: */  /^(?:%code\b)/,
+      /* 64: */  /^(?:%import\b)/,
+      /* 65: */  /^(?:%include\b)/,
+      /* 66: */  new XRegExp(
         '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
         ''
       ),
-      /* 65: */  new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
-      /* 66: */  new XRegExp('^(?:\\{\\{([^]*?)\\}\\})', ''),
-      /* 67: */  new XRegExp('^(?:%\\{([^]*?)%\\})', ''),
-      /* 68: */  /^(?:\{)/,
-      /* 69: */  /^(?:->.*)/,
-      /* 70: */  /^(?:→.*)/,
-      /* 71: */  /^(?:=>.*)/,
-      /* 72: */  /^(?:(0[Xx][\dA-Fa-f]+))/,
-      /* 73: */  /^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
-      /* 74: */  /^(?:[^\r\n]*(\r|\n)+)/,
-      /* 75: */  /^(?:[^\r\n]+)/,
-      /* 76: */  /^(?:(\r\n|\n|\r))/,
-      /* 77: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-      /* 78: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /* 79: */  /^(?:([^\S\n\r])+)/,
-      /* 80: */  /^(?:\S+)/,
-      /* 81: */  /^(?:")/,
-      /* 82: */  /^(?:')/,
-      /* 83: */  /^(?:`)/,
-      /* 84: */  /^(?:")/,
-      /* 85: */  /^(?:')/,
-      /* 86: */  /^(?:`)/,
-      /* 87: */  /^(?:")/,
-      /* 88: */  /^(?:')/,
-      /* 89: */  /^(?:`)/,
-      /* 90: */  /^(?:.)/,
-      /* 91: */  /^(?:$)/
+      /* 67: */  new XRegExp('^(?:<([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)>)', ''),
+      /* 68: */  new XRegExp('^(?:\\{\\{([^]*?)\\}\\})', ''),
+      /* 69: */  new XRegExp('^(?:%\\{([^]*?)%\\})', ''),
+      /* 70: */  /^(?:\{)/,
+      /* 71: */  /^(?:->)/,
+      /* 72: */  /^(?:→)/,
+      /* 73: */  /^(?:=>)/,
+      /* 74: */  /^(?:.*)/,
+      /* 75: */  /^(?:(0[Xx][\dA-Fa-f]+))/,
+      /* 76: */  /^(?:([1-9]\d*)(?![\dA-FXa-fx]))/,
+      /* 77: */  /^(?:[^\r\n]*(\r|\n)+)/,
+      /* 78: */  /^(?:[^\r\n]+)/,
+      /* 79: */  /^(?:(\r\n|\n|\r))/,
+      /* 80: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+      /* 81: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+      /* 82: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /* 83: */  /^(?:([^\S\n\r])+)/,
+      /* 84: */  /^(?:\S+)/,
+      /* 85: */  /^(?:")/,
+      /* 86: */  /^(?:')/,
+      /* 87: */  /^(?:`)/,
+      /* 88: */  /^(?:")/,
+      /* 89: */  /^(?:')/,
+      /* 90: */  /^(?:`)/,
+      /* 91: */  /^(?:")/,
+      /* 92: */  /^(?:')/,
+      /* 93: */  /^(?:`)/,
+      /* 94: */  /^(?:.)/,
+      /* 95: */  /^(?:$)/
     ],
 
     conditions: {
+      'arrow_action': {
+        rules: [74, 91, 92, 93, 94, 95],
+        inclusive: false
+      },
+
       'action': {
-        rules: [0, 1, 2, 3, 4, 5, 6, 7, 8, 81, 82, 83, 87, 88, 89, 90, 91],
+        rules: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 85, 86, 87, 91, 92, 93, 94, 95],
         inclusive: false
       },
 
       'code': {
-        rules: [63, 74, 75, 87, 88, 89, 90, 91],
+        rules: [65, 77, 78, 91, 92, 93, 94, 95],
         inclusive: false
       },
 
       'path': {
-        rules: [29, 30, 76, 77, 78, 79, 80, 87, 88, 89, 90, 91],
+        rules: [30, 31, 79, 80, 81, 82, 83, 84, 91, 92, 93, 94, 95],
         inclusive: false
       },
 
       'options': {
-        rules: [24, 25, 29, 30, 32, 33, 34, 87, 88, 89, 90, 91],
+        rules: [25, 26, 30, 31, 33, 34, 35, 91, 92, 93, 94, 95],
         inclusive: false
       },
 
       'option_values': {
-        rules: [26, 27, 28, 29, 30, 31, 34, 84, 85, 86, 87, 88, 89, 90, 91],
+        rules: [27, 28, 29, 30, 31, 32, 35, 88, 89, 90, 91, 92, 93, 94, 95],
         inclusive: false
       },
 
       'token': {
         rules: [
-          9,
           10,
           11,
-          29,
+          12,
           30,
-          35,
+          31,
           36,
           37,
           38,
@@ -25005,8 +25134,8 @@ EOF: 1,
           60,
           61,
           62,
+          63,
           64,
-          65,
           66,
           67,
           68,
@@ -25015,11 +25144,13 @@ EOF: 1,
           71,
           72,
           73,
-          87,
-          88,
-          89,
-          90,
-          91
+          75,
+          76,
+          91,
+          92,
+          93,
+          94,
+          95
         ],
 
         inclusive: true
@@ -25027,16 +25158,15 @@ EOF: 1,
 
       'bnf': {
         rules: [
-          12,
           13,
           14,
           15,
           16,
           17,
           18,
-          29,
+          19,
           30,
-          35,
+          31,
           36,
           37,
           38,
@@ -25045,8 +25175,8 @@ EOF: 1,
           41,
           42,
           43,
+          44,
           45,
-          46,
           47,
           48,
           49,
@@ -25074,11 +25204,13 @@ EOF: 1,
           71,
           72,
           73,
-          87,
-          88,
-          89,
-          90,
-          91
+          75,
+          76,
+          91,
+          92,
+          93,
+          94,
+          95
         ],
 
         inclusive: true
@@ -25086,7 +25218,6 @@ EOF: 1,
 
       'ebnf': {
         rules: [
-          12,
           13,
           14,
           15,
@@ -25098,9 +25229,9 @@ EOF: 1,
           21,
           22,
           23,
-          29,
+          24,
           30,
-          35,
+          31,
           36,
           37,
           38,
@@ -25109,8 +25240,8 @@ EOF: 1,
           41,
           42,
           43,
+          44,
           45,
-          46,
           47,
           48,
           49,
@@ -25138,11 +25269,13 @@ EOF: 1,
           71,
           72,
           73,
-          87,
-          88,
-          89,
-          90,
-          91
+          75,
+          76,
+          91,
+          92,
+          93,
+          94,
+          95
         ],
 
         inclusive: true
@@ -25150,9 +25283,8 @@ EOF: 1,
 
       'INITIAL': {
         rules: [
-          29,
           30,
-          35,
+          31,
           36,
           37,
           38,
@@ -25161,8 +25293,8 @@ EOF: 1,
           41,
           42,
           43,
+          44,
           45,
-          46,
           47,
           48,
           49,
@@ -25190,11 +25322,13 @@ EOF: 1,
           71,
           72,
           73,
-          87,
-          88,
-          89,
-          90,
-          91
+          75,
+          76,
+          91,
+          92,
+          93,
+          94,
+          95
         ],
 
         inclusive: true
@@ -25205,12 +25339,13 @@ EOF: 1,
   var rmCommonWS = helpers.rmCommonWS;
   var dquote = helpers.dquote;
 
+  // unescape a string value which is wrapped in quotes/doublequotes
   function unescQuote(str) {
     str = '' + str;
     var a = str.split('\\\\');
 
     a = a.map(function(s) {
-      return s.replace(/\\'/g, '\'').replace(/\\"/g, '"');
+      return s.replace(/\\'/g, '\'').replace(/\\"/g, '"').replace(/\\`/g, '`');
     });
 
     str = a.join('\\\\');
@@ -28138,8 +28273,11 @@ generator.buildProductionActions = function buildProductionActions() {
                 missingActions.push(idx);
             }
         }
+        this.missingActions = missingActions;        
         if (missingActions.length) {
-            console.warn("WARNING: missing actions for states: ", missingActions);
+            if (devDebug || this.DEBUG) {
+                console.warn("WARNING: missing actions for states: ", missingActions);
+            }
 
             actions.push(`default:
                 // default action for all unlisted resolve states: ${missingActions.join(', ')}
@@ -29768,7 +29906,7 @@ lrGeneratorMixin.parseTable = function lrParseTable(itemSets) {
     self.conflicting_states = conflictedStates;
 
     if (self.conflicts > 0) {
-        if (this.numExpectedConflictStates !== self.conflicts || self.enableDebugLogs) {
+        if (self.numExpectedConflictStates !== self.conflicts || self.enableDebugLogs) {
             self.warn('\nStates with conflicts:');
             each(conflictedStates, function report_conflict_state(val, state) {
                 self.warn('\nState ' + state, '    (' + val.symbol + ' @ ' + val.reduction.production.symbol + ' -> ' + val.reduction.handleToString() + ')\n');

@@ -8,7 +8,7 @@ SPACE           " "
 WHITESPACE      \s
 
 
-%include with-includes.prelude1.js
+%include "with-includes.prelude1.js"
 
 %%
 
@@ -25,5 +25,5 @@ WHITESPACE      \s
 
 %%
 
-%include with-includes.prelude2.js
+%include "with-includes.prelude2.js"
 

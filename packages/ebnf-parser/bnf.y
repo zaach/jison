@@ -59,6 +59,9 @@ spec
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @grammar)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | declaration_list error EOF
@@ -68,6 +71,9 @@ spec
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @declaration_list)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -136,6 +142,9 @@ declaration_list
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @declaration_list)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -201,6 +210,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @IMPORT)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | IMPORT error import_path
@@ -212,6 +224,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @IMPORT)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | INIT_CODE init_code_name action_ne
@@ -241,6 +256,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @INIT_CODE, @action_ne)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | START error
@@ -251,6 +269,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @START)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | TOKEN error
@@ -261,6 +282,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @TOKEN)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | IMPORT error
@@ -271,6 +295,9 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @IMPORT)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
 //    | INIT_CODE error
@@ -310,6 +337,9 @@ options
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @OPTIONS, @OPTIONS_END)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | OPTIONS error
@@ -320,6 +350,9 @@ options
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @OPTIONS)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -348,6 +381,9 @@ option
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @option)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | NAME[option] error
@@ -358,6 +394,9 @@ option
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @option)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -373,6 +412,9 @@ parse_params
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @PARSE_PARAM)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -388,6 +430,9 @@ parser_type
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @PARSER_TYPE)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -403,6 +448,9 @@ operator
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @associativity)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -538,6 +586,9 @@ production
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @production_id)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | production_id error
@@ -548,6 +599,9 @@ production
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @production_id)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -567,6 +621,9 @@ production_id
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @id)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | id optional_production_description ARROW_ACTION
@@ -610,6 +667,9 @@ handle_list
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @handle_list)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | handle_list ':' error
@@ -620,6 +680,9 @@ handle_list
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @handle_list)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -685,6 +748,9 @@ handle_action
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @EPSILON)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -752,6 +818,9 @@ expression
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @1)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -780,6 +849,9 @@ prec
 
                   Erroneous precedence declaration:
                 ${yylexer.prettyPrintRange(@error, @PREC)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | %epsilon
@@ -810,6 +882,9 @@ action_ne
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @1)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | ACTION
@@ -836,6 +911,9 @@ action
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @1)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     | %epsilon
@@ -858,6 +936,9 @@ action_body
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @2)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -902,7 +983,11 @@ include_macro_code
                 %include MUST be followed by a valid file path.
 
                   Erroneous path:
-                ` + yylexer.prettyPrintRange(@error, @INCLUDE));
+                ${yylexer.prettyPrintRange(@error, @INCLUDE)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
         }
     ;
 
@@ -918,7 +1003,11 @@ module_code_chunk
                 module code declaration error?
 
                   Erroneous area:
-                ` + yylexer.prettyPrintRange(@error));
+                ${yylexer.prettyPrintRange(@error)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
         }
     ;
 

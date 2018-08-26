@@ -67,7 +67,7 @@
                       this.unput(yytext); 
                       // this.unput(yytext); can be used here instead of 
                       // this.reject(); which would only work when we set the 
-                      // backtrack_lexer option
+                      // `backtrack_lexer` option
 
 
 \s+                   /* skip whitespace */
