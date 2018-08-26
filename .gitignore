@@ -59,3 +59,10 @@ Vagrantfile
 /packages/ebnf-parser/coverage
 /examples/coverage/
 
+# additional crap thast shouldn't land in git repo or npm:
+/tmp*/
+/test*.*
+/issue*.*
+/examples/formula-v*.jison
+/docs/examples/formula-v*.jison
+
