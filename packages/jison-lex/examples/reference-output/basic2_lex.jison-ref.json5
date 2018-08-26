@@ -1,6 +1,7 @@
 [
   6,
   {
+    id: 'x',
     token: 'x',
     yytext: 'x',
     yylloc: {
@@ -15,6 +16,7 @@
     },
   },
   {
+    id: 'x',
     token: 'x',
     yytext: 'x',
     yylloc: {
@@ -29,6 +31,7 @@
     },
   },
   {
+    id: 'x',
     token: 'x',
     yytext: 'x',
     yylloc: {
@@ -43,7 +46,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -57,7 +61,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -71,7 +76,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -85,7 +91,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,

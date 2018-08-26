@@ -115,12 +115,12 @@ Regrettably, it does not exist in the remainder of the input.
 ^..............^^^^^^
 3: return "%{..%}";
 4: }}}}}%
-    at Object.lexer_parseError [as parseError] (\lex-parser-cjs-es5.js:5066:19)
-    at Object.yyError [as yyerror] (\lex-parser-cjs-es5.js:5091:25)
-    at Object.lexer__performAction [as performAction] (\lex-parser-cjs-es5.js:6547:37)
-    at Object.lexer_test_match [as test_match] (\lex-parser-cjs-es5.js:5956:40)
-    at Object.lexer_next [as next] (\lex-parser-cjs-es5.js:6067:30)
-    at Object.lexer_lex [as lex] (\lex-parser-cjs-es5.js:6136:26)
+    at Object.lexer_parseError [as parseError] (\lex-parser-cjs-es5.js:5326:13)
+    at Object.yyError [as yyerror] (\lex-parser-cjs-es5.js:5352:19)
+    at Object.lexer__performAction [as performAction] (\lex-parser-cjs-es5.js:6783:21)
+    at Object.lexer_test_match [as test_match] (\lex-parser-cjs-es5.js:6183:34)
+    at Object.lexer_next [as next] (\lex-parser-cjs-es5.js:6289:22)
+    at Object.lexer_lex [as lex] (\lex-parser-cjs-es5.js:6356:18)
     at Context.testEachParserExample (\all-tests.js:230:27)
     at callFn (\runnable.js:372:21)
     at Test.Runnable.run (\runnable.js:364:7)

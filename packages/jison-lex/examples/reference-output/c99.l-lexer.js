@@ -21,6 +21,7 @@ var lexer = {
     _input: '',                                 /// INTERNAL USE ONLY
     _more: false,                               /// INTERNAL USE ONLY
     _signaled_error_token: false,               /// INTERNAL USE ONLY
+    _clear_state: 0,                            /// INTERNAL USE ONLY; 0: clear to do, 1: clear done for lex()/next(); -1: clear done for inut()/unput()/...
 
     conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
@@ -42,6 +43,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        "use strict";
+    
         msg = '' + msg;
 
         // heuristic to determine if the error message already contains a (partial) source code dump
@@ -76,7 +79,7 @@ var lexer = {
             token: null,
             line: this.yylineno,
             loc: this.yylloc,
-            yy: this.yy,
+            yy: this.yy,                
             lexer: this,
 
             /**
@@ -96,9 +99,10 @@ var lexer = {
                 // info.yy = null;
                 // info.lexer = null;
                 // ...
+                "use strict";
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key === 'object') {
+                    if (this[key] && this.hasOwnProperty(key) && typeof this[key] === 'object') {
                         this[key] = undefined;
                     }
                 }
@@ -117,6 +121,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
+        "use strict";
+
         if (!ExceptionClass) {
             ExceptionClass = this.JisonLexerError;
         }
@@ -137,6 +143,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     yyerror: function yyError(str /*, ...args */) {
+        "use strict";
+
         var lineno_msg = '';
         if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
@@ -165,6 +173,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+        "use strict";
+
         // prevent lingering circular references from causing memory leaks:
         this.setInput('', {});
 
@@ -191,15 +201,18 @@ var lexer = {
      * @this {RegExpLexer}
      */
     clear: function lexer_clear() {
+        "use strict";
+
         this.yytext = '';
         this.yyleng = 0;
         this.match = '';
         // - DO NOT reset `this.matched`
         this.matches = false;
+
         this._more = false;
         this._backtrack = false;
 
-        var col = (this.yylloc ? this.yylloc.last_column : 0);
+        var col = this.yylloc.last_column;
         this.yylloc = {
             first_line: this.yylineno + 1,
             first_column: col,
@@ -217,6 +230,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     setInput: function lexer_setInput(input, yy) {
+        "use strict";
+
         this.yy = yy || this.yy || {};
 
         // also check if we've fully initialized the lexer instance,
@@ -264,7 +279,7 @@ var lexer = {
             input = '' + input;
         }
         this._input = input || '';
-        this.clear();
+        this._clear_state = -1;
         this._signaled_error_token = false;
         this.done = false;
         this.yylineno = 0;
@@ -281,6 +296,15 @@ var lexer = {
         };
         this.offset = 0;
         this.base_position = 0;
+        // apply these bits of `this.clear()` as well:
+        this.yytext = '';
+        this.yyleng = 0;
+        this.match = '';
+        this.matches = false;
+
+        this._more = false;
+        this._backtrack = false;
+
         return this;
     },
 
@@ -329,6 +353,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
+        "use strict";
+
         var rv = callback.call(this, this._input, cpsArg);
         if (typeof rv !== 'string') {
             if (rv) {
@@ -348,9 +374,15 @@ var lexer = {
      * @this {RegExpLexer}
      */
     input: function lexer_input() {
+        "use strict";
+
         if (!this._input) {
             //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
+        }
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
         }
         var ch = this._input[0];
         this.yytext += ch;
@@ -400,8 +432,15 @@ var lexer = {
      * @this {RegExpLexer}
      */
     unput: function lexer_unput(ch) {
+        "use strict";
+
         var len = ch.length;
         var lines = ch.split(this.CRLF_Re);
+
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
+        }
 
         this._input = ch + this._input;
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
@@ -465,6 +504,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     lookAhead: function lexer_lookAhead() {
+        "use strict";
+
         return this._input || '';
     },
 
@@ -475,6 +516,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     more: function lexer_more() {
+        "use strict";
+
         this._more = true;
         return this;
     },
@@ -487,6 +530,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     reject: function lexer_reject() {
+        "use strict";
+
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -510,6 +555,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     less: function lexer_less(n) {
+        "use strict";
+
         return this.unput(this.match.slice(n));
     },
 
@@ -532,6 +579,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
+        "use strict";
+
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = Infinity;
@@ -592,6 +641,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
+        "use strict";
+
         var next = this.match;
         var source = this._input || '';
         if (maxSize < 0)
@@ -629,6 +680,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
+        "use strict";
+
         var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
@@ -652,6 +705,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     deriveLocationInfo: function lexer_deriveYYLLOC(actual, preceding, following, current) {
+        "use strict";
+
         var loc = {
             first_line: 1,
             first_column: 0,
@@ -789,7 +844,10 @@ var lexer = {
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
+        "use strict";
+
         loc = this.deriveLocationInfo(loc, context_loc, context_loc2);
+
         const CONTEXT = 3;
         const CONTEXT_TAIL = 1;
         const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
@@ -801,6 +859,8 @@ var lexer = {
         var ws_prefix = new Array(lineno_display_width).join(' ');
         var nonempty_line_indexes = [[], [], []];
         var rv = lines.slice(l0 - 1, l1 + 1).map(function injectLineNumber(line, index) {
+            "use strict";
+
             var lno = index + l0;
             var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
             var rv = lno_pfx + ': ' + line;
@@ -872,6 +932,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
+        "use strict";
+
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
         var c1 = yylloc.first_column;
@@ -920,6 +982,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     test_match: function lexer_test_match(match, indexed_rule) {
+        "use strict";
+
         var token,
             lines,
             backup,
@@ -955,17 +1019,17 @@ var lexer = {
 
         match_str = match[0];
         match_str_len = match_str.length;
-        // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-            lines = match_str.split(this.CRLF_Re);
-            if (lines.length > 1) {
-                this.yylineno += lines.length - 1;
 
-                this.yylloc.last_line = this.yylineno + 1;
-                this.yylloc.last_column = lines[lines.length - 1].length;
-            } else {
-                this.yylloc.last_column += match_str_len;
-            }
-        // }
+        lines = match_str.split(this.CRLF_Re);
+        if (lines.length > 1) {
+            this.yylineno += lines.length - 1;
+
+            this.yylloc.last_line = this.yylineno + 1;
+            this.yylloc.last_column = lines[lines.length - 1].length;
+        } else {
+            this.yylloc.last_column += match_str_len;
+        }
+
         this.yytext += match_str;
         this.match += match_str;
         this.matched += match_str;
@@ -1017,6 +1081,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     next: function lexer_next() {
+        "use strict";
+
         if (this.done) {
             this.clear();
             return this.EOF;
@@ -1030,6 +1096,9 @@ var lexer = {
             tempMatch,
             index;
         if (!this._more) {
+            if (!this._clear_state) {
+                this._clear_state = 1;
+            }
             this.clear();
         }
         var spec = this.__currentRuleSet__;
@@ -1043,7 +1112,7 @@ var lexer = {
             // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
             if (!spec || !spec.rules) {
                 var lineno_msg = '';
-                if (this.options.trackPosition) {
+                if (this.yylloc) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
                 var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
@@ -1093,7 +1162,7 @@ var lexer = {
             return this.EOF;
         } else {
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
             var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
@@ -1129,7 +1198,12 @@ var lexer = {
      * @this {RegExpLexer}
      */
     lex: function lexer_lex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
+
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.pre_lex === 'function') {
             r = this.pre_lex.call(this, 0);
@@ -1159,6 +1233,31 @@ var lexer = {
             // (also account for a userdef function which does not return any value: keep the token as is)
             r = this.post_lex.call(this, r) || r;
         }
+
+        // 1) make sure any outside interference is detected ASAP: 
+        //    these attributes are to be treated as 'const' values
+        //    once the lexer has produced them with the token (return value `r`).
+        // 2) make sure any subsequent `lex()` API invocation CANNOT
+        //    edit the `yytext`, etc. token attributes for the *current*
+        //    token, i.e. provide a degree of 'closure safety' so that
+        //    code like this:
+        //    
+        //        t1 = lexer.lex();
+        //        v = lexer.yytext;
+        //        l = lexer.yylloc;
+        //        t2 = lexer.lex();
+        //        assert(lexer.yytext !== v);
+        //        assert(lexer.yylloc !== l);
+        //        
+        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+        //    these conditions.
+        this.yytext = Object.freeze(this.yytext);
+        this.matches = Object.freeze(this.matches);
+        this.yylloc.range = Object.freeze(this.yylloc.range);
+        this.yylloc = Object.freeze(this.yylloc);
+
+        this._clear_state = 0;
+
         return r;
     },
 
@@ -1170,11 +1269,39 @@ var lexer = {
      * @this {RegExpLexer}
      */
     fastLex: function lexer_fastLex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
 
         while (!r) {
             r = this.next();
         }
+
+        // 1) make sure any outside interference is detected ASAP: 
+        //    these attributes are to be treated as 'const' values
+        //    once the lexer has produced them with the token (return value `r`).
+        // 2) make sure any subsequent `lex()` API invocation CANNOT
+        //    edit the `yytext`, etc. token attributes for the *current*
+        //    token, i.e. provide a degree of 'closure safety' so that
+        //    code like this:
+        //    
+        //        t1 = lexer.lex();
+        //        v = lexer.yytext;
+        //        l = lexer.yylloc;
+        //        t2 = lexer.lex();
+        //        assert(lexer.yytext !== v);
+        //        assert(lexer.yylloc !== l);
+        //        
+        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+        //    these conditions.
+        this.yytext = Object.freeze(this.yytext);
+        this.matches = Object.freeze(this.matches);
+        this.yylloc.range = Object.freeze(this.yylloc.range);
+        this.yylloc = Object.freeze(this.yylloc);
+
+        this._clear_state = 0;
 
         return r;
     },
@@ -1188,6 +1315,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     canIUse: function lexer_canIUse() {
+        "use strict";
+
         var rv = {
             fastLex: !(
                 typeof this.pre_lex === 'function' ||
@@ -1211,6 +1340,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     begin: function lexer_begin(condition) {
+        "use strict";
+
         return this.pushState(condition);
     },
 
@@ -1222,6 +1353,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     pushState: function lexer_pushState(condition) {
+        "use strict";
+
         this.conditionStack.push(condition);
         this.__currentRuleSet__ = null;
         return this;
@@ -1235,6 +1368,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     popState: function lexer_popState() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             this.__currentRuleSet__ = null;
@@ -1253,6 +1388,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     topState: function lexer_topState(n) {
+        "use strict";
+
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -1269,6 +1406,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     _currentRules: function lexer__currentRules() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         var state;
         if (n >= 0) {
@@ -1286,6 +1425,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     stateStackSize: function lexer_stateStackSize() {
+        "use strict";
+
         return this.conditionStack.length;
     },
     options: {
@@ -2890,6 +3031,9 @@ default:
 }`,
   rules: [
     {
+      re: '/^(?:\\/\\*)/',
+      source: '^(?:\\/\\*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\/\\*)',
@@ -2898,6 +3042,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\/\\/.*)/',
+      source: '^(?:\\/\\/.*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\/\\/.*)',
@@ -2906,6 +3053,9 @@ default:
       },
     },
     {
+      re: '/^(?:auto\\b)/',
+      source: '^(?:auto\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:auto\\b)',
@@ -2914,6 +3064,9 @@ default:
       },
     },
     {
+      re: '/^(?:break\\b)/',
+      source: '^(?:break\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:break\\b)',
@@ -2922,6 +3075,9 @@ default:
       },
     },
     {
+      re: '/^(?:case\\b)/',
+      source: '^(?:case\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:case\\b)',
@@ -2930,6 +3086,9 @@ default:
       },
     },
     {
+      re: '/^(?:char\\b)/',
+      source: '^(?:char\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:char\\b)',
@@ -2938,6 +3097,9 @@ default:
       },
     },
     {
+      re: '/^(?:const\\b)/',
+      source: '^(?:const\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:const\\b)',
@@ -2946,6 +3108,9 @@ default:
       },
     },
     {
+      re: '/^(?:continue\\b)/',
+      source: '^(?:continue\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:continue\\b)',
@@ -2954,6 +3119,9 @@ default:
       },
     },
     {
+      re: '/^(?:default\\b)/',
+      source: '^(?:default\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:default\\b)',
@@ -2962,6 +3130,9 @@ default:
       },
     },
     {
+      re: '/^(?:do\\b)/',
+      source: '^(?:do\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:do\\b)',
@@ -2970,6 +3141,9 @@ default:
       },
     },
     {
+      re: '/^(?:double\\b)/',
+      source: '^(?:double\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:double\\b)',
@@ -2978,6 +3152,9 @@ default:
       },
     },
     {
+      re: '/^(?:else\\b)/',
+      source: '^(?:else\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:else\\b)',
@@ -2986,6 +3163,9 @@ default:
       },
     },
     {
+      re: '/^(?:enum\\b)/',
+      source: '^(?:enum\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:enum\\b)',
@@ -2994,6 +3174,9 @@ default:
       },
     },
     {
+      re: '/^(?:extern\\b)/',
+      source: '^(?:extern\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:extern\\b)',
@@ -3002,6 +3185,9 @@ default:
       },
     },
     {
+      re: '/^(?:float\\b)/',
+      source: '^(?:float\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:float\\b)',
@@ -3010,6 +3196,9 @@ default:
       },
     },
     {
+      re: '/^(?:for\\b)/',
+      source: '^(?:for\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:for\\b)',
@@ -3018,6 +3207,9 @@ default:
       },
     },
     {
+      re: '/^(?:goto\\b)/',
+      source: '^(?:goto\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:goto\\b)',
@@ -3026,6 +3218,9 @@ default:
       },
     },
     {
+      re: '/^(?:if\\b)/',
+      source: '^(?:if\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:if\\b)',
@@ -3034,6 +3229,9 @@ default:
       },
     },
     {
+      re: '/^(?:inline\\b)/',
+      source: '^(?:inline\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:inline\\b)',
@@ -3042,6 +3240,9 @@ default:
       },
     },
     {
+      re: '/^(?:int\\b)/',
+      source: '^(?:int\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:int\\b)',
@@ -3050,6 +3251,9 @@ default:
       },
     },
     {
+      re: '/^(?:long\\b)/',
+      source: '^(?:long\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:long\\b)',
@@ -3058,6 +3262,9 @@ default:
       },
     },
     {
+      re: '/^(?:register\\b)/',
+      source: '^(?:register\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:register\\b)',
@@ -3066,6 +3273,9 @@ default:
       },
     },
     {
+      re: '/^(?:restrict\\b)/',
+      source: '^(?:restrict\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:restrict\\b)',
@@ -3074,6 +3284,9 @@ default:
       },
     },
     {
+      re: '/^(?:return\\b)/',
+      source: '^(?:return\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:return\\b)',
@@ -3082,6 +3295,9 @@ default:
       },
     },
     {
+      re: '/^(?:short\\b)/',
+      source: '^(?:short\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:short\\b)',
@@ -3090,6 +3306,9 @@ default:
       },
     },
     {
+      re: '/^(?:signed\\b)/',
+      source: '^(?:signed\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:signed\\b)',
@@ -3098,6 +3317,9 @@ default:
       },
     },
     {
+      re: '/^(?:sizeof\\b)/',
+      source: '^(?:sizeof\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:sizeof\\b)',
@@ -3106,6 +3328,9 @@ default:
       },
     },
     {
+      re: '/^(?:static\\b)/',
+      source: '^(?:static\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:static\\b)',
@@ -3114,6 +3339,9 @@ default:
       },
     },
     {
+      re: '/^(?:struct\\b)/',
+      source: '^(?:struct\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:struct\\b)',
@@ -3122,6 +3350,9 @@ default:
       },
     },
     {
+      re: '/^(?:switch\\b)/',
+      source: '^(?:switch\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:switch\\b)',
@@ -3130,6 +3361,9 @@ default:
       },
     },
     {
+      re: '/^(?:typedef\\b)/',
+      source: '^(?:typedef\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:typedef\\b)',
@@ -3138,6 +3372,9 @@ default:
       },
     },
     {
+      re: '/^(?:union\\b)/',
+      source: '^(?:union\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:union\\b)',
@@ -3146,6 +3383,9 @@ default:
       },
     },
     {
+      re: '/^(?:unsigned\\b)/',
+      source: '^(?:unsigned\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:unsigned\\b)',
@@ -3154,6 +3394,9 @@ default:
       },
     },
     {
+      re: '/^(?:void\\b)/',
+      source: '^(?:void\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:void\\b)',
@@ -3162,6 +3405,9 @@ default:
       },
     },
     {
+      re: '/^(?:volatile\\b)/',
+      source: '^(?:volatile\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:volatile\\b)',
@@ -3170,6 +3416,9 @@ default:
       },
     },
     {
+      re: '/^(?:while\\b)/',
+      source: '^(?:while\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:while\\b)',
@@ -3178,6 +3427,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Alignas\\b)/',
+      source: '^(?:_Alignas\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Alignas\\b)',
@@ -3186,6 +3438,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Alignof\\b)/',
+      source: '^(?:_Alignof\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Alignof\\b)',
@@ -3194,6 +3449,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Atomic\\b)/',
+      source: '^(?:_Atomic\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Atomic\\b)',
@@ -3202,6 +3460,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Bool\\b)/',
+      source: '^(?:_Bool\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Bool\\b)',
@@ -3210,6 +3471,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Complex\\b)/',
+      source: '^(?:_Complex\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Complex\\b)',
@@ -3218,6 +3482,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Generic\\b)/',
+      source: '^(?:_Generic\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Generic\\b)',
@@ -3226,6 +3493,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Imaginary\\b)/',
+      source: '^(?:_Imaginary\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Imaginary\\b)',
@@ -3234,6 +3504,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Noreturn\\b)/',
+      source: '^(?:_Noreturn\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Noreturn\\b)',
@@ -3242,6 +3515,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Static_assert\\b)/',
+      source: '^(?:_Static_assert\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Static_assert\\b)',
@@ -3250,6 +3526,9 @@ default:
       },
     },
     {
+      re: '/^(?:_Thread_local\\b)/',
+      source: '^(?:_Thread_local\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:_Thread_local\\b)',
@@ -3258,6 +3537,9 @@ default:
       },
     },
     {
+      re: '/^(?:__func__\\b)/',
+      source: '^(?:__func__\\b)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:__func__\\b)',
@@ -3266,6 +3548,9 @@ default:
       },
     },
     {
+      re: '/^(?:([^\\W\\d])(\\w)*)/',
+      source: '^(?:([^\\W\\d])(\\w)*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([^\\W\\d])(\\w)*)',
@@ -3274,6 +3559,9 @@ default:
       },
     },
     {
+      re: '/^(?:((0[Xx]))([\\dA-Fa-f])+((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)/',
+      source: '^(?:((0[Xx]))([\\dA-Fa-f])+((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:((0[Xx]))([\\dA-Fa-f])+((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
@@ -3282,6 +3570,9 @@ default:
       },
     },
     {
+      re: '/^(?:([1-9])(\\d)*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)/',
+      source: '^(?:([1-9])(\\d)*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([1-9])(\\d)*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
@@ -3290,6 +3581,9 @@ default:
       },
     },
     {
+      re: '/^(?:0([0-7])*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)/',
+      source: '^(?:0([0-7])*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:0([0-7])*((((u|U)(l|L|ll|LL)?)|((l|L|ll|LL)(u|U)?)))?)',
@@ -3298,6 +3592,9 @@ default:
       },
     },
     {
+      re: `/^(?:((u|U|L))?'([^\\n'\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))+')/`,
+      source: `^(?:((u|U|L))?'([^\\n'\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))+')`,
+      flags: '',
       xregexp: {
         captureNames: null,
         source: `^(?:((u|U|L))?'([^\\n'\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))+')`,
@@ -3306,6 +3603,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\d)+(([Ee][+-]?(?:\\d)+))((f|F|l|L))?)/',
+      source: '^(?:(\\d)+(([Ee][+-]?(?:\\d)+))((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\d)+(([Ee][+-]?(?:\\d)+))((f|F|l|L))?)',
@@ -3314,6 +3614,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\d)*\\.(\\d)+(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)/',
+      source: '^(?:(\\d)*\\.(\\d)+(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\d)*\\.(\\d)+(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)',
@@ -3322,6 +3625,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\d)+\\.(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)/',
+      source: '^(?:(\\d)+\\.(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\d)+\\.(([Ee][+-]?(?:\\d)+))?((f|F|l|L))?)',
@@ -3330,6 +3636,9 @@ default:
       },
     },
     {
+      re: '/^(?:((0[Xx]))([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)/',
+      source: '^(?:((0[Xx]))([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:((0[Xx]))([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
@@ -3338,6 +3647,9 @@ default:
       },
     },
     {
+      re: '/^(?:((0[Xx]))([\\dA-Fa-f])*\\.([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)/',
+      source: '^(?:((0[Xx]))([\\dA-Fa-f])*\\.([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:((0[Xx]))([\\dA-Fa-f])*\\.([\\dA-Fa-f])+(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
@@ -3346,6 +3658,9 @@ default:
       },
     },
     {
+      re: '/^(?:((0[Xx]))([\\dA-Fa-f])+\\.(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)/',
+      source: '^(?:((0[Xx]))([\\dA-Fa-f])+\\.(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:((0[Xx]))([\\dA-Fa-f])+\\.(([Pp][+-]?(?:\\d)+))((f|F|l|L))?)',
@@ -3354,6 +3669,9 @@ default:
       },
     },
     {
+      re: `/^(?:(((u8|u|U|L))?"([^\\n"\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))*"([\\t-\\f ])*)+)/`,
+      source: `^(?:(((u8|u|U|L))?"([^\\n"\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))*"([\\t-\\f ])*)+)`,
+      flags: '',
       xregexp: {
         captureNames: null,
         source: `^(?:(((u8|u|U|L))?"([^\\n"\\\\]|((\\\\(["'?\\\\abfnrtv]|[0-7]{1,3}|x[\\dA-Fa-f]+))))*"([\\t-\\f ])*)+)`,
@@ -3362,6 +3680,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\.\\.\\.)/',
+      source: '^(?:\\.\\.\\.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\.\\.\\.)',
@@ -3370,6 +3691,9 @@ default:
       },
     },
     {
+      re: '/^(?:>>=)/',
+      source: '^(?:>>=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>>=)',
@@ -3378,6 +3702,9 @@ default:
       },
     },
     {
+      re: '/^(?:<<=)/',
+      source: '^(?:<<=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<<=)',
@@ -3386,6 +3713,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\+=)/',
+      source: '^(?:\\+=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\+=)',
@@ -3394,6 +3724,9 @@ default:
       },
     },
     {
+      re: '/^(?:-=)/',
+      source: '^(?:-=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:-=)',
@@ -3402,6 +3735,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\*=)/',
+      source: '^(?:\\*=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\*=)',
@@ -3410,6 +3746,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\/=)/',
+      source: '^(?:\\/=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\/=)',
@@ -3418,6 +3757,9 @@ default:
       },
     },
     {
+      re: '/^(?:%=)/',
+      source: '^(?:%=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:%=)',
@@ -3426,6 +3768,9 @@ default:
       },
     },
     {
+      re: '/^(?:&=)/',
+      source: '^(?:&=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:&=)',
@@ -3434,6 +3779,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\^=)/',
+      source: '^(?:\\^=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\^=)',
@@ -3442,6 +3790,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\|=)/',
+      source: '^(?:\\|=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\|=)',
@@ -3450,6 +3801,9 @@ default:
       },
     },
     {
+      re: '/^(?:>>)/',
+      source: '^(?:>>)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>>)',
@@ -3458,6 +3812,9 @@ default:
       },
     },
     {
+      re: '/^(?:<<)/',
+      source: '^(?:<<)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<<)',
@@ -3466,6 +3823,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\+\\+)/',
+      source: '^(?:\\+\\+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\+\\+)',
@@ -3474,6 +3834,9 @@ default:
       },
     },
     {
+      re: '/^(?:--)/',
+      source: '^(?:--)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:--)',
@@ -3482,6 +3845,9 @@ default:
       },
     },
     {
+      re: '/^(?:->)/',
+      source: '^(?:->)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:->)',
@@ -3490,6 +3856,9 @@ default:
       },
     },
     {
+      re: '/^(?:&&)/',
+      source: '^(?:&&)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:&&)',
@@ -3498,6 +3867,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\|\\|)/',
+      source: '^(?:\\|\\|)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\|\\|)',
@@ -3506,6 +3878,9 @@ default:
       },
     },
     {
+      re: '/^(?:<=)/',
+      source: '^(?:<=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<=)',
@@ -3514,6 +3889,9 @@ default:
       },
     },
     {
+      re: '/^(?:>=)/',
+      source: '^(?:>=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>=)',
@@ -3522,6 +3900,9 @@ default:
       },
     },
     {
+      re: '/^(?:==)/',
+      source: '^(?:==)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:==)',
@@ -3530,6 +3911,9 @@ default:
       },
     },
     {
+      re: '/^(?:!=)/',
+      source: '^(?:!=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:!=)',
@@ -3538,6 +3922,9 @@ default:
       },
     },
     {
+      re: '/^(?:;)/',
+      source: '^(?:;)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:;)',
@@ -3546,6 +3933,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\{|<%))/',
+      source: '^(?:(\\{|<%))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\{|<%))',
@@ -3554,6 +3944,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\}|%>))/',
+      source: '^(?:(\\}|%>))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\}|%>))',
@@ -3562,6 +3955,9 @@ default:
       },
     },
     {
+      re: '/^(?:,)/',
+      source: '^(?:,)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:,)',
@@ -3570,6 +3966,9 @@ default:
       },
     },
     {
+      re: '/^(?::)/',
+      source: '^(?::)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?::)',
@@ -3578,6 +3977,9 @@ default:
       },
     },
     {
+      re: '/^(?:=)/',
+      source: '^(?:=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:=)',
@@ -3586,6 +3988,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\()/',
+      source: '^(?:\\()',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\()',
@@ -3594,6 +3999,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\))/',
+      source: '^(?:\\))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\))',
@@ -3602,6 +4010,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\[|<:))/',
+      source: '^(?:(\\[|<:))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\[|<:))',
@@ -3610,6 +4021,9 @@ default:
       },
     },
     {
+      re: '/^(?:(\\]|:>))/',
+      source: '^(?:(\\]|:>))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:(\\]|:>))',
@@ -3618,6 +4032,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\.)/',
+      source: '^(?:\\.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\.)',
@@ -3626,6 +4043,9 @@ default:
       },
     },
     {
+      re: '/^(?:&)/',
+      source: '^(?:&)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:&)',
@@ -3634,6 +4054,9 @@ default:
       },
     },
     {
+      re: '/^(?:!)/',
+      source: '^(?:!)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:!)',
@@ -3642,6 +4065,9 @@ default:
       },
     },
     {
+      re: '/^(?:~)/',
+      source: '^(?:~)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:~)',
@@ -3650,6 +4076,9 @@ default:
       },
     },
     {
+      re: '/^(?:-)/',
+      source: '^(?:-)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:-)',
@@ -3658,6 +4087,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\+)/',
+      source: '^(?:\\+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\+)',
@@ -3666,6 +4098,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\*)/',
+      source: '^(?:\\*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\*)',
@@ -3674,6 +4109,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\/)/',
+      source: '^(?:\\/)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\/)',
@@ -3682,6 +4120,9 @@ default:
       },
     },
     {
+      re: '/^(?:%)/',
+      source: '^(?:%)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:%)',
@@ -3690,6 +4131,9 @@ default:
       },
     },
     {
+      re: '/^(?:<)/',
+      source: '^(?:<)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<)',
@@ -3698,6 +4142,9 @@ default:
       },
     },
     {
+      re: '/^(?:>)/',
+      source: '^(?:>)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>)',
@@ -3706,6 +4153,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\^)/',
+      source: '^(?:\\^)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\^)',
@@ -3714,6 +4164,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\|)/',
+      source: '^(?:\\|)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\|)',
@@ -3722,6 +4175,9 @@ default:
       },
     },
     {
+      re: '/^(?:\\?)/',
+      source: '^(?:\\?)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\?)',
@@ -3730,6 +4186,9 @@ default:
       },
     },
     {
+      re: '/^(?:([\\t-\\f ])+)/',
+      source: '^(?:([\\t-\\f ])+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([\\t-\\f ])+)',
@@ -3738,6 +4197,9 @@ default:
       },
     },
     {
+      re: '/^(?:.)/',
+      source: '^(?:.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:.)',

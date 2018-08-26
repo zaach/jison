@@ -1,6 +1,7 @@
 [
+  27,
   {
-    id: 19,
+    id: 21,
     token: '"ACTION_START_AT_SOL"',
     yytext: '%{',
     yylloc: {
@@ -15,7 +16,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: `baz 
 `,
@@ -31,7 +32,7 @@
     },
   },
   {
-    id: 20,
+    id: 22,
     token: '"ACTION_END"',
     yytext: '',
     yylloc: {
@@ -136,7 +137,7 @@
     },
   },
   {
-    id: 22,
+    id: 24,
     token: '"ACTION_START"',
     yytext: '{',
     yylloc: {
@@ -151,7 +152,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: '{',
     yylloc: {
@@ -166,7 +167,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: ' ',
     yylloc: {
@@ -181,7 +182,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: `
 `,
@@ -197,7 +198,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: 'action; ',
     yylloc: {
@@ -212,7 +213,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: `
 `,
@@ -228,7 +229,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: 'hi',
     yylloc: {
@@ -243,7 +244,7 @@
     },
   },
   {
-    id: 20,
+    id: 22,
     token: '"ACTION_END"',
     yytext: '}',
     yylloc: {
@@ -348,7 +349,7 @@
     },
   },
   {
-    id: 57,
+    id: 60,
     token: '"TRAILING_CODE_CHUNK"',
     yytext: `foo; 
 bar;

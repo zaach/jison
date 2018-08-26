@@ -1,6 +1,7 @@
 [
   10,
   {
+    id: 'DEFINE',
     token: 'DEFINE',
     yytext: 'DEFINE',
     yylloc: {
@@ -15,6 +16,7 @@
     },
   },
   {
+    id: 'IDENT',
     token: 'IDENT',
     yytext: 'A',
     yylloc: {
@@ -29,6 +31,7 @@
     },
   },
   {
+    id: '=',
     token: '=',
     yytext: '=',
     yylloc: {
@@ -43,6 +46,7 @@
     },
   },
   {
+    id: 'IDENT',
     token: 'IDENT',
     yytext: 'B',
     yylloc: {
@@ -57,6 +61,7 @@
     },
   },
   {
+    id: '*',
     token: '*',
     yytext: '×',
     yylloc: {
@@ -71,6 +76,7 @@
     },
   },
   {
+    id: 'IDENT',
     token: 'IDENT',
     yytext: 'C',
     yylloc: {
@@ -85,6 +91,7 @@
     },
   },
   {
+    id: 'EOF',
     token: 'EOF',
     yytext: '',
     yylloc: {
@@ -99,7 +106,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -113,7 +121,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -127,7 +136,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -141,7 +151,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,

@@ -1206,6 +1206,13 @@
 
         //this._clear_state = 0;
 
+        if (!this._more) {
+            if (!this._clear_state) {
+                this._clear_state = 1;
+            }
+            this.clear();
+        }
+
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.pre_lex === 'function') {
             r = this.pre_lex.call(this, 0);
@@ -1236,29 +1243,33 @@
             r = this.post_lex.call(this, r) || r;
         }
 
-        // 1) make sure any outside interference is detected ASAP: 
-        //    these attributes are to be treated as 'const' values
-        //    once the lexer has produced them with the token (return value `r`).
-        // 2) make sure any subsequent `lex()` API invocation CANNOT
-        //    edit the `yytext`, etc. token attributes for the *current*
-        //    token, i.e. provide a degree of 'closure safety' so that
-        //    code like this:
-        //    
-        //        t1 = lexer.lex();
-        //        v = lexer.yytext;
-        //        l = lexer.yylloc;
-        //        t2 = lexer.lex();
-        //        assert(lexer.yytext !== v);
-        //        assert(lexer.yylloc !== l);
-        //        
-        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
-        //    these conditions.
-        this.yytext = Object.freeze(this.yytext);
-        this.matches = Object.freeze(this.matches);
-        this.yylloc.range = Object.freeze(this.yylloc.range);
-        this.yylloc = Object.freeze(this.yylloc);
+        if (!this._more) {
+            //
+            // 1) make sure any outside interference is detected ASAP: 
+            //    these attributes are to be treated as 'const' values
+            //    once the lexer has produced them with the token (return value `r`).
+            // 2) make sure any subsequent `lex()` API invocation CANNOT
+            //    edit the `yytext`, etc. token attributes for the *current*
+            //    token, i.e. provide a degree of 'closure safety' so that
+            //    code like this:
+            //    
+            //        t1 = lexer.lex();
+            //        v = lexer.yytext;
+            //        l = lexer.yylloc;
+            //        t2 = lexer.lex();
+            //        assert(lexer.yytext !== v);
+            //        assert(lexer.yylloc !== l);
+            //        
+            //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+            //    these conditions.
+            //    
+            this.yytext = Object.freeze(this.yytext);
+            this.matches = Object.freeze(this.matches);
+            this.yylloc.range = Object.freeze(this.yylloc.range);
+            this.yylloc = Object.freeze(this.yylloc);
 
-        this._clear_state = 0;
+            this._clear_state = 0;
+        }
 
         return r;
     },
@@ -1281,30 +1292,34 @@
             r = this.next();
         }
 
-        // 1) make sure any outside interference is detected ASAP: 
-        //    these attributes are to be treated as 'const' values
-        //    once the lexer has produced them with the token (return value `r`).
-        // 2) make sure any subsequent `lex()` API invocation CANNOT
-        //    edit the `yytext`, etc. token attributes for the *current*
-        //    token, i.e. provide a degree of 'closure safety' so that
-        //    code like this:
-        //    
-        //        t1 = lexer.lex();
-        //        v = lexer.yytext;
-        //        l = lexer.yylloc;
-        //        t2 = lexer.lex();
-        //        assert(lexer.yytext !== v);
-        //        assert(lexer.yylloc !== l);
-        //        
-        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
-        //    these conditions.
-        this.yytext = Object.freeze(this.yytext);
-        this.matches = Object.freeze(this.matches);
-        this.yylloc.range = Object.freeze(this.yylloc.range);
-        this.yylloc = Object.freeze(this.yylloc);
+        if (!this._more) {
+            //
+            // 1) make sure any outside interference is detected ASAP: 
+            //    these attributes are to be treated as 'const' values
+            //    once the lexer has produced them with the token (return value `r`).
+            // 2) make sure any subsequent `lex()` API invocation CANNOT
+            //    edit the `yytext`, etc. token attributes for the *current*
+            //    token, i.e. provide a degree of 'closure safety' so that
+            //    code like this:
+            //    
+            //        t1 = lexer.lex();
+            //        v = lexer.yytext;
+            //        l = lexer.yylloc;
+            //        t2 = lexer.lex();
+            //        assert(lexer.yytext !== v);
+            //        assert(lexer.yylloc !== l);
+            //        
+            //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+            //    these conditions.
+            //    
+            this.yytext = Object.freeze(this.yytext);
+            this.matches = Object.freeze(this.matches);
+            this.yylloc.range = Object.freeze(this.yylloc.range);
+            this.yylloc = Object.freeze(this.yylloc);
 
-        this._clear_state = 0;
-
+            this._clear_state = 0;
+        }
+        
         return r;
     },
 

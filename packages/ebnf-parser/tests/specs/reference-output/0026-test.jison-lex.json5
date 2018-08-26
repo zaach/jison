@@ -1,6 +1,7 @@
 [
+  12,
   {
-    id: 19,
+    id: 21,
     token: '"ACTION_START_AT_SOL"',
     yytext: '%{',
     yylloc: {
@@ -15,7 +16,7 @@
     },
   },
   {
-    id: 50,
+    id: 53,
     token: '"ACTION_BODY"',
     yytext: "var foo = 'bar';",
     yylloc: {
@@ -30,7 +31,7 @@
     },
   },
   {
-    id: 20,
+    id: 22,
     token: '"ACTION_END"',
     yytext: '',
     yylloc: {

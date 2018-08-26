@@ -1,6 +1,7 @@
 [
+  13,
   {
-    id: 27,
+    id: 29,
     token: '"UNKNOWN_DECL"',
     yytext: {
       name: 'foo',
@@ -18,7 +19,7 @@
     },
   },
   {
-    id: 27,
+    id: 29,
     token: '"UNKNOWN_DECL"',
     yytext: {
       name: 'foo',
@@ -36,7 +37,7 @@
     },
   },
   {
-    id: 27,
+    id: 29,
     token: '"UNKNOWN_DECL"',
     yytext: {
       name: 'qux',
@@ -144,7 +145,7 @@
     },
   },
   {
-    id: 57,
+    id: 60,
     token: '"TRAILING_CODE_CHUNK"',
     yytext: `
 

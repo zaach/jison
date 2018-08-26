@@ -1,6 +1,7 @@
 [
   13,
   {
+    id: 'WORD',
     token: 'WORD',
     yytext: 'A',
     yylloc: {
@@ -15,6 +16,7 @@
     },
   },
   {
+    id: 'TOK_A',
     token: 'TOK_A',
     yytext: 'a',
     yylloc: {
@@ -29,6 +31,7 @@
     },
   },
   {
+    id: 'WORD',
     token: 'WORD',
     yytext: 'B',
     yylloc: {
@@ -43,6 +46,7 @@
     },
   },
   {
+    id: 'WORD',
     token: 'WORD',
     yytext: 'C',
     yylloc: {
@@ -57,6 +61,7 @@
     },
   },
   {
+    id: 'NUMBER',
     token: 'NUMBER',
     yytext: '1',
     yylloc: {
@@ -71,6 +76,7 @@
     },
   },
   {
+    id: '+',
     token: '+',
     yytext: '+',
     yylloc: {
@@ -85,6 +91,7 @@
     },
   },
   {
+    id: 'NUMBER',
     token: 'NUMBER',
     yytext: '2',
     yylloc: {
@@ -99,6 +106,7 @@
     },
   },
   {
+    id: '+',
     token: '+',
     yytext: '+',
     yylloc: {
@@ -113,6 +121,7 @@
     },
   },
   {
+    id: 'NUMBER',
     token: 'NUMBER',
     yytext: '3',
     yylloc: {
@@ -127,6 +136,7 @@
     },
   },
   {
+    id: 'EOF',
     token: 'EOF',
     yytext: '',
     yylloc: {
@@ -141,7 +151,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -155,7 +166,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -169,7 +181,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -183,7 +196,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,

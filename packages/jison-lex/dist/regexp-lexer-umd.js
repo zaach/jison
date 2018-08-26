@@ -1,15 +1,16 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) :
-    typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) :
-    (global['regexp-lexer'] = factory(global.fs,global.path,global.recast,global.assert$1,global.XRegExp,global.json5));
-}(this, (function (fs,path,recast,assert$1,XRegExp,json5) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('@babel/core'), require('@babel/parser'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) :
+    typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', '@babel/core', '@babel/parser', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) :
+    (global['regexp-lexer'] = factory(global.fs,global.path,global.recast,global.babel,global.parser,global.assert$1,global.XRegExp,global.JSON5));
+}(this, (function (fs,path,recast,babel,parser,assert$1,XRegExp,JSON5) { 'use strict';
 
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
+    parser = parser && parser.hasOwnProperty('default') ? parser['default'] : parser;
     assert$1 = assert$1 && assert$1.hasOwnProperty('default') ? assert$1['default'] : assert$1;
     XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
-    json5 = json5 && json5.hasOwnProperty('default') ? json5['default'] : json5;
+    JSON5 = JSON5 && JSON5.hasOwnProperty('default') ? JSON5['default'] : JSON5;
 
     // Return TRUE if `src` starts with `searchString`. 
     function startsWith(src, searchString) {
@@ -264,6 +265,7 @@
     // attempt to dump in one of several locations: first winner is *it*!
     function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
         var dumpfile;
+        options = options || {};
 
         try {
             var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
@@ -379,6 +381,8 @@
 
     //
 
+
+
     assert$1(recast);
     var types = recast.types;
     assert$1(types);
@@ -401,6 +405,36 @@
     }
 
 
+    function compileCodeToES5(src, options) {
+        options = Object.assign({}, {
+          ast: true,
+          code: true,
+          sourceMaps: true,
+          comments: true,
+          filename: 'compileCodeToES5.js',
+          sourceFileName: 'compileCodeToES5.js',
+          sourceRoot: '.',
+          sourceType: 'module',
+
+          babelrc: false,
+          
+          ignore: [
+            "node_modules/**/*.js"
+          ],
+          compact: false,
+          retainLines: false,
+          presets: [
+            ["@babel/preset-env", {
+              targets: {
+                browsers: ["last 2 versions", "safari >= 7"],
+                node: "4.0"
+              }
+            }]
+          ]
+        }, options);
+
+        return babel.transformSync(src, options); // => { code, map, ast }
+    }
 
 
     function prettyPrintAST(ast, options) {
@@ -533,6 +567,7 @@
 
     var parse2AST = {
         parseCodeChunkToAST,
+        compileCodeToES5,
         prettyPrintAST,
         checkActionBlock,
         trimActionCode,
@@ -772,6 +807,309 @@
         getRegExpInfo: getRegExpInfo
     };
 
+    var cycleref = [];
+    var cyclerefpath = [];
+
+    var linkref = [];
+    var linkrefpath = [];
+
+    var path$1 = [];
+
+    function shallow_copy(src) {
+        if (typeof src === 'object') {
+            if (src instanceof Array) {
+                return src.slice();
+            }
+
+            var dst = {};
+            if (src instanceof Error) {
+                dst.name = src.name;
+                dst.message = src.message;
+                dst.stack = src.stack;
+            }
+
+            for (var k in src) {
+                if (Object.prototype.hasOwnProperty.call(src, k)) {
+                    dst[k] = src[k];
+                }
+            }
+            return dst;
+        }
+        return src;
+    }
+
+
+    function shallow_copy_and_strip_depth(src, parentKey) {
+        if (typeof src === 'object') {
+            var dst;
+
+            if (src instanceof Array) {
+                dst = src.slice();
+                for (var i = 0, len = dst.length; i < len; i++) {
+                    path$1.push('[' + i + ']');
+                    dst[i] = shallow_copy_and_strip_depth(dst[i], parentKey + '[' + i + ']');
+                    path$1.pop();
+                }
+            } else {
+                dst = {};
+                if (src instanceof Error) {
+                    dst.name = src.name;
+                    dst.message = src.message;
+                    dst.stack = src.stack;
+                }
+
+                for (var k in src) {
+                    if (Object.prototype.hasOwnProperty.call(src, k)) {
+                        var el = src[k];
+                        if (el && typeof el === 'object') {
+                            dst[k] = '[cyclic reference::attribute --> ' + parentKey + '.' + k + ']';
+                        } else {
+                            dst[k] = src[k];
+                        }
+                    }
+                }
+            }
+            return dst;
+        }
+        return src;
+    }
+
+
+    function trim_array_tail(arr) {
+        if (arr instanceof Array) {
+            for (var len = arr.length; len > 0; len--) {
+                if (arr[len - 1] != null) {
+                    break;
+                }
+            }
+            arr.length = len;
+        }
+    }
+
+    function treat_value_stack(v) {
+        if (v instanceof Array) {
+            var idx = cycleref.indexOf(v);
+            if (idx >= 0) {
+                v = '[cyclic reference to parent array --> ' + cyclerefpath[idx] + ']';
+            } else {
+                idx = linkref.indexOf(v);
+                if (idx >= 0) {
+                    v = '[reference to sibling array --> ' + linkrefpath[idx] + ', length = ' + v.length + ']';
+                } else {
+                    cycleref.push(v);
+                    cyclerefpath.push(path$1.join('.'));
+                    linkref.push(v);
+                    linkrefpath.push(path$1.join('.'));
+
+                    v = treat_error_infos_array(v);
+
+                    cycleref.pop();
+                    cyclerefpath.pop();
+                }
+            }
+        } else if (v) {
+            v = treat_object(v);
+        }
+        return v;
+    }
+
+    function treat_error_infos_array(arr) {
+        var inf = arr.slice();
+        trim_array_tail(inf);
+        for (var key = 0, len = inf.length; key < len; key++) {
+            var err = inf[key];
+            if (err) {
+                path$1.push('[' + key + ']');
+
+                err = treat_object(err);
+
+                if (typeof err === 'object') {
+                    if (err.lexer) {
+                        err.lexer = '[lexer]';
+                    }
+                    if (err.parser) {
+                        err.parser = '[parser]';
+                    }
+                    trim_array_tail(err.symbol_stack);
+                    trim_array_tail(err.state_stack);
+                    trim_array_tail(err.location_stack);
+                    if (err.value_stack) {
+                        path$1.push('value_stack');
+                        err.value_stack = treat_value_stack(err.value_stack);
+                        path$1.pop();
+                    }
+                }
+
+                inf[key] = err;
+
+                path$1.pop();
+            }
+        }
+        return inf;
+    }
+
+    function treat_lexer(l) {
+        // shallow copy object:
+        l = shallow_copy(l);
+        delete l.simpleCaseActionClusters;
+        delete l.rules;
+        delete l.conditions;
+        delete l.__currentRuleSet__;
+
+        if (l.__error_infos) {
+            path$1.push('__error_infos');
+            l.__error_infos = treat_value_stack(l.__error_infos);
+            path$1.pop();
+        }
+
+        return l;
+    }
+
+    function treat_parser(p) {
+        // shallow copy object:
+        p = shallow_copy(p);
+        delete p.productions_;
+        delete p.table;
+        delete p.defaultActions;
+
+        if (p.__error_infos) {
+            path$1.push('__error_infos');
+            p.__error_infos = treat_value_stack(p.__error_infos);
+            path$1.pop();
+        }
+
+        if (p.__error_recovery_infos) {
+            path$1.push('__error_recovery_infos');
+            p.__error_recovery_infos = treat_value_stack(p.__error_recovery_infos);
+            path$1.pop();
+        }
+
+        if (p.lexer) {
+            path$1.push('lexer');
+            p.lexer = treat_lexer(p.lexer);
+            path$1.pop();
+        }
+
+        return p;
+    }
+
+    function treat_hash(h) {
+        // shallow copy object:
+        h = shallow_copy(h);
+
+        if (h.parser) {
+            path$1.push('parser');
+            h.parser = treat_parser(h.parser);
+            path$1.pop();
+        }
+
+        if (h.lexer) {
+            path$1.push('lexer');
+            h.lexer = treat_lexer(h.lexer);
+            path$1.push();
+        }
+
+        return h;
+    }
+
+    function treat_error_report_info(e) {
+        // shallow copy object:
+        e = shallow_copy(e);
+        
+        if (e && e.hash) {
+            path$1.push('hash');
+            e.hash = treat_hash(e.hash);
+            path$1.pop();
+        }
+
+        if (e.parser) {
+            path$1.push('parser');
+            e.parser = treat_parser(e.parser);
+            path$1.pop();
+        }
+
+        if (e.lexer) {
+            path$1.push('lexer');
+            e.lexer = treat_lexer(e.lexer);
+            path$1.pop();
+        }    
+
+        if (e.__error_infos) {
+            path$1.push('__error_infos');
+            e.__error_infos = treat_value_stack(e.__error_infos);
+            path$1.pop();
+        }
+
+        if (e.__error_recovery_infos) {
+            path$1.push('__error_recovery_infos');
+            e.__error_recovery_infos = treat_value_stack(e.__error_recovery_infos);
+            path$1.pop();
+        }
+
+        trim_array_tail(e.symbol_stack);
+        trim_array_tail(e.state_stack);
+        trim_array_tail(e.location_stack);
+        if (e.value_stack) {
+            path$1.push('value_stack');
+            e.value_stack = treat_value_stack(e.value_stack);
+            path$1.pop();
+        }
+
+        return e;
+    }
+
+    function treat_object(e) {
+        if (e && typeof e === 'object') {
+            var idx = cycleref.indexOf(e);
+            if (idx >= 0) {
+                // cyclic reference, most probably an error instance.
+                // we still want it to be READABLE in a way, though:
+                e = shallow_copy_and_strip_depth(e, cyclerefpath[idx]);
+            } else {
+                idx = linkref.indexOf(e);
+                if (idx >= 0) {
+                    e = '[reference to sibling --> ' + linkrefpath[idx] + ']';
+                } else {
+                    cycleref.push(e);
+                    cyclerefpath.push(path$1.join('.'));
+                    linkref.push(e);
+                    linkrefpath.push(path$1.join('.'));
+
+                    e = treat_error_report_info(e);
+                    
+                    cycleref.pop();
+                    cyclerefpath.pop();
+                }
+            }
+        }
+        return e;
+    }
+
+
+    // strip off large chunks from the Error exception object before
+    // it will be fed to a test log or other output.
+    // 
+    // Internal use in the unit test rigs.
+    function trimErrorForTestReporting(e) {
+        cycleref.length = 0;
+        cyclerefpath.length = 0;
+        linkref.length = 0;
+        linkrefpath.length = 0;
+        path$1 = ['*'];
+
+        if (e) {
+            e = treat_object(e);
+        }
+
+        cycleref.length = 0;
+        cyclerefpath.length = 0;
+        linkref.length = 0;
+        linkrefpath.length = 0;
+        path$1 = ['*'];
+
+        return e;
+    }
+
     var helpers = {
         rmCommonWS,
         camelCase,
@@ -779,6 +1117,7 @@
         isLegalIdentifierInput,
         scanRegExp,
         dquote,
+        trimErrorForTestReporting,
 
         checkRegExp: reHelpers.checkRegExp,
         getRegExpInfo: reHelpers.getRegExpInfo,
@@ -787,6 +1126,7 @@
         dump: code_exec.dump,
 
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+        compileCodeToES5: parse2AST.compileCodeToES5,
         prettyPrintAST: parse2AST.prettyPrintAST,
         checkActionBlock: parse2AST.checkActionBlock,
         trimActionCode: parse2AST.trimActionCode,
@@ -957,7 +1297,7 @@
             }
         
 
-    var parser = {
+    var parser$1 = {
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -3460,7 +3800,7 @@
         // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
         
         
-        this.$ = json5.parse(yyvstack[yysp]);
+        this.$ = JSON5.parse(yyvstack[yysp]);
         break;
 
     case 121:
@@ -6743,8 +7083,8 @@
     },
     yyError: 1
     };
-    parser.originalParseError = parser.parseError;
-    parser.originalQuoteName = parser.quoteName;
+    parser$1.originalParseError = parser$1.parseError;
+    parser$1.originalQuoteName = parser$1.quoteName;
     /* lexer generated by jison-lex 0.6.1-216 */
 
     /*
@@ -9082,7 +9422,7 @@
             return 30;
             break;
 
-          case 78:
+          case 80:
             /*! Conditions:: INITIAL rules code */
             /*! Rule::       %include\b */
             yy.depth = 0;
@@ -9098,7 +9438,7 @@
             return 26;
             break;
 
-          case 79:
+          case 81:
             /*! Conditions:: INITIAL rules code */
             /*! Rule::       %{NAME}([^\r\n]*) */
             /* ignore unrecognized decl */
@@ -9117,7 +9457,7 @@
             return 28;
             break;
 
-          case 80:
+          case 82:
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       %% */
             this.pushState('rules');
@@ -9125,7 +9465,7 @@
             return 19;
             break;
 
-          case 88:
+          case 90:
             /*! Conditions:: set */
             /*! Rule::       \] */
             this.popState();
@@ -9133,47 +9473,23 @@
             return 47;
             break;
 
-          case 89:
+          case 91:
             /*! Conditions:: code */
             /*! Rule::       (?:[^%{BR}][^{BR}]*{BR}+)+ */
             return 55;       // shortcut to grab a large bite at once when we're sure not to encounter any `%include` in there at start-of-line.  
 
             break;
 
-          case 91:
+          case 93:
             /*! Conditions:: code */
             /*! Rule::       [^{BR}]+ */
             return 55;       // the bit of CODE just before EOF...  
 
             break;
 
-          case 92:
-            /*! Conditions:: action */
-            /*! Rule::       " */
-            yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-            return 40;
-            break;
-
-          case 93:
-            /*! Conditions:: action */
-            /*! Rule::       ' */
-            yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-            return 40;
-            break;
-
           case 94:
             /*! Conditions:: action */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             yy_.yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
@@ -9184,10 +9500,10 @@
             break;
 
           case 95:
-            /*! Conditions:: options */
-            /*! Rule::       " */
+            /*! Conditions:: action */
+            /*! Rule::       ' */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9196,10 +9512,10 @@
             break;
 
           case 96:
-            /*! Conditions:: options */
-            /*! Rule::       ' */
+            /*! Conditions:: action */
+            /*! Rule::       ` */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9209,7 +9525,7 @@
 
           case 97:
             /*! Conditions:: options */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             yy_.yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
@@ -9220,13 +9536,10 @@
             break;
 
           case 98:
-            /*! Conditions:: * */
-            /*! Rule::       " */
-            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+            /*! Conditions:: options */
+            /*! Rule::       ' */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9235,13 +9548,10 @@
             break;
 
           case 99:
-            /*! Conditions:: * */
-            /*! Rule::       ' */
-            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+            /*! Conditions:: options */
+            /*! Rule::       ` */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9251,7 +9561,7 @@
 
           case 100:
             /*! Conditions:: * */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
 
             yy_.yyerror(rmCommonWS`
@@ -9265,6 +9575,36 @@
             break;
 
           case 101:
+            /*! Conditions:: * */
+            /*! Rule::       ' */
+            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+            yy_.yyerror(rmCommonWS`
+                                            unterminated string constant encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+            return 40;
+            break;
+
+          case 102:
+            /*! Conditions:: * */
+            /*! Rule::       ` */
+            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+            yy_.yyerror(rmCommonWS`
+                                            unterminated string constant encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+            return 40;
+            break;
+
+          case 103:
             /*! Conditions:: macro rules */
             /*! Rule::       . */
             /* b0rk on bad characters */
@@ -9287,7 +9627,7 @@
             return 2;
             break;
 
-          case 102:
+          case 104:
             /*! Conditions:: options */
             /*! Rule::       . */
             yy_.yyerror(rmCommonWS`
@@ -9304,7 +9644,7 @@
             return 2;
             break;
 
-          case 103:
+          case 105:
             /*! Conditions:: * */
             /*! Rule::       . */
             yy_.yyerror(rmCommonWS`
@@ -9440,40 +9780,48 @@
           72: 14,
 
           /*! Conditions:: rules macro INITIAL */
+          /*! Rule::       %pointer\b */
+          78: 'FLEX_POINTER_MODE',
+
+          /*! Conditions:: rules macro INITIAL */
+          /*! Rule::       %array\b */
+          79: 'FLEX_ARRAY_MODE',
+
+          /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-          81: 49,
+          83: 49,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{{ID}\} */
-          82: 45,
+          84: 45,
 
           /*! Conditions:: set options */
           /*! Rule::       \{{ID}\} */
-          83: 45,
+          85: 45,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{ */
-          84: 4,
+          86: 4,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \} */
-          85: 5,
+          87: 5,
 
           /*! Conditions:: set */
           /*! Rule::       (?:\\[^{BR}]|[^\]{])+ */
-          86: 48,
+          88: 48,
 
           /*! Conditions:: set */
           /*! Rule::       \{ */
-          87: 48,
+          89: 48,
 
           /*! Conditions:: code */
           /*! Rule::       [^{BR}]*{BR}+ */
-          90: 55,
+          92: 55,
 
           /*! Conditions:: * */
           /*! Rule::       $ */
-          104: 1
+          106: 1
         },
 
         rules: [
@@ -9555,36 +9903,38 @@
           /*  75: */  /^(?:%x\b)/,
           /*  76: */  /^(?:%code\b)/,
           /*  77: */  /^(?:%import\b)/,
-          /*  78: */  /^(?:%include\b)/,
-          /*  79: */  new XRegExp(
+          /*  78: */  /^(?:%pointer\b)/,
+          /*  79: */  /^(?:%array\b)/,
+          /*  80: */  /^(?:%include\b)/,
+          /*  81: */  new XRegExp(
             '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
             ''
           ),
-          /*  80: */  /^(?:%%)/,
-          /*  81: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
-          /*  82: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-          /*  83: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-          /*  84: */  /^(?:\{)/,
-          /*  85: */  /^(?:\})/,
-          /*  86: */  /^(?:(?:\\[^\n\r]|[^\]{])+)/,
-          /*  87: */  /^(?:\{)/,
-          /*  88: */  /^(?:\])/,
-          /*  89: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
-          /*  90: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
-          /*  91: */  /^(?:[^\n\r]+)/,
-          /*  92: */  /^(?:")/,
-          /*  93: */  /^(?:')/,
-          /*  94: */  /^(?:`)/,
-          /*  95: */  /^(?:")/,
-          /*  96: */  /^(?:')/,
-          /*  97: */  /^(?:`)/,
-          /*  98: */  /^(?:")/,
-          /*  99: */  /^(?:')/,
-          /* 100: */  /^(?:`)/,
-          /* 101: */  /^(?:.)/,
-          /* 102: */  /^(?:.)/,
+          /*  82: */  /^(?:%%)/,
+          /*  83: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
+          /*  84: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+          /*  85: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+          /*  86: */  /^(?:\{)/,
+          /*  87: */  /^(?:\})/,
+          /*  88: */  /^(?:(?:\\[^\n\r]|[^\]{])+)/,
+          /*  89: */  /^(?:\{)/,
+          /*  90: */  /^(?:\])/,
+          /*  91: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
+          /*  92: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
+          /*  93: */  /^(?:[^\n\r]+)/,
+          /*  94: */  /^(?:")/,
+          /*  95: */  /^(?:')/,
+          /*  96: */  /^(?:`)/,
+          /*  97: */  /^(?:")/,
+          /*  98: */  /^(?:')/,
+          /*  99: */  /^(?:`)/,
+          /* 100: */  /^(?:")/,
+          /* 101: */  /^(?:')/,
+          /* 102: */  /^(?:`)/,
           /* 103: */  /^(?:.)/,
-          /* 104: */  /^(?:$)/
+          /* 104: */  /^(?:.)/,
+          /* 105: */  /^(?:.)/,
+          /* 106: */  /^(?:$)/
         ],
 
         conditions: {
@@ -9639,14 +9989,16 @@
               80,
               81,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
               101,
+              102,
               103,
-              104
+              105,
+              106
             ],
 
             inclusive: true
@@ -9696,24 +10048,26 @@
               75,
               76,
               77,
-              80,
-              81,
+              78,
+              79,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
               101,
+              102,
               103,
-              104
+              105,
+              106
             ],
 
             inclusive: true
           },
 
           'code': {
-            rules: [19, 78, 79, 89, 90, 91, 98, 99, 100, 103, 104],
+            rules: [19, 80, 81, 91, 92, 93, 100, 101, 102, 105, 106],
             inclusive: false
           },
 
@@ -9736,16 +10090,16 @@
               37,
               38,
               39,
-              83,
-              95,
-              96,
+              85,
               97,
               98,
               99,
               100,
+              101,
               102,
-              103,
-              104
+              104,
+              105,
+              106
             ],
 
             inclusive: false
@@ -9770,21 +10124,21 @@
               16,
               17,
               18,
-              92,
-              93,
               94,
-              98,
-              99,
+              95,
+              96,
               100,
-              103,
-              104
+              101,
+              102,
+              105,
+              106
             ],
 
             inclusive: false
           },
 
           'set': {
-            rules: [83, 86, 87, 88, 98, 99, 100, 103, 104],
+            rules: [85, 88, 89, 90, 100, 101, 102, 105, 106],
             inclusive: false
           },
 
@@ -9837,13 +10191,15 @@
               80,
               81,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
-              103,
-              104
+              101,
+              102,
+              105,
+              106
             ],
 
             inclusive: true
@@ -9968,7 +10324,7 @@
 
       return lexer;
     }();
-    parser.lexer = lexer;
+    parser$1.lexer = lexer;
 
     var rmCommonWS$1 = helpers.rmCommonWS;
     var checkActionBlock$1 = helpers.checkActionBlock;
@@ -10180,41 +10536,41 @@
     }
 
 
-    parser.warn = function p_warn() {
+    parser$1.warn = function p_warn() {
         console.warn.apply(console, arguments);
     };
 
-    parser.log = function p_log() {
+    parser$1.log = function p_log() {
         console.log.apply(console, arguments);
     };
 
-    parser.pre_parse = function p_lex() {
-        if (parser.yydebug) parser.log('pre_parse:', arguments);
+    parser$1.pre_parse = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('pre_parse:', arguments);
     };
 
-    parser.yy.pre_parse = function p_lex() {
-        if (parser.yydebug) parser.log('pre_parse YY:', arguments);
+    parser$1.yy.pre_parse = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('pre_parse YY:', arguments);
     };
 
-    parser.yy.post_lex = function p_lex() {
-        if (parser.yydebug) parser.log('post_lex:', arguments);
+    parser$1.yy.post_lex = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('post_lex:', arguments);
     };
 
 
     function Parser() {
         this.yy = {};
     }
-    Parser.prototype = parser;
-    parser.Parser = Parser;
+    Parser.prototype = parser$1;
+    parser$1.Parser = Parser;
 
     function yyparse() {
-        return parser.parse.apply(parser, arguments);
+        return parser$1.parse.apply(parser$1, arguments);
     }
 
 
 
     var lexParser = {
-        parser,
+        parser: parser$1,
         Parser,
         parse: yyparse,
         
@@ -11366,7 +11722,7 @@
         if (typeof lexerSpec === 'string') {
             if (options.json) {
                 try {
-                    chk_l = json5.parse(lexerSpec);
+                    chk_l = JSON5.parse(lexerSpec);
 
                     // When JSON5-based parsing of the lexer spec succeeds, this implies the lexer spec is specified in `JSON mode`
                     // *OR* there's a JSON/JSON5 format error in the input:
@@ -11583,7 +11939,7 @@
         }
 
         return {
-            rules: newRules,
+            rules: newRules,                // array listing only the lexer spec regexes
             macros: macros,
 
             regular_rule_count: regular_rule_count,
@@ -12200,6 +12556,8 @@
  * @nocollapse
  */
 function JisonLexerError(msg, hash) {
+    "use strict";
+
     Object.defineProperty(this, 'name', {
         enumerable: false,
         writable: false,
@@ -12255,28 +12613,6 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
     const jisonLexerErrorDefinition = generateErrorClass();
 
 
-    function generateFakeXRegExpClassSrcCode() {
-        return rmCommonWS$2`
-        var __hacky_counter__ = 0;
-
-        /**
-         * @constructor
-         * @nocollapse
-         */
-        function XRegExp(re, f) {
-            this.re = re;
-            this.flags = f;
-            this._getUnicodeProperty = function (k) {};
-            var fake = /./;    // WARNING: this exact 'fake' is also depended upon by the xregexp unit test!
-            __hacky_counter__++;
-            fake.__hacky_backy__ = __hacky_counter__;
-            return fake;
-        }
-    `;
-    }
-
-
-
     /** @constructor */
     function RegExpLexer(dict, input, tokens, build_options) {
         var opts;
@@ -12290,37 +12626,32 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             if (tweak_cb) {
                 tweak_cb();
             }
-            var source = generateModuleBody(opts);
+            var source = generateModule(opts);
+            // opts.exportSourceCode.all
+
             try {
-                // The generated code will always have the `lexer` variable declared at local scope
-                // as `eval()` will use the local scope.
-                //
-                // The compiled code will look something like this:
-                //
-                // ```
-                // var lexer;
-                // bla bla...
-                // ```
-                //
-                // or
-                //
-                // ```
-                // var lexer = { bla... };
-                // ```
-                var testcode = [
-                    '// provide a local version for test purposes:',
-                    jisonLexerErrorDefinition,
-                    '',
-                    generateFakeXRegExpClassSrcCode(),
-                    '',
-                    source,
-                    '',
-                    'return lexer;'
-                ].join('\n');
+                var testcode = rmCommonWS$2`
+                function xxxxxxxxxxxxxxx() {
+                    "use strict";
+
+                    ${source}
+
+                    return ${opts.moduleName};
+                }
+            `;
                 var lexer = code_exec$1(testcode, function generated_code_exec_wrapper_regexp_lexer(sourcecode) {
-                    //console.log("===============================LEXER TEST CODE\n", sourcecode, "\n=====================END====================\n");
                     chkBugger$3(sourcecode);
-                    var lexer_f = new Function('', sourcecode);
+
+                    //babelize the source code for subsequent execution by Node:
+                    var es5src = helpers.compileCodeToES5(sourcecode);
+                    //console.log("===============================LEXER TEST ES5 CODE\n", es5src.code, "\n=====================END====================\n");
+                    var fcode = es5src.code;
+                    fcode = fcode
+                    .replace(/function\s+xxxxxxxxxxxxxxx\(\)[\r\n\s]*\{[\r\n\s]*['"]use strict['"];/, '')
+                    .replace(/\}[\r\n\s]*$/, '')
+                    .replace(/function _typeof\(obj\) \{.*?\}$/m, '')
+                    .replace(/\b_typeof\(/g, 'typeof (');
+                    var lexer_f = new Function('', fcode);
                     return lexer_f();
                 }, opts.options, "lexer");
 
@@ -12368,10 +12699,6 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                 }
                 return lexer;
             } catch (ex) {
-                // if (src_exception) {
-                //     src_exception.message += '\n        (' + description + ': ' + ex.message + ')';
-                // }
-
                 if (ex_callback) {
                     ex_callback(ex);
                 } else if (dump) {
@@ -12386,6 +12713,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             // When we get an exception here, it means some part of the user-specified lexer is botched.
             //
             // Now we go and try to narrow down the problem area/category:
+    console.error('### TEST_ME EXCEPTION:', ex);
             assert$1(opts.options);
             assert$1(opts.options.xregexp !== undefined);
             var orig_xregexp_opt = !!opts.options.xregexp;
@@ -12401,8 +12729,9 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                     opts.conditions = [];
                     opts.showSource = false;
                 }, function () {
+                    assert$1(Array.isArray(opts.lex_rule_dictionary.rules));
                     assert$1(Array.isArray(opts.rules));
-                    return (opts.rules.length > 0 ?
+                    return (opts.lex_rule_dictionary.rules.length > 0 ?
                         'One or more of your lexer state names are possibly botched?' :
                         'Your custom lexer is somehow botched.'
                     );
@@ -12411,11 +12740,12 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                     if (!test_me(function () {
                         // store the parsed rule set size so we can use that info in case
                         // this attempt also fails:
+                        assert$1(Array.isArray(opts.lex_rule_dictionary.rules));
                         assert$1(Array.isArray(opts.rules));
-                        rulesSpecSize = opts.rules.length;
+                        rulesSpecSize = opts.lex_rule_dictionary.rules.length;
 
                         // opts.conditions = [];
-                        opts.rules = [];
+                        opts.lex_rule_dictionary.rules = [];
                         opts.showSource = false;
                         opts.__in_rules_failure_analysis_mode__ = true;
                     }, 'One or more of your lexer rules are possibly botched?', ex, null)) {
@@ -12424,8 +12754,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                         for (var i = 0, len = rulesSpecSize; i < len; i++) {
                             var lastEditedRuleSpec;
                             rv = test_me(function () {
-                                assert$1(Array.isArray(opts.rules));
-                                assert$1(opts.rules.length === rulesSpecSize);
+                                assert$1(Array.isArray(opts.lex_rule_dictionary.rules));
+                                assert$1(opts.lex_rule_dictionary.rules.length === rulesSpecSize);
 
                                 // opts.conditions = [];
                                 // opts.rules = [];
@@ -12435,7 +12765,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                                 for (var j = 0; j <= i; j++) {
                                     // rules, when parsed, have 2 or 3 elements: [conditions, handle, action];
                                     // now we want to edit the *action* part:
-                                    var rule = opts.rules[j];
+                                    var rule = opts.lex_rule_dictionary.rules[j];
                                     assert$1(Array.isArray(rule));
                                     assert$1(rule.length === 2 || rule.length === 3);
                                     rule.pop();
@@ -12452,7 +12782,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                         if (!rv) {
                             test_me(function () {
                                 opts.conditions = [];
-                                opts.rules = [];
+                                opts.lex_rule_dictionary.rules = [];
                                 opts.performAction = 'null';
                                 // opts.options = {};
                                 // opts.caseHelperInclude = '{}';
@@ -12547,6 +12877,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
     _input: '',                                 /// INTERNAL USE ONLY
     _more: false,                               /// INTERNAL USE ONLY
     _signaled_error_token: false,               /// INTERNAL USE ONLY
+    _clear_state: 0,                            /// INTERNAL USE ONLY; 0: clear to do, 1: clear done for lex()/next(); -1: clear done for inut()/unput()/...
 
     conditionStack: [],                         /// INTERNAL USE ONLY; managed via \`pushState()\`, \`popState()\`, \`topState()\` and \`stateStackSize()\`
 
@@ -12568,6 +12899,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        "use strict";
+    
         msg = '' + msg;
 
         // heuristic to determine if the error message already contains a (partial) source code dump
@@ -12602,7 +12935,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             token: null,
             line: this.yylineno,
             loc: this.yylloc,
-            yy: this.yy,
+            yy: this.yy,                
             lexer: this,
 
             /**
@@ -12622,9 +12955,10 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                 // info.yy = null;
                 // info.lexer = null;
                 // ...
+                "use strict";
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key === 'object') {
+                    if (this[key] && this.hasOwnProperty(key) && typeof this[key] === 'object') {
                         this[key] = undefined;
                     }
                 }
@@ -12643,6 +12977,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
+        "use strict";
+
         if (!ExceptionClass) {
             ExceptionClass = this.JisonLexerError;
         }
@@ -12663,6 +12999,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     yyerror: function yyError(str /*, ...args */) {
+        "use strict";
+
         var lineno_msg = '';
         if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
@@ -12691,6 +13029,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+        "use strict";
+
         // prevent lingering circular references from causing memory leaks:
         this.setInput('', {});
 
@@ -12717,15 +13057,18 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     clear: function lexer_clear() {
+        "use strict";
+
         this.yytext = '';
         this.yyleng = 0;
         this.match = '';
         // - DO NOT reset \`this.matched\`
         this.matches = false;
+
         this._more = false;
         this._backtrack = false;
 
-        var col = (this.yylloc ? this.yylloc.last_column : 0);
+        var col = this.yylloc.last_column;
         this.yylloc = {
             first_line: this.yylineno + 1,
             first_column: col,
@@ -12743,6 +13086,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     setInput: function lexer_setInput(input, yy) {
+        "use strict";
+
         this.yy = yy || this.yy || {};
 
         // also check if we've fully initialized the lexer instance,
@@ -12790,7 +13135,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             input = '' + input;
         }
         this._input = input || '';
-        this.clear();
+        this._clear_state = -1;
         this._signaled_error_token = false;
         this.done = false;
         this.yylineno = 0;
@@ -12807,6 +13152,15 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
         };
         this.offset = 0;
         this.base_position = 0;
+        // apply these bits of \`this.clear()\` as well:
+        this.yytext = '';
+        this.yyleng = 0;
+        this.match = '';
+        this.matches = false;
+
+        this._more = false;
+        this._backtrack = false;
+
         return this;
     },
 
@@ -12855,6 +13209,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
+        "use strict";
+
         var rv = callback.call(this, this._input, cpsArg);
         if (typeof rv !== 'string') {
             if (rv) {
@@ -12874,9 +13230,15 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     input: function lexer_input() {
+        "use strict";
+
         if (!this._input) {
             //this.done = true;    -- don't set \`done\` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
+        }
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
         }
         var ch = this._input[0];
         this.yytext += ch;
@@ -12926,8 +13288,15 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     unput: function lexer_unput(ch) {
+        "use strict";
+
         var len = ch.length;
         var lines = ch.split(this.CRLF_Re);
+
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
+        }
 
         this._input = ch + this._input;
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
@@ -12991,6 +13360,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     lookAhead: function lexer_lookAhead() {
+        "use strict";
+
         return this._input || '';
     },
 
@@ -13001,6 +13372,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     more: function lexer_more() {
+        "use strict";
+
         this._more = true;
         return this;
     },
@@ -13013,6 +13386,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     reject: function lexer_reject() {
+        "use strict";
+
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -13036,6 +13411,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     less: function lexer_less(n) {
+        "use strict";
+
         return this.unput(this.match.slice(n));
     },
 
@@ -13058,6 +13435,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
+        "use strict";
+
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = Infinity;
@@ -13118,6 +13497,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
+        "use strict";
+
         var next = this.match;
         var source = this._input || '';
         if (maxSize < 0)
@@ -13155,6 +13536,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
+        "use strict";
+
         var pre = this.pastInput(maxPrefix).replace(/\\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput(maxPostfix).replace(/\\s/g, ' ') + '\\n' + c + '^';
@@ -13178,6 +13561,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     deriveLocationInfo: function lexer_deriveYYLLOC(actual, preceding, following, current) {
+        "use strict";
+
         var loc = {
             first_line: 1,
             first_column: 0,
@@ -13315,7 +13700,10 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
+        "use strict";
+
         loc = this.deriveLocationInfo(loc, context_loc, context_loc2);
+
         const CONTEXT = 3;
         const CONTEXT_TAIL = 1;
         const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
@@ -13327,6 +13715,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
         var ws_prefix = new Array(lineno_display_width).join(' ');
         var nonempty_line_indexes = [[], [], []];
         var rv = lines.slice(l0 - 1, l1 + 1).map(function injectLineNumber(line, index) {
+            "use strict";
+
             var lno = index + l0;
             var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
             var rv = lno_pfx + ': ' + line;
@@ -13398,6 +13788,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
+        "use strict";
+
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
         var c1 = yylloc.first_column;
@@ -13446,6 +13838,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     test_match: function lexer_test_match(match, indexed_rule) {
+        "use strict";
+
         var token,
             lines,
             backup,
@@ -13462,7 +13856,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                     first_column: this.yylloc.first_column,
                     last_column: this.yylloc.last_column,
 
-                    range: this.yylloc.range.slice(0)
+                    range: this.yylloc.range.slice()
                 },
                 yytext: this.yytext,
                 match: this.match,
@@ -13474,24 +13868,24 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
                 _input: this._input,
                 //_signaled_error_token: this._signaled_error_token,
                 yy: this.yy,
-                conditionStack: this.conditionStack.slice(0),
+                conditionStack: this.conditionStack.slice(),
                 done: this.done
             };
         }
 
         match_str = match[0];
         match_str_len = match_str.length;
-        // if (match_str.indexOf('\\n') !== -1 || match_str.indexOf('\\r') !== -1) {
-            lines = match_str.split(this.CRLF_Re);
-            if (lines.length > 1) {
-                this.yylineno += lines.length - 1;
 
-                this.yylloc.last_line = this.yylineno + 1;
-                this.yylloc.last_column = lines[lines.length - 1].length;
-            } else {
-                this.yylloc.last_column += match_str_len;
-            }
-        // }
+        lines = match_str.split(this.CRLF_Re);
+        if (lines.length > 1) {
+            this.yylineno += lines.length - 1;
+
+            this.yylloc.last_line = this.yylineno + 1;
+            this.yylloc.last_column = lines[lines.length - 1].length;
+        } else {
+            this.yylloc.last_column += match_str_len;
+        }
+
         this.yytext += match_str;
         this.match += match_str;
         this.matched += match_str;
@@ -13543,6 +13937,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     next: function lexer_next() {
+        "use strict";
+
         if (this.done) {
             this.clear();
             return this.EOF;
@@ -13556,6 +13952,9 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             tempMatch,
             index;
         if (!this._more) {
+            if (!this._clear_state) {
+                this._clear_state = 1;
+            }
             this.clear();
         }
         var spec = this.__currentRuleSet__;
@@ -13569,7 +13968,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
             if (!spec || !spec.rules) {
                 var lineno_msg = '';
-                if (this.options.trackPosition) {
+                if (this.yylloc) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
                 var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
@@ -13619,7 +14018,7 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             return this.EOF;
         } else {
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
             var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
@@ -13655,7 +14054,19 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     lex: function lexer_lex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
+
+        if (!this._more) {
+            if (!this._clear_state) {
+                this._clear_state = 1;
+            }
+            this.clear();
+        }
+
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.pre_lex === 'function') {
             r = this.pre_lex.call(this, 0);
@@ -13685,6 +14096,35 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             // (also account for a userdef function which does not return any value: keep the token as is)
             r = this.post_lex.call(this, r) || r;
         }
+
+        if (!this._more) {
+            //
+            // 1) make sure any outside interference is detected ASAP: 
+            //    these attributes are to be treated as 'const' values
+            //    once the lexer has produced them with the token (return value \`r\`).
+            // 2) make sure any subsequent \`lex()\` API invocation CANNOT
+            //    edit the \`yytext\`, etc. token attributes for the *current*
+            //    token, i.e. provide a degree of 'closure safety' so that
+            //    code like this:
+            //    
+            //        t1 = lexer.lex();
+            //        v = lexer.yytext;
+            //        l = lexer.yylloc;
+            //        t2 = lexer.lex();
+            //        assert(lexer.yytext !== v);
+            //        assert(lexer.yylloc !== l);
+            //        
+            //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+            //    these conditions.
+            //    
+            this.yytext = Object.freeze(this.yytext);
+            this.matches = Object.freeze(this.matches);
+            this.yylloc.range = Object.freeze(this.yylloc.range);
+            this.yylloc = Object.freeze(this.yylloc);
+
+            this._clear_state = 0;
+        }
+
         return r;
     },
 
@@ -13696,12 +14136,44 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     fastLex: function lexer_fastLex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
 
         while (!r) {
             r = this.next();
         }
 
+        if (!this._more) {
+            //
+            // 1) make sure any outside interference is detected ASAP: 
+            //    these attributes are to be treated as 'const' values
+            //    once the lexer has produced them with the token (return value \`r\`).
+            // 2) make sure any subsequent \`lex()\` API invocation CANNOT
+            //    edit the \`yytext\`, etc. token attributes for the *current*
+            //    token, i.e. provide a degree of 'closure safety' so that
+            //    code like this:
+            //    
+            //        t1 = lexer.lex();
+            //        v = lexer.yytext;
+            //        l = lexer.yylloc;
+            //        t2 = lexer.lex();
+            //        assert(lexer.yytext !== v);
+            //        assert(lexer.yylloc !== l);
+            //        
+            //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+            //    these conditions.
+            //    
+            this.yytext = Object.freeze(this.yytext);
+            this.matches = Object.freeze(this.matches);
+            this.yylloc.range = Object.freeze(this.yylloc.range);
+            this.yylloc = Object.freeze(this.yylloc);
+
+            this._clear_state = 0;
+        }
+        
         return r;
     },
 
@@ -13714,6 +14186,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     canIUse: function lexer_canIUse() {
+        "use strict";
+
         var rv = {
             fastLex: !(
                 typeof this.pre_lex === 'function' ||
@@ -13737,6 +14211,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     begin: function lexer_begin(condition) {
+        "use strict";
+
         return this.pushState(condition);
     },
 
@@ -13748,6 +14224,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     pushState: function lexer_pushState(condition) {
+        "use strict";
+
         this.conditionStack.push(condition);
         this.__currentRuleSet__ = null;
         return this;
@@ -13761,6 +14239,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     popState: function lexer_popState() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             this.__currentRuleSet__ = null;
@@ -13779,6 +14259,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     topState: function lexer_topState(n) {
+        "use strict";
+
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -13795,6 +14277,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     _currentRules: function lexer__currentRules() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         var state;
         if (n >= 0) {
@@ -13812,6 +14296,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
      * @this {RegExpLexer}
      */
     stateStackSize: function lexer_stateStackSize() {
+        "use strict";
+
         return this.conditionStack.length;
     }
 }`;
@@ -13820,6 +14306,8 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
 
     chkBugger$3(getRegExpLexerPrototype());
     RegExpLexer.prototype = (new Function(rmCommonWS$2`
+    "use strict";
+
     return ${getRegExpLexerPrototype()};
 `))();
 
@@ -14012,9 +14500,10 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
             code = generateESModule(opt);
             break;
         case 'commonjs':
-        default:
             code = generateCommonJSModule(opt);
             break;
+        default:
+            throw new Error('unsupported moduleType: ' + opt.moduleType);
         }
 
         return code;
@@ -14485,22 +14974,24 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
 
     function generateModule(opt) {
         opt = prepareOptions(opt);
+        var modIncSrc = (opt.moduleInclude ? opt.moduleInclude + ';' : '');
 
-        var out = [
-            generateGenericHeaderComment(),
-            '',
-            'var ' + opt.moduleName + ' = (function () {',
-            jisonLexerErrorDefinition,
-            '',
-            generateModuleBody(opt),
-            '',
-            (opt.moduleInclude ? opt.moduleInclude + ';' : ''),
-            '',
-            'return lexer;',
-            '})();'
-        ];
+        var src = rmCommonWS$2`
+        ${generateGenericHeaderComment()}
 
-        var src = out.join('\n') + '\n';
+        var ${opt.moduleName} = (function () {
+            "use strict";
+
+            ${jisonLexerErrorDefinition}
+
+            ${generateModuleBody(opt)}
+
+            ${modIncSrc}
+
+            return lexer;
+        })();
+    `;
+
         src = stripUnusedLexerCode(src, opt);
         opt.exportSourceCode.all = src;
         return src;
@@ -14508,22 +14999,24 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
 
     function generateAMDModule(opt) {
         opt = prepareOptions(opt);
+        var modIncSrc = (opt.moduleInclude ? opt.moduleInclude + ';' : '');
 
-        var out = [
-            generateGenericHeaderComment(),
-            '',
-            'define([], function () {',
-            jisonLexerErrorDefinition,
-            '',
-            generateModuleBody(opt),
-            '',
-            (opt.moduleInclude ? opt.moduleInclude + ';' : ''),
-            '',
-            'return lexer;',
-            '});'
-        ];
+        var src = rmCommonWS$2`
+        ${generateGenericHeaderComment()}
 
-        var src = out.join('\n') + '\n';
+        define([], function () {
+            "use strict";
+
+            ${jisonLexerErrorDefinition}
+
+            ${generateModuleBody(opt)}
+
+            ${modIncSrc}
+
+            return lexer;
+        });
+    `;
+
         src = stripUnusedLexerCode(src, opt);
         opt.exportSourceCode.all = src;
         return src;
@@ -14531,32 +15024,33 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
 
     function generateESModule(opt) {
         opt = prepareOptions(opt);
+        var modIncSrc = (opt.moduleInclude ? opt.moduleInclude + ';' : '');
 
-        var out = [
-            generateGenericHeaderComment(),
-            '',
-            'var lexer = (function () {',
-            jisonLexerErrorDefinition,
-            '',
-            generateModuleBody(opt),
-            '',
-            (opt.moduleInclude ? opt.moduleInclude + ';' : ''),
-            '',
-            'return lexer;',
-            '})();',
-            '',
-            'function yylex() {',
-            '    return lexer.lex.apply(lexer, arguments);',
-            '}',
-            rmCommonWS$2`
-            export {
-                lexer,
-                yylex as lex
-            };
-        `
-        ];
+        var src = rmCommonWS$2`
+        ${generateGenericHeaderComment()}
 
-        var src = out.join('\n') + '\n';
+        var lexer = (function () {
+            "use strict";
+
+            ${jisonLexerErrorDefinition}
+
+            ${generateModuleBody(opt)}
+
+            ${modIncSrc}
+
+            return lexer;
+        })();
+
+        function yylex() {
+            return lexer.lex.apply(lexer, arguments);
+        }
+
+        export {
+            lexer,
+            yylex as lex
+        };
+    `;
+
         src = stripUnusedLexerCode(src, opt);
         opt.exportSourceCode.all = src;
         return src;
@@ -14564,29 +15058,31 @@ JisonLexerError.prototype.name = 'JisonLexerError';`;
 
     function generateCommonJSModule(opt) {
         opt = prepareOptions(opt);
+        var modIncSrc = (opt.moduleInclude ? opt.moduleInclude + ';' : '');
 
-        var out = [
-            generateGenericHeaderComment(),
-            '',
-            'var ' + opt.moduleName + ' = (function () {',
-            jisonLexerErrorDefinition,
-            '',
-            generateModuleBody(opt),
-            '',
-            (opt.moduleInclude ? opt.moduleInclude + ';' : ''),
-            '',
-            'return lexer;',
-            '})();',
-            '',
-            'if (typeof require !== \'undefined\' && typeof exports !== \'undefined\') {',
-            '  exports.lexer = ' + opt.moduleName + ';',
-            '  exports.lex = function () {',
-            '    return ' + opt.moduleName + '.lex.apply(lexer, arguments);',
-            '  };',
-            '}'
-        ];
+        var src = rmCommonWS$2`
+        ${generateGenericHeaderComment()}
 
-        var src = out.join('\n') + '\n';
+        var ${opt.moduleName} = (function () {
+            "use strict";
+
+            ${jisonLexerErrorDefinition}
+
+            ${generateModuleBody(opt)}
+
+            ${modIncSrc}
+
+            return lexer;
+        })();
+
+        if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
+            exports.lexer = ${opt.moduleName};
+            exports.lex = function () {
+                return ${opt.moduleName}.lex.apply(lexer, arguments);
+            };
+        }
+    `;
+
         src = stripUnusedLexerCode(src, opt);
         opt.exportSourceCode.all = src;
         return src;

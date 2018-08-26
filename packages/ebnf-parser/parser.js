@@ -582,7 +582,7 @@ var parser = {
     //   uses yylineno: ................... false
     //   uses yytext: ..................... false
     //   uses yylloc: ..................... false
-    //   uses ParseError API: ............. true
+    //   uses ParseError API: ............. false
     //   uses YYERROR: .................... true
     //   uses YYRECOVERING: ............... false
     //   uses YYERROK: .................... false
@@ -622,96 +622,101 @@ symbols_: {
   ";": 4,
   "=": 12,
   "?": 9,
-  "ACTION_BODY": 50,
-  "ACTION_END": 20,
-  "ACTION_START": 22,
-  "ACTION_START_AT_SOL": 19,
-  "ALIAS": 48,
-  "ARROW_ACTION_START": 42,
-  "BRACKET_MISSING": 52,
-  "BRACKET_SURPLUS": 53,
-  "CODE": 30,
-  "DEBUG": 25,
-  "DUMMY": 23,
-  "DUMMY3": 47,
-  "DUMMY5": 43,
-  "DUMMY8": 41,
+  "ACTION_BODY": 53,
+  "ACTION_END": 22,
+  "ACTION_START": 24,
+  "ACTION_START_AT_SOL": 21,
+  "ALIAS": 51,
+  "ARROW_ACTION_START": 46,
+  "BRACKET_MISSING": 55,
+  "BRACKET_SURPLUS": 56,
+  "CODE": 32,
+  "DEBUG": 27,
+  "DUMMY": 25,
+  "DUMMY3": 50,
+  "DUMMY5": 47,
+  "DUMMY8": 45,
   "DUMMY9": 14,
-  "EBNF": 26,
+  "EBNF": 28,
   "EOF": 1,
-  "EOF_ID": 49,
-  "EPSILON": 45,
+  "EOF_ID": 52,
+  "EPSILON": 48,
+  "FLEX_ARRAY_MODE": 19,
+  "FLEX_POINTER_MODE": 18,
   "ID": 16,
-  "IMPORT": 29,
-  "INCLUDE": 31,
-  "INCLUDE_PLACEMENT_ERROR": 51,
-  "INTEGER": 38,
-  "LEFT": 34,
+  "IMPORT": 31,
+  "INCLUDE": 33,
+  "INCLUDE_PLACEMENT_ERROR": 54,
+  "INTEGER": 42,
+  "LEFT": 38,
   "LEX_BLOCK": 17,
-  "NONASSOC": 36,
-  "OPTIONS": 28,
-  "OPTIONS_END": 24,
-  "OPTION_STRING": 55,
-  "OPTION_VALUE": 56,
-  "PARSER_TYPE": 33,
-  "PARSE_PARAM": 32,
-  "PREC": 46,
-  "RIGHT": 35,
+  "NONASSOC": 40,
+  "ON_ERROR_RECOVERY_REDUCE": 35,
+  "ON_ERROR_RECOVERY_SHIFT": 34,
+  "OPTIONS": 30,
+  "OPTIONS_END": 26,
+  "OPTION_STRING": 58,
+  "OPTION_VALUE": 59,
+  "PARSER_TYPE": 37,
+  "PARSE_PARAM": 36,
+  "PREC": 49,
+  "RIGHT": 39,
   "START": 15,
-  "STRING_LIT": 39,
-  "TOKEN": 18,
-  "TOKEN_TYPE": 37,
-  "TRAILING_CODE_CHUNK": 57,
-  "UNKNOWN_DECL": 27,
-  "UNTERMINATED_ACTION_BLOCK": 21,
-  "UNTERMINATED_STRING_ERROR": 54,
-  "action": 93,
-  "associativity": 71,
-  "declaration": 61,
-  "declaration_list": 60,
-  "epilogue": 98,
-  "epilogue_chunk": 100,
-  "epilogue_chunks": 99,
+  "STRING_LIT": 43,
+  "TOKEN": 20,
+  "TOKEN_TYPE": 41,
+  "TRAILING_CODE_CHUNK": 60,
+  "UNKNOWN_DECL": 29,
+  "UNTERMINATED_ACTION_BLOCK": 23,
+  "UNTERMINATED_STRING_ERROR": 57,
+  "action": 97,
+  "associativity": 75,
+  "declaration": 64,
+  "declaration_list": 63,
+  "epilogue": 103,
+  "epilogue_chunk": 105,
+  "epilogue_chunks": 104,
   "error": 2,
-  "expression": 87,
-  "full_token_definitions": 72,
-  "grammar": 77,
-  "handle": 84,
-  "handle_action": 83,
-  "handle_list": 82,
-  "handle_sublist": 85,
-  "id_list": 92,
-  "import_keyword": 63,
-  "include_keyword": 65,
-  "include_macro_code": 101,
-  "init": 59,
-  "init_code_keyword": 64,
-  "one_full_token": 73,
-  "operator": 70,
-  "option": 95,
-  "option_keyword": 62,
-  "option_list": 94,
-  "option_name": 96,
-  "option_value": 97,
-  "optional_production_description": 44,
-  "optional_token_type": 74,
-  "parse_params": 68,
-  "parser_type": 69,
-  "prec": 89,
-  "production": 79,
-  "production_description": 81,
-  "production_id": 80,
-  "production_list": 78,
-  "setup_action_block": 40,
-  "spec": 58,
-  "start_epilogue_marker": 67,
-  "start_productions_marker": 66,
-  "suffix": 88,
-  "suffixed_expression": 86,
-  "symbol": 91,
-  "symbol_list": 90,
-  "token_description": 76,
-  "token_value": 75,
+  "expression": 91,
+  "full_token_definitions": 76,
+  "grammar": 81,
+  "handle": 88,
+  "handle_action": 87,
+  "handle_list": 86,
+  "handle_sublist": 89,
+  "id_list": 96,
+  "import_keyword": 66,
+  "include_keyword": 68,
+  "include_macro_code": 106,
+  "init": 62,
+  "init_code_keyword": 67,
+  "on_error_recovery_keyword": 69,
+  "on_error_recovery_statement": 98,
+  "one_full_token": 77,
+  "operator": 74,
+  "option": 100,
+  "option_keyword": 65,
+  "option_list": 99,
+  "option_name": 101,
+  "option_value": 102,
+  "optional_token_type": 78,
+  "parse_params": 72,
+  "parser_type": 73,
+  "prec": 93,
+  "production": 83,
+  "production_description": 85,
+  "production_id": 84,
+  "production_list": 82,
+  "setup_action_block": 44,
+  "spec": 61,
+  "start_epilogue_marker": 71,
+  "start_productions_marker": 70,
+  "suffix": 92,
+  "suffixed_expression": 90,
+  "symbol": 95,
+  "symbol_list": 94,
+  "token_description": 80,
+  "token_value": 79,
   "|": 5
 },
 terminals_: {
@@ -732,46 +737,49 @@ terminals_: {
   15: "START",
   16: "ID",
   17: "LEX_BLOCK",
-  18: "TOKEN",
-  19: "ACTION_START_AT_SOL",
-  20: "ACTION_END",
-  21: "UNTERMINATED_ACTION_BLOCK",
-  22: "ACTION_START",
-  23: "DUMMY",
-  24: "OPTIONS_END",
-  25: "DEBUG",
-  26: "EBNF",
-  27: "UNKNOWN_DECL",
-  28: "OPTIONS",
-  29: "IMPORT",
-  30: "CODE",
-  31: "INCLUDE",
-  32: "PARSE_PARAM",
-  33: "PARSER_TYPE",
-  34: "LEFT",
-  35: "RIGHT",
-  36: "NONASSOC",
-  37: "TOKEN_TYPE",
-  38: "INTEGER",
-  39: "STRING_LIT",
-  40: "setup_action_block",
-  41: "DUMMY8",
-  42: "ARROW_ACTION_START",
-  43: "DUMMY5",
-  44: "optional_production_description",
-  45: "EPSILON",
-  46: "PREC",
-  47: "DUMMY3",
-  48: "ALIAS",
-  49: "EOF_ID",
-  50: "ACTION_BODY",
-  51: "INCLUDE_PLACEMENT_ERROR",
-  52: "BRACKET_MISSING",
-  53: "BRACKET_SURPLUS",
-  54: "UNTERMINATED_STRING_ERROR",
-  55: "OPTION_STRING",
-  56: "OPTION_VALUE",
-  57: "TRAILING_CODE_CHUNK"
+  18: "FLEX_POINTER_MODE",
+  19: "FLEX_ARRAY_MODE",
+  20: "TOKEN",
+  21: "ACTION_START_AT_SOL",
+  22: "ACTION_END",
+  23: "UNTERMINATED_ACTION_BLOCK",
+  24: "ACTION_START",
+  25: "DUMMY",
+  26: "OPTIONS_END",
+  27: "DEBUG",
+  28: "EBNF",
+  29: "UNKNOWN_DECL",
+  30: "OPTIONS",
+  31: "IMPORT",
+  32: "CODE",
+  33: "INCLUDE",
+  34: "ON_ERROR_RECOVERY_SHIFT",
+  35: "ON_ERROR_RECOVERY_REDUCE",
+  36: "PARSE_PARAM",
+  37: "PARSER_TYPE",
+  38: "LEFT",
+  39: "RIGHT",
+  40: "NONASSOC",
+  41: "TOKEN_TYPE",
+  42: "INTEGER",
+  43: "STRING_LIT",
+  44: "setup_action_block",
+  45: "DUMMY8",
+  46: "ARROW_ACTION_START",
+  47: "DUMMY5",
+  48: "EPSILON",
+  49: "PREC",
+  50: "DUMMY3",
+  51: "ALIAS",
+  52: "EOF_ID",
+  53: "ACTION_BODY",
+  54: "INCLUDE_PLACEMENT_ERROR",
+  55: "BRACKET_MISSING",
+  56: "BRACKET_SURPLUS",
+  57: "UNTERMINATED_STRING_ERROR",
+  58: "OPTION_STRING",
+  59: "OPTION_VALUE",
+  60: "TRAILING_CODE_CHUNK"
 },
 TERROR: 2,
     EOF: 1,
@@ -878,76 +886,80 @@ TERROR: 2,
 productions_: bp({
   pop: u([
   s,
-  [58, 4],
-  59,
-  60,
-  60,
+  [61, 4],
+  62,
+  63,
+  63,
   s,
-  [61, 24],
+  [64, 27],
   s,
-  [62, 7, 1],
-  68,
-  69,
-  69,
-  70,
-  70,
+  [65, 5, 1],
   s,
-  [71, 3],
+  [69, 4, 1],
   72,
-  72,
-  s,
-  [73, 3],
+  73,
+  73,
+  74,
   74,
   s,
-  [74, 4, 1],
-  77,
+  [75, 3],
+  76,
+  76,
   s,
-  [78, 4],
+  [77, 3],
+  78,
   s,
-  [79, 5],
-  s,
-  [80, 3],
+  [78, 4, 1],
   81,
   s,
-  [82, 4],
+  [82, 6],
   s,
-  [83, 13],
-  84,
-  84,
+  [83, 5],
+  s,
+  [84, 3],
   85,
-  85,
-  86,
-  86,
   s,
-  [87, 4],
+  [86, 4],
   s,
-  [88, 4],
-  s,
-  [89, 3],
+  [87, 13],
+  88,
+  88,
+  89,
+  89,
   90,
   90,
-  91,
-  91,
-  92,
-  92,
   s,
-  [93, 7],
+  [91, 4],
   s,
-  [94, 3],
+  [92, 4],
   s,
-  [95, 4],
+  [93, 3],
+  94,
+  94,
+  95,
+  95,
   96,
   96,
-  97,
-  97,
   s,
-  [98, 3],
+  [97, 7],
+  98,
+  98,
   s,
   [99, 3],
   s,
-  [100, 5],
+  [100, 4],
   101,
-  101
+  101,
+  102,
+  102,
+  s,
+  [103, 3],
+  s,
+  [104, 3],
+  s,
+  [105, 5],
+  106,
+  106
 ]),
   rule: u([
   5,
@@ -959,8 +971,8 @@ productions_: bp({
   0,
   2,
   2,
-  1,
-  1,
+  s,
+  [1, 4],
   2,
   2,
   3,
@@ -968,28 +980,28 @@ productions_: bp({
   2,
   3,
   c,
-  [10, 4],
+  [12, 4],
   3,
   c,
-  [4, 3],
-  c,
-  [5, 3],
+  [16, 4],
+  3,
+  2,
   6,
   4,
   3,
   s,
-  [1, 6],
+  [1, 9],
   s,
   [2, 6],
   c,
-  [9, 5],
-  c,
-  [32, 3],
+  [38, 6],
+  2,
+  2,
   0,
   c,
-  [18, 7],
-  1,
-  1,
+  [18, 8],
+  s,
+  [1, 3],
   4,
   4,
   s,
@@ -1008,30 +1020,32 @@ productions_: bp({
   4,
   1,
   c,
-  [29, 3],
+  [31, 3],
   c,
   [12, 4],
   c,
   [21, 6],
   c,
-  [74, 4],
+  [79, 4],
   3,
   c,
-  [46, 6],
+  [48, 6],
   0,
   c,
-  [62, 5],
+  [64, 5],
   c,
-  [73, 7],
+  [75, 7],
   0,
   c,
-  [26, 6],
+  [55, 3],
   c,
-  [19, 4],
+  [28, 5],
   c,
-  [74, 7],
+  [124, 5],
   c,
-  [13, 5],
+  [21, 5],
+  c,
+  [13, 6],
   3,
   2
 ])
@@ -1236,6 +1250,35 @@ case 10:
     break;
 
 case 11:
+    /*! Production::    declaration : FLEX_POINTER_MODE */
+
+    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yylstack[yysp];
+    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
+    
+    
+    // This is the only mode we do support in JISON...
+    this.$ = null;
+    break;
+
+case 12:
+    /*! Production::    declaration : FLEX_ARRAY_MODE */
+
+    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yylstack[yysp];
+    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
+    
+    
+    yyparser.yyError(rmCommonWS`
+        JISON does not support the %array lexing mode.
+    
+          Erroneous area:
+        ${yylexer.prettyPrintRange(yylstack[yysp])}
+    `);
+    this.$ = null;
+    break;
+
+case 13:
     /*! Production::    declaration : operator */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1246,7 +1289,7 @@ case 11:
     this.$ = {operator: yyvstack[yysp]};
     break;
 
-case 12:
+case 14:
     /*! Production::    declaration : TOKEN full_token_definitions */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1257,7 +1300,7 @@ case 12:
     this.$ = {token_list: yyvstack[yysp]};
     break;
 
-case 13:
+case 15:
     /*! Production::    declaration : TOKEN error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1278,7 +1321,7 @@ case 13:
     `);
     break;
 
-case 14:
+case 16:
     /*! Production::    declaration : ACTION_START_AT_SOL action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -1302,9 +1345,9 @@ case 14:
     this.$ = null;
     break;
 
-case 15:
+case 17:
     /*! Production::    declaration : UNTERMINATED_ACTION_BLOCK */
-case 138:
+case 147:
     /*! Production::    epilogue_chunk : UNTERMINATED_ACTION_BLOCK */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1317,7 +1360,7 @@ case 138:
     this.$ = null;
     break;
 
-case 16:
+case 18:
     /*! Production::    declaration : ACTION_START_AT_SOL error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1339,7 +1382,7 @@ case 16:
     this.$ = null;
     break;
 
-case 17:
+case 19:
     /*! Production::    declaration : ACTION_START include_macro_code ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -1350,7 +1393,7 @@ case 17:
     this.$ = {include: yyvstack[yysp - 1] + yyvstack[yysp]};
     break;
 
-case 18:
+case 20:
     /*! Production::    declaration : ACTION_START error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1376,7 +1419,7 @@ case 18:
     this.$ = null;
     break;
 
-case 19:
+case 21:
     /*! Production::    declaration : ACTION_START DUMMY */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1399,7 +1442,7 @@ case 19:
     this.$ = null;
     break;
 
-case 20:
+case 22:
     /*! Production::    declaration : parse_params */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1410,7 +1453,7 @@ case 20:
     this.$ = {parseParams: yyvstack[yysp]};
     break;
 
-case 21:
+case 23:
     /*! Production::    declaration : parser_type */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1421,7 +1464,7 @@ case 21:
     this.$ = {parserType: yyvstack[yysp]};
     break;
 
-case 22:
+case 24:
     /*! Production::    declaration : option_keyword option_list OPTIONS_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -1432,7 +1475,7 @@ case 22:
     this.$ = {options: yyvstack[yysp - 1]};
     break;
 
-case 23:
+case 25:
     /*! Production::    declaration : option_keyword error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1452,7 +1495,7 @@ case 23:
     `);
     break;
 
-case 24:
+case 26:
     /*! Production::    declaration : DEBUG */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1463,7 +1506,7 @@ case 24:
     this.$ = {options: [['debug', true]]};
     break;
 
-case 25:
+case 27:
     /*! Production::    declaration : EBNF */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1475,7 +1518,7 @@ case 25:
     this.$ = {options: [['ebnf', true]]};
     break;
 
-case 26:
+case 28:
     /*! Production::    declaration : UNKNOWN_DECL */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1486,7 +1529,7 @@ case 26:
     this.$ = {unknownDecl: yyvstack[yysp]};
     break;
 
-case 27:
+case 29:
     /*! Production::    declaration : import_keyword option_list OPTIONS_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -1523,12 +1566,11 @@ case 27:
     }
     
     this.$ = {
-        type: 'imports', 
-        body: body
+        imports: body
     };
     break;
 
-case 28:
+case 30:
     /*! Production::    declaration : import_keyword error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1551,7 +1593,7 @@ case 28:
     `);
     break;
 
-case 29:
+case 31:
     /*! Production::    declaration : init_code_keyword option_list ACTION_START action ACTION_END OPTIONS_END */
 
     // default action (generated by JISON mode classic/merge :: 6,VT,VA,VU,-,LT,LA,-,-):
@@ -1595,15 +1637,14 @@ case 29:
         `);
     }
     this.$ = {
-        type: 'codeSection',
-        body: {
+        codeSection: {
           qualifier: name,
           include: srcCode
         }
     };
     break;
 
-case 30:
+case 32:
     /*! Production::    declaration : init_code_keyword option_list ACTION_START error */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
@@ -1612,9 +1653,14 @@ case 30:
     // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-)
     
     
-    // TODO
+    var start_marker = yyvstack[yysp - 1].trim();
+    var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+    var end_marker_msg = marker_msg.replace(/\{/g, '}');
     yyparser.yyError(rmCommonWS`
-        Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
+        The '%code ID %{...%\}' initialization code section must be properly 
+        wrapped in block start markers (\`%{\`${marker_msg}) 
+        and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+    
             %code qualifier_name {action code}
     
           Erroneous code:
@@ -1625,7 +1671,7 @@ case 30:
     `);
     break;
 
-case 31:
+case 33:
     /*! Production::    declaration : init_code_keyword error ACTION_START */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -1646,7 +1692,20 @@ case 31:
     `);
     break;
 
-case 32:
+case 34:
+    /*! Production::    declaration : on_error_recovery_statement */
+case 39:
+    /*! Production::    on_error_recovery_keyword : ON_ERROR_RECOVERY_SHIFT */
+case 40:
+    /*! Production::    on_error_recovery_keyword : ON_ERROR_RECOVERY_REDUCE */
+
+    // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
+    this.$ = yyvstack[yysp];
+    this._$ = yylstack[yysp];
+    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-)
+    break;
+
+case 35:
     /*! Production::    option_keyword : OPTIONS */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -1659,9 +1718,9 @@ case 32:
     yy.__options_category_description__ = yyvstack[yysp];
     break;
 
-case 33:
+case 36:
     /*! Production::    import_keyword : IMPORT */
-case 35:
+case 38:
     /*! Production::    include_keyword : INCLUDE */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -1674,7 +1733,7 @@ case 35:
     yy.__options_category_description__ = yyvstack[yysp];
     break;
 
-case 34:
+case 37:
     /*! Production::    init_code_keyword : CODE */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -1687,7 +1746,7 @@ case 34:
     yy.__options_category_description__ = yyvstack[yysp];
     break;
 
-case 36:
+case 41:
     /*! Production::    start_productions_marker : "%%" */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -1700,7 +1759,7 @@ case 36:
     yy.__options_category_description__ = 'the grammar productions definition section';
     break;
 
-case 37:
+case 42:
     /*! Production::    start_epilogue_marker : "%%" */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -1713,11 +1772,11 @@ case 37:
     yy.__options_category_description__ = 'the grammar epilogue section';
     break;
 
-case 38:
+case 43:
     /*! Production::    parse_params : PARSE_PARAM id_list */
-case 40:
+case 45:
     /*! Production::    parser_type : PARSER_TYPE symbol */
-case 56:
+case 61:
     /*! Production::    grammar : start_productions_marker production_list */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1728,7 +1787,7 @@ case 56:
     this.$ = yyvstack[yysp];
     break;
 
-case 39:
+case 44:
     /*! Production::    parse_params : PARSE_PARAM error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1749,7 +1808,7 @@ case 39:
     `);
     break;
 
-case 41:
+case 46:
     /*! Production::    parser_type : PARSER_TYPE error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1770,7 +1829,7 @@ case 41:
     `);
     break;
 
-case 42:
+case 47:
     /*! Production::    operator : associativity symbol_list */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1781,7 +1840,7 @@ case 42:
     this.$ = [yyvstack[yysp - 1]]; this.$.push.apply(this.$, yyvstack[yysp]);
     break;
 
-case 43:
+case 48:
     /*! Production::    operator : associativity error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1802,7 +1861,7 @@ case 43:
     `);
     break;
 
-case 44:
+case 49:
     /*! Production::    associativity : LEFT */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1813,7 +1872,7 @@ case 44:
     this.$ = 'left';
     break;
 
-case 45:
+case 50:
     /*! Production::    associativity : RIGHT */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1824,7 +1883,7 @@ case 45:
     this.$ = 'right';
     break;
 
-case 46:
+case 51:
     /*! Production::    associativity : NONASSOC */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1835,7 +1894,7 @@ case 46:
     this.$ = 'nonassoc';
     break;
 
-case 47:
+case 52:
     /*! Production::    full_token_definitions : optional_token_type id_list */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1856,7 +1915,7 @@ case 47:
     this.$ = rv;
     break;
 
-case 48:
+case 53:
     /*! Production::    full_token_definitions : optional_token_type one_full_token */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1871,7 +1930,7 @@ case 48:
     this.$ = [m];
     break;
 
-case 49:
+case 54:
     /*! Production::    one_full_token : ID token_value token_description */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -1886,7 +1945,7 @@ case 49:
     };
     break;
 
-case 50:
+case 55:
     /*! Production::    one_full_token : ID token_description */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1900,7 +1959,7 @@ case 50:
     };
     break;
 
-case 51:
+case 56:
     /*! Production::    one_full_token : ID token_value */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1914,7 +1973,7 @@ case 51:
     };
     break;
 
-case 52:
+case 57:
     /*! Production::    optional_token_type : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -1925,25 +1984,27 @@ case 52:
     this.$ = false;
     break;
 
-case 53:
+case 58:
     /*! Production::    optional_token_type : TOKEN_TYPE */
-case 54:
+case 59:
     /*! Production::    token_value : INTEGER */
-case 55:
+case 60:
     /*! Production::    token_description : STRING_LIT */
-case 68:
+case 75:
     /*! Production::    production_id : ID */
-case 99:
+case 77:
+    /*! Production::    production_description : STRING_LIT */
+case 106:
     /*! Production::    suffix : "*" */
-case 100:
-    /*! Production::    suffix : "?" */
-case 101:
-    /*! Production::    suffix : "+" */
 case 107:
-    /*! Production::    symbol : ID */
+    /*! Production::    suffix : "?" */
 case 108:
+    /*! Production::    suffix : "+" */
+case 114:
+    /*! Production::    symbol : ID */
+case 115:
     /*! Production::    symbol : STRING_LIT */
-case 134:
+case 143:
     /*! Production::    epilogue_chunks : epilogue_chunk */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -1954,7 +2015,7 @@ case 134:
     this.$ = yyvstack[yysp];
     break;
 
-case 57:
+case 62:
     /*! Production::    grammar : start_productions_marker error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -1976,7 +2037,7 @@ case 57:
     `);
     break;
 
-case 58:
+case 63:
     /*! Production::    production_list : production_list production */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -1997,7 +2058,7 @@ case 58:
     this.$.grammar = grammar;
     break;
 
-case 59:
+case 64:
     /*! Production::    production_list : production_list setup_action_block */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2016,7 +2077,21 @@ case 59:
     this.$.actionInclude = actionInclude;
     break;
 
-case 60:
+case 65:
+    /*! Production::    production_list : production_list on_error_recovery_statement */
+
+    // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-)
+    
+    
+    this.$ = yyvstack[yysp - 1];
+    var onErrorRecovery = this.$.onErrorRecovery || [];
+    onErrorRecovery.push(yyvstack[yysp]);
+    this.$.onErrorRecovery = onErrorRecovery;
+    break;
+
+case 66:
     /*! Production::    production_list : production */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2031,7 +2106,7 @@ case 60:
     };
     break;
 
-case 61:
+case 67:
     /*! Production::    production_list : setup_action_block */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2048,7 +2123,20 @@ case 61:
     }
     break;
 
-case 62:
+case 68:
+    /*! Production::    production_list : on_error_recovery_statement */
+
+    // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yylstack[yysp];
+    // END of default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-)
+    
+    
+    this.$ = {
+        onErrorRecovery: [yyvstack[yysp]] 
+    };
+    break;
+
+case 69:
     /*! Production::    production : production_id ":" handle_list ";" */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
@@ -2059,7 +2147,7 @@ case 62:
     this.$ = [yyvstack[yysp - 3], yyvstack[yysp - 1]];
     break;
 
-case 63:
+case 70:
     /*! Production::    production : production_id ":" error ";" */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,-,-,LT,LA,-,-):
@@ -2080,7 +2168,7 @@ case 63:
     `);
     break;
 
-case 64:
+case 71:
     /*! Production::    production : production_id DUMMY8 error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2101,7 +2189,7 @@ case 64:
     `);
     break;
 
-case 65:
+case 72:
     /*! Production::    production : production_id error ";" */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2125,7 +2213,7 @@ case 65:
     `);
     break;
 
-case 66:
+case 73:
     /*! Production::    production : production_id ARROW_ACTION_START DUMMY5 */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2148,8 +2236,8 @@ case 66:
     `);
     break;
 
-case 67:
-    /*! Production::    production_id : ID optional_production_description */
+case 74:
+    /*! Production::    production_id : ID production_description */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
     this._$ = yyparser.yyMergeLocationInfo(yysp - 1, yysp);
@@ -2161,7 +2249,7 @@ case 67:
     // TODO: carry rule description support into the parser generator...
     break;
 
-case 69:
+case 76:
     /*! Production::    production_id : ID DUMMY9 error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2184,9 +2272,9 @@ case 69:
     `);
     break;
 
-case 71:
+case 78:
     /*! Production::    handle_list : handle_list "|" handle_action */
-case 90:
+case 97:
     /*! Production::    handle_sublist : handle_sublist "|" handle */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2198,17 +2286,17 @@ case 90:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 72:
+case 79:
     /*! Production::    handle_list : handle_action */
-case 89:
+case 96:
     /*! Production::    handle : suffixed_expression */
-case 91:
+case 98:
     /*! Production::    handle_sublist : handle */
-case 106:
+case 113:
     /*! Production::    symbol_list : symbol */
-case 110:
+case 117:
     /*! Production::    id_list : ID */
-case 120:
+case 129:
     /*! Production::    option_list : option */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2219,7 +2307,7 @@ case 120:
     this.$ = [yyvstack[yysp]];
     break;
 
-case 73:
+case 80:
     /*! Production::    handle_list : handle_list "|" error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2240,7 +2328,7 @@ case 73:
     `);
     break;
 
-case 74:
+case 81:
     /*! Production::    handle_list : handle_list ":" DUMMY5 */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2258,7 +2346,7 @@ case 74:
     `);
     break;
 
-case 75:
+case 82:
     /*! Production::    handle_action : handle prec ACTION_START action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-):
@@ -2290,7 +2378,7 @@ case 75:
     }
     break;
 
-case 76:
+case 83:
     /*! Production::    handle_action : handle prec ARROW_ACTION_START action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 5,VT,VA,VU,-,LT,LA,-,-):
@@ -2345,7 +2433,7 @@ case 76:
     }
     break;
 
-case 77:
+case 84:
     /*! Production::    handle_action : handle prec */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2364,7 +2452,7 @@ case 77:
     }
     break;
 
-case 78:
+case 85:
     /*! Production::    handle_action : EPSILON ACTION_START action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
@@ -2392,7 +2480,7 @@ case 78:
     }
     break;
 
-case 79:
+case 86:
     /*! Production::    handle_action : EPSILON */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2403,7 +2491,7 @@ case 79:
     this.$ = [];
     break;
 
-case 80:
+case 87:
     /*! Production::    handle_action : EPSILON PREC */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2420,7 +2508,7 @@ case 80:
     `);
     break;
 
-case 81:
+case 88:
     /*! Production::    handle_action : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -2431,7 +2519,7 @@ case 81:
     this.$ = [];
     break;
 
-case 82:
+case 89:
     /*! Production::    handle_action : PREC */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -2448,7 +2536,7 @@ case 82:
     `);
     break;
 
-case 83:
+case 90:
     /*! Production::    handle_action : ACTION_START action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2476,7 +2564,7 @@ case 83:
     }
     break;
 
-case 84:
+case 91:
     /*! Production::    handle_action : ARROW_ACTION_START */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,-,-,LT,LA,-,-):
@@ -2494,7 +2582,7 @@ case 84:
     `);
     break;
 
-case 85:
+case 92:
     /*! Production::    handle_action : EPSILON ARROW_ACTION_START error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2522,7 +2610,7 @@ case 85:
     `);
     break;
 
-case 86:
+case 93:
     /*! Production::    handle_action : EPSILON ACTION_START error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2545,7 +2633,7 @@ case 86:
     `);
     break;
 
-case 87:
+case 94:
     /*! Production::    handle_action : DUMMY3 EPSILON error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2566,7 +2654,7 @@ case 87:
     `);
     break;
 
-case 88:
+case 95:
     /*! Production::    handle : handle suffixed_expression */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2578,7 +2666,7 @@ case 88:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 92:
+case 99:
     /*! Production::    suffixed_expression : expression suffix ALIAS */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2589,7 +2677,7 @@ case 92:
     this.$ = ['xalias', yyvstack[yysp - 1], yyvstack[yysp - 2], yyvstack[yysp]];
     break;
 
-case 93:
+case 100:
     /*! Production::    suffixed_expression : expression suffix */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2604,7 +2692,7 @@ case 93:
     }
     break;
 
-case 94:
+case 101:
     /*! Production::    expression : symbol */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2615,7 +2703,7 @@ case 94:
     this.$ = ['symbol', yyvstack[yysp]];
     break;
 
-case 95:
+case 102:
     /*! Production::    expression : EOF_ID */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2626,7 +2714,7 @@ case 95:
     this.$ = ['symbol', '$end'];
     break;
 
-case 96:
+case 103:
     /*! Production::    expression : "(" handle_sublist ")" */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,LU,LUbA):
@@ -2650,7 +2738,7 @@ case 96:
     this.$ = ['()', yyvstack[yysp - 1]];
     break;
 
-case 97:
+case 104:
     /*! Production::    expression : "(" handle_sublist error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2670,7 +2758,7 @@ case 97:
     `);
     break;
 
-case 98:
+case 105:
     /*! Production::    suffix : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -2681,7 +2769,7 @@ case 98:
     this.$ = undefined;
     break;
 
-case 102:
+case 109:
     /*! Production::    prec : PREC symbol */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2692,7 +2780,7 @@ case 102:
     this.$ = { prec: yyvstack[yysp] };
     break;
 
-case 103:
+case 110:
     /*! Production::    prec : PREC error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2713,7 +2801,7 @@ case 103:
     `);
     break;
 
-case 104:
+case 111:
     /*! Production::    prec : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -2724,9 +2812,9 @@ case 104:
     this.$ = null;
     break;
 
-case 105:
+case 112:
     /*! Production::    symbol_list : symbol_list symbol */
-case 109:
+case 116:
     /*! Production::    id_list : id_list ID */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2737,9 +2825,9 @@ case 109:
     this.$ = yyvstack[yysp - 1]; this.$.push(yyvstack[yysp]);
     break;
 
-case 111:
+case 118:
     /*! Production::    action : action ACTION_BODY */
-case 132:
+case 141:
     /*! Production::    epilogue_chunks : epilogue_chunks epilogue_chunk */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2750,7 +2838,7 @@ case 132:
     this.$ = yyvstack[yysp - 1] + yyvstack[yysp];
     break;
 
-case 112:
+case 119:
     /*! Production::    action : action include_macro_code */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2761,7 +2849,7 @@ case 112:
     this.$ = yyvstack[yysp - 1] + '\n\n' + yyvstack[yysp] + '\n\n';
     break;
 
-case 113:
+case 120:
     /*! Production::    action : action INCLUDE_PLACEMENT_ERROR */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2778,7 +2866,7 @@ case 113:
     `);
     break;
 
-case 114:
+case 121:
     /*! Production::    action : action BRACKET_MISSING */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2795,7 +2883,7 @@ case 114:
     `);
     break;
 
-case 115:
+case 122:
     /*! Production::    action : action BRACKET_SURPLUS */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2812,7 +2900,7 @@ case 115:
     `);
     break;
 
-case 116:
+case 123:
     /*! Production::    action : action UNTERMINATED_STRING_ERROR */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2832,7 +2920,7 @@ case 116:
     `);
     break;
 
-case 117:
+case 124:
     /*! Production::    action : %epsilon */
 
     // default action (generated by JISON mode classic/merge :: 0,VT,VA,VU,-,LT,LA,-,-):
@@ -2843,7 +2931,60 @@ case 117:
     this.$ = '';
     break;
 
-case 118:
+case 125:
+    /*! Production::    on_error_recovery_statement : on_error_recovery_keyword ACTION_START action ACTION_END */
+
+    // default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-):
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 3, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 4,VT,VA,VU,-,LT,LA,-,-)
+    
+    
+    var srcCode = trimActionCode(yyvstack[yysp - 1] + yyvstack[yysp], yyvstack[yysp - 2]);
+    var rv = checkActionBlock(srcCode, yylstack[yysp - 1]);
+    if (rv) {
+        yyparser.yyError(rmCommonWS`
+            The '${$on_error_recovery_keyword}' action code section does not compile: ${rv}
+    
+              Erroneous area:
+            ${yylexer.prettyPrintRange(yylstack[yysp - 1], yylstack[yysp - 3])}
+        `);
+    }
+    this.$ = {
+        onErrorRecoveryAction: {
+          qualifier: yyvstack[yysp - 3],
+          include: srcCode
+        }
+    };
+    break;
+
+case 126:
+    /*! Production::    on_error_recovery_statement : on_error_recovery_keyword ACTION_START error */
+
+    // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
+    this.$ = yyvstack[yysp - 2];
+    this._$ = yyparser.yyMergeLocationInfo(yysp - 2, yysp);
+    // END of default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-)
+    
+    
+    var start_marker = yyvstack[yysp - 1].trim();
+    var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+    var end_marker_msg = marker_msg.replace(/\{/g, '}');
+    yyparser.yyError(rmCommonWS`
+        The '${$on_error_recovery_keyword} %{...%\}' initialization code section must be properly 
+        wrapped in block start markers (\`%{\`${marker_msg}) 
+        and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+    
+            ${yyvstack[yysp - 2]} {action code}
+    
+          Erroneous code:
+        ${yylexer.prettyPrintRange(yylstack[yysp], yylstack[yysp - 2])}
+    
+          Technical error report:
+        ${yyvstack[yysp].errStr}
+    `);
+    break;
+
+case 127:
     /*! Production::    option_list : option_list "," option */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2880,7 +3021,7 @@ case 118:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 119:
+case 128:
     /*! Production::    option_list : option_list option */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -2901,7 +3042,7 @@ case 119:
     this.$.push(yyvstack[yysp]);
     break;
 
-case 121:
+case 130:
     /*! Production::    option : option_name */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -2912,7 +3053,7 @@ case 121:
     this.$ = [yyvstack[yysp], true];
     break;
 
-case 122:
+case 131:
     /*! Production::    option : option_name "=" option_value */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -2932,7 +3073,7 @@ case 122:
     this.$ = [yyvstack[yysp - 2], yyvstack[yysp]];
     break;
 
-case 123:
+case 132:
     /*! Production::    option : option_name "=" error */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,-,-,LT,LA,-,-):
@@ -2953,7 +3094,7 @@ case 123:
     `);
     break;
 
-case 124:
+case 133:
     /*! Production::    option : DUMMY3 error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -2977,7 +3118,7 @@ case 124:
     `);
     break;
 
-case 125:
+case 134:
     /*! Production::    option_name : option_value */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3012,7 +3153,7 @@ case 125:
     }
     break;
 
-case 126:
+case 135:
     /*! Production::    option_name : "*" */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3040,7 +3181,7 @@ case 126:
     }
     break;
 
-case 127:
+case 136:
     /*! Production::    option_value : OPTION_STRING */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3051,7 +3192,7 @@ case 127:
     this.$ = JSON5.parse(yyvstack[yysp]);
     break;
 
-case 128:
+case 137:
     /*! Production::    option_value : OPTION_VALUE */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3062,7 +3203,7 @@ case 128:
     this.$ = parseValue(yyvstack[yysp]);
     break;
 
-case 129:
+case 138:
     /*! Production::    epilogue : start_epilogue_marker */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3073,7 +3214,7 @@ case 129:
     this.$ = '';
     break;
 
-case 130:
+case 139:
     /*! Production::    epilogue : start_epilogue_marker epilogue_chunks */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -3096,7 +3237,7 @@ case 130:
     this.$ = srcCode;
     break;
 
-case 131:
+case 140:
     /*! Production::    epilogue : start_epilogue_marker error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -3116,7 +3257,7 @@ case 131:
     `);
     break;
 
-case 133:
+case 142:
     /*! Production::    epilogue_chunks : epilogue_chunks error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -3137,7 +3278,7 @@ case 133:
     this.$ = '';
     break;
 
-case 135:
+case 144:
     /*! Production::    epilogue_chunk : ACTION_START include_macro_code ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -3148,7 +3289,7 @@ case 135:
     this.$ = '\n\n' + yyvstack[yysp - 1] + '\n\n' + yyvstack[yysp] + '\n\n';
     break;
 
-case 136:
+case 145:
     /*! Production::    epilogue_chunk : ACTION_START_AT_SOL action ACTION_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,-,-):
@@ -3174,7 +3315,7 @@ case 136:
     this.$ = '\n\n' + srcCode + '\n\n';
     break;
 
-case 137:
+case 146:
     /*! Production::    epilogue_chunk : ACTION_START_AT_SOL error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,VU,-,LT,LA,-,-):
@@ -3196,7 +3337,7 @@ case 137:
     this.$ = '';
     break;
 
-case 139:
+case 148:
     /*! Production::    epilogue_chunk : TRAILING_CODE_CHUNK */
 
     // default action (generated by JISON mode classic/merge :: 1,VT,VA,VU,-,LT,LA,-,-):
@@ -3209,7 +3350,7 @@ case 139:
     this.$ = yyvstack[yysp];
     break;
 
-case 140:
+case 149:
     /*! Production::    include_macro_code : include_keyword option_list OPTIONS_END */
 
     // default action (generated by JISON mode classic/merge :: 3,VT,VA,VU,-,LT,LA,LU,LUbA):
@@ -3267,7 +3408,7 @@ case 140:
     this.$ = '\n// Included by Jison: ' + path + ':\n\n' + srcCode + '\n\n// End Of Include by Jison: ' + path + '\n\n';
     break;
 
-case 141:
+case 150:
     /*! Production::    include_macro_code : include_keyword error */
 
     // default action (generated by JISON mode classic/merge :: 2,VT,VA,-,-,LT,LA,-,-):
@@ -3287,7 +3428,7 @@ case 141:
     `);
     break;
 
-case 201:       // === NO_ACTION[1] :: ensures that anyone (but us) using this new state will fail dramatically!
+case 214:       // === NO_ACTION[1] :: ensures that anyone (but us) using this new state will fail dramatically!
                 // error recovery reduction action (action generated by jison,
                 // using the user-specified `%code error_recovery_reduction` %{...%}
                 // code chunk below.
@@ -3295,92 +3436,83 @@ case 201:       // === NO_ACTION[1] :: ensures that anyone (but us) using this n
                 
                 break;
             
-default:
-                // default action for all unlisted resolve states: 70
-
-                // When we hit this entry, it's always a non-recoverable issue as this is a severe internal parser state failure:
-                function __b0rk_on_internal_failure(str) {
-                    var hash = yyparser.constructParseErrorInfo(str, null, null, false);
-
-                    return yyparser.parseError(str, hash, yyparser.JisonParserError);
-                }
-
-                return __b0rk_on_internal_failure("internal parser failure: resolving unlisted state: " + yystate);
 }
 },
 table: bt({
   len: u([
-  22,
+  26,
   1,
-  21,
-  29,
+  25,
+  35,
   1,
   4,
   1,
-  19,
-  6,
+  23,
+  10,
   2,
-  19,
-  19,
+  s,
+  [23, 4],
   5,
   9,
-  19,
+  23,
   5,
-  19,
-  19,
+  23,
+  23,
   9,
   s,
-  [19, 3],
+  [23, 3],
   9,
-  9,
-  3,
+  c,
+  [10, 3],
   5,
   3,
   4,
   s,
   [5, 3],
+  1,
   s,
   [3, 3],
   s,
-  [1, 3],
+  [1, 5],
   8,
   6,
   1,
-  6,
+  10,
   2,
   s,
-  [4, 3],
-  6,
+  [6, 3],
+  4,
+  7,
   s,
-  [19, 4],
+  [23, 4],
   3,
   1,
   9,
-  19,
+  23,
   1,
   c,
-  [35, 3],
+  [40, 3],
   c,
-  [46, 3],
+  [51, 3],
   7,
   8,
   1,
   s,
   [8, 4],
   9,
-  19,
+  23,
   9,
   1,
-  22,
-  19,
-  21,
-  33,
-  33,
-  20,
-  19,
-  20,
-  19,
-  19,
+  26,
+  23,
+  25,
+  37,
+  37,
+  24,
+  23,
+  24,
+  c,
+  [25, 3],
   s,
   [1, 3],
   7,
@@ -3388,31 +3520,33 @@ table: bt({
   6,
   3,
   9,
-  6,
-  6,
-  4,
-  4,
-  c,
-  [13, 4],
-  4,
-  1,
-  20,
-  19,
-  24,
+  s,
+  [6, 5],
   19,
   s,
+  [1, 3],
+  4,
+  1,
+  4,
+  24,
+  23,
+  28,
+  23,
+  s,
   [7, 6],
-  19,
+  23,
   9,
   7,
   c,
   [10, 3],
-  4,
   c,
-  [8, 3],
-  19,
-  21,
-  20,
+  [75, 3],
+  9,
+  23,
+  25,
+  24,
+  9,
+  25,
   6,
   6,
   1,
@@ -3431,36 +3565,35 @@ table: bt({
   17,
   16,
   16,
-  9,
-  s,
-  [4, 4],
-  21,
   c,
-  [69, 3],
+  [56, 4],
+  4,
+  25,
+  c,
+  [74, 3],
   s,
   [7, 4],
-  9,
-  19,
   c,
-  [66, 3],
+  [37, 3],
+  s,
+  [6, 3],
   18,
   1,
-  4,
+  6,
   5,
   12,
   4,
   9,
   c,
-  [116, 3],
+  [122, 3],
   1,
   s,
   [13, 4],
   3,
   10,
-  19,
-  1,
-  s,
-  [3, 3],
+  23,
+  c,
+  [156, 4],
   8,
   8,
   5,
@@ -3473,7 +3606,8 @@ table: bt({
   16,
   8,
   c,
-  [173, 4],
+  [184, 3],
+  3,
   10,
   3,
   3
@@ -3483,159 +3617,167 @@ table: bt({
   13,
   14,
   15,
-  17,
-  18,
-  19,
-  21,
-  22,
   s,
-  [25, 6, 1],
+  [17, 5, 1],
+  23,
+  24,
   s,
-  [32, 5, 1],
-  58,
-  59,
+  [27, 6, 1],
+  s,
+  [34, 7, 1],
+  61,
+  62,
   1,
   c,
-  [23, 20],
-  60,
+  [27, 24],
+  63,
   2,
   13,
   c,
-  [20, 17],
+  [24, 21],
   s,
-  [61, 4, 1],
-  66,
+  [64, 4, 1],
+  69,
+  70,
   s,
-  [68, 4, 1],
-  77,
-  2,
-  2,
-  13,
-  67,
+  [72, 4, 1],
+  81,
   98,
+  2,
+  2,
+  13,
+  71,
+  103,
   13,
   c,
-  [35, 19],
+  [41, 23],
   2,
   16,
-  40,
+  34,
+  35,
+  44,
+  69,
+  82,
+  83,
+  84,
+  98,
+  2,
+  16,
+  c,
+  [35, 24],
+  c,
+  [23, 69],
+  16,
+  41,
+  76,
   78,
-  79,
-  80,
   2,
-  16,
-  c,
-  [27, 20],
-  c,
-  [46, 20],
-  37,
-  72,
-  74,
-  2,
-  20,
-  31,
+  22,
+  33,
   s,
-  [50, 5, 1],
-  93,
+  [53, 5, 1],
+  97,
   c,
-  [33, 20],
-  23,
-  31,
-  65,
-  101,
+  [37, 24],
+  25,
+  33,
+  68,
+  106,
   c,
-  [76, 39],
+  [88, 47],
   8,
-  47,
-  55,
-  56,
+  50,
+  58,
+  59,
   s,
-  [94, 4, 1],
+  [99, 4, 1],
   c,
-  [47, 39],
+  [166, 70],
   c,
-  [66, 28],
+  [78, 9],
   c,
-  [9, 9],
-  16,
-  40,
+  [87, 32],
+  c,
+  [311, 4],
   2,
   16,
-  39,
-  90,
-  91,
+  43,
+  94,
+  95,
   2,
   16,
-  92,
+  96,
   c,
   [8, 3],
-  91,
+  95,
   c,
-  [24, 5],
+  [49, 5],
   c,
-  [5, 11],
-  16,
-  39,
+  [5, 10],
+  24,
+  c,
+  [20, 3],
   c,
   [3, 6],
+  24,
+  24,
   s,
   [1, 4],
   2,
   c,
-  [76, 3],
-  57,
-  99,
-  100,
+  [65, 3],
+  60,
+  104,
+  105,
   c,
   [8, 6],
   c,
-  [338, 3],
-  16,
-  40,
+  [462, 3],
   c,
-  [263, 3],
+  [374, 5],
   c,
-  [290, 3],
+  [373, 4],
   c,
-  [66, 3],
+  [408, 3],
   c,
-  [4, 4],
+  [75, 5],
+  c,
+  [6, 12],
   3,
-  41,
-  42,
+  45,
+  46,
   2,
   3,
   14,
-  41,
-  42,
-  44,
+  43,
+  45,
+  46,
+  85,
   c,
-  [158, 58],
-  c,
-  [19, 18],
+  [402, 92],
   16,
-  73,
-  92,
+  77,
+  96,
   16,
   c,
-  [317, 7],
+  [400, 7],
   c,
-  [294, 21],
-  20,
+  [373, 25],
+  22,
   c,
-  [248, 52],
+  [319, 60],
+  8,
+  11,
+  26,
+  c,
+  [6, 3],
+  c,
+  [324, 26],
   8,
   11,
   24,
   c,
-  [6, 3],
-  c,
-  [328, 22],
-  8,
-  11,
-  22,
-  c,
-  [29, 4],
+  [33, 4],
   8,
   11,
   12,
@@ -3647,208 +3789,213 @@ table: bt({
   c,
   [8, 26],
   c,
-  [76, 29],
+  [80, 33],
   c,
-  [28, 6],
-  22,
+  [32, 6],
+  24,
   c,
-  [29, 3],
+  [33, 3],
   s,
-  [16, 4, 1],
+  [16, 6, 1],
   c,
-  [30, 13],
+  [34, 15],
   c,
-  [365, 3],
+  [423, 3],
   c,
-  [188, 21],
+  [208, 25],
   c,
-  [41, 18],
+  [49, 22],
   s,
   [2, 9, 1],
   c,
-  [29, 20],
-  42,
+  [33, 24],
   46,
-  48,
   49,
+  51,
+  52,
   c,
-  [33, 34],
+  [37, 38],
   c,
-  [25, 19],
+  [29, 23],
   c,
-  [126, 39],
+  [146, 47],
   c,
-  [353, 38],
+  [401, 47],
   c,
-  [544, 9],
-  100,
+  [881, 8],
+  c,
+  [644, 9],
+  105,
   c,
   [8, 7],
   c,
-  [725, 4],
+  [873, 4],
   c,
-  [758, 8],
+  [29, 9],
   c,
-  [562, 8],
+  [662, 7],
   c,
   [6, 4],
   c,
-  [559, 10],
+  [655, 20],
   c,
-  [179, 3],
+  [222, 3],
   16,
-  22,
-  39,
-  42,
-  45,
+  24,
+  43,
   46,
-  47,
+  48,
   49,
-  82,
-  83,
-  84,
+  50,
+  52,
   86,
   87,
+  88,
+  90,
   91,
+  95,
   2,
   4,
+  47,
+  c,
+  [677, 5],
+  c,
+  [5, 5],
+  c,
+  [216, 70],
+  42,
   43,
+  79,
+  80,
   c,
-  [581, 5],
+  [645, 24],
   c,
-  [173, 59],
-  38,
-  39,
-  75,
-  76,
-  c,
-  [550, 20],
-  c,
-  [137, 6],
+  [167, 6],
   c,
   [7, 35],
   c,
-  [454, 21],
+  [537, 25],
   c,
-  [482, 7],
+  [569, 7],
   c,
-  [35, 27],
+  [39, 31],
   c,
-  [33, 6],
+  [37, 6],
   c,
-  [572, 7],
+  [663, 7],
   2,
-  55,
-  56,
+  58,
+  59,
   c,
   [11, 9],
   c,
-  [183, 19],
+  [349, 31],
   c,
-  [1036, 28],
+  [597, 49],
   c,
-  [510, 21],
+  [25, 23],
   c,
-  [21, 19],
+  [910, 12],
   c,
-  [338, 12],
-  20,
+  [33, 21],
+  44,
   c,
-  [800, 9],
+  [426, 12],
+  22,
+  c,
+  [47, 9],
   c,
   [16, 6],
   c,
-  [345, 3],
+  [423, 3],
   4,
   c,
   [4, 3],
   c,
-  [352, 8],
-  46,
+  [430, 8],
   49,
-  86,
-  87,
-  89,
+  52,
+  90,
   91,
+  93,
+  95,
   c,
   [14, 3],
-  22,
-  42,
+  24,
   46,
+  49,
   c,
   [6, 3],
   c,
-  [126, 8],
+  [172, 8],
   c,
   [11, 3],
-  45,
+  48,
   c,
-  [567, 6],
+  [688, 6],
   c,
   [37, 6],
   c,
-  [579, 9],
+  [700, 9],
   c,
   [15, 5],
-  48,
-  49,
-  88,
+  51,
+  52,
+  92,
   c,
   [17, 16],
   c,
   [16, 16],
   6,
   16,
-  39,
-  49,
+  43,
+  52,
   s,
-  [84, 4, 1],
+  [88, 4, 1],
   c,
-  [710, 3],
+  [843, 3],
   c,
-  [466, 7],
+  [1209, 21],
   c,
-  [1029, 8],
+  [268, 22],
+  43,
   c,
-  [216, 18],
-  39,
+  [477, 24],
   c,
-  [405, 20],
+  [48, 24],
   c,
-  [40, 20],
+  [524, 30],
   c,
-  [444, 26],
-  c,
-  [920, 9],
+  [1083, 9],
   c,
   [7, 12],
   c,
-  [1050, 28],
+  [1229, 32],
   c,
-  [629, 17],
+  [342, 37],
   c,
-  [625, 12],
+  [756, 19],
   c,
-  [624, 5],
-  43,
+  [755, 5],
+  47,
   c,
-  [23, 4],
+  [25, 6],
   c,
-  [281, 5],
+  [336, 5],
   c,
-  [265, 13],
+  [320, 13],
   c,
-  [1286, 4],
+  [1532, 4],
   c,
-  [294, 11],
+  [349, 11],
   c,
   [12, 8],
   c,
-  [101, 3],
+  [134, 3],
   c,
   [39, 11],
   c,
-  [272, 8],
+  [327, 8],
   c,
   [13, 34],
   5,
@@ -3856,147 +4003,157 @@ table: bt({
   2,
   c,
   [14, 4],
-  39,
+  43,
   c,
-  [391, 3],
+  [446, 3],
   c,
-  [1009, 20],
+  [1197, 24],
+  26,
+  c,
+  [486, 6],
+  c,
+  [469, 11],
+  c,
+  [128, 11],
   24,
-  c,
-  [427, 6],
-  c,
-  [410, 11],
-  c,
-  [124, 11],
-  22,
-  42,
+  46,
   c,
   [5, 5],
   c,
-  [130, 9],
+  [134, 9],
   c,
   [44, 9],
   c,
-  [152, 4],
+  [156, 4],
   c,
-  [445, 27],
+  [504, 27],
   c,
-  [428, 21],
+  [487, 21],
   c,
-  [128, 22],
+  [132, 26],
   c,
-  [92, 9],
+  [96, 9],
   c,
-  [101, 12],
+  [105, 12],
   c,
-  [178, 10],
+  [186, 10],
   c,
-  [108, 6]
+  [112, 6]
 ]),
   type: u([
   s,
-  [2, 20],
+  [2, 24],
   0,
   0,
   1,
   c,
-  [23, 21],
+  [27, 25],
   c,
-  [43, 21],
+  [51, 25],
   s,
-  [0, 8],
+  [0, 10],
   c,
-  [13, 5],
+  [15, 5],
   s,
-  [2, 23],
+  [2, 29],
   c,
-  [31, 6],
+  [39, 8],
   s,
-  [2, 40],
+  [2, 94],
   c,
-  [45, 10],
+  [99, 10],
   c,
-  [54, 23],
+  [108, 27],
   c,
-  [78, 47],
+  [136, 53],
   c,
-  [47, 45],
+  [191, 78],
   c,
-  [66, 28],
+  [78, 9],
   c,
-  [75, 10],
+  [87, 35],
   c,
-  [8, 4],
+  [33, 4],
   c,
-  [242, 5],
+  [353, 5],
   c,
-  [205, 43],
+  [257, 46],
   c,
-  [185, 48],
+  [95, 39],
   c,
-  [173, 56],
+  [404, 94],
   c,
-  [109, 73],
+  [400, 11],
   c,
-  [314, 15],
+  [105, 76],
   c,
-  [328, 65],
+  [215, 15],
   c,
-  [76, 39],
+  [602, 80],
   c,
-  [28, 25],
+  [80, 32],
   c,
-  [317, 98],
+  [32, 29],
+  c,
+  [741, 98],
   s,
-  [2, 115],
+  [2, 150],
   c,
-  [431, 19],
+  [248, 10],
   c,
-  [597, 36],
+  [500, 19],
   c,
-  [726, 66],
+  [277, 44],
   c,
-  [659, 95],
+  [1106, 9],
   c,
-  [160, 33],
+  [655, 92],
   c,
-  [33, 13],
+  [751, 88],
   c,
-  [133, 35],
+  [97, 35],
   c,
-  [168, 81],
+  [37, 13],
   c,
-  [1198, 28],
+  [145, 39],
   c,
-  [27, 17],
+  [184, 80],
   c,
-  [126, 33],
+  [265, 47],
   c,
-  [159, 37],
+  [47, 25],
   c,
-  [439, 41],
+  [426, 20],
   c,
-  [747, 94],
+  [91, 33],
   c,
-  [500, 50],
+  [1225, 39],
   c,
-  [185, 30],
+  [517, 49],
   c,
-  [698, 21],
+  [890, 106],
   c,
-  [1151, 68],
+  [584, 81],
   c,
-  [299, 44],
+  [238, 32],
   c,
-  [45, 18],
+  [841, 21],
   c,
-  [130, 62],
+  [134, 65],
   c,
-  [427, 30],
+  [354, 43],
   c,
-  [28, 9],
+  [41, 8],
   c,
-  [710, 13],
+  [49, 18],
+  c,
+  [134, 62],
+  c,
+  [1697, 35],
+  c,
+  [123, 9],
+  c,
+  [823, 12],
   c,
   [13, 8]
 ]),
@@ -4005,930 +4162,992 @@ table: bt({
   2,
   3,
   7,
-  18,
-  22,
-  23,
-  8,
-  16,
-  17,
-  11,
-  25,
-  5,
-  37,
-  35,
-  40,
-  42,
-  44,
-  48,
-  50,
-  52,
-  57,
-  54,
-  59,
-  61,
-  62,
-  64,
-  68,
-  c,
-  [4, 3],
-  70,
-  c,
-  [4, 3],
-  72,
-  74,
-  77,
-  80,
-  85,
-  87,
-  92,
-  44,
-  101,
-  100,
-  57,
-  105,
-  111,
-  c,
-  [16, 3],
-  115,
-  c,
-  [3, 8],
-  121,
-  123,
-  57,
-  125,
-  126,
-  128,
-  130,
-  131,
-  137,
-  138,
-  139,
-  146,
-  147,
-  c,
-  [16, 3],
-  151,
-  62,
-  64,
-  152,
-  154,
-  57,
-  105,
-  163,
-  138,
-  162,
-  139,
-  168,
-  170,
-  175,
-  174,
-  c,
-  [23, 3],
-  176,
-  57,
-  105,
-  178,
-  c,
-  [31, 4],
-  183,
-  185,
-  c,
-  [23, 4],
-  139,
-  195,
-  196,
-  57,
-  105,
-  198,
-  c,
-  [15, 3],
-  57,
-  105,
-  c,
-  [15, 5]
-]),
-  mode: u([
-  s,
-  [2, 22],
-  1,
-  c,
-  [18, 18],
-  s,
-  [1, 22],
-  c,
-  [60, 20],
-  c,
-  [24, 23],
-  c,
-  [103, 21],
-  c,
-  [42, 28],
-  c,
-  [71, 42],
-  c,
-  [114, 42],
-  c,
-  [62, 24],
-  c,
-  [67, 8],
-  c,
-  [216, 27],
-  c,
-  [148, 9],
-  c,
-  [33, 14],
-  c,
-  [44, 12],
-  c,
-  [25, 6],
-  c,
-  [3, 6],
-  s,
-  [2, 74],
-  c,
-  [114, 7],
-  c,
-  [365, 22],
-  c,
-  [290, 48],
-  c,
-  [223, 30],
-  c,
-  [83, 10],
-  c,
-  [89, 33],
-  c,
-  [512, 30],
-  c,
-  [333, 6],
-  c,
-  [174, 55],
-  c,
-  [312, 73],
-  c,
-  [98, 97],
-  c,
-  [259, 11],
-  c,
-  [341, 29],
-  c,
-  [603, 12],
-  c,
-  [52, 8],
-  c,
-  [290, 21],
-  c,
-  [121, 41],
-  c,
-  [203, 85],
-  c,
-  [909, 30],
-  c,
-  [234, 10],
-  c,
-  [40, 28],
-  c,
-  [152, 85],
-  c,
-  [114, 8],
-  c,
-  [10, 12],
-  c,
-  [1086, 8],
-  c,
-  [143, 16],
-  c,
-  [130, 19],
-  c,
-  [1055, 42],
-  c,
-  [1098, 39],
-  c,
-  [603, 87],
-  c,
-  [1149, 31],
-  c,
-  [593, 25],
-  c,
-  [534, 21],
-  c,
-  [74, 14],
-  c,
-  [1458, 20],
-  c,
-  [198, 41],
-  c,
-  [1239, 7],
-  c,
-  [1155, 56],
-  c,
-  [215, 42],
-  c,
-  [404, 44],
-  c,
-  [1673, 19],
-  c,
-  [163, 11]
-]),
-  goto: u([
-  s,
-  [5, 20],
-  7,
-  7,
-  4,
-  s,
-  [7, 17],
-  6,
-  24,
-  9,
-  10,
-  s,
-  [12, 4, 1],
-  19,
   20,
-  21,
+  24,
+  25,
+  34,
+  8,
+  18,
+  19,
+  13,
   28,
-  29,
-  30,
+  5,
   26,
-  27,
-  s,
-  [31, 4, 1],
-  36,
-  38,
-  39,
-  s,
-  [6, 19],
-  41,
-  45,
   43,
-  47,
+  41,
+  34,
   46,
-  s,
-  [10, 19],
-  s,
-  [11, 19],
-  49,
-  52,
+  48,
   51,
-  53,
-  s,
-  [117, 7],
-  s,
-  [15, 19],
+  50,
   55,
-  56,
-  58,
-  s,
-  [20, 19],
-  s,
-  [21, 19],
-  60,
-  65,
-  63,
+  57,
+  59,
+  64,
+  61,
   66,
-  67,
-  s,
-  [24, 19],
-  s,
-  [25, 19],
-  s,
-  [26, 19],
+  68,
   69,
-  c,
-  [62, 4],
   71,
-  c,
-  [5, 4],
-  s,
-  [36, 3],
-  73,
   75,
-  76,
-  78,
+  c,
+  [4, 3],
+  77,
+  c,
+  [4, 3],
   79,
   81,
-  75,
-  76,
-  s,
-  [32, 5],
-  s,
-  [33, 5],
-  s,
-  [34, 5],
-  s,
-  [44, 3],
-  s,
-  [45, 3],
-  s,
-  [46, 3],
-  82,
-  83,
   84,
-  129,
-  86,
-  89,
-  90,
-  88,
-  91,
-  s,
-  [37, 6],
-  3,
-  56,
-  56,
-  45,
+  87,
   93,
-  57,
-  57,
-  s,
-  [60, 4],
-  s,
-  [61, 4],
-  96,
-  94,
   95,
-  97,
-  68,
-  68,
-  99,
-  68,
-  68,
-  98,
-  s,
-  [8, 19],
-  s,
-  [9, 19],
-  s,
-  [12, 19],
-  s,
-  [13, 19],
+  34,
+  100,
+  51,
   102,
-  53,
-  103,
-  58,
-  104,
-  s,
-  [106, 4, 1],
-  s,
-  [16, 19],
+  107,
+  111,
   110,
-  s,
-  [18, 19],
-  s,
-  [19, 19],
-  112,
-  c,
-  [223, 4],
-  s,
-  [35, 5],
-  65,
-  114,
-  113,
-  c,
-  [11, 3],
-  s,
-  [23, 19],
-  s,
-  [120, 7],
+  64,
+  115,
   121,
-  121,
-  116,
-  s,
-  [121, 5],
-  117,
-  s,
-  [125, 8],
-  s,
-  [126, 8],
-  s,
-  [127, 8],
-  s,
-  [128, 8],
-  65,
-  114,
-  118,
   c,
-  [73, 3],
-  s,
-  [28, 19],
-  65,
-  114,
-  119,
+  [19, 3],
+  125,
   c,
-  [25, 3],
-  120,
-  s,
-  [42, 3],
-  75,
-  s,
-  [42, 16],
-  76,
-  s,
-  [43, 19],
-  s,
-  [106, 21],
-  s,
-  [107, 33],
-  s,
-  [108, 33],
-  s,
-  [38, 3],
-  122,
-  s,
-  [38, 16],
-  s,
-  [39, 19],
-  s,
-  [110, 20],
-  s,
-  [40, 19],
-  s,
-  [41, 19],
-  4,
-  1,
-  2,
-  130,
-  124,
-  c,
-  [522, 4],
+  [3, 8],
   131,
-  s,
-  [134, 6],
-  58,
-  127,
-  s,
-  [117, 7],
-  s,
-  [138, 6],
-  s,
-  [139, 6],
-  s,
-  [58, 4],
-  s,
-  [59, 4],
-  129,
-  s,
-  [81, 3],
-  141,
-  75,
-  134,
-  76,
-  135,
-  132,
   133,
-  136,
+  135,
+  64,
+  137,
+  138,
   140,
   142,
   143,
-  144,
-  s,
-  [67, 4],
-  145,
-  s,
-  [47, 3],
-  122,
-  s,
-  [47, 16],
-  s,
-  [48, 19],
-  s,
-  [110, 20],
-  148,
   149,
-  s,
-  [14, 19],
-  s,
-  [111, 7],
-  s,
-  [112, 7],
-  s,
-  [113, 7],
-  s,
-  [114, 7],
-  s,
-  [115, 7],
-  s,
-  [116, 7],
-  s,
-  [17, 19],
-  65,
-  114,
   150,
+  151,
+  158,
+  159,
   c,
-  [438, 3],
-  s,
-  [141, 7],
-  s,
-  [22, 19],
+  [17, 3],
+  163,
+  69,
+  71,
+  164,
+  166,
+  64,
+  115,
+  64,
+  115,
+  176,
+  150,
+  175,
+  151,
+  181,
+  183,
+  188,
+  187,
   c,
-  [577, 4],
+  [25, 3],
+  189,
+  64,
+  115,
+  191,
+  c,
+  [33, 4],
+  196,
+  198,
+  c,
+  [23, 4],
+  151,
+  208,
+  209,
+  64,
+  115,
+  211,
+  c,
+  [15, 3],
+  c,
+  [38, 6],
+  151
+]),
+  mode: u([
   s,
-  [119, 7],
-  153,
-  66,
-  67,
+  [2, 26],
+  1,
+  c,
+  [22, 22],
+  s,
+  [1, 26],
+  c,
+  [72, 24],
+  c,
+  [30, 29],
+  s,
+  [2, 69],
+  1,
+  c,
+  [101, 3],
+  c,
+  [34, 31],
+  c,
+  [129, 48],
+  c,
+  [180, 74],
+  c,
+  [289, 33],
+  c,
+  [38, 13],
+  c,
+  [389, 27],
+  c,
+  [30, 4],
+  c,
+  [36, 14],
+  c,
+  [85, 24],
+  c,
+  [24, 6],
+  c,
+  [372, 94],
+  c,
+  [374, 6],
+  c,
+  [505, 29],
+  c,
+  [370, 56],
+  c,
+  [561, 38],
+  c,
+  [44, 7],
+  c,
+  [383, 38],
+  c,
+  [668, 33],
+  c,
+  [328, 22],
+  s,
+  [2, 125],
+  c,
+  [126, 114],
+  c,
+  [622, 15],
+  c,
+  [311, 9],
+  c,
+  [586, 39],
+  c,
+  [328, 5],
+  c,
+  [1041, 15],
+  c,
+  [67, 9],
+  c,
+  [842, 69],
+  c,
+  [249, 89],
+  c,
+  [626, 35],
+  c,
+  [272, 13],
+  c,
+  [44, 32],
+  c,
+  [160, 85],
+  c,
+  [390, 39],
+  c,
+  [45, 13],
+  c,
+  [10, 12],
+  c,
+  [1320, 8],
+  c,
+  [74, 16],
+  c,
+  [88, 19],
+  c,
+  [1277, 42],
+  c,
+  [1320, 49],
+  c,
+  [727, 99],
+  c,
+  [1651, 73],
+  c,
+  [722, 14],
+  c,
+  [649, 23],
+  c,
+  [107, 14],
+  c,
+  [1518, 20],
+  c,
+  [138, 41],
+  c,
+  [1464, 6],
+  c,
+  [382, 27],
+  c,
+  [74, 34],
+  c,
+  [252, 63],
+  c,
+  [1325, 34],
+  c,
+  [97, 12],
+  c,
+  [171, 11]
+]),
+  goto: u([
+  s,
+  [5, 24],
+  7,
+  7,
+  4,
+  s,
+  [7, 21],
+  6,
+  27,
+  s,
+  [9, 4, 1],
+  s,
+  [14, 4, 1],
+  21,
+  22,
+  23,
+  31,
+  32,
+  33,
+  38,
+  39,
+  29,
+  30,
+  35,
+  36,
+  37,
+  40,
+  42,
+  44,
+  45,
+  s,
+  [6, 23],
+  47,
+  52,
+  38,
+  39,
+  49,
+  54,
+  53,
+  s,
+  [10, 23],
+  s,
+  [11, 23],
+  s,
+  [12, 23],
+  s,
+  [13, 23],
+  56,
+  57,
+  58,
+  60,
   s,
   [124, 7],
   s,
-  [27, 19],
-  155,
+  [17, 23],
+  62,
+  63,
+  65,
   s,
-  [117, 7],
+  [22, 23],
   s,
-  [31, 19],
+  [23, 23],
+  67,
+  72,
+  70,
+  73,
+  74,
   s,
-  [105, 21],
+  [26, 23],
   s,
-  [109, 20],
+  [27, 23],
   s,
-  [132, 6],
-  s,
-  [133, 6],
-  156,
-  157,
+  [28, 23],
+  76,
   c,
-  [764, 6],
+  [74, 4],
+  78,
+  c,
+  [5, 4],
   s,
-  [137, 6],
+  [34, 23],
+  s,
+  [41, 5],
+  80,
+  82,
+  83,
+  85,
+  86,
+  88,
+  82,
+  83,
+  s,
+  [35, 5],
+  s,
+  [36, 5],
+  s,
+  [37, 5],
+  89,
+  s,
+  [49, 3],
+  s,
+  [50, 3],
+  s,
+  [51, 3],
+  39,
+  40,
+  90,
+  91,
+  92,
+  138,
+  94,
+  97,
+  98,
+  96,
+  99,
+  s,
+  [42, 6],
+  3,
+  61,
+  61,
+  c,
+  [346, 3],
+  101,
+  62,
+  62,
+  s,
+  [66, 6],
+  s,
+  [67, 6],
+  s,
+  [68, 6],
+  105,
+  103,
+  104,
+  106,
+  75,
+  75,
+  108,
+  109,
+  75,
+  75,
+  s,
+  [8, 23],
+  s,
+  [9, 23],
+  s,
+  [14, 23],
+  s,
+  [15, 23],
+  112,
+  58,
+  113,
+  65,
+  114,
+  s,
+  [116, 4, 1],
+  s,
+  [18, 23],
+  120,
+  s,
+  [20, 23],
+  s,
+  [21, 23],
+  122,
+  c,
+  [291, 4],
+  s,
+  [38, 5],
+  72,
+  124,
+  123,
+  c,
+  [11, 3],
+  s,
+  [25, 23],
+  s,
+  [129, 7],
+  130,
+  130,
+  126,
+  s,
+  [130, 5],
+  127,
+  s,
+  [134, 8],
+  s,
+  [135, 8],
+  s,
+  [136, 8],
+  s,
+  [137, 8],
+  72,
+  124,
+  128,
+  c,
+  [77, 3],
+  s,
+  [30, 23],
+  72,
+  124,
+  129,
+  c,
+  [29, 3],
+  130,
+  s,
+  [47, 3],
+  82,
+  s,
+  [47, 20],
+  83,
+  s,
+  [48, 23],
+  s,
+  [113, 25],
+  s,
+  [114, 37],
+  s,
+  [115, 37],
+  s,
+  [43, 3],
+  132,
+  s,
+  [43, 20],
+  s,
+  [44, 23],
+  s,
+  [117, 24],
+  s,
+  [45, 23],
+  s,
+  [46, 23],
+  134,
+  s,
+  [124, 7],
+  4,
+  1,
+  2,
+  139,
+  136,
+  c,
+  [618, 4],
+  140,
+  s,
+  [143, 6],
+  65,
+  139,
+  s,
+  [124, 7],
+  s,
+  [147, 6],
+  s,
+  [148, 6],
+  s,
+  [63, 6],
+  s,
+  [64, 6],
+  s,
+  [65, 6],
+  141,
+  s,
+  [88, 3],
+  153,
+  82,
+  146,
+  83,
+  147,
+  144,
+  145,
+  148,
+  152,
+  154,
+  155,
+  156,
+  s,
+  [74, 4],
+  157,
+  s,
+  [77, 4],
+  s,
+  [52, 3],
+  132,
+  s,
+  [52, 20],
+  s,
+  [53, 23],
+  s,
+  [117, 24],
   160,
-  158,
-  159,
   161,
   s,
-  [72, 3],
-  s,
-  [104, 3],
-  141,
-  75,
-  104,
-  76,
-  104,
-  164,
-  140,
-  s,
-  [79, 3],
-  165,
-  167,
-  166,
-  s,
-  [82, 3],
-  s,
-  [117, 7],
-  s,
-  [84, 3],
-  169,
-  s,
-  [89, 12],
-  s,
-  [98, 6],
-  171,
-  172,
-  173,
-  s,
-  [98, 7],
-  s,
-  [94, 16],
-  s,
-  [95, 16],
-  141,
-  75,
-  76,
-  140,
-  s,
-  [64, 4],
-  s,
-  [65, 4],
-  s,
-  [66, 4],
-  s,
-  [69, 4],
-  s,
-  [51, 19],
-  149,
-  s,
-  [50, 19],
-  s,
-  [54, 20],
-  s,
-  [55, 19],
-  s,
-  [140, 7],
+  [16, 23],
   s,
   [118, 7],
+  s,
+  [119, 7],
+  s,
+  [120, 7],
+  s,
+  [121, 7],
   s,
   [122, 7],
   s,
   [123, 7],
+  s,
+  [19, 23],
+  72,
+  124,
+  162,
+  c,
+  [520, 3],
+  s,
+  [150, 7],
+  s,
+  [24, 23],
+  c,
+  [671, 4],
+  s,
+  [128, 7],
+  165,
+  73,
+  74,
+  s,
+  [133, 7],
+  s,
+  [29, 23],
+  167,
+  s,
+  [124, 7],
+  s,
+  [33, 23],
+  s,
+  [112, 25],
+  s,
+  [116, 24],
+  168,
+  c,
+  [873, 6],
+  s,
+  [126, 25],
+  s,
+  [141, 6],
+  s,
+  [142, 6],
+  169,
+  170,
+  c,
+  [45, 6],
+  s,
+  [146, 6],
+  173,
+  171,
+  172,
+  174,
+  s,
+  [79, 3],
+  s,
+  [111, 3],
+  153,
+  82,
+  111,
+  83,
+  111,
   177,
-  c,
-  [236, 6],
-  s,
-  [30, 19],
-  s,
-  [135, 6],
-  s,
-  [136, 6],
-  s,
-  [62, 4],
-  179,
-  c,
-  [593, 12],
-  180,
-  s,
-  [63, 4],
-  s,
-  [77, 3],
-  181,
-  182,
-  s,
-  [88, 12],
-  184,
-  75,
-  76,
-  186,
-  s,
-  [117, 7],
-  s,
-  [80, 3],
-  187,
-  188,
-  c,
-  [92, 6],
-  189,
-  s,
-  [93, 11],
-  190,
-  93,
-  s,
-  [99, 13],
-  s,
-  [100, 13],
-  s,
-  [101, 13],
-  192,
-  193,
-  191,
-  91,
-  91,
-  141,
-  91,
-  c,
-  [284, 3],
-  s,
-  [49, 19],
-  194,
-  s,
-  [71, 3],
-  s,
-  [73, 3],
-  s,
-  [74, 3],
-  s,
-  [117, 14],
-  s,
-  [102, 5],
-  s,
-  [103, 5],
-  197,
-  c,
-  [123, 6],
+  152,
   s,
   [86, 3],
+  178,
+  180,
+  179,
   s,
-  [85, 3],
+  [89, 3],
   s,
-  [83, 3],
+  [124, 7],
+  s,
+  [91, 3],
+  182,
+  s,
+  [96, 12],
+  s,
+  [105, 6],
+  184,
+  185,
+  186,
+  s,
+  [105, 7],
+  s,
+  [101, 16],
+  s,
+  [102, 16],
+  153,
+  82,
+  83,
+  152,
+  s,
+  [71, 6],
+  s,
+  [72, 6],
+  s,
+  [73, 6],
+  s,
+  [76, 4],
+  s,
+  [56, 23],
+  161,
+  s,
+  [55, 23],
+  s,
+  [59, 24],
+  s,
+  [60, 23],
+  s,
+  [149, 7],
+  s,
+  [127, 7],
+  s,
+  [131, 7],
+  s,
+  [132, 7],
+  190,
+  c,
+  [258, 6],
+  s,
+  [32, 23],
+  s,
+  [125, 25],
+  s,
+  [144, 6],
+  s,
+  [145, 6],
+  s,
+  [69, 6],
+  192,
+  c,
+  [722, 12],
+  193,
+  s,
+  [70, 6],
+  s,
+  [84, 3],
+  194,
+  195,
+  s,
+  [95, 12],
+  197,
+  82,
+  83,
+  199,
+  s,
+  [124, 7],
   s,
   [87, 3],
-  s,
-  [92, 12],
-  s,
-  [96, 16],
-  s,
-  [97, 16],
-  c,
-  [404, 4],
-  s,
-  [29, 19],
-  199,
-  c,
-  [86, 6],
   200,
+  201,
+  c,
+  [125, 6],
+  202,
+  s,
+  [100, 11],
+  203,
+  100,
+  s,
+  [106, 13],
+  s,
+  [107, 13],
+  s,
+  [108, 13],
+  205,
+  206,
+  204,
+  98,
+  98,
+  153,
+  98,
+  c,
+  [339, 3],
+  s,
+  [54, 23],
+  207,
+  s,
+  [78, 3],
+  s,
+  [80, 3],
+  s,
+  [81, 3],
+  s,
+  [124, 14],
+  s,
+  [109, 5],
+  s,
+  [110, 5],
+  210,
+  c,
+  [127, 6],
+  s,
+  [93, 3],
+  s,
+  [92, 3],
+  s,
+  [90, 3],
+  s,
+  [94, 3],
+  s,
+  [99, 12],
+  s,
+  [103, 16],
+  s,
+  [104, 16],
+  c,
+  [463, 4],
+  s,
+  [31, 23],
+  212,
+  c,
+  [90, 6],
+  213,
   c,
   [7, 6],
   s,
-  [78, 3],
-  90,
-  90,
-  141,
-  90,
+  [85, 3],
+  97,
+  97,
+  153,
+  97,
   c,
-  [43, 3],
+  [47, 3],
   s,
-  [75, 3],
+  [82, 3],
   s,
-  [76, 3]
+  [83, 3]
 ])
 }),
 defaultActions: bda({
   idx: u([
   0,
   7,
-  10,
-  11,
-  14,
+  s,
+  [10, 4, 1],
   16,
-  17,
+  18,
   19,
-  20,
   21,
-  24,
+  22,
+  23,
+  26,
+  27,
+  31,
+  32,
+  33,
   s,
-  [28, 6, 1],
-  38,
-  39,
-  41,
-  42,
-  43,
+  [35, 5, 1],
+  44,
+  45,
   s,
-  [46, 4, 1],
-  51,
-  53,
-  55,
-  56,
+  [47, 4, 1],
+  s,
+  [53, 4, 1],
   58,
   60,
-  61,
+  62,
+  63,
+  65,
+  67,
+  68,
   s,
-  [64, 4, 1],
-  69,
+  [71, 4, 1],
+  76,
   s,
-  [73, 4, 1],
+  [80, 4, 1],
   s,
-  [78, 7, 1],
-  86,
-  87,
+  [85, 4, 1],
+  90,
+  91,
+  92,
+  94,
+  95,
   s,
-  [90, 4, 1],
-  98,
-  101,
+  [98, 5, 1],
   s,
-  [103, 8, 1],
-  112,
-  113,
-  115,
-  117,
-  118,
+  [107, 4, 2],
   s,
-  [120, 5, 1],
+  [114, 7, 1],
+  122,
+  123,
+  125,
   127,
+  128,
   130,
-  133,
+  131,
+  132,
   134,
   135,
-  137,
-  139,
-  140,
   s,
-  [142, 4, 1],
+  [136, 4, 3],
+  146,
+  147,
+  149,
+  151,
+  152,
   s,
-  [147, 7, 1],
+  [154, 4, 1],
   s,
-  [155, 4, 1],
-  161,
-  163,
-  166,
-  171,
-  172,
-  173,
+  [159, 7, 1],
+  s,
+  [167, 5, 1],
+  174,
   176,
+  179,
+  184,
+  185,
+  186,
+  189,
   s,
-  [178, 7, 1],
+  [191, 7, 1],
   s,
-  [186, 7, 1],
-  194,
-  197,
-  199,
-  200
+  [199, 7, 1],
+  207,
+  210,
+  212,
+  213
 ]),
   goto: u([
   5,
   6,
-  10,
-  11,
-  15,
-  20,
-  21,
-  24,
-  25,
+  s,
+  [10, 4, 1],
+  17,
+  22,
+  23,
   26,
-  36,
-  32,
-  33,
+  27,
+  28,
   34,
-  44,
-  45,
-  46,
+  41,
+  35,
+  36,
   37,
+  49,
+  50,
+  51,
+  39,
+  40,
+  42,
   3,
-  57,
-  60,
-  61,
+  62,
+  66,
+  67,
+  68,
   8,
   9,
-  12,
-  13,
-  53,
-  16,
+  14,
+  15,
+  58,
   18,
-  19,
-  35,
-  23,
-  120,
+  20,
+  21,
+  38,
+  25,
+  129,
   s,
-  [125, 4, 1],
-  28,
-  43,
-  106,
-  107,
-  108,
-  39,
-  110,
-  40,
-  41,
+  [134, 4, 1],
+  30,
+  48,
+  113,
+  114,
+  115,
+  44,
+  117,
+  45,
+  46,
   4,
   1,
   2,
-  131,
-  134,
-  138,
-  139,
-  58,
-  59,
-  67,
-  48,
-  14,
-  s,
-  [111, 6, 1],
-  17,
-  141,
-  22,
-  119,
-  124,
-  27,
-  31,
-  105,
-  109,
-  132,
-  133,
-  137,
-  72,
-  82,
-  117,
-  84,
-  89,
-  94,
-  95,
+  140,
+  143,
+  147,
+  148,
+  63,
   64,
   65,
-  66,
-  69,
-  50,
-  54,
-  55,
-  140,
-  118,
-  122,
-  123,
-  30,
-  135,
-  136,
-  62,
-  63,
-  88,
-  80,
-  99,
-  100,
-  101,
-  49,
-  71,
-  73,
   74,
-  117,
-  117,
-  102,
-  103,
-  86,
-  85,
-  83,
-  87,
-  92,
-  96,
-  97,
+  77,
+  53,
+  16,
+  s,
+  [118, 6, 1],
+  19,
+  150,
+  24,
+  128,
+  133,
   29,
+  33,
+  112,
+  116,
+  126,
+  141,
+  142,
+  146,
+  79,
+  89,
+  124,
+  91,
+  96,
+  101,
+  102,
+  71,
+  72,
+  73,
+  76,
+  55,
+  59,
+  60,
+  149,
+  127,
+  131,
+  132,
+  32,
+  125,
+  144,
+  145,
+  69,
+  70,
+  95,
+  87,
+  106,
+  107,
+  108,
+  54,
   78,
-  75,
-  76
+  80,
+  81,
+  124,
+  124,
+  109,
+  110,
+  93,
+  92,
+  90,
+  94,
+  99,
+  103,
+  104,
+  31,
+  85,
+  82,
+  83
 ])
 }),
 parseError: function parseError(str, hash, ExceptionClass) {
@@ -4969,7 +5188,7 @@ parse: function parse(input) {
     var TERROR = this.TERROR;
     var EOF = this.EOF;
     var ERROR_RECOVERY_TOKEN_DISCARD_COUNT = (this.options.errorRecoveryTokenDiscardCount | 0) || 3;
-    var NO_ACTION = [0, 201 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
+    var NO_ACTION = [0, 214 /* === table.length :: ensures that anyone using this new state will fail dramatically! */];
 
     var lexer;
     if (this.__lexer__) {
@@ -8138,7 +8357,7 @@ EOF: 1,
         yy_.yytext = this.matches[1];
 
         yy.include_command_allowed = false;
-        return 50;
+        return 53;
         break;
 
       case 3:
@@ -8148,7 +8367,7 @@ EOF: 1,
           // This is an include instruction in place of (part of) an action:
           this.pushState('options');
 
-          return 31;
+          return 33;
         } else {
           // TODO
           yy_.yyerror(rmCommonWS`
@@ -8158,7 +8377,7 @@ EOF: 1,
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yy_.yylloc));
 
-          return 51;
+          return 54;
         }
 
         break;
@@ -8167,7 +8386,7 @@ EOF: 1,
         /*! Conditions:: action */
         /*! Rule::       \/\*[^]*?\*\/ */
         //yy.include_command_allowed = false; -- doesn't impact include-allowed state
-        return 50;
+        return 53;
 
         break;
 
@@ -8176,7 +8395,7 @@ EOF: 1,
         /*! Rule::       \/\/.* */
         yy.include_command_allowed = false;
 
-        return 50;
+        return 53;
         break;
 
       case 6:
@@ -8187,9 +8406,9 @@ EOF: 1,
           this.unput(yy_.yytext);
 
           // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
-          return 20;
+          return 22;
         } else {
-          return 50;
+          return 53;
         }
 
         break;
@@ -8202,9 +8421,9 @@ EOF: 1,
           this.unput(yy_.yytext);
 
           // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
-          return 20;
+          return 22;
         } else {
-          return 50;
+          return 53;
         }
 
         break;
@@ -8217,9 +8436,9 @@ EOF: 1,
           this.unput(yy_.yytext);
 
           // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
-          return 20;
+          return 22;
         } else {
-          return 50;
+          return 53;
         }
 
         break;
@@ -8227,7 +8446,7 @@ EOF: 1,
       case 9:
         /*! Conditions:: action */
         /*! Rule::       \/(?=\s) */
-        return 50;        // most probably a `/` divide operator.  
+        return 53;        // most probably a `/` divide operator.  
 
         break;
 
@@ -8248,7 +8467,7 @@ EOF: 1,
           yy_.yytext = yy_.yytext[0];
         }
 
-        return 50;
+        return 53;
         break;
 
       case 11:
@@ -8256,7 +8475,7 @@ EOF: 1,
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}"|'{QUOTED_STRING_CONTENT}'|`{ES2017_STRING_CONTENT}` */
         yy.include_command_allowed = false;
 
-        return 50;
+        return 53;
         break;
 
       case 12:
@@ -8264,7 +8483,7 @@ EOF: 1,
         /*! Rule::       [^/"'`%\{\}\/{BR}]+ */
         yy.include_command_allowed = false;
 
-        return 50;
+        return 53;
         break;
 
       case 13:
@@ -8272,7 +8491,7 @@ EOF: 1,
         /*! Rule::       % */
         yy.include_command_allowed = false;
 
-        return 50;
+        return 53;
         break;
 
       case 14:
@@ -8281,7 +8500,7 @@ EOF: 1,
         yy.depth++;
 
         yy.include_command_allowed = false;
-        return 50;
+        return 53;
         break;
 
       case 15:
@@ -8300,7 +8519,7 @@ EOF: 1,
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yy_.yylloc));
 
-          return 53;
+          return 56;
         } else {
           yy.depth--;
 
@@ -8313,11 +8532,11 @@ EOF: 1,
 
             // this.unput(yy_.yytext);
             // yy_.yytext = '}';
-            return 20;
+            return 22;
           }
         }
 
-        return 50;
+        return 53;
         break;
 
       case 16:
@@ -8325,7 +8544,7 @@ EOF: 1,
         /*! Rule::       (?:[\s\r\n]*?){BR}+{WS}+ */
         yy.include_command_allowed = true;
 
-        return 50;            // keep empty lines as-is inside action code blocks.  
+        return 53;            // keep empty lines as-is inside action code blocks.  
         break;
 
       case 18:
@@ -8333,7 +8552,7 @@ EOF: 1,
         /*! Rule::       {BR} */
         if (yy.depth > 0) {
           yy.include_command_allowed = true;
-          return 50;        // keep empty lines as-is inside action code blocks. 
+          return 53;        // keep empty lines as-is inside action code blocks. 
         } else {
           // end of action code chunk; allow parent mode to see this mode-terminating linebreak too.
           this.popState();
@@ -8341,7 +8560,7 @@ EOF: 1,
           this.unput(yy_.yytext);
 
           // yy_.yytext = '';    --- ommitted as this is the side-effect of .unput(yy_.yytext) already!
-          return 20;
+          return 22;
         }
 
         break;
@@ -8362,12 +8581,12 @@ EOF: 1,
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yy_.yylloc));
 
-          return 52;
+          return 55;
         }
 
         this.popState();
         yy_.yytext = '';
-        return 20;
+        return 22;
         break;
 
       case 20:
@@ -8429,7 +8648,7 @@ EOF: 1,
                                                       Erroneous area:
                                                 ` + this.prettyPrintRange(yy_.yylloc));
 
-              return 21;
+              return 23;
             }
 
             break;
@@ -8443,10 +8662,10 @@ EOF: 1,
 
           // and allow the next lexer round to match and execute the suitable lexer rule(s) to parse this incoming action code block. 
           if (atSOL) {
-            return 19;
+            return 21;
           }
 
-          return 22;
+          return 24;
         }
 
         break;
@@ -8458,7 +8677,7 @@ EOF: 1,
 
         yy.include_command_allowed = false;
         this.pushState('action');
-        return 42;
+        return 46;
         break;
 
       case 22:
@@ -8468,7 +8687,7 @@ EOF: 1,
 
         yy.include_command_allowed = false;
         this.pushState('action');
-        return 42;
+        return 46;
         break;
 
       case 23:
@@ -8478,7 +8697,7 @@ EOF: 1,
 
         yy.include_command_allowed = false;
         this.pushState('action');
-        return 42;
+        return 46;
         break;
 
       case 24:
@@ -8505,7 +8724,7 @@ EOF: 1,
         this.popState();
 
         this.unput(yy_.yytext);
-        return 24;
+        return 26;
         break;
 
       case 31:
@@ -8521,7 +8740,7 @@ EOF: 1,
         // and issue the desired follow-up token: 'INCLUDE':
         this.unput(yy_.yytext);
 
-        return 22;
+        return 24;
         break;
 
       case 32:
@@ -8530,7 +8749,7 @@ EOF: 1,
         this.popState();
 
         this.unput(yy_.yytext);
-        return 24;
+        return 26;
         break;
 
       case 35:
@@ -8538,7 +8757,7 @@ EOF: 1,
         /*! Rule::       <{ID}> */
         yy_.yytext = this.matches[1];
 
-        return 37;
+        return 41;
         break;
 
       case 37:
@@ -8553,7 +8772,7 @@ EOF: 1,
         this.popState();
 
         this.unput(yy_.yytext);
-        return 24;
+        return 26;
         break;
 
       case 39:
@@ -8579,7 +8798,7 @@ EOF: 1,
         /*! Rule::       \[{ID}\] */
         yy_.yytext = this.matches[1];
 
-        return 48;
+        return 51;
         break;
 
       case 54:
@@ -8587,7 +8806,7 @@ EOF: 1,
         /*! Rule::       {HEX_NUMBER} */
         yy_.yytext = parseInt(yy_.yytext, 16);
 
-        return 38;
+        return 42;
         break;
 
       case 55:
@@ -8595,7 +8814,7 @@ EOF: 1,
         /*! Rule::       {DECIMAL_NUMBER} */
         yy_.yytext = parseInt(yy_.yytext, 10);
 
-        return 38;
+        return 42;
         break;
 
       case 65:
@@ -8606,23 +8825,15 @@ EOF: 1,
         return 13;
         break;
 
-      case 74:
-        /*! Conditions:: ebnf INITIAL */
-        /*! Rule::       %token\b */
-        //this.pushState('options');
-        return 18;
-
-        break;
-
-      case 76:
+      case 78:
         /*! Conditions:: ebnf INITIAL */
         /*! Rule::       %option[s]? */
         this.pushState('options');
 
-        return 28;
+        return 30;
         break;
 
-      case 77:
+      case 79:
         /*! Conditions:: ebnf INITIAL */
         /*! Rule::       %lex{LEX_CONTENT}\/lex\b */
         // remove the %lex../lex wrapper and return the pure lex section:
@@ -8631,23 +8842,23 @@ EOF: 1,
         return 17;
         break;
 
-      case 78:
+      case 80:
         /*! Conditions:: ebnf INITIAL */
         /*! Rule::       %code\b */
         this.pushState('options');
 
-        return 30;
+        return 32;
         break;
 
-      case 79:
+      case 81:
         /*! Conditions:: ebnf INITIAL */
         /*! Rule::       %import\b */
         this.pushState('options');
 
-        return 29;
+        return 31;
         break;
 
-      case 80:
+      case 82:
         /*! Conditions:: INITIAL ebnf code */
         /*! Rule::       %include\b */
         yy.depth = 0;
@@ -8660,10 +8871,10 @@ EOF: 1,
         // and issue the desired follow-up token: 'INCLUDE':
         this.unput(yy_.yytext);
 
-        return 22;
+        return 24;
         break;
 
-      case 81:
+      case 83:
         /*! Conditions:: INITIAL ebnf code */
         /*! Rule::       %{NAME}([^\r\n]*) */
         /* ignore unrecognized decl */
@@ -8679,49 +8890,49 @@ EOF: 1,
           value: this.matches[2].trim()        // optional value/parameters 
         };
 
-        return 27;
-        break;
-
-      case 82:
-        /*! Conditions:: code */
-        /*! Rule::       (?:[^%{BR}][^{BR}]*{BR}+)+ */
-        return 57;       // shortcut to grab a large bite at once when we're sure not to encounter any `%include` in there at start-of-line.  
-
+        return 29;
         break;
 
       case 84:
         /*! Conditions:: code */
-        /*! Rule::       [^{BR}]+ */
-        return 57;       // the bit of CODE just before EOF...  
+        /*! Rule::       (?:[^%{BR}][^{BR}]*{BR}+)+ */
+        return 60;       // shortcut to grab a large bite at once when we're sure not to encounter any `%include` in there at start-of-line.  
 
-        break;
-
-      case 85:
-        /*! Conditions:: action */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in parser rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 54;
         break;
 
       case 86:
-        /*! Conditions:: action */
-        /*! Rule::       ' */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in parser rule action block.
+        /*! Conditions:: code */
+        /*! Rule::       [^{BR}]+ */
+        return 60;       // the bit of CODE just before EOF...  
 
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 54;
         break;
 
       case 87:
         /*! Conditions:: action */
+        /*! Rule::       " */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in parser rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 57;
+        break;
+
+      case 88:
+        /*! Conditions:: action */
+        /*! Rule::       ' */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in parser rule action block.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 57;
+        break;
+
+      case 89:
+        /*! Conditions:: action */
         /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in parser rule action block.
@@ -8729,35 +8940,35 @@ EOF: 1,
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
 
-        return 54;
-        break;
-
-      case 88:
-        /*! Conditions:: options */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 54;
-        break;
-
-      case 89:
-        /*! Conditions:: options */
-        /*! Rule::       ' */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 54;
+        return 57;
         break;
 
       case 90:
         /*! Conditions:: options */
+        /*! Rule::       " */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 57;
+        break;
+
+      case 91:
+        /*! Conditions:: options */
+        /*! Rule::       ' */
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant in %options entry.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 57;
+        break;
+
+      case 92:
+        /*! Conditions:: options */
         /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
@@ -8765,10 +8976,10 @@ EOF: 1,
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
 
-        return 54;
+        return 57;
         break;
 
-      case 91:
+      case 93:
         /*! Conditions:: * */
         /*! Rule::       " */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -8780,10 +8991,10 @@ EOF: 1,
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
 
-        return 54;
+        return 57;
         break;
 
-      case 92:
+      case 94:
         /*! Conditions:: * */
         /*! Rule::       ' */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -8795,10 +9006,10 @@ EOF: 1,
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
 
-        return 54;
+        return 57;
         break;
 
-      case 93:
+      case 95:
         /*! Conditions:: * */
         /*! Rule::       ` */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
@@ -8810,10 +9021,10 @@ EOF: 1,
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
 
-        return 54;
+        return 57;
         break;
 
-      case 94:
+      case 96:
         /*! Conditions:: options */
         /*! Rule::       . */
         yy_.yyerror(rmCommonWS`
@@ -8830,7 +9041,7 @@ EOF: 1,
         return 2;
         break;
 
-      case 95:
+      case 97:
         /*! Conditions:: * */
         /*! Rule::       . */
         yy_.yyerror(rmCommonWS`
@@ -8851,7 +9062,7 @@ EOF: 1,
     simpleCaseActionClusters: {
       /*! Conditions:: action */
       /*! Rule::       {WS}+ */
-      17: 50,
+      17: 53,
 
       /*! Conditions:: options */
       /*! Rule::       = */
@@ -8859,15 +9070,15 @@ EOF: 1,
 
       /*! Conditions:: options */
       /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-      27: 55,
+      27: 58,
 
       /*! Conditions:: options */
       /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-      28: 55,
+      28: 58,
 
       /*! Conditions:: options */
       /*! Rule::       `{ES2017_STRING_CONTENT}` */
-      29: 55,
+      29: 58,
 
       /*! Conditions:: options */
       /*! Rule::       , */
@@ -8879,51 +9090,51 @@ EOF: 1,
 
       /*! Conditions:: options */
       /*! Rule::       {ANY_LITERAL_CHAR}+ */
-      36: 56,
+      36: 59,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
-      42: 39,
+      42: 43,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       '{QUOTED_STRING_CONTENT}' */
-      43: 39,
+      43: 43,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       `{ES2017_STRING_CONTENT}` */
-      44: 39,
+      44: 43,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %empty\b */
-      46: 45,
+      46: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %epsilon\b */
-      47: 45,
+      47: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \u0190 */
-      48: 45,
+      48: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \u025B */
-      49: 45,
+      49: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \u03B5 */
-      50: 45,
+      50: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \u03F5 */
-      51: 45,
+      51: 48,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \$end\b */
-      52: 49,
+      52: 52,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       \$eof\b */
-      53: 49,
+      53: 52,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       {ID} */
@@ -8963,19 +9174,19 @@ EOF: 1,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %ebnf\b */
-      66: 26,
+      66: 28,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %debug\b */
-      67: 25,
+      67: 27,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %parser-type\b */
-      68: 33,
+      68: 37,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %prec\b */
-      69: 46,
+      69: 49,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %start\b */
@@ -8983,27 +9194,39 @@ EOF: 1,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %left\b */
-      71: 34,
+      71: 38,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %right\b */
-      72: 35,
+      72: 39,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %nonassoc\b */
-      73: 36,
+      73: 40,
+
+      /*! Conditions:: ebnf INITIAL */
+      /*! Rule::       %token\b */
+      74: 20,
+
+      /*! Conditions:: ebnf INITIAL */
+      /*! Rule::       %on_error_recovery_shift\b */
+      75: 34,
+
+      /*! Conditions:: ebnf INITIAL */
+      /*! Rule::       %on_error_recovery_reduce\b */
+      76: 35,
 
       /*! Conditions:: ebnf INITIAL */
       /*! Rule::       %parse-param[s]? */
-      75: 32,
+      77: 36,
 
       /*! Conditions:: code */
       /*! Rule::       [^{BR}]*{BR}+ */
-      83: 57,
+      85: 60,
 
       /*! Conditions:: * */
       /*! Rule::       $ */
-      96: 1
+      98: 1
     },
 
     rules: [
@@ -9082,31 +9305,33 @@ EOF: 1,
       /* 72: */  /^(?:%right\b)/,
       /* 73: */  /^(?:%nonassoc\b)/,
       /* 74: */  /^(?:%token\b)/,
-      /* 75: */  /^(?:%parse-param[s]?)/,
-      /* 76: */  /^(?:%option[s]?)/,
-      /* 77: */  /^(?:%lex((?:[^\S\n\r])*(?:(?:\r\n|\n|\r)[\s\S]*?)?(?:\r\n|\n|\r)(?:[^\S\n\r])*)\/lex\b)/,
-      /* 78: */  /^(?:%code\b)/,
-      /* 79: */  /^(?:%import\b)/,
-      /* 80: */  /^(?:%include\b)/,
-      /* 81: */  new XRegExp(
+      /* 75: */  /^(?:%on_error_recovery_shift\b)/,
+      /* 76: */  /^(?:%on_error_recovery_reduce\b)/,
+      /* 77: */  /^(?:%parse-param[s]?)/,
+      /* 78: */  /^(?:%option[s]?)/,
+      /* 79: */  /^(?:%lex((?:[^\S\n\r])*(?:(?:\r\n|\n|\r)[\s\S]*?)?(?:\r\n|\n|\r)(?:[^\S\n\r])*)\/lex\b)/,
+      /* 80: */  /^(?:%code\b)/,
+      /* 81: */  /^(?:%import\b)/,
+      /* 82: */  /^(?:%include\b)/,
+      /* 83: */  new XRegExp(
         '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
         ''
       ),
-      /* 82: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
-      /* 83: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
-      /* 84: */  /^(?:[^\n\r]+)/,
-      /* 85: */  /^(?:")/,
-      /* 86: */  /^(?:')/,
-      /* 87: */  /^(?:`)/,
-      /* 88: */  /^(?:")/,
-      /* 89: */  /^(?:')/,
-      /* 90: */  /^(?:`)/,
-      /* 91: */  /^(?:")/,
-      /* 92: */  /^(?:')/,
-      /* 93: */  /^(?:`)/,
-      /* 94: */  /^(?:.)/,
-      /* 95: */  /^(?:.)/,
-      /* 96: */  /^(?:$)/
+      /* 84: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
+      /* 85: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
+      /* 86: */  /^(?:[^\n\r]+)/,
+      /* 87: */  /^(?:")/,
+      /* 88: */  /^(?:')/,
+      /* 89: */  /^(?:`)/,
+      /* 90: */  /^(?:")/,
+      /* 91: */  /^(?:')/,
+      /* 92: */  /^(?:`)/,
+      /* 93: */  /^(?:")/,
+      /* 94: */  /^(?:')/,
+      /* 95: */  /^(?:`)/,
+      /* 96: */  /^(?:.)/,
+      /* 97: */  /^(?:.)/,
+      /* 98: */  /^(?:$)/
     ],
 
     conditions: {
@@ -9162,18 +9387,20 @@ EOF: 1,
           79,
           80,
           81,
-          91,
-          92,
+          82,
+          83,
           93,
+          94,
           95,
-          96
+          97,
+          98
         ],
 
         inclusive: true
       },
 
       'code': {
-        rules: [80, 81, 82, 83, 84, 91, 92, 93, 95, 96],
+        rules: [82, 83, 84, 85, 86, 93, 94, 95, 97, 98],
         inclusive: false
       },
 
@@ -9196,15 +9423,15 @@ EOF: 1,
           37,
           38,
           39,
-          88,
-          89,
           90,
           91,
           92,
           93,
           94,
           95,
-          96
+          96,
+          97,
+          98
         ],
 
         inclusive: false
@@ -9230,14 +9457,14 @@ EOF: 1,
           17,
           18,
           19,
-          85,
-          86,
           87,
-          91,
-          92,
+          88,
+          89,
           93,
+          94,
           95,
-          96
+          97,
+          98
         ],
 
         inclusive: false
@@ -9293,11 +9520,13 @@ EOF: 1,
           79,
           80,
           81,
-          91,
-          92,
+          82,
+          83,
           93,
+          94,
           95,
-          96
+          97,
+          98
         ],
 
         inclusive: true

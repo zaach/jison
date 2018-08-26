@@ -21,6 +21,7 @@ var lexer = {
     _input: '',                                 /// INTERNAL USE ONLY
     _more: false,                               /// INTERNAL USE ONLY
     _signaled_error_token: false,               /// INTERNAL USE ONLY
+    _clear_state: 0,                            /// INTERNAL USE ONLY; 0: clear to do, 1: clear done for lex()/next(); -1: clear done for inut()/unput()/...
 
     conditionStack: [],                         /// INTERNAL USE ONLY; managed via `pushState()`, `popState()`, `topState()` and `stateStackSize()`
 
@@ -42,6 +43,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     constructLexErrorInfo: function lexer_constructLexErrorInfo(msg, recoverable, show_input_position) {
+        "use strict";
+    
         msg = '' + msg;
 
         // heuristic to determine if the error message already contains a (partial) source code dump
@@ -76,7 +79,7 @@ var lexer = {
             token: null,
             line: this.yylineno,
             loc: this.yylloc,
-            yy: this.yy,
+            yy: this.yy,                
             lexer: this,
 
             /**
@@ -96,9 +99,10 @@ var lexer = {
                 // info.yy = null;
                 // info.lexer = null;
                 // ...
+                "use strict";
                 var rec = !!this.recoverable;
                 for (var key in this) {
-                    if (this.hasOwnProperty(key) && typeof key === 'object') {
+                    if (this[key] && this.hasOwnProperty(key) && typeof this[key] === 'object') {
                         this[key] = undefined;
                     }
                 }
@@ -117,6 +121,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     parseError: function lexer_parseError(str, hash, ExceptionClass) {
+        "use strict";
+
         if (!ExceptionClass) {
             ExceptionClass = this.JisonLexerError;
         }
@@ -137,6 +143,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     yyerror: function yyError(str /*, ...args */) {
+        "use strict";
+
         var lineno_msg = '';
         if (this.yylloc) {
             lineno_msg = ' on line ' + (this.yylineno + 1);
@@ -165,6 +173,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     cleanupAfterLex: function lexer_cleanupAfterLex(do_not_nuke_errorinfos) {
+        "use strict";
+
         // prevent lingering circular references from causing memory leaks:
         this.setInput('', {});
 
@@ -191,15 +201,18 @@ var lexer = {
      * @this {RegExpLexer}
      */
     clear: function lexer_clear() {
+        "use strict";
+
         this.yytext = '';
         this.yyleng = 0;
         this.match = '';
         // - DO NOT reset `this.matched`
         this.matches = false;
+
         this._more = false;
         this._backtrack = false;
 
-        var col = (this.yylloc ? this.yylloc.last_column : 0);
+        var col = this.yylloc.last_column;
         this.yylloc = {
             first_line: this.yylineno + 1,
             first_column: col,
@@ -217,6 +230,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     setInput: function lexer_setInput(input, yy) {
+        "use strict";
+
         this.yy = yy || this.yy || {};
 
         // also check if we've fully initialized the lexer instance,
@@ -264,7 +279,7 @@ var lexer = {
             input = '' + input;
         }
         this._input = input || '';
-        this.clear();
+        this._clear_state = -1;
         this._signaled_error_token = false;
         this.done = false;
         this.yylineno = 0;
@@ -281,6 +296,15 @@ var lexer = {
         };
         this.offset = 0;
         this.base_position = 0;
+        // apply these bits of `this.clear()` as well:
+        this.yytext = '';
+        this.yyleng = 0;
+        this.match = '';
+        this.matches = false;
+
+        this._more = false;
+        this._backtrack = false;
+
         return this;
     },
 
@@ -329,6 +353,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     editRemainingInput: function lexer_editRemainingInput(callback, cpsArg) {
+        "use strict";
+
         var rv = callback.call(this, this._input, cpsArg);
         if (typeof rv !== 'string') {
             if (rv) {
@@ -348,9 +374,15 @@ var lexer = {
      * @this {RegExpLexer}
      */
     input: function lexer_input() {
+        "use strict";
+
         if (!this._input) {
             //this.done = true;    -- don't set `done` as we want the lex()/next() API to be able to produce one custom EOF token match after this anyhow. (lexer can match special <<EOF>> tokens and perform user action code for a <<EOF>> match, but only does so *once*)
             return null;
+        }
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
         }
         var ch = this._input[0];
         this.yytext += ch;
@@ -400,8 +432,15 @@ var lexer = {
      * @this {RegExpLexer}
      */
     unput: function lexer_unput(ch) {
+        "use strict";
+
         var len = ch.length;
         var lines = ch.split(this.CRLF_Re);
+
+        if (!this._clear_state && !this._more) {
+            this._clear_state = -1;
+            this.clear();
+        }
 
         this._input = ch + this._input;
         this.yytext = this.yytext.substr(0, this.yytext.length - len);
@@ -465,6 +504,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     lookAhead: function lexer_lookAhead() {
+        "use strict";
+
         return this._input || '';
     },
 
@@ -475,6 +516,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     more: function lexer_more() {
+        "use strict";
+
         this._more = true;
         return this;
     },
@@ -487,6 +530,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     reject: function lexer_reject() {
+        "use strict";
+
         if (this.options.backtrack_lexer) {
             this._backtrack = true;
         } else {
@@ -510,6 +555,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     less: function lexer_less(n) {
+        "use strict";
+
         return this.unput(this.match.slice(n));
     },
 
@@ -532,6 +579,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     pastInput: function lexer_pastInput(maxSize, maxLines) {
+        "use strict";
+
         var past = this.matched.substring(0, this.matched.length - this.match.length);
         if (maxSize < 0)
             maxSize = Infinity;
@@ -592,6 +641,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     upcomingInput: function lexer_upcomingInput(maxSize, maxLines) {
+        "use strict";
+
         var next = this.match;
         var source = this._input || '';
         if (maxSize < 0)
@@ -629,6 +680,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     showPosition: function lexer_showPosition(maxPrefix, maxPostfix) {
+        "use strict";
+
         var pre = this.pastInput(maxPrefix).replace(/\s/g, ' ');
         var c = new Array(pre.length + 1).join('-');
         return pre + this.upcomingInput(maxPostfix).replace(/\s/g, ' ') + '\n' + c + '^';
@@ -652,6 +705,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     deriveLocationInfo: function lexer_deriveYYLLOC(actual, preceding, following, current) {
+        "use strict";
+
         var loc = {
             first_line: 1,
             first_column: 0,
@@ -789,7 +844,10 @@ var lexer = {
      * @this {RegExpLexer}
      */
     prettyPrintRange: function lexer_prettyPrintRange(loc, context_loc, context_loc2) {
+        "use strict";
+
         loc = this.deriveLocationInfo(loc, context_loc, context_loc2);
+
         const CONTEXT = 3;
         const CONTEXT_TAIL = 1;
         const MINIMUM_VISIBLE_NONEMPTY_LINE_COUNT = 2;
@@ -801,6 +859,8 @@ var lexer = {
         var ws_prefix = new Array(lineno_display_width).join(' ');
         var nonempty_line_indexes = [[], [], []];
         var rv = lines.slice(l0 - 1, l1 + 1).map(function injectLineNumber(line, index) {
+            "use strict";
+
             var lno = index + l0;
             var lno_pfx = (ws_prefix + lno).substr(-lineno_display_width);
             var rv = lno_pfx + ': ' + line;
@@ -872,6 +932,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     describeYYLLOC: function lexer_describe_yylloc(yylloc, display_range_too) {
+        "use strict";
+
         var l1 = yylloc.first_line;
         var l2 = yylloc.last_line;
         var c1 = yylloc.first_column;
@@ -920,6 +982,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     test_match: function lexer_test_match(match, indexed_rule) {
+        "use strict";
+
         var token,
             lines,
             backup,
@@ -955,17 +1019,17 @@ var lexer = {
 
         match_str = match[0];
         match_str_len = match_str.length;
-        // if (match_str.indexOf('\n') !== -1 || match_str.indexOf('\r') !== -1) {
-            lines = match_str.split(this.CRLF_Re);
-            if (lines.length > 1) {
-                this.yylineno += lines.length - 1;
 
-                this.yylloc.last_line = this.yylineno + 1;
-                this.yylloc.last_column = lines[lines.length - 1].length;
-            } else {
-                this.yylloc.last_column += match_str_len;
-            }
-        // }
+        lines = match_str.split(this.CRLF_Re);
+        if (lines.length > 1) {
+            this.yylineno += lines.length - 1;
+
+            this.yylloc.last_line = this.yylineno + 1;
+            this.yylloc.last_column = lines[lines.length - 1].length;
+        } else {
+            this.yylloc.last_column += match_str_len;
+        }
+
         this.yytext += match_str;
         this.match += match_str;
         this.matched += match_str;
@@ -1017,6 +1081,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     next: function lexer_next() {
+        "use strict";
+
         if (this.done) {
             this.clear();
             return this.EOF;
@@ -1030,6 +1096,9 @@ var lexer = {
             tempMatch,
             index;
         if (!this._more) {
+            if (!this._clear_state) {
+                this._clear_state = 1;
+            }
             this.clear();
         }
         var spec = this.__currentRuleSet__;
@@ -1043,7 +1112,7 @@ var lexer = {
             // user-programmer bugs such as https://github.com/zaach/jison-lex/issues/19
             if (!spec || !spec.rules) {
                 var lineno_msg = '';
-                if (this.options.trackPosition) {
+                if (this.yylloc) {
                     lineno_msg = ' on line ' + (this.yylineno + 1);
                 }
                 var p = this.constructLexErrorInfo('Internal lexer engine error' + lineno_msg + ': The lex grammar programmer pushed a non-existing condition name "' + this.topState() + '"; this is a fatal error and should be reported to the application programmer team!', false);
@@ -1093,7 +1162,7 @@ var lexer = {
             return this.EOF;
         } else {
             var lineno_msg = '';
-            if (this.options.trackPosition) {
+            if (this.yylloc) {
                 lineno_msg = ' on line ' + (this.yylineno + 1);
             }
             var p = this.constructLexErrorInfo('Lexical error' + lineno_msg + ': Unrecognized text.', this.options.lexerErrorsAreRecoverable);
@@ -1129,7 +1198,12 @@ var lexer = {
      * @this {RegExpLexer}
      */
     lex: function lexer_lex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
+
         // allow the PRE/POST handlers set/modify the return token for maximum flexibility of the generated lexer:
         if (typeof this.pre_lex === 'function') {
             r = this.pre_lex.call(this, 0);
@@ -1159,6 +1233,31 @@ var lexer = {
             // (also account for a userdef function which does not return any value: keep the token as is)
             r = this.post_lex.call(this, r) || r;
         }
+
+        // 1) make sure any outside interference is detected ASAP: 
+        //    these attributes are to be treated as 'const' values
+        //    once the lexer has produced them with the token (return value `r`).
+        // 2) make sure any subsequent `lex()` API invocation CANNOT
+        //    edit the `yytext`, etc. token attributes for the *current*
+        //    token, i.e. provide a degree of 'closure safety' so that
+        //    code like this:
+        //    
+        //        t1 = lexer.lex();
+        //        v = lexer.yytext;
+        //        l = lexer.yylloc;
+        //        t2 = lexer.lex();
+        //        assert(lexer.yytext !== v);
+        //        assert(lexer.yylloc !== l);
+        //        
+        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+        //    these conditions.
+        this.yytext = Object.freeze(this.yytext);
+        this.matches = Object.freeze(this.matches);
+        this.yylloc.range = Object.freeze(this.yylloc.range);
+        this.yylloc = Object.freeze(this.yylloc);
+
+        this._clear_state = 0;
+
         return r;
     },
 
@@ -1170,11 +1269,39 @@ var lexer = {
      * @this {RegExpLexer}
      */
     fastLex: function lexer_fastLex() {
+        "use strict";
+
         var r;
+
+        //this._clear_state = 0;
 
         while (!r) {
             r = this.next();
         }
+
+        // 1) make sure any outside interference is detected ASAP: 
+        //    these attributes are to be treated as 'const' values
+        //    once the lexer has produced them with the token (return value `r`).
+        // 2) make sure any subsequent `lex()` API invocation CANNOT
+        //    edit the `yytext`, etc. token attributes for the *current*
+        //    token, i.e. provide a degree of 'closure safety' so that
+        //    code like this:
+        //    
+        //        t1 = lexer.lex();
+        //        v = lexer.yytext;
+        //        l = lexer.yylloc;
+        //        t2 = lexer.lex();
+        //        assert(lexer.yytext !== v);
+        //        assert(lexer.yylloc !== l);
+        //        
+        //    succeeds. Older (pre-v0.6.5) jison versions did not *guarantee*
+        //    these conditions.
+        this.yytext = Object.freeze(this.yytext);
+        this.matches = Object.freeze(this.matches);
+        this.yylloc.range = Object.freeze(this.yylloc.range);
+        this.yylloc = Object.freeze(this.yylloc);
+
+        this._clear_state = 0;
 
         return r;
     },
@@ -1188,6 +1315,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     canIUse: function lexer_canIUse() {
+        "use strict";
+
         var rv = {
             fastLex: !(
                 typeof this.pre_lex === 'function' ||
@@ -1211,6 +1340,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     begin: function lexer_begin(condition) {
+        "use strict";
+
         return this.pushState(condition);
     },
 
@@ -1222,6 +1353,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     pushState: function lexer_pushState(condition) {
+        "use strict";
+
         this.conditionStack.push(condition);
         this.__currentRuleSet__ = null;
         return this;
@@ -1235,6 +1368,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     popState: function lexer_popState() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         if (n > 0) {
             this.__currentRuleSet__ = null;
@@ -1253,6 +1388,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     topState: function lexer_topState(n) {
+        "use strict";
+
         n = this.conditionStack.length - 1 - Math.abs(n || 0);
         if (n >= 0) {
             return this.conditionStack[n];
@@ -1269,6 +1406,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     _currentRules: function lexer__currentRules() {
+        "use strict";
+
         var n = this.conditionStack.length - 1;
         var state;
         if (n >= 0) {
@@ -1286,6 +1425,8 @@ var lexer = {
      * @this {RegExpLexer}
      */
     stateStackSize: function lexer_stateStackSize() {
+        "use strict";
+
         return this.conditionStack.length;
     },
     options: {
@@ -2681,6 +2822,9 @@ break;
 }`,
   rules: [
     {
+      re: '/^(?:([Aa])([Nn])([Dd]))/',
+      source: '^(?:([Aa])([Nn])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Aa])([Nn])([Dd]))',
@@ -2689,6 +2833,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Aa])([Rr])([Rr])([Aa])([Yy]))/',
+      source: '^(?:([Aa])([Rr])([Rr])([Aa])([Yy]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Aa])([Rr])([Rr])([Aa])([Yy]))',
@@ -2697,6 +2844,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Cc])([Aa])([Ss])([Ee]))/',
+      source: '^(?:([Cc])([Aa])([Ss])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Cc])([Aa])([Ss])([Ee]))',
@@ -2705,6 +2855,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Cc])([Oo])([Nn])([Ss])([Tt]))/',
+      source: '^(?:([Cc])([Oo])([Nn])([Ss])([Tt]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Cc])([Oo])([Nn])([Ss])([Tt]))',
@@ -2713,6 +2866,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Dd])([Ii])([Vv]))/',
+      source: '^(?:([Dd])([Ii])([Vv]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Dd])([Ii])([Vv]))',
@@ -2721,6 +2877,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Dd])([Oo]))/',
+      source: '^(?:([Dd])([Oo]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Dd])([Oo]))',
@@ -2729,6 +2888,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Dd])([Oo])([Ww])([Nn])([Tt])([Oo]))/',
+      source: '^(?:([Dd])([Oo])([Ww])([Nn])([Tt])([Oo]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Dd])([Oo])([Ww])([Nn])([Tt])([Oo]))',
@@ -2737,6 +2899,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ee])([Ll])([Ss])([Ee]))/',
+      source: '^(?:([Ee])([Ll])([Ss])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ee])([Ll])([Ss])([Ee]))',
@@ -2745,6 +2910,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ee])([Nn])([Dd]))/',
+      source: '^(?:([Ee])([Nn])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ee])([Nn])([Dd]))',
@@ -2753,6 +2921,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn]))/',
+      source: '^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn]))',
@@ -2761,6 +2932,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn])([Aa])([Ll]))/',
+      source: '^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn])([Aa])([Ll]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ee])([Xx])([Tt])([Ee])([Rr])([Nn])([Aa])([Ll]))',
@@ -2769,6 +2943,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ff])([Oo])([Rr]))/',
+      source: '^(?:([Ff])([Oo])([Rr]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ff])([Oo])([Rr]))',
@@ -2777,6 +2954,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ff])([Oo])([Rr])([Ww])([Aa])([Rr])([Dd]))/',
+      source: '^(?:([Ff])([Oo])([Rr])([Ww])([Aa])([Rr])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ff])([Oo])([Rr])([Ww])([Aa])([Rr])([Dd]))',
@@ -2785,6 +2965,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ff])([Uu])([Nn])([Cc])([Tt])([Ii])([Oo])([Nn]))/',
+      source: '^(?:([Ff])([Uu])([Nn])([Cc])([Tt])([Ii])([Oo])([Nn]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ff])([Uu])([Nn])([Cc])([Tt])([Ii])([Oo])([Nn]))',
@@ -2793,6 +2976,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Gg])([Oo])([Tt])([Oo]))/',
+      source: '^(?:([Gg])([Oo])([Tt])([Oo]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Gg])([Oo])([Tt])([Oo]))',
@@ -2801,6 +2987,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ii])([Ff]))/',
+      source: '^(?:([Ii])([Ff]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ii])([Ff]))',
@@ -2809,6 +2998,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ii])([Nn]))/',
+      source: '^(?:([Ii])([Nn]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ii])([Nn]))',
@@ -2817,6 +3009,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ll])([Aa])([Bb])([Ee])([Ll]))/',
+      source: '^(?:([Ll])([Aa])([Bb])([Ee])([Ll]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ll])([Aa])([Bb])([Ee])([Ll]))',
@@ -2825,6 +3020,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Mm])([Oo])([Dd]))/',
+      source: '^(?:([Mm])([Oo])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Mm])([Oo])([Dd]))',
@@ -2833,6 +3031,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Nn])([Ii])([Ll]))/',
+      source: '^(?:([Nn])([Ii])([Ll]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Nn])([Ii])([Ll]))',
@@ -2841,6 +3042,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Nn])([Oo])([Tt]))/',
+      source: '^(?:([Nn])([Oo])([Tt]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Nn])([Oo])([Tt]))',
@@ -2849,6 +3053,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Oo])([Ff]))/',
+      source: '^(?:([Oo])([Ff]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Oo])([Ff]))',
@@ -2857,6 +3064,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Oo])([Rr]))/',
+      source: '^(?:([Oo])([Rr]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Oo])([Rr]))',
@@ -2865,6 +3075,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Oo])([Tt])([Hh])([Ee])([Rr])([Ww])([Ii])([Ss])([Ee]))/',
+      source: '^(?:([Oo])([Tt])([Hh])([Ee])([Rr])([Ww])([Ii])([Ss])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Oo])([Tt])([Hh])([Ee])([Rr])([Ww])([Ii])([Ss])([Ee]))',
@@ -2873,6 +3086,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Pp])([Aa])([Cc])([Kk])([Ee])([Dd]))/',
+      source: '^(?:([Pp])([Aa])([Cc])([Kk])([Ee])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Pp])([Aa])([Cc])([Kk])([Ee])([Dd]))',
@@ -2881,6 +3097,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Bb])([Ee])([Gg])([Ii])([Nn]))/',
+      source: '^(?:([Bb])([Ee])([Gg])([Ii])([Nn]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Bb])([Ee])([Gg])([Ii])([Nn]))',
@@ -2889,6 +3108,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ff])([Ii])([Ll])([Ee]))/',
+      source: '^(?:([Ff])([Ii])([Ll])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ff])([Ii])([Ll])([Ee]))',
@@ -2897,6 +3119,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Pp])([Rr])([Oo])([Cc])([Ee])([Dd])([Uu])([Rr])([Ee]))/',
+      source: '^(?:([Pp])([Rr])([Oo])([Cc])([Ee])([Dd])([Uu])([Rr])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Pp])([Rr])([Oo])([Cc])([Ee])([Dd])([Uu])([Rr])([Ee]))',
@@ -2905,6 +3130,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Pp])([Rr])([Oo])([Gg])([Rr])([Aa])([Mm]))/',
+      source: '^(?:([Pp])([Rr])([Oo])([Gg])([Rr])([Aa])([Mm]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Pp])([Rr])([Oo])([Gg])([Rr])([Aa])([Mm]))',
@@ -2913,6 +3141,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Rr])([Ee])([Cc])([Oo])([Rr])([Dd]))/',
+      source: '^(?:([Rr])([Ee])([Cc])([Oo])([Rr])([Dd]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Rr])([Ee])([Cc])([Oo])([Rr])([Dd]))',
@@ -2921,6 +3152,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Rr])([Ee])([Pp])([Ee])([Aa])([Tt]))/',
+      source: '^(?:([Rr])([Ee])([Pp])([Ee])([Aa])([Tt]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Rr])([Ee])([Pp])([Ee])([Aa])([Tt]))',
@@ -2929,6 +3163,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ss])([Ee])([Tt]))/',
+      source: '^(?:([Ss])([Ee])([Tt]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ss])([Ee])([Tt]))',
@@ -2937,6 +3174,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Tt])([Hh])([Ee])([Nn]))/',
+      source: '^(?:([Tt])([Hh])([Ee])([Nn]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Tt])([Hh])([Ee])([Nn]))',
@@ -2945,6 +3185,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Tt])([Oo]))/',
+      source: '^(?:([Tt])([Oo]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Tt])([Oo]))',
@@ -2953,6 +3196,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Tt])([Yy])([Pp])([Ee]))/',
+      source: '^(?:([Tt])([Yy])([Pp])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Tt])([Yy])([Pp])([Ee]))',
@@ -2961,6 +3207,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Uu])([Nn])([Tt])([Ii])([Ll]))/',
+      source: '^(?:([Uu])([Nn])([Tt])([Ii])([Ll]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Uu])([Nn])([Tt])([Ii])([Ll]))',
@@ -2969,6 +3218,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Vv])([Aa])([Rr]))/',
+      source: '^(?:([Vv])([Aa])([Rr]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Vv])([Aa])([Rr]))',
@@ -2977,6 +3229,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ww])([Hh])([Ii])([Ll])([Ee]))/',
+      source: '^(?:([Ww])([Hh])([Ii])([Ll])([Ee]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ww])([Hh])([Ii])([Ll])([Ee]))',
@@ -2985,6 +3240,9 @@ break;
       },
     },
     {
+      re: '/^(?:([Ww])([Ii])([Tt])([Hh]))/',
+      source: '^(?:([Ww])([Ii])([Tt])([Hh]))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:([Ww])([Ii])([Tt])([Hh]))',
@@ -2993,6 +3251,9 @@ break;
       },
     },
     {
+      re: '/^(?:[A-Za-z]([^\\W_])+)/',
+      source: '^(?:[A-Za-z]([^\\W_])+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:[A-Za-z]([^\\W_])+)',
@@ -3001,6 +3262,9 @@ break;
       },
     },
     {
+      re: '/^(?::=)/',
+      source: '^(?::=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?::=)',
@@ -3009,6 +3273,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\(\\{NQUOTE\\}\\|\\)\\+)/',
+      source: '^(?:\\(\\{NQUOTE\\}\\|\\)\\+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\(\\{NQUOTE\\}\\|\\)\\+)',
@@ -3017,6 +3284,9 @@ break;
       },
     },
     {
+      re: '/^(?::)/',
+      source: '^(?::)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?::)',
@@ -3025,6 +3295,9 @@ break;
       },
     },
     {
+      re: '/^(?:,)/',
+      source: '^(?:,)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:,)',
@@ -3033,6 +3306,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\d+)/',
+      source: '^(?:\\d+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\d+)',
@@ -3041,6 +3317,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\.)/',
+      source: '^(?:\\.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\.)',
@@ -3049,6 +3328,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\.\\.)/',
+      source: '^(?:\\.\\.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\.\\.)',
@@ -3057,6 +3339,9 @@ break;
       },
     },
     {
+      re: '/^(?:=)/',
+      source: '^(?:=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:=)',
@@ -3065,6 +3350,9 @@ break;
       },
     },
     {
+      re: '/^(?:>=)/',
+      source: '^(?:>=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>=)',
@@ -3073,6 +3361,9 @@ break;
       },
     },
     {
+      re: '/^(?:>)/',
+      source: '^(?:>)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:>)',
@@ -3081,6 +3372,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\[)/',
+      source: '^(?:\\[)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\[)',
@@ -3089,6 +3383,9 @@ break;
       },
     },
     {
+      re: '/^(?:<=)/',
+      source: '^(?:<=)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<=)',
@@ -3097,6 +3394,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\()/',
+      source: '^(?:\\()',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\()',
@@ -3105,6 +3405,9 @@ break;
       },
     },
     {
+      re: '/^(?:<)/',
+      source: '^(?:<)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<)',
@@ -3113,6 +3416,9 @@ break;
       },
     },
     {
+      re: '/^(?:-)/',
+      source: '^(?:-)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:-)',
@@ -3121,6 +3427,9 @@ break;
       },
     },
     {
+      re: '/^(?:<>)/',
+      source: '^(?:<>)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:<>)',
@@ -3129,6 +3438,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\+)/',
+      source: '^(?:\\+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\+)',
@@ -3137,6 +3449,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\])/',
+      source: '^(?:\\])',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\])',
@@ -3145,6 +3460,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\d+\\.\\d+)/',
+      source: '^(?:\\d+\\.\\d+)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\d+\\.\\d+)',
@@ -3153,6 +3471,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\))/',
+      source: '^(?:\\))',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\))',
@@ -3161,6 +3482,9 @@ break;
       },
     },
     {
+      re: '/^(?:;)/',
+      source: '^(?:;)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:;)',
@@ -3169,6 +3493,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\/)/',
+      source: '^(?:\\/)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\/)',
@@ -3177,6 +3504,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\*)/',
+      source: '^(?:\\*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\*)',
@@ -3185,6 +3515,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\*\\*)/',
+      source: '^(?:\\*\\*)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\*\\*)',
@@ -3193,6 +3526,9 @@ break;
       },
     },
     {
+      re: '/^(?:->)/',
+      source: '^(?:->)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:->)',
@@ -3201,6 +3537,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\^)/',
+      source: '^(?:\\^)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\^)',
@@ -3209,6 +3548,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\(\\*|\\{)/',
+      source: '^(?:\\(\\*|\\{)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\(\\*|\\{)',
@@ -3217,6 +3559,9 @@ break;
       },
     },
     {
+      re: '/^(?:[ \\t\\f])/',
+      source: '^(?:[ \\t\\f])',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:[ \\t\\f])',
@@ -3225,6 +3570,9 @@ break;
       },
     },
     {
+      re: '/^(?:\\n)/',
+      source: '^(?:\\n)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:\\n)',
@@ -3233,6 +3581,9 @@ break;
       },
     },
     {
+      re: '/^(?:.)/',
+      source: '^(?:.)',
+      flags: '',
       xregexp: {
         captureNames: null,
         source: '^(?:.)',

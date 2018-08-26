@@ -1,6 +1,7 @@
 [
   8,
   {
+    id: 'CLASS',
     token: 'CLASS',
     yytext: 'class',
     yylloc: {
@@ -15,6 +16,7 @@
     },
   },
   {
+    id: 'ID',
     token: 'ID',
     yytext: 't',
     yylloc: {
@@ -29,6 +31,7 @@
     },
   },
   {
+    id: 'EXTENDS',
     token: 'EXTENDS',
     yytext: 'extends',
     yylloc: {
@@ -43,6 +46,7 @@
     },
   },
   {
+    id: 'ID',
     token: 'ID',
     yytext: 'bubbaloo',
     yylloc: {
@@ -57,6 +61,7 @@
     },
   },
   {
+    id: 'ENDOFFILE',
     token: 'ENDOFFILE',
     yytext: '',
     yylloc: {
@@ -71,7 +76,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -85,7 +91,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -99,7 +106,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,
@@ -113,7 +121,8 @@
     },
   },
   {
-    token: 1,
+    id: 1,
+    token: 'EOF',
     yytext: '',
     yylloc: {
       first_line: 1,

@@ -1,12 +1,16 @@
 var assert = require("chai").assert;
-var RegExpLexer = require("../dist/regexp-lexer-cjs-es5");
-var XRegExp = require("@gerhobbelt/xregexp");
-var yaml = require('@gerhobbelt/js-yaml');
-var JSON5 = require('@gerhobbelt/json5');
-var globby = require('globby');
 var fs = require('fs');
 var path = require('path');
 var mkdirp = require('mkdirp');
+var yaml = require('@gerhobbelt/js-yaml');
+var JSON5 = require('@gerhobbelt/json5');
+var globby = require('globby');
+var XRegExp = require("@gerhobbelt/xregexp");
+var RegExpLexer = require('../dist/regexp-lexer-cjs-es5');
+var helpers = require('../../helpers-lib/dist/helpers-lib-cjs-es5');
+var trimErrorForTestReporting = helpers.trimErrorForTestReporting;
+
+
 
 
 function re2set(re) {
@@ -15,8 +19,251 @@ function re2set(re) {
   return xs.substr(2, xs.length - 4);   // strip off the wrapping: /[...]/
 }
 
+function exec(src) {
+  return helpers.exec(src, function code_execution_rig(sourcecode, options, errname, debug) {
+if (0x0) helpers.dump(src, '____testcode-dump-EXEC');
+    var f = new Function('', src);
+    return f();
+  }, {
+    dumpSourceCodeOnFailure: true,
+    throwErrorOnCompileFailure: true
+  });
+}
+
+
+
+describe("Lexer Prerequisites & Assumptions", function () {
+  "use strict";
+    
+  function shallow_copy_noclobber(dst, src) {
+    const chk = Object.prototype.hasOwnProperty;
+    for (var k in src) {
+      if (!(k in dst) && chk.call(src, k)) {
+        dst[k] = src[k];
+      }
+    }
+  }
+  function shallow_copy(src) {
+      if (src && typeof src === 'object') {
+          // non-Object-type objects, e.g. RegExp, Date, etc., can usually be shallow cloned
+          // using their constructor:
+          if (src.constructor !== Object) {
+              if (Array.isArray(src)) {
+                  return src.slice();
+              }
+              var dst = new src.constructor(src);
+
+              // and make sure all custom attributes are added to the clone:
+              shallow_copy_noclobber(dst, src);
+              return dst;
+          }
+          // native objects must be cloned a different way:
+          //
+          //return Object.assign({}, src);
+          var dst = {};
+          shallow_copy_noclobber(dst, src);
+          return dst;
+      }
+      return src;
+  }
+
+  // required for proper `shallow_copy()` operation:
+  it("`new Object(x)` API does not clone object / attributes", function() {
+    var soll = {
+      a: 1,
+      b: 'x',
+      c: {
+        a: 1,
+        b: new Date()
+      },
+      d: [1, 2, 3]
+    };
+    var ist = new soll.constructor(soll);
+
+    assert.strictEqual(ist, soll, 'native Object does NOT clone through its constructor!');
+    assert.strictEqual(soll.constructor, Object);
+    assert.strictEqual(ist.constructor, soll.constructor);
+  });
+
+  it("other native types clone instances through the constructor: RegExp", function() {
+    var soll = /[abc]/g;
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'RegExp type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, RegExp);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll, 'object attributes must all be copied/referenced');
+  });
+
+  it("other native types copy instances through the constructor: RegExp", function() {
+    var soll = /[abc]/g;
+    soll.zzz = 1;
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'RegExp type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, RegExp);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.strictEqual(ist.zzz, undefined);
+  });
+  
+  it("other native types need assistance to have custom attributes cloned: RegExp", function() {
+    var soll = /[abc]/g;
+    soll.zzz = 1;                           // custom attribute
+    var ist = new soll.constructor(soll);
+    shallow_copy_noclobber(ist, soll);      // assistance
+
+    assert.notStrictEqual(ist, soll, 'RegExp type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, RegExp);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.strictEqual(ist.zzz, 1);
+  });
+  
+  it("other native types clone instances through the constructor: Date", function() {
+    var soll = new Date();
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'Date type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Date);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll, 'object attributes must all be copied/referenced');
+  });
+
+  it("other native types copy instances through the constructor: Date", function() {
+    var soll = new Date();
+    soll.zzz = 1;
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'Date type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Date);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.strictEqual(ist.zzz, undefined);
+  });
+  
+  it("other native types need assistance to have custom attributes cloned: Date", function() {
+    var soll = new Date();
+    soll.zzz = 1;                           // custom attribute
+    var ist = new soll.constructor(soll);
+    shallow_copy_noclobber(ist, soll);      // assistance
+
+    assert.notStrictEqual(ist, soll, 'Date type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Date);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.strictEqual(ist.zzz, 1);
+  });
+  
+  it("Array types do NOT clone instances through their constructor", function() {
+    var soll = [1,2,3,4,5];
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'Array type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Array);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist[0], soll, 'object attributes must all be copied/referenced');
+  });
+
+  it("Array types clone instances through slice()", function() {
+    var soll = [1,2,3,4,5];
+    var ist = soll.slice();
+
+    assert.notStrictEqual(ist, soll, 'Array type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Array);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll, 'object attributes must all be copied/referenced');
+  });
+
+  it("Array types need assistance to have custom attributes cloned", function() {
+    var soll = [1,2,3,4,5];
+    soll.zzz = 1;                           // custom attribute
+    var ist = soll.slice();
+    shallow_copy_noclobber(ist, soll);      // assistance
+
+    assert.notStrictEqual(ist, soll, 'Array type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Array);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.deepEqual(Object.keys(ist), Object.keys(soll));
+    assert.strictEqual(ist.zzz, 1);
+  });
+  
+  it("other native types do NOT clone instances through the constructor: Map", function() {
+    var soll = new Map();
+    soll.a = -1;
+    soll.b = 7;
+    var ist = new soll.constructor(soll);
+
+    assert.notStrictEqual(ist, soll, 'Map type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Map);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll, 'object attributes must all be copied/referenced');
+    assert.strictEqual(Object.keys(ist).length, 0);
+    assert.notEqual(Object.keys(ist).length, Object.keys(soll).length);
+    assert.notEqual(ist.a, -1);
+  });
+
+  it("other native types need assistance to have custom attributes cloned: Map", function() {
+    var soll = new Map();
+    soll.a = -1;
+    soll.b = 7;
+    soll.zzz = 1;                           // custom attribute
+    var ist = new soll.constructor(soll);
+    shallow_copy_noclobber(ist, soll);      // assistance
+
+    assert.notStrictEqual(ist, soll, 'Map type DOES clone through its constructor!');
+    assert.strictEqual(soll.constructor, Map);
+    assert.strictEqual(ist.constructor, soll.constructor);
+    assert.deepEqual(ist, soll);    // WARNING: this assert DOES NOT detect the missing custom attribute 'zzz'!!!
+    assert.deepEqual(Object.keys(ist), Object.keys(soll));
+    assert.strictEqual(ist.a, -1);
+    assert.strictEqual(ist.b, 7);
+    assert.strictEqual(ist.zzz, 1);
+  });
+  
+  it("`x = Object.freeze(x)` protects `x` against any future editing", function() {
+    "use strict";
+
+    var soll = {
+      a: 1,
+      b: 'x',
+      c: {
+        a: 1,
+        b: new Date()
+      },
+      d: [1, 2, 3]
+    };
+    var ist = Object.freeze(soll);
+    assert.ok(ist === soll, 'object must not be cloned');
+    assert.throws(function () {
+      soll.a = 1;
+    },
+    TypeError);
+
+    // no error modifying sub-objects:
+    soll.c.a = 1;
+
+    soll.d[0] = 1;
+
+    // once we freeze those sub-objects too, the same operations should throw an exception in strict mode:
+    Object.freeze(ist.c);
+    Object.freeze(ist.d);
+    assert.throws(function () {
+      soll.c.a = 1;
+    },
+    TypeError);
+    assert.throws(function () {
+      soll.d[0] = 1;
+    },
+    TypeError);
+  });
+});
+
 
 describe("Lexer Kernel", function () {
+  "use strict";
+    
   it("test basic matchers", function() {
     var dict = {
         rules: [
@@ -210,7 +457,7 @@ describe("Lexer Kernel", function () {
       var lexer = new RegExpLexer(dict);
       var JisonLexerError = lexer.JisonLexerError;
       assert(JisonLexerError);
-      console.log('lexer:', lexer);
+      console.error('lexer:', lexer);
 
       var input = "x\nx\rx\vx\x07x\fx\bx\x42x\u0043x \\ x.xx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\\\ ";
 
@@ -980,13 +1227,21 @@ describe("Lexer Kernel", function () {
            ["x", "return 'X';" ],
            ["y", "return 'Y';" ],
            ["$", "return 'EOF';" ]
-       ]
+        ],
+        options: {
+            moduleType: 'js'
+        }
     };
 
     var input = "xxyx";
 
     var lexerSource = RegExpLexer.generate(dict);
-    eval(lexerSource);
+    var lexer = exec(`
+        ${lexerSource}
+
+        return lexer;
+    `);
+console.error('lexer:', typeof lexer);
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "X");
@@ -1009,7 +1264,11 @@ describe("Lexer Kernel", function () {
 
     var lexer_ = new RegExpLexer(dict);
     var lexerSource = lexer_.generateModule();
-    eval(lexerSource);
+    var lexer = exec(`
+        ${lexerSource}
+
+        return lexer;
+    `);
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "X");
@@ -1039,7 +1298,11 @@ describe("Lexer Kernel", function () {
 
     var lexer_ = new RegExpLexer(dict);
     var lexerSource = lexer_.generateModule();
-    eval(lexerSource);
+    var lexer = exec(`
+        ${lexerSource}
+
+        return lexer;
+    `);
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "X");
@@ -1061,15 +1324,21 @@ describe("Lexer Kernel", function () {
 
     var lexer_ = new RegExpLexer(dict);
     var lexerSource = lexer_.generateCommonJSModule();
-    var exports = {};
-    eval(lexerSource);
-    exports.lexer.setInput(input);
+    var exported = exec(`
+      var require = function () {};
+      var exports = {};
 
-    assert.equal(exports.lex(), "X");
-    assert.equal(exports.lex(), "X");
-    assert.equal(exports.lex(), "Y");
-    assert.equal(exports.lex(), "X");
-    assert.equal(exports.lex(), "EOF");
+      ${lexerSource}
+
+      return exports;
+    `);
+    exported.lexer.setInput(input);
+
+    assert.equal(exported.lex(), "X");
+    assert.equal(exported.lex(), "X");
+    assert.equal(exported.lex(), "Y");
+    assert.equal(exported.lex(), "X");
+    assert.equal(exported.lex(), "EOF");
   });
 
   it("test amd module generator", function() {
@@ -1085,13 +1354,17 @@ describe("Lexer Kernel", function () {
 
     var lexer_ = new RegExpLexer(dict);
     var lexerSource = lexer_.generateAMDModule();
+    var lexer = exec(`
 
     var lexer;
     var define = function (_, fn) {
       lexer = fn();
     };
 
-    eval(lexerSource);
+    ${lexerSource}
+
+    return lexer;
+    `);
     lexer.setInput(input);
 
     assert.equal(lexer.lex(), "X");
@@ -1099,6 +1372,34 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex(), "Y");
     assert.equal(lexer.lex(), "X");
     assert.equal(lexer.lex(), "EOF");
+  });
+
+  it("test ES2017 module generator", function() {
+    var dict = {
+        rules: [
+           ["x", "return 'X';" ],
+           ["y", "return 'Y';" ],
+           ["$", "return 'EOF';" ]
+       ]
+    };
+
+    var input = "xxyx";
+
+    var lexer_ = new RegExpLexer(dict);
+    var lexerSource = lexer_.generateESModule();
+    lexerSource = lexerSource.replace(/\bexport \{[^}]*?\};/, `return { 
+              lexer, 
+              yylex
+            };`);
+    var lexer = exec(lexerSource);
+    lexer.lexer.setInput(input);
+
+    // two ways to access `lex()`:
+    assert.equal(lexer.lexer.lex(), "X");
+    assert.equal(lexer.lexer.lex(), "X");
+    assert.equal(lexer.yylex(), "Y");
+    assert.equal(lexer.yylex(), "X");
+    assert.equal(lexer.yylex(), "EOF");
   });
 
   it("test DJ lexer", function() {
@@ -1836,20 +2137,20 @@ describe("Lexer Kernel", function () {
     assert.equal(counter, 6);
     assert.equal(lexer.lex(), "a:PRE");
     // as our PRE handler causes the lexer to produce another token immediately
-    // without entering the lexer proper, `yytext` et al are NOT RESET:
-    assert.equal(lexer.yytext, "x");
+    // without entering the lexer proper, `yytext` et al will be RESET:
+    assert.equal(lexer.yytext, "");
     assert.equal(counter, 9);
     assert.equal(lexer.lex(), "a:t");
     assert.equal(lexer.yytext, "y");
     assert.equal(counter, 12);
     assert.equal(lexer.lex(), "a:PRE");
-    assert.equal(lexer.yytext, "y");
+    assert.equal(lexer.yytext, "");
     assert.equal(counter, 15);
     assert.equal(lexer.lex(), "a:t");
     assert.equal(lexer.yytext, "z");
     assert.equal(counter, 18);
     assert.equal(lexer.lex(), "a:PRE");
-    assert.equal(lexer.yytext, "z");
+    assert.equal(lexer.yytext, "");
     assert.equal(counter, 21);
     assert.equal(lexer.EOF, 1);
     assert.equal(lexer.lex(), "a:1");
@@ -1904,8 +2205,8 @@ describe("Lexer Kernel", function () {
     assert.equal(counter, 6);
     assert.equal(lexer.lex(), "a:PRE");
     // as our PRE handler causes the lexer to produce another token immediately
-    // without entering the lexer proper, `yytext` et al are NOT RESET:
-    assert.equal(lexer.yytext, "x");
+    // without entering the lexer proper, `yytext` et al will be RESET:
+    assert.equal(lexer.yytext, "");
     assert.equal(counter, 9);
 
     lexer.options.pre_lex = null;
@@ -1957,6 +2258,8 @@ describe("Lexer Kernel", function () {
   });
 
   it("test yylloc info object must be unique for each token", function() {
+    "use strict";
+    
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -2004,6 +2307,8 @@ describe("Lexer Kernel", function () {
   });
 
   it("test yylloc info object is not modified by subsequent lex() activity", function() {
+    "use strict";
+    
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -2065,7 +2370,9 @@ describe("Lexer Kernel", function () {
     }
   });
 
-  it("test yylloc info object CAN be modified by subsequent input() activity", function() {
+  it("test yylloc info object CANNOT be modified by subsequent input() activity", function() {
+    "use strict";
+
     var dict = {
         rules: [
             ["[a-z]", "return 'X';" ]
@@ -2073,7 +2380,7 @@ describe("Lexer Kernel", function () {
         options: {ranges: true}
     };
 
-    var input = "xyz";
+    var input = "xyzzz";
     var prevloc = null;
 
     var lexer = new RegExpLexer(dict, input);
@@ -2098,28 +2405,60 @@ describe("Lexer Kernel", function () {
                                     range: [1, 2]});
     prevloc = lexer.yylloc;
     assert.equal(lexer.input(), "z");
-    // this will modify the existing yylloc:
-    assert.strictEqual(prevloc, lexer.yylloc);
+    // this will NOT modify the existing yylloc
+    // but produce a fresh yylloc instead:
+    assert.notStrictEqual(prevloc, lexer.yylloc);
     assert.deepEqual(prevloc, {first_line: 1,
                                     first_column: 1,
                                     last_line: 1,
-                                    last_column: 3,
-                                    range: [1, 3]});
+                                    last_column: 2,
+                                    range: [1, 2]});
     assert.deepEqual(lexer.yylloc, {first_line: 1,
-                                    first_column: 1,
+                                    first_column: 2,
                                     last_line: 1,
                                     last_column: 3,
-                                    range: [1, 3]});
+                                    range: [2, 3]});
+    // continued use of .input() will instead MODIFY the existing yylloc:
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.input(), "z");
+    assert.strictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 2,
+                                    last_line: 1,
+                                    last_column: 4,
+                                    range: [2, 4]});
+    prevloc = lexer.yylloc;
+    assert.equal(lexer.input(), "z");
+    assert.strictEqual(prevloc, lexer.yylloc);
+    assert.deepEqual(lexer.yylloc, {first_line: 1,
+                                    first_column: 2,
+                                    last_line: 1,
+                                    last_column: 5,
+                                    range: [2, 5]});
+    // invocation of lex() / next() will produce a new yylloc instance
+    // (unless more() is pending):
     prevloc = lexer.yylloc;
     assert.equal(lexer.lex(), lexer.EOF);
     // yylloc on EOF is NOT the same yylloc object as before: EOF is just another token, WITH its own yylloc info...
     assert.notStrictEqual(prevloc, lexer.yylloc);
     // and this yylloc value set is intuitive because EOF does update yylloc like any other lexed token:
     assert.deepEqual(lexer.yylloc, {first_line: 1,
-                                    first_column: 3,
+                                    first_column: 5,
                                     last_line: 1,
-                                    last_column: 3,
-                                    range: [3, 3]});
+                                    last_column: 5,
+                                    range: [5, 5]});
+    
+    // `lex()` freezes the resulting `yylloc`, hence any edits should barf a hairball in strict mode:
+    assert.throws(function () {
+        lexer.yylloc.first_line = 1234;
+      },
+      TypeError);
+
+    // however, `input()` creates a fresh `yylloc` only on its first invocation and DOES NOT freeze
+    // the `yylloc` as it doesn't know if there's any subsequent `input()` call which should be
+    // able to edit the `yylloc`!
+    prevloc.first_line = 1234;
+    assert.strictEqual(prevloc.first_line, 1234);
   });
 
   it("test empty rule set with custom lexer", function() {
@@ -2793,6 +3132,8 @@ describe("Lexer Kernel", function () {
 
 // prettyPrintRange() API
 describe("prettyPrintRange() API", function () {
+  "use strict";
+    
   it("baseline - not invoking the API via ny error report", function () {
     var dict = [
         '%%',
@@ -2911,22 +3252,58 @@ describe("prettyPrintRange() API", function () {
 
 
 
-//xdescribe("Error Detection and Diagnosis in JISON-LEX Tool", function () {
+//describe("Error Detection and Diagnosis in JISON-LEX Tool", function () {
 
 
 
 
 
 
-//
-// compile these lexer specs and run a sample input through them
-//
-describe("Test Lexer Grammars", function () {
+
+
+
+
+function lexer_reset() {
+    "use strict";
+    
+    // if (RegExpLexer.parser.yy) {
+    //     var y = RegExpLexer.parser.yy;
+    //     if (y.parser) {
+    //         delete y.parser;
+    //     }
+    //     if (y.lexer) {
+    //         delete y.lexer;
+    //     }
+    // }
+
+    //RegExpLexer.parser.yy = {};
+
+    var debug = 0;
+
+    if (!debug) {
+        // // silence warn+log messages from the test internals:
+        // RegExpLexer.parser.warn = function bnf_warn() {
+        //     // console.warn("TEST WARNING: ", arguments);
+        // };
+
+        // RegExpLexer.parser.log = function bnf_log() {
+        //     // console.warn("TEST LOG: ", arguments);
+        // };
+    }
+}
+
+
+
+
+
+
+
+
+
   console.log('exec glob....', __dirname);
   var testset = globby.sync([
     __dirname + '/specs/*.jison',
     __dirname + '/specs/*.json5',
-    '!'+ __dirname + '/specs/*-ref.json5',
     __dirname + '/specs/*.js',
   ]);
   // also compile and run the lexers in the /examples/ directory:
@@ -2950,6 +3327,7 @@ describe("Test Lexer Grammars", function () {
       var spec;
       var header;
       var extra;
+      var grammar;
 
       if (filepath.match(/\.js$/)) {
         spec = require(filepath);
@@ -2958,11 +3336,16 @@ describe("Test Lexer Grammars", function () {
 
         // extract the top comment, which carries the title, etc. metadata:
         header = hdrspec.substr(0, hdrspec.indexOf('\n\n') + 1);
+        
+        grammar = spec;
       } else {
         spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
 
         // extract the top comment, which carries the title, etc. metadata:
         header = spec.substr(0, spec.indexOf('\n\n') + 1);
+
+        // extract the grammar to test:
+        grammar = spec.substr(spec.indexOf('\n\n') + 2);
       }
 
       // then strip off the comment prefix for every line:
@@ -2975,19 +3358,37 @@ describe("Test Lexer Grammars", function () {
         filename: filepath,
       });
 
+      if (doc.crlf && typeof grammar === 'string') {
+        grammar = grammar.replace(/\n/g, "\r\n");
+      }
+
       var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
       var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
       var lexerRefFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-lexer.js');
       var lexerOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-lexer.js');
-      mkdirp(path.dirname(lexerRefFilePath));
-      mkdirp(path.dirname(lexerOutFilePath));
+      mkdirp(path.dirname(refOutFilePath));
+      mkdirp(path.dirname(testOutFilePath));
 
       var refOut;
       try {
         var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
         refOut = JSON5.parse(soll);
       } catch (ex) {
         refOut = null;
+      }
+
+      var lexerRefOut;
+      try {
+        var soll = fs.readFileSync(lexerRefFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
+        lexerRefOut = soll;
+      } catch (ex) {
+        lexerRefOut = null;
       }
 
       return {
@@ -2997,8 +3398,10 @@ describe("Test Lexer Grammars", function () {
         lexerRefPath: lexerRefFilePath,
         lexerOutPath: lexerOutFilePath,
         spec: spec,
+        grammar: grammar,
         meta: doc,
         metaExtra: extra,
+        lexerRef: lexerRefOut,
         ref: refOut
       };
     } catch (ex) {
@@ -3043,36 +3446,63 @@ describe("Test Lexer Grammars", function () {
       .replace(/ $/gm, '');
   }
 
+
+
+
+
+
+
+
+
+
+//
+// compile these lexer specs and run a sample input through them
+//
+describe("Test Lexer Grammars", function () {
+  "use strict";
+    
+  beforeEach(function beforeEachTest() {
+    lexer_reset();
+  });
+
+return;
+
   testset.forEach(function (filespec) {
     // process this file:
     var title = (filespec.meta ? filespec.meta.title : null);
 
     // and create a test for it:
     it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/') + (title ? ' :: ' + title : ''), function testEachLexerExample() {
+      var err, grammar;
       var tokens = [];
       var i = 0;
       var lexer;
-      var lexerSourceCode, err;
+      var lexerSourceCode;
 
       try {
         // Change CWD to the directory where the source grammar resides: this helps us properly
         // %include any files mentioned in the grammar with relative paths:
         process.chdir(path.dirname(filespec.path));
 
-        lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
+        grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
+
+        lexer = new RegExpLexer(grammar, (filespec.meta.test_input || 'a b c'), null, {
           json: true,           // input MAY be JSON/JSON5 format OR JISON LEX format!
           showSource: function (lexer, source, options, RegExpLexerClass) {
+            delete options.exportSourceCode;
             lexerSourceCode = {
               sourceCode: source,
               options: options,
             };
           }
         });
+
         var countDown = 4;
         for (i = 0; i < 1000; i++) {
           var tok = lexer.lex();
           tokens.push({
-            token: tok,
+            id: tok,
+            token: (tok === 1 ? 'EOF' : tok),    // parser.describeSymbol(tok),
             yytext: lexer.yytext,
             yylloc: lexer.yylloc
           });
@@ -3094,7 +3524,8 @@ describe("Test Lexer Grammars", function () {
           message: ex.message,
           name: ex.name,
           stack: ex.stack,
-          ex: ex,
+          meta: filespec.spec.meta, 
+          ex: trimErrorForTestReporting(ex),
         });
         // and make sure lexer !== undefined:
         lexer = { fail: 1 };
@@ -3158,8 +3589,8 @@ describe("Test Lexer Grammars", function () {
       }
 
       fs.writeFileSync(filespec.lexerOutPath, dumpStr, 'utf8');
-      if (fs.existsSync(filespec.lexerRefPath)) {
-        refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
+      if (filespec.lexerRef) {
+        refSrc = filespec.lexerRef;
 
         //assert.equal(refSrc, lexerSourceCode);
         // ^--- when this one fails, it takes ages to print a diff from those huge files,
@@ -3186,3 +3617,4 @@ describe("Test Lexer Grammars", function () {
     });
   });
 });
+

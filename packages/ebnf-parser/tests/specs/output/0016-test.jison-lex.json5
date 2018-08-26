@@ -1,6 +1,7 @@
 [
+  18,
   {
-    id: 18,
+    id: 20,
     token: '"TOKEN"',
     yytext: '%token',
     yylloc: {

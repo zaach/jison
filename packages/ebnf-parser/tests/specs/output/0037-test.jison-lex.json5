@@ -1,6 +1,7 @@
 [
+  24,
   {
-    id: 28,
+    id: 30,
     token: '"OPTIONS"',
     yytext: '%options',
     yylloc: {
@@ -15,7 +16,7 @@
     },
   },
   {
-    id: 56,
+    id: 59,
     token: '"OPTION_VALUE"',
     yytext: 's1',
     yylloc: {
@@ -45,7 +46,7 @@
     },
   },
   {
-    id: 55,
+    id: 58,
     token: '"OPTION_STRING"',
     yytext: `"s1\\"val'ue"`,
     yylloc: {
@@ -60,7 +61,7 @@
     },
   },
   {
-    id: 56,
+    id: 59,
     token: '"OPTION_VALUE"',
     yytext: 's2',
     yylloc: {
@@ -90,7 +91,7 @@
     },
   },
   {
-    id: 55,
+    id: 58,
     token: '"OPTION_STRING"',
     yytext: `'s2\\\\x\\'val"ue'`,
     yylloc: {
@@ -105,7 +106,7 @@
     },
   },
   {
-    id: 56,
+    id: 59,
     token: '"OPTION_VALUE"',
     yytext: 's3',
     yylloc: {
@@ -135,7 +136,7 @@
     },
   },
   {
-    id: 55,
+    id: 58,
     token: '"OPTION_STRING"',
     yytext: `"s3\\"val\\'ue"`,
     yylloc: {
@@ -150,7 +151,7 @@
     },
   },
   {
-    id: 56,
+    id: 59,
     token: '"OPTION_VALUE"',
     yytext: 's4',
     yylloc: {
@@ -180,7 +181,7 @@
     },
   },
   {
-    id: 55,
+    id: 58,
     token: '"OPTION_STRING"',
     yytext: `'s4\\\\x\\'val\\"ue'`,
     yylloc: {
@@ -195,7 +196,7 @@
     },
   },
   {
-    id: 24,
+    id: 26,
     token: '"OPTIONS_END"',
     yytext: '',
     yylloc: {
@@ -300,7 +301,7 @@
     },
   },
   {
-    id: 57,
+    id: 60,
     token: '"TRAILING_CODE_CHUNK"',
     yytext: `
 

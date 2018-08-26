@@ -1,6 +1,7 @@
 [
+  13,
   {
-    id: 32,
+    id: 36,
     token: '"PARSE_PARAM"',
     yytext: '%parse-param',
     yylloc: {
@@ -135,7 +136,7 @@
     },
   },
   {
-    id: 57,
+    id: 60,
     token: '"TRAILING_CODE_CHUNK"',
     yytext: `
 

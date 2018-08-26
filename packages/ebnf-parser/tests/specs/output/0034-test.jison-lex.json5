@@ -1,6 +1,7 @@
 [
+  13,
   {
-    id: 28,
+    id: 30,
     token: '"OPTIONS"',
     yytext: '%options',
     yylloc: {
@@ -15,7 +16,7 @@
     },
   },
   {
-    id: 56,
+    id: 59,
     token: '"OPTION_VALUE"',
     yytext: 'bug-a-boo',
     yylloc: {
@@ -30,7 +31,7 @@
     },
   },
   {
-    id: 24,
+    id: 26,
     token: '"OPTIONS_END"',
     yytext: '',
     yylloc: {
@@ -135,7 +136,7 @@
     },
   },
   {
-    id: 57,
+    id: 60,
     token: '"TRAILING_CODE_CHUNK"',
     yytext: `
 

@@ -1,12 +1,13 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) :
-    typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) :
-    (global['lex-parser'] = factory(global.fs,global.path,global.recast,global.assert$1,global.XRegExp,global.JSON5));
-}(this, (function (fs,path,recast,assert$1,XRegExp,JSON5) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('fs'), require('path'), require('@gerhobbelt/recast'), require('@babel/core'), require('@babel/parser'), require('assert'), require('@gerhobbelt/xregexp'), require('@gerhobbelt/json5')) :
+    typeof define === 'function' && define.amd ? define(['fs', 'path', '@gerhobbelt/recast', '@babel/core', '@babel/parser', 'assert', '@gerhobbelt/xregexp', '@gerhobbelt/json5'], factory) :
+    (global['lex-parser'] = factory(global.fs,global.path,global.recast,global.babel,global.parser,global.assert$1,global.XRegExp,global.JSON5));
+}(this, (function (fs,path,recast,babel,parser,assert$1,XRegExp,JSON5) { 'use strict';
 
     fs = fs && fs.hasOwnProperty('default') ? fs['default'] : fs;
     path = path && path.hasOwnProperty('default') ? path['default'] : path;
     recast = recast && recast.hasOwnProperty('default') ? recast['default'] : recast;
+    parser = parser && parser.hasOwnProperty('default') ? parser['default'] : parser;
     assert$1 = assert$1 && assert$1.hasOwnProperty('default') ? assert$1['default'] : assert$1;
     XRegExp = XRegExp && XRegExp.hasOwnProperty('default') ? XRegExp['default'] : XRegExp;
     JSON5 = JSON5 && JSON5.hasOwnProperty('default') ? JSON5['default'] : JSON5;
@@ -264,6 +265,7 @@
     // attempt to dump in one of several locations: first winner is *it*!
     function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
         var dumpfile;
+        options = options || {};
 
         try {
             var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
@@ -379,6 +381,8 @@
 
     //
 
+
+
     assert$1(recast);
     var types = recast.types;
     assert$1(types);
@@ -401,6 +405,36 @@
     }
 
 
+    function compileCodeToES5(src, options) {
+        options = Object.assign({}, {
+          ast: true,
+          code: true,
+          sourceMaps: true,
+          comments: true,
+          filename: 'compileCodeToES5.js',
+          sourceFileName: 'compileCodeToES5.js',
+          sourceRoot: '.',
+          sourceType: 'module',
+
+          babelrc: false,
+          
+          ignore: [
+            "node_modules/**/*.js"
+          ],
+          compact: false,
+          retainLines: false,
+          presets: [
+            ["@babel/preset-env", {
+              targets: {
+                browsers: ["last 2 versions", "safari >= 7"],
+                node: "4.0"
+              }
+            }]
+          ]
+        }, options);
+
+        return babel.transformSync(src, options); // => { code, map, ast }
+    }
 
 
     function prettyPrintAST(ast, options) {
@@ -533,6 +567,7 @@
 
     var parse2AST = {
         parseCodeChunkToAST,
+        compileCodeToES5,
         prettyPrintAST,
         checkActionBlock,
         trimActionCode,
@@ -772,6 +807,309 @@
         getRegExpInfo: getRegExpInfo
     };
 
+    var cycleref = [];
+    var cyclerefpath = [];
+
+    var linkref = [];
+    var linkrefpath = [];
+
+    var path$1 = [];
+
+    function shallow_copy(src) {
+        if (typeof src === 'object') {
+            if (src instanceof Array) {
+                return src.slice();
+            }
+
+            var dst = {};
+            if (src instanceof Error) {
+                dst.name = src.name;
+                dst.message = src.message;
+                dst.stack = src.stack;
+            }
+
+            for (var k in src) {
+                if (Object.prototype.hasOwnProperty.call(src, k)) {
+                    dst[k] = src[k];
+                }
+            }
+            return dst;
+        }
+        return src;
+    }
+
+
+    function shallow_copy_and_strip_depth(src, parentKey) {
+        if (typeof src === 'object') {
+            var dst;
+
+            if (src instanceof Array) {
+                dst = src.slice();
+                for (var i = 0, len = dst.length; i < len; i++) {
+                    path$1.push('[' + i + ']');
+                    dst[i] = shallow_copy_and_strip_depth(dst[i], parentKey + '[' + i + ']');
+                    path$1.pop();
+                }
+            } else {
+                dst = {};
+                if (src instanceof Error) {
+                    dst.name = src.name;
+                    dst.message = src.message;
+                    dst.stack = src.stack;
+                }
+
+                for (var k in src) {
+                    if (Object.prototype.hasOwnProperty.call(src, k)) {
+                        var el = src[k];
+                        if (el && typeof el === 'object') {
+                            dst[k] = '[cyclic reference::attribute --> ' + parentKey + '.' + k + ']';
+                        } else {
+                            dst[k] = src[k];
+                        }
+                    }
+                }
+            }
+            return dst;
+        }
+        return src;
+    }
+
+
+    function trim_array_tail(arr) {
+        if (arr instanceof Array) {
+            for (var len = arr.length; len > 0; len--) {
+                if (arr[len - 1] != null) {
+                    break;
+                }
+            }
+            arr.length = len;
+        }
+    }
+
+    function treat_value_stack(v) {
+        if (v instanceof Array) {
+            var idx = cycleref.indexOf(v);
+            if (idx >= 0) {
+                v = '[cyclic reference to parent array --> ' + cyclerefpath[idx] + ']';
+            } else {
+                idx = linkref.indexOf(v);
+                if (idx >= 0) {
+                    v = '[reference to sibling array --> ' + linkrefpath[idx] + ', length = ' + v.length + ']';
+                } else {
+                    cycleref.push(v);
+                    cyclerefpath.push(path$1.join('.'));
+                    linkref.push(v);
+                    linkrefpath.push(path$1.join('.'));
+
+                    v = treat_error_infos_array(v);
+
+                    cycleref.pop();
+                    cyclerefpath.pop();
+                }
+            }
+        } else if (v) {
+            v = treat_object(v);
+        }
+        return v;
+    }
+
+    function treat_error_infos_array(arr) {
+        var inf = arr.slice();
+        trim_array_tail(inf);
+        for (var key = 0, len = inf.length; key < len; key++) {
+            var err = inf[key];
+            if (err) {
+                path$1.push('[' + key + ']');
+
+                err = treat_object(err);
+
+                if (typeof err === 'object') {
+                    if (err.lexer) {
+                        err.lexer = '[lexer]';
+                    }
+                    if (err.parser) {
+                        err.parser = '[parser]';
+                    }
+                    trim_array_tail(err.symbol_stack);
+                    trim_array_tail(err.state_stack);
+                    trim_array_tail(err.location_stack);
+                    if (err.value_stack) {
+                        path$1.push('value_stack');
+                        err.value_stack = treat_value_stack(err.value_stack);
+                        path$1.pop();
+                    }
+                }
+
+                inf[key] = err;
+
+                path$1.pop();
+            }
+        }
+        return inf;
+    }
+
+    function treat_lexer(l) {
+        // shallow copy object:
+        l = shallow_copy(l);
+        delete l.simpleCaseActionClusters;
+        delete l.rules;
+        delete l.conditions;
+        delete l.__currentRuleSet__;
+
+        if (l.__error_infos) {
+            path$1.push('__error_infos');
+            l.__error_infos = treat_value_stack(l.__error_infos);
+            path$1.pop();
+        }
+
+        return l;
+    }
+
+    function treat_parser(p) {
+        // shallow copy object:
+        p = shallow_copy(p);
+        delete p.productions_;
+        delete p.table;
+        delete p.defaultActions;
+
+        if (p.__error_infos) {
+            path$1.push('__error_infos');
+            p.__error_infos = treat_value_stack(p.__error_infos);
+            path$1.pop();
+        }
+
+        if (p.__error_recovery_infos) {
+            path$1.push('__error_recovery_infos');
+            p.__error_recovery_infos = treat_value_stack(p.__error_recovery_infos);
+            path$1.pop();
+        }
+
+        if (p.lexer) {
+            path$1.push('lexer');
+            p.lexer = treat_lexer(p.lexer);
+            path$1.pop();
+        }
+
+        return p;
+    }
+
+    function treat_hash(h) {
+        // shallow copy object:
+        h = shallow_copy(h);
+
+        if (h.parser) {
+            path$1.push('parser');
+            h.parser = treat_parser(h.parser);
+            path$1.pop();
+        }
+
+        if (h.lexer) {
+            path$1.push('lexer');
+            h.lexer = treat_lexer(h.lexer);
+            path$1.push();
+        }
+
+        return h;
+    }
+
+    function treat_error_report_info(e) {
+        // shallow copy object:
+        e = shallow_copy(e);
+        
+        if (e && e.hash) {
+            path$1.push('hash');
+            e.hash = treat_hash(e.hash);
+            path$1.pop();
+        }
+
+        if (e.parser) {
+            path$1.push('parser');
+            e.parser = treat_parser(e.parser);
+            path$1.pop();
+        }
+
+        if (e.lexer) {
+            path$1.push('lexer');
+            e.lexer = treat_lexer(e.lexer);
+            path$1.pop();
+        }    
+
+        if (e.__error_infos) {
+            path$1.push('__error_infos');
+            e.__error_infos = treat_value_stack(e.__error_infos);
+            path$1.pop();
+        }
+
+        if (e.__error_recovery_infos) {
+            path$1.push('__error_recovery_infos');
+            e.__error_recovery_infos = treat_value_stack(e.__error_recovery_infos);
+            path$1.pop();
+        }
+
+        trim_array_tail(e.symbol_stack);
+        trim_array_tail(e.state_stack);
+        trim_array_tail(e.location_stack);
+        if (e.value_stack) {
+            path$1.push('value_stack');
+            e.value_stack = treat_value_stack(e.value_stack);
+            path$1.pop();
+        }
+
+        return e;
+    }
+
+    function treat_object(e) {
+        if (e && typeof e === 'object') {
+            var idx = cycleref.indexOf(e);
+            if (idx >= 0) {
+                // cyclic reference, most probably an error instance.
+                // we still want it to be READABLE in a way, though:
+                e = shallow_copy_and_strip_depth(e, cyclerefpath[idx]);
+            } else {
+                idx = linkref.indexOf(e);
+                if (idx >= 0) {
+                    e = '[reference to sibling --> ' + linkrefpath[idx] + ']';
+                } else {
+                    cycleref.push(e);
+                    cyclerefpath.push(path$1.join('.'));
+                    linkref.push(e);
+                    linkrefpath.push(path$1.join('.'));
+
+                    e = treat_error_report_info(e);
+                    
+                    cycleref.pop();
+                    cyclerefpath.pop();
+                }
+            }
+        }
+        return e;
+    }
+
+
+    // strip off large chunks from the Error exception object before
+    // it will be fed to a test log or other output.
+    // 
+    // Internal use in the unit test rigs.
+    function trimErrorForTestReporting(e) {
+        cycleref.length = 0;
+        cyclerefpath.length = 0;
+        linkref.length = 0;
+        linkrefpath.length = 0;
+        path$1 = ['*'];
+
+        if (e) {
+            e = treat_object(e);
+        }
+
+        cycleref.length = 0;
+        cyclerefpath.length = 0;
+        linkref.length = 0;
+        linkrefpath.length = 0;
+        path$1 = ['*'];
+
+        return e;
+    }
+
     var helpers = {
         rmCommonWS,
         camelCase,
@@ -779,6 +1117,7 @@
         isLegalIdentifierInput,
         scanRegExp,
         dquote,
+        trimErrorForTestReporting,
 
         checkRegExp: reHelpers.checkRegExp,
         getRegExpInfo: reHelpers.getRegExpInfo,
@@ -787,6 +1126,7 @@
         dump: code_exec.dump,
 
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+        compileCodeToES5: parse2AST.compileCodeToES5,
         prettyPrintAST: parse2AST.prettyPrintAST,
         checkActionBlock: parse2AST.checkActionBlock,
         trimActionCode: parse2AST.trimActionCode,
@@ -957,7 +1297,7 @@
             }
         
 
-    var parser = {
+    var parser$1 = {
         // Code Generator Information Report
         // ---------------------------------
         //
@@ -6743,8 +7083,8 @@
     },
     yyError: 1
     };
-    parser.originalParseError = parser.parseError;
-    parser.originalQuoteName = parser.quoteName;
+    parser$1.originalParseError = parser$1.parseError;
+    parser$1.originalQuoteName = parser$1.quoteName;
     /* lexer generated by jison-lex 0.6.1-216 */
 
     /*
@@ -9082,7 +9422,7 @@
             return 30;
             break;
 
-          case 78:
+          case 80:
             /*! Conditions:: INITIAL rules code */
             /*! Rule::       %include\b */
             yy.depth = 0;
@@ -9098,7 +9438,7 @@
             return 26;
             break;
 
-          case 79:
+          case 81:
             /*! Conditions:: INITIAL rules code */
             /*! Rule::       %{NAME}([^\r\n]*) */
             /* ignore unrecognized decl */
@@ -9117,7 +9457,7 @@
             return 28;
             break;
 
-          case 80:
+          case 82:
             /*! Conditions:: rules macro INITIAL */
             /*! Rule::       %% */
             this.pushState('rules');
@@ -9125,7 +9465,7 @@
             return 19;
             break;
 
-          case 88:
+          case 90:
             /*! Conditions:: set */
             /*! Rule::       \] */
             this.popState();
@@ -9133,47 +9473,23 @@
             return 47;
             break;
 
-          case 89:
+          case 91:
             /*! Conditions:: code */
             /*! Rule::       (?:[^%{BR}][^{BR}]*{BR}+)+ */
             return 55;       // shortcut to grab a large bite at once when we're sure not to encounter any `%include` in there at start-of-line.  
 
             break;
 
-          case 91:
+          case 93:
             /*! Conditions:: code */
             /*! Rule::       [^{BR}]+ */
             return 55;       // the bit of CODE just before EOF...  
 
             break;
 
-          case 92:
-            /*! Conditions:: action */
-            /*! Rule::       " */
-            yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-            return 40;
-            break;
-
-          case 93:
-            /*! Conditions:: action */
-            /*! Rule::       ' */
-            yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-            return 40;
-            break;
-
           case 94:
             /*! Conditions:: action */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             yy_.yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
@@ -9184,10 +9500,10 @@
             break;
 
           case 95:
-            /*! Conditions:: options */
-            /*! Rule::       " */
+            /*! Conditions:: action */
+            /*! Rule::       ' */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9196,10 +9512,10 @@
             break;
 
           case 96:
-            /*! Conditions:: options */
-            /*! Rule::       ' */
+            /*! Conditions:: action */
+            /*! Rule::       ` */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9209,7 +9525,7 @@
 
           case 97:
             /*! Conditions:: options */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             yy_.yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
@@ -9220,13 +9536,10 @@
             break;
 
           case 98:
-            /*! Conditions:: * */
-            /*! Rule::       " */
-            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+            /*! Conditions:: options */
+            /*! Rule::       ' */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9235,13 +9548,10 @@
             break;
 
           case 99:
-            /*! Conditions:: * */
-            /*! Rule::       ' */
-            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+            /*! Conditions:: options */
+            /*! Rule::       ` */
             yy_.yyerror(rmCommonWS`
-                                            unterminated string constant encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -9251,7 +9561,7 @@
 
           case 100:
             /*! Conditions:: * */
-            /*! Rule::       ` */
+            /*! Rule::       " */
             var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
 
             yy_.yyerror(rmCommonWS`
@@ -9265,6 +9575,36 @@
             break;
 
           case 101:
+            /*! Conditions:: * */
+            /*! Rule::       ' */
+            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+            yy_.yyerror(rmCommonWS`
+                                            unterminated string constant encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+            return 40;
+            break;
+
+          case 102:
+            /*! Conditions:: * */
+            /*! Rule::       ` */
+            var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+            yy_.yyerror(rmCommonWS`
+                                            unterminated string constant encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+            return 40;
+            break;
+
+          case 103:
             /*! Conditions:: macro rules */
             /*! Rule::       . */
             /* b0rk on bad characters */
@@ -9287,7 +9627,7 @@
             return 2;
             break;
 
-          case 102:
+          case 104:
             /*! Conditions:: options */
             /*! Rule::       . */
             yy_.yyerror(rmCommonWS`
@@ -9304,7 +9644,7 @@
             return 2;
             break;
 
-          case 103:
+          case 105:
             /*! Conditions:: * */
             /*! Rule::       . */
             yy_.yyerror(rmCommonWS`
@@ -9440,40 +9780,48 @@
           72: 14,
 
           /*! Conditions:: rules macro INITIAL */
+          /*! Rule::       %pointer\b */
+          78: 'FLEX_POINTER_MODE',
+
+          /*! Conditions:: rules macro INITIAL */
+          /*! Rule::       %array\b */
+          79: 'FLEX_ARRAY_MODE',
+
+          /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-          81: 49,
+          83: 49,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{{ID}\} */
-          82: 45,
+          84: 45,
 
           /*! Conditions:: set options */
           /*! Rule::       \{{ID}\} */
-          83: 45,
+          85: 45,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \{ */
-          84: 4,
+          86: 4,
 
           /*! Conditions:: rules macro INITIAL */
           /*! Rule::       \} */
-          85: 5,
+          87: 5,
 
           /*! Conditions:: set */
           /*! Rule::       (?:\\[^{BR}]|[^\]{])+ */
-          86: 48,
+          88: 48,
 
           /*! Conditions:: set */
           /*! Rule::       \{ */
-          87: 48,
+          89: 48,
 
           /*! Conditions:: code */
           /*! Rule::       [^{BR}]*{BR}+ */
-          90: 55,
+          92: 55,
 
           /*! Conditions:: * */
           /*! Rule::       $ */
-          104: 1
+          106: 1
         },
 
         rules: [
@@ -9555,36 +9903,38 @@
           /*  75: */  /^(?:%x\b)/,
           /*  76: */  /^(?:%code\b)/,
           /*  77: */  /^(?:%import\b)/,
-          /*  78: */  /^(?:%include\b)/,
-          /*  79: */  new XRegExp(
+          /*  78: */  /^(?:%pointer\b)/,
+          /*  79: */  /^(?:%array\b)/,
+          /*  80: */  /^(?:%include\b)/,
+          /*  81: */  new XRegExp(
             '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
             ''
           ),
-          /*  80: */  /^(?:%%)/,
-          /*  81: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
-          /*  82: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-          /*  83: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-          /*  84: */  /^(?:\{)/,
-          /*  85: */  /^(?:\})/,
-          /*  86: */  /^(?:(?:\\[^\n\r]|[^\]{])+)/,
-          /*  87: */  /^(?:\{)/,
-          /*  88: */  /^(?:\])/,
-          /*  89: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
-          /*  90: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
-          /*  91: */  /^(?:[^\n\r]+)/,
-          /*  92: */  /^(?:")/,
-          /*  93: */  /^(?:')/,
-          /*  94: */  /^(?:`)/,
-          /*  95: */  /^(?:")/,
-          /*  96: */  /^(?:')/,
-          /*  97: */  /^(?:`)/,
-          /*  98: */  /^(?:")/,
-          /*  99: */  /^(?:')/,
-          /* 100: */  /^(?:`)/,
-          /* 101: */  /^(?:.)/,
-          /* 102: */  /^(?:.)/,
+          /*  82: */  /^(?:%%)/,
+          /*  83: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
+          /*  84: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+          /*  85: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+          /*  86: */  /^(?:\{)/,
+          /*  87: */  /^(?:\})/,
+          /*  88: */  /^(?:(?:\\[^\n\r]|[^\]{])+)/,
+          /*  89: */  /^(?:\{)/,
+          /*  90: */  /^(?:\])/,
+          /*  91: */  /^(?:(?:[^\n\r%][^\n\r]*(\r\n|\n|\r)+)+)/,
+          /*  92: */  /^(?:[^\n\r]*(\r\n|\n|\r)+)/,
+          /*  93: */  /^(?:[^\n\r]+)/,
+          /*  94: */  /^(?:")/,
+          /*  95: */  /^(?:')/,
+          /*  96: */  /^(?:`)/,
+          /*  97: */  /^(?:")/,
+          /*  98: */  /^(?:')/,
+          /*  99: */  /^(?:`)/,
+          /* 100: */  /^(?:")/,
+          /* 101: */  /^(?:')/,
+          /* 102: */  /^(?:`)/,
           /* 103: */  /^(?:.)/,
-          /* 104: */  /^(?:$)/
+          /* 104: */  /^(?:.)/,
+          /* 105: */  /^(?:.)/,
+          /* 106: */  /^(?:$)/
         ],
 
         conditions: {
@@ -9639,14 +9989,16 @@
               80,
               81,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
               101,
+              102,
               103,
-              104
+              105,
+              106
             ],
 
             inclusive: true
@@ -9696,24 +10048,26 @@
               75,
               76,
               77,
-              80,
-              81,
+              78,
+              79,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
               101,
+              102,
               103,
-              104
+              105,
+              106
             ],
 
             inclusive: true
           },
 
           'code': {
-            rules: [19, 78, 79, 89, 90, 91, 98, 99, 100, 103, 104],
+            rules: [19, 80, 81, 91, 92, 93, 100, 101, 102, 105, 106],
             inclusive: false
           },
 
@@ -9736,16 +10090,16 @@
               37,
               38,
               39,
-              83,
-              95,
-              96,
+              85,
               97,
               98,
               99,
               100,
+              101,
               102,
-              103,
-              104
+              104,
+              105,
+              106
             ],
 
             inclusive: false
@@ -9770,21 +10124,21 @@
               16,
               17,
               18,
-              92,
-              93,
               94,
-              98,
-              99,
+              95,
+              96,
               100,
-              103,
-              104
+              101,
+              102,
+              105,
+              106
             ],
 
             inclusive: false
           },
 
           'set': {
-            rules: [83, 86, 87, 88, 98, 99, 100, 103, 104],
+            rules: [85, 88, 89, 90, 100, 101, 102, 105, 106],
             inclusive: false
           },
 
@@ -9837,13 +10191,15 @@
               80,
               81,
               82,
+              83,
               84,
-              85,
-              98,
-              99,
+              86,
+              87,
               100,
-              103,
-              104
+              101,
+              102,
+              105,
+              106
             ],
 
             inclusive: true
@@ -9968,7 +10324,7 @@
 
       return lexer;
     }();
-    parser.lexer = lexer;
+    parser$1.lexer = lexer;
 
     var rmCommonWS$1 = helpers.rmCommonWS;
     var checkActionBlock$1 = helpers.checkActionBlock;
@@ -10180,41 +10536,41 @@
     }
 
 
-    parser.warn = function p_warn() {
+    parser$1.warn = function p_warn() {
         console.warn.apply(console, arguments);
     };
 
-    parser.log = function p_log() {
+    parser$1.log = function p_log() {
         console.log.apply(console, arguments);
     };
 
-    parser.pre_parse = function p_lex() {
-        if (parser.yydebug) parser.log('pre_parse:', arguments);
+    parser$1.pre_parse = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('pre_parse:', arguments);
     };
 
-    parser.yy.pre_parse = function p_lex() {
-        if (parser.yydebug) parser.log('pre_parse YY:', arguments);
+    parser$1.yy.pre_parse = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('pre_parse YY:', arguments);
     };
 
-    parser.yy.post_lex = function p_lex() {
-        if (parser.yydebug) parser.log('post_lex:', arguments);
+    parser$1.yy.post_lex = function p_lex() {
+        if (parser$1.yydebug) parser$1.log('post_lex:', arguments);
     };
 
 
     function Parser() {
         this.yy = {};
     }
-    Parser.prototype = parser;
-    parser.Parser = Parser;
+    Parser.prototype = parser$1;
+    parser$1.Parser = Parser;
 
     function yyparse() {
-        return parser.parse.apply(parser, arguments);
+        return parser$1.parse.apply(parser$1, arguments);
     }
 
 
 
     var lexParser = {
-        parser,
+        parser: parser$1,
         Parser,
         parse: yyparse,
         
