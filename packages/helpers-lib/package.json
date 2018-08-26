@@ -30,15 +30,17 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/recast": "0.14.7-28"
+    "@gerhobbelt/babel-parser": "7.0.0-beta.49",
+    "@babel/core": "7.0.0-beta.49",
+    "@babel/preset-env": "7.0.0-beta.49",
+    "babel-preset-modern-browsers": "11.0.1",
+    "@gerhobbelt/recast": "0.15.0-31"
   },
   "devDependencies": {
-    "babel-cli": "6.26.0",
-    "babel-preset-env": "1.7.0",
-    "babel-preset-modern-browsers": "11.0.1",
+    "@babel/cli": "7.0.0-beta.49",
     "chai": "4.1.2",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
-    "rollup": "0.59.3"
+    "rollup": "0.60.1"
   }
 }
