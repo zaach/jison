@@ -10,6 +10,7 @@ import parse2AST from './parse-code-chunk-to-AST';
 import stringifier from './code-stringification';
 import detectIstanbulGlobal from './detect-istanbul';
 import reHelpers from './validate-regex';
+import trimErrorForTestReporting from './trimErrorForTestReporting';
 
 
 export default {
@@ -19,6 +20,7 @@ export default {
     isLegalIdentifierInput,
     scanRegExp,
     dquote,
+    trimErrorForTestReporting,
 
     checkRegExp: reHelpers.checkRegExp,
     getRegExpInfo: reHelpers.getRegExpInfo,
@@ -27,6 +29,7 @@ export default {
     dump: code_exec.dump,
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    compileCodeToES5: parse2AST.compileCodeToES5,
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
     trimActionCode: parse2AST.trimActionCode,

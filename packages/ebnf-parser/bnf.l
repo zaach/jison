@@ -559,8 +559,9 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 "%left"                                 return 'LEFT';
 "%right"                                return 'RIGHT';
 "%nonassoc"                             return 'NONASSOC';
-"%token"                                //this.pushState('options');
-                                        return 'TOKEN';
+"%token"                                return 'TOKEN';
+"%on_error_recovery_shift"              return 'ON_ERROR_RECOVERY_SHIFT';
+"%on_error_recovery_reduce"             return 'ON_ERROR_RECOVERY_REDUCE';
 "%parse-param"[s]?                      return 'PARSE_PARAM';
 "%option"[s]?                           this.pushState('options');
                                         return 'OPTIONS';

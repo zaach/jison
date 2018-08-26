@@ -605,6 +605,8 @@ ANY_LITERAL_CHAR                        [^\s\r\n<>\[\](){}.*+?:!=|%\/\\^$,\'\"\`
                                         return 'CODE';
 "%import"                               this.pushState('options');
                                         return 'IMPORT';
+"%pointer"                              return 'FLEX_POINTER_MODE';
+"%array"                                return 'FLEX_ARRAY_MODE';                                    
 
 <INITIAL,rules,code>"%include"          yy.depth = 0;
                                         yy.include_command_allowed = true;

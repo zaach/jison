@@ -163,6 +163,21 @@ declaration
         }
     | LEX_BLOCK
         { $$ = {lex: {text: $LEX_BLOCK, position: @LEX_BLOCK}}; }
+    | FLEX_POINTER_MODE
+        {
+            // This is the only mode we do support in JISON...
+            $$ = null;
+        }
+    | FLEX_ARRAY_MODE
+        {
+            yyerror(rmCommonWS`
+                JISON does not support the %array lexing mode.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@FLEX_ARRAY_MODE)}
+            `);
+            $$ = null;
+        }
     | operator
         { $$ = {operator: $operator}; }
     | TOKEN full_token_definitions
@@ -368,8 +383,7 @@ declaration
             }
 
             $$ = {
-                type: 'imports', 
-                body: body
+                imports: body
             }; 
         }
     | import_keyword error
@@ -425,8 +439,7 @@ declaration
                 `);
             }
             $$ = {
-                type: 'codeSection',
-                body: {
+                codeSection: {
                   qualifier: name,
                   include: srcCode
                 }
@@ -434,9 +447,14 @@ declaration
         }
     | init_code_keyword option_list ACTION_START error /* OPTIONS_END */
         {
-            // TODO
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            var end_marker_msg = marker_msg.replace(/\{/g, '}');
             yyerror(rmCommonWS`
-                Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
+                The '%code ID %{...%\}' initialization code section must be properly 
+                wrapped in block start markers (\`%{\`${marker_msg}) 
+                and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+
                     %code qualifier_name {action code}
 
                   Erroneous code:
@@ -459,6 +477,7 @@ declaration
                 ${$error.errStr}
             `);
         }
+    | on_error_recovery_statement
     ;
 
 option_keyword
@@ -491,6 +510,11 @@ include_keyword
             yy.__options_flags__ = OPTION_DOES_NOT_ACCEPT_VALUE | OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS;
             yy.__options_category_description__ = $INCLUDE;
         }
+    ;
+
+on_error_recovery_keyword
+    : ON_ERROR_RECOVERY_SHIFT
+    | ON_ERROR_RECOVERY_REDUCE
     ;
 
 start_productions_marker
@@ -688,6 +712,13 @@ production_list
             }
             $$.actionInclude = actionInclude;
         }
+    | production_list on_error_recovery_statement
+        {
+            $$ = $production_list;
+            var onErrorRecovery = $$.onErrorRecovery || [];
+            onErrorRecovery.push($on_error_recovery_statement);
+            $$.onErrorRecovery = onErrorRecovery;
+        }
     | production
         { 
             var grammar = {}; 
@@ -705,6 +736,12 @@ production_list
             if (srcCode) {
                 $$.actionInclude = [srcCode];
             }
+        }
+    | on_error_recovery_statement
+        {
+            $$ = {
+                onErrorRecovery: [$on_error_recovery_statement] 
+            };
         }
     ;
 
@@ -1269,6 +1306,48 @@ action
         }
     | ε
         { $$ = ''; }
+    ;
+
+
+on_error_recovery_statement
+    : on_error_recovery_keyword ACTION_START action ACTION_END 
+        {
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            var rv = checkActionBlock(srcCode, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '${$on_error_recovery_keyword}' action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action, @on_error_recovery_keyword)}
+                `);
+            }
+            $$ = {
+                onErrorRecoveryAction: {
+                  qualifier: $on_error_recovery_keyword,
+                  include: srcCode
+                }
+            };
+        }
+    | on_error_recovery_keyword ACTION_START error /* ACTIONS_END */
+        {
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            var end_marker_msg = marker_msg.replace(/\{/g, '}');
+            yyerror(rmCommonWS`
+                The '${$on_error_recovery_keyword} %{...%\}' initialization code section must be properly 
+                wrapped in block start markers (\`%{\`${marker_msg}) 
+                and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+
+                    ${$on_error_recovery_keyword} {action code}
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @on_error_recovery_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
     ;
 
 

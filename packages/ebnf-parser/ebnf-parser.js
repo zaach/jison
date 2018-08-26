@@ -81,11 +81,17 @@ bnf.parser.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
         if (!grammar.imports) grammar.imports = [];                   // [ array of {name,path} pairs ]
         grammar.imports.push(decl.imports);
     }
-    if (decl.initCode) {
+    if (decl.codeSection) {
         if (!grammar.moduleInit) {
             grammar.moduleInit = [];
         }
-        grammar.moduleInit.push(decl.initCode);       // {qualifier: <name>, include: <source code chunk>}
+        grammar.moduleInit.push(decl.codeSection);                    // {qualifier: <name>, include: <source code chunk>}
+    }
+    if (decl.onErrorRecovery) {
+        if (!grammar.errorRecoveryActions) {
+            grammar.errorRecoveryActions = [];
+        }
+        grammar.errorRecoveryActions.push(decl.onErrorRecovery);      // {qualifier: <name>, include: <source code chunk>}
     }
 };
 
