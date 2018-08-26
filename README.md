@@ -5,11 +5,14 @@
 [![NPM version](https://badge.fury.io/js/jison-gho.svg)](http://badge.fury.io/js/jison-gho)
 [![Dependency Status](https://img.shields.io/david/GerHobbelt/jison.svg)](https://david-dm.org/GerHobbelt/jison)
 [![npm](https://img.shields.io/npm/dm/jison-gho.svg?maxAge=2592000)]()
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/GerHobbelt/jison.svg)](http://isitmaintained.com/project/GerHobbelt/jison "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/GerHobbelt/jison.svg)](http://isitmaintained.com/project/GerHobbelt/jison "Percentage of issues still open")
 
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](https://gitter.im/jison-parsers-lexers/Lobby)
 * [Website](https://gerhobbelt.github.io/jison/)
 * [**Original** JISON Website](http://jison.org)
+* [NPM package: `jison-gho`](https://www.npmjs.com/package/jison-gho)
 
 
 
