@@ -35,8 +35,8 @@
   },
   "devDependencies": {
     "@gerhobbelt/json5": "1.0.1-32",
-    "@babel/cli": "7.0.0-beta.49",
-    "@babel/preset-env": "7.0.0-beta.49",
+    "@babel/cli": "7.0.0-rc.3",
+    "@babel/preset-env": "7.0.0-rc.3",
     "babel-preset-modern-browsers": "11.0.1",
     "chai": "4.1.2",
     "globby": "8.0.1",
@@ -44,6 +44,6 @@
     "mkdirp": "0.5.1",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
-    "rollup": "0.60.1"
+    "rollup": "0.65.0"
   }
 }
