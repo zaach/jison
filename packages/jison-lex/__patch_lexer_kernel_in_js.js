@@ -2,20 +2,19 @@
 const globby = require('globby');
 const fs = require('fs');
 
-var kernel = fs.readFileSync('jison-lexer-kernel.js', 'utf8');
-kernel = kernel
-.replace(/\\/g, '\\\\')
-.replace(/`/g, '\\`')
-// strip header comment too:
-.replace(/^[^{]*/, '')
-.replace(/[\s\r\n]+$/, '')          // rtrim()
-;
+function encode(str) {
+    return str
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '$\\{')
+    .trim();
+}
 
-var errorClassCode = fs.readFileSync('jison-lexer-error-code.js', 'utf8');
-errorClassCode = errorClassCode
-.replace(/\\/g, '\\\\')
-.replace(/`/g, '\\`')
-.trim();
+var kernel = encode(fs.readFileSync('jison-lexer-kernel.js', 'utf8'))
+    // strip header comment too:
+    .replace(/^[^{]*/, '');
+
+var errorClassCode = encode(fs.readFileSync('jison-lexer-error-code.js', 'utf8'));
 
 globby(['regexp-lexer.js']).then(paths => {
     var count = 0;
