@@ -46,8 +46,8 @@ TBD
       1. [Porting the grammar rules' actions: make the parser work](#dummy)
 
 1. [Driving JISON settings from your grammar or the CLI](#error_handling)
-1. [Stuff we might not support yet](#error_handling)
-1. [Stuff we are not intent on supporting](#error_handling)
+1. [Stuff we might not yet support](#error_handling)
+1. [Stuff we have no intent to support](#error_handling)
 
 
 
