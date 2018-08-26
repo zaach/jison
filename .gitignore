@@ -36,6 +36,7 @@ web/crash.log
 /examples/output
 /packages/jison-lex/examples/output
 /docs/examples/output
+/docs/examples/reference-output
 
 # Vagrant sandbox
 vagrant/
@@ -57,3 +58,11 @@ Vagrantfile
 /packages/lex-parser/coverage
 /packages/ebnf-parser/coverage
 /examples/coverage/
+
+# additional crap thast shouldn't land in git repo or npm:
+/tmp*/
+/test*.*
+/issue*.*
+/examples/formula-v*.*
+/docs/examples/formula-v*.*
+
