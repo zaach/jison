@@ -63,6 +63,6 @@ Vagrantfile
 /tmp*/
 /test*.*
 /issue*.*
-/examples/formula-v*.jison
-/docs/examples/formula-v*.jison
+/examples/formula-v*.*
+/docs/examples/formula-v*.*
 
