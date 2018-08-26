@@ -151,7 +151,7 @@ examples_with_custom_lexer:
 
 
 comparison:                                                                 \
-		clean                                                               \
+		clean_comparison                                                    \
 		examples                                                            \
 		examples/reference-output/README.md
 	# only run a DIFF once we have generated all outputs:
@@ -177,7 +177,10 @@ publish:
 
 
 
-clean:
+clean_comparison:
+	-rm -rf examples/output/
+
+clean: clean_comparison
 	-rm -rf dist/
 	-rm -rf examples/output/
 
@@ -190,5 +193,5 @@ superclean: clean
 
 
 
-.PHONY: all prep npm-install build test examples clean superclean bump git-tag publish example-lex example-include examples_basic2_lex examples_basic_lex examples_c99 examples_ccalc_lex examples_classy examples_codegen_feature_tester_base examples_comments examples_compiled_calc_parse examples_faking examples_floop examples_handlebars examples_issue_url_lexing examples_issue_x1 examples_issue_x2 examples_lex_grammar examples_lexer_comm_debug examples_pascal examples_regex examples_semwhitespace examples_tikiwikiparser examples_unicode2 examples_unicode examples_with_custom_lexer examples_with_includes comparison npm-update test-nyc
+.PHONY: all prep npm-install build test examples clean_comparison clean superclean bump git-tag publish example-lex example-include examples_basic2_lex examples_basic_lex examples_c99 examples_ccalc_lex examples_classy examples_codegen_feature_tester_base examples_comments examples_compiled_calc_parse examples_faking examples_floop examples_handlebars examples_issue_url_lexing examples_issue_x1 examples_issue_x2 examples_lex_grammar examples_lexer_comm_debug examples_pascal examples_regex examples_semwhitespace examples_tikiwikiparser examples_unicode2 examples_unicode examples_with_custom_lexer examples_with_includes comparison npm-update test-nyc
 

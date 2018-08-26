@@ -569,6 +569,21 @@ production_id
                 ${yylexer.prettyPrintRange(@error, @id)}
             `);
         }
+    | id optional_production_description ARROW_ACTION
+        {
+            yyerror(rmCommonWS`
+                rule id should be followed by a colon instead of an arrow: 
+                please adjust your grammar to use this format:
+
+                    rule_id : terms  { optional action code }
+                            | terms  { optional action code }
+                            ...
+                            ;
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ARROW_ACTION, @id)}
+            `);
+        }
     ;
 
 optional_production_description
@@ -806,11 +821,23 @@ action_ne
 action
     : action_ne
         { $$ = $action_ne; }
-    | ARROW_ACTION
-        // add braces around ARROW_ACTION so that the action chunk test/compiler
+    | ARROW_ACTION ARROW_ACTION_CODE
+        // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
         // will uncover any illegal action code following the arrow operator, e.g.
         // multiple statements separated by semicolon.
-        { $$ = '$$ = (' + $ARROW_ACTION + ');'; }
+        { $$ = '$$ = (' + $ARROW_ACTION_CODE + ');'; }
+    | ARROW_ACTION error
+        {
+            yyerror(rmCommonWS`
+                An rule action arrow must be followed by on a single line by a JavaScript expression to assign the rule's value, e.g.:
+
+                    rule: term1 term2   -> $term1 + $term2
+                        ;
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @1)}
+            `);
+        }
     | %epsilon
         { $$ = ''; }
     ;

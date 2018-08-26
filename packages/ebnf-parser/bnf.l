@@ -37,7 +37,7 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
 
 
 
-%x action code path options option_values
+%x arrow_action action code path options option_values
 %s token
 %s bnf ebnf
 
@@ -194,12 +194,15 @@ LEX_CONTENT                             {WS}*(?:{BR}[^]*?)?{BR}{WS}*
                                         return 'ACTION';
 "{"                                     yy.depth = 0; this.pushState('action'); 
                                         return '{';
-"->".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+"->"                                    this.pushState('arrow_action'); 
                                         return 'ARROW_ACTION';
-"→".*                                   yytext = yytext.substr(1, yyleng - 1).trim(); 
+"→"                                     this.pushState('arrow_action'); 
                                         return 'ARROW_ACTION';
-"=>".*                                  yytext = yytext.substr(2, yyleng - 2).trim(); 
+"=>"                                    this.pushState('arrow_action'); 
                                         return 'ARROW_ACTION';
+<arrow_action>.*                        this.popState();
+                                        yytext = yytext.trim();
+                                        return 'ARROW_ACTION_CODE'
 {HEX_NUMBER}                            yytext = parseInt(yytext, 16); return 'INTEGER';
 {DECIMAL_NUMBER}(?![xX0-9a-fA-F])       yytext = parseInt(yytext, 10); return 'INTEGER';
 
