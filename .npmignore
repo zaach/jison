@@ -57,3 +57,11 @@ book.json
 # jscs et al config files:
 .js*
 .travis*
+
+# do not publish 50mb of documentation
+docs/
+
+# do not publish 50mb of tmp files
+tmp2
+
+# do not publish 8mb of coverage files
