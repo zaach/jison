@@ -62,6 +62,7 @@ book.json
 docs/
 
 # do not publish 50mb of tmp files
-tmp2
+tmp2/
 
 # do not publish 8mb of coverage files
+coverage/
