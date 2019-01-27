@@ -1,0 +1,27 @@
+{
+  rules: [
+    [
+      '\\[[^\\]]\\]',
+      'return true',
+    ],
+  ],
+  macros: {
+    RULE: '[0-9]',
+  },
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  actionInclude: 'hi; {stuff;}',
+  __original_input__: `RULE [0-9]
+
+%{
+ hi; {stuff;} 
+%}
+%%
+"["[^\\]]"]" %{
+return true;
+%}
+
+`,
+}

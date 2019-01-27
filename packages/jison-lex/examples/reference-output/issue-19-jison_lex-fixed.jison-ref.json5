@@ -1,0 +1,244 @@
+[
+  5,
+  {
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 1,
+      range: [
+        0,
+        1,
+      ],
+    },
+  },
+  {
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 1,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        1,
+        2,
+      ],
+    },
+  },
+  {
+    token: 'ID',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 3,
+      last_line: 1,
+      last_column: 4,
+      range: [
+        3,
+        4,
+      ],
+    },
+  },
+  {
+    token: 'ID',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  -1,
+  {
+    fail: 1,
+    message: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+    name: 'JisonLexerError',
+    stack: `JisonLexerError: Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^
+    at Object.lexer_parseError [as parseError] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:207:15)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1182:27)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1224:22)
+    at Context.testEachLexerExample (\regexplexer.js:3073:27)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+    ex: {
+      message: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+      name: 'JisonLexerError',
+      hash: {
+        errStr: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+        recoverable: false,
+        text: '',
+        token: null,
+        line: 0,
+        loc: {
+          first_line: 1,
+          first_column: 5,
+          last_line: 1,
+          last_column: 5,
+          range: [
+            5,
+            5,
+          ],
+        },
+        yy: {},
+        lexer: {
+          EOF: 1,
+          ERROR: 2,
+          __currentRuleSet__: {
+            rules: [
+              null,
+              1,
+              2,
+            ],
+            inclusive: false,
+            __rule_regexes: [
+              null,
+              {},
+              {},
+            ],
+            __rule_count: 2,
+          },
+          __error_infos: [
+            {
+              circularReference: true,
+              index: 3,
+              parentDepth: 2,
+              key: '0',
+              keyStack: [
+                '',
+                '7',
+                'ex',
+                'hash',
+                'lexer',
+                '__error_infos',
+              ],
+            },
+          ],
+          __decompressed: true,
+          done: false,
+          _backtrack: false,
+          _input: 'Baa',
+          _more: false,
+          _signaled_error_token: false,
+          conditionStack: [
+            'INITIAL',
+            'MLC',
+            'MLC',
+            'MLC',
+          ],
+          match: '',
+          matched: ';;a;a',
+          matches: false,
+          yytext: '',
+          offset: 5,
+          base_position: 0,
+          yyleng: 0,
+          yylineno: 0,
+          yylloc: {
+            first_line: 1,
+            first_column: 5,
+            last_line: 1,
+            last_column: 5,
+            range: [
+              5,
+              5,
+            ],
+          },
+          CRLF_Re: {},
+          options: {
+            trackPosition: true,
+          },
+          simpleCaseActionClusters: {
+            '1': 'ID',
+            '3': 'ERROR',
+          },
+          rules: [
+            {},
+            {},
+            {},
+            {},
+          ],
+          conditions: {
+            MLC: {
+              rules: [
+                null,
+                1,
+                2,
+              ],
+              inclusive: false,
+              __rule_regexes: [
+                null,
+                {},
+                {},
+              ],
+              __rule_count: 2,
+            },
+            INITIAL: {
+              rules: [
+                null,
+                0,
+                2,
+                3,
+              ],
+              inclusive: true,
+              __rule_regexes: [
+                null,
+                {},
+                {},
+                {},
+              ],
+              __rule_count: 3,
+            },
+          },
+          yy: {},
+        },
+      },
+    },
+  },
+]

@@ -1,0 +1,42 @@
+{
+  unknownDecls: [
+    {
+      name: 'foo',
+      value: 'bar',
+    },
+    {
+      name: 'foo',
+      value: 'baz',
+    },
+    {
+      name: 'qux',
+      value: '{ fizzle }',
+    },
+  ],
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%foo bar 
+%foo baz 
+%qux { fizzle } 
+%%hello: world;%%
+
+`,
+}

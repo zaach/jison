@@ -1,0 +1,22 @@
+{
+  rules: [
+    [
+      'π',
+      'return 1',
+    ],
+    [
+      '-abc',
+      'return 2',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+π return 1;
+-abc return 2;
+
+`,
+}

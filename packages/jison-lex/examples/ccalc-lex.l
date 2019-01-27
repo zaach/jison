@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: a=3+-71e2
+// ...
+//  
+
 /*! @file lex.l
  * @brief Lexical Analysis
  *********************************************************************

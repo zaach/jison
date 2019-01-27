@@ -1,0 +1,19 @@
+{
+  rules: [],
+  macros: {
+    D: '[0-9]',
+  },
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [
+    {
+      name: 'export',
+      value: '{ D }',
+    },
+  ],
+  __original_input__: `%export { D }
+D [0-9]
+
+`,
+}

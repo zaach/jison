@@ -1,0 +1,24 @@
+{
+  rules: [
+    [
+      'a',
+      'return true;\n  //',
+    ],
+    [
+      'b',
+      'return 1;\n  //',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"a" return true;
+  //
+"b" return 1;
+  //
+
+`,
+}

@@ -1,5 +1,14 @@
 var assert = require("chai").assert;
+var fs = require('fs');
+var path = require('path');
+var mkdirp = require('mkdirp');
+var yaml = require('@gerhobbelt/js-yaml');
+var JSON5 = require('@gerhobbelt/json5');
+var globby = require('globby');
 var bnf = require("../dist/ebnf-parser-cjs-es5");
+
+
+
 
 
 function parser_reset() {
@@ -30,362 +39,328 @@ function parser_reset() {
 }
 
 
+
+
+
+
+
+
+
+  console.log('exec glob....', __dirname);
+  var testset = globby.sync([
+    __dirname + '/specs/0*.jison',
+    __dirname + '/specs/0*.bnf',
+    __dirname + '/specs/0*.ebnf',
+    __dirname + '/specs/0*.json5',
+    '!'+ __dirname + '/specs/0*-ref.json5',
+    __dirname + '/specs/0*.js',
+  ]);
+  var original_cwd = process.cwd();
+
+  testset = testset.sort();
+
+  testset = testset.map(function (filepath) {
+    // Get document, or throw exception on error
+    try {
+      console.log('Parser Spec file:', filepath.replace(/^.*?\/specs\//, ''));
+      var spec;
+      var header;
+      var extra;
+      var grammar;
+
+      if (filepath.match(/\.js$/)) {
+        spec = require(filepath);
+
+        var hdrspec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = hdrspec.substr(0, hdrspec.indexOf('\n\n') + 1);
+        
+        grammar = spec;
+      } else {
+        spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = spec.substr(0, spec.indexOf('\n\n') + 1);
+
+        // extract the grammar to test:
+        grammar = spec.substr(spec.indexOf('\n\n') + 2);
+      }
+
+      // then strip off the comment prefix for every line:
+      header = header.replace(/^\/\/ ?/gm, '').replace(/\n...\n[^]*$/, function (m) {
+        extra = m;
+        return '';
+      });
+
+      var doc = yaml.safeLoad(header, {
+        filename: filepath,
+      });
+
+      if (doc.crlf && typeof grammar === 'string') {
+        grammar = grammar.replace(/\n/g, "\r\n");
+      }
+
+      var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
+      var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
+      var lexerRefFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-lex.json5');
+      var lexerOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-lex.json5');
+      mkdirp(path.dirname(refOutFilePath));
+      mkdirp(path.dirname(testOutFilePath));
+
+      var refOut;
+      try {
+        var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
+        refOut = JSON5.parse(soll);
+      } catch (ex) {
+        refOut = null;
+      }
+
+      var lexerRefOut;
+      try {
+        var soll = fs.readFileSync(lexerRefFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        if (doc.crlf) {
+          soll = soll.replace(/\n/g, "\r\n");
+        }
+        lexerRefOut = JSON5.parse(soll);
+      } catch (ex) {
+        lexerRefOut = null;
+      }
+
+      return {
+        path: filepath,
+        outputRefPath: refOutFilePath,
+        outputOutPath: testOutFilePath,
+        lexerRefPath: lexerRefFilePath,
+        lexerOutPath: lexerOutFilePath,
+        spec: spec,
+        grammar: grammar,
+        meta: doc,
+        metaExtra: extra,
+        lexerRef: lexerRefOut,
+        ref: refOut
+      };
+    } catch (ex) {
+      console.log(ex);
+      throw ex;
+    }
+    return false;
+  })
+  .filter(function (info) {
+    return !!info;
+  });
+
+  var original_cwd = process.cwd();
+
+  function stripErrorStackPaths(msg) {
+    // strip away devbox-specific paths in error stack traces in the output:
+    msg = msg.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
+    msg = msg.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+    return msg;
+  }
+
+  function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
+    // and produce an alternative structure to JSON-ify:
+    return {
+      circularReference: true,
+      // ex: {
+      //   message: err.message,
+      //   type: err.name
+      // },
+      index: circusPos,
+      parentDepth: objStack.length - circusPos - 1,
+      key: key,
+      keyStack: keyStack,    // stack & keyStack have already been snapshotted by the JSON5 library itself so passing a direct ref is fine here!
+    };
+  }
+
+  function reduceWhitespace(src) {
+    // replace tabs with space, clean out multiple spaces and kill trailing spaces:
+    return src
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ $/gm, '');
+  }
+
+
+
+
+
+
+
+
+
+
+describe("BNF lexer", function () {
+  beforeEach(function beforeEachTest() {
+    parser_reset();
+  });
+
+  testset.forEach(function (filespec) {
+    // process this file:
+    var title = (filespec.meta ? filespec.meta.title : null);
+
+    // and create a test for it:
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function testEachParserExample() {
+      var err, ast, grammar;
+      var tokens = [];
+      var lexer = bnf.bnf_parser.parser.lexer;
+
+      try {
+        // Change CWD to the directory where the source grammar resides: this helps us properly
+        // %include any files mentioned in the grammar with relative paths:
+        process.chdir(path.dirname(filespec.path));
+
+        grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
+
+        ast = lexer.setInput(grammar);
+        ast.__original_input__ = grammar;
+
+        var countDown = 4;
+        for (var i = 0; i < 1000; i++) {
+          var tok = lexer.lex();
+          tokens.push({
+            id: tok,
+            token: bnf.bnf_parser.parser.describeSymbol(tok),
+            yytext: lexer.yytext,
+            yylloc: lexer.yylloc
+          });
+          if (tok === lexer.EOF) {
+            // and make sure EOF stays EOF, i.e. continued invocation of `lex()` will only
+            // produce more EOF tokens at the same location:
+            countDown--;
+            if (countDown <= 0) {
+              break;
+            }
+          }
+        }
+      } catch (ex) {
+        // save the error:
+        tokens.push(-1);
+        err = ex;
+        tokens.push({
+          fail: 1,
+          message: ex.message,
+          name: ex.name,
+          stack: ex.stack,
+          meta: filespec.spec.meta, 
+          ex: ex,
+        });
+        // and make sure ast !== undefined:
+        ast = { fail: 1 };
+      } finally {
+        process.chdir(original_cwd);
+      }
+      // also store the number of tokens we received:
+      tokens.unshift(i);
+      // if (lexerSourceCode) {
+      //   tokens.push(lexerSourceCode);
+      // }
+
+      // either we check/test the correctness of the collected input, iff there's
+      // a reference provided, OR we create the reference file for future use:
+      var refOut = JSON5.stringify(tokens, {
+        replacer: function remove_lexer_objrefs(key, value) {
+          if (value === lexer) {
+            return "[lexer instance]";
+          }
+          return value;
+        },
+        space: 2,
+        circularRefHandler: testrig_JSON5circularRefHandler
+      });
+      // strip away devbox-specific paths in error stack traces in the output:
+      refOut = stripErrorStackPaths(refOut);
+      // and convert it back so we have a `tokens` set that's cleaned up
+      // and potentially matching the stored reference set:
+      tokens = JSON5.parse(refOut);
+      if (filespec.lexerRef) {
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(ast, filespec.ref);
+      } else {
+        fs.writeFileSync(filespec.lexerRefPath, refOut, 'utf8');
+        filespec.lexerRef = refOut;
+      }
+      fs.writeFileSync(filespec.lexerOutPath, refOut, 'utf8');
+
+      // now that we have saved all data, perform the validation checks:
+      assert.deepEqual(tokens, filespec.lexerRef, "grammar should be lexed correctly");
+    });
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
 describe("BNF parser", function () {
   beforeEach(function beforeEachTest() {
     parser_reset();
   });
 
-  it("test basic grammar", function () {
-    var grammar = "%% test: foo bar | baz ; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", "baz"], hello: ["world"]}};
+  testset.forEach(function (filespec) {
+    // process this file:
+    var title = (filespec.meta ? filespec.meta.title : null);
 
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
+    // and create a test for it:
 
-  it("test multiple same rule", function () {
-    var grammar = "%% test: foo bar | baz ; test: world ;";
-    var expected = {bnf: {test: ["foo bar", "baz", "world"]}};
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function testEachParserExample() {
+      var err, ast, grammar;
 
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
+      try {
+        // Change CWD to the directory where the source grammar resides: this helps us properly
+        // %include any files mentioned in the grammar with relative paths:
+        process.chdir(path.dirname(filespec.path));
 
-  it("test classy grammar", function () {
-    var grammar = "%%\n\npgm \n: cdl MAIN LBRACE vdl el RBRACE ENDOFFILE \n; cdl \n: c cdl \n| \n;";
-    var expected = {bnf: {pgm: ["cdl MAIN LBRACE vdl el RBRACE ENDOFFILE"], cdl: ["c cdl", ""]}};
+        grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
 
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test advanced grammar", function () {
-    var grammar = "%% test: foo bar {action} | baz ; hello: world %prec UMINUS ;extra: foo %prec '-' {action} ;";
-    var expected = {bnf: {test: [["foo bar", "action" ], "baz"], hello: [[ "world", {prec:"UMINUS"} ]], extra: [[ "foo", "action", {prec: "-"} ]]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test nullable rule", function () {
-    var grammar = "%% test: foo bar | ; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", ""], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test nullable rule with action", function () {
-    var grammar = "%% test: foo bar | {action}; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", [ "", "action" ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test nullable rule with %{ %} delimited action", function () {
-    var grammar = "%% test: foo bar | %{action={}%}; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", [ "", "action={}" ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test nullable rule with {{ }} delimited action", function () {
-    var grammar = "%% test: foo bar | {{action={};}}; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", [ "", "action={};" ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test rule with {{ }} delimited action", function () {
-    var grammar = "%% test: foo bar {{ node({}, node({})); }}; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}, node({})); " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test comment", function () {
-    var grammar = "/* comment */ %% hello: world ;";
-    var expected = {bnf: {hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multi-line comment", function () {
-    var grammar = "/* comment\n comment\n comment */ %% hello: world ;";
-    var expected = {bnf: {hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test single line comment", function () {
-    var grammar = "//comment \n %% hello: world ;";
-    var expected = {bnf: {hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parse comment");
-  });
-
-  it("test comment with nested *", function () {
-    var grammar = "/* comment * not done */ %% hello: /* oh hai */ world ;";
-    var expected = {bnf: {hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test comment with nested //", function () {
-    var grammar = "/* comment // nested ** not done */ %% hello: /* oh hai */ world ;";
-    var expected = {bnf: {hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-
-    var grammar2 = "/* comment \n// nested ** not done */ %% hello: /* oh hai */ world ;";
-
-    assert.deepEqual(bnf.parse(grammar2), expected, "grammar should be parsed correctly");
-  });
-
-  it("test token", function () {
-    var grammar = "%token blah\n%% test: foo bar | baz ; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", "baz"], hello: ["world"]},
-                    extra_tokens: [{id: "blah"}]};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test token with type", function () {
-    var grammar = "%type <type> blah\n%% test: foo bar | baz ; hello: world ;";
-    var expected = {bnf: {test: ["foo bar", "baz"], hello: ["world"]}, unknownDecls: [['type', '<type> blah']]};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test embedded lexical block", function () {
-    var grammar = "%lex \n%%\n'foo' return 'foo';\n'bar' {return 'bar';}\n'baz' {return 'baz';}\n'world' {return 'world';}\n/lex\
-                   %% test: foo bar | baz ; hello: world ;";
-    var expected = {
-                        lex: {
-                            macros: {},
-                            rules: [
-                               ["foo", "return 'foo';"],
-                               ["bar", "return 'bar';"],
-                               ["baz", "return 'baz';"],
-                               ["world", "return 'world';"]
-                            ],
-                            startConditions: {},
-                            unknownDecls: [],
-                            codeSections: [],
-                            importDecls: [],
-                          },
-                        bnf: {test: ["foo bar", "baz"], hello: ["world"]}
-                    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test lexer %options easy_keyword_rules", function () {
-    var grammar = "%lex \n%options easy_keyword_rules\n%%\n'foo' return 'foo';\n'bar' {return 'bar';}\n'baz' {return 'baz';}\n'world' {return 'world';}\n/lex\
-                   %% test: foo bar | baz ; hello: world ;";
-    var expected = {
-                        lex: {
-                            macros: {},
-                            rules: [
-                               ["foo\\b", "return 'foo';"],
-                               ["bar\\b", "return 'bar';"],
-                               ["baz\\b", "return 'baz';"],
-                               ["world\\b", "return 'world';"]
-                            ],
-                            options: {
-                                easy_keyword_rules: true
-                            },
-                            startConditions: {},
-                            unknownDecls: [],
-                            codeSections: [],
-                            importDecls: [],
-                        },
-                        bnf: {test: ["foo bar", "baz"], hello: ["world"]}
-                    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test balanced braces", function () {
-    var grammar = "%% test: foo bar { node({}, node({foo:'bar'})); }; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}, node({foo:'bar'})); " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test brace within a multi-line comment", function () {
-    var grammar = "%% test: foo bar { node({}, 3 / 4); /* { */ }; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}, 3 / 4); /* { */ " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test brace within a single-line comment", function () {
-    var grammar = "%% test: foo bar { node({}); // {\n }; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}); // {\n " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test brace within a string", function () {
-    var grammar = "%% test: foo bar { node({}, 3 / 4, '{'); /* { */ }; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}, 3 / 4, '{'); /* { */ " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test brace within a string with double quotes", function () {
-    var grammar = "%% test: foo bar { node({}, 3 / 4, \"{\"); /* { */ }; hello: world ;";
-    var expected = {bnf: {test: [["foo bar"," node({}, 3 / 4, \"{\"); /* { */ " ]], hello: ["world"]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test uneven braces and quotes within regex", function () {
-    var grammar = "%% test: foo bar { node({}, 3 / 4, \"{\"); /{'\"/g; 1 / 2; }; hello: world { blah / bah };";
-    var expected = {bnf: {test: [["foo bar"," node({}, 3 / 4, \"{\"); /{'\"/g; 1 / 2; " ]], hello: [["world", " blah / bah "]]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test code declaration", function () {
-    var grammar = "%{var foo = 'bar';%}\n%%hello: world;";
-    var expected = {bnf: {hello: ["world"]}, moduleInclude: "var foo = 'bar';"};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test remainder code", function () {
-    var grammar = "%%hello: world;%%var foo = 'bar';";
-    var expected = {bnf: {hello: ["world"]}, moduleInclude: "var foo = 'bar';"};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test remainder and declarations code", function () {
-    var grammar = "%{test;%}\n%%hello: world;%%var foo = 'bar';";
-    var expected = {bnf: {hello: ["world"]}, moduleInclude: "test;var foo = 'bar';"};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test expression action", function () {
-    var grammar = "%% test: foo bar -> $foo\n;";
-    var expected = {bnf: {test: [["foo bar","$$ = ($foo);"]]}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test quote in rule", function () {
-    var grammar = "%lex\n%%\n\\' return \"'\"\n/lex\n%% test: foo bar \"'\";";
-    var expected = {
-      lex: {
-        macros: {},
-        rules: [
-          ["'", "return \"'\""]
-        ],
-        startConditions: {},
-        unknownDecls: [],
-        codeSections: [],
-        importDecls: [],
-      },
-      bnf: {
-        test: ["foo bar \"'\""]
+        ast = bnf.parse(grammar);
+        ast.__original_input__ = grammar;
+      } catch (ex) {
+        // save the error:
+        err = ex;
+        // and make sure ast !== undefined:
+        ast = { fail: 1, spec: filespec.grammar, err: err };
+      } finally {
+        process.chdir(original_cwd);
       }
-    };
 
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
+      // either we check/test the correctness of the collected input, iff there's
+      // a reference provided, OR we create the reference file for future use:
+      var refOut = JSON5.stringify(ast, {
+        space: 2,
+        circularRefHandler: testrig_JSON5circularRefHandler
+      });
+      // strip away devbox-specific paths in error stack traces in the output:
+      refOut = stripErrorStackPaths(refOut);
+      // and convert it back so we have a `tokens` set that's cleaned up
+      // and potentially matching the stored reference set:
+      ast = JSON5.parse(refOut);
+      if (filespec.ref) {
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(ast, filespec.ref);
+      } else {
+        fs.writeFileSync(filespec.outputRefPath, refOut, 'utf8');
+        filespec.ref = refOut;
+      }
+      fs.writeFileSync(filespec.outputOutPath, refOut, 'utf8');
 
-  it("test windows line endings", function () {
-    var grammar = "%{baz\r\n%}%% test: foo bar | {\r\naction;\r\nhi};\r\nhello: world ;%%foo;\r\nbar;";
-    var expected = {bnf: {test: ["foo bar", [ "", "\r\naction;\r\nhi" ]], hello: ["world"]}, moduleInclude: 'baz\r\nfoo;\r\nbar;'};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test parse params", function () {
-    var grammar = "%parse-param first second\n%%hello: world;%%";
-    var expected = {bnf: {hello: ["world"]}, parseParams: ["first", "second"]};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test boolean options", function () {
-    var grammar = "%options one two\n%%hello: world;%%";
-    var expected = {bnf: {hello: ["world"]}, options: {one: true, two: true}};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test if %options names with a hyphen are correctly recognized", function () {
-    var grammar = '%options bug-a-boo\n%%hello: world;%%';
-    var expected = {
-        bnf: {
-            hello: ["world"]
-        }, 
-        options: {
-            "bug-a-boo": true
-        }
-    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options with values", function () {
-    var grammar = '%options ping=666 bla=blub bool1 s1="s1value" s2=\'s2value\' s3=false s4="false"\n%%hello: world;%%';
-    var expected = {
-        bnf: {
-            hello: ["world"]
-        }, 
-        options: {
-            ping: 666,
-            bla: "blub",
-            bool1: true,
-            s1: "s1value",
-            s2: "s2value",
-            s3: false,
-            s4: "false"
-        }
-    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options spread across multiple lines", function () {
-    var grammar = '%options ping=666\n  bla=blub\n  bool1\n  s1="s1value"\n  s2=\'s2value\'\n  s3=false\n  s4="false"\n%%hello: world;%%';
-    var expected = {
-        bnf: {
-            hello: ["world"]
-        }, 
-        options: {
-            ping: 666,
-            bla: "blub",
-            bool1: true,
-            s1: "s1value",
-            s2: "s2value",
-            s3: false,
-            s4: "false"
-        }
-    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options with string values which have embedded quotes", function () {
-    var grammar = '%options s1="s1\\"val\'ue" s2=\'s2\\\\x\\\'val\"ue\'\n%%\nhello: world;\n%%';
-    var expected = {
-        bnf: {
-            hello: ["world"]
-        }, 
-        options: {
-            s1: "s1\"val'ue",
-            s2: "s2\\\\x'val\"ue"
-        }
-    };
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unknown decls", function () {
-    var grammar = "%foo bar\n%foo baz\n%qux { fizzle }\n%%hello: world;%%";
-    var expected = {bnf: {hello: ["world"]}, unknownDecls: [['foo', 'bar'], ['foo', 'baz'], ['qux', '{ fizzle }']]};
-
-    assert.deepEqual(bnf.parse(grammar), expected, "grammar should be parsed correctly");
+      // now that we have saved all data, perform the validation checks:
+      assert.deepEqual(ast, filespec.ref, "grammar should be parsed correctly");
+    });
   });
 });
+

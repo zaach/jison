@@ -1,0 +1,56 @@
+{
+  bnf: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        'node({}); // {',
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        'node({}); // {',
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%% test: foo bar { node({}); // {
+ }; hello: world ;
+
+`,
+}

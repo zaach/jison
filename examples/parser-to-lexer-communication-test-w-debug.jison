@@ -97,7 +97,7 @@ rb
 %%
 
 
-%include 'benchmark.js'
+%include 'includes/benchmark.js'
 
 
 // rephrase for display: error info objects which have been pushed onto the vstack:

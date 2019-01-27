@@ -1,0 +1,67 @@
+{
+  options: {
+    ebnf: true,
+  },
+  ebnf: {
+    nodelist: [
+      [
+        [],
+        '$$ = []',
+      ],
+      [
+        [
+          [
+            'symbol',
+            'nodelist',
+          ],
+          [
+            'symbol',
+            'node',
+          ],
+        ],
+        '$1.push($2)',
+      ],
+    ],
+  },
+  bnf: {
+    nodelist: [
+      [
+        '',
+        '$$ = []',
+      ],
+      [
+        'nodelist node',
+        '$1.push($2)',
+      ],
+    ],
+  },
+  grammar: {
+    nodelist: [
+      [
+        [],
+        '$$ = []',
+      ],
+      [
+        [
+          [
+            'symbol',
+            'nodelist',
+          ],
+          [
+            'symbol',
+            'node',
+          ],
+        ],
+        '$1.push($2)',
+      ],
+    ],
+  },
+  __original_input__: `%ebnf
+%%
+nodelist 
+:    /**/          {$$ = [];}
+|    nodelist node {$1.push($2);}
+;
+
+`,
+}

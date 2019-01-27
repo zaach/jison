@@ -1,3 +1,7 @@
+// title: Simple lexer example - a lexer spec with an error (bug)
+// ...
+//  
+
 
 %x MLC
 

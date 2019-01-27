@@ -1,4 +1,9 @@
-﻿
+﻿// title: Simple lexer example - a lexer spec without any errors
+// test_input: /*a*//*b*///c
+// ...
+//  
+
+
 lineEnd (\n\r|\r\n|[\n\r])
 commentName ([a-zA-Z]+("|"|[a-zA-Z]+)*(?=[\s]*))
 %s area commentBody inlineCommentBody

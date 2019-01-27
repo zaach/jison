@@ -1,0 +1,37 @@
+{
+  rules: [
+    [
+      '"\'\\\\\\\\\\\\*i',
+      'return 1',
+    ],
+    [
+      'a\\b',
+      'return 2',
+    ],
+    [
+      '\\u0001',
+      '',
+    ],
+    [
+      '\\n',
+      '',
+    ],
+    [
+      'ÿ',
+      '',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+\\"\\'\\\\\\\\\\\\*\\i return 1;
+"a"\\b return 2;
+\\cA {}
+\\012 {}
+\\xFF ;
+
+`,
+}

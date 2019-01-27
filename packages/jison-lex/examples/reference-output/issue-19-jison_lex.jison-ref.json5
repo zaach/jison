@@ -1,0 +1,101 @@
+[
+  6,
+  {
+    token: 'ERROR',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 1,
+      range: [
+        0,
+        1,
+      ],
+    },
+  },
+  {
+    token: 'ERROR',
+    yytext: 'b',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    token: 'ERROR',
+    yytext: 'c',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  {
+    token: 1,
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 5,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        5,
+        5,
+      ],
+    },
+  },
+  {
+    token: 1,
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 5,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        5,
+        5,
+      ],
+    },
+  },
+  {
+    token: 1,
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 5,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        5,
+        5,
+      ],
+    },
+  },
+  {
+    token: 1,
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 5,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        5,
+        5,
+      ],
+    },
+  },
+]

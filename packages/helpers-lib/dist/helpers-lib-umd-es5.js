@@ -148,7 +148,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     /** @public */
     function scanRegExp(s) {
         s = '' + s;
-
         // code based on Esprima scanner: `Scanner.prototype.scanRegExpBody()`
         var index = 0;
         var length = s.length;
@@ -164,11 +163,11 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
                 ch = s[index++];
                 // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
                 if (isLineTerminator(ch.charCodeAt(0))) {
-                    return -1; // UnterminatedRegExp
+                    break; // UnterminatedRegExp
                 }
                 str += ch;
             } else if (isLineTerminator(ch.charCodeAt(0))) {
-                return -1; // UnterminatedRegExp
+                break; // UnterminatedRegExp
             } else if (classMarker) {
                 if (ch === ']') {
                     classMarker = false;
@@ -416,10 +415,83 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         }
     }
 
+    // The rough-and-ready preprocessor for any action code block:
+    // this one trims off any surplus whitespace and removes any
+    // trailing semicolons and/or wrapping `{...}` braces,
+    // when such is easily possible *without having to actually
+    // **parse** the `src` code block in order to do this safely*.
+    // 
+    // Returns the trimmed sourcecode which was provided via `src`.
+    // 
+    // Note: the `startMarker` argument is special in that a lexer/parser
+    // can feed us the delimiter which started the code block here:
+    // when the starting delimiter actually is `{` we can safely
+    // remove the outer `{...}` wrapper (which then *will* be present!),
+    // while otherwise we may *not* do so as complex/specially-crafted
+    // code will fail when it was wrapped in other delimiters, e.g.
+    // action code specs like this one:
+    // 
+    //              %{
+    //                  {  // trimActionCode sees this one as outer-starting: WRONG
+    //                      a: 1
+    //                  };
+    //                  {
+    //                      b: 2
+    //                  }  // trimActionCode sees this one as outer-ending: WRONG
+    //              %}
+    //              
+    // Of course the example would be 'ludicrous' action code but the
+    // key point here is that users will certainly be able to come up with 
+    // convoluted code that is smarter than our simple regex-based
+    // `{...}` trimmer in here!
+    // 
+    function trimActionCode(src, startMarker) {
+        var s = src.trim();
+        // remove outermost set of braces UNLESS there's
+        // a curly brace in there anywhere: in that case
+        // we should leave it up to the sophisticated
+        // code analyzer to simplify the code!
+        //
+        // This is a very rough check as it will also look
+        // inside code comments, which should not have
+        // any influence.
+        //
+        // Nevertheless: this is a *safe* transform as
+        // long as the code doesn't end with a C++-style
+        // comment which happens to contain that closing
+        // curly brace at the end!
+        //
+        // Also DO strip off any trailing optional semicolon,
+        // which might have ended up here due to lexer rules
+        // like this one:
+        //
+        //     [a-z]+              -> 'TOKEN';
+        //
+        // We can safely ditch any trailing semicolon(s) as
+        // our code generator reckons with JavaScript's
+        // ASI rules (Automatic Semicolon Insertion).
+        //
+        //
+        // TODO: make this is real code edit without that
+        // last edge case as a fault condition.
+        if (startMarker === '{') {
+            // code is wrapped in `{...}` for sure: remove the wrapping braces.
+            s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+        } else {
+            // code may not be wrapped or otherwise non-simple: only remove
+            // wrapping braces when we can guarantee they're the only ones there,
+            // i.e. only exist as outer wrapping.
+            s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
+        }
+        s = s.replace(/;+$/, '').trim();
+        return s;
+    }
+
     var parse2AST = {
         parseCodeChunkToAST: parseCodeChunkToAST,
         prettyPrintAST: prettyPrintAST,
-        checkActionBlock: checkActionBlock
+        checkActionBlock: checkActionBlock,
+        trimActionCode: trimActionCode
     };
 
     function chkBugger$1(src) {
@@ -645,6 +717,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
         prettyPrintAST: parse2AST.prettyPrintAST,
         checkActionBlock: parse2AST.checkActionBlock,
+        trimActionCode: parse2AST.trimActionCode,
 
         printFunctionSourceCode: stringifier.printFunctionSourceCode,
         printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,

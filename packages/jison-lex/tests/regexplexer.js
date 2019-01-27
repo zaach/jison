@@ -5,6 +5,8 @@ var yaml = require('@gerhobbelt/js-yaml');
 var JSON5 = require('@gerhobbelt/json5');
 var globby = require('globby');
 var fs = require('fs');
+var path = require('path');
+var mkdirp = require('mkdirp');
 
 
 function re2set(re) {
@@ -34,7 +36,7 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex(), "EOF");
   });
 
-  // Before we go and test the API any further, we must make sure 
+  // Before we go and test the API any further, we must make sure
   // the used lex grammar parser delivers as expected:
   describe("Parsed Lexer Grammar", function () {
     it("parses special character escapes correctly", function () {
@@ -54,7 +56,7 @@ describe("Lexer Kernel", function () {
       ].join('\n');
 
       var lexer = new RegExpLexer(dict);
-      var JisonLexerError = lexer.JisonLexerError; 
+      var JisonLexerError = lexer.JisonLexerError;
       assert(JisonLexerError);
 
       var input = "x\nx\rx\vx\ax\fx\bx\x42x\u0043x xxx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\ ";
@@ -87,8 +89,8 @@ describe("Lexer Kernel", function () {
       assert.equal(lexer.lex(), 'X');
 
       // As the `\b` rule comes before the 'C' rule, it will match at the start-of-word boundary...
-      assert.equal(lexer.lex(), 'B');             
-      // ...and since this lexer rule doesn't consume anything at all, it will match indefinitely... 
+      assert.equal(lexer.lex(), 'B');
+      // ...and since this lexer rule doesn't consume anything at all, it will match indefinitely...
       for (var cnt = 42; cnt > 0; cnt--) {
         assert.equal(lexer.lex(), 'B');
       }
@@ -101,7 +103,7 @@ describe("Lexer Kernel", function () {
         }
       }
 
-      // and verify that our lexer decompression/ruleset-caching results 
+      // and verify that our lexer decompression/ruleset-caching results
       // in the above action not having any effect until we NUKE the
       // same regex in the condition cache:
       for (var cnt = 42; cnt > 0; cnt--) {
@@ -117,13 +119,13 @@ describe("Lexer Kernel", function () {
       }
 
       // **POSTSCRIPT**
-      // 
+      //
       // Regrettably I don't know of a way to check for this type of lexer regex rule
-      // anomaly in a generic way: the lexer rule may be a compound one, hiding the 
-      // non-consuming `\b` in there, while there are other regex constructs 
+      // anomaly in a generic way: the lexer rule may be a compound one, hiding the
+      // non-consuming `\b` in there, while there are other regex constructs
       // imaginable which share the same problem with this `\b` lexer rule: a rexexp
       // match which matches a boundary, hence **an empty string** without the
-      // grammar designer **intentionally** doing this. 
+      // grammar designer **intentionally** doing this.
 
       assert.equal(lexer.lex(), 'C');
       assert.equal(lexer.lex(), 'X');
@@ -193,20 +195,31 @@ describe("Lexer Kernel", function () {
         "'\\x42'     {return 'SC';}",
         "'\\u0043'     {return 'SD';}",
         "'\\ '     {return 'SE';}",
+        "'\\\\n'     {return 'LN';}",
+        "'\\\\r'     {return 'LR';}",
+        "'\\\\v'     {return 'LV';}",
+        "'\\\\a'     {return 'LA';}",
+        "'\\\\f'     {return 'LF';}",
+        "'\\\\b'     {return 'LB';}",
+        "'\\\\x42'     {return 'LC';}",
+        "'\\\\u0043'     {return 'LD';}",
+        "'\\\\\\\\ '     {return 'LE';}",
         "[^]       {return this.ERROR;}",
       ].join('\n');
 
       var lexer = new RegExpLexer(dict);
-      var JisonLexerError = lexer.JisonLexerError; 
+      var JisonLexerError = lexer.JisonLexerError;
       assert(JisonLexerError);
+      console.log('lexer:', lexer);
 
-      var input = "x\nx\rx\vx\ax\fx\bx\x42x\u0043x xxx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\ ";
+      var input = "x\nx\rx\vx\x07x\fx\bx\x42x\u0043x \\ x.xx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\\\ ";
 
       // help us monitor/debug lexer output:
       var old_lex_f = lexer.lex;
       lexer.lex = function () {
         try {
           var rv = old_lex_f.call(this);
+          console.log('lex:', {rv, val: lexer.yytext});
           return rv;
         } catch (ex) {
           //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -218,59 +231,57 @@ describe("Lexer Kernel", function () {
       assert.equal(lexer.lex(), 'X');
 
       // \n
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SN');
       assert.equal(lexer.lex(), 'X');
       // \r
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SR');
       assert.equal(lexer.lex(), 'X');
       // \v
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SV');
       assert.equal(lexer.lex(), 'X');
       // \a
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SA');
       assert.equal(lexer.lex(), 'X');
       // \f
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SF');
       assert.equal(lexer.lex(), 'X');
       // \b
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SB');
       assert.equal(lexer.lex(), 'X');
       // \x42
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'SC');
       assert.equal(lexer.lex(), 'X');
       // \u0043
       assert.equal(lexer.lex(), 'SD');
       assert.equal(lexer.lex(), 'X');
-      // \_
+      // _
       assert.equal(lexer.lex(), lexer.ERROR);
+      // \_
+      assert.equal(lexer.lex(), 'SE');
 
       assert.equal(lexer.lex(), 'X');
+      assert.equal(lexer.lex(), lexer.ERROR);
       assert.equal(lexer.lex(), 'X');
       assert.equal(lexer.lex(), 'X');
 
-      assert.equal(lexer.lex(), 'SN');
+      assert.equal(lexer.lex(), 'LN');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SR');
+      assert.equal(lexer.lex(), 'LR');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SV');
+      assert.equal(lexer.lex(), 'LV');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SA');
+      assert.equal(lexer.lex(), 'LA');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SF');
+      assert.equal(lexer.lex(), 'LF');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SB');
+      assert.equal(lexer.lex(), 'LB');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SC');
+      assert.equal(lexer.lex(), 'LC');
       assert.equal(lexer.lex(), 'X');
       // \\u0043
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
-      assert.equal(lexer.lex(), lexer.ERROR);
+      assert.equal(lexer.lex(), 'LD');
       assert.equal(lexer.lex(), 'X');
-      assert.equal(lexer.lex(), 'SE');
+      assert.equal(lexer.lex(), 'LE');
 
       assert.equal(lexer.lex(), lexer.EOF);
     });
@@ -283,7 +294,7 @@ describe("Lexer Kernel", function () {
     ].join('\n');
 
     var lexer = new RegExpLexer(dict);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     var t = new JisonLexerError('test', 42);
@@ -315,7 +326,7 @@ describe("Lexer Kernel", function () {
     ].join('\n');
 
     var lexer = new RegExpLexer(dict);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     var input = "xxyx";
@@ -336,7 +347,7 @@ describe("Lexer Kernel", function () {
       assert.equal(typeof ex.message, 'string');
       ex1 = ex;
     }
-    // since the lexer has been using the standard parseError method, 
+    // since the lexer has been using the standard parseError method,
     // which throws an exception **AND DOES NOT MOVE THE READ CURSOR FORWARD**,
     // we WILL observe the same error again on the next invocation:
     try {
@@ -356,7 +367,7 @@ describe("Lexer Kernel", function () {
         assert.deepEqual(ex[item], ex1[item], "both exceptions should have a matching member '" + item + "'");
       });
     }
-    // however, when we apply a non-throwing parseError, we MUST shift one character 
+    // however, when we apply a non-throwing parseError, we MUST shift one character
     // forward on error:
     lexer.parseError = function (str, hash) {
       assert(hash);
@@ -380,7 +391,7 @@ describe("Lexer Kernel", function () {
     ].join('\n');
 
     var lexer = new RegExpLexer(dict);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     var input = "x\nx\nxyzx\nx\ny\nz";
@@ -412,11 +423,11 @@ describe("Lexer Kernel", function () {
       lastErrorHash = hash;
       lastErrorMsg = str;
 
-      //hash.lexer = null;                // nuke the lexer class in `yy` to keep the debug output leaner and cleaner     
+      //hash.lexer = null;                // nuke the lexer class in `yy` to keep the debug output leaner and cleaner
       //console.error("error: fix?", {
-      //  str, 
-      //  hash, 
-      //  matched: this.matched, 
+      //  str,
+      //  hash,
+      //  matched: this.matched,
       //  match: this.match,
       //  matches: this.matches,
       //  yytext: this.yytext
@@ -500,13 +511,13 @@ describe("Lexer Kernel", function () {
     var input = "xa";
 
     var lexer = new RegExpLexer(dict, input);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     assert.equal(lexer.lex(), "X");
-    assert.throws(function () { 
-        lexer.lex(); 
-      }, 
+    assert.throws(function () {
+        lexer.lex();
+      },
       JisonLexerError,
       /Lexical error on line \d+[^]*?Unrecognized text/, "bad char"
     );
@@ -918,8 +929,8 @@ describe("Lexer Kernel", function () {
     var dict = {
         rules: [
            ["x", "return 'X';" ],
-           ['"[^"]*', 
-             /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */ 
+           ['"[^"]*',
+             /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */
              function () {
                if (yytext.charAt(yyleng - 1) === '\\') {
                    this.more();
@@ -927,7 +938,7 @@ describe("Lexer Kernel", function () {
                    yytext += this.input(); // swallow end quote
                    return "STRING";
                }
-             } 
+             }
            ],
            ["$", "return 'EOF';" ]
        ]
@@ -1645,7 +1656,7 @@ describe("Lexer Kernel", function () {
     var input = "A5";
 
     var lexer = new RegExpLexer(dict);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     lexer.setInput(input);
@@ -2115,25 +2126,25 @@ describe("Lexer Kernel", function () {
     var src = null;
 
     // Wrap the custom lexer code in a function so we can String()-dump it:
-    /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */ 
+    /* istanbul ignore next: action code is injected and then crashes the generated parser due to unreachable coverage global */
     function customLexerCode() {
-        var input = ""; 
-        var input_offset = 0; 
-        var lexer = { 
-            EOF: 1, 
-            ERROR: 2, 
-            options: {}, 
-            lex: function () { 
-                if (input.length > input_offset) { 
-                    return "a" + input[input_offset++]; 
-                } else { 
-                    return this.EOF; 
-                } 
-            }, 
-            setInput: function (inp) { 
-                input = inp; 
-                input_offset = 0; 
-            } 
+        var input = "";
+        var input_offset = 0;
+        var lexer = {
+            EOF: 1,
+            ERROR: 2,
+            options: {},
+            lex: function () {
+                if (input.length > input_offset) {
+                    return "a" + input[input_offset++];
+                } else {
+                    return this.EOF;
+                }
+            },
+            setInput: function (inp) {
+                input = inp;
+                input_offset = 0;
+            }
         };
     }
 
@@ -2501,7 +2512,7 @@ describe("Lexer Kernel", function () {
     assert.equal(expandedMacros.WORD.elsewhere, '[:BLU]|[^\\W_]');
     // Unicode Character 'LINE SEPARATOR' (U+2028) and Unicode Character 'PARAGRAPH SEPARATOR' (U+2029) must be explicitly encoded in \uNNNN
     // syntax to prevent crashes when the generated is compiled via `new Function()` as that one doesn't like it when you feed it
-    // regexes with these two characters embedded as is! 
+    // regexes with these two characters embedded as is!
     assert.equal(expandedMacros.WS.in_set, '\\t\\v\\f \u00a0\u1680\u180e\u2000-\u200a\\u2028\\u2029\u202f\u205f\u3000\ufeff');
     assert.equal(expandedMacros.WS.elsewhere, '[^\\S\\n\\r]');
     assert.equal(expandedMacros.ANY.in_set, '\\S\\s');
@@ -2553,7 +2564,7 @@ describe("Lexer Kernel", function () {
 
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    
+
     // test the calculated regexes -- the 'sollwert' for the test takes `i2c()` encoding particulars into account:
     assert.equal(expandedMacros.ISSUE_A.in_set, '\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd');
     assert.equal(expandedMacros.ISSUE_A.elsewhere, '[\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd]');
@@ -2576,11 +2587,11 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex() + '=' + lexer.match, "B=\u0023");
     assert.equal(lexer.lex() + '=' + lexer.match, "A=\u1023");
 
-    // WARNING: as we don't support Extended Plane Unicode Codepoints 
+    // WARNING: as we don't support Extended Plane Unicode Codepoints
     //          (i.e. any input character beyond U+FFFF), you will
     //          observe that these characters, when fed to the lexer, MAY
     //          be split up in their individual UCS2 Character Codes.
-    //          In this example U+10230 === UCS 0xD800 + UCS 0xDE30 
+    //          In this example U+10230 === UCS 0xD800 + UCS 0xDE30
     //          ('UTF-16' encoding of U+10230)
 
     //assert.equal(lexer.lex() + '=' + lexer.match, "?=\uD800\uDE30");  // U+10230
@@ -2620,7 +2631,7 @@ describe("Lexer Kernel", function () {
 
     var expandedMacros = lexer.getExpandedMacros();
     //console.log("MACROS:::::::::::::::", expandedMacros);
-    
+
     // test the calculated regexes -- the 'sollwert' for the test takes `i2c()` encoding particulars into account:
     assert.equal(expandedMacros.ISSUE_A.in_set, '\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd');
     assert.equal(expandedMacros.ISSUE_A.elsewhere, '[\\t\\n\\r\u0120-\uD7FF\uE000\\ufffd]');
@@ -2643,11 +2654,11 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer.lex() + '=' + lexer.match, "B=\u0023");
     assert.equal(lexer.lex() + '=' + lexer.match, "A=\u1023");
 
-    // WARNING: as we don't support Extended Plane Unicode Codepoints 
+    // WARNING: as we don't support Extended Plane Unicode Codepoints
     //          (i.e. any input character beyond U+FFFF), you will
     //          observe that these characters, when fed to the lexer, MAY
     //          be split up in their individual UCS2 Character Codes.
-    //          In this example U+10230 === UCS 0xD800 + UCS 0xDE30 
+    //          In this example U+10230 === UCS 0xD800 + UCS 0xDE30
     //          ('UTF-16' encoding of U+10230)
 
     //assert.equal(lexer.lex() + '=' + lexer.match, "?=\uD800\uDE30");  // U+10230
@@ -2671,13 +2682,13 @@ describe("Lexer Kernel", function () {
     var lexer = new RegExpLexer(dict);
     lexer.setInput(input);
 
-    assert.equal(lexer.lex(), "X");      
+    assert.equal(lexer.lex(), "X");
     // side note: this particular input is also constructed to test/ensure
     // that the lexer does not inadvertedly match the literal '<<EOF>>'
     // input string with the *special* <<EOF>> lexer rule token!
     //
     // In other words: if this next lex() call fails, we know we have a
-    // deep b0rk in the lex compiler (rule parser/recognizer)! 
+    // deep b0rk in the lex compiler (rule parser/recognizer)!
     assert.equal(lexer.lex(), "<");
     assert.equal(lexer.lex(), "<");
     assert.equal(lexer.lex(), "E");
@@ -2770,7 +2781,7 @@ describe("Lexer Kernel", function () {
     assert.equal(lexer2.lex(), "EOF");
     assert.equal(lexer1.lex(), "EOF");
     // once you've gone 'past' EOF, you get the EOF **ID** returned, rather than your custom EOF token.
-    // 
+    //
     // The `EOF` attribute is just a handy constant defined in the lexer prototype...
     assert.equal(lexer2.lex(), lexerBase.EOF);
     assert.equal(lexer1.lex(), lexerBase.EOF);
@@ -2789,7 +2800,7 @@ describe("prettyPrintRange() API", function () {
         '"b" %{ return 1; %}',
     ].join('\n');
     var lexer = new RegExpLexer(dict);
-    var JisonLexerError = lexer.JisonLexerError; 
+    var JisonLexerError = lexer.JisonLexerError;
     assert(JisonLexerError);
 
     var input = "abab";
@@ -2811,9 +2822,9 @@ describe("prettyPrintRange() API", function () {
         ' "b" %{ return 1; %}',
     ].join('\n');
 
-    assert.throws(function () { 
+    assert.throws(function () {
         var lexer = new RegExpLexer(dict);
-      }, 
+      },
       Error,
       /an error in one or more of your lexer regex rules/
     );
@@ -2822,20 +2833,20 @@ describe("prettyPrintRange() API", function () {
   it("is invoked when lexer cannot find the end of a rule's action code block (alt 1)", function () {
     var dict = [
         '%%',
-        // %{...%} action code blocks can contain ANYTHING, so 
+        // %{...%} action code blocks can contain ANYTHING, so
         // we won't find this error until we validate-parse-as-JS
         // the collected first action's source code.
         '"a" %{ return true; ',
         '"b" %{ return 1; %}',
     ].join('\n');
 
-    assert.throws(function () { 
+    assert.throws(function () {
         var lexer = new RegExpLexer(dict, null, null, {
           dumpSourceCodeOnFailure: false
         });
-      }, 
+      },
       Error,
-      /The rule\'s action code section does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; \n\^\.\.\.\.\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n3: "b" %\{ return 1; %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+      /The lexer rule\'s action code section does not compile[^]*?\n  Erroneous area:\n2: "a" %\{ return true; \n\^\.\.\.\.\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n3: "b" %\{ return 1; %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
     );
   });
 
@@ -2849,13 +2860,13 @@ describe("prettyPrintRange() API", function () {
         '"b" %{ return 1; ',
     ].join('\n');
 
-    assert.throws(function () { 
+    assert.throws(function () {
         var lexer = new RegExpLexer(dict, null, null, {
           dumpSourceCodeOnFailure: false
         });
-      }, 
+      },
       Error,
-      /Error: Lexical error on line 3:[^]*?missing 1 closing curly braces in lexer rule action block.[^]*?help jison grok more or less complex action code chunks.\n\n  Erroneous area:\n1: %%\n2: "a" %{ return true; %}\n3: "b" %{ return 1;\s*\n\^\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\.\^/
+      /Incorrectly terminated action code block\. We\'re expecting the\n\'%}\' end marker to go with the given start marker/
     );
   });
 
@@ -2868,13 +2879,13 @@ describe("prettyPrintRange() API", function () {
         '**This is gibberish!**',
     ].join('\n');
 
-    assert.throws(function () { 
+    assert.throws(function () {
         var lexer = new RegExpLexer(dict, null, null, {
           dumpSourceCodeOnFailure: false
         });
-      }, 
+      },
       Error,
-      /The extra lexer module code section \(a\.k\.a\. 'epilogue'\) does not compile[^]*?\n  Erroneous area:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %%\n\^\.\.\.\.\^\n5: \*\*This is gibberish!\*\*\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^/
+      /The \'%%\' lexer epilogue code does not compile: Line 4: Unexpected token \*\*/
     );
   });
 
@@ -2886,13 +2897,13 @@ describe("prettyPrintRange() API", function () {
         '%code bugger %{ **This is gibberish!** %}',
     ].join('\n');
 
-    assert.throws(function () { 
+    assert.throws(function () {
         var lexer = new RegExpLexer(dict, null, null, {
           dumpSourceCodeOnFailure: false
         });
-      }, 
+      },
       Error,
-      /There's probably an error in one or more of your lexer regex rules[^]*?\n  Erroneous code:\n1: %%\n2: "a" %\{ return true; %\}\n3: "b" %\{ return 1; %\}\n4: %code bugger %\{ \*\*This is gibberish!\*\* %\}\n\^\.\.\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\n[^]*?\n  Technical error report:\nParse error on line 4:[^]*?Expecting end of input, [^]*? got unexpected "INIT_CODE"/
+      /`%code` statements must be placed in\nthe top section of the lexer spec file, above the first \'%%\'\nseparator\. You cannot specify any in the second section as has been\ndone here./
     );
   });
 });
@@ -2907,21 +2918,35 @@ describe("prettyPrintRange() API", function () {
 
 
 
-
+//
+// compile these lexer specs and run a sample input through them
+//
 describe("Test Lexer Grammars", function () {
   console.log('exec glob....', __dirname);
   var testset = globby.sync([
-    __dirname + '/specs/*.jison', 
-    __dirname + '/specs/*.json5', 
+    __dirname + '/specs/*.jison',
+    __dirname + '/specs/*.json5',
     '!'+ __dirname + '/specs/*-ref.json5',
-    __dirname + '/specs/*.js', 
+    __dirname + '/specs/*.js',
+  ]);
+  // also compile and run the lexers in the /examples/ directory:
+  var testset2 = globby.sync([
+    __dirname + '/../examples/*.jison',
+    __dirname + '/../examples/*.json5',
+    __dirname + '/../examples/*.l',
+    __dirname + '/../examples/*.lex',
+    __dirname + '/../examples/*.jisonlex',
   ]);
   var original_cwd = process.cwd();
 
-  testset = testset.sort().map(function (filepath) {
+  testset = testset.sort();
+  testset2 = testset2.sort();
+  testset = testset.concat(testset2);     // append testset2 at the end of the list
+
+  testset = testset.map(function (filepath) {
     // Get document, or throw exception on error
     try {
-      console.log('Lexer Grammar file:', filepath.replace(/^.*?\/specs\//, ''));
+      console.log('Lexer Grammar file:', filepath.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/'));
       var spec;
       var header;
       var extra;
@@ -2950,16 +2975,27 @@ describe("Test Lexer Grammars", function () {
         filename: filepath,
       });
 
+      var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
+      var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
+      var lexerRefFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-lexer.js');
+      var lexerOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-lexer.js');
+      mkdirp(path.dirname(lexerRefFilePath));
+      mkdirp(path.dirname(lexerOutFilePath));
+
       var refOut;
       try {
-        refOut = fs.readFileSync(filepath + '-ref.json5', 'utf8').replace(/\r\n|\r/g, '\n');
-        refOut = JSON5.parse(refOut);
+        var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        refOut = JSON5.parse(soll);
       } catch (ex) {
         refOut = null;
       }
 
       return {
         path: filepath,
+        outputRefPath: refOutFilePath,
+        outputOutPath: testOutFilePath,
+        lexerRefPath: lexerRefFilePath,
+        lexerOutPath: lexerOutFilePath,
         spec: spec,
         meta: doc,
         metaExtra: extra,
@@ -2977,24 +3013,55 @@ describe("Test Lexer Grammars", function () {
 
   var original_cwd = process.cwd();
 
+  function stripErrorStackPaths(msg) {
+    // strip away devbox-specific paths in error stack traces in the output:
+    msg = msg.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
+    msg = msg.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+    return msg;
+  }
+
+  function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
+    // and produce an alternative structure to JSON-ify:
+    return {
+      circularReference: true,
+      // ex: {
+      //   message: err.message,
+      //   type: err.name
+      // },
+      index: circusPos,
+      parentDepth: objStack.length - circusPos - 1,
+      key: key,
+      keyStack: keyStack,    // stack & keyStack have already been snapshotted by the JSON5 library itself so passing a direct ref is fine here!
+    };
+  }
+
+  function reduceWhitespace(src) {
+    // replace tabs with space, clean out multiple spaces and kill trailing spaces:
+    return src
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ $/gm, '');
+  }
+
   testset.forEach(function (filespec) {
     // process this file:
     var title = (filespec.meta ? filespec.meta.title : null);
 
     // and create a test for it:
-    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '') + (title ? ' :: ' + title : ''), function () {
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/') + (title ? ' :: ' + title : ''), function testEachLexerExample() {
       var tokens = [];
       var i = 0;
-      var lexerSourceCode;
+      var lexer;
+      var lexerSourceCode, err;
 
       try {
         // Change CWD to the directory where the source grammar resides: this helps us properly
         // %include any files mentioned in the grammar with relative paths:
-        process.chdir(__dirname + '/specs');
+        process.chdir(path.dirname(filespec.path));
 
-        var lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
+        lexer = new RegExpLexer(filespec.spec, (filespec.meta.test_input || 'a b c'), null, {
           json: true,           // input MAY be JSON/JSON5 format OR JISON LEX format!
-          showSource: function (lexer, source, options) {
+          showSource: function (lexer, source, options, RegExpLexerClass) {
             lexerSourceCode = {
               sourceCode: source,
               options: options,
@@ -3004,9 +3071,11 @@ describe("Test Lexer Grammars", function () {
         var countDown = 4;
         for (i = 0; i < 1000; i++) {
           var tok = lexer.lex();
-          tokens.push(tok);
-          tokens.push(lexer.yytext);
-          tokens.push(lexer.yylloc);
+          tokens.push({
+            token: tok,
+            yytext: lexer.yytext,
+            yylloc: lexer.yylloc
+          });
           if (tok === lexer.EOF) {
             // and make sure EOF stays EOF, i.e. continued invocation of `lex()` will only
             // produce more EOF tokens at the same location:
@@ -3019,31 +3088,101 @@ describe("Test Lexer Grammars", function () {
       } catch (ex) {
         // save the error:
         tokens.push(-1);
-        tokens.push(ex.message);
-        tokens.push(ex.stack);
-        tokens.push(ex);
+        err = ex;
+        tokens.push({
+          fail: 1,
+          message: ex.message,
+          name: ex.name,
+          stack: ex.stack,
+          ex: ex,
+        });
+        // and make sure lexer !== undefined:
+        lexer = { fail: 1 };
       } finally {
         process.chdir(original_cwd);
       }
       // also store the number of tokens we received:
       tokens.unshift(i);
-      if (lexerSourceCode) {
-        tokens.push(lexerSourceCode);
-      }
+      // if (lexerSourceCode) {
+      //   tokens.push(lexerSourceCode);
+      // }
 
       // either we check/test the correctness of the collected input, iff there's
       // a reference provided, OR we create the reference file for future use:
-      var refOut = JSON5.stringify(tokens, null, 2, testrig_JSON5circularRefHandler);
+      var refOut = JSON5.stringify(tokens, {
+        replacer: function remove_lexer_objrefs(key, value) {
+          if (value === lexer) {
+            return "[lexer instance]";
+          }
+          return value;
+        },
+        space: 2,
+        circularRefHandler: testrig_JSON5circularRefHandler
+      });
       // strip away devbox-specific paths in error stack traces in the output:
-      refOut = refOut.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
-      refOut = refOut.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+      refOut = stripErrorStackPaths(refOut);
+      // and convert it back so we have a `tokens` set that's cleaned up
+      // and potentially matching the stored reference set:
+      tokens = JSON5.parse(refOut);
       if (filespec.ref) {
-        // make sure we postprocess the lexer spec as we did when we created the reference template:
-        tokens = JSON5.parse(refOut);
-        assert.deepEqual(tokens, filespec.ref);
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(tokens, filespec.ref);
       } else {
-        fs.writeFileSync(filespec.path + '-ref.json5', refOut, 'utf8');
+        fs.writeFileSync(filespec.outputRefPath, refOut, 'utf8');
+        filespec.ref = refOut;
       }
+      fs.writeFileSync(filespec.outputOutPath, refOut, 'utf8');
+
+      var refSrc, dumpStr;
+      if (lexerSourceCode) {
+        dumpStr = `
+            ${lexerSourceCode.sourceCode.replace(/\r\n|\r/g, '\n')};
+
+            //=============================================================================
+            //                     JISON-LEX OPTIONS:
+
+            ${JSON5.stringify(lexerSourceCode.options, {space: 2})}
+
+        `;
+      } else {
+        dumpStr = JSON5.stringify({
+          error: {
+            message: err.message,
+            type: err.name,
+            stack: err.stack
+          }
+        }, {space: 2});
+        dumpStr = stripErrorStackPaths(dumpStr);
+      }
+
+      fs.writeFileSync(filespec.lexerOutPath, dumpStr, 'utf8');
+      if (fs.existsSync(filespec.lexerRefPath)) {
+        refSrc = fs.readFileSync(filespec.lexerRefPath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        //assert.equal(refSrc, lexerSourceCode);
+        // ^--- when this one fails, it takes ages to print a diff from those huge files,
+        //      hence we write this another way.
+        //
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert,strictEqual() process
+        // for diff reporting as that takes bloody ages:
+        //assert.ok(refSrc === dumpStr, "generated source code does not match reference; please compare /output/ vs /reference-output/");
+      } else {
+        fs.writeFileSync(filespec.lexerRefPath, dumpStr, 'utf8');
+        refSrc = dumpStr;
+      }
+
+      // now that we have saved all data, perform the validation checks:
+      // keep them simple so assert doesn't need a lot of time to produce diff reports
+      // when the test fails:
+      //
+      // stringify the token sets! (no assert.deepEqual!)
+      var ist = JSON5.stringify(tokens, null, 2);
+      var soll = JSON5.stringify(filespec.ref, null, 2);
+      assert.ok(reduceWhitespace(ist) === reduceWhitespace(soll), "lexer output token stream does not match reference; please compare /output/ vs /reference-output/");
+      assert.ok(reduceWhitespace(refSrc) === reduceWhitespace(dumpStr), "generated source code does not match reference; please compare /output/ vs /reference-output/");
     });
   });
 });

@@ -1,0 +1,34 @@
+{
+  rules: [
+    [
+      '.',
+      '//',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [
+    {
+      qualifier: 'section',
+      include: 'x',
+    },
+    {
+      qualifier: 'imports',
+      include: `import JSON5 from '@gerhobbelt/json5';
+
+  import helpers from '../helpers-lib'`,
+    },
+  ],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%code section %{ x; %}
+%code imports %{
+  import JSON5 from '@gerhobbelt/json5';
+
+  import helpers from '../helpers-lib';
+%}
+%%
+. //
+
+`,
+}

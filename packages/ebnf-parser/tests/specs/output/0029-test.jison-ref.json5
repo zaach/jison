@@ -1,0 +1,40 @@
+{
+  bnf: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        '$$ = $foo',
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        '$$ = $foo',
+      ],
+    ],
+  },
+  __original_input__: `%% test: foo bar -> $foo
+;
+
+`,
+}

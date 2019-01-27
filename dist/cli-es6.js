@@ -7691,11 +7691,11 @@ EOF: 1,
         } else {
           // TODO
           yy_.yyerror(rmCommonWS`
-                                                    %include statements must occur on a line on their own and cannot occur inside an %{...%} action code block.
-                                                    Its use is not permitted at this position.
+                                                %include statements must occur on a line on their own and cannot occur inside an %{...%\} action code block.
+                                                Its use is not permitted at this position.
 
-                                                      Erroneous area:
-                                                    ` + this.prettyPrintRange(yy_.yylloc));
+                                                  Erroneous area:
+                                                ` + this.prettyPrintRange(yy_.yylloc));
 
           return 37;
         }
@@ -7810,14 +7810,14 @@ EOF: 1,
 
         if (yy.depth <= 0) {
           yy_.yyerror(rmCommonWS`
-                                                    too many closing curly braces in lexer rule action block.
+                                                too many closing curly braces in lexer rule action block.
 
-                                                    Note: the action code chunk may be too complex for jison to parse
-                                                    easily; we suggest you wrap the action code chunk in '%{...%}'
-                                                    to help jison grok more or less complex action code chunks.
+                                                Note: the action code chunk may be too complex for jison to parse
+                                                easily; we suggest you wrap the action code chunk in '%{...%\}'
+                                                to help jison grok more or less complex action code chunks.
 
-                                                      Erroneous area:
-                                                    ` + this.prettyPrintRange(yy_.yylloc));
+                                                  Erroneous area:
+                                                ` + this.prettyPrintRange(yy_.yylloc));
 
           return 30;
         } else {
@@ -8060,13 +8060,21 @@ EOF: 1,
 
       case 53:
         /*! Conditions:: rules macro named_chunk INITIAL */
+        /*! Rule::       `{ES2017_STRING_CONTENT}` */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        return 26;
+        break;
+
+      case 54:
+        /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \[ */
         this.pushState('set');
 
         return 41;
         break;
 
-      case 68:
+      case 69:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       < */
         this.pushState('conditions');
@@ -8074,21 +8082,21 @@ EOF: 1,
         return 5;
         break;
 
-      case 69:
+      case 70:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \/! */
         return 39;                     // treated as `(?!atom)`  
 
         break;
 
-      case 70:
+      case 71:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \/ */
         return 14;                      // treated as `(?=atom)`  
 
         break;
 
-      case 72:
+      case 73:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       \\. */
         yy_.yytext = yy_.yytext.replace(/^\\/g, '');
@@ -8096,7 +8104,7 @@ EOF: 1,
         return 44;
         break;
 
-      case 75:
+      case 76:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %option[s]? */
         this.pushState('options');
@@ -8104,7 +8112,7 @@ EOF: 1,
         return 47;
         break;
 
-      case 76:
+      case 77:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %s\b */
         this.pushState('start_condition');
@@ -8112,7 +8120,7 @@ EOF: 1,
         return 21;
         break;
 
-      case 77:
+      case 78:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %x\b */
         this.pushState('start_condition');
@@ -8120,7 +8128,7 @@ EOF: 1,
         return 22;
         break;
 
-      case 78:
+      case 79:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %code\b */
         this.pushState('named_chunk');
@@ -8128,7 +8136,7 @@ EOF: 1,
         return 25;
         break;
 
-      case 79:
+      case 80:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %import\b */
         this.pushState('named_chunk');
@@ -8136,7 +8144,7 @@ EOF: 1,
         return 24;
         break;
 
-      case 80:
+      case 81:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %include\b */
         yy.depth = 0;
@@ -8148,7 +8156,7 @@ EOF: 1,
         return 28;
         break;
 
-      case 81:
+      case 82:
         /*! Conditions:: code */
         /*! Rule::       %include\b */
         this.pushState('path');
@@ -8156,7 +8164,7 @@ EOF: 1,
         return 51;
         break;
 
-      case 82:
+      case 83:
         /*! Conditions:: INITIAL rules code */
         /*! Rule::       %{NAME}([^\r\n]*) */
         /* ignore unrecognized decl */
@@ -8175,7 +8183,7 @@ EOF: 1,
         return 23;
         break;
 
-      case 83:
+      case 84:
         /*! Conditions:: rules macro named_chunk INITIAL */
         /*! Rule::       %% */
         this.pushState('rules');
@@ -8183,7 +8191,7 @@ EOF: 1,
         return 19;
         break;
 
-      case 91:
+      case 92:
         /*! Conditions:: set */
         /*! Rule::       \] */
         this.popState();
@@ -8191,14 +8199,14 @@ EOF: 1,
         return 42;
         break;
 
-      case 93:
+      case 94:
         /*! Conditions:: code */
         /*! Rule::       [^\r\n]+ */
         return 53;       // the bit of CODE just before EOF...  
 
         break;
 
-      case 94:
+      case 95:
         /*! Conditions:: path */
         /*! Rule::       {BR} */
         this.popState();
@@ -8206,7 +8214,7 @@ EOF: 1,
         this.unput(yy_.yytext);
         break;
 
-      case 95:
+      case 96:
         /*! Conditions:: path */
         /*! Rule::       "{DOUBLEQUOTED_STRING_CONTENT}" */
         yy_.yytext = unescQuote(this.matches[1]);
@@ -8215,7 +8223,7 @@ EOF: 1,
         return 52;
         break;
 
-      case 96:
+      case 97:
         /*! Conditions:: path */
         /*! Rule::       '{QUOTED_STRING_CONTENT}' */
         yy_.yytext = unescQuote(this.matches[1]);
@@ -8224,13 +8232,22 @@ EOF: 1,
         return 52;
         break;
 
-      case 97:
+      case 98:
+        /*! Conditions:: path */
+        /*! Rule::       `{ES2017_STRING_CONTENT}` */
+        yy_.yytext = unescQuote(this.matches[1]);
+
+        this.popState();
+        return 52;
+        break;
+
+      case 99:
         /*! Conditions:: path */
         /*! Rule::       {WS}+ */
         // skip whitespace in the line 
         break;
 
-      case 98:
+      case 100:
         /*! Conditions:: path */
         /*! Rule::       [^\s\r\n]+ */
         this.popState();
@@ -8238,33 +8255,9 @@ EOF: 1,
         return 52;
         break;
 
-      case 99:
-        /*! Conditions:: action */
-        /*! Rule::       " */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
-      case 100:
-        /*! Conditions:: action */
-        /*! Rule::       ' */
-        yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in lexer rule action block.
-
-                                              Erroneous area:
-                                            ` + this.prettyPrintRange(yy_.yylloc));
-
-        return 2;
-        break;
-
       case 101:
         /*! Conditions:: action */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in lexer rule action block.
 
@@ -8275,10 +8268,10 @@ EOF: 1,
         break;
 
       case 102:
-        /*! Conditions:: options */
-        /*! Rule::       " */
+        /*! Conditions:: action */
+        /*! Rule::       ' */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8287,10 +8280,10 @@ EOF: 1,
         break;
 
       case 103:
-        /*! Conditions:: options */
-        /*! Rule::       ' */
+        /*! Conditions:: action */
+        /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant in %options entry.
+                                            unterminated string constant in lexer rule action block.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8300,7 +8293,7 @@ EOF: 1,
 
       case 104:
         /*! Conditions:: options */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         yy_.yyerror(rmCommonWS`
                                             unterminated string constant in %options entry.
 
@@ -8311,13 +8304,10 @@ EOF: 1,
         break;
 
       case 105:
-        /*! Conditions:: * */
-        /*! Rule::       " */
-        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+        /*! Conditions:: options */
+        /*! Rule::       ' */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant  encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8326,13 +8316,10 @@ EOF: 1,
         break;
 
       case 106:
-        /*! Conditions:: * */
-        /*! Rule::       ' */
-        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
-
+        /*! Conditions:: options */
+        /*! Rule::       ` */
         yy_.yyerror(rmCommonWS`
-                                            unterminated string constant  encountered while lexing
-                                            ${rules}.
+                                            unterminated string constant in %options entry.
 
                                               Erroneous area:
                                             ` + this.prettyPrintRange(yy_.yylloc));
@@ -8342,7 +8329,7 @@ EOF: 1,
 
       case 107:
         /*! Conditions:: * */
-        /*! Rule::       ` */
+        /*! Rule::       " */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
 
         yy_.yyerror(rmCommonWS`
@@ -8356,36 +8343,66 @@ EOF: 1,
         break;
 
       case 108:
+        /*! Conditions:: * */
+        /*! Rule::       ' */
+        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 109:
+        /*! Conditions:: * */
+        /*! Rule::       ` */
+        var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
+
+        yy_.yyerror(rmCommonWS`
+                                            unterminated string constant  encountered while lexing
+                                            ${rules}.
+
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
+
+        return 2;
+        break;
+
+      case 110:
         /*! Conditions:: macro rules */
         /*! Rule::       . */
         /* b0rk on bad characters */
         var rules = (this.topState() === 'macro' ? 'macro\'s' : this.topState());
 
         yy_.yyerror(rmCommonWS`
-                                                unsupported lexer input encountered while lexing
-                                                ${rules} (i.e. jison lex regexes).
+                                            unsupported lexer input encountered while lexing
+                                            ${rules} (i.e. jison lex regexes).
 
-                                                    NOTE: When you want this input to be interpreted as a LITERAL part
-                                                          of a lex rule regex, you MUST enclose it in double or
-                                                          single quotes.
+                                                NOTE: When you want this input to be interpreted as a LITERAL part
+                                                      of a lex rule regex, you MUST enclose it in double or
+                                                      single quotes.
 
-                                                          If not, then know that this input is not accepted as a valid
-                                                          regex expression here in jison-lex ${rules}.
+                                                      If not, then know that this input is not accepted as a valid
+                                                      regex expression here in jison-lex ${rules}.
 
-                                                  Erroneous area:
-                                                ` + this.prettyPrintRange(yy_.yylloc));
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
 
         break;
 
-      case 109:
+      case 111:
         /*! Conditions:: * */
         /*! Rule::       . */
         yy_.yyerror(rmCommonWS`
-                                                unsupported lexer input: ${dquote(yy_.yytext)}
-                                                while lexing in ${dquote(this.topState())} state.
+                                            unsupported lexer input: ${dquote(yy_.yytext)}
+                                            while lexing in ${dquote(this.topState())} state.
 
-                                                  Erroneous area:
-                                                ` + this.prettyPrintRange(yy_.yylloc));
+                                              Erroneous area:
+                                            ` + this.prettyPrintRange(yy_.yylloc));
 
         break;
 
@@ -8437,107 +8454,107 @@ EOF: 1,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \| */
-      54: 9,
+      55: 9,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \(\?: */
-      55: 38,
-
-      /*! Conditions:: rules macro named_chunk INITIAL */
-      /*! Rule::       \(\?= */
       56: 38,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
-      /*! Rule::       \(\?! */
+      /*! Rule::       \(\?= */
       57: 38,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
-      /*! Rule::       \(\?<= */
+      /*! Rule::       \(\?! */
       58: 38,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
-      /*! Rule::       \(\?<! */
+      /*! Rule::       \(\?<= */
       59: 38,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
+      /*! Rule::       \(\?<! */
+      60: 38,
+
+      /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \( */
-      60: 10,
+      61: 10,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \) */
-      61: 11,
+      62: 11,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \+ */
-      62: 12,
+      63: 12,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \* */
-      63: 7,
+      64: 7,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \? */
-      64: 13,
+      65: 13,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \^ */
-      65: 16,
+      66: 16,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       , */
-      66: 8,
+      67: 8,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       <<EOF>> */
-      67: 17,
+      68: 17,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \\([0-7]{1,3}|[rfntvsSbBwWdD\\*+()${}|[\]\/.^?]|c[A-Z]|x[0-9A-F]{2}|u[a-fA-F0-9]{4}) */
-      71: 44,
+      72: 44,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \$ */
-      73: 17,
+      74: 17,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \. */
-      74: 15,
+      75: 15,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \{\d+(,\s*\d+|,)?\} */
-      84: 45,
+      85: 45,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
-      /*! Rule::       \{{ID}\} */
-      85: 40,
-
-      /*! Conditions:: set options */
       /*! Rule::       \{{ID}\} */
       86: 40,
 
+      /*! Conditions:: set options */
+      /*! Rule::       \{{ID}\} */
+      87: 40,
+
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \{ */
-      87: 3,
+      88: 3,
 
       /*! Conditions:: rules macro named_chunk INITIAL */
       /*! Rule::       \} */
-      88: 4,
+      89: 4,
 
       /*! Conditions:: set */
       /*! Rule::       (?:\\\\|\\\]|[^\]{])+ */
-      89: 43,
+      90: 43,
 
       /*! Conditions:: set */
       /*! Rule::       \{ */
-      90: 43,
+      91: 43,
 
       /*! Conditions:: code */
       /*! Rule::       [^\r\n]*(\r|\n)+ */
-      92: 53,
+      93: 53,
 
       /*! Conditions:: * */
       /*! Rule::       $ */
-      110: 1
+      112: 1
     },
 
     rules: [
@@ -8600,67 +8617,69 @@ EOF: 1,
       /*  50: */  /^(?:\s+)/,
       /*  51: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
       /*  52: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /*  53: */  /^(?:\[)/,
-      /*  54: */  /^(?:\|)/,
-      /*  55: */  /^(?:\(\?:)/,
-      /*  56: */  /^(?:\(\?=)/,
-      /*  57: */  /^(?:\(\?!)/,
-      /*  58: */  /^(?:\(\?<=)/,
-      /*  59: */  /^(?:\(\?<!)/,
-      /*  60: */  /^(?:\()/,
-      /*  61: */  /^(?:\))/,
-      /*  62: */  /^(?:\+)/,
-      /*  63: */  /^(?:\*)/,
-      /*  64: */  /^(?:\?)/,
-      /*  65: */  /^(?:\^)/,
-      /*  66: */  /^(?:,)/,
-      /*  67: */  /^(?:<<EOF>>)/,
-      /*  68: */  /^(?:<)/,
-      /*  69: */  /^(?:\/!)/,
-      /*  70: */  /^(?:\/)/,
-      /*  71: */  /^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
-      /*  72: */  /^(?:\\.)/,
-      /*  73: */  /^(?:\$)/,
-      /*  74: */  /^(?:\.)/,
-      /*  75: */  /^(?:%option[s]?)/,
-      /*  76: */  /^(?:%s\b)/,
-      /*  77: */  /^(?:%x\b)/,
-      /*  78: */  /^(?:%code\b)/,
-      /*  79: */  /^(?:%import\b)/,
-      /*  80: */  /^(?:%include\b)/,
+      /*  53: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /*  54: */  /^(?:\[)/,
+      /*  55: */  /^(?:\|)/,
+      /*  56: */  /^(?:\(\?:)/,
+      /*  57: */  /^(?:\(\?=)/,
+      /*  58: */  /^(?:\(\?!)/,
+      /*  59: */  /^(?:\(\?<=)/,
+      /*  60: */  /^(?:\(\?<!)/,
+      /*  61: */  /^(?:\()/,
+      /*  62: */  /^(?:\))/,
+      /*  63: */  /^(?:\+)/,
+      /*  64: */  /^(?:\*)/,
+      /*  65: */  /^(?:\?)/,
+      /*  66: */  /^(?:\^)/,
+      /*  67: */  /^(?:,)/,
+      /*  68: */  /^(?:<<EOF>>)/,
+      /*  69: */  /^(?:<)/,
+      /*  70: */  /^(?:\/!)/,
+      /*  71: */  /^(?:\/)/,
+      /*  72: */  /^(?:\\([0-7]{1,3}|[$(-+.\/?BDSW\[-\^bdfnr-tvw{-}]|c[A-Z]|x[\dA-F]{2}|u[\dA-Fa-f]{4}))/,
+      /*  73: */  /^(?:\\.)/,
+      /*  74: */  /^(?:\$)/,
+      /*  75: */  /^(?:\.)/,
+      /*  76: */  /^(?:%option[s]?)/,
+      /*  77: */  /^(?:%s\b)/,
+      /*  78: */  /^(?:%x\b)/,
+      /*  79: */  /^(?:%code\b)/,
+      /*  80: */  /^(?:%import\b)/,
       /*  81: */  /^(?:%include\b)/,
-      /*  82: */  new XRegExp(
+      /*  82: */  /^(?:%include\b)/,
+      /*  83: */  new XRegExp(
         '^(?:%([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?)([^\\n\\r]*))',
         ''
       ),
-      /*  83: */  /^(?:%%)/,
-      /*  84: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
-      /*  85: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+      /*  84: */  /^(?:%%)/,
+      /*  85: */  /^(?:\{\d+(,\s*\d+|,)?\})/,
       /*  86: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
-      /*  87: */  /^(?:\{)/,
-      /*  88: */  /^(?:\})/,
-      /*  89: */  /^(?:(?:\\\\|\\\]|[^\]{])+)/,
-      /*  90: */  /^(?:\{)/,
-      /*  91: */  /^(?:\])/,
-      /*  92: */  /^(?:[^\r\n]*(\r|\n)+)/,
-      /*  93: */  /^(?:[^\r\n]+)/,
-      /*  94: */  /^(?:(\r\n|\n|\r))/,
-      /*  95: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
-      /*  96: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
-      /*  97: */  /^(?:([^\S\n\r])+)/,
-      /*  98: */  /^(?:\S+)/,
-      /*  99: */  /^(?:")/,
-      /* 100: */  /^(?:')/,
-      /* 101: */  /^(?:`)/,
-      /* 102: */  /^(?:")/,
-      /* 103: */  /^(?:')/,
-      /* 104: */  /^(?:`)/,
-      /* 105: */  /^(?:")/,
-      /* 106: */  /^(?:')/,
-      /* 107: */  /^(?:`)/,
-      /* 108: */  /^(?:.)/,
-      /* 109: */  /^(?:.)/,
-      /* 110: */  /^(?:$)/
+      /*  87: */  new XRegExp('^(?:\\{([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\})', ''),
+      /*  88: */  /^(?:\{)/,
+      /*  89: */  /^(?:\})/,
+      /*  90: */  /^(?:(?:\\\\|\\\]|[^\]{])+)/,
+      /*  91: */  /^(?:\{)/,
+      /*  92: */  /^(?:\])/,
+      /*  93: */  /^(?:[^\r\n]*(\r|\n)+)/,
+      /*  94: */  /^(?:[^\r\n]+)/,
+      /*  95: */  /^(?:(\r\n|\n|\r))/,
+      /*  96: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
+      /*  97: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
+      /*  98: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,
+      /*  99: */  /^(?:([^\S\n\r])+)/,
+      /* 100: */  /^(?:\S+)/,
+      /* 101: */  /^(?:")/,
+      /* 102: */  /^(?:')/,
+      /* 103: */  /^(?:`)/,
+      /* 104: */  /^(?:")/,
+      /* 105: */  /^(?:')/,
+      /* 106: */  /^(?:`)/,
+      /* 107: */  /^(?:")/,
+      /* 108: */  /^(?:')/,
+      /* 109: */  /^(?:`)/,
+      /* 110: */  /^(?:.)/,
+      /* 111: */  /^(?:.)/,
+      /* 112: */  /^(?:$)/
     ],
 
     conditions: {
@@ -8706,18 +8725,19 @@ EOF: 1,
           78,
           79,
           80,
-          82,
+          81,
           83,
           84,
           85,
-          87,
+          86,
           88,
-          105,
-          106,
+          89,
           107,
           108,
           109,
-          110
+          110,
+          111,
+          112
         ],
 
         inclusive: true
@@ -8762,17 +8782,18 @@ EOF: 1,
           78,
           79,
           80,
-          83,
+          81,
           84,
           85,
-          87,
+          86,
           88,
-          105,
-          106,
+          89,
           107,
           108,
           109,
-          110
+          110,
+          111,
+          112
         ],
 
         inclusive: true
@@ -8815,28 +8836,29 @@ EOF: 1,
           78,
           79,
           80,
-          83,
+          81,
           84,
           85,
-          87,
+          86,
           88,
-          105,
-          106,
+          89,
           107,
+          108,
           109,
-          110
+          111,
+          112
         ],
 
         inclusive: true
       },
 
       'code': {
-        rules: [81, 82, 92, 93, 105, 106, 107, 109, 110],
+        rules: [82, 83, 93, 94, 107, 108, 109, 111, 112],
         inclusive: false
       },
 
       'start_condition': {
-        rules: [24, 25, 42, 43, 44, 105, 106, 107, 109, 110],
+        rules: [24, 25, 42, 43, 44, 107, 108, 109, 111, 112],
         inclusive: false
       },
 
@@ -8853,22 +8875,22 @@ EOF: 1,
           39,
           40,
           41,
-          86,
-          102,
-          103,
+          87,
           104,
           105,
           106,
           107,
+          108,
           109,
-          110
+          111,
+          112
         ],
 
         inclusive: false
       },
 
       'conditions': {
-        rules: [20, 21, 22, 23, 105, 106, 107, 109, 110],
+        rules: [20, 21, 22, 23, 107, 108, 109, 111, 112],
         inclusive: false
       },
 
@@ -8893,26 +8915,26 @@ EOF: 1,
           17,
           18,
           19,
-          99,
-          100,
           101,
-          105,
-          106,
+          102,
+          103,
           107,
+          108,
           109,
-          110
+          111,
+          112
         ],
 
         inclusive: false
       },
 
       'path': {
-        rules: [24, 25, 94, 95, 96, 97, 98, 105, 106, 107, 109, 110],
+        rules: [24, 25, 95, 96, 97, 98, 99, 100, 107, 108, 109, 111, 112],
         inclusive: false
       },
 
       'set': {
-        rules: [86, 89, 90, 91, 105, 106, 107, 109, 110],
+        rules: [87, 90, 91, 92, 107, 108, 109, 111, 112],
         inclusive: false
       },
 
@@ -8954,17 +8976,18 @@ EOF: 1,
           78,
           79,
           80,
-          82,
+          81,
           83,
           84,
           85,
-          87,
+          86,
           88,
-          105,
-          106,
+          89,
           107,
+          108,
           109,
-          110
+          111,
+          112
         ],
 
         inclusive: true
@@ -24287,7 +24310,7 @@ EOF: 1,
       case 2:
         /*! Conditions:: action */
         /*! Rule::       \/[^ /]*?['"{}][^ ]*?\/ */
-        return 44;  // regexp with braces or quotes (and no spaces)  
+        return 44;    // regexp with braces or quotes (and no spaces)  
 
         break;
 
@@ -24789,7 +24812,7 @@ EOF: 1,
         yy_.yyerror(rmCommonWS`
                                                 unsupported parser input: ${dquote(yy_.yytext)}
                                                 while lexing in ${dquote(this.topState())} state.
-                                                
+
                                                   Erroneous area:
                                                 ` + this.prettyPrintRange(yy_.yylloc));
 
@@ -24878,20 +24901,20 @@ EOF: 1,
       25: 25,
 
       /*! Conditions:: token bnf ebnf INITIAL */
-      /*! Rule::       {ID} */
-      39: 24,
-
-      /*! Conditions:: token bnf ebnf INITIAL */
-      /*! Rule::       {NAME} */
-      40: 25,
-
-      /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       \$end\b */
-      41: 41,
+      39: 41,
 
       /*! Conditions:: token bnf ebnf INITIAL */
       /*! Rule::       \$eof\b */
-      42: 41,
+      40: 41,
+
+      /*! Conditions:: token bnf ebnf INITIAL */
+      /*! Rule::       {ID} */
+      41: 24,
+
+      /*! Conditions:: token bnf ebnf INITIAL */
+      /*! Rule::       {NAME} */
+      42: 25,
 
       /*! Conditions:: token */
       /*! Rule::       [^\s\r\n]+ */
@@ -25001,13 +25024,13 @@ EOF: 1,
       /* 36: */  /^(?:([^\S\n\r])+)/,
       /* 37: */  /^(?:(\r\n|\n|\r)+)/,
       /* 38: */  new XRegExp('^(?:\\[([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*)\\])', ''),
-      /* 39: */  new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
-      /* 40: */  new XRegExp(
+      /* 39: */  /^(?:\$end\b)/,
+      /* 40: */  /^(?:\$eof\b)/,
+      /* 41: */  new XRegExp('^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}_])*))', ''),
+      /* 42: */  new XRegExp(
         '^(?:([\\p{Alphabetic}_](?:[\\p{Alphabetic}\\p{Number}\\-_]*(?:[\\p{Alphabetic}\\p{Number}_]))?))',
         ''
       ),
-      /* 41: */  /^(?:\$end\b)/,
-      /* 42: */  /^(?:\$eof\b)/,
       /* 43: */  /^(?:"((?:\\"|\\[^"]|[^\n\r"\\])*)")/,
       /* 44: */  /^(?:'((?:\\'|\\[^']|[^\n\r'\\])*)')/,
       /* 45: */  /^(?:`((?:\\`|\\[^`]|[^\\`])*)`)/,

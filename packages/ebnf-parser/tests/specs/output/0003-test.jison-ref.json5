@@ -1,0 +1,106 @@
+{
+  bnf: {
+    pgm: [
+      [
+        [
+          'symbol',
+          'cdl',
+        ],
+        [
+          'symbol',
+          'MAIN',
+        ],
+        [
+          'symbol',
+          'LBRACE',
+        ],
+        [
+          'symbol',
+          'vdl',
+        ],
+        [
+          'symbol',
+          'el',
+        ],
+        [
+          'symbol',
+          'RBRACE',
+        ],
+        [
+          'symbol',
+          'ENDOFFILE',
+        ],
+      ],
+    ],
+    cdl: [
+      [
+        [
+          'symbol',
+          'c',
+        ],
+        [
+          'symbol',
+          'cdl',
+        ],
+      ],
+      [],
+    ],
+  },
+  grammar: {
+    pgm: [
+      [
+        [
+          'symbol',
+          'cdl',
+        ],
+        [
+          'symbol',
+          'MAIN',
+        ],
+        [
+          'symbol',
+          'LBRACE',
+        ],
+        [
+          'symbol',
+          'vdl',
+        ],
+        [
+          'symbol',
+          'el',
+        ],
+        [
+          'symbol',
+          'RBRACE',
+        ],
+        [
+          'symbol',
+          'ENDOFFILE',
+        ],
+      ],
+    ],
+    cdl: [
+      [
+        [
+          'symbol',
+          'c',
+        ],
+        [
+          'symbol',
+          'cdl',
+        ],
+      ],
+      [],
+    ],
+  },
+  __original_input__: `%%
+
+pgm 
+: cdl MAIN LBRACE vdl el RBRACE ENDOFFILE 
+; cdl 
+: c cdl 
+| 
+;
+
+`,
+}

@@ -15,6 +15,9 @@ gcc/
 #*.mobi
 #*.pdf
 
+# do not publish 50mb of documentation
+docs/
+
 # Ignore the monorepo subpackages directory as the dist/ files do not need them and those should be published separately
 packages/
 

@@ -1,0 +1,30 @@
+[
+  8,
+  {
+    token: 'a',
+  },
+  {
+    token: ' ',
+  },
+  {
+    token: 'b',
+  },
+  {
+    token: ' ',
+  },
+  {
+    token: 'c',
+  },
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
+  {
+    token: 1,
+  },
+]

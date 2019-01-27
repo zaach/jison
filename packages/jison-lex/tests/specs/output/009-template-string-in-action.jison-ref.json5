@@ -1,0 +1,30 @@
+[
+  0,
+  -1,
+  {
+    fail: 1,
+    message: 'log is not defined',
+    name: 'ReferenceError',
+    stack: `ReferenceError: log is not defined
+    at Object.lexer__performAction [as performAction] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1387:16)
+    at Object.lexer_test_match [as test_match] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1064:36)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1160:26)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9356:31), <anonymous>:1224:22)
+    at Context.testEachLexerExample (\regexplexer.js:3073:27)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+    ex: {
+      message: 'log is not defined',
+      name: 'ReferenceError',
+    },
+  },
+]

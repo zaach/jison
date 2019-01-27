@@ -1,0 +1,28 @@
+{
+  rules: [
+    [
+      'foo',
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  options: {
+    ping: 666,
+    bla: 'blub',
+    bool1: true,
+    s1: 's1value',
+    s2: 's2value',
+    s3: false,
+    s4: 'false',
+    aBC: 'd',
+  },
+  __original_input__: `%options ping=666 bla=blub bool1 s1="s1value" s2='s2value' s3=false s4="false" a-b-c="d"
+%%
+"foo" return 1;
+
+`,
+}

@@ -3,7 +3,7 @@ import bnf from "./parser";
 import transform from "./ebnf-transform";
 import jisonlex from "../lex-parser";
 
-var version = '0.6.1-216';                              // require('./package.json').version;
+var version = '0.6.5-218';                              // require('./package.json').version;
 
 function parse(grammar) {
     return bnf.parser.parse(grammar);
@@ -11,52 +11,87 @@ function parse(grammar) {
 
 // adds a declaration to the grammar
 bnf.parser.yy.addDeclaration = function bnfAddDeclaration(grammar, decl) {
+    if (!decl) {
+        return;
+    }
+
     if (decl.start) {
         grammar.start = decl.start;
-    } else if (decl.lex) {
+    }
+    if (decl.lex) {
         grammar.lex = parseLex(decl.lex.text, decl.lex.position);
-    } else if (decl.operator) {
+    }
+    if (decl.grammar) {
+        grammar.grammar = decl.grammar;
+    }
+    if (decl.ebnf) {
+        grammar.ebnf = decl.ebnf;
+    }
+    if (decl.bnf) {
+        grammar.bnf = decl.bnf;
+    }
+    if (decl.operator) {
         if (!grammar.operators) grammar.operators = [];
         grammar.operators.push(decl.operator);
-    } else if (decl.token) {
+    }
+    if (decl.token) {
         if (!grammar.extra_tokens) grammar.extra_tokens = [];
         grammar.extra_tokens.push(decl.token);
-    } else if (decl.token_list) {
+    }
+    if (decl.token_list) {
         if (!grammar.extra_tokens) grammar.extra_tokens = [];
         decl.token_list.forEach(function (tok) {
             grammar.extra_tokens.push(tok);
         });
-    } else if (decl.parseParams) {
+    }
+    if (decl.parseParams) {
         if (!grammar.parseParams) grammar.parseParams = [];
         grammar.parseParams = grammar.parseParams.concat(decl.parseParams);
-    } else if (decl.parserType) {
+    }
+    if (decl.parserType) {
         if (!grammar.options) grammar.options = {};
         grammar.options.type = decl.parserType;
-    } else if (decl.include) {
-        if (!grammar.moduleInclude) grammar.moduleInclude = '';
-        grammar.moduleInclude += decl.include;
-    } else if (decl.options) {
+    }
+    if (decl.include) {
+        if (!grammar.moduleInclude) {
+            grammar.moduleInclude = decl.include;
+        } else {
+            grammar.moduleInclude += '\n\n' + decl.include;
+        }
+    }
+    if (decl.actionInclude) {
+        if (!grammar.actionInclude) {
+            grammar.actionInclude = decl.actionInclude;
+        } else {
+            grammar.actionInclude += '\n\n' + decl.actionInclude;
+        }
+    }
+    if (decl.options) {
         if (!grammar.options) grammar.options = {};
         // last occurrence of `%options` wins:
         for (var i = 0; i < decl.options.length; i++) {
             grammar.options[decl.options[i][0]] = decl.options[i][1];
         }
-    } else if (decl.unknownDecl) {
-        if (!grammar.unknownDecls) grammar.unknownDecls = [];
+    }
+    if (decl.unknownDecl) {
+        if (!grammar.unknownDecls) grammar.unknownDecls = [];         // [ array of {name,value} pairs ]
         grammar.unknownDecls.push(decl.unknownDecl);
-    } else if (decl.imports) {
-        if (!grammar.imports) grammar.imports = [];
+    }
+    if (decl.imports) {
+        if (!grammar.imports) grammar.imports = [];                   // [ array of {name,path} pairs ]
         grammar.imports.push(decl.imports);
-    } else if (decl.actionInclude) {
-        if (!grammar.actionInclude) {
-            grammar.actionInclude = '';
-        }
-        grammar.actionInclude += decl.actionInclude;
-    } else if (decl.initCode) {
+    }
+    if (decl.codeSection) {
         if (!grammar.moduleInit) {
             grammar.moduleInit = [];
         }
-        grammar.moduleInit.push(decl.initCode);       // {qualifier: <name>, include: <source code chunk>}
+        grammar.moduleInit.push(decl.codeSection);                    // {qualifier: <name>, include: <source code chunk>}
+    }
+    if (decl.onErrorRecovery) {
+        if (!grammar.errorRecoveryActions) {
+            grammar.errorRecoveryActions = [];
+        }
+        grammar.errorRecoveryActions.push(decl.onErrorRecovery);      // {qualifier: <name>, include: <source code chunk>}
     }
 };
 

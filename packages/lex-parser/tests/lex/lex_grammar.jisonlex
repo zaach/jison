@@ -1,3 +1,8 @@
+//
+// title: test simple LEX lexer spec
+// 
+// ...
+//
 
 %%
 \n+    	{yy.freshLine = true;}

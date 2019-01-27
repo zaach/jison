@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: (A = B × C)
+// ...
+//  
+
 
 //%debug                                            // cost ~ 2-4% having it in there when not used. Much higher cost when actually used.
 //%options output-debug-tables
@@ -20,7 +25,7 @@
 %%
 
 
-%include 'benchmark.js'
+%include 'includes/benchmark.js'
 
 
 // rephrase for display: error info objects which have been pushed onto the vstack:

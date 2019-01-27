@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: (a|bcd)
+// ...
+//  
+
 /*
 Copyright 2015 Mathew Reny
 

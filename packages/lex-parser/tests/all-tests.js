@@ -1,30 +1,15 @@
 var assert = require("chai").assert;
-var lex    = require("../dist/lex-parser-cjs-es5");
-var fs     = require('fs');
-var path   = require('path');
+var fs = require('fs');
+var path = require('path');
+var mkdirp = require('mkdirp');
+var yaml = require('@gerhobbelt/js-yaml');
+var JSON5 = require('@gerhobbelt/json5');
+var globby = require("globby");
+var lex = require("../dist/lex-parser-cjs-es5");
 
-function read (p, file) {
-    return fs.readFileSync(path.join(__dirname, p, file), "utf8");
-}
 
-const expectedEmptyBase = {
-    macros: {},           // { hash table }
-    startConditions: {},  // { hash table }
-    codeSections: [],     // [ array of {qualifier,include} pairs ]
-    importDecls: [],      // [ array of {name,path} pairs ]
-    unknownDecls: []      // [ array of {name,value} pairs ]
-};
 
-function mixExpected(o) {
-    var rv = {};
-    for (var key in expectedEmptyBase) {
-        rv[key] = expectedEmptyBase[key];
-    }
-    for (key in o) {
-        rv[key] = o[key];
-    }
-    return rv;
-}
+
 
 function lexer_reset() {
     if (lex.parser.yy) {
@@ -61,603 +46,306 @@ function lexer_reset() {
     }
 }
 
-describe("LEX Parser", function () {
+
+
+
+
+
+
+
+
+  console.log('exec glob....', __dirname);
+  var testset = globby.sync([
+    __dirname + '/specs/*.jison',
+    __dirname + '/specs/*.lex',
+    __dirname + '/specs/*.jisonlex',
+    __dirname + '/specs/*.json5',
+    '!'+ __dirname + '/specs/*-ref.json5',
+    __dirname + '/specs/*.js',
+    __dirname + '/lex/*.jisonlex',
+  ]);
+  var original_cwd = process.cwd();
+
+  testset = testset.sort();
+
+  testset = testset.map(function (filepath) {
+    // Get document, or throw exception on error
+    try {
+      console.log('Lexer Spec file:', filepath.replace(/^.*?\/specs\//, '').replace(/^.*?\/lex\//, ''));
+      var spec;
+      var header;
+      var extra;
+
+      if (filepath.match(/\.js$/)) {
+        spec = require(filepath);
+
+        var hdrspec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = hdrspec.substr(0, hdrspec.indexOf('\n\n') + 1);
+      } else {
+        spec = fs.readFileSync(filepath, 'utf8').replace(/\r\n|\r/g, '\n');
+
+        // extract the top comment, which carries the title, etc. metadata:
+        header = spec.substr(0, spec.indexOf('\n\n') + 1);
+      }
+
+      // then strip off the comment prefix for every line:
+      header = header.replace(/^\/\/ ?/gm, '').replace(/\n...\n[^]*$/, function (m) {
+        extra = m;
+        return '';
+      });
+
+      var doc = yaml.safeLoad(header, {
+        filename: filepath,
+      });
+
+      // extract the grammar to test:
+      var grammar = spec.substr(spec.indexOf('\n\n') + 2);
+
+      var refOutFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-ref.json5');
+      var testOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-ref.json5');
+      var lexerRefFilePath = path.normalize(path.dirname(filepath) + '/reference-output/' + path.basename(filepath) + '-lex.json5');
+      var lexerOutFilePath = path.normalize(path.dirname(filepath) + '/output/' + path.basename(filepath) + '-lex.json5');
+      mkdirp(path.dirname(refOutFilePath));
+      mkdirp(path.dirname(testOutFilePath));
+
+      var refOut;
+      try {
+        var soll = fs.readFileSync(refOutFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        refOut = JSON5.parse(soll);
+      } catch (ex) {
+        refOut = null;
+      }
+
+      var lexerRefOut;
+      try {
+        var soll = fs.readFileSync(lexerRefFilePath, 'utf8').replace(/\r\n|\r/g, '\n');
+        lexerRefOut = JSON5.parse(soll);
+      } catch (ex) {
+        lexerRefOut = null;
+      }
+
+      return {
+        path: filepath,
+        outputRefPath: refOutFilePath,
+        outputOutPath: testOutFilePath,
+        lexerRefPath: lexerRefFilePath,
+        lexerOutPath: lexerOutFilePath,
+        spec: spec,
+        grammar: grammar,
+        meta: doc,
+        metaExtra: extra,
+        lexerRef: lexerRefOut,
+        ref: refOut
+      };
+    } catch (ex) {
+      console.log(ex);
+      throw ex;
+    }
+    return false;
+  })
+  .filter(function (info) {
+    return !!info;
+  });
+
+  var original_cwd = process.cwd();
+
+  function stripErrorStackPaths(msg) {
+    // strip away devbox-specific paths in error stack traces in the output:
+    msg = msg.replace(/\bat ([^\r\n(\\\/]*?)\([^)]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)\)/gi, 'at $1($2)');
+    msg = msg.replace(/\bat [^\r\n ]+?([\\\/][a-z0-9_-]+\.js:[0-9]+:[0-9]+)/gi, 'at $1');
+    return msg;
+  }
+
+  function testrig_JSON5circularRefHandler(obj, circusPos, objStack, keyStack, key, err) {
+    // and produce an alternative structure to JSON-ify:
+    return {
+      circularReference: true,
+      // ex: {
+      //   message: err.message,
+      //   type: err.name
+      // },
+      index: circusPos,
+      parentDepth: objStack.length - circusPos - 1,
+      key: key,
+      keyStack: keyStack,    // stack & keyStack have already been snapshotted by the JSON5 library itself so passing a direct ref is fine here!
+    };
+  }
+
+  function reduceWhitespace(src) {
+    // replace tabs with space, clean out multiple spaces and kill trailing spaces:
+    return src
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ $/gm, '');
+  }
+
+
+
+
+
+
+
+
+
+
+describe("LEX spec lexer", function () {
   beforeEach(function beforeEachTest() {
     lexer_reset();
   });
 
-  it("test lex grammar with macros", function () {
-    var lexgrammar = 'D [0-9]\nID [a-zA-Z_][a-zA-Z0-9_]+\n%%\n\n{D}"ohhai" {print(9);}\n"{" return \'{\';';
-    var expected = mixExpected({
-        macros: {
-            "D": "[0-9]", 
-            "ID": "[a-zA-Z_][a-zA-Z0-9_]+"
-        },
-        rules: [
-            ["{D}ohhai", "print(9);"],
-            ["\\{", "return '{';"]
-        ],
+  testset.forEach(function (filespec) {
+    // process this file:
+    var title = (filespec.meta ? filespec.meta.title : null);
+
+    // and create a test for it:
+
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/lex\//, '/lex/') + (title ? ' :: ' + title : ''), function testEachParserExample() {
+      var err, ast, grammar;
+      var tokens = [];
+      var lexer = lex.parser.lexer;
+
+      try {
+        // Change CWD to the directory where the source grammar resides: this helps us properly
+        // %include any files mentioned in the grammar with relative paths:
+        process.chdir(path.dirname(filespec.path));
+
+        grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
+
+        if (filespec.meta.crlf) {
+            grammar = grammar.replace(/\n/g, "\r\n");
+        }
+
+        ast = lexer.setInput(grammar);
+        ast.__original_input__ = grammar;
+
+        var countDown = 4;
+        for (var i = 0; i < 1000; i++) {
+          var tok = lexer.lex();
+          tokens.push({
+            id: tok,
+            token: lex.parser.describeSymbol(tok),
+            yytext: lexer.yytext,
+            yylloc: lexer.yylloc
+          });
+          if (tok === lexer.EOF) {
+            // and make sure EOF stays EOF, i.e. continued invocation of `lex()` will only
+            // produce more EOF tokens at the same location:
+            countDown--;
+            if (countDown <= 0) {
+              break;
+            }
+          }
+        }
+      } catch (ex) {
+        // save the error:
+        err = ex;
+        // and make sure ast !== undefined:
+        tokens.push({ fail: 1, meta: filespec.spec.meta, err: err });
+      } finally {
+        process.chdir(original_cwd);
+      }
+
+      // either we check/test the correctness of the collected input, iff there's
+      // a reference provided, OR we create the reference file for future use:
+      var refOut = JSON5.stringify(tokens, {
+        space: 2,
+        circularRefHandler: testrig_JSON5circularRefHandler
+      });
+      // strip away devbox-specific paths in error stack traces in the output:
+      refOut = stripErrorStackPaths(refOut);
+      // and convert it back so we have a `tokens` set that's cleaned up
+      // and potentially matching the stored reference set:
+      tokens = JSON5.parse(refOut);
+      if (filespec.lexerRef) {
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(ast, filespec.ref);
+      } else {
+        fs.writeFileSync(filespec.lexerRefPath, refOut, 'utf8');
+        filespec.lexerRef = refOut;
+      }
+      fs.writeFileSync(filespec.lexerOutPath, refOut, 'utf8');
+
+      // now that we have saved all data, perform the validation checks:
+      assert.deepEqual(tokens, filespec.lexerRef, "grammar should be lexed correctly");
     });
+  });
+});
 
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
+
+
+
+
+
+
+
+
+
+
+describe("LEX parser", function () {
+  beforeEach(function beforeEachTest() {
+    lexer_reset();
   });
 
-  it("test lex grammar with macros in regex sets", function () {
-    var lexgrammar = 'D [0-9]\nL [a-zA-Z]\nID [{L}_][{L}{D}_]+\n%%\n\n[{D}]"ohhai" {print(9);}\n"{" return \'{\';';
-    var expected = mixExpected({
-        macros: {
-            "D": "[0-9]", 
-            "L": "[a-zA-Z]", 
-            "ID": "[{L}_][{L}{D}_]+"
-        },
-        rules: [
-            ["[{D}]ohhai", "print(9);"],
-            ["\\{", "return '{';"]
-        ],
+  testset.forEach(function (filespec) {
+    // process this file:
+    var title = (filespec.meta ? filespec.meta.title : null);
+
+    // and create a test for it:
+
+    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/lex\//, '/lex/') + (title ? ' :: ' + title : ''), function testEachParserExample() {
+      var err, ast, grammar;
+
+      try {
+        // Change CWD to the directory where the source grammar resides: this helps us properly
+        // %include any files mentioned in the grammar with relative paths:
+        process.chdir(path.dirname(filespec.path));
+
+        grammar = filespec.grammar; // "%% test: foo bar | baz ; hello: world ;";
+
+        if (filespec.meta.crlf) {
+            grammar = grammar.replace(/\n/g, "\r\n");
+        }
+
+        ast = lex.parse(grammar);
+        ast.__original_input__ = grammar;
+      } catch (ex) {
+        // save the error:
+        err = ex;
+        // and make sure ast !== undefined:
+        ast = { fail: 1, spec: filespec.grammar, err: err };
+      } finally {
+        process.chdir(original_cwd);
+      }
+
+      // either we check/test the correctness of the collected input, iff there's
+      // a reference provided, OR we create the reference file for future use:
+      var refOut = JSON5.stringify(ast, {
+        space: 2,
+        circularRefHandler: testrig_JSON5circularRefHandler
+      });
+      // strip away devbox-specific paths in error stack traces in the output:
+      refOut = stripErrorStackPaths(refOut);
+      // and convert it back so we have a `tokens` set that's cleaned up
+      // and potentially matching the stored reference set:
+      ast = JSON5.parse(refOut);
+      if (filespec.ref) {
+        // Perform the validations only AFTER we've written the files to output:
+        // several tests produce very large outputs, which we shouldn't let assert() process
+        // for diff reporting as that takes bloody ages:
+        //assert.deepEqual(ast, filespec.ref);
+      } else {
+        fs.writeFileSync(filespec.outputRefPath, refOut, 'utf8');
+        filespec.ref = refOut;
+      }
+      fs.writeFileSync(filespec.outputOutPath, refOut, 'utf8');
+
+      // now that we have saved all data, perform the validation checks:
+      assert.deepEqual(ast, filespec.ref, "grammar should be parsed correctly");
     });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test rule-less grammar", function () {
-    var lexgrammar = '%export { D }\nD [0-9]';
-    var expected = mixExpected({
-      macros: { D: '[0-9]' },
-      unknownDecls: [{
-        name: 'export', 
-        value: '{ D }'
-      }],
-      rules: []
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, 'grammar should be parsed correctly');
-  });
-
-  it("test escaped chars", function () {
-    var lexgrammar = '%%\n"\\n"+ {return \'NL\';}\n\\n+ {return \'NL2\';}\n\\s+ {/* skip */}';
-    var expected = mixExpected({
-        rules: [
-            ["\\\\n+", "return 'NL';"],
-            ["\\n+", "return 'NL2';"],
-            ["\\s+", "/* skip */"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test advanced", function () {
-    var lexgrammar = '%%\n$ {return \'EOF\';}\n. {/* skip */}\n"stuff"*/("{"|";") {/* ok */}\n(.+)[a-z]{1,2}"hi"*? {/* skip */}\n';
-    var expected = mixExpected({
-        rules: [
-            ["$", "return 'EOF';"],
-            [".", "/* skip */"],
-            ["stuff*(?=(\\{|;))", "/* ok */"],
-            ["(.+)[a-z]{1,2}hi*?", "/* skip */"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test [^\\]]", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "return true;"],
-            ["f\"oo'bar", "return 'baz2';"],
-            ['fo"obar', "return 'baz';"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "return true;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action with single braces", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {\nvar b={};return true;\n}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "{\nvar b={};return true;\n}"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action with brace in a multi-line-comment", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {\nvar b=7; /* { */ return true;\n}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "var b=7; /* { */ return true;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action with brace in a single-line-comment", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {\nvar b={}; // { \nreturn 2 / 3;\n}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "{\nvar b={}; // { \nreturn 2 / 3;\n}"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action with braces in strings", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {\nvar b=\'{\' + "{"; // { \nreturn 2 / 3;\n}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "var b='{' + \"{\"; // { \nreturn 2 / 3;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline action with braces in regexp", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" {\nvar b=/{/; // { \nreturn 2 / 3;\n}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "var b=/{/; // { \nreturn 2 / 3;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test multiline (indented) action without braces", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]"\n  var b=/{/;\n  // { \n  return 2 / 3;\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "var b=/{/;\n  // { \n  return 2 / 3;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test include", function () {
-    var lexgrammar = '\nRULE [0-9]\n\n%{\n hi; {stuff;} \n%}\n%%\n"["[^\\]]"]" %{\nreturn true;\n%}\n';
-    var expected = mixExpected({
-        macros: {"RULE": "[0-9]"},
-        actionInclude: "hi; {stuff;}",
-        rules: [
-            ["\\[[^\\]]\\]", "return true;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test bnf lex grammar", function () {
-    var lexgrammar = lex.parse(read('lex', 'bnf.jisonlex'));
-    var expected = mixExpected(JSON.parse(read('lex', 'bnf.lex.json')));
-
-    assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
-  });
-
-  it("test lex grammar bootstrap", function () {
-    var lexgrammar = lex.parse(read('lex', 'lex_grammar.jisonlex'));
-    var expected = mixExpected(JSON.parse(read('lex', 'lex_grammar.lex.json')));
-
-    assert.deepEqual(lexgrammar, expected, "grammar should be parsed correctly");
-  });
-
-  it("test ANSI C lexical grammar", function () {
-    var lexgrammar = lex.parse(read('lex','ansic.jisonlex'));
-
-    assert.ok(lexgrammar, "grammar should be parsed correctly");
-  });
-
-  it("test advanced", function () {
-    var lexgrammar = '%%\n"stuff"*/!("{"|";") {/* ok */}\n';
-    var expected = mixExpected({
-        rules: [
-            ["stuff*(?!(\\{|;))", "/* ok */"],
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test start conditions", function () {
-    var lexgrammar = '%s TEST TEST2\n%x EAT\n%%\n'+
-                     '"enter-test" {this.begin(\'TEST\');}\n'+
-                     '<TEST,EAT>"x" {return \'T\';}\n'+
-                     '<*>"z" {return \'Z\';}\n'+
-                     '<TEST>"y" {this.begin(\'INITIAL\'); return \'TY\';}';
-    var expected = mixExpected({
-        startConditions: {
-            "TEST": 0,
-            "TEST2": 0,
-            "EAT": 1,
-        },
-        rules: [
-            ["enter-test", "this.begin('TEST');" ],
-            [["TEST","EAT"], "x", "return 'T';" ],
-            [["*"], "z", "return 'Z';" ],
-            [["TEST"], "y", "this.begin('INITIAL'); return 'TY';" ]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unknown declarations", function () {
-    var lexgrammar = '%a b c\n%foo[bar] baz qux\n%a b c\n%%\n. //';
-    var expected = mixExpected({
-        unknownDecls: [
-            { name: 'a', value: 'b c' },
-            { name: 'foo', value: '[bar] baz qux' },
-            { name: 'a', value: 'b c' }
-        ],
-        rules: [
-            ['.', '//']
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "unknown declarations should be parsed correctly");
-  });
-
-  it("test %import declarations", function () {
-    var lexgrammar = '%import base "./base.file"\n%import extension "/tmp/qux"\n%%\n. //';
-    var expected = mixExpected({
-        importDecls: [
-            { name: 'base', path: './base.file' },
-            { name: 'extension', path: '/tmp/qux' },
-        ],
-        rules: [
-            ['.', '//']
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "%import declarations should be parsed correctly");
-  });
-
-  it("test no brace action", function () {
-    var lexgrammar = '%%\n"["[^\\]]"]" return true;\n"x" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "return true;"],
-            ["x", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test quote escape", function () {
-    var lexgrammar = '%%\n\\"\\\'"x" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["\"'x", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test escape things", function () {
-    var lexgrammar = '%%\n\\"\\\'\\\\\\*\\i return 1;\n"a"\\b return 2;\n\\cA {}\n\\012 {}\n\\xFF {}';
-    var expected = mixExpected({
-        rules: [
-            ["\"'\\\\\\*i", "return 1;"],
-            ["a\\b", "return 2;"],
-            ["\\cA", ""],
-            ["\\012", ""],
-            ["\\xFF", ""]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unicode encoding", function () {
-    var lexgrammar = '%%\n"\\u03c0" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["\\u03c0", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unicode", function () {
-    var lexgrammar = '%%\n"π" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["π", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unquoted lexer rule literals", function () {
-    var lexgrammar = '%%\nπ return 1;\n-abc return 2;';
-    var expected = mixExpected({
-        rules: [
-            ["π", "return 1;"],
-            ["-abc", "return 2;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test bugs", function () {
-    var lexgrammar = '%%\n\\\'([^\\\\\']+|\\\\(\\n|.))*?\\\' return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["'([^\\\\']+|\\\\(\\n|.))*?'", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test special groupings", function () {
-    var lexgrammar = '%%\n(?:"foo"|"bar")\\(\\) return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["(?:foo|bar)\\(\\)", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test trailing code include", function () {
-    var lexgrammar = '%%"foo"  {return bar;}\n%% var bar = 1;';
-    var expected = mixExpected({
-        rules: [
-            ['foo', "return bar;"]
-        ],
-        moduleInclude: " var bar = 1;",
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test empty or regex", function () {
-    var lexgrammar = '%%\n(|"bar")("foo"|)(|) return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["(|bar)(foo|)(|)", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options", function () {
-    var lexgrammar = '%options flex\n%%\n"foo" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["foo", "return 1;"]
-        ],
-        options: {flex: true},
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test if %options names with a hyphen are correctly recognized", function () {
-    var lexgrammar = '%options token-stack\n%%\n"foo" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["foo", "return 1;"]
-        ],
-        options: {"token-stack": true},
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options with values", function () {
-    var lexgrammar = '%options ping=666 bla=blub bool1 s1="s1value" s2=\'s2value\' s3=false s4="false" a-b-c="d"\n%%\n"foo" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["foo", "return 1;"]
-        ],
-        options: {
-            ping: 666,
-            bla: "blub",
-            bool1: true,
-            s1: "s1value",
-            s2: "s2value",
-            s3: false,
-            s4: "false",
-            "a-b-c": "d"            // `%options camel-casing` is done very late in the game: see Jison.Generator source code.
-        },
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options spread across multiple lines", function () {
-    var lexgrammar = '%options ping=666\n bla=blub\n bool1\n s1="s1value"\n s2=\'s2value\'\n s3=false\n s4="false"\n a-b-c="d"\n%%\n"foo" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["foo", "return 1;"]
-        ],
-        options: {
-            ping: 666,
-            bla: "blub",
-            bool1: true,
-            s1: "s1value",
-            s2: "s2value",
-            s3: false,
-            s4: "false",
-            "a-b-c": "d"            // `%options camel-casing` is done very late in the game: see Jison.Generator source code.
-        },
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test options with string values which have embedded quotes", function () {
-    var lexgrammar = '%options s1="s1\\"val\'ue" s2=\'s2\\\\x\\\'val\"ue\'\n%%\n"foo" return 1;';
-    var expected = mixExpected({
-        rules: [
-            ["foo", "return 1;"]
-        ],
-        options: {
-            s1: "s1\"val'ue",
-            s2: "s2\\\\x'val\"ue"
-        },
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test unquoted string rules", function () {
-    var lexgrammar = "%%\nfoo* return 1";
-    var expected = mixExpected({
-        rules: [
-            ["foo*", "return 1"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test [^\\\\]", function () {
-    var lexgrammar = '%%\n"["[^\\\\]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\\\]\\]", "return true;"],
-            ["f\"oo'bar", "return 'baz2';"],
-            ['fo"obar', "return 'baz';"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test comments", function () {
-    var lexgrammar = "/* */ // foo\n%%\nfoo* return 1";
-    var expected = mixExpected({
-        rules: [
-            ["foo*", "return 1"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test rules with trailing escapes", function () {
-    var lexgrammar = '%%\n\\#[^\\n]*\\n {/* ok */}\n';
-    var expected = mixExpected({
-        rules: [
-            ["#[^\\n]*\\n", "/* ok */"],
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test no brace action with surplus whitespace between rules", function () {
-    var lexgrammar = '%%\n"a" return true;\n  \n"b" return 1;\n   \n';
-    var expected = mixExpected({
-        rules: [
-            ["a", "return true;"],
-            ["b", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test macro for commit SHA-1: 1246dbb75472cee8e4e91318cc5a0d4739a8fe12", function () {
-    var lexgrammar = 'BR  \\r\\n|\\n|\\r\n%%\r\n{BR} %{\r\nreturn true;\r\n%}\r\n';
-    var expected = mixExpected({
-        macros: {"BR": "\\r\\n|\\n|\\r"},
-        rules: [
-            ["{BR}", "return true;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test windows line endings", function () {
-    var lexgrammar = '%%\r\n"["[^\\]]"]" %{\r\nreturn true;\r\n%}\r\n';
-    var expected = mixExpected({
-        rules: [
-            ["\\[[^\\]]\\]", "return true;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test braced action with surplus whitespace between rules", function () {
-    var lexgrammar = '%%\n"a" %{  \nreturn true;\n%}  \n  \n"b" %{    return 1;\n%}  \n   \n';
-    var expected = mixExpected({
-        rules: [
-            ["a", "return true;"],
-            ["b", "return 1;"]
-        ],
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
-  });
-
-  it("test %options easy_keyword_rules", function () {
-    var lexgrammar = '%options easy_keyword_rules\n'+
-                     '%s TEST TEST2\n%x EAT\n%%\n'+
-                     '"enter-test" {this.begin(\'TEST\');}\n'+
-                     '"enter_test" {this.begin(\'TEST\');}\n'+
-                     '<TEST,EAT>"x" {return \'T\';}\n'+
-                     '<*>"z" {return \'Z\';}\n'+
-                     '<TEST>"y" {this.begin(\'INITIAL\'); return \'TY\';}\n'+
-                     '\\"\\\'"a" return 1;\n'+
-                     '\\"\\\'\\\\\\*\\i return 1;\n"a"\\b return 2;\n\\cA {}\n\\012 {}\n\\xFF {}\n'+
-                     '"["[^\\\\]"]" {return true;}\n\'f"oo\\\'bar\'  {return \'baz2\';}\n"fo\\"obar"  {return \'baz\';}\n';
-    var expected = mixExpected({
-        startConditions: {
-            "TEST": 0,
-            "TEST2": 0,
-            "EAT": 1,
-        },
-        rules: [
-            ["enter-test\\b", "this.begin('TEST');" ],                 // '-' dash is accepted as it's *followed* by a word, hence the *tail* is an 'easy keyword', hence it merits an automatic `\b` word-boundary check added!
-            ["enter_test\\b", "this.begin('TEST');" ],
-            [["TEST","EAT"], "x\\b", "return 'T';" ],
-            [["*"], "z\\b", "return 'Z';" ],
-            [["TEST"], "y\\b", "this.begin('INITIAL'); return 'TY';" ],
-            ["\"'a\\b", "return 1;"],                                  // keywords *with any non-keyword prefix*, i.e. keywords 'at the tail end', get the special 'easy keyword' treatment too!
-            ["\"'\\\\\\*i\\b", "return 1;"],
-            ["a\\b", "return 2;"],
-            ["\\cA", ""],
-            ["\\012", ""],
-            ["\\xFF", ""],
-            ["\\[[^\\\\]\\]", "return true;"],
-            ["f\"oo'bar\\b", "return 'baz2';"],
-            ['fo"obar\\b', "return 'baz';"]
-        ],
-        options: {
-            "easy_keyword_rules": true
-        },
-    });
-
-    assert.deepEqual(lex.parse(lexgrammar), expected, "grammar should be parsed correctly");
   });
 });
 

@@ -379,7 +379,7 @@ parser.main = function () {
     if (0) {
         print = function dummy() {};
     }
-    if (01) {
+    if (0x1) {
         test();
     } else {
         bench(test);

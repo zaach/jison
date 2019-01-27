@@ -1,0 +1,22 @@
+{
+  rules: [
+    [
+      '\\[[^\\]]\\]',
+      `var b=/{/;
+  // {
+  return 2 / 3`,
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"["[^\\]]"]"
+  var b=/{/;
+  // {
+  return 2 / 3;
+
+`,
+}

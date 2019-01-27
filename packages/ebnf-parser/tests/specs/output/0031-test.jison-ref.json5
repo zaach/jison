@@ -1,0 +1,66 @@
+{
+  bnf: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [],
+        `action; 
+hi`,
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          'symbol',
+          'foo',
+        ],
+        [
+          'symbol',
+          'bar',
+        ],
+      ],
+      [
+        [],
+        `action; 
+hi`,
+      ],
+    ],
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  moduleInclude: `foo; 
+bar`,
+  __original_input__: `%{baz 
+%}%% test: foo bar | { 
+action; 
+hi}; 
+hello: world ;%%foo; 
+bar;
+
+`,
+}

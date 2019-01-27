@@ -1,0 +1,18 @@
+{
+  rules: [
+    [
+      'foo',
+      'return bar',
+    ],
+  ],
+  moduleInclude: 'var bar = 1',
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%"foo"  {return bar;}
+%% var bar = 1;
+
+`,
+}
