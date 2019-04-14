@@ -6,7 +6,7 @@
   },
   "name": "jison-gho",
   "description": "A parser generator with a Bison/YACC-similar API (derived off zaach/jison repo)",
-  "version": "0.6.5-218",
+  "version": "0.6.5-219",
   "license": "MIT",
   "keywords": [
     "jison",
@@ -44,13 +44,14 @@
     "@gerhobbelt/xregexp": "4.2.0-30"
   },
   "devDependencies": {
-    "@gerhobbelt/benchmark": "2.1.4-33",
-    "@gerhobbelt/js-yaml": "3.10.1-5",
-    "@gerhobbelt/live-server": "1.3.0-25",
     "@gerhobbelt/babel-cli": "7.2.1-26",
     "@gerhobbelt/babel-core": "7.2.1-26",
     "@gerhobbelt/babel-preset-env": "7.2.1-26",
     "@gerhobbelt/babel-preset-modern-browsers": "12.0.0-3",
+    "@gerhobbelt/benchmark": "2.1.4-33",
+    "@gerhobbelt/debug": "4.1.1-4",
+    "@gerhobbelt/js-yaml": "3.10.1-5",
+    "@gerhobbelt/live-server": "1.3.0-25",
     "browserify": "16.2.3",
     "chai": "4.2.0",
     "cross-env": "5.2.0",
@@ -65,10 +66,10 @@
     "uglify-js": "3.4.9"
   },
   "scripts": {
-    "test": "make test",
     "build": "make",
-    "website": "node_modules/.bin/live-server docs/",
-    "pub": "npm publish --access public"
+    "pub": "npm publish --access public",
+    "test": "make test",
+    "website": "node_modules/.bin/live-server docs/"
   },
   "homepage": "http://jison.org"
 }
