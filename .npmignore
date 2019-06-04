@@ -1,34 +1,89 @@
+## WARNING ## WARNING ## WARNING ## WARNING ## WARNING
+##
+## Looks like npm (and git?) has a bug on Windows where the fnmatch pattern with trailing slash, e.g. `output/`
+## doesn't work for subdirectories, while the same pattern *without* the trailing slash *does* work for
+## filtering directories (behaviour like `**/tmp/` but git and npm supports a different set of glob patterns)
+##
+## Commandline to observe this behaviour (on Windows dev box):
+##
+##     npm pack && tar ftv *.tgz | grep tests
+##
+## Edit the ignore file to edit the `tests` line further below with or without trailing `/` to observe the 
+## buggy behaviour.
+##
+## WARNING ## WARNING ## WARNING ## WARNING ## WARNING
 
 ## Dependency directory
 ## Commenting this out is preferred by some people, see
 ## https://docs.npmjs.com/misc/faq#should-i-check-my-node_modules-folder-into-git
-node_modules/
+node_modules
 
-# Ignore the monorepo subpackages directory as the dist/ files do not need them and those should be published separately
-packages/
+## Google Closure Compiler install directory
+gcc/
+
+## Book build output
+#_book
+
+## eBook build output
+#*.epub
+#*.mobi
+#*.pdf
+
+# do not publish 50mb of documentation
+docs
 
 # Apple Crap
 .DS_Store
 
 # more npm dung
 npm-debug.log
+*.tgz
 
 # Editor backup files
 *.bak
 *~
+*.xxx
 
 # Generated web content directories (nanoc output)
-web/tmp/
+web/tmp
 web/crash.log
 
 # ignore the compiler output for any examples:            
-/examples/output
+examples/output
+docs/examples/reference-output
+
+# Vagrant sandbox
+vagrant
+Vagrantfile
 
 # scratch space
-/tmp/
+#tmp/
+#---^ see WARNING at the top of this file!
+tmp
+tmp2
+/book-using-jison-beyond-the-basics/base-materials
+*.log
+*.patch
+
+# istanbul / nyc code coverage analysis workspaces
+.nyc_output
+# ignore all coverage report directories anywhere
+coverage
+
+# additional crap thast shouldn't land in git repo or npm:
+tmp*
+/test*.*
+/issue*.*
+/dump*
+/*bug*
+/examples/formula-v*
+/docs/examples/formula-v*
+profile*.txt
+/include.lex
+
 
 # Ignore the web directory, i.e. the web pages
-web/
+web
 
 # Ignore build/publish scripts, etc.
 git-tag-and-bump-and-rebuild.sh
@@ -40,20 +95,24 @@ Makefile
 # misc files which are used during development
 Vagrantfile
 __patch_*.js
-/modules/
+modules
 
 # extra documentation (WIP)
-book-using-jison-beyond-the-basics/
+book-using-jison-beyond-the-basics
 book.json
 .bookignore
 
 # no examples wanted
-/examples/
+examples
 
-# test set & test rig
-/tests/
-/test-npm-install/
+# all test sets & test rigs
+#tests/
+#-----^ see WARNING at the top of this file!
+tests
+
+test-npm-install
 
 # jscs et al config files:
 .js*
 .travis*
+

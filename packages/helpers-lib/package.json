@@ -1,6 +1,6 @@
 {
   "name": "jison-helpers-lib",
-  "version": "0.6.5-218",
+  "version": "0.6.1-216",
   "description": "Helper functions shared among the jison repositories (jison, ebnf-parser, lex-parser, jison-lex)",
   "main": "dist/helpers-lib-cjs-es5.js",
   "module": "index.js",
@@ -30,14 +30,12 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/babel-parser": "7.0.0-beta.49",
-    "@babel/core": "7.0.0-rc.3",
-    "@babel/preset-env": "7.0.0-rc.3",
-    "babel-preset-modern-browsers": "11.0.1",
     "@gerhobbelt/recast": "0.15.0-31"
   },
   "devDependencies": {
-    "@babel/cli": "7.0.0-rc.3",
+    "@gerhobbelt/babel-cli": "7.0.0-14",
+    "@gerhobbelt/babel-preset-env": "7.0.0-14",
+    "@gerhobbelt/babel-preset-modern-browsers": "12.0.0-1",
     "chai": "4.1.2",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",

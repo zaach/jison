@@ -1808,9 +1808,9 @@ return `{
 
     /**
      * return the upcoming input *which has not been lexed yet*.
-     * This can, for example, be used for custom look-ahead inspection code
+     * This can, for example, be used for custom look-ahead inspection code 
      * in your lexer.
-     *
+     * 
      * The entire pending input string is returned.
      *
      * > ### NOTE ###
@@ -1820,8 +1820,8 @@ return `{
      * > features for limited input extraction and which includes the
      * > part of the input which has been lexed by the last token a.k.a.
      * > the *currently lexed* input.
-     * >
-     *
+     * > 
+     * 
      * @public
      * @this {RegExpLexer}
      */
@@ -1930,8 +1930,8 @@ return `{
     },
 
     /**
-     * return (part of the) upcoming input *including* the input
-     * matched by the last token (see also the NOTE below).
+     * return (part of the) upcoming input *including* the input 
+     * matched by the last token (see also the NOTE below). 
      * This can be used to augment error messages, for example.
      *
      * Limit the returned string length to \`maxSize\` (default: 20).
@@ -1957,8 +1957,8 @@ return `{
      * > to the input *which has not been lexed yet* for look-ahead
      * > inspection or likewise purposes, please consider using the
      * > \`lookAhead()\` API instead.
-     * >
-     *
+     * > 
+     * 
      * @public
      * @this {RegExpLexer}
      */

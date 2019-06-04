@@ -441,6 +441,21 @@
 
     function prettyPrintAST(ast, options) {
         var new_src;
+        var options = options || {};
+        const defaultOptions = { 
+            tabWidth: 2,
+            quote: 'single',
+            arrowParensAlways: true,
+
+            // Do not reuse whitespace (or anything else, for that matter)
+            // when printing generically.
+            reuseWhitespace: false
+        };
+        for (var key in defaultOptions) {
+            if (options[key] === undefined) {
+                options[key] = defaultOptions[key];
+            }
+        }
 
         var s = recast.prettyPrint(ast, { 
             tabWidth: 2,
@@ -1141,4 +1156,4 @@
 
     return index;
 
-})));
+}));
