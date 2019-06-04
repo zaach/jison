@@ -7,7 +7,7 @@
   "name": "@gerhobbelt/jison-lex",
   "description": "lexical analyzer generator used by jison",
   "license": "MIT",
-  "version": "0.6.5-218",
+  "version": "0.6.1-216",
   "keywords": [
     "jison",
     "parser",
@@ -32,21 +32,21 @@
   },
   "dependencies": {
     "@gerhobbelt/ast-util": "0.6.1-4",
-    "@gerhobbelt/json5": "1.0.1-32",
-    "@gerhobbelt/lex-parser": "0.6.5-218",
+    "@gerhobbelt/json5": "2.0.1-37",
+    "@gerhobbelt/lex-parser": "0.6.1-216",
     "@gerhobbelt/nomnom": "1.8.4-24",
     "@gerhobbelt/recast": "0.15.0-31",
-    "@gerhobbelt/xregexp": "4.1.1-29",
-    "jison-helpers-lib": "0.6.5-218"
+    "@gerhobbelt/xregexp": "4.2.0-30",
+    "jison-helpers-lib": "0.6.1-216"
   },
   "devDependencies": {
     "@gerhobbelt/js-yaml": "3.10.1-5",
-    "@babel/cli": "7.0.0-rc.3",
-    "@babel/preset-env": "7.0.0-rc.3",
-    "babel-preset-modern-browsers": "11.0.1",
+    "@gerhobbelt/babel-cli": "7.0.0-14",
+    "@gerhobbelt/babel-core": "7.0.0-14",
+    "@gerhobbelt/babel-preset-env": "7.0.0-14",
+    "@gerhobbelt/babel-preset-modern-browsers": "12.0.0-1",
     "chai": "4.1.2",
     "globby": "8.0.1",
-    "mkdirp": "0.5.1",
     "mocha": "5.2.0",
     "rollup-plugin-node-resolve": "3.3.0",
     "rollup": "0.65.0"
