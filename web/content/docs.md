@@ -369,7 +369,7 @@ A recently added feature are **[start conditions](http://dinosaur.compilertools.
 > As Jison maintains a **start condition _stack_** it is advised to use 
 > the more recent lexer API methods `pushState('state')` and `popState()` rather than 
 > the older `this.begin('state')` described just above as these `pushState()` and 
-> `popState()` better describe what the lexer does and what you can expect.
+> `popState()` better describe of what the lexer does and what you can expect.
 >
 > The old `this.begin('state')` lexer API call is identical to calling the new `this.pushState('state')` API.
 >
