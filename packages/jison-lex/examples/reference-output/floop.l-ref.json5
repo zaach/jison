@@ -1,0 +1,168 @@
+[
+  10,
+  {
+    id: 'DEFINE',
+    token: 'DEFINE',
+    yytext: 'DEFINE',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 6,
+      range: [
+        0,
+        6,
+      ],
+    },
+  },
+  {
+    id: 'IDENT',
+    token: 'IDENT',
+    yytext: 'A',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 8,
+      range: [
+        7,
+        8,
+      ],
+    },
+  },
+  {
+    id: '=',
+    token: '=',
+    yytext: '=',
+    yylloc: {
+      first_line: 1,
+      first_column: 9,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        9,
+        10,
+      ],
+    },
+  },
+  {
+    id: 'IDENT',
+    token: 'IDENT',
+    yytext: 'B',
+    yylloc: {
+      first_line: 1,
+      first_column: 11,
+      last_line: 1,
+      last_column: 12,
+      range: [
+        11,
+        12,
+      ],
+    },
+  },
+  {
+    id: '*',
+    token: '*',
+    yytext: '×',
+    yylloc: {
+      first_line: 1,
+      first_column: 13,
+      last_line: 1,
+      last_column: 14,
+      range: [
+        13,
+        14,
+      ],
+    },
+  },
+  {
+    id: 'IDENT',
+    token: 'IDENT',
+    yytext: 'C',
+    yylloc: {
+      first_line: 1,
+      first_column: 15,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        15,
+        16,
+      ],
+    },
+  },
+  {
+    id: 'EOF',
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        16,
+        16,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        16,
+        16,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        16,
+        16,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        16,
+        16,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        16,
+        16,
+      ],
+    },
+  },
+]

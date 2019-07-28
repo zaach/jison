@@ -1,0 +1,237 @@
+[
+  5,
+  {
+    id: ';',
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 1,
+      range: [
+        0,
+        1,
+      ],
+    },
+  },
+  {
+    id: ';',
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 1,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        1,
+        2,
+      ],
+    },
+  },
+  {
+    id: 'ID',
+    token: 'ID',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    id: ';',
+    token: ';',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 3,
+      last_line: 1,
+      last_column: 4,
+      range: [
+        3,
+        4,
+      ],
+    },
+  },
+  {
+    id: 'ID',
+    token: 'ID',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  -1,
+  {
+    fail: 1,
+    message: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+    name: 'JisonLexerError',
+    stack: `JisonLexerError: Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^
+    at Object.lexer_parseError [as parseError] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:218:15)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:1256:27)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:1303:22)
+    at Context.testEachLexerExample (\regexplexer.js:3419:27)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at \runner.js:342:7
+    at done (\runnable.js:319:5)
+    at callFn (\runnable.js:395:7)
+    at Hook.Runnable.run (\runnable.js:364:7)
+    at next (\runner.js:317:10)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+    ex: {
+      name: 'JisonLexerError',
+      message: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+      stack: `JisonLexerError: Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^
+    at Object.lexer_parseError [as parseError] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:218:15)
+    at Object.lexer_next [as next] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:1256:27)
+    at Object.lexer_lex [as lex] (\regexp-lexer-cjs-es5.js:9671:31), <anonymous>:1303:22)
+    at Context.testEachLexerExample (\regexplexer.js:3419:27)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at \runner.js:342:7
+    at done (\runnable.js:319:5)
+    at callFn (\runnable.js:395:7)
+    at Hook.Runnable.run (\runnable.js:364:7)
+    at next (\runner.js:317:10)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+      hash: {
+        errStr: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+        recoverable: false,
+        text: '',
+        token: null,
+        line: 0,
+        loc: {
+          first_line: 1,
+          first_column: 5,
+          last_line: 1,
+          last_column: 5,
+          range: [
+            5,
+            5,
+          ],
+        },
+        yy: {},
+        lexer: {
+          EOF: 1,
+          ERROR: 2,
+          __error_infos: [
+            {
+              errStr: `Lexical error on line 1: Unrecognized text.
+
+  Erroneous area:
+1: ;;a;aBaa
+^.......^`,
+              recoverable: false,
+              text: '',
+              token: null,
+              line: 0,
+              loc: {
+                first_line: 1,
+                first_column: 5,
+                last_line: 1,
+                last_column: 5,
+                range: [
+                  5,
+                  5,
+                ],
+              },
+              yy: {},
+              lexer: '[lexer]',
+            },
+          ],
+          __decompressed: true,
+          done: false,
+          _backtrack: false,
+          _input: 'Baa',
+          _more: false,
+          _signaled_error_token: false,
+          _clear_state: 1,
+          conditionStack: [
+            'INITIAL',
+            'MLC',
+            'MLC',
+            'MLC',
+          ],
+          match: '',
+          matched: ';;a;a',
+          matches: false,
+          yytext: '',
+          offset: 5,
+          base_position: 0,
+          yyleng: 0,
+          yylineno: 0,
+          yylloc: {
+            first_line: 1,
+            first_column: 5,
+            last_line: 1,
+            last_column: 5,
+            range: [
+              5,
+              5,
+            ],
+          },
+          CRLF_Re: {
+            re: '/\\r\\n?|\\n/',
+            source: '\\r\\n?|\\n',
+            flags: '',
+          },
+          options: {
+            trackPosition: true,
+          },
+          yy: {},
+        },
+      },
+    },
+  },
+]

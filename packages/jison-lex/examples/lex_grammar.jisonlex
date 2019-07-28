@@ -1,3 +1,7 @@
+// title: Simple lexer example - a lexer spec without any errors
+// ...
+//  
+
 
 %%
 \n+                         {yy.freshLine = true;}

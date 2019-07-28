@@ -1,0 +1,153 @@
+[
+  9,
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 3,
+      first_column: 12,
+      last_line: 3,
+      last_column: 14,
+      range: [
+        32,
+        34,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'hello',
+    yylloc: {
+      first_line: 3,
+      first_column: 15,
+      last_line: 3,
+      last_column: 20,
+      range: [
+        35,
+        40,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 3,
+      first_column: 20,
+      last_line: 3,
+      last_column: 21,
+      range: [
+        40,
+        41,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'world',
+    yylloc: {
+      first_line: 3,
+      first_column: 22,
+      last_line: 3,
+      last_column: 27,
+      range: [
+        42,
+        47,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 3,
+      first_column: 28,
+      last_line: 3,
+      last_column: 29,
+      range: [
+        48,
+        49,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 0,
+      range: [
+        51,
+        51,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 0,
+      range: [
+        51,
+        51,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 0,
+      range: [
+        51,
+        51,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 0,
+      range: [
+        51,
+        51,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 5,
+      first_column: 0,
+      last_line: 5,
+      last_column: 0,
+      range: [
+        51,
+        51,
+      ],
+    },
+  },
+]

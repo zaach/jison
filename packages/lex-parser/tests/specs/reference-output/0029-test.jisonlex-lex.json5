@@ -1,0 +1,271 @@
+[
+  {
+    id: 19,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        0,
+        2,
+      ],
+    },
+  },
+  {
+    id: 50,
+    token: '"STRING_LIT"',
+    yytext: '"["',
+    yylloc: {
+      first_line: 2,
+      first_column: 0,
+      last_line: 2,
+      last_column: 3,
+      range: [
+        3,
+        6,
+      ],
+    },
+  },
+  {
+    id: 46,
+    token: '"REGEX_SET_START"',
+    yytext: '[',
+    yylloc: {
+      first_line: 2,
+      first_column: 3,
+      last_line: 2,
+      last_column: 4,
+      range: [
+        6,
+        7,
+      ],
+    },
+  },
+  {
+    id: 48,
+    token: '"REGEX_SET"',
+    yytext: '^\\]',
+    yylloc: {
+      first_line: 2,
+      first_column: 4,
+      last_line: 2,
+      last_column: 7,
+      range: [
+        7,
+        10,
+      ],
+    },
+  },
+  {
+    id: 47,
+    token: '"REGEX_SET_END"',
+    yytext: ']',
+    yylloc: {
+      first_line: 2,
+      first_column: 7,
+      last_line: 2,
+      last_column: 8,
+      range: [
+        10,
+        11,
+      ],
+    },
+  },
+  {
+    id: 50,
+    token: '"STRING_LIT"',
+    yytext: '"]"',
+    yylloc: {
+      first_line: 2,
+      first_column: 8,
+      last_line: 2,
+      last_column: 11,
+      range: [
+        11,
+        14,
+      ],
+    },
+  },
+  {
+    fail: 1,
+    err: {
+      name: 'JisonLexerError',
+      message: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%`,
+      stack: `JisonLexerError: Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%
+    at Object.lexer_parseError [as parseError] (\lex-parser-cjs-es5.js:5326:13)
+    at Object.yyError [as yyerror] (\lex-parser-cjs-es5.js:5352:19)
+    at Object.lexer__performAction [as performAction] (\lex-parser-cjs-es5.js:6783:21)
+    at Object.lexer_test_match [as test_match] (\lex-parser-cjs-es5.js:6183:34)
+    at Object.lexer_next [as next] (\lex-parser-cjs-es5.js:6289:22)
+    at Object.lexer_lex [as lex] (\lex-parser-cjs-es5.js:6356:18)
+    at Context.testEachParserExample (\all-tests.js:230:27)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at \runner.js:342:7
+    at done (\runnable.js:319:5)
+    at callFn (\runnable.js:395:7)
+    at Hook.Runnable.run (\runnable.js:364:7)
+    at next (\runner.js:317:10)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+      hash: {
+        errStr: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%`,
+        recoverable: false,
+        text: '%{{{{{',
+        token: null,
+        line: 1,
+        loc: {
+          first_line: 2,
+          first_column: 12,
+          last_line: 2,
+          last_column: 18,
+          range: [
+            15,
+            21,
+          ],
+        },
+        yy: {
+          depth: 0,
+          include_command_allowed: false,
+        },
+        lexer: {
+          EOF: 1,
+          ERROR: 2,
+          __error_infos: [
+            {
+              errStr: `Lexical error on line 2: 
+Incorrectly terminated action code block. We're expecting the
+'%}}}}}' end marker to go with the given start marker.
+Regrettably, it does not exist in the remainder of the input.
+
+  Erroneous area:
+1: %%
+2: "["[^\\]]"]" %{{{{{
+^..............^^^^^^
+3: return "%{..%}";
+4: }}}}}%`,
+              recoverable: false,
+              text: '%{{{{{',
+              token: null,
+              line: 1,
+              loc: {
+                first_line: 2,
+                first_column: 12,
+                last_line: 2,
+                last_column: 18,
+                range: [
+                  15,
+                  21,
+                ],
+              },
+              yy: {
+                depth: 0,
+                include_command_allowed: false,
+              },
+              lexer: '[lexer]',
+            },
+          ],
+          __decompressed: true,
+          done: false,
+          _backtrack: false,
+          _input: `
+return "%{..%}";
+}}}}}%
+a %{ return "A"; %}
+
+`,
+          _more: false,
+          _signaled_error_token: false,
+          conditionStack: [
+            'INITIAL',
+            'rules',
+            'action',
+          ],
+          match: '%{{{{{',
+          matched: `%%
+"["[^\\]]"]" %{{{{{`,
+          matches: [
+            '%{{{{{',
+          ],
+          yytext: '%{{{{{',
+          offset: 21,
+          base_position: 0,
+          yyleng: 6,
+          yylineno: 1,
+          yylloc: {
+            first_line: 2,
+            first_column: 12,
+            last_line: 2,
+            last_column: 18,
+            range: [
+              15,
+              21,
+            ],
+          },
+          CRLF_Re: {
+            re: '/\\r\\n?|\\n/',
+            source: '\\r\\n?|\\n',
+            flags: '',
+          },
+          options: {
+            xregexp: true,
+            ranges: true,
+            trackPosition: true,
+            easy_keyword_rules: true,
+          },
+          yy: {
+            depth: 0,
+            include_command_allowed: false,
+          },
+          __original_input__: `%%
+"["[^\\]]"]" %{{{{{
+return "%{..%}";
+}}}}}%
+a %{ return "A"; %}
+
+`,
+        },
+      },
+    },
+  },
+]

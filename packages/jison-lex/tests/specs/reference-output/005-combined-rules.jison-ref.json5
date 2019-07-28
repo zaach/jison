@@ -1,0 +1,123 @@
+[
+  7,
+  {
+    id: 'TOKEN',
+    token: 'TOKEN',
+    yytext: 'a',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 1,
+      range: [
+        0,
+        1,
+      ],
+    },
+  },
+  {
+    id: 'TOKEN',
+    token: 'TOKEN',
+    yytext: '1',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    id: 'TOKEN',
+    token: 'TOKEN',
+    yytext: 'b',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  {
+    id: 'TOKEN',
+    token: 'TOKEN',
+    yytext: '2',
+    yylloc: {
+      first_line: 1,
+      first_column: 6,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        6,
+        7,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        7,
+        7,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        7,
+        7,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        7,
+        7,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        7,
+        7,
+      ],
+    },
+  },
+]

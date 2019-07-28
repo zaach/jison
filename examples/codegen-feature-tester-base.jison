@@ -67,7 +67,7 @@
                       this.unput(yytext); 
                       // this.unput(yytext); can be used here instead of 
                       // this.reject(); which would only work when we set the 
-                      // backtrack_lexer option
+                      // `backtrack_lexer` option
 
 
 \s+                   /* skip whitespace */
@@ -384,7 +384,7 @@ parser.main = function () {
     if (0) {
         print = function dummy() {};
     }
-    if (01) {
+    if (0x1) {
         test();
     } else {
         bench(test);

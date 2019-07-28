@@ -1,0 +1,617 @@
+{
+  fail: 1,
+  spec: `%%
+"["[^\\]]"]" %{
+return true;
+%}
+}
+
+`,
+  err: {
+    name: 'JisonParserError',
+    message: `
+There's probably an error in one or more of your lexer regex rules.
+The lexer rule spec should have this structure:
+    
+        regex  action_code
+    
+where 'regex' is a lex-style regex expression (see the
+jison and jison-lex documentation) which is intended to match a chunk
+of the input to lex, while the 'action_code' block is the JS code
+which will be invoked when the regex is matched. The 'action_code' block
+may be any (indented!) set of JS statements, optionally surrounded
+by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+    
+  Erroneous code:
+2: "["[^\\]]"]" %{
+3: return true;
+4: %}
+5: }
+^..^
+6: 
+7: 
+    
+  Technical error report:
+Parse error on line 5: 
+}
+^
+Expecting end of input, "<", "|", "(", "/", ".", "^", "$", "%%", "ACTION_START_AT_SOL", "UNTERMINATED_ACTION_BLOCK", "ACTION_START", "UNKNOWN_DECL", "OPTIONS", "IMPORT", "CODE", "START_INC", "START_EXC", "SPECIAL_GROUP", "/!", "REGEX_SPECIAL_CHAR", "ESCAPED_CHAR", macro name in '{...}' curly braces, "REGEX_SET_START", "STRING_LIT", "CHARACTER_LIT", "option_keyword", "import_keyword", "init_code_keyword", "start_inclusive_keyword", "start_exclusive_keyword", "start_conditions_marker", "scoped_rules_collective", "rule", "start_conditions", "regex", "nonempty_regex_list", "regex_concat", "regex_base", "name_expansion", "any_group_regex", "literal_string", "epilogue", got unexpected "}"
+`,
+    stack: `JisonParserError: 
+There's probably an error in one or more of your lexer regex rules.
+The lexer rule spec should have this structure:
+    
+        regex  action_code
+    
+where 'regex' is a lex-style regex expression (see the
+jison and jison-lex documentation) which is intended to match a chunk
+of the input to lex, while the 'action_code' block is the JS code
+which will be invoked when the regex is matched. The 'action_code' block
+may be any (indented!) set of JS statements, optionally surrounded
+by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+    
+  Erroneous code:
+2: "["[^\\]]"]" %{
+3: return true;
+4: %}
+5: }
+^..^
+6: 
+7: 
+    
+  Technical error report:
+Parse error on line 5: 
+}
+^
+Expecting end of input, "<", "|", "(", "/", ".", "^", "$", "%%", "ACTION_START_AT_SOL", "UNTERMINATED_ACTION_BLOCK", "ACTION_START", "UNKNOWN_DECL", "OPTIONS", "IMPORT", "CODE", "START_INC", "START_EXC", "SPECIAL_GROUP", "/!", "REGEX_SPECIAL_CHAR", "ESCAPED_CHAR", macro name in '{...}' curly braces, "REGEX_SET_START", "STRING_LIT", "CHARACTER_LIT", "option_keyword", "import_keyword", "init_code_keyword", "start_inclusive_keyword", "start_exclusive_keyword", "start_conditions_marker", "scoped_rules_collective", "rule", "start_conditions", "regex", "nonempty_regex_list", "regex_concat", "regex_base", "name_expansion", "any_group_regex", "literal_string", "epilogue", got unexpected "}"
+
+    at Object.parseError (\lex-parser-cjs-es5.js:3626:13)
+    at Object.yyError (\lex-parser-cjs-es5.js:3776:21)
+    at Object.parser__PerformAction (\lex-parser-cjs-es5.js:1633:18)
+    at Object.parse (\lex-parser-cjs-es5.js:4649:42)
+    at Object.yyparse [as parse] (\lex-parser-cjs-es5.js:8185:25)
+    at Context.testEachParserExample (\all-tests.js:318:19)
+    at callFn (\runnable.js:372:21)
+    at Test.Runnable.run (\runnable.js:364:7)
+    at Runner.runTest (\runner.js:455:10)
+    at \runner.js:573:12
+    at next (\runner.js:369:14)
+    at \runner.js:379:7
+    at next (\runner.js:303:14)
+    at \runner.js:342:7
+    at done (\runnable.js:319:5)
+    at callFn (\runnable.js:395:7)
+    at Hook.Runnable.run (\runnable.js:364:7)
+    at next (\runner.js:317:10)
+    at Immediate.<anonymous> (\runner.js:347:5)
+    at runCallback (timers.js:794:20)
+    at tryOnImmediate (timers.js:752:5)
+    at processImmediate [as _immediateCallback] (timers.js:729:5)`,
+    hash: {
+      errStr: `
+There's probably an error in one or more of your lexer regex rules.
+The lexer rule spec should have this structure:
+    
+        regex  action_code
+    
+where 'regex' is a lex-style regex expression (see the
+jison and jison-lex documentation) which is intended to match a chunk
+of the input to lex, while the 'action_code' block is the JS code
+which will be invoked when the regex is matched. The 'action_code' block
+may be any (indented!) set of JS statements, optionally surrounded
+by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+    
+  Erroneous code:
+2: "["[^\\]]"]" %{
+3: return true;
+4: %}
+5: }
+^..^
+6: 
+7: 
+    
+  Technical error report:
+Parse error on line 5: 
+}
+^
+Expecting end of input, "<", "|", "(", "/", ".", "^", "$", "%%", "ACTION_START_AT_SOL", "UNTERMINATED_ACTION_BLOCK", "ACTION_START", "UNKNOWN_DECL", "OPTIONS", "IMPORT", "CODE", "START_INC", "START_EXC", "SPECIAL_GROUP", "/!", "REGEX_SPECIAL_CHAR", "ESCAPED_CHAR", macro name in '{...}' curly braces, "REGEX_SET_START", "STRING_LIT", "CHARACTER_LIT", "option_keyword", "import_keyword", "init_code_keyword", "start_inclusive_keyword", "start_exclusive_keyword", "start_conditions_marker", "scoped_rules_collective", "rule", "start_conditions", "regex", "nonempty_regex_list", "regex_concat", "regex_base", "name_expansion", "any_group_regex", "literal_string", "epilogue", got unexpected "}"
+`,
+      exception: null,
+      text: '',
+      value: '',
+      token: 'end of input',
+      token_id: 1,
+      line: 6,
+      loc: {
+        first_line: 7,
+        first_column: 0,
+        last_line: 7,
+        last_column: 0,
+        range: [
+          37,
+          37,
+        ],
+      },
+      expected: [
+        'end of input',
+      ],
+      recoverable: false,
+      state: 89,
+      action: 2,
+      new_state: 3,
+      symbol_stack: [],
+      state_stack: [],
+      value_stack: [],
+      location_stack: [],
+      stack_pointer: 6,
+      yy: {
+        actionInclude: [],
+        options: {},
+        __options_flags__: 0,
+        __options_category_description__: '???',
+        startConditions: {},
+        __context_description__: [
+          '???CONTEXT???',
+        ],
+        depth: 0,
+        include_command_allowed: false,
+      },
+      lexer: {
+        yy: {},
+        _input: '',
+        yytext: '',
+        yyleng: 0,
+        match: '',
+        matches: false,
+        _more: false,
+        _backtrack: false,
+        yylloc: {
+          first_line: 1,
+          first_column: 0,
+          last_line: 1,
+          last_column: 0,
+          range: [
+            0,
+            0,
+          ],
+        },
+        _signaled_error_token: false,
+        done: false,
+        yylineno: 0,
+        matched: '',
+        conditionStack: [
+          'INITIAL',
+        ],
+        offset: 0,
+        base_position: 0,
+      },
+      parser: {
+        yy: {},
+        options: {
+          type: 'lalr',
+          hasPartialLrUpgradeOnConflict: true,
+          errorRecoveryTokenDiscardCount: 3,
+          ebnf: true,
+        },
+        symbols_: {
+          $: 16,
+          $accept: 0,
+          $end: 1,
+          '%%': 19,
+          '(': 8,
+          ')': 9,
+          '*': 11,
+          '+': 10,
+          ',': 17,
+          '.': 14,
+          '/': 13,
+          '/!': 42,
+          '<': 3,
+          '=': 18,
+          '>': 6,
+          '?': 12,
+          ACTION_BODY: 36,
+          ACTION_END: 24,
+          ACTION_START: 26,
+          ACTION_START_AT_SOL: 23,
+          ARROW_ACTION_START: 35,
+          BRACKET_MISSING: 38,
+          BRACKET_SURPLUS: 39,
+          CHARACTER_LIT: 51,
+          CODE: 31,
+          DUMMY: 27,
+          DUMMY3: 52,
+          EOF: 1,
+          ESCAPED_CHAR: 44,
+          IMPORT: 30,
+          INCLUDE: 32,
+          INCLUDE_PLACEMENT_ERROR: 37,
+          MACRO_END: 21,
+          MACRO_NAME: 20,
+          NAME_BRACE: 45,
+          OPTIONS: 29,
+          OPTIONS_END: 22,
+          OPTION_STRING: 53,
+          OPTION_VALUE: 54,
+          RANGE_REGEX: 49,
+          REGEX_SET: 48,
+          REGEX_SET_END: 47,
+          REGEX_SET_START: 46,
+          REGEX_SPECIAL_CHAR: 43,
+          SPECIAL_GROUP: 41,
+          START_EXC: 34,
+          START_INC: 33,
+          STRING_LIT: 50,
+          TRAILING_CODE_CHUNK: 55,
+          UNKNOWN_DECL: 28,
+          UNTERMINATED_ACTION_BLOCK: 25,
+          UNTERMINATED_STRING_ERROR: 40,
+          '^': 15,
+          action: 72,
+          any_group_regex: 80,
+          definition: 60,
+          definitions: 59,
+          epilogue: 89,
+          epilogue_chunk: 91,
+          epilogue_chunks: 90,
+          error: 2,
+          import_keyword: 62,
+          include_keyword: 64,
+          include_macro_code: 92,
+          init: 58,
+          init_code_keyword: 63,
+          lex: 56,
+          literal_string: 84,
+          name_expansion: 79,
+          nonempty_regex_list: 76,
+          option: 86,
+          option_keyword: 61,
+          option_list: 85,
+          option_name: 87,
+          option_value: 88,
+          range_regex: 83,
+          regex: 74,
+          regex_base: 78,
+          regex_concat: 77,
+          regex_list: 75,
+          regex_set: 81,
+          regex_set_atom: 82,
+          rule: 71,
+          rule_block: 70,
+          rules: 68,
+          rules_and_epilogue: 57,
+          scoped_rules_collective: 69,
+          start_conditions: 73,
+          start_conditions_marker: 67,
+          start_exclusive_keyword: 66,
+          start_inclusive_keyword: 65,
+          '{': 4,
+          '|': 7,
+          '}': 5,
+        },
+        terminals_: {
+          '1': 'EOF',
+          '2': 'error',
+          '3': '<',
+          '4': '{',
+          '5': '}',
+          '6': '>',
+          '7': '|',
+          '8': '(',
+          '9': ')',
+          '10': '+',
+          '11': '*',
+          '12': '?',
+          '13': '/',
+          '14': '.',
+          '15': '^',
+          '16': '$',
+          '17': ',',
+          '18': '=',
+          '19': '%%',
+          '20': 'MACRO_NAME',
+          '21': 'MACRO_END',
+          '22': 'OPTIONS_END',
+          '23': 'ACTION_START_AT_SOL',
+          '24': 'ACTION_END',
+          '25': 'UNTERMINATED_ACTION_BLOCK',
+          '26': 'ACTION_START',
+          '27': 'DUMMY',
+          '28': 'UNKNOWN_DECL',
+          '29': 'OPTIONS',
+          '30': 'IMPORT',
+          '31': 'CODE',
+          '32': 'INCLUDE',
+          '33': 'START_INC',
+          '34': 'START_EXC',
+          '35': 'ARROW_ACTION_START',
+          '36': 'ACTION_BODY',
+          '37': 'INCLUDE_PLACEMENT_ERROR',
+          '38': 'BRACKET_MISSING',
+          '39': 'BRACKET_SURPLUS',
+          '40': 'UNTERMINATED_STRING_ERROR',
+          '41': 'SPECIAL_GROUP',
+          '42': '/!',
+          '43': 'REGEX_SPECIAL_CHAR',
+          '44': 'ESCAPED_CHAR',
+          '45': 'NAME_BRACE',
+          '46': 'REGEX_SET_START',
+          '47': 'REGEX_SET_END',
+          '48': 'REGEX_SET',
+          '49': 'RANGE_REGEX',
+          '50': 'STRING_LIT',
+          '51': 'CHARACTER_LIT',
+          '52': 'DUMMY3',
+          '53': 'OPTION_STRING',
+          '54': 'OPTION_VALUE',
+          '55': 'TRAILING_CODE_CHUNK',
+        },
+        terminal_descriptions_: {
+          '45': "macro name in '{...}' curly braces",
+        },
+        TERROR: 2,
+        EOF: 1,
+        __reentrant_call_depth: 0,
+        __error_infos: [
+          {
+            errStr: `Parse error on line 5: 
+}
+^
+Expecting end of input, "<", "|", "(", "/", ".", "^", "$", "%%", "ACTION_START_AT_SOL", "UNTERMINATED_ACTION_BLOCK", "ACTION_START", "UNKNOWN_DECL", "OPTIONS", "IMPORT", "CODE", "START_INC", "START_EXC", "SPECIAL_GROUP", "/!", "REGEX_SPECIAL_CHAR", "ESCAPED_CHAR", macro name in '{...}' curly braces, "REGEX_SET_START", "STRING_LIT", "CHARACTER_LIT", "option_keyword", "import_keyword", "init_code_keyword", "start_inclusive_keyword", "start_exclusive_keyword", "start_conditions_marker", "scoped_rules_collective", "rule", "start_conditions", "regex", "nonempty_regex_list", "regex_concat", "regex_base", "name_expansion", "any_group_regex", "literal_string", "epilogue", got unexpected "}"`,
+            exception: null,
+            text: '}',
+            value: '}',
+            token: '"}"',
+            token_id: 5,
+            line: 4,
+            loc: {
+              first_line: 5,
+              first_column: 0,
+              last_line: 5,
+              last_column: 1,
+              range: [
+                34,
+                35,
+              ],
+            },
+            expected: [
+              'end of input',
+              '"<"',
+              '"|"',
+              '"("',
+              '"/"',
+              '"."',
+              '"^"',
+              '"$"',
+              '"%%"',
+              '"ACTION_START_AT_SOL"',
+              '"UNTERMINATED_ACTION_BLOCK"',
+              '"ACTION_START"',
+              '"UNKNOWN_DECL"',
+              '"OPTIONS"',
+              '"IMPORT"',
+              '"CODE"',
+              '"START_INC"',
+              '"START_EXC"',
+              '"SPECIAL_GROUP"',
+              '"/!"',
+              '"REGEX_SPECIAL_CHAR"',
+              '"ESCAPED_CHAR"',
+              "macro name in '{...}' curly braces",
+              '"REGEX_SET_START"',
+              '"STRING_LIT"',
+              '"CHARACTER_LIT"',
+              '"option_keyword"',
+              '"import_keyword"',
+              '"init_code_keyword"',
+              '"start_inclusive_keyword"',
+              '"start_exclusive_keyword"',
+              '"start_conditions_marker"',
+              '"scoped_rules_collective"',
+              '"rule"',
+              '"start_conditions"',
+              '"regex"',
+              '"nonempty_regex_list"',
+              '"regex_concat"',
+              '"regex_base"',
+              '"name_expansion"',
+              '"any_group_regex"',
+              '"literal_string"',
+              '"epilogue"',
+            ],
+            recoverable: true,
+            state: 24,
+            action: 0,
+            new_state: 185,
+            symbol_stack: [],
+            state_stack: [],
+            value_stack: [],
+            location_stack: [],
+            stack_pointer: 5,
+            yy: {
+              actionInclude: [],
+              options: {},
+              __options_flags__: 0,
+              __options_category_description__: '???',
+              startConditions: {},
+              __context_description__: [
+                '???CONTEXT???',
+              ],
+              depth: 0,
+              include_command_allowed: false,
+            },
+            lexer: '[lexer]',
+            parser: '[parser]',
+          },
+          {
+            errStr: `
+There's probably an error in one or more of your lexer regex rules.
+The lexer rule spec should have this structure:
+    
+        regex  action_code
+    
+where 'regex' is a lex-style regex expression (see the
+jison and jison-lex documentation) which is intended to match a chunk
+of the input to lex, while the 'action_code' block is the JS code
+which will be invoked when the regex is matched. The 'action_code' block
+may be any (indented!) set of JS statements, optionally surrounded
+by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+    
+  Erroneous code:
+2: "["[^\\]]"]" %{
+3: return true;
+4: %}
+5: }
+^..^
+6: 
+7: 
+    
+  Technical error report:
+Parse error on line 5: 
+}
+^
+Expecting end of input, "<", "|", "(", "/", ".", "^", "$", "%%", "ACTION_START_AT_SOL", "UNTERMINATED_ACTION_BLOCK", "ACTION_START", "UNKNOWN_DECL", "OPTIONS", "IMPORT", "CODE", "START_INC", "START_EXC", "SPECIAL_GROUP", "/!", "REGEX_SPECIAL_CHAR", "ESCAPED_CHAR", macro name in '{...}' curly braces, "REGEX_SET_START", "STRING_LIT", "CHARACTER_LIT", "option_keyword", "import_keyword", "init_code_keyword", "start_inclusive_keyword", "start_exclusive_keyword", "start_conditions_marker", "scoped_rules_collective", "rule", "start_conditions", "regex", "nonempty_regex_list", "regex_concat", "regex_base", "name_expansion", "any_group_regex", "literal_string", "epilogue", got unexpected "}"
+`,
+            exception: null,
+            text: '',
+            value: '',
+            token: 'end of input',
+            token_id: 1,
+            line: 6,
+            loc: {
+              first_line: 7,
+              first_column: 0,
+              last_line: 7,
+              last_column: 0,
+              range: [
+                37,
+                37,
+              ],
+            },
+            expected: [
+              'end of input',
+            ],
+            recoverable: false,
+            state: 89,
+            action: 2,
+            new_state: 3,
+            symbol_stack: [],
+            state_stack: [],
+            value_stack: '[reference to sibling array --> *.hash.parser.__error_infos.[0].value_stack, length = 0]',
+            location_stack: [],
+            stack_pointer: 6,
+            yy: {
+              actionInclude: [],
+              options: {},
+              __options_flags__: 0,
+              __options_category_description__: '???',
+              startConditions: {},
+              __context_description__: [
+                '???CONTEXT???',
+              ],
+              depth: 0,
+              include_command_allowed: false,
+            },
+            lexer: '[lexer]',
+            parser: '[parser]',
+          },
+        ],
+        __error_recovery_infos: '[reference to sibling array --> *.hash.parser.__error_infos.[0].parser.__error_recovery_infos, length = 2]',
+        lexer: {
+          EOF: 1,
+          ERROR: 2,
+          __error_infos: '[reference to sibling array --> *.hash.parser.__error_infos.[0].parser.lexer.__error_infos, length = 0]',
+          __decompressed: true,
+          done: false,
+          _backtrack: false,
+          _input: '',
+          _more: false,
+          _signaled_error_token: false,
+          conditionStack: [
+            'INITIAL',
+          ],
+          match: '',
+          matched: '',
+          matches: false,
+          yytext: '',
+          offset: 0,
+          base_position: 0,
+          yyleng: 0,
+          yylineno: 0,
+          yylloc: {
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 0,
+            range: [
+              0,
+              0,
+            ],
+          },
+          CRLF_Re: {
+            re: '/\\r\\n?|\\n/',
+            source: '\\r\\n?|\\n',
+            flags: '',
+          },
+          options: {
+            xregexp: true,
+            ranges: true,
+            trackPosition: true,
+            easy_keyword_rules: true,
+          },
+          yy: {},
+          __original_input__: `%options easy_keyword_rules
+%s TEST TEST2
+%x EAT
+%%
+"enter-test" {this.begin('TEST');}
+"enter_test" {this.begin('TEST');}
+<TEST,EAT>"x" {return 'T';}
+<*>"z" {return 'Z';}
+<TEST>"y" {this.begin('INITIAL'); return 'TY';}
+\\"\\'"a" return 1;
+\\"\\'\\\\\\*\\i return 1;
+"a"\\b return 2;
+\\cA {}
+\\012 {}
+\\xFF {}
+"["[^\\\\]"]" {return true;}
+'f"oo\\'bar'  {return 'baz2';}
+"fo\\"obar"  {return 'baz';}
+
+`,
+        },
+        __lexer__: {
+          yy: {},
+          _input: '',
+          yytext: '',
+          yyleng: 0,
+          match: '',
+          matches: false,
+          _more: false,
+          _backtrack: false,
+          yylloc: {
+            first_line: 1,
+            first_column: 0,
+            last_line: 1,
+            last_column: 0,
+            range: [
+              0,
+              0,
+            ],
+          },
+          _signaled_error_token: false,
+          done: false,
+          yylineno: 0,
+          matched: '',
+          conditionStack: [
+            'INITIAL',
+          ],
+          __currentRuleSet__: null,
+          offset: 0,
+          base_position: 0,
+        },
+      },
+    },
+  },
+}

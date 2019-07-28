@@ -1,3 +1,7 @@
+// title: Simple lexer example - a lexer spec without any errors
+// ...
+//  
+
 
 /* 
  * description: One way to provide a custom lexer with a jison grammar.
@@ -8,8 +12,6 @@
 
 
 %options ranges
-
-%include with-includes.prelude1.js
 
 %{
     // When you set up a custom lexer, this is the minimum example for one:
@@ -58,7 +60,5 @@
 
 %%
 
-%include with-includes.prelude2.js
 
-
-%include with-includes.main.js
+%include "includes/with-includes.main.js"

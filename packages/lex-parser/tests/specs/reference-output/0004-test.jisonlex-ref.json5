@@ -1,0 +1,38 @@
+{
+  rules: [
+    [
+      '\\n+',
+      "return 'NL'",
+    ],
+    [
+      '\\n+',
+      "return 'NL2'",
+    ],
+    [
+      '\\\\n+',
+      "return 'NL3'",
+    ],
+    [
+      '\\n+',
+      "return 'NL4'",
+    ],
+    [
+      '\\s+',
+      '/* skip */',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"\\n"+ {return 'NL';}
+\\n+ {return 'NL2';}
+"\\\\n"+ {return 'NL3';}
+\`
+\`+ {return 'NL4';}
+\\s+ {/* skip */}
+
+`,
+}

@@ -1,0 +1,213 @@
+[
+  13,
+  {
+    id: 'PI',
+    token: 'PI',
+    yytext: 'PI',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        0,
+        2,
+      ],
+    },
+  },
+  {
+    id: '/',
+    token: '/',
+    yytext: '/',
+    yylloc: {
+      first_line: 1,
+      first_column: 2,
+      last_line: 1,
+      last_column: 3,
+      range: [
+        2,
+        3,
+      ],
+    },
+  },
+  {
+    id: '(',
+    token: '(',
+    yytext: '(',
+    yylloc: {
+      first_line: 1,
+      first_column: 3,
+      last_line: 1,
+      last_column: 4,
+      range: [
+        3,
+        4,
+      ],
+    },
+  },
+  {
+    id: 'NUMBER',
+    token: 'NUMBER',
+    yytext: '5',
+    yylloc: {
+      first_line: 1,
+      first_column: 4,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        4,
+        5,
+      ],
+    },
+  },
+  {
+    id: '+',
+    token: '+',
+    yytext: '+',
+    yylloc: {
+      first_line: 1,
+      first_column: 5,
+      last_line: 1,
+      last_column: 6,
+      range: [
+        5,
+        6,
+      ],
+    },
+  },
+  {
+    id: 'E',
+    token: 'E',
+    yytext: 'E',
+    yylloc: {
+      first_line: 1,
+      first_column: 6,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        6,
+        7,
+      ],
+    },
+  },
+  {
+    id: '^',
+    token: '^',
+    yytext: '^',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 8,
+      range: [
+        7,
+        8,
+      ],
+    },
+  },
+  {
+    id: 'E',
+    token: 'E',
+    yytext: 'E',
+    yylloc: {
+      first_line: 1,
+      first_column: 8,
+      last_line: 1,
+      last_column: 9,
+      range: [
+        8,
+        9,
+      ],
+    },
+  },
+  {
+    id: ')',
+    token: ')',
+    yytext: ')',
+    yylloc: {
+      first_line: 1,
+      first_column: 9,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        9,
+        10,
+      ],
+    },
+  },
+  {
+    id: 'EOF',
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        10,
+        10,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        10,
+        10,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        10,
+        10,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        10,
+        10,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 10,
+      last_line: 1,
+      last_column: 10,
+      range: [
+        10,
+        10,
+      ],
+    },
+  },
+]

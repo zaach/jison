@@ -1,0 +1,105 @@
+{
+  bnf: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        'action',
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          [
+            'symbol',
+            'world',
+          ],
+        ],
+        {
+          prec: 'UMINUS',
+        },
+      ],
+    ],
+    extra: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+        ],
+        'action',
+        {
+          prec: "'-'",
+        },
+      ],
+    ],
+  },
+  grammar: {
+    test: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+          [
+            'symbol',
+            'bar',
+          ],
+        ],
+        'action',
+      ],
+      [
+        [
+          'symbol',
+          'baz',
+        ],
+      ],
+    ],
+    hello: [
+      [
+        [
+          [
+            'symbol',
+            'world',
+          ],
+        ],
+        {
+          prec: 'UMINUS',
+        },
+      ],
+    ],
+    extra: [
+      [
+        [
+          [
+            'symbol',
+            'foo',
+          ],
+        ],
+        'action',
+        {
+          prec: "'-'",
+        },
+      ],
+    ],
+  },
+  __original_input__: `%% test: foo bar {action} | baz ; hello: world %prec UMINUS ;extra: foo %prec '-' {action} ;
+
+`,
+}

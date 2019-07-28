@@ -1,0 +1,29 @@
+{
+  rules: [
+    [
+      'a',
+      'return 0',
+    ],
+    [
+      '|b',
+      'return 2;\n  //',
+    ],
+    [
+      'x',
+      'return 1;\n  //',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+a return 0
+|b return 2;
+  //
+"x" return 1;
+  //
+
+`,
+}

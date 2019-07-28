@@ -1,0 +1,17 @@
+{
+  rules: [
+    [
+      '#[^\\n]*\\n',
+      '/* ok */',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+\\#[^\\n]*\\n {/* ok */}
+
+`,
+}

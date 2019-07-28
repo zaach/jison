@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: PROGRAM BUGGABOO;
+// ...
+//  
+
 %{
 /*
  * scan.l

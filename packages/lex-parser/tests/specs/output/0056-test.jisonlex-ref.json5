@@ -1,0 +1,17 @@
+{
+  rules: [
+    [
+      'foo*',
+      'return 1',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+foo* return 1
+
+`,
+}

@@ -5,11 +5,14 @@
 [![NPM version](https://badge.fury.io/js/jison-gho.svg)](http://badge.fury.io/js/jison-gho)
 [![Dependency Status](https://img.shields.io/david/GerHobbelt/jison.svg)](https://david-dm.org/GerHobbelt/jison)
 [![npm](https://img.shields.io/npm/dm/jison-gho.svg?maxAge=2592000)]()
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/GerHobbelt/jison.svg)](http://isitmaintained.com/project/GerHobbelt/jison "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/GerHobbelt/jison.svg)](http://isitmaintained.com/project/GerHobbelt/jison "Percentage of issues still open")
 
 * [Issues](http://github.com/zaach/jison/issues)
 * [Discuss](https://gitter.im/jison-parsers-lexers/Lobby)
 * [Website](https://gerhobbelt.github.io/jison/)
 * [**Original** JISON Website](http://jison.org)
+* [NPM package: `jison-gho`](https://www.npmjs.com/package/jison-gho)
 
 
 
@@ -17,7 +20,7 @@
 >
 > This repository contains a fork maintained by GerHobbelt. The original JISON work has been done by Zachary Carter and is available in zaach/jison.
 >
-> For an overview of all all changes \(fixes and features\), see the section [What's New or Different?](#user-content-whats-new-or-different) further below. See also [pullreq \#338](https://github.com/zaach/jison/pull/338).
+> For an overview of all changes \(fixes and features\), see the section [What's New or Different?](#user-content-whats-new-or-different) further below. See also [pullreq \#338](https://github.com/zaach/jison/pull/338).
 
 
 
@@ -38,7 +41,7 @@ Jison can be installed for [Node](http://nodejs.org) using [`npm`](http://github
 Using npm:
 
 ```
-npm install jison -g
+npm install jison-gho -g
 ```
 
 
@@ -92,10 +95,10 @@ Debug mode  \[false\]
 Report some statistics about the generated parser  \[false\]
 
 :   -m TYPE, --module-type TYPE
-The type of module to generate \(commonjs, amd, es, js\)  \[commonjs\]
+The type of module to generate \(commonjs, amd, es, js\) or an alias \(cjs=commonjs, umd=amd and iffe=js\)  \[commonjs\]
 
 :   -n NAME, --module-name NAME
-The name of the generated parser object, namespace supported
+The name of the generated parser object, namespace supported. This has no effect on amd/umd or es modules.
 
 :   -p TYPE, --parser-type TYPE
 The type of algorithm to use for the parser \(lr0, slr, lalr, lr, ll\)  \[lalr\]
@@ -125,12 +128,12 @@ Next to producing a grammar source file, also export the symbols, terminals, gra
 Include .main\(\) entry point in generated commonjs module  \[false\]
 
 :   -y NAME, --module-main NAME
-The main module function definition
+The module exports NAME as `exports.main` (module type commonjs or cjs) or as `yymain` (module type es). This option has no effect with module type `amd` or `umd`. It only has an effect when used with -x, though it does *not* (contrary to possible expectations) rename the main function; it simply elides the creation of a main and exports NAME as a main. 
 
 :   -V, --version
 print version and exit
 
-## Usage from a CommonJS module
+## Usage as a CommonJS module
 
 You can generate parsers programmatically from JavaScript as well. Assuming Jison is in your CommonJS environment's load path:
 
@@ -169,6 +172,82 @@ parser.parse("adfe34bc zxg");
 ```
 
 
+## Differences in module types
+
+Jison allows you to emit these module types: \(commonjs/cjs, amd/umd, es, js/iffe\). In the following sections, \<parser\> represents the parser code common to all types of module.
+
+### cjs/commonjs
+
+The parser is wrapped in:
+``` javascript
+var \<module-name\> = (function () {
+  \<parser\>
+  return new Parser();
+})();
+if (typeof require !== 'undefined' && typeof exports !== 'undefined') {
+  exports.parser = \<module-name\>;
+  exports.Parser = \<module-name\>.Parser;
+  exports.parse = function () {
+    return \<module-name\>.parse.apply(\<module-name\>, arguments);
+  };
+}
+```
+
+The --main function is declared with:
+``` javascript
+exports.main = function (args) {
+  ...
+}
+```
+
+### amd/umd
+
+The parser is wrapped with:
+``` javascript
+define(function (require) {
+  \<parser\>
+  return parser;
+});
+```
+The --module-name NAME option has no effect if the type is amd or umd.
+
+### js/iffe
+
+The parser is wrapped with:
+``` javascript
+var <module-name> = (function () {
+  \<parser\>
+  function Parser() {
+    this.yy = {};
+  }
+  Parser.prototype = parser;
+  parser.Parser = Parser;
+
+  return new Parser();
+})();
+```
+
+### es
+
+The parser is appended with:
+``` javascript
+\<parser\>
+function yyparse() {
+    return parser.parse.apply(parser, arguments);
+}
+export default {
+    parser,
+    Parser,
+    parse: yyparse,
+};
+```
+The --module-name NAME option has no effect if the type is es.
+The --main function is declared with:
+``` javascript
+var yymain = function (args) {
+  ...
+}
+```
 
 
 ## More Documentation
@@ -235,7 +314,7 @@ Here's a comprehensive list of features and fixes compared to the [original](htt
 
 * you can specify a totally _custom lexer_ in the `%lex ... /lex` section of your grammar definition file if you like, i.e. you can define and use a lexer which is not regex ruleset based / generated by jison lex! This is particularly handy when you want to achieve maximum performance / absolute minimum parse and lexing overhead for your high-performance demand grammars.
 
-* `lexer.reject()` et al: the lexer comes with extra APIs to help you write more sophisticated lexers based on the lex/jison mechanism. The `this.reject()` call in your lexer rule action code will reject the current match and continue down the lexer rule set to find another match. Very handy when you do not `flex mode` matching all the time, but want specific, local, control over when a lexer regex \(a.k.a. lexer rule\) actually is a _correct_ match.
+* `lexer.reject()` et al: the lexer comes with extra APIs to help you write more sophisticated lexers based on the lex/jison mechanism. The `this.reject()` call in your lexer rule action code will reject the current match and continue down the lexer rule set to find another match. Very handy when you do not use `flex mode` matching all the time, but want specific, local, control over when a lexer regex \(a.k.a. lexer rule\) actually is a _correct_ match.
 
 * You can now enter _epsilon_ as a token in your grammar rules, so no more hacks like `/* epsilon */` comments for empty rules: you can type any of these:
 

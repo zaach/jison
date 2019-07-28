@@ -1,0 +1,19 @@
+{
+  rules: [
+    [
+      'a',
+      'return a',
+    ],
+  ],
+  moduleInclude: 'return 1;\n  //',
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"a" return a %% return 1;
+  //
+
+`,
+}

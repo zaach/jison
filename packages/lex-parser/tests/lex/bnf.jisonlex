@@ -1,3 +1,8 @@
+//
+// title: test simple YACC BNF lexer spec
+// 
+// ...
+//
 
 %%
 \s+		{/* skip whitespace */}

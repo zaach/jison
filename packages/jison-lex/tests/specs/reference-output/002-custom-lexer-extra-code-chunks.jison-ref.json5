@@ -1,0 +1,19 @@
+[
+  3,
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+]

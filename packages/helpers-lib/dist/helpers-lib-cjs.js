@@ -5,6 +5,8 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var fs = _interopDefault(require('fs'));
 var path = _interopDefault(require('path'));
 var recast = _interopDefault(require('@gerhobbelt/recast'));
+var babel = require('@babel/core');
+require('@gerhobbelt/babel-parser');
 var assert = _interopDefault(require('assert'));
 
 // Return TRUE if `src` starts with `searchString`. 
@@ -115,18 +117,107 @@ function camelCase(s) {
 // Convert dashed option keys and other inputs to Camel Cased legal JavaScript identifiers
 /** @public */
 function mkIdentifier(s) {
-    s = camelCase('' + s);
-    // cleanup: replace any non-suitable character series to a single underscore:
+    s = '' + s;
     return s
+    // Convert dashed ids to Camel Case (though NOT lowercasing the initial letter though!), 
+    // e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
+    .replace(/-\w/g, function (match) {
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    })
+    // cleanup: replace any non-suitable character series to a single underscore:
     .replace(/^[^\w_]/, '_')
     // do not accept numerics at the leading position, despite those matching regex `\w`:
     .replace(/^\d/, '_')
-    .replace(/[^\w\d_]+/g, '_')
+    .replace(/[^\w\d_]/g, '_')
     // and only accept multiple (double, not triple) underscores at start or end of identifier name:
     .replace(/^__+/, '#')
     .replace(/__+$/, '#')
     .replace(/_+/g, '_')
     .replace(/#/g, '__');
+}
+
+// Check if the start of the given input matches a regex expression.
+// Return the length of the regex expression or -1 if none was found.
+/** @public */
+function scanRegExp(s) {
+    s = '' + s;
+    // code based on Esprima scanner: `Scanner.prototype.scanRegExpBody()`
+    var index = 0;
+    var length = s.length;
+    var ch = s[index];
+    //assert.assert(ch === '/', 'Regular expression literal must start with a slash');
+    var str = s[index++];
+    var classMarker = false;
+    var terminated = false;
+    while (index < length) {
+        ch = s[index++];
+        str += ch;
+        if (ch === '\\') {
+            ch = s[index++];
+            // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
+            if (isLineTerminator(ch.charCodeAt(0))) {
+                break;             // UnterminatedRegExp
+            }
+            str += ch;
+        }
+        else if (isLineTerminator(ch.charCodeAt(0))) {
+            break;                 // UnterminatedRegExp
+        }
+        else if (classMarker) {
+            if (ch === ']') {
+                classMarker = false;
+            }
+        }
+        else {
+            if (ch === '/') {
+                terminated = true;
+                break;
+            }
+            else if (ch === '[') {
+                classMarker = true;
+            }
+        }
+    }
+    if (!terminated) {
+        return -1;                  // UnterminatedRegExp
+    }
+    return index;
+}
+
+
+// https://tc39.github.io/ecma262/#sec-line-terminators
+function isLineTerminator(cp) {
+    return (cp === 0x0A) || (cp === 0x0D) || (cp === 0x2028) || (cp === 0x2029);
+}
+
+// Check if the given input can be a legal identifier-to-be-camelcased:
+// use this function to check if the way the identifier is written will
+// produce a sensible & comparable identifier name using the `mkIdentifier'
+// API - for humans that transformation should be obvious/trivial in
+// order to prevent confusion.
+/** @public */
+function isLegalIdentifierInput(s) {
+    s = '' + s;
+    // Convert dashed ids to Camel Case (though NOT lowercasing the initial letter though!), 
+    // e.g. `camelCase('camels-have-one-hump')` => `'camelsHaveOneHump'`
+    s = s
+    .replace(/-\w/g, function (match) {
+        var c = match.charAt(1);
+        var rv = c.toUpperCase();
+        // do not mutate 'a-2' to 'a2':
+        if (c === rv && c.match(/\d/)) {
+            return match;
+        }
+        return rv;
+    });
+    var alt = mkIdentifier(s);
+    return alt === s;
 }
 
 // properly quote and escape the given input string
@@ -147,18 +238,7 @@ function dquote(s) {
 }
 
 //
-// Helper library for safe code execution/compilation, including dumping offending code to file for further error analysis
-// (the idea was originally coded in https://github.com/GerHobbelt/jison/commit/85e367d03b977780516d2b643afbe6f65ee758f2 )
-//
-// MIT Licensed
-//
-//
-// This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-//
-// the given code fails, but where exactly and why? It's precise failure conditions are 'hidden' due to 
-// the stuff running inside an `eval()` or `Function(...)` call, so we want the code dumped to file so that
-// we can test the code in a different environment so that we can see what precisely is causing the failure.
-// 
+
 
 
 function chkBugger(src) {
@@ -182,6 +262,7 @@ function pad(n, p) {
 // attempt to dump in one of several locations: first winner is *it*!
 function dumpSourceToFile(sourcecode, errname, err_id, options, ex) {
     var dumpfile;
+    options = options || {};
 
     try {
         var dumpPaths = [(options.outfile ? path.dirname(options.outfile) : null), options.inputPath, process.cwd()];
@@ -264,13 +345,6 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
     }
     const debug = 0;
 
-    if (debug) console.warn('generated ' + errname + ' code under EXEC TEST.');
-    if (debug > 1) console.warn(`
-        ######################## source code ##########################
-        ${sourcecode}
-        ######################## source code ##########################
-        `);
-
     var p;
     try {
         // p = eval(sourcecode);
@@ -280,13 +354,6 @@ function exec_and_diagnose_this_stuff(sourcecode, code_execution_rig, options, t
         chkBugger(sourcecode);
         p = code_execution_rig.call(this, sourcecode, options, errname, debug);
     } catch (ex) {
-        if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-
-        if (debug) console.log("generated " + errname + " source code fatal error: ", ex.message);
-
-        if (debug > 1) console.log("exec-and-diagnose options:", options);
-
-        if (debug > 1) console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         
         if (options.dumpSourceCodeOnFailure) {
             dumpSourceToFile(sourcecode, errname, err_id, options, ex);
@@ -310,18 +377,9 @@ var code_exec = {
 };
 
 //
-// Parse a given chunk of code to an AST.
-//
-// MIT Licensed
-//
-//
-// This code is intended to help test and diagnose arbitrary chunks of code, answering questions like this:
-//
-// would the given code compile and possibly execute correctly, when included in a lexer, parser or other engine?
-// 
 
 
-//import astUtils from '@gerhobbelt/ast-util';
+
 assert(recast);
 var types = recast.types;
 assert(types);
@@ -329,7 +387,11 @@ var namedTypes = types.namedTypes;
 assert(namedTypes);
 var b = types.builders;
 assert(b);
-// //assert(astUtils);
+
+
+
+
+
 
 
 
@@ -344,10 +406,56 @@ function parseCodeChunkToAST(src, options) {
 }
 
 
+function compileCodeToES5(src, options) {
+    options = Object.assign({}, {
+      ast: true,
+      code: true,
+      sourceMaps: true,
+      comments: true,
+      filename: 'compileCodeToES5.js',
+      sourceFileName: 'compileCodeToES5.js',
+      sourceRoot: '.',
+      sourceType: 'module',
+
+      babelrc: false,
+      
+      ignore: [
+        "node_modules/**/*.js"
+      ],
+      compact: false,
+      retainLines: false,
+      presets: [
+        ["@babel/preset-env", {
+          targets: {
+            browsers: ["last 2 versions", "safari >= 7"],
+            node: "4.0"
+          }
+        }]
+      ]
+    }, options);
+
+    return babel.transformSync(src, options); // => { code, map, ast }
+}
 
 
 function prettyPrintAST(ast, options) {
     var new_src;
+    var options = options || {};
+    const defaultOptions = { 
+        tabWidth: 2,
+        quote: 'single',
+        arrowParensAlways: true,
+
+        // Do not reuse whitespace (or anything else, for that matter)
+        // when printing generically.
+        reuseWhitespace: false
+    };
+    for (var key in defaultOptions) {
+        if (options[key] === undefined) {
+            options[key] = defaultOptions[key];
+        }
+    }
+
     var s = recast.prettyPrint(ast, { 
         tabWidth: 2,
         quote: 'single',
@@ -372,7 +480,7 @@ function prettyPrintAST(ast, options) {
 
 
 
-// validate the given JavaScript snippet: does it compile?
+// validate the given JISON+JavaScript snippet: does it compile?
 // 
 // Return either the parsed AST (object) or an error message (string). 
 function checkActionBlock(src, yylloc) {
@@ -397,14 +505,88 @@ function checkActionBlock(src, yylloc) {
 
 
 
+// The rough-and-ready preprocessor for any action code block:
+// this one trims off any surplus whitespace and removes any
+// trailing semicolons and/or wrapping `{...}` braces,
+// when such is easily possible *without having to actually
+// **parse** the `src` code block in order to do this safely*.
+// 
+// Returns the trimmed sourcecode which was provided via `src`.
+// 
+// Note: the `startMarker` argument is special in that a lexer/parser
+// can feed us the delimiter which started the code block here:
+// when the starting delimiter actually is `{` we can safely
+// remove the outer `{...}` wrapper (which then *will* be present!),
+// while otherwise we may *not* do so as complex/specially-crafted
+// code will fail when it was wrapped in other delimiters, e.g.
+// action code specs like this one:
+// 
+//              %{
+//                  {  // trimActionCode sees this one as outer-starting: WRONG
+//                      a: 1
+//                  };
+//                  {
+//                      b: 2
+//                  }  // trimActionCode sees this one as outer-ending: WRONG
+//              %}
+//              
+// Of course the example would be 'ludicrous' action code but the
+// key point here is that users will certainly be able to come up with 
+// convoluted code that is smarter than our simple regex-based
+// `{...}` trimmer in here!
+// 
+function trimActionCode(src, startMarker) {
+    var s = src.trim();
+    // remove outermost set of braces UNLESS there's
+    // a curly brace in there anywhere: in that case
+    // we should leave it up to the sophisticated
+    // code analyzer to simplify the code!
+    //
+    // This is a very rough check as it will also look
+    // inside code comments, which should not have
+    // any influence.
+    //
+    // Nevertheless: this is a *safe* transform as
+    // long as the code doesn't end with a C++-style
+    // comment which happens to contain that closing
+    // curly brace at the end!
+    //
+    // Also DO strip off any trailing optional semicolon,
+    // which might have ended up here due to lexer rules
+    // like this one:
+    //
+    //     [a-z]+              -> 'TOKEN';
+    //
+    // We can safely ditch any trailing semicolon(s) as
+    // our code generator reckons with JavaScript's
+    // ASI rules (Automatic Semicolon Insertion).
+    //
+    //
+    // TODO: make this is real code edit without that
+    // last edge case as a fault condition.
+    if (startMarker === '{') {
+        // code is wrapped in `{...}` for sure: remove the wrapping braces.
+        s = s.replace(/^\{([^]*?)\}$/, '$1').trim();
+    } else {
+        // code may not be wrapped or otherwise non-simple: only remove
+        // wrapping braces when we can guarantee they're the only ones there,
+        // i.e. only exist as outer wrapping.
+        s = s.replace(/^\{([^}]*)\}$/, '$1').trim();
+    }
+    s = s.replace(/;+$/, '').trim();
+    return s;
+}
+
 
 
 
 
 var parse2AST = {
     parseCodeChunkToAST,
+    compileCodeToES5,
     prettyPrintAST,
     checkActionBlock,
+    trimActionCode,
 };
 
 function chkBugger$1(src) {
@@ -508,18 +690,462 @@ function detectIstanbulGlobal() {
     return coverage || false;
 }
 
+//
+// Helper library for safe code execution/compilation
+//
+// MIT Licensed
+//
+//
+// This code is intended to help test and diagnose arbitrary regexes, answering questions like this:
+//
+// - is this a valid regex, i.e. does it compile?
+// - does it have captures, and if yes, how many?
+//
+
+//import XRegExp from '@gerhobbelt/xregexp';
+
+
+// validate the given regex.
+//
+// You can specify an (advanced or regular) regex class as a third parameter.
+// The default assumed is the standard JavaScript `RegExp` class.
+//
+// Return FALSE when there's no failure, otherwise return an `Error` info object.
+function checkRegExp(re_src, re_flags, XRegExp) {
+    var re;
+
+    // were we fed a RegExp object or a string?
+    if (re_src
+        && typeof re_src.source === 'string'
+        && typeof re_src.flags === 'string'
+        && typeof re_src.toString === 'function'
+        && typeof re_src.test === 'function'
+        && typeof re_src.exec === 'function'
+    ) {
+        // we're looking at a RegExp (or XRegExp) object, so we can trust the `.source` member
+        // and the `.toString()` method to produce something that's compileable by XRegExp
+        // at least...
+        if (!re_flags || re_flags === re_src.flags) {
+            // no change of flags: we assume it's okay as it's already contained
+            // in an RegExp or XRegExp object
+            return false;
+        }
+    }
+    // we DO accept empty regexes: `''` but we DO NOT accept null/undefined
+    if (re_src == null) {
+        return new Error('invalid regular expression source: ' + re_src);
+    }
+
+    re_src = '' + re_src;
+    if (re_flags == null) {
+        re_flags = undefined;       // `new RegExp(..., flags)` will barf a hairball when `flags===null`
+    } else {
+        re_flags = '' + re_flags;
+    }
+
+    XRegExp = XRegExp || RegExp;
+
+    try {
+        re = new XRegExp(re_src, re_flags);
+    } catch (ex) {
+        return ex;
+    }
+    return false;
+}
+
+// provide some info about the given regex.
+//
+// You can specify an (advanced or regular) regex class as a third parameter.
+// The default assumed is the standard JavaScript `RegExp` class.
+//
+// Return FALSE when the input is not a legal regex.
+function getRegExpInfo(re_src, re_flags, XRegExp) {
+    var re1, re2, m1, m2;
+
+    // were we fed a RegExp object or a string?
+    if (re_src
+        && typeof re_src.source === 'string'
+        && typeof re_src.flags === 'string'
+        && typeof re_src.toString === 'function'
+        && typeof re_src.test === 'function'
+        && typeof re_src.exec === 'function'
+    ) {
+        // we're looking at a RegExp (or XRegExp) object, so we can trust the `.source` member
+        // and the `.toString()` method to produce something that's compileable by XRegExp
+        // at least...
+        if (!re_flags || re_flags === re_src.flags) {
+            // no change of flags: we assume it's okay as it's already contained
+            // in an RegExp or XRegExp object
+            re_flags = undefined;
+        }
+    } else if (re_src == null) {
+        // we DO NOT accept null/undefined
+        return false;
+    } else {
+        re_src = '' + re_src;
+
+        if (re_flags == null) {
+            re_flags = undefined;       // `new RegExp(..., flags)` will barf a hairball when `flags===null`
+        } else {
+            re_flags = '' + re_flags;
+        }
+    }
+
+    XRegExp = XRegExp || RegExp;
+
+    try {
+        // A little trick to obtain the captures from a regex:
+        // wrap it and append `(?:)` to ensure it matches
+        // the empty string, then match it against it to
+        // obtain the `match` array.
+        re1 = new XRegExp(re_src, re_flags);
+        re2 = new XRegExp('(?:' + re_src + ')|(?:)', re_flags);
+        m1 = re1.exec('');
+        m2 = re2.exec('');
+        return {
+            acceptsEmptyString: !!m1,
+            captureCount: m2.length - 1
+        };
+    } catch (ex) {
+        return false;
+    }
+}
+
+
+
+
+
+
+
+
+var reHelpers = {
+    checkRegExp: checkRegExp,
+    getRegExpInfo: getRegExpInfo
+};
+
+var cycleref = [];
+var cyclerefpath = [];
+
+var linkref = [];
+var linkrefpath = [];
+
+var path$1 = [];
+
+function shallow_copy(src) {
+    if (typeof src === 'object') {
+        if (src instanceof Array) {
+            return src.slice();
+        }
+
+        var dst = {};
+        if (src instanceof Error) {
+            dst.name = src.name;
+            dst.message = src.message;
+            dst.stack = src.stack;
+        }
+
+        for (var k in src) {
+            if (Object.prototype.hasOwnProperty.call(src, k)) {
+                dst[k] = src[k];
+            }
+        }
+        return dst;
+    }
+    return src;
+}
+
+
+function shallow_copy_and_strip_depth(src, parentKey) {
+    if (typeof src === 'object') {
+        var dst;
+
+        if (src instanceof Array) {
+            dst = src.slice();
+            for (var i = 0, len = dst.length; i < len; i++) {
+                path$1.push('[' + i + ']');
+                dst[i] = shallow_copy_and_strip_depth(dst[i], parentKey + '[' + i + ']');
+                path$1.pop();
+            }
+        } else {
+            dst = {};
+            if (src instanceof Error) {
+                dst.name = src.name;
+                dst.message = src.message;
+                dst.stack = src.stack;
+            }
+
+            for (var k in src) {
+                if (Object.prototype.hasOwnProperty.call(src, k)) {
+                    var el = src[k];
+                    if (el && typeof el === 'object') {
+                        dst[k] = '[cyclic reference::attribute --> ' + parentKey + '.' + k + ']';
+                    } else {
+                        dst[k] = src[k];
+                    }
+                }
+            }
+        }
+        return dst;
+    }
+    return src;
+}
+
+
+function trim_array_tail(arr) {
+    if (arr instanceof Array) {
+        for (var len = arr.length; len > 0; len--) {
+            if (arr[len - 1] != null) {
+                break;
+            }
+        }
+        arr.length = len;
+    }
+}
+
+function treat_value_stack(v) {
+    if (v instanceof Array) {
+        var idx = cycleref.indexOf(v);
+        if (idx >= 0) {
+            v = '[cyclic reference to parent array --> ' + cyclerefpath[idx] + ']';
+        } else {
+            idx = linkref.indexOf(v);
+            if (idx >= 0) {
+                v = '[reference to sibling array --> ' + linkrefpath[idx] + ', length = ' + v.length + ']';
+            } else {
+                cycleref.push(v);
+                cyclerefpath.push(path$1.join('.'));
+                linkref.push(v);
+                linkrefpath.push(path$1.join('.'));
+
+                v = treat_error_infos_array(v);
+
+                cycleref.pop();
+                cyclerefpath.pop();
+            }
+        }
+    } else if (v) {
+        v = treat_object(v);
+    }
+    return v;
+}
+
+function treat_error_infos_array(arr) {
+    var inf = arr.slice();
+    trim_array_tail(inf);
+    for (var key = 0, len = inf.length; key < len; key++) {
+        var err = inf[key];
+        if (err) {
+            path$1.push('[' + key + ']');
+
+            err = treat_object(err);
+
+            if (typeof err === 'object') {
+                if (err.lexer) {
+                    err.lexer = '[lexer]';
+                }
+                if (err.parser) {
+                    err.parser = '[parser]';
+                }
+                trim_array_tail(err.symbol_stack);
+                trim_array_tail(err.state_stack);
+                trim_array_tail(err.location_stack);
+                if (err.value_stack) {
+                    path$1.push('value_stack');
+                    err.value_stack = treat_value_stack(err.value_stack);
+                    path$1.pop();
+                }
+            }
+
+            inf[key] = err;
+
+            path$1.pop();
+        }
+    }
+    return inf;
+}
+
+function treat_lexer(l) {
+    // shallow copy object:
+    l = shallow_copy(l);
+    delete l.simpleCaseActionClusters;
+    delete l.rules;
+    delete l.conditions;
+    delete l.__currentRuleSet__;
+
+    if (l.__error_infos) {
+        path$1.push('__error_infos');
+        l.__error_infos = treat_value_stack(l.__error_infos);
+        path$1.pop();
+    }
+
+    return l;
+}
+
+function treat_parser(p) {
+    // shallow copy object:
+    p = shallow_copy(p);
+    delete p.productions_;
+    delete p.table;
+    delete p.defaultActions;
+
+    if (p.__error_infos) {
+        path$1.push('__error_infos');
+        p.__error_infos = treat_value_stack(p.__error_infos);
+        path$1.pop();
+    }
+
+    if (p.__error_recovery_infos) {
+        path$1.push('__error_recovery_infos');
+        p.__error_recovery_infos = treat_value_stack(p.__error_recovery_infos);
+        path$1.pop();
+    }
+
+    if (p.lexer) {
+        path$1.push('lexer');
+        p.lexer = treat_lexer(p.lexer);
+        path$1.pop();
+    }
+
+    return p;
+}
+
+function treat_hash(h) {
+    // shallow copy object:
+    h = shallow_copy(h);
+
+    if (h.parser) {
+        path$1.push('parser');
+        h.parser = treat_parser(h.parser);
+        path$1.pop();
+    }
+
+    if (h.lexer) {
+        path$1.push('lexer');
+        h.lexer = treat_lexer(h.lexer);
+        path$1.push();
+    }
+
+    return h;
+}
+
+function treat_error_report_info(e) {
+    // shallow copy object:
+    e = shallow_copy(e);
+    
+    if (e && e.hash) {
+        path$1.push('hash');
+        e.hash = treat_hash(e.hash);
+        path$1.pop();
+    }
+
+    if (e.parser) {
+        path$1.push('parser');
+        e.parser = treat_parser(e.parser);
+        path$1.pop();
+    }
+
+    if (e.lexer) {
+        path$1.push('lexer');
+        e.lexer = treat_lexer(e.lexer);
+        path$1.pop();
+    }    
+
+    if (e.__error_infos) {
+        path$1.push('__error_infos');
+        e.__error_infos = treat_value_stack(e.__error_infos);
+        path$1.pop();
+    }
+
+    if (e.__error_recovery_infos) {
+        path$1.push('__error_recovery_infos');
+        e.__error_recovery_infos = treat_value_stack(e.__error_recovery_infos);
+        path$1.pop();
+    }
+
+    trim_array_tail(e.symbol_stack);
+    trim_array_tail(e.state_stack);
+    trim_array_tail(e.location_stack);
+    if (e.value_stack) {
+        path$1.push('value_stack');
+        e.value_stack = treat_value_stack(e.value_stack);
+        path$1.pop();
+    }
+
+    return e;
+}
+
+function treat_object(e) {
+    if (e && typeof e === 'object') {
+        var idx = cycleref.indexOf(e);
+        if (idx >= 0) {
+            // cyclic reference, most probably an error instance.
+            // we still want it to be READABLE in a way, though:
+            e = shallow_copy_and_strip_depth(e, cyclerefpath[idx]);
+        } else {
+            idx = linkref.indexOf(e);
+            if (idx >= 0) {
+                e = '[reference to sibling --> ' + linkrefpath[idx] + ']';
+            } else {
+                cycleref.push(e);
+                cyclerefpath.push(path$1.join('.'));
+                linkref.push(e);
+                linkrefpath.push(path$1.join('.'));
+
+                e = treat_error_report_info(e);
+                
+                cycleref.pop();
+                cyclerefpath.pop();
+            }
+        }
+    }
+    return e;
+}
+
+
+// strip off large chunks from the Error exception object before
+// it will be fed to a test log or other output.
+// 
+// Internal use in the unit test rigs.
+function trimErrorForTestReporting(e) {
+    cycleref.length = 0;
+    cyclerefpath.length = 0;
+    linkref.length = 0;
+    linkrefpath.length = 0;
+    path$1 = ['*'];
+
+    if (e) {
+        e = treat_object(e);
+    }
+
+    cycleref.length = 0;
+    cyclerefpath.length = 0;
+    linkref.length = 0;
+    linkrefpath.length = 0;
+    path$1 = ['*'];
+
+    return e;
+}
+
 var index = {
     rmCommonWS,
     camelCase,
     mkIdentifier,
+    isLegalIdentifierInput,
+    scanRegExp,
     dquote,
+    trimErrorForTestReporting,
+
+    checkRegExp: reHelpers.checkRegExp,
+    getRegExpInfo: reHelpers.getRegExpInfo,
 
     exec: code_exec.exec,
     dump: code_exec.dump,
 
     parseCodeChunkToAST: parse2AST.parseCodeChunkToAST,
+    compileCodeToES5: parse2AST.compileCodeToES5,
     prettyPrintAST: parse2AST.prettyPrintAST,
     checkActionBlock: parse2AST.checkActionBlock,
+    trimActionCode: parse2AST.trimActionCode,
 
     printFunctionSourceCode: stringifier.printFunctionSourceCode,
     printFunctionSourceCodeContainer: stringifier.printFunctionSourceCodeContainer,

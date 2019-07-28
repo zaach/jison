@@ -1,0 +1,288 @@
+[
+  18,
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '%%',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 2,
+      range: [
+        0,
+        2,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'test',
+    yylloc: {
+      first_line: 1,
+      first_column: 3,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        3,
+        7,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 1,
+      first_column: 7,
+      last_line: 1,
+      last_column: 8,
+      range: [
+        7,
+        8,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'foo',
+    yylloc: {
+      first_line: 1,
+      first_column: 9,
+      last_line: 1,
+      last_column: 12,
+      range: [
+        9,
+        12,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'bar',
+    yylloc: {
+      first_line: 1,
+      first_column: 13,
+      last_line: 1,
+      last_column: 16,
+      range: [
+        13,
+        16,
+      ],
+    },
+  },
+  {
+    id: 5,
+    token: '"|"',
+    yytext: '|',
+    yylloc: {
+      first_line: 1,
+      first_column: 17,
+      last_line: 1,
+      last_column: 18,
+      range: [
+        17,
+        18,
+      ],
+    },
+  },
+  {
+    id: 24,
+    token: '"ACTION_START"',
+    yytext: '%{',
+    yylloc: {
+      first_line: 1,
+      first_column: 19,
+      last_line: 1,
+      last_column: 19,
+      range: [
+        19,
+        19,
+      ],
+    },
+  },
+  {
+    id: 53,
+    token: '"ACTION_BODY"',
+    yytext: 'action={}',
+    yylloc: {
+      first_line: 1,
+      first_column: 19,
+      last_line: 1,
+      last_column: 32,
+      range: [
+        19,
+        32,
+      ],
+    },
+  },
+  {
+    id: 22,
+    token: '"ACTION_END"',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 32,
+      last_line: 1,
+      last_column: 32,
+      range: [
+        32,
+        32,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 32,
+      last_line: 1,
+      last_column: 33,
+      range: [
+        32,
+        33,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'hello',
+    yylloc: {
+      first_line: 1,
+      first_column: 34,
+      last_line: 1,
+      last_column: 39,
+      range: [
+        34,
+        39,
+      ],
+    },
+  },
+  {
+    id: 3,
+    token: '":"',
+    yytext: ':',
+    yylloc: {
+      first_line: 1,
+      first_column: 39,
+      last_line: 1,
+      last_column: 40,
+      range: [
+        39,
+        40,
+      ],
+    },
+  },
+  {
+    id: 16,
+    token: '"ID"',
+    yytext: 'world',
+    yylloc: {
+      first_line: 1,
+      first_column: 41,
+      last_line: 1,
+      last_column: 46,
+      range: [
+        41,
+        46,
+      ],
+    },
+  },
+  {
+    id: 4,
+    token: '";"',
+    yytext: ';',
+    yylloc: {
+      first_line: 1,
+      first_column: 47,
+      last_line: 1,
+      last_column: 48,
+      range: [
+        47,
+        48,
+      ],
+    },
+  },
+  {
+    id: 13,
+    token: '"%%"',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'end of input',
+    yytext: '',
+    yylloc: {
+      first_line: 3,
+      first_column: 0,
+      last_line: 3,
+      last_column: 0,
+      range: [
+        50,
+        50,
+      ],
+    },
+  },
+]

@@ -1,0 +1,39 @@
+[
+  8,
+  {
+    id: 'a',
+    token: 'a',
+  },
+  {
+    id: ' ',
+    token: ' ',
+  },
+  {
+    id: 'b',
+    token: 'b',
+  },
+  {
+    id: ' ',
+    token: ' ',
+  },
+  {
+    id: 'c',
+    token: 'c',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+  {
+    id: 1,
+    token: 'EOF',
+  },
+]

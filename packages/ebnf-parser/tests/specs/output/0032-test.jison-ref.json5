@@ -1,0 +1,30 @@
+{
+  parseParams: [
+    'first',
+    'second',
+  ],
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  __original_input__: `%parse-param first second 
+%%hello: world;%%
+
+`,
+}

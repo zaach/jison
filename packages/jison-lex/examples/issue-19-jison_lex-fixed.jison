@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: ;;a;aBaa
+// ...
+//  
+
 
 %x MLC
 

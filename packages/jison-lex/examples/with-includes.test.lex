@@ -1,3 +1,7 @@
+// title: Simple lexer example - a lexer spec without any errors
+// ...
+//  
+
 
 %options ranges
 
@@ -8,13 +12,13 @@ SPACE           " "
 WHITESPACE      \s
 
 
-%include with-includes.prelude1.js
+%include "includes/with-includes.prelude1.js"
 
 %%
 
 {WHITESPACE}+   {/* skip whitespace */}
 [{DIGITS}]+     /* leading comment */  
-                %include "with-includes.action1.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
+                %include "includes/with-includes.action1.js"  // demonstrate the ACTION block include and the ability to comment on it right here.
 [{DIGITS}{ALPHA}]+     
                 %{ console.log("buggerit millenium hands and shrimp!"); %}
 
@@ -25,5 +29,5 @@ WHITESPACE      \s
 
 %%
 
-%include with-includes.prelude2.js
+%include "includes/with-includes.prelude2.js"
 

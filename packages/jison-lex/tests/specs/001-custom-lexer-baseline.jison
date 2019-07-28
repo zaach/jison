@@ -11,7 +11,7 @@
 
 %{
   // custom lexer...
-  console.log('oh boy!');
+  console.log('The moment the custom lexer gets defined...');
   var lexer = {
     lex: function () {
       return 1;

@@ -1,0 +1,33 @@
+Statistical profiling result from isolate-0000023B75D30260-v8.log, (10146 ticks, 4954 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+     32    0.3%          C:\Program Files\nodejs\node.exe
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+      1    0.0%    0.0%  RegExp: \\bTIMER\\b
+
+ [C++]:
+   ticks  total  nonlib   name
+
+ [Summary]:
+   ticks  total  nonlib   name
+      1    0.0%    0.0%  JavaScript
+      0    0.0%    0.0%  C++
+   3498   34.5%   34.6%  GC
+     32    0.3%          Shared libraries
+   4954   48.8%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 2.0% are not shown.
+
+   ticks parent  name
+   4954   48.8%  UNKNOWN
+   1252   25.3%    C:\Program Files\nodejs\node.exe
+

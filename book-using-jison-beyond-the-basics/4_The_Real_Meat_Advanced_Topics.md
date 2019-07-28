@@ -14,7 +14,7 @@ TBD
 
       1. [Error handling in the lexer](#error_handling)
       1. [Error handling in the parser](#error_handling)
-      1. [Loving Living dangerously: Messing with the Error Recovery mechanisms](#error_handling)
+      1. [Loving Living Dangerously: Messing with the Error Recovery mechanisms](#error_handling)
 
    1. [Debugging your work - Episode 2: customizing the parser](#error_handling)
 

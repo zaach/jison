@@ -1,0 +1,32 @@
+{
+  options: {
+    one: true,
+    two: true,
+  },
+  bnf: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  grammar: {
+    hello: [
+      [
+        [
+          'symbol',
+          'world',
+        ],
+      ],
+    ],
+  },
+  moduleInclude: '//',
+  __original_input__: `%options one two 
+%%hello: world;%%
+
+// 
+`,
+}

@@ -226,5 +226,39 @@ describe("helpers API", function () {
   it("dump: **TBD**", function () {
     assert.ok(typeof helpers.dump === 'function');
   });
+
+  it("isLegalIdentifierInput: **TBD**", function () {
+    assert.ok(typeof helpers.isLegalIdentifierInput === 'function');
+  });
+
+  it("scanRegExp: **TBD**", function () {
+    assert.ok(typeof helpers.scanRegExp === 'function');
+  });
+
+  it("trimErrorForTestReporting: **TBD**", function () {
+    assert.ok(typeof helpers.trimErrorForTestReporting === 'function');
+  });
+
+  it("checkRegExp: **TBD**", function () {
+    assert.ok(typeof helpers.checkRegExp === 'function');
+  });
+
+  it("getRegExpInfo: **TBD**", function () {
+    assert.ok(typeof helpers.getRegExpInfo === 'function');
+  });
+
+  it("checkActionBlock: **TBD**", function () {
+    assert.ok(typeof helpers.checkActionBlock === 'function');
+  });
+
+  it("trimActionCode: **TBD**", function () {
+    assert.ok(typeof helpers.trimActionCode === 'function');
+  });
+
+  it("compileCodeToES5: test default configuration", function () {
+    assert.ok(typeof helpers.compileCodeToES5 === 'function');
+    var rv = helpers.compileCodeToES5('console.log("hello");');
+    assert.equal(typeof rv.code, 'string');
+  });
 });
 

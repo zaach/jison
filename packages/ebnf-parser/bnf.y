@@ -1,6 +1,7 @@
 
 %code imports %{
-  import XRegExp from '@gerhobbelt/xregexp';       // for helping out the `%options xregexp` in the lexer
+  import XRegExp from '@gerhobbelt/xregexp';        // for helping out the `%options xregexp` in the lexer
+  import JSON5 from '@gerhobbelt/json5';            // TODO: quick fix until `%code imports` works in the lexer spec!
   import helpers from '../helpers-lib';
   import fs from 'fs';
   import transform from './ebnf-transform';
@@ -16,8 +17,10 @@
 /* grammar for parsing jison grammar files */
 
 %{
-var ebnf = false;
+    var ebnf = false;
 %}
+
+
 
 
 %code error_recovery_reduction %{
@@ -43,206 +46,108 @@ var ebnf = false;
 
 %%
 
+
+%{
+    const OPTION_DOES_NOT_ACCEPT_VALUE = 0x0001;    
+    const OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES = 0x0002;
+    const OPTION_ALSO_ACCEPTS_STAR_AS_IDENTIFIER_NAME = 0x0004;
+    const OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS = 0x0008;
+    const OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS = 0x0010;
+%}
+
+
 spec
-    : declaration_list '%%' grammar optional_end_block EOF
+    : init declaration_list grammar epilogue EOF
         {
             $$ = $declaration_list;
-            if ($optional_end_block.trim() !== '') {
-                yy.addDeclaration($$, { include: $optional_end_block });
+
+            // transform ebnf to bnf if necessary
+            if (ebnf) {
+                $$.ebnf = $grammar.grammar;        // keep the original source EBNF around for possible pretty-printing & AST exports.
+                $$.bnf = transform($grammar.grammar);
             }
-            return extend($$, $grammar);
+            else {
+                $$.bnf = $grammar.grammar;
+            }
+
+            yy.addDeclaration($$, $grammar);
+
+            // source code has already been checked!
+            var srcCode = $epilogue;
+            if (srcCode) {
+                yy.addDeclaration($$, { include: srcCode });
+            }
         }
-    | declaration_list '%%' grammar error EOF
+    | init declaration_list grammar error EOF
         {
             yyerror(rmCommonWS`
+                illegal input in the parser grammar productions definition section.
+
                 Maybe you did not correctly separate trailing code from the grammar rule set with a '%%' marker on an otherwise empty line?
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @grammar)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | declaration_list error EOF
+    | init declaration_list error '%%'
+        {
+            yyerror(rmCommonWS`
+                illegal input in the parser header section.
+
+                Maybe you did not correctly separate the parse 'header section' (token definitions, options, lexer spec, etc.) from the grammar rule set with a '%%' on an otherwise empty line?
+                It can also be that the error is triggered by the last ${yy.__options_category_description__} statement 
+                just above, so make sure to check the surroundings of the error location.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @declaration_list)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    | init DUMMY9 error EOF
         {
             yyerror(rmCommonWS`
                 Maybe you did not correctly separate the parse 'header section' (token definitions, options, lexer spec, etc.) from the grammar rule set with a '%%' on an otherwise empty line?
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @declaration_list)}
+                ${yylexer.prettyPrintRange(@error, @0)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
 
-optional_end_block
-    : %empty
-        { $$ = ''; }
-    | '%%' extra_parser_module_code
-        { 
-            var rv = checkActionBlock($extra_parser_module_code, @extra_parser_module_code);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    The extra parser module code section (a.k.a. 'epilogue') does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@extra_parser_module_code)}
-                `);
-            }
-            $$ = $extra_parser_module_code; 
-        }
-    ;
-
-optional_action_header_block
-    : %empty
-        { $$ = {}; }
-    | optional_action_header_block ACTION
+// because JISON doesn't support mid-rule actions,
+// we set up `yy` using this empty rule at the start:
+init
+    : ε
         {
-            $$ = $optional_action_header_block;
-            var rv = checkActionBlock($ACTION, @ACTION);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action header code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@ACTION)}
-                `);
-            }
-            yy.addDeclaration($$, { actionInclude: $ACTION });
-        }
-    | optional_action_header_block include_macro_code
-        {
-            $$ = $optional_action_header_block;
-            var rv = checkActionBlock($include_macro_code, @include_macro_code);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action header code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@include_macro_code)}
-                `);
-            }
-            yy.addDeclaration($$, { actionInclude: $include_macro_code });
+            if (!yy.options) yy.options = {};
+            yy.__options_flags__ = 0;
+            yy.__options_category_description__ = '???';
         }
     ;
 
 declaration_list
     : declaration_list declaration
-        { $$ = $declaration_list; yy.addDeclaration($$, $declaration); }
-    | %epsilon
-        { $$ = {}; }
-    | declaration_list error
-        {
-            // TODO ...
-            yyerror(rmCommonWS`
-                declaration list error?
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @declaration_list)}
-            `);
+        { 
+            $$ = $declaration_list; 
+            yy.addDeclaration($$, $declaration); 
+        }
+    | ε
+        { 
+            $$ = {}; 
         }
     ;
 
 declaration
-    : START id
-        { $$ = {start: $id}; }
-    | LEX_BLOCK
-        { $$ = {lex: {text: $LEX_BLOCK, position: @LEX_BLOCK}}; }
-    | operator
-        { $$ = {operator: $operator}; }
-    | TOKEN full_token_definitions
-        { $$ = {token_list: $full_token_definitions}; }
-    | ACTION
-        { 
-            var rv = checkActionBlock($ACTION, @ACTION);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@ACTION)}
-                `);
-            }
-            $$ = {include: $ACTION}; 
-        }
-    | include_macro_code
-        { 
-            var rv = checkActionBlock($include_macro_code, @include_macro_code);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    action header code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@include_macro_code)}
-                `);
-            }
-            $$ = {include: $include_macro_code}; 
-        }
-    | parse_params
-        { $$ = {parseParams: $parse_params}; }
-    | parser_type
-        { $$ = {parserType: $parser_type}; }
-    | options
-        { $$ = {options: $options}; }
-    | DEBUG
-        { $$ = {options: [['debug', true]]}; }
-    | EBNF
-        {
-            ebnf = true; 
-            $$ = {options: [['ebnf', true]]}; 
-        }
-    | UNKNOWN_DECL
-        { $$ = {unknownDecl: $UNKNOWN_DECL}; }
-    | IMPORT import_name import_path
-        { $$ = {imports: {name: $import_name, path: $import_path}}; }
-    | IMPORT import_name error
-        {
-            yyerror(rmCommonWS`
-                You did not specify a legal file path for the '%import' initialization code statement, which must have the format:
-
-                    %import qualifier_name file_path
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
-            `);
-        }
-    | IMPORT error import_path
-        {
-            yyerror(rmCommonWS`
-                Each '%import'-ed initialization code section must be qualified by a name, e.g. 'required' before the import path itself:
-
-                    %import qualifier_name file_path
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
-            `);
-        }
-    | INIT_CODE init_code_name action_ne
-        {
-            var rv = checkActionBlock($action_ne, @action_ne);
-            if (rv) {
-                yyerror(rmCommonWS`
-                    %code "${$init_code_name}" initialization section action code block does not compile: ${rv}
-
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@action_ne, @INIT_CODE)}
-                `);
-            }
-            $$ = {
-                initCode: {
-                    qualifier: $init_code_name,
-                    include: $action_ne
-                }
-            };
-        }
-    | INIT_CODE error action_ne
-        {
-            yyerror(rmCommonWS`
-                Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
-
-                    %code qualifier_name {action code}
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @INIT_CODE, @action_ne)}
-            `);
-        }
+    : START ID
+        { $$ = {start: $ID}; }
     | START error
         {
             // TODO ...
@@ -251,8 +156,32 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @START)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
+    | LEX_BLOCK
+        { $$ = {lex: {text: $LEX_BLOCK, position: @LEX_BLOCK}}; }
+    | FLEX_POINTER_MODE
+        {
+            // This is the only mode we do support in JISON...
+            $$ = null;
+        }
+    | FLEX_ARRAY_MODE
+        {
+            yyerror(rmCommonWS`
+                JISON does not support the %array lexing mode.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@FLEX_ARRAY_MODE)}
+            `);
+            $$ = null;
+        }
+    | operator
+        { $$ = {operator: $operator}; }
+    | TOKEN full_token_definitions
+        { $$ = {token_list: $full_token_definitions}; }
     | TOKEN error
         {
             // TODO ...
@@ -261,110 +190,352 @@ declaration
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @TOKEN)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | IMPORT error
+    //
+    // may be a *parser setup code section*, e.g.
+    //
+    //     %{
+    //        console.log('setup info message');
+    //     %}
+    //
+    // **Note** that the action block start marker `%{` MUST be positioned 
+    // at the start of a line to be accepted; indented action code blocks
+    // are always related to a preceding parser spec item, such as a 
+    // grammar production rule.
+    //
+    | ACTION_START_AT_SOL action ACTION_END
+        { 
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The '%{...%}' grammar setup action code section does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action, @ACTION_START_AT_SOL)}
+                    `);
+                }
+                $$ = {include: srcCode}; 
+            }
+            $$ = null;
+        }
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    | UNTERMINATED_ACTION_BLOCK
+        %{
+            // The issue has already been reported by the lexer. No need to repeat
+            // ourselves with another error report from here.
+            $$ = null;
+        %}
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    | ACTION_START_AT_SOL error
+        %{
+            var start_marker = $ACTION_START_AT_SOL.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            yyerror(rmCommonWS`
+                There's very probably a problem with this '%{...%\}' parser setup action code section.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ACTION_START_AT_SOL)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+            $$ = null;
+        %}
+    | ACTION_START include_macro_code ACTION_END 
         {
-            // TODO ...
+            $$ = {include: $include_macro_code + $ACTION_END}; 
+        }
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    // This rule detects the presence of an unattached *indented*
+    // action code block.
+    //
+    | ACTION_START error
+        %{
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            yyerror(rmCommonWS`
+                The '%{...%\}' parser setup action code section MUST have its action
+                block start marker (\`%{\`${marker_msg}) positioned 
+                at the start of a line to be accepted: *indented* action code blocks
+                (such as this one) are always related to an immediately preceding parser spec item, 
+                e.g. a grammar production rule.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ACTION_START)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+            $$ = null;
+        %}
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    // This rule detects the presence of an unattached *indented*
+    // action code block.
+    //
+    | ACTION_START DUMMY
+        %{
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            yyerror(rmCommonWS`
+                The '%{...%\}' lexer setup action code section MUST have its action
+                block start marker (\`%{\`${marker_msg}) positioned 
+                at the start of a line to be accepted: *indented* action code blocks
+                (such as this one) are always related to an immediately preceding lexer spec item, 
+                e.g. a lexer match rule expression (see 'lexer rules').
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ACTION_START)}
+            `);
+            $$ = null;
+        %}
+    | parse_params
+        { 
+            $$ = {parseParams: $parse_params}; 
+        }
+    | parser_type
+        { 
+            $$ = {parserType: $parser_type}; 
+        }
+    //
+    // may be an `%options` statement, e.g.
+    //
+    //     %options xregexp
+    //
+    | option_keyword option_list OPTIONS_END
+        { 
+            $$ = {options: $option_list}; 
+        }
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    | option_keyword error
+        {
+            yyerror(rmCommonWS`
+                ill defined %options line.
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @option_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    | DEBUG
+        { 
+            $$ = {options: [['debug', true]]}; 
+        }
+    | EBNF
+        {
+            ebnf = true; 
+            $$ = {options: [['ebnf', true]]}; 
+        }
+    | UNKNOWN_DECL
+        { 
+            $$ = {unknownDecl: $UNKNOWN_DECL}; 
+        }
+    | import_keyword option_list OPTIONS_END
+        { 
+            // check if there are two unvalued options: 'name path'
+            var lst = $option_list;
+            var len = lst.length;
+            var body;
+            if (len === 2 && lst[0][1] === true && lst[1][1] === true) {
+                // `name path`:
+                body = {
+                    name: lst[0][0],
+                    path: lst[1][0]
+                };
+            } else if (len <= 2) {
+                yyerror(rmCommonWS`
+                    You did not specify a legal qualifier name and/or file path for the '%import' statement, which must have the format:
+                        %import qualifier_name file_path
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @import_keyword)}
+                `);
+            } else {
+                yyerror(rmCommonWS`
+                    You did specify too many attributes for the '%import' statement, which must have the format:
+                        %import qualifier_name file_path
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @import_keyword)}
+                `);
+            }
+
+            $$ = {
+                imports: body
+            }; 
+        }
+    | import_keyword error
+        {
             yyerror(rmCommonWS`
                 %import name or source filename missing maybe?
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @IMPORT)}
+                Note: each '%import' must be qualified by a name, e.g. 'required' before the import path itself:
+                    %import qualifier_name file_path
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @import_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-//    | INIT_CODE error
-    ;
-
-init_code_name
-    : ID
-        { $$ = $ID; }
-    | NAME
-        { $$ = $NAME; }
-    | STRING
-        { $$ = $STRING; }
-    ;
-
-import_name
-    : ID
-        { $$ = $ID; }
-    | STRING
-        { $$ = $STRING; }
-    ;
-
-import_path
-    : ID
-        { $$ = $ID; }
-    | STRING
-        { $$ = $STRING; }
-    ;
-
-options
-    : OPTIONS option_list OPTIONS_END
-        { $$ = $option_list; }
-    | OPTIONS error OPTIONS_END
+    | init_code_keyword option_list ACTION_START action ACTION_END OPTIONS_END 
         {
-            // TODO ...
-            yyerror(rmCommonWS`
-                %options ill defined / error?
+            // check there's only 1 option which is an identifier
+            var lst = $option_list;
+            var len = lst.length;
+            var name;
+            if (len === 1 && lst[0][1] === true) {
+                // `name`:
+                name = lst[0][0];
+            } else if (len <= 1) {
+                yyerror(rmCommonWS`
+                    You did not specify a legal qualifier name for the '%code' initialization code statement, which must have the format:
+                        %code qualifier_name %{...code...%}
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @OPTIONS, @OPTIONS_END)}
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @init_code_keyword)}
+                `);
+            } else {
+                yyerror(rmCommonWS`
+                    You did specify too many attributes for the '%code' initialization code statement, which must have the format:
+                        %code qualifier_name %{...code...%}
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @init_code_keyword)}
+                `);
+            }
+
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            var rv = checkActionBlock(srcCode, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '%code ${name}' initialization code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action, @init_code_keyword)}
+                `);
+            }
+            $$ = {
+                codeSection: {
+                  qualifier: name,
+                  include: srcCode
+                }
+            };
+        }
+    | init_code_keyword option_list ACTION_START error /* OPTIONS_END */
+        {
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            var end_marker_msg = marker_msg.replace(/\{/g, '}');
+            yyerror(rmCommonWS`
+                The '%code ID %{...%\}' initialization code section must be properly 
+                wrapped in block start markers (\`%{\`${marker_msg}) 
+                and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+
+                    %code qualifier_name {action code}
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @init_code_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | OPTIONS error
+    | init_code_keyword error ACTION_START /* ...action ACTION_END */
         {
-            // TODO ...
             yyerror(rmCommonWS`
-                %options don't seem terminated?
+                Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
+                    %code qualifier_name {action code}
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @OPTIONS)}
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @init_code_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
+        }
+    | on_error_recovery_statement
+    ;
+
+option_keyword
+    : OPTIONS
+        {
+            yy.__options_flags__ = OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES;
+            yy.__options_category_description__ = $OPTIONS;
         }
     ;
 
-option_list
-    : option_list option
-        { $$ = $option_list; $$.push($option); }
-    | option
-        { $$ = [$option]; }
+import_keyword
+    : IMPORT
+        {
+            yy.__options_flags__ = OPTION_DOES_NOT_ACCEPT_VALUE | OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS;
+            yy.__options_category_description__ = $IMPORT;
+        }
     ;
 
-option
-    : NAME[option]
-        { $$ = [$option, true]; }
-    | NAME[option] '=' OPTION_STRING_VALUE[value]
-        { $$ = [$option, $value]; }
-    | NAME[option] '=' OPTION_VALUE[value]
-        { $$ = [$option, parseValue($value)]; }
-    | NAME[option] '=' NAME[value]
-        { $$ = [$option, parseValue($value)]; }
-    | NAME[option] '=' error
+init_code_keyword
+    : CODE
         {
-            // TODO ...
-            yyerror(rmCommonWS`
-                named %option value error for ${$option}?
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @option)}
-            `);
+            yy.__options_flags__ = OPTION_DOES_NOT_ACCEPT_VALUE | OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS | OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS;
+            yy.__options_category_description__ = $CODE;
         }
-    | NAME[option] error
-        {
-            // TODO ...
-            yyerror(rmCommonWS`
-                named %option value assignment error?
+    ;
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @option)}
-            `);
+include_keyword
+    : INCLUDE
+        {
+            yy.__options_flags__ = OPTION_DOES_NOT_ACCEPT_VALUE | OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS;
+            yy.__options_category_description__ = $INCLUDE;
+        }
+    ;
+
+on_error_recovery_keyword
+    : ON_ERROR_RECOVERY_SHIFT
+    | ON_ERROR_RECOVERY_REDUCE
+    ;
+
+start_productions_marker
+    : '%%'
+        {
+            yy.__options_flags__ = 0;
+            yy.__options_category_description__ = 'the grammar productions definition section';
+        }
+    ;
+
+start_epilogue_marker
+    : '%%'
+        {
+            yy.__options_flags__ = 0;
+            yy.__options_category_description__ = 'the grammar epilogue section';
         }
     ;
 
 parse_params
-    : PARSE_PARAM token_list
-        { $$ = $token_list; }
+    : PARSE_PARAM id_list
+        { $$ = $id_list; }
     | PARSE_PARAM error
         {
             // TODO ...
@@ -373,6 +544,9 @@ parse_params
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @PARSE_PARAM)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -388,13 +562,16 @@ parser_type
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @PARSER_TYPE)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
 
 operator
-    : associativity token_list
-        { $$ = [$associativity]; $$.push.apply($$, $token_list); }
+    : associativity symbol_list
+        { $$ = [$associativity]; $$.push.apply($$, $symbol_list); }
     | associativity error
         {
             // TODO ...
@@ -403,6 +580,9 @@ operator
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @associativity)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -414,13 +594,6 @@ associativity
         { $$ = 'right'; }
     | NONASSOC
         { $$ = 'nonassoc'; }
-    ;
-
-token_list
-    : token_list symbol
-        { $$ = $token_list; $$.push($symbol); }
-    | symbol
-        { $$ = [$symbol]; }
     ;
 
 // As per http://www.gnu.org/software/bison/manual/html_node/Token-Decl.html
@@ -450,32 +623,32 @@ full_token_definitions
     ;
 
 one_full_token
-    : id token_value token_description
+    : ID token_value token_description
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 value: $token_value,
                 description: $token_description
             };
         }
-    | id token_description
+    | ID token_description
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 description: $token_description
             };
         }
-    | id token_value
+    | ID token_value
         {
             $$ = {
-                id: $id,
+                id: $ID,
                 value: $token_value
             };
         }
     ;
 
 optional_token_type
-    : %epsilon
+    : ε
         { $$ = false; }
     | TOKEN_TYPE
         { $$ = $TOKEN_TYPE; }
@@ -487,29 +660,28 @@ token_value
     ;
 
 token_description
-    : STRING
-        { $$ = $STRING; }
+    : STRING_LIT
+        { $$ = $STRING_LIT; }
     ;
-
-id_list
-    : id_list id
-        { $$ = $id_list; $$.push($id); }
-    | id
-        { $$ = [$id]; }
-    ;
-
-// token_id
-//     : TOKEN_TYPE id
-//         { $$ = $id; }
-//     | id
-//         { $$ = $id; }
-//     ;
 
 grammar
-    : optional_action_header_block production_list
+    : start_productions_marker production_list
         {
-            $$ = $optional_action_header_block;
-            $$.grammar = $production_list;
+            $$ = $production_list;
+        }
+    | start_productions_marker error
+        {
+            // TODO ...
+            yyerror(rmCommonWS`
+                Each '%code' initialization code section must be qualified by a name, e.g. 'required' before the action code itself:
+                    %code qualifier_name {action code}
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @start_productions_marker)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
         }
     ;
 
@@ -517,20 +689,66 @@ production_list
     : production_list production
         {
             $$ = $production_list;
-            if ($production[0] in $$) {
-                $$[$production[0]] = $$[$production[0]].concat($production[1]);
+
+            var grammar = $$.grammar || {};
+            var rule_id = $production[0]; 
+
+            if (rule_id in grammar) {
+                grammar[rule_id] = grammar[rule_id].concat($production[1]);
             } else {
-                $$[$production[0]] = $production[1];
+                grammar[rule_id] = $production[1];
             }
+            $$.grammar = grammar;
+        }
+    | production_list setup_action_block
+        {
+            $$ = $production_list;
+            var actionInclude = $$.actionInclude || [];
+
+            // source code has already been checked!
+            var srcCode = $setup_action_block;
+            if (srcCode) {
+                actionInclude.push(srcCode);
+            }
+            $$.actionInclude = actionInclude;
+        }
+    | production_list on_error_recovery_statement
+        {
+            $$ = $production_list;
+            var onErrorRecovery = $$.onErrorRecovery || [];
+            onErrorRecovery.push($on_error_recovery_statement);
+            $$.onErrorRecovery = onErrorRecovery;
         }
     | production
-        { $$ = {}; $$[$production[0]] = $production[1]; }
+        { 
+            var grammar = {}; 
+            grammar[$production[0]] = $production[1]; 
+            $$ = {
+                grammar: grammar
+            };
+        }
+    | setup_action_block
+        {
+            $$ = {};
+
+            // source code has already been checked!
+            var srcCode = $setup_action_block;
+            if (srcCode) {
+                $$.actionInclude = [srcCode];
+            }
+        }
+    | on_error_recovery_statement
+        {
+            $$ = {
+                onErrorRecovery: [$on_error_recovery_statement] 
+            };
+        }
     ;
 
 production
-    : production_id handle_list ';'
+    : production_id ':' handle_list ';'
         {$$ = [$production_id, $handle_list];}
-    | production_id error ';'
+    | production_id ':' error ';'
         {
             // TODO ...
             yyerror(rmCommonWS`
@@ -538,9 +756,12 @@ production
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @production_id)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | production_id error
+    | production_id DUMMY8 error
         {
             // TODO ...
             yyerror(rmCommonWS`
@@ -548,33 +769,78 @@ production
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @production_id)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    ;
-
-production_id
-    : id optional_production_description ':'
-        {
-            $$ = $id;
-
-            // TODO: carry rule description support into the parser generator...
-        }
-    | id optional_production_description error
+    | production_id error ';'
         {
             // TODO ...
             yyerror(rmCommonWS`
                 rule id should be followed by a colon, but that one seems missing?
 
+                *Aside*: rule id may be followed by descriptive text (string) before the \`:\` colon.
+                This text must be surrounded by single ('), double (") or backtick (\`) quotes.
+
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @id)}
+                ${yylexer.prettyPrintRange(@error, @production_id)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    //
+    // Recognize a common mistake
+    //
+    | production_id ARROW_ACTION_START DUMMY5
+        {
+            yyerror(rmCommonWS`
+                rule id should be followed by a colon instead of an arrow: 
+                please adjust your grammar to use this format:
+
+                    rule_id : terms  { optional action code }
+                            | terms  { optional action code }
+                            ...
+                            ;
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ARROW_ACTION_START, @production_id)}
             `);
         }
     ;
 
-optional_production_description
-    : STRING
-        { $$ = $STRING; }
-    | %epsilon
+production_id
+    : ID production_description 
+        {
+            $$ = $ID;
+
+            // TODO: carry rule description support into the parser generator...
+        }
+    | ID 
+        {
+            $$ = $ID;
+        }
+    | ID DUMMY9 error
+        {
+            // TODO ...
+            yyerror(rmCommonWS`
+                rule id may be followed by descriptive text (string) before the \`:\` colon, 
+                but there's something wrong with the description text. Do note that the
+                text must be surrounded by single ('), double (") or backtick (\`) quotes.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @ID)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    ;
+
+production_description
+    : STRING_LIT
+        { $$ = $STRING_LIT; }
     ;
 
 handle_list
@@ -595,26 +861,33 @@ handle_list
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @handle_list)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | handle_list ':' error
+    //
+    // Recognize a common mistake
+    //
+    | handle_list ':'[colon] DUMMY5
         {
             // TODO ...
             yyerror(rmCommonWS`
                 multiple alternative rule productions should be separated by a '|' pipe character, not a ':' colon!
 
                   Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @handle_list)}
+                ${yylexer.prettyPrintRange(@colon, @handle_list)}
             `);
         }
     ;
 
 handle_action
-    : handle prec action
+    : handle prec ACTION_START action ACTION_END
         {
-            $$ = [($handle.length ? $handle.join(' ') : '')];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+            $$ = [$handle];
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
                         production rule action code block does not compile: ${rv}
@@ -623,31 +896,86 @@ handle_action
                         ${yylexer.prettyPrintRange(@action, @handle)}
                     `);
                 }
-                $$.push($action);
+                $$.push(srcCode);
             }
-            if ($prec) {
-                if ($handle.length === 0) {
-                    yyerror(rmCommonWS`
-                        You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!
 
-                          Erroneous area:
-                        ${yylexer.prettyPrintRange(@handle, @0, @action /* @handle is very probably NULL! We need this one for some decent location info! */)}
-                    `);
-                }
+            if ($prec) {
                 $$.push($prec);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
         }
-    | EPSILON action
+    | handle prec ARROW_ACTION_START action ACTION_END
+        {
+            $$ = [$handle];
+
+            var srcCode = trimActionCode($action + $ACTION_END);
+            if (srcCode) {
+                // add braces around ARROW_ACTION_CODE so that the action chunk test/compiler
+                // will uncover any illegal action code following the arrow operator, e.g.
+                // multiple statements separated by semicolon.
+                //
+                // Note/Optimization:
+                // there's no need for braces in the generated expression when we can
+                // already see the given action is an identifier string or something else
+                // that's a sure simple thing for a JavaScript `return` statement to carry.
+                // By doing this, we simplify the token return replacement code replacement
+                // process which will be applied to the parsed lexer before its code
+                // will be generated by JISON.
+                if (/^[^\r\n;\/]+$/.test(srcCode)) {
+                    srcCode = '$$ = ' + srcCode; 
+                } else {
+                    srcCode = '$$ = (' + srcCode + '\n)'; 
+                }
+
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The lexer rule's 'arrow' action code section does not compile: ${rv}
+
+                        # NOTE that the arrow action automatically wraps the action code
+                        # in a \`$$ = (...);\` statement to prevent hard-to-diagnose run-time
+                        # errors down the line.
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action, @handle)}
+                    `);
+                }
+
+                $$.push(srcCode);
+            }
+            
+            if ($prec) {
+                $$.push($prec);
+            }
+
+            if ($$.length === 1) {
+                $$ = $$[0];
+            }
+        }
+    | handle prec
+        {
+            $$ = [$handle];
+
+            if ($prec) {
+                $$.push($prec);
+            }
+
+            if ($$.length === 1) {
+                $$ = $$[0];
+            }
+        }
+    | EPSILON ACTION_START action ACTION_END
         // %epsilon may only be used to signal this is an empty rule alt;
         // hence it can only occur by itself
         // (with an optional action block, but no alias what-so-ever nor any precedence override).
         {
-            $$ = [''];
-            if ($action) {
-                var rv = checkActionBlock($action, @action);
+            $$ = [[]];
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
                 if (rv) {
                     yyerror(rmCommonWS`
                         epsilon production rule action code block does not compile: ${rv}
@@ -656,13 +984,119 @@ handle_action
                         ${yylexer.prettyPrintRange(@action, @EPSILON)}
                     `);
                 }
-                $$.push($action);
+                $$.push(srcCode);
             }
+
             if ($$.length === 1) {
                 $$ = $$[0];
             }
         }
-    | EPSILON error
+    | EPSILON 
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = [];
+        }
+    | EPSILON PREC
+        {
+            yyerror(rmCommonWS`
+                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@PREC, @EPSILON /* @EPSILON is very probably NULL! We need this one for some decent location info! */)}
+            `);
+        }
+    | /* ε */ 
+        // empty rules, which are otherwise identical to %epsilon rules:
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = [];
+        }
+    | /* ε */ PREC
+        {
+            yyerror(rmCommonWS`
+                You cannot specify a precedence override for an epsilon (a.k.a. empty) rule!
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@PREC, @0 /* We need this one for some decent location info! */)}
+            `);
+        }
+    | /* ε */ ACTION_START action ACTION_END
+        // %epsilon may only be used to signal this is an empty rule alt;
+        // hence it can only occur by itself
+        // (with an optional action block, but no alias what-so-ever nor any precedence override).
+        {
+            $$ = [[]];
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        epsilon production rule action code block does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action, @ACTION_START)}
+                    `);
+                }
+                $$.push(srcCode);
+            }
+
+            if ($$.length === 1) {
+                $$ = $$[0];
+            }
+        }
+    | /* ε */ ARROW_ACTION_START /* action ACTION_END */
+        // empty rules, which are otherwise identical to %epsilon rules, MUST NOT contain arrow actions.
+        {
+            yyerror(rmCommonWS`
+                Empty (~ epsilon) rule productions MAY NOT contain arrow action code blocks.
+                Only regular '%{...%}' action blocks are allowed here.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ARROW_ACTION_START)}
+            `);
+        }
+    | EPSILON ARROW_ACTION_START error /* ACTION_END */
+        {
+            $$ = [[], $error];
+            yyerror(rmCommonWS`
+                An epsilon production rule action arrow must be followed by a single JavaScript expression to assign the production rule's value, e.g.:
+
+                    rule: %epsilon   -> 42
+                        ;
+
+                which is equivalent to:
+
+                    rule: %epsilon   %{ $$ = 42; %}
+                        ;
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @ARROW_ACTION_START)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    | EPSILON ACTION_START error /* ACTION_END */
+        {
+            // TODO: REWRITE
+            $$ = [[], $error];
+            yyerror(rmCommonWS`
+                An epsilon production rule action must consist of a (properly '%{...%}' delimited) JavaScript statement block, e.g.:
+
+                    rule: %epsilon   %{ $$ = 'BUGGABOO'; %}
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @EPSILON)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    | DUMMY3 EPSILON error
         {
             // TODO ...
             yyerror(rmCommonWS`
@@ -670,6 +1104,9 @@ handle_action
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @EPSILON)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
@@ -680,9 +1117,9 @@ handle
             $$ = $handle;
             $$.push($suffixed_expression);
         }
-    | %epsilon
+    | suffixed_expression
         {
-            $$ = [];
+            $$ = [$suffixed_expression];
         }
     ;
 
@@ -690,46 +1127,55 @@ handle_sublist
     : handle_sublist '|' handle
         {
             $$ = $handle_sublist;
-            $$.push($handle.join(' '));
+            $$.push($handle);
         }
     | handle
         {
-            $$ = [$handle.join(' ')];
+            $$ = [$handle];
         }
     ;
 
 suffixed_expression
     : expression suffix ALIAS
         {
-            $$ = $expression + $suffix + "[" + $ALIAS + "]";
+            $$ = ['xalias', $suffix, $expression, $ALIAS];
         }
     | expression suffix
         {
-            $$ = $expression + $suffix;
+            if ($suffix) {
+                $$ = [$suffix, $expression];
+            } else {
+                $$ = $expression;
+            }
         }
     ;
 
 expression
-    : ID
+    : symbol
         {
-            $$ = $ID;
+            $$ = ['symbol', $symbol];
         }
     | EOF_ID
         {
-            $$ = '$end';
-        }
-    | STRING
-        {
-            // Re-encode the string *anyway* as it will
-            // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
-            // to be able to handle all tokens, including *significant space*
-            // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
-            $$ = dquote($STRING);
+            $$ = ['symbol', '$end'];
         }
     | '(' handle_sublist ')'
-        {
-            $$ = '(' + $handle_sublist.join(' | ') + ')';
-        }
+        %{
+            // Do not allow empty sublist here, i.e. writing '()' in a grammar is illegal.
+            //
+            // empty list ε is encoded as `[[]]`:
+            var lst = $handle_sublist;
+            if (lst.length === 1 && lst[0].length === 0) {
+                yyerror(rmCommonWS`
+                    Empty grammar rule sublists are not accepted within '( ... )' brackets.
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@$) /* @$ =?= yylexer.deriveLocationInfo(@1, @3) */}
+                `);
+            }
+
+            $$ = ['()', $handle_sublist];
+        %}
     | '(' handle_sublist error
         {
             yyerror(rmCommonWS`
@@ -737,13 +1183,16 @@ expression
 
                   Erroneous area:
                 ${yylexer.prettyPrintRange(@error, @1)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
 
 suffix
-    : %epsilon
-        { $$ = ''; }
+    : ε
+        { $$ = undefined; }
     | '*'
         { $$ = $1; }
     | '?'
@@ -765,141 +1214,498 @@ prec
 
                   Erroneous precedence declaration:
                 ${yylexer.prettyPrintRange(@error, @PREC)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
-    | %epsilon
+    | ε
         {
             $$ = null;
         }
     ;
 
-symbol
-    : id
-        { $$ = $id; }
-    | STRING
-        { $$ = $STRING; }
+symbol_list
+    : symbol_list symbol
+        { $$ = $symbol_list; $$.push($symbol); }
+    | symbol
+        { $$ = [$symbol]; }
     ;
 
-id
+symbol
     : ID
         { $$ = $ID; }
+    | STRING_LIT
+        // Re-encode the string *anyway* as it will
+        // be made part of the rule rhs a.k.a. production (type: *string*) again and we want
+        // to be able to handle all tokens, including *significant space*
+        // encoded as literal tokens in a grammar such as this: `rule: A ' ' B`.
+        //
+        // We also want to detect whether it was a *literal string* ID or a direct ID that 
+        // serves as a symbol anywhere else. That way, we can potentially cope with 'nasty' 
+        // lexer/parser constructs such as 
+        //
+        //      %token 'N'
+        //      %token N
+        //
+        //      rule: N 'N' N;
+        //
+        { $$ = $STRING_LIT; }
     ;
 
-action_ne
-    : '{' action_body '}'
-        { $$ = $action_body; }
-    | '{' action_body error
-        {
-            yyerror(rmCommonWS`
-                Seems you did not correctly bracket a parser rule action block in curly braces: '{ ... }'.
-
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @1)}
-            `);
-        }
-    | ACTION
-        { $$ = $ACTION; }
-    | include_macro_code
-        { $$ = $include_macro_code; }
+id_list
+    : id_list ID
+        { $$ = $id_list; $$.push($ID); }
+    | ID
+        { $$ = [$ID]; }
     ;
 
 action
-    : action_ne
-        { $$ = $action_ne; }
-    | ARROW_ACTION
-        // add braces around ARROW_ACTION so that the action chunk test/compiler
-        // will uncover any illegal action code following the arrow operator, e.g.
-        // multiple statements separated by semicolon.
-        { $$ = '$$ = (' + $ARROW_ACTION + ');'; }
-    | %epsilon
+    : action ACTION_BODY
+        { $$ = $action + $ACTION_BODY; }
+    | action include_macro_code
+        { $$ = $action + '\n\n' + $include_macro_code + '\n\n'; }
+    | action INCLUDE_PLACEMENT_ERROR
+        {
+            yyerror(rmCommonWS`
+                You may place the '%include' instruction only at the start/front of a line.
+
+                  Its use is not permitted at this position:
+                ${yylexer.prettyPrintRange(@INCLUDE_PLACEMENT_ERROR, @-1)}
+            `);
+        }
+    | action BRACKET_MISSING
+        {
+            yyerror(rmCommonWS`
+                Missing curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
+
+                  Offending action body:
+                ${yylexer.prettyPrintRange(@BRACKET_MISSING, @-1)}
+            `);
+        }
+    | action BRACKET_SURPLUS
+        {
+            yyerror(rmCommonWS`
+                Too many curly braces: seems you did not correctly bracket a lexer rule action block in curly braces: '{ ... }'.
+
+                  Offending action body:
+                ${yylexer.prettyPrintRange(@BRACKET_SURPLUS, @-1)}
+            `);
+        }
+    | action UNTERMINATED_STRING_ERROR
+        {
+            yyerror(rmCommonWS`
+                Unterminated string constant in lexer rule action block.
+
+                When your action code is as intended, it may help to enclose 
+                your rule action block code in a '%{...%}' block.
+
+                  Offending action body:
+                ${yylexer.prettyPrintRange(@UNTERMINATED_STRING_ERROR, @-1)}
+            `);
+        }
+    | ε
         { $$ = ''; }
     ;
 
-action_body
-    : %epsilon
-        { $$ = ''; }
-    | action_comments_body
-        { $$ = $action_comments_body; }
-    | action_body '{' action_body '}' action_comments_body
-        { $$ = $1 + $2 + $3 + $4 + $5; }
-    | action_body '{' action_body '}'
-        { $$ = $1 + $2 + $3 + $4; }
-    | action_body '{' action_body error
-        {
-            yyerror(rmCommonWS`
-                Seems you did not correctly match curly braces '{ ... }' in a parser rule action block.
 
-                  Erroneous area:
-                ${yylexer.prettyPrintRange(@error, @2)}
+on_error_recovery_statement
+    : on_error_recovery_keyword ACTION_START action ACTION_END 
+        {
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
+            var rv = checkActionBlock(srcCode, @action);
+            if (rv) {
+                yyerror(rmCommonWS`
+                    The '${$on_error_recovery_keyword}' action code section does not compile: ${rv}
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@action, @on_error_recovery_keyword)}
+                `);
+            }
+            $$ = {
+                onErrorRecoveryAction: {
+                  qualifier: $on_error_recovery_keyword,
+                  include: srcCode
+                }
+            };
+        }
+    | on_error_recovery_keyword ACTION_START error /* ACTIONS_END */
+        {
+            var start_marker = $ACTION_START.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            var end_marker_msg = marker_msg.replace(/\{/g, '}');
+            yyerror(rmCommonWS`
+                The '${$on_error_recovery_keyword} %{...%\}' initialization code section must be properly 
+                wrapped in block start markers (\`%{\`${marker_msg}) 
+                and matching end markers (\`%}\`${end_marker_msg}). Expected format:
+
+                    ${$on_error_recovery_keyword} {action code}
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error, @on_error_recovery_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
             `);
         }
     ;
 
-action_comments_body
-    : ACTION_BODY
-        { $$ = $ACTION_BODY; }
-    | action_comments_body ACTION_BODY
-        { $$ = $action_comments_body + $ACTION_BODY; }
+
+option_list
+    : option_list ','[comma] option 
+        { 
+            // validate that this is legal behaviour under the given circumstances, i.e. parser context:
+            if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
+                yyerror(rmCommonWS`
+                    You may only specify one name/argument in a ${yy.__options_category_description__} statement.
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@comma, @option), @-1)}
+                `);
+            }
+            if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_COMMA_SEPARATED_OPTIONS) {
+                var optlist = $option_list.map(function (opt) { 
+                    return opt[0]; 
+                });
+                optlist.push($option[0]);
+
+                yyerror(rmCommonWS`
+                    You may not separate entries in a ${yy.__options_category_description__} statement using commas.
+                    Use whitespace instead, e.g.:
+
+                        ${$-1} ${optlist.join(' ')} ...
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@comma, @option_list), @-1)}
+                `);
+            }
+            $$ = $option_list; 
+            $$.push($option); 
+        }
+    | option_list option 
+        { 
+            // validate that this is legal behaviour under the given circumstances, i.e. parser context:
+            if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_MULTIPLE_OPTIONS) {
+                yyerror(rmCommonWS`
+                    You may only specify one name/argument in a ${yy.__options_category_description__} statement.
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@option), @-1)}
+                `);
+            }
+            $$ = $option_list; 
+            $$.push($option); 
+        }
+    | option
+        { 
+            $$ = [$option]; 
+        }
     ;
 
-extra_parser_module_code
-    : optional_module_code_chunk
+option
+    : option_name
         { 
-            $$ = $optional_module_code_chunk; 
+            $$ = [$option_name, true]; 
         }
-    | optional_module_code_chunk include_macro_code extra_parser_module_code
+    | option_name '=' option_value
+        {
+            // validate that this is legal behaviour under the given circumstances, i.e. parser context:
+            if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
+                yyerror(rmCommonWS`
+                    The entries in a ${yy.__options_category_description__} statement MUST NOT be assigned values, such as '${$option_name}=${$option_value}'.
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(yylexer.deriveLocationInfo(@option_value, @option_name), @-1)}
+                `);
+            }
+            $$ = [$option_name, $option_value]; 
+        }
+    | option_name '=' error
+        {
+            // TODO ...
+            yyerror(rmCommonWS`
+                Internal error: option "${$option}" value assignment failure in a ${yy.__options_category_description__} statement.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @-1)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    | DUMMY3 error
+        {
+            var with_value_msg = ' (with optional value assignment)';
+            if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
+                with_value_msg = '';
+            }
+            yyerror(rmCommonWS`
+                Expected a valid option name${with_value_msg} in a ${yy.__options_category_description__} statement.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@error, @-1)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+        }
+    ;
+
+option_name
+    : option_value[name]
         { 
-            $$ = $optional_module_code_chunk + $include_macro_code + $extra_parser_module_code; 
+            // validate that this is legal input under the given circumstances, i.e. parser context:
+            if (yy.__options_flags__ & OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES) {
+                $$ = mkIdentifier($name);
+                // check if the transformation is obvious & trivial to humans;
+                // if not, report an error as we don't want confusion due to
+                // typos and/or garbage input here producing something that
+                // is usable from a machine perspective.
+                if (!isLegalIdentifierInput($name)) {
+                    var with_value_msg = ' (with optional value assignment)';
+                    if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
+                        with_value_msg = '';
+                    }
+                    yyerror(rmCommonWS`
+                        Expected a valid name/argument${with_value_msg} in a ${yy.__options_category_description__} statement.
+                        Entries (names) must look like regular programming language
+                        identifiers, with the addition that option names MAY contain
+                        '-' dashes, e.g. 'example-option-1'.
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@name, @-1)}
+                    `);
+                }
+            } else {
+                $$ = $name;
+            }
+        }
+    | '*'[star]
+        { 
+            // validate that this is legal input under the given circumstances, i.e. parser context:
+            if (!(yy.__options_flags__ & OPTION_EXPECTS_ONLY_IDENTIFIER_NAMES) || (yy.__options_flags__ & OPTION_ALSO_ACCEPTS_STAR_AS_IDENTIFIER_NAME)) {
+                $$ = $star;
+            } else {
+                var with_value_msg = ' (with optional value assignment)';
+                if (yy.__options_flags__ & OPTION_DOES_NOT_ACCEPT_VALUE) {
+                    with_value_msg = '';
+                }
+                yyerror(rmCommonWS`
+                    Expected a valid name/argument${with_value_msg} in a ${yy.__options_category_description__} statement.
+                    Entries (names) must look like regular programming language
+                    identifiers, with the addition that option names MAY contain
+                    '-' dashes, e.g. 'example-option-1'
+
+                      Erroneous area:
+                    ${yylexer.prettyPrintRange(@star, @-1)}
+                `);
+            }
+        }
+    ;
+
+option_value
+    : OPTION_STRING
+        { $$ = JSON5.parse($OPTION_STRING); }
+    | OPTION_VALUE
+        { $$ = parseValue($OPTION_VALUE); }
+    ;
+
+epilogue
+    : start_epilogue_marker
+        {
+            $$ = '';
+        }
+    | start_epilogue_marker epilogue_chunks 
+        {
+            var srcCode = trimActionCode($epilogue_chunks);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @epilogue_chunks);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The '%%' lexer epilogue code does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@epilogue_chunks, @1)}
+                    `);
+                }
+            }
+            $$ = srcCode;
+        }
+    | start_epilogue_marker error
+      {
+        yyerror(rmCommonWS`
+            There's an error in your lexer epilogue code block.
+
+              Erroneous code:
+            ${yylexer.prettyPrintRange(@error, @1)}
+
+              Technical error report:
+            ${$error.errStr}
+        `);
+      }
+    ;
+
+epilogue_chunks
+    : epilogue_chunks epilogue_chunk
+        {
+            $$ = $epilogue_chunks + $epilogue_chunk;
+        }
+    | epilogue_chunks error
+        {
+            // TODO ...
+            yyerror(rmCommonWS`
+                Module code declaration error?
+
+                  Erroneous code:
+                ${yylexer.prettyPrintRange(@error)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+            $$ = '';
+        }
+    | epilogue_chunk
+        {
+            $$ = $epilogue_chunk;
+        }
+    ;
+
+epilogue_chunk
+    //
+    // `%include` automatically injects a `ACTION_START` token, even when it's placed
+    // at the start of a line (column 1).
+    // Otherwise we don't tolerate the other source of `ACTION_START` 
+    // tokens -- indented `%{` markers -- in the epilogue, hence we have this special
+    // production rule for includes only.
+    //
+    // To help epilogue code to delineate code chunks from %include blocks in 
+    // pathological condition, we do support wrapping chunks of epilogue 
+    // in `%{...%}`: see the ACTION_START_AT_SOL production alternative further below. 
+    //
+    : ACTION_START include_macro_code ACTION_END 
+        {
+            $$ = '\n\n' + $include_macro_code + '\n\n' + $ACTION_END + '\n\n';
+        }
+    | ACTION_START_AT_SOL action ACTION_END
+        {
+            var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @action);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The '%{...%}' lexer epilogue code chunk does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@action, @ACTION_START_AT_SOL)}
+                    `);
+                }
+            }
+            // Since the epilogue is concatenated as-is (see the `epilogue_chunks` rule above)
+            // we append those protective double newlines right now, as the calling site
+            // won't do it for us: 
+            $$ = '\n\n' + srcCode + '\n\n';
+        }
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    | ACTION_START_AT_SOL error
+        %{
+            var start_marker = $ACTION_START_AT_SOL.trim();
+            var marker_msg = (start_marker ? ' or similar, such as ' + start_marker : '');
+            yyerror(rmCommonWS`
+                There's very probably a problem with this '%{...%\}' lexer setup action code section.
+
+                  Erroneous area:
+                ${yylexer.prettyPrintRange(@ACTION_START_AT_SOL)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
+            $$ = '';
+        %}
+    //
+    // see the alternative above: this rule is added to aid error
+    // diagnosis of user coding.
+    //
+    | UNTERMINATED_ACTION_BLOCK
+        %{
+            // The issue has already been reported by the lexer. No need to repeat
+            // ourselves with another error report from here.
+            $$ = null;
+        %}
+    | TRAILING_CODE_CHUNK
+        {
+            // these code chunks are very probably incomplete, hence compile-testing
+            // for these should be deferred until we've collected the entire epilogue. 
+            $$ = $TRAILING_CODE_CHUNK; 
         }
     ;
 
 include_macro_code
-    : INCLUDE PATH
+    : include_keyword option_list OPTIONS_END
         {
-            var fileContent = fs.readFileSync($PATH, { encoding: 'utf-8' });
-            var rv = checkActionBlock(fileContent);
-            if (rv) {
+            // check if there is only 1 unvalued options: 'path'
+            var lst = $option_list;
+            var len = lst.length;
+            var path;
+            if (len === 1 && lst[0][1] === true) {
+                // `path`:
+                path = lst[0][0];
+            } else if (len <= 1) {
                 yyerror(rmCommonWS`
-                    included action code file "${$PATH}" does not compile: ${rv}
+                    You did not specify a legal file path for the '%include' statement, which must have the format:
+                        %include file_path
 
-                      Erroneous area:
-                    ${yylexer.prettyPrintRange(@PATH, @INCLUDE)}
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @include_keyword)}
+
+                      Technical error report:
+                    ${$error.errStr}
+                `);
+            } else {
+                yyerror(rmCommonWS`
+                    You did specify too many attributes for the '%include' statement, which must have the format:
+                        %include file_path
+
+                      Erroneous code:
+                    ${yylexer.prettyPrintRange(@option_list, @include_keyword)}
+
+                      Technical error report:
+                    ${$error.errStr}
                 `);
             }
-            // And no, we don't support nested '%include':
-            $$ = '\n// Included by Jison: ' + $PATH + ':\n\n' + fileContent + '\n\n// End Of Include by Jison: ' + $PATH + '\n\n';
+
+            // **Aside**: And no, we don't support nested '%include'!
+            var fileContent = fs.readFileSync(path, { encoding: 'utf-8' });
+
+            var srcCode = trimActionCode(fileContent);
+            if (srcCode) {
+                var rv = checkActionBlock(srcCode, @$);
+                if (rv) {
+                    yyerror(rmCommonWS`
+                        The source code included from file '${path}' does not compile: ${rv}
+
+                          Erroneous area:
+                        ${yylexer.prettyPrintRange(@$)}
+                    `);
+                }
+            }
+
+            $$ = '\n// Included by Jison: ' + path + ':\n\n' + srcCode + '\n\n// End Of Include by Jison: ' + path + '\n\n';
         }
-    | INCLUDE error
+    | include_keyword error
         {
             yyerror(rmCommonWS`
                 %include MUST be followed by a valid file path.
 
                   Erroneous path:
-                ` + yylexer.prettyPrintRange(@error, @INCLUDE));
+                ${yylexer.prettyPrintRange(@error, @include_keyword)}
+
+                  Technical error report:
+                ${$error.errStr}
+            `);
         }
-    ;
-
-module_code_chunk
-    : CODE
-        { $$ = $CODE; }
-    | module_code_chunk CODE
-        { $$ = $module_code_chunk + $CODE; }
-    | error
-        {
-            // TODO ...
-            yyerror(rmCommonWS`
-                module code declaration error?
-
-                  Erroneous area:
-                ` + yylexer.prettyPrintRange(@error));
-        }
-    ;
-
-optional_module_code_chunk
-    : module_code_chunk
-        { $$ = $module_code_chunk; }
-    | %epsilon
-        { $$ = ''; }
     ;
 
 %%
@@ -908,22 +1714,12 @@ optional_module_code_chunk
 var rmCommonWS = helpers.rmCommonWS;
 var dquote = helpers.dquote;
 var checkActionBlock = helpers.checkActionBlock;
+var mkIdentifier = helpers.mkIdentifier;
+var isLegalIdentifierInput = helpers.isLegalIdentifierInput;
+var trimActionCode = helpers.trimActionCode;
 
 
-// transform ebnf to bnf if necessary
-function extend(json, grammar) {
-    if (ebnf) {
-        json.ebnf = grammar.grammar;        // keep the original source EBNF around for possible pretty-printing & AST exports.
-        json.bnf = transform(grammar.grammar);
-    }
-    else {
-        json.bnf = grammar.grammar;
-    }
-    if (grammar.actionInclude) {
-        json.actionInclude = grammar.actionInclude;
-    }
-    return json;
-}
+
 
 // convert string value to number or boolean value, when possible
 // (and when this is more or less obviously the intent)

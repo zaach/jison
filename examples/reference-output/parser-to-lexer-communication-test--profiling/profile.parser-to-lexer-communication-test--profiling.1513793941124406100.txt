@@ -1,0 +1,263 @@
+Statistical profiling result from isolate-000001727E34F230-v8.log, (10136 ticks, 114 unaccounted, 0 excluded).
+
+ [Shared libraries]:
+   ticks  total  nonlib   name
+   6621   65.3%          C:\Program Files\nodejs\node.exe
+    105    1.0%          C:\WINDOWS\SYSTEM32\ntdll.dll
+      4    0.0%          C:\WINDOWS\System32\KERNEL32.DLL
+      1    0.0%          C:\WINDOWS\System32\RPCRT4.dll
+      1    0.0%          C:\WINDOWS\System32\KERNELBASE.dll
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+    675    6.7%   19.8%  LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    235    2.3%    6.9%  LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+    235    2.3%    6.9%  Builtin: RegExpPrototypeMatch
+    174    1.7%    5.1%  LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    169    1.7%    5.0%  LazyCompile: *lexer_test_match \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3803:42
+    157    1.5%    4.6%  Builtin: RegExpSplit
+    150    1.5%    4.4%  Builtin: KeyedLoadIC_Megamorphic
+    139    1.4%    4.1%  Stub: StringAddStub
+    102    1.0%    3.0%  Builtin: CallFunction_ReceiverIsNullOrUndefined
+     89    0.9%    2.6%  LazyCompile: *parser__PerformAction \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:772:46
+     70    0.7%    2.1%  Builtin: StringPrototypeSlice
+     67    0.7%    2.0%  Builtin: ObjectHasOwnProperty
+     66    0.7%    1.9%  LazyCompile: *match native string.js:12:6
+     66    0.7%    1.9%  KeyedLoadIC: A keyed load IC from the snapshot
+     59    0.6%    1.7%  Stub: ArraySingleArgumentConstructorStub {1}
+     55    0.5%    1.6%  LazyCompile: *JisonAssert \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1177:38
+     44    0.4%    1.3%  RegExp: ^(?:\\()
+     42    0.4%    1.2%  StoreIC: A store IC from the snapshot
+     41    0.4%    1.2%  Stub: StringAddStub {1}
+     41    0.4%    1.2%  Builtin: StringPrototypeSplit
+     37    0.4%    1.1%  RegExp: ^(?:.)
+     37    0.4%    1.1%  RegExp: (?:\\r\\n?|\\n)
+     36    0.4%    1.1%  LazyCompile: *parser_constructParseErrorInfo \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1542:75
+     32    0.3%    0.9%  Builtin: FastNewClosure
+     30    0.3%    0.9%  LazyCompile: *lexer_setInput \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3127:38
+     28    0.3%    0.8%  Stub: ArraySingleArgumentConstructorStub
+     27    0.3%    0.8%  Builtin: Add
+     25    0.2%    0.7%  KeyedLoadIC: A keyed load IC from the snapshot {1}
+     25    0.2%    0.7%  Builtin: FastCloneRegExp
+     23    0.2%    0.7%  Builtin: CallFunction_ReceiverIsNotNullOrUndefined
+     22    0.2%    0.6%  Builtin: Call_ReceiverIsNullOrUndefined
+     20    0.2%    0.6%  RegExp: ^(?:\\))
+     19    0.2%    0.6%  Stub: RecordWriteStub
+     18    0.2%    0.5%  LazyCompile: *parser_cleanupAfterParse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1319:63
+     18    0.2%    0.5%  LazyCompile: *destructParseErrorInfo \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1573:53
+     15    0.1%    0.4%  Builtin: CompileLazy
+     14    0.1%    0.4%  Stub: RecordWriteStub {1}
+     14    0.1%    0.4%  Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+     13    0.1%    0.4%  Stub: RecordWriteStub {4}
+     11    0.1%    0.3%  Stub: RecordWriteStub {6}
+     11    0.1%    0.3%  LazyCompile: *parser_getSymbolName \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:677:45
+      9    0.1%    0.3%  Stub: StringAddStub {2}
+      7    0.1%    0.2%  Stub: CEntryStub
+      7    0.1%    0.2%  StoreIC: A store IC from the snapshot {1}
+      7    0.1%    0.2%  LoadGlobalIC: A load global IC from the snapshot
+      7    0.1%    0.2%  Function: ~match native string.js:12:6
+      6    0.1%    0.2%  Stub: RecordWriteStub {7}
+      6    0.1%    0.2%  Stub: CallICStub
+      6    0.1%    0.2%  Builtin: GrowFastSmiOrObjectElements
+      5    0.0%    0.1%  LazyCompile: *lexer_pushState \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4134:40
+      5    0.0%    0.1%  LazyCompile: *lexer_clear \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3100:32
+      5    0.0%    0.1%  Builtin: ToString
+      5    0.0%    0.1%  Builtin: Call_ReceiverIsNotNullOrUndefined
+      4    0.0%    0.1%  Function: ~parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      4    0.0%    0.1%  Builtin: ForInPrepare
+      3    0.0%    0.1%  Stub: RecordWriteStub {13}
+      3    0.0%    0.1%  LazyCompile: *lexer_popState \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4147:38
+      3    0.0%    0.1%  LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      3    0.0%    0.1%  Function: ~lexer_test_match \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3803:42
+      3    0.0%    0.1%  Builtin: FastNewFunctionContextFunction
+      3    0.0%    0.1%  Builtin: CallFunction_ReceiverIsAny
+      2    0.0%    0.1%  Stub: RecordWriteStub {9}
+      2    0.0%    0.1%  Stub: RecordWriteStub {5}
+      2    0.0%    0.1%  Stub: RecordWriteStub {14}
+      2    0.0%    0.1%  KeyedStoreIC: A keyed store IC from the snapshot
+      2    0.0%    0.1%  Handler: length {1}
+      2    0.0%    0.1%  Handler: An IC handler from the snapshot
+      2    0.0%    0.1%  Builtin: FastArrayPush
+      1    0.0%    0.0%  Stub: RecordWriteStub {8}
+      1    0.0%    0.0%  Stub: RecordWriteStub {3}
+      1    0.0%    0.0%  Stub: RecordWriteStub {2}
+      1    0.0%    0.0%  Stub: RecordWriteStub {18}
+      1    0.0%    0.0%  Stub: RecordWriteStub {17}
+      1    0.0%    0.0%  Stub: RecordWriteStub {16}
+      1    0.0%    0.0%  Stub: RecordWriteStub {15}
+      1    0.0%    0.0%  Stub: RecordWriteStub {12}
+      1    0.0%    0.0%  Stub: RecordWriteStub {11}
+      1    0.0%    0.0%  Stub: RecordWriteStub {10}
+      1    0.0%    0.0%  Handler: length
+      1    0.0%    0.0%  Function: ~stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+      1    0.0%    0.0%  Function: ~shallow_copy_noclobber \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1211:36
+      1    0.0%    0.0%  Function: ~parser_describeSymbol \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:702:47
+      1    0.0%    0.0%  Function: ~parser_constructParseErrorInfo \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1542:75
+      1    0.0%    0.0%  Function: ~lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+      1    0.0%    0.0%  Function: ~hrtime internal/process.js:77:35
+      1    0.0%    0.0%  Function: ~f \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4340:22
+      1    0.0%    0.0%  Function: ~JisonAssert \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1177:38
+      1    0.0%    0.0%  Function: ~<anonymous> fs.js:1:11
+      1    0.0%    0.0%  Builtin: LoadICProtoArray
+      1    0.0%    0.0%  Builtin: InterpreterPushArgsThenCall
+      1    0.0%    0.0%  Builtin: InterpreterEntryTrampoline
+      1    0.0%    0.0%  Builtin: ArrayPop
+
+ [C++]:
+   ticks  total  nonlib   name
+
+ [Summary]:
+   ticks  total  nonlib   name
+   3290   32.5%   96.7%  JavaScript
+      0    0.0%    0.0%  C++
+   6139   60.6%  180.3%  GC
+   6732   66.4%          Shared libraries
+    114    1.1%          Unaccounted
+
+ [C++ entry points]:
+   ticks    cpp   total   name
+
+ [Bottom up (heavy) profile]:
+  Note: percentage shows a share of a particular caller in the total
+  amount of its parent calls.
+  Callers occupying less than 1.0% are not shown.
+
+   ticks parent  name
+   6621   65.3%  C:\Program Files\nodejs\node.exe
+    494    7.5%    C:\Program Files\nodejs\node.exe
+    334   67.6%      LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    334  100.0%        LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    334  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    334  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+     70   14.2%      LazyCompile: *parser_cleanupAfterParse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1319:63
+     70  100.0%        LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     70  100.0%          LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     70  100.0%            Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+     42    8.5%      LazyCompile: *parser_constructParseErrorInfo \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1542:75
+     42  100.0%        LazyCompile: *parser_cleanupAfterParse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1319:63
+     42  100.0%          LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     42  100.0%            LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     15    3.0%      Function: ~runInThisContext bootstrap_node.js:495:28
+     15  100.0%        Function: ~NativeModule.compile bootstrap_node.js:584:44
+     15  100.0%          Function: ~NativeModule.require bootstrap_node.js:516:34
+      3   20.0%            Function: ~startup bootstrap_node.js:12:19
+      3   20.0%            Function: ~<anonymous> util.js:1:11
+      3   20.0%            Function: ~<anonymous> module.js:1:11
+      2   13.3%            Function: ~setupGlobalConsole bootstrap_node.js:306:30
+      1    6.7%            Function: ~setupGlobalTimeouts bootstrap_node.js:296:31
+      1    6.7%            Function: ~createWritableStdioStream internal/process/stdio.js:142:35
+      1    6.7%            Function: ~<anonymous> stream.js:1:11
+      1    6.7%            Function: ~<anonymous> internal/loader/ModuleRequest.js:1:11
+
+    675    6.7%  LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    675  100.0%    LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    675  100.0%      Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    675  100.0%        Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+    675  100.0%          Function: ~exports.main \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4747:25
+    675  100.0%            Function: ~<anonymous> \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1:11
+
+    235    2.3%  LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+    233   99.1%    LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    233  100.0%      LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    233  100.0%        LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    233  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    233  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+
+    235    2.3%  Builtin: RegExpPrototypeMatch
+    230   97.9%    LazyCompile: *match native string.js:12:6
+    230  100.0%      LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+    230  100.0%        LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    230  100.0%          LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    230  100.0%            LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      5    2.1%    Function: ~match native string.js:12:6
+      5  100.0%      LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+      5  100.0%        LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+      5  100.0%          LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      5  100.0%            LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+
+    174    1.7%  LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    173   99.4%    LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    173  100.0%      LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    173  100.0%        Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    173  100.0%          Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+    173  100.0%            Function: ~exports.main \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4747:25
+
+    169    1.7%  LazyCompile: *lexer_test_match \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3803:42
+    143   84.6%    LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+    143  100.0%      LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    143  100.0%        LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    143  100.0%          LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    143  100.0%            Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+     25   14.8%    LazyCompile: *match native string.js:12:6
+     25  100.0%      LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+     25  100.0%        LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+     25  100.0%          LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     25  100.0%            LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+
+    157    1.5%  Builtin: RegExpSplit
+    157  100.0%    Builtin: StringPrototypeSplit
+    157  100.0%      LazyCompile: *lexer_test_match \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3803:42
+    157  100.0%        LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+    157  100.0%          LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+    157  100.0%            LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+
+    150    1.5%  Builtin: KeyedLoadIC_Megamorphic
+    133   88.7%    LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    133  100.0%      LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    133  100.0%        Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    133  100.0%          Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+    133  100.0%            Function: ~exports.main \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4747:25
+     10    6.7%    LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+     10  100.0%      LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     10  100.0%        LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     10  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+     10  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+      7    4.7%    LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+      7  100.0%      LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+      7  100.0%        LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      7  100.0%          LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      7  100.0%            Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+
+    139    1.4%  Stub: StringAddStub
+     83   59.7%    LazyCompile: *parser__PerformAction \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:772:46
+     83  100.0%      LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     83  100.0%        LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     83  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+     83  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+     45   32.4%    LazyCompile: *lexer_test_match \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3803:42
+     45  100.0%      LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+     45  100.0%        LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+     45  100.0%          LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     45  100.0%            LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     11    7.9%    LazyCompile: *parser_quoteName \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:670:37
+     11  100.0%      LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+     11  100.0%        LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+     11  100.0%          LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+     11  100.0%            Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+
+    114    1.1%  UNKNOWN
+
+    105    1.0%  C:\WINDOWS\SYSTEM32\ntdll.dll
+      4    3.8%    C:\Program Files\nodejs\node.exe
+      2   50.0%      LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      2  100.0%        LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      2  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+      2  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+      1   25.0%      Function: ~parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      1  100.0%        Function: ~execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      1  100.0%          Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+      1  100.0%            Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+      1   25.0%      Function: ~afterWrite net.js:855:20
+      2    1.9%    LazyCompile: *lexer_next \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:3913:30
+      2  100.0%      LazyCompile: *stdLex \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1689:20
+      2  100.0%        LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+      2  100.0%          LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+      2  100.0%            Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+
+    102    1.0%  Builtin: CallFunction_ReceiverIsNullOrUndefined
+    102  100.0%    LazyCompile: *parse \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:1133:22
+    102  100.0%      LazyCompile: *execute \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4696:21
+    102  100.0%        Function: ~bench \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4436:15
+    102  100.0%          Function: ~compiledRunner \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4670:38
+    102  100.0%            Function: ~exports.main \jison\examples\output\parser-to-lexer-communication-test--profiling\parser-to-lexer-communication-test.js:4747:25
+

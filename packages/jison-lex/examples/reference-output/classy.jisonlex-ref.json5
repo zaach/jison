@@ -1,0 +1,138 @@
+[
+  8,
+  {
+    id: 'CLASS',
+    token: 'CLASS',
+    yytext: 'class',
+    yylloc: {
+      first_line: 1,
+      first_column: 0,
+      last_line: 1,
+      last_column: 5,
+      range: [
+        0,
+        5,
+      ],
+    },
+  },
+  {
+    id: 'ID',
+    token: 'ID',
+    yytext: 't',
+    yylloc: {
+      first_line: 1,
+      first_column: 6,
+      last_line: 1,
+      last_column: 7,
+      range: [
+        6,
+        7,
+      ],
+    },
+  },
+  {
+    id: 'EXTENDS',
+    token: 'EXTENDS',
+    yytext: 'extends',
+    yylloc: {
+      first_line: 1,
+      first_column: 8,
+      last_line: 1,
+      last_column: 15,
+      range: [
+        8,
+        15,
+      ],
+    },
+  },
+  {
+    id: 'ID',
+    token: 'ID',
+    yytext: 'bubbaloo',
+    yylloc: {
+      first_line: 1,
+      first_column: 16,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        16,
+        24,
+      ],
+    },
+  },
+  {
+    id: 'ENDOFFILE',
+    token: 'ENDOFFILE',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        24,
+        24,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        24,
+        24,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        24,
+        24,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        24,
+        24,
+      ],
+    },
+  },
+  {
+    id: 1,
+    token: 'EOF',
+    yytext: '',
+    yylloc: {
+      first_line: 1,
+      first_column: 24,
+      last_line: 1,
+      last_column: 24,
+      range: [
+        24,
+        24,
+      ],
+    },
+  },
+]

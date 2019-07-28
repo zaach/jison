@@ -1,0 +1,19 @@
+{
+  rules: [
+    [
+      '\\[[^\\]]\\]',
+      'var b=7; /* { */ return true',
+    ],
+  ],
+  macros: {},
+  startConditions: {},
+  codeSections: [],
+  importDecls: [],
+  unknownDecls: [],
+  __original_input__: `%%
+"["[^\\]]"]" {
+var b=7; /* { */ return true;
+}
+
+`,
+}

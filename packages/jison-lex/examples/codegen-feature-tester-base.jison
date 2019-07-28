@@ -1,3 +1,8 @@
+// title: Simple lexer example - a lexer spec without any errors
+// test_input: PI/(5+E^E)
+// ...
+//  
+
 
 // %options backtrack_lexer
 
@@ -56,7 +61,7 @@
                       this.unput(yytext); 
                       // this.unput(yytext); can be used here instead of 
                       // this.reject(); which would only work when we set the 
-                      // backtrack_lexer option
+                      // `backtrack_lexer` option
 
 
 \s+                   /* skip whitespace */
@@ -146,7 +151,7 @@ parser.yy.parseError = function parseError(str, hash, ExceptionClass) {
 
 
 
-%include benchmark.js
+%include "includes/benchmark.js"
 
 
 
@@ -185,7 +190,7 @@ parser.main = function () {
     if (0) {
         print = function dummy() {};
     }
-    if (01) {
+    if (0x1) {
         test();
     } else {
         bench(test);

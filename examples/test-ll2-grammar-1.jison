@@ -52,14 +52,14 @@
 
 %%
 
-S → G;
+S : G;
 
-G → P
+G : P
   | P G;
 
-P → id ':' R;
+P : id ':' R;
 
-R → %empty
+R : %empty
   | id R;
 
 
