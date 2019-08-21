@@ -52,7 +52,7 @@ Full cli option list:
        -j, --json                    force jison to expect a grammar in JSON format
        -o FILE, --outfile FILE       Filename and base module name of the generated parser
        -t, --debug                   Debug mode
-       -m TYPE, --module-type TYPE   The type of module to generate (commonjs, amd, js)
+       -m TYPE, --module-type TYPE   The type of module to generate (**es**, commonjs, amd, js)
        -p TYPE, --parser-type TYPE   The type of algorithm to use for the parser (lr0, slr, lalr, lr)
        -V, --version                 print version and exit
 
