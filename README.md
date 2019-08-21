@@ -1,9 +1,11 @@
-Jison
+jison-es
 =====
-* [issues](http://github.com/zaach/jison/issues)
-* [discuss](mailto:jison@librelist.com)
 
-[![build status](https://secure.travis-ci.org/zaach/jison.png)](http://travis-ci.org/zaach/jison)
+A minimal fork of [Jison](https://github.com/zaach/jison) for generating ES module parser files.
+
+---
+
+https://github.com/zaach/jison
 
 An API for creating parsers in JavaScript
 -----------------------------------------
