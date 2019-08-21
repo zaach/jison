@@ -1,6 +1,9 @@
 {
   "author": "Zach Carter <zach@carter.name> (http://zaa.ch)",
-  "contributors": ["David Govea <david.govea@runtriz.com>"],
+  "contributors": [
+    "GabrielRatener <gabe9693@gmail.com>",
+    "David Govea <david.govea@runtriz.com>"
+  ],
   "name": "jison-es",
   "description": "Fork of jison that emits parsers as ES modules",
   "version": "0.4.18",
