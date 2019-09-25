@@ -45,7 +45,8 @@ GITHUB_ISSUE_TARGETS =                                          \
 			issue-348                                           \
 			issue-357-url-lexing                                \
 			issue-360                                           \
-			issue-362
+			issue-362 											\
+			issue-387
 
 
 CODEGEN_TARGETS =                                               \
@@ -415,6 +416,11 @@ issue-360:
 
 # build *AND* run the test:
 issue-362: documentation--custom-lexer-ULcase documentation--custom-lexer-ULcase-alt
+
+# build *AND* run the test:
+issue-387:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
 
 jscore:
 	$(JISON) --main ./$@.jison
