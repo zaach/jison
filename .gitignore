@@ -48,6 +48,8 @@ web/crash.log
 # ignore the compiler output for any examples:            
 examples/output
 docs/examples/reference-output
+packages/**/examples/output
+docs/**/examples/output
 
 # Vagrant sandbox
 vagrant
