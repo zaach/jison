@@ -52,7 +52,7 @@ else
 	cp -r web/output/jison/* docs/
 endif
 
-web/content/assets/js/jison.js: build
+web/content/assets/js/jison.js:
 	@[ -a  node_modules/.bin/browserify ] || echo "### FAILURE: Make sure you run 'make prep' before as the browserify tool is unavailable! ###"
 	sh node_modules/.bin/browserify entry.js --exports require > web/content/assets/js/jison.js
 
@@ -117,322 +117,322 @@ web/content/assets/js/calculator.js: examples/calculator.jison build
 comparison:
 	cd examples/ && make comparison
 
-lexer-comparison: build
+lexer-comparison:
 	cd packages/jison-lex && make comparison
 
-examples_directory: build
+examples_directory:
 	cd examples/ && make all
 
 
-examples-test: build
+examples-test: 
 	cd examples/ && make error-handling-tests basic-tests github-issue-tests misc-tests
 
-error-handling-tests: build
+error-handling-tests: 
 	cd examples/ && make error-handling-tests
 
-basic-tests: build
+basic-tests: 
 	cd examples/ && make basic-tests
 
-github-issue-tests: build
+github-issue-tests:
 	cd examples/ && make github-issue-tests
 
-misc-tests: build
+misc-tests: 
 	cd examples/ && make misc-tests
 
 
 
-examples/ansic: build
+examples/ansic:
 	cd examples/ && make ansic
 
-examples/basic: build
+examples/basic:
 	cd examples/ && make basic
 
-examples/basic2: build
+examples/basic2:
 	cd examples/ && make basic2
 
-examples/basic2_lex: build
+examples/basic2_lex:
 	cd examples/ && make basic2_lex
 
-examples/basic_lex: build
+examples/basic_lex:
 	cd examples/ && make basic_lex
 
-examples/basic_w_error_rule: build
+examples/basic_w_error_rule:
 	cd examples/ && make basic_w_error_rule
 
-examples/bloop: build
+examples/bloop:
 	cd examples/ && make bloop
 
-examples/btyacc-ansiC: build
+examples/btyacc-ansiC:
 	cd examples/ && make btyacc-ansiC
 
-examples/btyacc-ansiC2: build
+examples/btyacc-ansiC2:
 	cd examples/ && make btyacc-ansiC2
 
-examples/btyacc-ftp: build
+examples/btyacc-ftp:
 	cd examples/ && make btyacc-ftp
 
-examples/btyacc-t1: build
+examples/btyacc-t1:
 	cd examples/ && make btyacc-t1
 
-examples/btyacc-t2: build
+examples/btyacc-t2:
 	cd examples/ && make btyacc-t2
 
-examples/c99: build
+examples/c99:
 	cd examples/ && make c99
 
-examples/calc_LA_on_demand: build
+examples/calc_LA_on_demand:
 	cd examples/ && make calc_LA_on_demand
 
-examples/calculator: build
+examples/calculator:
 	cd examples/ && make calculator
 
-examples/calculator_json: build
+examples/calculator_json:
 	cd examples/ && make calculator_json
 
-examples/ccalc: build
+examples/ccalc:
 	cd examples/ && make ccalc
 
-examples/classy: build
+examples/classy:
 	cd examples/ && make classy
 
-examples/classy_ast: build
+examples/classy_ast:
 	cd examples/ && make classy_ast
 
-examples/comments: build
+examples/comments:
 	cd examples/ && make comments
 
-examples/compiled_calc: build
+examples/compiled_calc:
 	cd examples/ && make compiled_calc
 
-examples/dism: build
+examples/dism:
 	cd examples/ && make dism
 
-examples/dism_lr0: build
+examples/dism_lr0:
 	cd examples/ && make dism_lr0
 
-examples/dot: build
+examples/dot:
 	cd examples/ && make dot
 
-examples/error-handling-and-yyclearin: build
+examples/error-handling-and-yyclearin:
 	cd examples/ && make error-handling-and-yyclearin
 
-examples/error-handling-and-yyerrok-loopfix: build
+examples/error-handling-and-yyerrok-loopfix:
 	cd examples/ && make error-handling-and-yyerrok-loopfix
 
-examples/error-handling-and-yyerrok-looping1: build
+examples/error-handling-and-yyerrok-looping1:
 	cd examples/ && make error-handling-and-yyerrok-looping1
 
-examples/error-handling-and-yyerrok-looping2: build
+examples/error-handling-and-yyerrok-looping2:
 	cd examples/ && make error-handling-and-yyerrok-looping2
 
-examples/error-handling-and-yyerrok-macro: build
+examples/error-handling-and-yyerrok-macro:
 	cd examples/ && make error-handling-and-yyerrok-macro
 
-examples/error-handling-and-yyerrok-part1: build
+examples/error-handling-and-yyerrok-part1:
 	cd examples/ && make error-handling-and-yyerrok-part1
 
-examples/error-handling-and-yyerrok-part2: build
+examples/error-handling-and-yyerrok-part2:
 	cd examples/ && make error-handling-and-yyerrok-part2
 
-examples/error-handling-and-yyerrok-part3: build
+examples/error-handling-and-yyerrok-part3:
 	cd examples/ && make error-handling-and-yyerrok-part3
 
-examples/error-handling-and-yyerrok-part4a: build
+examples/error-handling-and-yyerrok-part4a:
 	cd examples/ && make error-handling-and-yyerrok-part4a
 
-examples/error-handling-and-yyerrok-part4b: build
+examples/error-handling-and-yyerrok-part4b:
 	cd examples/ && make error-handling-and-yyerrok-part4b
 
-examples/error-handling-and-yyerrok-part5: build
+examples/error-handling-and-yyerrok-part5:
 	cd examples/ && make error-handling-and-yyerrok-part5
 
-examples/error-only: build
+examples/error-only:
 	cd examples/ && make error-only
 
-examples/error-recognition-actions: build
+examples/error-recognition-actions:
 	cd examples/ && make error-recognition-actions
 
-examples/faking-multiple-start-rules: build
+examples/faking-multiple-start-rules:
 	cd examples/ && make faking-multiple-start-rules
 
-examples/faking-multiple-start-rules-alt: build
+examples/faking-multiple-start-rules-alt:
 	cd examples/ && make faking-multiple-start-rules-alt
 
-examples/flow: build
+examples/flow:
 	cd examples/ && make flow
 
-examples/formula: build
+examples/formula:
 	cd examples/ && make formula
 
-examples/fsyacc-cgrammar: build
+examples/fsyacc-cgrammar:
 	cd examples/ && make fsyacc-cgrammar
 
-examples/gantt: build
+examples/gantt:
 	cd examples/ && make gantt
 
-examples/grammar: build
+examples/grammar:
 	cd examples/ && make grammar
 
-examples/handlebars: build
+examples/handlebars:
 	cd examples/ && make handlebars
 
-examples/happyhappy: build
+examples/happyhappy:
 	cd examples/ && make happyhappy
 
-examples/inherited_y: build
+examples/inherited_y:
 	cd examples/ && make inherited_y
 
-examples/issue-205: build
+examples/issue-205:
 	cd examples/ && make issue-205
 
-examples/issue-205-2: build
+examples/issue-205-2:
 	cd examples/ && make issue-205-2
 
-examples/issue-205-3: build
+examples/issue-205-3:
 	cd examples/ && make issue-205-3
 
-examples/issue-205-4: build
+examples/issue-205-4:
 	cd examples/ && make issue-205-4
 
-examples/issue-254: build
+examples/issue-254:
 	cd examples/ && make issue-254
 
-examples/issue-289: build
+examples/issue-289:
 	cd examples/ && make issue-289
 
-examples/issue-293: build
+examples/issue-293:
 	cd examples/ && make issue-293
 
-examples/issue-342: build
+examples/issue-342:
 	cd examples/ && make issue-342
 
-examples/issue-344: build
+examples/issue-344:
 	cd examples/ && make issue-344
 
-examples/issue-344-2: build
+examples/issue-344-2:
 	cd examples/ && make issue-344-2
 
-examples/issue-348: build
+examples/issue-348:
 	cd examples/ && make issue-348
 
-examples/issue-357-url-lexing: build
+examples/issue-357-url-lexing:
 	cd examples/ && make issue-357-url-lexing
 
-examples/issue-360: build
+examples/issue-360:
 	cd examples/ && make issue-360
 
-examples/jscore: build
+examples/jscore:
 	cd examples/ && make jscore
 
-examples/json_ast_js: build
+examples/json_ast_js:
 	cd examples/ && make json_ast_js
 
-examples/json_js: build
+examples/json_js:
 	cd examples/ && make json_js
 
-examples/klammergebirge: build
+examples/klammergebirge:
 	cd examples/ && make klammergebirge
 
-examples/lalr-but-not-slr: build
+examples/lalr-but-not-slr:
 	cd examples/ && make lalr-but-not-slr
 
-examples/lambdacalc: build
+examples/lambdacalc:
 	cd examples/ && make lambdacalc
 
-examples/lex: build
+examples/lex:
 	cd examples/ && make lex
 
-examples/lojban-300: build
+examples/lojban-300:
 	cd examples/ && make lojban-300
 
-examples/lr-but-not-lalr: build
+examples/lr-but-not-lalr:
 	cd examples/ && make lr-but-not-lalr
 
-examples/mermaid: build
+examples/mermaid:
 	cd examples/ && make mermaid
 
-examples/mfcalc: build
+examples/mfcalc:
 	cd examples/ && make mfcalc
 
-examples/no-prec-hack-needed: build
+examples/no-prec-hack-needed:
 	cd examples/ && make no-prec-hack-needed
 
-examples/codegen-feature-tester: build
+examples/codegen-feature-tester:
 	cd examples/ && make codegen-feature-tester
 
-examples/nv_classy_ast: build
+examples/nv_classy_ast:
 	cd examples/ && make nv_classy_ast
 
-examples/olmenu-proto2: build
+examples/olmenu-proto2:
 	cd examples/ && make olmenu-proto2
 
-examples/parser-to-lexer-communication-test: build
+examples/parser-to-lexer-communication-test:
 	cd examples/ && make parser-to-lexer-communication-test
 
-examples/parser-to-lexer-communication-test--profiling: build
+examples/parser-to-lexer-communication-test--profiling:
 	cd examples/ && make parser-to-lexer-communication-test--profiling
 
 profiling:
 	cd examples/ && make profiling
 
-examples/pascal: build
+examples/pascal:
 	cd examples/ && make pascal
 
-examples/phraser: build
+examples/phraser:
 	cd examples/ && make phraser
 
-examples/precedence: build
+examples/precedence:
 	cd examples/ && make precedence
 
-examples/reduce_conflict: build
+examples/reduce_conflict:
 	cd examples/ && make reduce_conflict
 
-examples/regex: build
+examples/regex:
 	cd examples/ && make regex
 
-examples/semwhitespace: build
+examples/semwhitespace:
 	cd examples/ && make semwhitespace
 
-examples/test-EOF-bugfix: build
+examples/test-EOF-bugfix:
 	cd examples/ && make test-EOF-bugfix
 
-examples/test-epsilon-rules-early-reduce: build
+examples/test-epsilon-rules-early-reduce:
 	cd examples/ && make test-epsilon-rules-early-reduce
 
-examples/test-literal-quote-tokens-in-grammar: build
+examples/test-literal-quote-tokens-in-grammar:
 	cd examples/ && make test-literal-quote-tokens-in-grammar
 
-examples/test-nonassociative-operator-0: build
+examples/test-nonassociative-operator-0:
 	cd examples/ && make test-nonassociative-operator-0
 
-examples/test-nonassociative-operator-1: build
+examples/test-nonassociative-operator-1:
 	cd examples/ && make test-nonassociative-operator-1
 
-examples/test-nonassociative-operator-2: build
+examples/test-nonassociative-operator-2:
 	cd examples/ && make test-nonassociative-operator-2
 
-examples/test-propagation-rules-reduction-1: build
+examples/test-propagation-rules-reduction-1:
 	cd examples/ && make test-propagation-rules-reduction-1
 
-examples/theory-left-recurs-01: build
+examples/theory-left-recurs-01:
 	cd examples/ && make theory-left-recurs-01
 
-examples/tikiwikiparser: build
+examples/tikiwikiparser:
 	cd examples/ && make tikiwikiparser
 
-examples/unicode: build
+examples/unicode:
 	cd examples/ && make unicode
 
-examples/unicode2: build
+examples/unicode2:
 	cd examples/ && make unicode2
 
-examples/with-includes: build
+examples/with-includes:
 	cd examples/ && make with-includes
 
-examples/with_custom_lexer: build
+examples/with_custom_lexer:
 	cd examples/ && make with_custom_lexer
 
-examples/yacc-error-recovery: build
+examples/yacc-error-recovery:
 	cd examples/ && make yacc-error-recovery
 
 
