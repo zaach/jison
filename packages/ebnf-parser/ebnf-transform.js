@@ -395,7 +395,7 @@ function deepClone(from, sub) {
     if (from.constructor === Array) {
         var to = from.slice();
         for (var i = 0, len = to.length; i < len; i++) {
-            to[i] = deepClone(from[i], sub + '[' + i ']');
+            to[i] = deepClone(from[i], sub + '[' + i + ']');
         }
     } else {
         sub += '.';
