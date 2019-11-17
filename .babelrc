@@ -7,8 +7,8 @@
   "presets": [
     ["@babel/preset-env", {
       "targets": {
-        "browsers": ["last 2 versions", "safari >= 7"],
-        "node": "4.0"
+        "browsers": ["last 2 versions"],
+        "node": "8.0"
       }
     }]
   ]

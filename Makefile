@@ -14,7 +14,7 @@ endif
 
 
 
-all: clean-nyc build test test-nyc examples-test report-nyc
+all: clean-nyc sync subpackages build test test-nyc examples-test report-nyc
 
 everything:                         \
 		clean                       \
@@ -445,7 +445,7 @@ examples/yacc-error-recovery: build
 
 
 build:                                                                  \
-		subpackages                                                     \
+		subpackages-build                                               \
 		prep_util_dir                                                   \
 		dist/cli-cjs-es5.js                                             \
 		packages/ebnf-parser/ebnf.y                                     \
@@ -467,15 +467,16 @@ prep_util_dir:
 	-mkdir -p dist
 	#+[ -f dist/cli-cjs-es5.js     ] || ( cp node_modules/jison-gho/dist/cli-cjs-es5.js      dist/cli-cjs-es5.js      && touch -d 1970/1/1  dist/cli-cjs-es5.js     )
 
-dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js
+dist/cli-cjs-es5.js: dist/jison.js rollup.config-cli.js package.json lib/jison-parser-kernel.js
 	node __patch_version_in_js.js
+	node __patch_parser_kernel_in_js.js
 	-mkdir -p dist
 	$(ROLLUP) -c rollup.config-cli.js
 	$(BABEL) dist/cli-cjs.js -o dist/cli-cjs-es5.js
 	$(BABEL) dist/cli-umd.js -o dist/cli-umd-es5.js
 	node __patch_nodebang_in_js.js
 
-dist/jison.js: rollup.config.js
+dist/jison.js: rollup.config.js rollup.config-template.js package.json lib/jison-parser-kernel.js
 	node __patch_version_in_js.js
 	node __patch_parser_kernel_in_js.js
 	-mkdir -p dist
@@ -487,26 +488,21 @@ dist/jison.js: rollup.config.js
 
 
 
-subpackages: helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json
-
-helpers-lib:
+subpackages:
 	cd packages/helpers-lib && make
-
-lex-parser:
 	cd packages/lex-parser && make
-
-jison-lex:
 	cd packages/jison-lex && make
-
-ebnf-parser:
 	cd packages/ebnf-parser && make
-
-json2jison:
 	cd packages/json2jison && make
-
-jison2json:
 	cd packages/jison2json && make
 
+subpackages-build:
+	cd packages/helpers-lib && make build
+	cd packages/lex-parser && make build
+	cd packages/jison-lex && make build
+	cd packages/ebnf-parser && make build
+	cd packages/json2jison && make build
+	cd packages/jison2json && make build
 
 subpackages-prep:
 	cd packages/helpers-lib && make prep
@@ -531,6 +527,9 @@ bump:
 	npm version --no-git-tag-version prerelease
 	node __patch_version_in_js.js
 
+sync:
+	node __patch_version_in_js.js
+	node __patch_parser_kernel_in_js.js
 
 git-tag:
 	node -e 'var pkg = require("./package.json"); console.log(pkg.version);' | xargs git tag
@@ -594,8 +593,8 @@ superclean: clean clean-site
 
 
 .PHONY: all everything                                                              \
-		prep subpackages-prep                                                       \
-		helpers-lib lex-parser jison-lex ebnf-parser json2jison jison2json          \
+		prep subpackages-prep														\
+		subpackages-build sync                                                      \
 		site preview deploy test web-examples examples examples-test                \
 		examples_directory comparison lexer-comparison                              \
 		error-handling-tests basic-tests github-issue-tests misc-tests              \
