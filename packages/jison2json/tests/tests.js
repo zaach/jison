@@ -11,11 +11,29 @@ describe("JISON2JSON", function () {
       "bnf": {
         "foo": [
           [
-            "bar",
+            [
+              [
+                "symbol",
+                "bar"
+              ]
+            ],
             "return true"
           ]
         ]
-      }
+      },
+      "grammar": {
+          "foo": [
+            [
+              [
+                [
+                  "symbol",
+                  "bar"
+                ]
+              ],
+              "return true"
+            ]
+          ]
+        }
     };
     var rv = JSON.parse(json);
     assert.deepEqual(rv, expected);
