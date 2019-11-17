@@ -92,7 +92,6 @@ DELIMITER                   ";"
 var token_counter = 0;
 
 lexer.post_lex = function (token) {
-    // hello world
     ++token_counter;
     this.yylloc.counter = token_counter;
     return token;
