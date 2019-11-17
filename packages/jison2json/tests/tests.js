@@ -11,18 +11,28 @@ describe("JISON2JSON", function () {
       "bnf": {
         "foo": [
           [
-            [ ["symbol", "bar"] ],
+            [
+              [
+                "symbol",
+                "bar"
+              ]
+            ],
             "return true"
           ]
         ]
       },
       "grammar": {
-        "foo": [
-          [
-            [ ["symbol", "bar"] ],
-            "return true"
+          "foo": [
+            [
+              [
+                [
+                  "symbol",
+                  "bar"
+                ]
+              ],
+              "return true"
+            ]
           ]
-        ]
       }
     };
     var rv = JSON.parse(json);

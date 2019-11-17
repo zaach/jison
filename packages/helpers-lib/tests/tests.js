@@ -219,6 +219,56 @@ describe("helpers API", function () {
     assert.strictEqual(rv, sollwert_src.trim());
   });
 
+  // regression test: recast-0.15.1-32 is boogered and MUST NOT be used!
+  it("parseCodeChunkToAST must parse valid jison action code correctly (or your babel/recast version(s) will be boogered!)", function () {
+    var rmCommonWS = helpers.rmCommonWS;
+
+    var ast = helpers.parseCodeChunkToAST(`
+yyerror(rmCommonWS\`
+            There's probably an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            $\{yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            $\{$error.errStr}
+        \`);
+    `);
+    var rv = helpers.prettyPrintAST(ast);
+    var sollwert_src = rmCommonWS`
+yyerror(rmCommonWS\`
+            There's probably an error in one or more of your lexer regex rules.
+            The lexer rule spec should have this structure:
+
+                    regex  action_code
+
+            where 'regex' is a lex-style regex expression (see the
+            jison and jison-lex documentation) which is intended to match a chunk
+            of the input to lex, while the 'action_code' block is the JS code
+            which will be invoked when the regex is matched. The 'action_code' block
+            may be any (indented!) set of JS statements, optionally surrounded
+            by '{...}' curly braces or otherwise enclosed in a '%{...%}' block.
+
+              Erroneous code:
+            $\{yylexer.prettyPrintRange(@error)}
+
+              Technical error report:
+            $\{$error.errStr}
+        \`);
+    `;
+    assert.strictEqual(rv.replace(/\s+/g, ' '), sollwert_src.trim().replace(/\s+/g, ' '));
+  });
+
   it("exec: **TBD**", function () {
     assert.ok(typeof helpers.exec === 'function');
   });

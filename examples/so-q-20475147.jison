@@ -22,38 +22,38 @@
 %%
 
 Program
-    : ProgramSection            -> $$ = new yy.Program($1);
+    : ProgramSection            -> new yy.Program($1)
     ;
 
 ProgramSection
-    : Expression SEMICOLON      -> $$ = new yy.ExpressionStatement($1);
+    : Expression SEMICOLON      -> new yy.ExpressionStatement($1)
     ;
 
 Expression
-    : DeclExpression            -> $$ = $1;
+    : DeclExpression            -> $1
     | Expression OP DeclExpression
-                                -> $$ = new yy.ExpFromBinary($1, $2, $3);
+                                -> new yy.ExpFromBinary($1, $2, $3)
     ;
 
 DeclExpression
-    : TypeDecl VarDeclList      -> $$ = new yy.DeclExp($1, $2, 0);
-    | PrimaryExpression         -> $$ = $1;
+    : TypeDecl VarDeclList      -> new yy.DeclExp($1, $2, 0)
+    | PrimaryExpression         -> $1
     ;
 
 VarDeclList
-    : VarDecl                   -> $$ = new yy.VarDeclList($1);
+    : VarDecl                   -> new yy.VarDeclList($1)
     ;
 
 VarDecl
-    : ID                        -> $$ = new yy.VarDecl($1);
+    : ID                        -> new yy.VarDecl($1)
     ;
 
 TypeDecl
-    : ID                        -> $$ = new yy.TypeDecl(new yy.IdList($1), 0);
+    : ID                        -> new yy.TypeDecl(new yy.IdList($1), 0)
     ;
 
 PrimaryExpression
-    : ID                        -> $$ = new yy.ExpFromId($1);
+    : ID                        -> new yy.ExpFromId($1)
     ;
 
 

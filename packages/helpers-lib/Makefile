@@ -23,11 +23,11 @@ build:
 	$(BABEL) dist/helpers-lib-umd.js -o dist/helpers-lib-umd-es5.js
 
 test:
-	$(MOCHA) --check-leaks --globals assert tests/
+	$(MOCHA) --timeout 18000 --check-leaks --globals assert tests/
 
 test-nyc:
 	-rm -rf ./coverage/
-	$(NYC) --reporter=lcov --reporter=html --reporter=text  -- $(MOCHA) --check-leaks --globals assert tests/
+	$(NYC) --reporter=lcov --reporter=html --reporter=text  -- $(MOCHA) --timeout 18000 --check-leaks --globals assert tests/
 
 
 # increment the XXX <prelease> number in the package.json file: version <major>.<minor>.<patch>-<prelease>
