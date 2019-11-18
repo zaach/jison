@@ -64,6 +64,7 @@ examples:                                           \
 		examples_lexer_comm_debug                   \
 		examples_pascal                             \
 		examples_regex                              \
+		examples_xregexp                            \
 		examples_semwhitespace                      \
 		examples_tikiwikiparser                     \
 		examples_unicode2                           \
@@ -130,6 +131,9 @@ examples_pascal:
 
 examples_regex:
 	$(LEX) examples/regex.jison -o examples/output/ -x
+
+examples_xregexp:
+	$(LEX) examples/xregexp.jison -o examples/output/ -x
 
 examples_semwhitespace:
 	$(LEX) examples/semwhitespace_lex.jison -o examples/output/ -x
