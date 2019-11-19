@@ -35,8 +35,8 @@ var rmCommonWS = helpers.rmCommonWS;
 var camelCase  = helpers.camelCase;
 var code_exec  = helpers.exec;
 import XRegExp from '@gerhobbelt/xregexp';
-import recast from '@gerhobbelt/recast';
-import astUtils from '@gerhobbelt/ast-util';
+import recast from 'recast';
+import astUtils from 'ast-util';
 import json5 from '@gerhobbelt/json5';
 
 // Also export other APIs: the JISON module should act as a 'facade' for the others,

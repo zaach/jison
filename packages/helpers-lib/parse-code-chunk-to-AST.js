@@ -10,10 +10,10 @@
 // 
 
 
-import recast from '@gerhobbelt/recast';
-//import astUtils from '@gerhobbelt/ast-util';
+import recast from 'recast';
+//import astUtils from 'ast-util';
 import * as babel from '@babel/core';
-import babelParser from '@gerhobbelt/babel-parser';
+import babelParser from 'babel/parser';
 import assert from 'assert';
 
 

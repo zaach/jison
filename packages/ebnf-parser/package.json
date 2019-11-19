@@ -34,9 +34,9 @@
     "jison-helpers-lib": "0.6.2-220"
   },
   "devDependencies": {
-    "@gerhobbelt/babel-cli": "7.0.0-14",
-    "@gerhobbelt/babel-preset-env": "7.0.0-14",
-    "@gerhobbelt/babel-preset-modern-browsers": "12.0.0-1",
+    "@babel/cli": "7.0.0-14",
+    "@babel/preset-env": "7.0.0-14",
+    "@babel/preset-modern-browsers": "12.0.0-1",
     "chai": "4.1.2",
     "globby": "8.0.1",
     "jison-gho": "0.6.1-215",

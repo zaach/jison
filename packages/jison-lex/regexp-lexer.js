@@ -10,8 +10,8 @@ import helpers from '../helpers-lib';
 var rmCommonWS  = helpers.rmCommonWS;
 var mkIdentifier = helpers.mkIdentifier;
 var code_exec   = helpers.exec;
-// import recast from '@gerhobbelt/recast';
-// import astUtils from '@gerhobbelt/ast-util';
+// import recast from 'recast';
+// import astUtils from 'ast-util';
 import assert from 'assert';
 
 var version = '0.6.2-220';                              // require('./package.json').version;

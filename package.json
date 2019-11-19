@@ -37,19 +37,18 @@
     "node": ">=8.0"
   },
   "dependencies": {
-    "@gerhobbelt/ast-util": "0.6.1-4",
+    "ast-util": "0.6.1-4",
     "@gerhobbelt/json5": "2.1.0-48",
     "@gerhobbelt/nomnom": "1.8.4-29",
-    "@gerhobbelt/recast": "0.15.1-32",
+    "recast": "0.15.1-32",
     "@gerhobbelt/xregexp": "4.2.0-30"
   },
   "devDependencies": {
     "@babel/core": "7.7.2",
     "@babel/preset-env": "7.7.1",
-    "@gerhobbelt/babel-cli": "7.2.1-26",
-    "@gerhobbelt/babel-core": "7.2.1-26",
-    "@gerhobbelt/babel-preset-env": "7.2.1-26",
-    "@gerhobbelt/babel-preset-modern-browsers": "12.0.0-3",
+    "@babel/cli": "7.2.1-26",
+    "@babel/preset-env": "7.2.1-26",
+    "@babel/preset-modern-browsers": "12.0.0-3",
     "@gerhobbelt/benchmark": "2.1.4-33",
     "@gerhobbelt/debug": "4.1.1-5",
     "@gerhobbelt/js-yaml": "3.13.1-6",

@@ -42,11 +42,11 @@ export default {
     })
   ],
   external: [
-    '@gerhobbelt/ast-util',
+    'ast-util',
     '@gerhobbelt/json5',
     '@gerhobbelt/nomnom',
     '@gerhobbelt/prettier-miscellaneous',
-    '@gerhobbelt/recast',
+    'recast',
     '@gerhobbelt/xregexp',
     'jison-helpers-lib',
     '@gerhobbelt/lex-parser',

@@ -7,7 +7,7 @@
 // a very smart JS JIT compiler any more for doing this as we now perform 
 // this task manually...)
 
-var recast = require('@gerhobbelt/recast');
+var recast = require('recast');
 var fs = require('fs');
 var path = require('path');
 var json5 = require('@gerhobbelt/json5');
