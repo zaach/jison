@@ -120,6 +120,9 @@ comparison:
 lexer-comparison:
 	cd packages/jison-lex && make comparison
 
+lexer-test:
+	cd packages/jison-lex && make test
+
 examples_directory:
 	cd examples/ && make all
 

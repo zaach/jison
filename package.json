@@ -31,7 +31,7 @@
   "main": "dist/jison-cjs-es5.js",
   "module": "lib/jison.js",
   "bin": {
-    "jison": "dist/cli-cjs-es5.js"
+    "jison": "dist/cli-cjs.js"
   },
   "engines": {
     "node": ">=8.0"

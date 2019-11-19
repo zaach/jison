@@ -457,7 +457,7 @@ describe("Lexer Kernel", function () {
       var lexer = new RegExpLexer(dict);
       var JisonLexerError = lexer.JisonLexerError;
       assert(JisonLexerError);
-      console.error('lexer:', lexer);
+      //console.error('lexer:', lexer);
 
       var input = "x\nx\rx\vx\x07x\fx\bx\x42x\u0043x \\ x.xx\\nx\\rx\\vx\\ax\\fx\\bx\\x42x\\u0043x\\\\ ";
 
@@ -466,7 +466,7 @@ describe("Lexer Kernel", function () {
       lexer.lex = function () {
         try {
           var rv = old_lex_f.call(this);
-          console.log('lex:', {rv, val: lexer.yytext});
+          //console.log('lex:', {rv, val: lexer.yytext});
           return rv;
         } catch (ex) {
           //console.error("lex() ERROR EX:", ex.message, ex.stack);
@@ -2509,11 +2509,19 @@ console.error('lexer:', typeof lexer);
     assert.equal(lexer.lex(), lexer.EOF);
   });
 
-  it("test XRegExp option support", function() {
+  xit("test XRegExp option support", function() {
     var dict = {
         options: {
-          xregexp: true
+          xregexp: true,
         },
+        codeSections: [
+          {
+            qualifier: 'imports',
+            include: `
+              import XRegExp from '@gerhobbelt/xregexp';
+            `,
+          },
+        ],
         rules: [
             ["π", "return 'PI';" ],
             ["\\p{Alphabetic}", "return 'Y';" ],
@@ -3305,7 +3313,7 @@ function lexer_reset() {
     __dirname + '/specs/*.jison',
     __dirname + '/specs/*.json5',
     __dirname + '/specs/*.js',
-  ]);
+  ], { gitignore: false, absolute: true });
   // also compile and run the lexers in the /examples/ directory:
   var testset2 = globby.sync([
     __dirname + '/../examples/*.jison',
@@ -3313,7 +3321,10 @@ function lexer_reset() {
     __dirname + '/../examples/*.l',
     __dirname + '/../examples/*.lex',
     __dirname + '/../examples/*.jisonlex',
-  ]);
+  ], { gitignore: false, absolute: true });
+  console.log('exec glob....', testset, testset2);
+return;
+
   var original_cwd = process.cwd();
 
   testset = testset.sort();
@@ -3465,14 +3476,16 @@ describe("Test Lexer Grammars", function () {
     lexer_reset();
   });
 
-return;
-
   testset.forEach(function (filespec) {
     // process this file:
     var title = (filespec.meta ? filespec.meta.title : null);
 
+    var testname = 'test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/') + (title ? ' :: ' + title : '');
+    
+    console.error('generate test: ', testname);
+
     // and create a test for it:
-    it('test: ' + filespec.path.replace(/^.*?\/specs\//, '').replace(/^.*?\/examples\//, '../examples/') + (title ? ' :: ' + title : ''), function testEachLexerExample() {
+    it(testname, function testEachLexerExample() {
       var err, grammar;
       var tokens = [];
       var i = 0;
@@ -3532,6 +3545,7 @@ return;
       } finally {
         process.chdir(original_cwd);
       }
+      
       // also store the number of tokens we received:
       tokens.unshift(i);
       // if (lexerSourceCode) {
@@ -3550,11 +3564,14 @@ return;
         space: 2,
         circularRefHandler: testrig_JSON5circularRefHandler
       });
+      
       // strip away devbox-specific paths in error stack traces in the output:
       refOut = stripErrorStackPaths(refOut);
+      
       // and convert it back so we have a `tokens` set that's cleaned up
       // and potentially matching the stored reference set:
       tokens = JSON5.parse(refOut);
+      
       if (filespec.ref) {
         // Perform the validations only AFTER we've written the files to output:
         // several tests produce very large outputs, which we shouldn't let assert() process

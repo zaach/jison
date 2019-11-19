@@ -14,3 +14,8 @@ Makefile
 
 # misc files which are used during development
 __patch_*.js
+
+# istanbul / nyc code coverage analysis workspaces
+/.nyc_output
+/coverage
+

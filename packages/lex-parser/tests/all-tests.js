@@ -68,7 +68,7 @@ function lexer_reset() {
     '!'+ __dirname + '/specs/*-ref.json5',
     __dirname + '/specs/*.js',
     __dirname + '/lex/*.jisonlex',
-  ]);
+  ], { gitignore: false });
   var original_cwd = process.cwd();
 
   testset = testset.sort();
