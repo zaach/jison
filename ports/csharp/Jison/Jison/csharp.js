@@ -1,6 +1,6 @@
 ﻿var fs = require('fs'),
     util = require('util'),
-    exec = require('child_process').exec,
+    execFile = require('child_process').execFile,
     path = require('path');
 
 GLOBAL.convertToSyntax = function (types, body) {
@@ -16,7 +16,7 @@ function puts(error, stdout, stderr) {
 
 console.log("Executing: " + "jison " + process.argv[2]);
 
-exec("jison " + process.argv[2], function (error) {
+execFile("jison ", [process.argv[2]], function (error) {
     if (error) {
         console.log(error);
         return;
