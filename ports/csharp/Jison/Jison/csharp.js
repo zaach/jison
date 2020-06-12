@@ -16,7 +16,7 @@ function puts(error, stdout, stderr) {
 
 console.log("Executing: " + "jison " + process.argv[2]);
 
-execFile("jison ", [process.argv[2]], function (error) {
+execFile("jison", [process.argv[2]], function (error) {
     if (error) {
         console.log(error);
         return;
