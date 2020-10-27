@@ -3,7 +3,7 @@
     execFile = require('child_process').execFile,
     path = require('path');
 
-GLOBAL.convertToSyntax = function (types, body) {
+global.convertToSyntax = function (types, body) {
     if (types['php'] || types['PHP']) {
         return body;
     }
