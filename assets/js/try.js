@@ -8,8 +8,9 @@ if(typeof console === 'undefined'){
     console = {};
     console.log = function (str) {$("#out").text(uneval(str))};
 }
-// noop
-print = function (){}
+
+// Can't just do 'print = console.log' because of chromium bug #179628
+print = console.log.bind(console);
 
 var printOut = function (str) { $("#out").text(str); };
 
@@ -43,8 +44,13 @@ function processGrammar () {
         }
     }
 
-    Jison.print = function () {};
-    parser = Jison.Generator(cfg, {type: type});
+    //Jison.print = function () {};
+    try {
+        parser = Jison.Generator(cfg, {type: type});
+    } catch(e) {
+        $("#gen_out").text("Oops. Error while parsing grammar.\n"+e).addClass('bad');
+        throw(e);
+    }
 
     $("#out").removeClass("good").removeClass("bad").html('');
     $("#gen_out").removeClass("good").removeClass("bad");

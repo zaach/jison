@@ -1,6 +1,51 @@
 
 a img { border: 0px; }
 
+
+#content {
+    max-width: none;
+}
+
+#content > div {
+    max-width: 600px;
+    margin: 0 auto;   /* center horizontally */
+}
+
+
+/* -- two column fluid layout */
+div#try {
+    max-width: none;
+}
+
+#describe {
+    float: left;
+    width: 45%;
+    margin-left: 2%;
+    min-width: 20em;
+}
+
+#test {
+    float: left;
+    width: 46%;
+    margin-left: 2%;
+    min-width: 20em;
+}
+
+/*
+clearing without extra <div>, it could be
+
+    #footer { clear: both; }
+
+*/
+div#try:after {
+   content: "";
+   display: table;
+   clear: both;
+}
+
+/* /- two column fluid layout */
+
+
 #try textarea {
   width: 100%;
 }
