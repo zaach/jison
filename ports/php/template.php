@@ -359,7 +359,7 @@
                 $this->yy->lineNo + 1,
                 $this->yy->loc->lastColumn,
                 ($line ?
-                    count($line) - preg_match("/\r?\n?/", $line, $na) :
+                    strlen($line) - preg_match("/\r?\n?/", $line, $na) :
                     $this->yy->loc->lastColumn + $matchCount
                 )
             );
