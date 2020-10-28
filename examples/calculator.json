@@ -5,7 +5,7 @@
    "lex": {
       "rules": [
          ["\\s+",                    "/* skip whitespace */"],
-         ["[0-9]+(?:\\.[0-9]+)?\\b", "return 'NUMBER'"],
+         ["[0-9]+(?:\\.[0-9]+)?",    "return 'NUMBER'"],
          ["\\*",                     "return '*'"],
          ["\\/",                     "return '/'"],
          ["-",                       "return '-'"],
@@ -15,8 +15,8 @@
          ["%",                       "return '%'"],
          ["\\(",                     "return '('"],
          ["\\)",                     "return ')'"],
-         ["PI\\b",                   "return 'PI'"],
-         ["E\\b",                    "return 'E'"],
+         ["PI",                      "return 'PI'"],
+         ["E",                       "return 'E'"],
          ["$",                       "return 'EOF'"]
       ]
    },
