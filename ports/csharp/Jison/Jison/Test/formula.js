@@ -696,7 +696,7 @@ _handle_error:
 						text: this.lexer.match,
 						token: this.terminals_[symbol] || symbol,
 						line: this.lexer.yylineno,
-						loc: yyloc,
+						loc: this.lexer.yylloc,
 						expected: expected,
                         recoverable: (error_rule_depth !== false)
 				});
