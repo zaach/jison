@@ -65,7 +65,7 @@ execFile("jison", [process.argv[2]], function (error) {
         str = str.replace("var $0 = $$.length - 1;", '');
         str = str.replace("var YYSTATE=YY_START", '');
         str = str.replace(new RegExp('[$]0', 'g'), '$o');
-        str = str.replace(new RegExp('[$][$]', 'g'), '$s');
+        str = str.replace(new RegExp('[$][$](\\[(.+?)\\])', 'g'), '$$s$1->value()');
         str = str.replace(new RegExp('default[:][;]', 'g'), '');
         str = str.replace(new RegExp('this[.][$]', 'g'), '$thisS');
         str = str.replace(new RegExp('this[-][>]', 'g'), '$this->');
@@ -112,7 +112,7 @@ execFile("jison", [process.argv[2]], function (error) {
 	
 	console.log(option);
 	
-	var parserRaw = fs.readFileSync(__dirname + "/template.php", "utf8");
+	var parserRaw = fs.readFileSync(process.argv[3] ? process.argv[3] : (__dirname + "/template.php"), "utf8");
 
 	function parserInject() {
 		var result = '\n';
@@ -221,7 +221,7 @@ execFile("jison", [process.argv[2]], function (error) {
 			this.conditions = [];
 
 		for (var i in rules) {
-			this.rules.push('\t\t\t\t\t' + i + '=>"/' + rules[i].substring(1, rules[i].length - 1).replace(/"/g, '\\"') + '/"');
+			this.rules.push('\t\t\t\t\t' + i + '=>"' + rules[i].replace(/"/g, '\\"') + 'u"');
 		}
 
 		result += '\t\t\t$this->rules = array(\n\t\t\t\t\n' + this.rules.join(',\n') + '\n\t\t\t\t);\n\n';

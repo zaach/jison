@@ -6,17 +6,17 @@
 
 /**/class Parser/**/
 {
-    public $symbols = array();
-    public $terminals = array();
-    public $productions = array();
-    public $table = array();
-    public $defaultActions = array();
-    public $version = '0.3.12';
-    public $debug = false;
-    public $none = 0;
-    public $shift = 1;
-    public $reduce = 2;
-    public $accept = 3;
+    protected $symbols = array();
+    protected $terminals = array();
+    protected $productions = array();
+    protected $table = array();
+    protected $defaultActions = array();
+    protected $version = '0.3.12';
+    protected $debug = false;
+    protected $none = 0;
+    protected $shift = 1;
+    protected $reduce = 2;
+    protected $accept = 3;
 
     function trace()
     {
@@ -48,15 +48,17 @@
         return $this->symbols["end"];
     }
 
-    function parseError($str = "", ParserError $hash = null)
-    {
-        throw new Exception($str);
+    protected function parseError(ParserError $error) {
+        throw $error;
     }
 
-    function lexerError($str = "", LexerError $hash = null)
-    {
-        throw new Exception($str);
+    protected function lexerError(LexerError $error) {
+        throw $error;
     }
+
+	protected function runTimeError(RunTimeError $error) {
+		throw $error;
+	}
 
     function parse($input)
     {
@@ -112,7 +114,7 @@
 
                     $errStr = "Parse error on line " . ($this->yy->lineNo + 1) . ":\n" . $this->showPosition() . "\nExpecting " . implode(", ", $expected) . ", got '" . (isset($this->terminals[$symbol->index]) ? $this->terminals[$symbol->index]->name : 'NOTHING') . "'";
 
-                    $this->parseError($errStr, new ParserError($this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
+                    $this->parseError(new ParserError($errStr,$this->match, $state, $symbol, $this->yy->lineNo, $this->yy->loc, $expected));
                 }
             }
 
@@ -150,10 +152,20 @@
                     if (isset($this->ranges)) {
                         //TODO: add ranges
                     }
+	                try {
+                        $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
+	                }
+		            catch (RunTimeError $error) {
+			            $newError = new RunTimeError($error->getMessage(). "\n". $this->showPosition());
+			            $newError->text = $this->match;
+			            $newError->state = $state;
+			            $newError->symbol = $symbol;
+			            $newError->lineNo = $this->yy->lineNo;
+			            $newError->loc = $this->yy->loc;
+			            throw $newError;
+		            }
 
-                    $r = $this->parserPerformAction($_yy->text, $yy, $action->state->index, $vstack, $vstackCount - 1);
-
-                    if (isset($r)) {
+	                if (isset($r)) {
                         return $r;
                     }
 
@@ -200,21 +212,21 @@
 
 
     /* Jison generated lexer */
-    public $eof;
-    public $yy = null;
-    public $match = "";
-    public $matched = "";
-    public $conditionStack = array();
-    public $conditionStackCount = 0;
-    public $rules = array();
-    public $conditions = array();
-    public $done = false;
-    public $less;
-    public $more;
-    public $input;
-    public $offset;
-    public $ranges;
-    public $flex = false;
+    protected $eof;
+    protected $yy = null;
+    protected $match = "";
+    protected $matched = "";
+    protected $conditionStack = array();
+    protected $conditionStackCount = 0;
+    protected $rules = array();
+    protected $conditions = array();
+    protected $done = false;
+    protected $less;
+    protected $more;
+    protected $input;
+    protected $offset;
+    protected $ranges;
+    protected $flex = false;
 
     function setInput($input)
     {
@@ -295,31 +307,31 @@
         $this->more = true;
     }
 
-    function pastInput()
+    function pastInput($len)
     {
-        $past = substr($this->matched, 0, strlen($this->matched) - strlen($this->match));
-        return (strlen($past) > 20 ? '...' : '') . preg_replace("/\n/", "", substr($past, -20));
+        $past = mb_substr($this->matched, 0, mb_strlen($this->matched,'utf8') - mb_strlen($this->match,'utf8'),'utf8');
+        return (mb_strlen($past,'utf8') > $len ? '...' : '') . str_replace("\n", "", mb_substr($past, -$len, NULL, 'utf8'));
     }
 
-    function upcomingInput()
+    function upcomingInput($len)
     {
         $next = $this->match;
-        if (strlen($next) < 20) {
-            $next .= substr($this->input, 0, 20 - strlen($next));
+        if (mb_strlen($next,'utf8') < $len) {
+            $next .= mb_substr($this->input, 0, $len - mb_strlen($next,'utf8'));
         }
-        return preg_replace("/\n/", "", substr($next, 0, 20) . (strlen($next) > 20 ? '...' : ''));
+        return str_replace("\n", "", mb_substr($next, 0, $len,'utf8') . (mb_strlen($next,'utf8') > $len ? '...' : ''));
     }
 
-    function showPosition()
+    function showPosition($len = 20)
     {
-        $pre = $this->pastInput();
+        $pre = $this->pastInput($len);
 
         $c = '';
-        for($i = 0, $preLength = strlen($pre); $i < $preLength; $i++) {
+        for($i = 0, $preLength = mb_strlen($pre, 'utf8'); $i < $preLength; $i++) {
             $c .= '-';
         }
 
-        return $pre . $this->upcomingInput() . "\n" . $c . "^";
+        return $pre . $this->upcomingInput($len) . "\n" . $c . "^";
     }
 
     function next()
@@ -328,7 +340,7 @@
             return $this->eof;
         }
 
-        if (empty($this->input)) {
+        if ($this->input == '' || $this->input === false) {
             $this->done = true;
         }
 
@@ -380,24 +392,21 @@
             $nextCondition = $this->conditionStack[$this->conditionStackCount - 1];
 
             $token = $this->lexerPerformAction($ruleIndex, $nextCondition);
-
-            if ($this->done == true && empty($this->input) == false) {
+            if ($this->done == true && $this->input != '' && $this->input !== false) {
                 $this->done = false;
             }
 
             if (empty($token) == false) {
-                return $this->symbols[
-                $token
-                ];
+	            if (isset($this->symbols[$token])) return $this->symbols[$token];
             } else {
                 return null;
             }
         }
 
-        if (empty($this->input)) {
+        if ($this->input == '' || $this->input === false) {
             return $this->eof;
         } else {
-            $this->lexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), new LexerError("", -1, $this->yy->lineNo));
+            $this->lexerError(new LexerError("Lexical error on line " . ($this->yy->lineNo + 1) . ". Unrecognized text.\n" . $this->showPosition(), "", -1, $this->yy->lineNo));
             return null;
         }
     }
@@ -481,6 +490,15 @@ class ParserValue
         $clone->text = $this->text;
         return $clone;
     }
+
+	public function value() {
+		if ($this->text instanceof ParserValue) return $this->text->value();
+		return $this->text;
+	}
+
+	public function __toString() {
+		return (string) $this->value();
+	}
 }
 
 class LexerConditions
@@ -552,7 +570,18 @@ class ParserSymbol
     }
 }
 
-class ParserError
+class JisonError extends \Exception {
+}
+
+class RunTimeError extends JisonError {
+    public $text;
+    public $state;
+    public $symbol;
+    public $lineNo;
+    public $loc;
+}
+
+class ParserError extends JisonError
 {
     public $text;
     public $state;
@@ -561,8 +590,9 @@ class ParserError
     public $loc;
     public $expected;
 
-    function __construct($text, $state, $symbol, $lineNo, $loc, $expected)
+    function __construct($msg,$text, $state, $symbol, $lineNo, $loc, $expected)
     {
+	    parent::__construct($msg);
         $this->text = $text;
         $this->state = $state;
         $this->symbol = $symbol;
@@ -572,14 +602,15 @@ class ParserError
     }
 }
 
-class LexerError
+class LexerError extends JisonError
 {
     public $text;
     public $token;
     public $lineNo;
 
-    public function __construct($text, $token, $lineNo)
+    public function __construct($msg, $text, $token, $lineNo)
     {
+	    parent::__construct($msg);
         $this->text = $text;
         $this->token = $token;
         $this->lineNo = $lineNo;
