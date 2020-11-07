@@ -1106,7 +1106,7 @@ if (0x0) helpers.dump(testcode, '____testcode-dump-A');
 if (0x0) helpers.dump(sourcecode, '____testcode-dump-CB');
                 chkBugger(sourcecode);
 
-                //babelize the source code for subsequent execution by Node:
+                // babelize the source code for subsequent execution by Node:
                 var es5src = helpers.compileCodeToES5(sourcecode);
                 //console.log("===============================LEXER TEST ES5 CODE\n", es5src.code, "\n=====================END====================\n");
                 var fcode = es5src.code;

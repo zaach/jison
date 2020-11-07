@@ -211,7 +211,7 @@ declaration
         { 
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%{...%}' grammar setup action code section does not compile: ${rv}
@@ -429,7 +429,7 @@ declaration
             }
 
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
-            var rv = checkActionBlock(srcCode, @action);
+            var rv = checkActionBlock(srcCode, @action, yy);
             if (rv) {
                 yyerror(rmCommonWS`
                     The '%code ${name}' initialization code section does not compile: ${rv}
@@ -887,7 +887,7 @@ handle_action
             $$ = [$handle];
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         production rule action code block does not compile: ${rv}
@@ -930,7 +930,7 @@ handle_action
                     srcCode = '$$ = (' + srcCode + '\n)'; 
                 }
 
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The lexer rule's 'arrow' action code section does not compile: ${rv}
@@ -975,7 +975,7 @@ handle_action
             $$ = [[]];
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         epsilon production rule action code block does not compile: ${rv}
@@ -1032,7 +1032,7 @@ handle_action
             $$ = [[]];
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         epsilon production rule action code block does not compile: ${rv}
@@ -1313,7 +1313,7 @@ on_error_recovery_statement
     : on_error_recovery_keyword ACTION_START action ACTION_END 
         {
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START);
-            var rv = checkActionBlock(srcCode, @action);
+            var rv = checkActionBlock(srcCode, @action, yy);
             if (rv) {
                 yyerror(rmCommonWS`
                     The '${$on_error_recovery_keyword}' action code section does not compile: ${rv}
@@ -1519,7 +1519,7 @@ epilogue
         {
             var srcCode = trimActionCode($epilogue_chunks);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @epilogue_chunks);
+                var rv = checkActionBlock(srcCode, @epilogue_chunks, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%%' lexer epilogue code does not compile: ${rv}
@@ -1590,7 +1590,7 @@ epilogue_chunk
         {
             var srcCode = trimActionCode($action + $ACTION_END, $ACTION_START_AT_SOL);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%{...%}' lexer epilogue code chunk does not compile: ${rv}
@@ -1681,7 +1681,7 @@ include_macro_code
 
             var srcCode = trimActionCode(fileContent);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @$);
+                var rv = checkActionBlock(srcCode, @$, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The source code included from file '${path}' does not compile: ${rv}

@@ -626,11 +626,9 @@ function generateMapper4JisonGrammarIdentifiers(input) {
 
 
 function parseCodeChunkToAST(src, options) {
-    // src = src
-    // .replace(/@/g, '\uFFDA')
-    // .replace(/#/g, '\uFFDB')
-    // ;
-    var ast = recast.parse(src);
+    let s = options.mapper4JisonGrammarIdentifiers.encode(src, options.mapperErrorReporter);
+    console.log("parseCodeChunkToAST: Intermediate:", s);
+    let ast = recast.parse(s);
     return ast;
 }
 
@@ -668,8 +666,6 @@ function compileCodeToES5(src, options) {
 
 
 function prettyPrintAST(ast, options) {
-    var new_src;
-    var options = options || {};
     const defaultOptions = { 
         tabWidth: 2,
         quote: 'single',
@@ -679,31 +675,17 @@ function prettyPrintAST(ast, options) {
         // when printing generically.
         reuseWhitespace: false
     };
-    for (var key in defaultOptions) {
-        if (options[key] === undefined) {
-            options[key] = defaultOptions[key];
-        }
-    }
 
-    var s = recast.prettyPrint(ast, { 
-        tabWidth: 2,
-        quote: 'single',
-        arrowParensAlways: true,
-
-        // Do not reuse whitespace (or anything else, for that matter)
-        // when printing generically.
-        reuseWhitespace: false
-    });
-    new_src = s.code;
+    let s = recast.prettyPrint(ast, defaultOptions);
+    let new_src = s.code;
 
     new_src = new_src
-    .replace(/\r\n|\n|\r/g, '\n')    // platform dependent EOL fixup
-    // // backpatch possible jison variables extant in the prettified code:
-    // .replace(/\uFFDA/g, '@')
-    // .replace(/\uFFDB/g, '#')
-    ;
+    .replace(/\r\n|\n|\r/g, '\n');    // platform dependent EOL fixup
 
-    return new_src;
+    // backpatch possible jison variables extant in the prettified code:
+    let dst = options.mapper4JisonGrammarIdentifiers.decode(new_src, options.mapperErrorReporter);
+
+    return dst;
 }
 
 
@@ -712,7 +694,7 @@ function prettyPrintAST(ast, options) {
 // validate the given JISON+JavaScript snippet: does it compile?
 // 
 // Return either the parsed AST (object) or an error message (string). 
-function checkActionBlock(src, yylloc) {
+function checkActionBlock(src, yylloc, options) {
     // make sure reasonable line numbers, etc. are reported in any
     // potential parse errors by pushing the source code down:
     if (yylloc && yylloc.first_line > 0) {
@@ -725,7 +707,7 @@ function checkActionBlock(src, yylloc) {
     }
 
     try {
-        var rv = parseCodeChunkToAST(src);
+        var rv = parseCodeChunkToAST(src, options);
         return false;
     } catch (ex) {
         return ex.message || "code snippet cannot be parsed";

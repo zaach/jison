@@ -376,7 +376,7 @@ definition
         {
             var srcCode = trimActionCode($action, $ACTION_START_AT_SOL);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%{...%}' lexer setup action code section does not compile: ${rv}
@@ -586,7 +586,7 @@ definition
             }
 
             var srcCode = trimActionCode($action, $ACTION_START);
-            var rv = checkActionBlock(srcCode, @action);
+            var rv = checkActionBlock(srcCode, @action, yy);
             if (rv) {
                 yyerror(rmCommonWS`
                     The '%code ${name}' initialization code section does not compile: ${rv}
@@ -716,7 +716,7 @@ rules
         {
             var srcCode = trimActionCode($action, $ACTION_START_AT_SOL);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%{...%}' lexer setup action code section does not compile: ${rv}
@@ -966,7 +966,7 @@ rule
     : regex ACTION_START action ACTION_END
         {
             var srcCode = trimActionCode($action, $ACTION_START);
-            var rv = checkActionBlock(srcCode, @action);
+            var rv = checkActionBlock(srcCode, @action, yy);
             if (rv) {
                 yyerror(rmCommonWS`
                     The lexer rule's action code section does not compile: ${rv}
@@ -997,7 +997,7 @@ rule
                 srcCode = 'return (' + srcCode + '\n)';
             }
 
-            var rv = checkActionBlock(srcCode, @action);
+            var rv = checkActionBlock(srcCode, @action, yy);
             if (rv) {
                 yyerror(rmCommonWS`
                     The lexer rule's 'arrow' action code section does not compile: ${rv}
@@ -1550,7 +1550,7 @@ epilogue
         {
             var srcCode = trimActionCode($epilogue_chunks);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @epilogue_chunks);
+                var rv = checkActionBlock(srcCode, @epilogue_chunks, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%%' lexer epilogue code does not compile: ${rv}
@@ -1621,7 +1621,7 @@ epilogue_chunk
         {
             var srcCode = trimActionCode($action, $ACTION_START_AT_SOL);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @action);
+                var rv = checkActionBlock(srcCode, @action, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The '%{...%}' lexer epilogue code chunk does not compile: ${rv}
@@ -1712,7 +1712,7 @@ include_macro_code
 
             var srcCode = trimActionCode(fileContent);
             if (srcCode) {
-                var rv = checkActionBlock(srcCode, @$);
+                var rv = checkActionBlock(srcCode, @$, yy);
                 if (rv) {
                     yyerror(rmCommonWS`
                         The source code included from file '${path}' does not compile: ${rv}

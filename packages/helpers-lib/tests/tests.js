@@ -356,8 +356,9 @@ yyerror(rmCommonWS\`
     assert.equal(typeof g.encode, 'function');
 
     let im = g.encode(source);
-    //console.error("Intermediate:", im);
+    console.error("Intermediate:", im);
     let cvt = g.decode(im);
+    console.error("Final:", cvt);
     assert.deepEqual(cvt, source);
   });
 
