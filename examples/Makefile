@@ -32,6 +32,8 @@ ERROR_HANDLING_TARGETS =                                        \
 
 
 GITHUB_ISSUE_TARGETS =                                          \
+			issue-51-gho-1										\
+			issue-58-gho										\
 			issue-205                                           \
 			issue-205-2                                         \
 			issue-205-3                                         \
@@ -340,6 +342,32 @@ handlebars:
 
 inherited_y:
 	$(JISON) --main ./inherited.y
+
+issue-51-gho-1:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
+
+issue-51-gho-2:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
+
+issue-51-gho-3:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
+
+issue-51-gho-4:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
+
+issue-51-gho-5:
+	$(JISON) --main ./$@.jison
+	$(NODE) ./output/$@/$@.js
+
+issue-58-gho:
+	$(NODE) ./$@.make.js
+	$(JISON) -n parser --json ./$@.json
+	$(NODE) ./output/$@/$@.js
+	diff -u -E ./output/$@/$@.js ./output/$@/code.output.js
 
 # build *AND* run the test:
 issue-205:
